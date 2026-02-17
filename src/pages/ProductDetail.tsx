@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Ruler } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SizeGuide from "@/components/SizeGuide";
 import { products } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ const ProductDetail = () => {
   const { addItem } = useCart();
   const product = products.find((p) => p.id === id);
   const [selectedSize, setSelectedSize] = useState("");
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   if (!product) {
     return (
@@ -60,7 +62,16 @@ const ProductDetail = () => {
               <p className="mb-8 leading-relaxed text-muted-foreground">{product.description}</p>
 
               <div className="mb-8">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">Size</p>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold uppercase tracking-wider text-foreground">Size</p>
+                  <button
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground smooth-hover hover:text-foreground"
+                    aria-label="Open size guide"
+                  >
+                    <Ruler className="h-3.5 w-3.5" /> Size Guide
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-3">
                   {product.sizes.map((size) => (
                     <button
@@ -97,6 +108,7 @@ const ProductDetail = () => {
         </div>
       </main>
       <Footer />
+      <SizeGuide open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
     </div>
   );
 };
