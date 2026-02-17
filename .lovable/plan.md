@@ -1,156 +1,169 @@
 
 
-# ThreadBD Store Upgrade -- UX, Animations, Search, and New Pages
+# Expanding ThreadBD: Multi-Category Product Catalog and Premium Animations
 
-This plan focuses on making the storefront more polished, accessible, and feature-rich. The admin panel will be added in a future phase with proper Supabase authentication.
+## Overview
 
----
-
-## 1. Enhanced Navbar with Search Bar and Category Navigation
-
-**What changes:**
-- Add a search input with a search icon directly in the Navbar (desktop: inline; mobile: expandable icon toggle)
-- Add category filter tabs/links below the Navbar or inline (Essentials, Street, Premium, All)
-- Add a mobile hamburger menu (Sheet/drawer) with navigation links, categories, and search
-- Improve accessibility: proper `aria-labels`, keyboard navigation, focus rings
-
-**New files:**
-- `src/components/SearchBar.tsx` -- reusable search input with debounced filtering
-- `src/components/MobileMenu.tsx` -- slide-in mobile navigation using the existing Sheet component
-
-**Modified files:**
-- `src/components/Navbar.tsx` -- integrate SearchBar, category links, mobile menu trigger
-- `src/pages/Shop.tsx` -- accept search query and category filter from URL params, filter products accordingly
+Transform ThreadBD from a T-shirt-only store into a full men's clothing brand while keeping T-shirts as the hero category. We'll add new product types (Polo, Shirts, Drop Shoulders, Undergarments, Pants) with a proper category system, and upgrade all animations to feel premium and smooth.
 
 ---
 
-## 2. New Pages
+## Part 1: Expanded Product Data Model
 
-### About Page (`/about`)
-- Brand story, mission, team/origin section
-- Bangladesh-themed imagery and values
+### Update `Product` interface in `src/data/products.ts`
 
-### Contact Page (`/contact`)
-- Contact form (name, email, message) with Zod validation
-- Store address, phone, social links
-- Embedded map placeholder
+Add a `type` field to distinguish product types, keeping `category` for styling/tier:
 
-### FAQ / Returns Page (`/faq`)
-- Accordion-based FAQ using existing Radix Accordion component
-- Covers shipping, returns, sizing, payment methods
+```text
+type: "T-Shirt" | "Polo" | "Shirt" | "Drop Shoulder" | "Undergarment" | "Pants"
+```
 
-### Order Confirmation Page (`/order-success`)
-- Shown after checkout instead of redirecting to home
-- Order summary, estimated delivery, "Continue Shopping" CTA
+Add ~12-15 new products across the new types, using the existing T-shirt images as placeholders (since we don't have real images for other types yet). Each product gets appropriate pricing, sizes, and descriptions relevant to Bangladesh.
 
-**New files:**
-- `src/pages/About.tsx`
-- `src/pages/Contact.tsx`
-- `src/pages/FAQ.tsx`
-- `src/pages/OrderSuccess.tsx`
-
-**Modified files:**
-- `src/App.tsx` -- add new routes
-- `src/components/Navbar.tsx` -- add nav links for About, Contact
-- `src/components/Footer.tsx` -- add links to About, Contact, FAQ
-- `src/pages/Checkout.tsx` -- redirect to `/order-success` instead of `/`
+### New product examples:
+- **Polo**: Classic Pique Polo (Black, White) -- 1200-1400 BDT
+- **Shirt**: Oxford Button-Down, Linen Casual -- 1500-1800 BDT
+- **Drop Shoulder**: Oversized Drop Shoulder in various colors -- 1100-1300 BDT
+- **Undergarment**: Cotton Vest, Boxer Briefs -- 350-500 BDT
+- **Pants**: Joggers, Chinos, Cargo -- 1800-2500 BDT
 
 ---
 
-## 3. Animations and Visual Polish
+## Part 2: Category Navigation Overhaul
 
-**Scroll-triggered fade-in animations:**
-- Create a reusable `useScrollReveal` hook using `IntersectionObserver` (no external library needed, great performance)
-- Apply to product cards, section headings, and page sections for staggered entrance effects
+### Update `src/pages/Shop.tsx`
 
-**Micro-interactions:**
-- Add to Cart button: brief scale pulse on click
-- Size selector: smooth background transition
-- Cart badge: pop-in animation when count changes
-- Page transitions: fade-in on route change using a wrapper component
+- Replace the current flat category pills (Essentials/Street/Premium) with a **two-level filter**:
+  - **Product type tabs** at the top: All, T-Shirts, Polos, Shirts, Drop Shoulders, Undergarments, Pants
+  - Keep the tier sub-filter (Essentials/Street/Premium) as secondary pills
+- Update URL params to support both: `?type=Polo&category=Premium`
+- Dynamic page title based on selected type (e.g., "All Polos" instead of "All Tees")
+- Show product count per type in the filter tabs
 
-**New keyframes in `tailwind.config.ts`:**
-- `scale-pop` -- quick scale up/down for button feedback
-- `slide-up` -- for page entrance
-- `bounce-in` -- for cart badge
+### Update `src/components/Navbar.tsx`
 
-**New files:**
-- `src/hooks/useScrollReveal.ts` -- IntersectionObserver-based reveal hook
-- `src/components/AnimatedSection.tsx` -- wrapper that applies scroll reveal to children
-- `src/components/PageTransition.tsx` -- fade-in wrapper for route changes
+- Add a "Shop" dropdown or mega-menu showing product types as links (e.g., `/shop?type=Polo`)
+
+### Update `src/components/MobileMenu.tsx`
+
+- Add expandable product type links under "Shop"
 
 ---
 
-## 4. Accessibility Improvements
+## Part 3: Homepage Category Showcase
 
-Across all components:
-- Add `aria-label` to all icon-only buttons (cart, back, quantity controls, remove)
-- Add `role` attributes where needed (navigation, search)
-- Ensure all interactive elements are keyboard-focusable with visible focus rings
-- Add `alt` text improvements for product images (include product name + color)
-- Add skip-to-content link at the top of the page
-- Ensure proper heading hierarchy (h1 > h2 > h3) across all pages
-- Add `aria-live="polite"` region for cart count updates and toast announcements
+### Update `src/pages/Index.tsx`
 
-**Modified files:**
-- `src/components/Navbar.tsx` -- aria-labels, skip link, role="navigation"
-- `src/components/ProductCard.tsx` -- better alt text, focus styles
-- `src/pages/ProductDetail.tsx` -- aria-labels on size buttons, quantity controls
-- `src/pages/Cart.tsx` -- aria-labels on all buttons
-- `src/index.css` -- add a `.sr-only` utility if not present, focus-visible styles
+- Add a **"Shop by Category"** section between the hero and featured products
+- Grid of category cards with icons/illustrations linking to filtered shop views
+- Each card shows the category name and a brief tagline
+
+### Update `src/components/HeroSection.tsx`
+
+- Change copy from "Handcrafted tees" to broader messaging: "Premium Menswear from Dhaka"
+- Keep the streetwear vibe but make it inclusive of all product types
 
 ---
 
-## 5. Shop Page Filtering and Search Logic
+## Part 4: Premium Animation Upgrades
 
-- Products filterable by category (via URL query param `?category=Street`)
-- Products searchable by name (via URL query param `?q=olive`)
-- Combine both filters simultaneously
-- Show "No products found" state with a clear-filters button
-- Category pills at the top of the shop page with active state styling
+### New keyframes in `tailwind.config.ts`
 
-**Modified files:**
-- `src/pages/Shop.tsx` -- full rewrite of filtering logic using `useSearchParams`
+- `blur-in`: Items fade in while deblurring (0 to sharp) -- premium Apple-style feel
+- `slide-up-fade`: Combined translate + opacity with spring-like easing
+- `stagger-in`: For grid items to cascade in sequence
+- `shimmer`: Subtle gradient sweep for loading states and hover effects
+- `float`: Gentle up-down float for decorative elements
+
+### Update `src/hooks/useScrollReveal.ts`
+
+- Add configurable animation variants (fade, blur-in, slide-left, slide-right)
+- Add `rootMargin` for earlier trigger (items start animating before fully in view)
+- Support staggered delays for grid children automatically
+
+### Update `src/components/AnimatedSection.tsx`
+
+- Accept an `animation` prop: "fade" (default), "blur", "slide-left", "slide-right"
+- Each variant applies different keyframes for variety across sections
+
+### Update `src/components/PageTransition.tsx`
+
+- Upgrade from simple opacity fade to a blur + opacity + subtle scale transition
+- Smoother easing curve (cubic-bezier for spring feel)
+
+### Update `src/components/ProductCard.tsx`
+
+- Add image shimmer/skeleton while loading
+- Smooth image zoom on hover with overflow clip
+- Subtle card lift effect (translateY + shadow increase) on hover
+- Price text gets a gentle color pulse on hover
+
+### Update `src/index.css`
+
+- Add premium utility classes:
+  - `.glass-effect` -- frosted glass background for overlays
+  - `.shimmer-bg` -- animated gradient background
+  - `.premium-shadow` -- layered multi-shadow for depth
+  - `.smooth-hover` -- standardized hover transition timing
+
+### Update `src/components/HeroSection.tsx`
+
+- Add a parallax-style effect (subtle background movement on scroll using a lightweight scroll listener)
+- Staggered text entrance with blur-in animation
+- Floating decorative accent elements
+
+### Update `src/components/FeaturedProducts.tsx`
+
+- Wrap in AnimatedSection with staggered delays per card
+- Add section entrance animation
 
 ---
 
-## Summary of All New Files
+## Part 5: Shop Page Visual Polish
 
-| File | Purpose |
-|------|---------|
-| `src/components/SearchBar.tsx` | Debounced search input |
-| `src/components/MobileMenu.tsx` | Mobile navigation drawer |
-| `src/components/AnimatedSection.tsx` | Scroll-reveal wrapper |
-| `src/components/PageTransition.tsx` | Route transition wrapper |
-| `src/hooks/useScrollReveal.ts` | IntersectionObserver hook |
-| `src/pages/About.tsx` | Brand story page |
-| `src/pages/Contact.tsx` | Contact form page |
-| `src/pages/FAQ.tsx` | Accordion FAQ page |
-| `src/pages/OrderSuccess.tsx` | Post-checkout confirmation |
+### Update `src/pages/Shop.tsx`
 
-## Summary of Modified Files
+- Animated filter transitions: products fade out/in when switching categories (layout animation)
+- Product count indicator with animated number change
+- Empty state with a subtle animation
+- Grid items stagger in with increasing delays
 
+---
+
+## Files Summary
+
+### Modified Files
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add 4 new routes, wrap routes in PageTransition |
-| `src/components/Navbar.tsx` | Search bar, category links, mobile menu, accessibility |
-| `src/components/Footer.tsx` | Add links to new pages |
-| `src/components/ProductCard.tsx` | Scroll animation, better a11y |
-| `src/pages/Shop.tsx` | URL-based search + category filtering |
-| `src/pages/Cart.tsx` | Accessibility labels |
-| `src/pages/ProductDetail.tsx` | Accessibility labels, micro-animations |
-| `src/pages/Checkout.tsx` | Redirect to /order-success |
-| `src/index.css` | Skip-link styles, focus-visible |
-| `tailwind.config.ts` | New keyframes (scale-pop, slide-up, bounce-in) |
+| `src/data/products.ts` | Add `type` field to interface, add ~15 new products across 5 new types |
+| `src/pages/Shop.tsx` | Two-level filtering (type + category), animated transitions, dynamic title |
+| `src/pages/Index.tsx` | Add "Shop by Category" section |
+| `src/components/Navbar.tsx` | Shop dropdown with product types |
+| `src/components/MobileMenu.tsx` | Expandable product type links |
+| `src/components/HeroSection.tsx` | Updated copy, parallax effect, blur-in animations |
+| `src/components/FeaturedProducts.tsx` | Staggered animation, section reveal |
+| `src/components/ProductCard.tsx` | Shimmer loading, premium hover effects |
+| `src/components/AnimatedSection.tsx` | Multiple animation variants |
+| `src/components/PageTransition.tsx` | Blur + scale page transition |
+| `src/hooks/useScrollReveal.ts` | Configurable variants, stagger support |
+| `tailwind.config.ts` | New keyframes: blur-in, shimmer, float, stagger |
+| `src/index.css` | Glass effect, shimmer, premium shadow utilities |
+| `src/components/Footer.tsx` | Add links to new product categories |
+
+### No New Files Needed
+All changes fit within the existing component structure.
+
+---
 
 ## Implementation Order
 
-1. Tailwind keyframes and CSS utilities (foundation)
-2. Reusable hooks and animation components
-3. SearchBar and MobileMenu components
-4. Updated Navbar with search, categories, mobile menu
-5. Shop page filtering logic
-6. New pages (About, Contact, FAQ, OrderSuccess)
-7. Updated routes in App.tsx and Footer links
-8. Accessibility pass across all components
+1. Product data model expansion (types + new products)
+2. Tailwind keyframes and CSS utilities
+3. Animation hook and component upgrades
+4. Shop page filtering overhaul
+5. Navbar and mobile menu updates
+6. Homepage category showcase section
+7. Hero section copy and animation upgrades
+8. ProductCard and FeaturedProducts polish
+9. Page transition upgrade
 
