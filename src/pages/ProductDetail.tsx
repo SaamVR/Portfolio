@@ -4,6 +4,8 @@ import { ArrowLeft, Ruler } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SizeGuide from "@/components/SizeGuide";
+import RelatedProducts from "@/components/RelatedProducts";
+import ProductReviews from "@/components/ProductReviews";
 import { products } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
@@ -106,6 +108,8 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
+        <ProductReviews productId={product.id} />
+        <RelatedProducts currentProduct={product} />
       </main>
       <Footer />
       <SizeGuide open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
