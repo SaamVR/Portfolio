@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { productTypes } from "@/data/products";
 
 const Footer = () => {
   return (
@@ -10,24 +11,29 @@ const Footer = () => {
               THREAD<span className="text-primary">BD</span>
             </h3>
             <p className="mt-3 text-sm text-muted-foreground">
-              Premium streetwear crafted in Bangladesh. Quality fabrics, bold designs.
+              Premium menswear crafted in Bangladesh. Quality fabrics, bold designs.
             </p>
           </div>
           <div>
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
             <div className="flex flex-col gap-2">
-              <Link to="/shop" className="text-sm text-muted-foreground hover:text-foreground">All Tees</Link>
-              <Link to="/shop?category=Essentials" className="text-sm text-muted-foreground hover:text-foreground">Essentials</Link>
-              <Link to="/shop?category=Street" className="text-sm text-muted-foreground hover:text-foreground">Street</Link>
-              <Link to="/shop?category=Premium" className="text-sm text-muted-foreground hover:text-foreground">Premium</Link>
+              {productTypes.map((t) => (
+                <Link
+                  key={t.value}
+                  to={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
+                  className="text-sm text-muted-foreground hover:text-foreground smooth-hover"
+                >
+                  {t.label}
+                </Link>
+              ))}
             </div>
           </div>
           <div>
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
             <div className="flex flex-col gap-2">
-              <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground">About Us</Link>
-              <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
-              <Link to="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ & Returns</Link>
+              <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">About Us</Link>
+              <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">Contact</Link>
+              <Link to="/faq" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">FAQ & Returns</Link>
             </div>
           </div>
           <div>
