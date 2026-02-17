@@ -13,7 +13,14 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => {
   }, [location.pathname]);
 
   return (
-    <div className={cn("transition-opacity duration-300 ease-out", show ? "opacity-100" : "opacity-0")}>
+    <div
+      className={cn(
+        "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        show
+          ? "opacity-100 blur-0 scale-100"
+          : "opacity-0 blur-[2px] scale-[0.995]"
+      )}
+    >
       {children}
     </div>
   );

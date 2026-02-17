@@ -1,7 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, X } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import SearchBar from "@/components/SearchBar";
+import { productTypes } from "@/data/products";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,17 +11,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-const categories = [
-  { label: "All", value: "" },
-  { label: "Essentials", value: "Essentials" },
-  { label: "Street", value: "Street" },
-  { label: "Premium", value: "Premium" },
-];
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 const navLinks = [
   { label: "Home", to: "/" },
-  { label: "Shop", to: "/shop" },
   { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
   { label: "FAQ", to: "/faq" },
@@ -28,6 +28,7 @@ const navLinks = [
 const MobileMenu = () => {
   const { totalItems } = useCart();
   const location = useLocation();
+  const [shopOpen, setShopOpen] = useState(false);
 
   return (
     <Sheet>
@@ -53,7 +54,37 @@ const MobileMenu = () => {
         </div>
 
         <nav className="mt-8 flex flex-col gap-1" aria-label="Mobile navigation">
-          {navLinks.map((link) => (
+          <Link
+            to="/"
+            className={`rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+              location.pathname === "/"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            }`}
+          >
+            Home
+          </Link>
+
+          {/* Expandable Shop section */}
+          <Collapsible open={shopOpen} onOpenChange={setShopOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
+              Shop
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${shopOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="ml-3 flex flex-col gap-0.5 border-l border-border pl-3 pt-1">
+              {productTypes.map((t) => (
+                <Link
+                  key={t.value}
+                  to={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
+                  className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {navLinks.slice(1).map((link) => (
             <Link
               key={link.to}
               to={link.to}
@@ -67,23 +98,6 @@ const MobileMenu = () => {
             </Link>
           ))}
         </nav>
-
-        <div className="mt-6 border-t border-border pt-4">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Categories
-          </p>
-          <div className="flex flex-col gap-1">
-            {categories.slice(1).map((cat) => (
-              <Link
-                key={cat.value}
-                to={`/shop?category=${cat.value}`}
-                className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                {cat.label}
-              </Link>
-            ))}
-          </div>
-        </div>
 
         <div className="mt-6 border-t border-border pt-4">
           <Link
