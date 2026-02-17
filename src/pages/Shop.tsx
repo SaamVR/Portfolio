@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
+import ProductQuickView from "@/components/ProductQuickView";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
-import { products, productTypes, typeLabels } from "@/data/products";
+import { products, productTypes, typeLabels, type Product } from "@/data/products";
 import { X } from "lucide-react";
 
 const tiers = ["All", "Essentials", "Street", "Premium"];
@@ -14,6 +16,9 @@ const Shop = () => {
   const query = searchParams.get("q") || "";
   const activeType = searchParams.get("type") || "All";
   const activeTier = searchParams.get("category") || "All";
+
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const filtered = products.filter((p) => {
     const matchesType = activeType === "All" || p.type === activeType;
@@ -42,11 +47,15 @@ const Shop = () => {
 
   const pageTitle = activeType === "All" ? "All Products" : typeLabels[activeType] || "Products";
 
-  // Count products per type
   const typeCounts = productTypes.map((t) => ({
     ...t,
     count: t.value === "All" ? products.length : products.filter((p) => p.type === t.value).length,
   }));
+
+  const handleQuickView = (product: Product) => {
+    setQuickViewProduct(product);
+    setQuickViewOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,7 +145,7 @@ const Shop = () => {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((product, i) => (
                     <AnimatedSection key={product.id} delay={i * 80} animation="blur">
-                      <ProductCard product={product} />
+                      <ProductCard product={product} onQuickView={handleQuickView} />
                     </AnimatedSection>
                   ))}
                 </div>
@@ -146,6 +155,12 @@ const Shop = () => {
         </main>
       </PageTransition>
       <Footer />
+
+      <ProductQuickView
+        product={quickViewProduct}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+      />
     </div>
   );
 };

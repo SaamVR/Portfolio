@@ -1,0 +1,115 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { X, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import type { Product } from "@/data/products";
+import { useCart } from "@/context/CartContext";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+interface ProductQuickViewProps {
+  product: Product | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps) => {
+  const [selectedSize, setSelectedSize] = useState("");
+  const { addItem } = useCart();
+
+  if (!product) return null;
+
+  const handleAddToCart = () => {
+    if (!selectedSize) {
+      toast.error("Please select a size");
+      return;
+    }
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      size: selectedSize,
+    });
+    toast.success("Added to cart!");
+    onOpenChange(false);
+    setSelectedSize("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSelectedSize(""); }}>
+      <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0 sm:rounded-xl border-border">
+        <DialogTitle className="sr-only">{product.name}</DialogTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-2">
+          {/* Image */}
+          <div className="relative aspect-square overflow-hidden bg-secondary">
+            <img
+              src={product.image}
+              alt={`${product.name} in ${product.colors[0]}`}
+              className="h-full w-full object-cover"
+            />
+            {product.featured && (
+              <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+                Featured
+              </span>
+            )}
+            <span className="absolute right-3 top-3 rounded-sm bg-background/70 backdrop-blur-sm px-2 py-1 text-xs font-medium text-muted-foreground">
+              {product.type}
+            </span>
+          </div>
+
+          {/* Details */}
+          <div className="flex flex-col justify-between p-6">
+            <div>
+              <p className="mb-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.category}</p>
+              <h2 className="mb-2 font-heading text-2xl font-bold text-foreground">{product.name}</h2>
+              <p className="mb-4 font-heading text-2xl font-bold text-primary">৳{product.price}</p>
+              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
+
+              {/* Sizes */}
+              <div className="mb-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground">Size</p>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      aria-label={`Select size ${size}`}
+                      aria-pressed={selectedSize === size}
+                      className={cn(
+                        "flex h-9 w-12 items-center justify-center rounded-md border text-xs font-medium smooth-hover",
+                        selectedSize === size
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                      )}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleAddToCart}
+                className="w-full rounded-md bg-primary py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground smooth-hover hover:opacity-90 active:animate-scale-pop"
+              >
+                Add to Cart — ৳{product.price}
+              </button>
+              <Link
+                to={`/product/${product.id}`}
+                onClick={() => onOpenChange(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-border py-3 text-sm font-medium text-muted-foreground smooth-hover hover:border-foreground hover:text-foreground"
+              >
+                View Full Details <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ProductQuickView;

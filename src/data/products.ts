@@ -4,6 +4,20 @@ import tshirtOlive from "@/assets/tshirt-olive.jpg";
 import tshirtNavy from "@/assets/tshirt-navy.jpg";
 import tshirtBurgundy from "@/assets/tshirt-burgundy.jpg";
 import tshirtGrey from "@/assets/tshirt-grey.jpg";
+import poloBlack from "@/assets/polo-black.jpg";
+import poloNavy from "@/assets/polo-navy.jpg";
+import shirtWhite from "@/assets/shirt-white.jpg";
+import shirtOlive from "@/assets/shirt-olive.jpg";
+import dropshoulderGrey from "@/assets/dropshoulder-grey.jpg";
+import dropshoulderBurgundy from "@/assets/dropshoulder-burgundy.jpg";
+import dropshoulderBlack from "@/assets/dropshoulder-black.jpg";
+import vestWhite from "@/assets/vest-white.jpg";
+import boxerBlack from "@/assets/boxer-black.jpg";
+import trunkGrey from "@/assets/trunk-grey.jpg";
+import joggersBlack from "@/assets/joggers-black.jpg";
+import chinosNavy from "@/assets/chinos-navy.jpg";
+import cargoOlive from "@/assets/cargo-olive.jpg";
+import trousersGrey from "@/assets/trousers-grey.jpg";
 
 export type ProductType = "T-Shirt" | "Polo" | "Shirt" | "Drop Shoulder" | "Undergarment" | "Pants";
 
@@ -117,7 +131,7 @@ export const products: Product[] = [
     id: "7",
     name: "Classic Pique Polo — Black",
     price: 1250,
-    image: tshirtBlack,
+    image: poloBlack,
     description: "Timeless pique polo in deep black. Ribbed collar, two-button placket, and breathable cotton mesh weave.",
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: ["Black"],
@@ -129,7 +143,7 @@ export const products: Product[] = [
     id: "8",
     name: "Tipped Polo — Navy",
     price: 1350,
-    image: tshirtNavy,
+    image: poloNavy,
     description: "Navy polo with contrast tipping on collar and sleeves. Slim fit with side vents for a polished casual look.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Navy"],
@@ -142,7 +156,7 @@ export const products: Product[] = [
     id: "9",
     name: "Oxford Button-Down — White",
     price: 1650,
-    image: tshirtWhite,
+    image: shirtWhite,
     description: "Crisp white Oxford cloth button-down shirt. Washed for softness, perfect from office to weekend.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["White"],
@@ -153,7 +167,7 @@ export const products: Product[] = [
     id: "10",
     name: "Linen Casual Shirt — Olive",
     price: 1800,
-    image: tshirtOlive,
+    image: shirtOlive,
     description: "Lightweight linen shirt in earthy olive. Relaxed fit with a camp collar for effortless summer style.",
     sizes: ["M", "L", "XL", "XXL"],
     colors: ["Olive"],
@@ -167,7 +181,7 @@ export const products: Product[] = [
     id: "11",
     name: "Oversized Drop Shoulder — Grey",
     price: 1150,
-    image: tshirtGrey,
+    image: dropshoulderGrey,
     description: "Ultra-relaxed oversized drop shoulder tee. 220 GSM heavyweight cotton with raw-cut hems for a streetwear edge.",
     sizes: ["M", "L", "XL"],
     colors: ["Grey"],
@@ -178,7 +192,7 @@ export const products: Product[] = [
     id: "12",
     name: "Washed Drop Shoulder — Burgundy",
     price: 1300,
-    image: tshirtBurgundy,
+    image: dropshoulderBurgundy,
     description: "Acid-washed burgundy drop shoulder with boxy silhouette. Statement piece for the bold dresser.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Burgundy"],
@@ -190,7 +204,7 @@ export const products: Product[] = [
     id: "13",
     name: "Minimal Drop Shoulder — Black",
     price: 1100,
-    image: tshirtBlack,
+    image: dropshoulderBlack,
     description: "Clean minimal drop shoulder in solid black. Extended sleeves and cropped body for modern proportions.",
     sizes: ["M", "L", "XL"],
     colors: ["Black"],
@@ -203,7 +217,7 @@ export const products: Product[] = [
     id: "14",
     name: "Cotton Vest — White (3-Pack)",
     price: 450,
-    image: tshirtWhite,
+    image: vestWhite,
     description: "Essential white cotton vests, pack of three. Breathable ribbed knit for all-day comfort under any shirt.",
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: ["White"],
@@ -214,7 +228,7 @@ export const products: Product[] = [
     id: "15",
     name: "Boxer Briefs — Black (2-Pack)",
     price: 500,
-    image: tshirtBlack,
+    image: boxerBlack,
     description: "Premium stretch cotton boxer briefs. Moisture-wicking with flat-lock seams for zero irritation.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Black"],
@@ -225,7 +239,7 @@ export const products: Product[] = [
     id: "16",
     name: "Athletic Trunk — Grey (2-Pack)",
     price: 400,
-    image: tshirtGrey,
+    image: trunkGrey,
     description: "Performance trunks in heather grey. Quick-dry fabric with supportive waistband for active days.",
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: ["Grey"],
@@ -238,7 +252,7 @@ export const products: Product[] = [
     id: "17",
     name: "Essential Joggers — Black",
     price: 1900,
-    image: tshirtBlack,
+    image: joggersBlack,
     description: "Tapered joggers in brushed French terry. Zippered pockets, ribbed cuffs, and adjustable drawstring waist.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Black"],
@@ -250,7 +264,7 @@ export const products: Product[] = [
     id: "18",
     name: "Slim Chinos — Navy",
     price: 2200,
-    image: tshirtNavy,
+    image: chinosNavy,
     description: "Tailored slim-fit chinos in classic navy. Stretch cotton twill with a clean silhouette for smart-casual wear.",
     sizes: ["30", "32", "34", "36", "38"],
     colors: ["Navy"],
@@ -261,7 +275,7 @@ export const products: Product[] = [
     id: "19",
     name: "Cargo Pants — Olive",
     price: 2500,
-    image: tshirtOlive,
+    image: cargoOlive,
     description: "Utility cargo pants with oversized pockets. Relaxed fit in durable ripstop cotton for street-ready style.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Olive"],
@@ -272,7 +286,7 @@ export const products: Product[] = [
     id: "20",
     name: "Relaxed Trousers — Grey",
     price: 2100,
-    image: tshirtGrey,
+    image: trousersGrey,
     description: "Wide-leg relaxed trousers in soft grey. Pleated front with an elastic back waist for effortless comfort.",
     sizes: ["S", "M", "L", "XL"],
     colors: ["Grey"],
