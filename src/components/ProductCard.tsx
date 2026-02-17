@@ -5,12 +5,13 @@ const ProductCard = ({ product }: { product: Product }) => {
   return (
     <Link
       to={`/product/${product.id}`}
-      className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/30 card-shadow"
+      className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/30 card-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      aria-label={`View ${product.name} - ${product.colors[0]} - ৳${product.price}`}
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
         <img
           src={product.image}
-          alt={product.name}
+          alt={`${product.name} in ${product.colors[0]}`}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />

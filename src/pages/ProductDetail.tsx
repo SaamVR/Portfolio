@@ -45,6 +45,7 @@ const ProductDetail = () => {
           <button
             onClick={() => navigate(-1)}
             className="mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Go back to previous page"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
@@ -65,6 +66,8 @@ const ProductDetail = () => {
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
+                      aria-label={`Select size ${size}`}
+                      aria-pressed={selectedSize === size}
                       className={`flex h-10 w-14 items-center justify-center rounded-md border text-sm font-medium transition-all ${
                         selectedSize === size
                           ? "border-primary bg-primary text-primary-foreground"
@@ -79,7 +82,7 @@ const ProductDetail = () => {
 
               <button
                 onClick={handleAddToCart}
-                className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
+                className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow active:animate-scale-pop"
               >
                 Add to Cart — ৳{product.price}
               </button>
