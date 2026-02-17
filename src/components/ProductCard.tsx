@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, Heart } from "lucide-react";
 import type { Product } from "@/data/products";
+import { useWishlist } from "@/context/WishlistContext";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -11,6 +12,8 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { isInWishlist, toggleItem } = useWishlist();
+  const wishlisted = isInWishlist(product.id);
 
   return (
     <div className="group relative overflow-hidden rounded-lg border border-border bg-card smooth-hover hover:border-primary/30 hover:-translate-y-1 hover:premium-shadow">
@@ -28,7 +31,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
             alt={`${product.name} in ${product.colors[0]}`}
             className={cn(
               "h-full w-full object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110",
-            imageLoaded ? "opacity-100" : "opacity-0"
+              imageLoaded ? "opacity-100" : "opacity-0"
             )}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
@@ -50,6 +53,24 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
           </p>
         </div>
       </Link>
+
+      {/* Wishlist heart button */}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleItem(product.id);
+        }}
+        aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+        className={cn(
+          "absolute left-3 bottom-[calc(theme(spacing.4)+5.5rem)] z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-lg smooth-hover",
+          wishlisted
+            ? "border-primary/30 bg-primary/10 text-primary"
+            : "border-border bg-background/90 text-muted-foreground backdrop-blur-sm hover:text-primary hover:border-primary/30"
+        )}
+      >
+        <Heart className={cn("h-4 w-4 transition-all duration-300", wishlisted && "fill-primary scale-110")} />
+      </button>
 
       {/* Quick View Button */}
       {onQuickView && (
