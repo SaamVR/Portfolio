@@ -36,7 +36,21 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
           />
-          {product.featured && (
+          {/* Badge */}
+          {product.badge && (
+            <span
+              className={cn(
+                "absolute left-3 top-3 rounded-sm px-2 py-1 text-xs font-bold z-10",
+                product.badge === "New"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-destructive text-destructive-foreground"
+              )}
+            >
+              {product.badge}
+            </span>
+          )}
+          {/* Featured badge - only show if no other badge */}
+          {product.featured && !product.badge && (
             <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
               Featured
             </span>
@@ -48,9 +62,16 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
         <div className="p-4">
           <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{product.category}</p>
           <h3 className="font-heading text-base font-semibold text-foreground">{product.name}</h3>
-          <p className="mt-2 font-heading text-lg font-bold text-primary transition-colors duration-300 group-hover:text-accent">
-            ৳{product.price}
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <p className="font-heading text-lg font-bold text-primary transition-colors duration-300 group-hover:text-accent">
+              ৳{product.price}
+            </p>
+            {product.originalPrice && (
+              <p className="font-heading text-sm text-muted-foreground line-through">
+                ৳{product.originalPrice}
+              </p>
+            )}
+          </div>
         </div>
       </Link>
 

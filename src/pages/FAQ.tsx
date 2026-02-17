@@ -1,5 +1,4 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Layout from "@/components/Layout";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import {
@@ -22,38 +21,34 @@ const faqs = [
 
 const FAQ = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <Layout>
       <PageTransition>
-        <main className="pt-16" id="main-content">
-          <section className="py-20">
-            <div className="container mx-auto max-w-2xl px-4">
-              <AnimatedSection>
-                <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Help</p>
-                <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">Frequently Asked Questions</h1>
-                <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from ThreadBD.</p>
-              </AnimatedSection>
+        <section className="py-20">
+          <div className="container mx-auto max-w-2xl px-4">
+            <AnimatedSection>
+              <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Help</p>
+              <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">Frequently Asked Questions</h1>
+              <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from ThreadBD.</p>
+            </AnimatedSection>
 
-              <AnimatedSection delay={100}>
-                <Accordion type="single" collapsible className="w-full">
-                  {faqs.map((faq, i) => (
-                    <AccordionItem key={i} value={`faq-${i}`} className="border-border">
-                      <AccordionTrigger className="text-left font-heading text-sm font-semibold text-foreground hover:text-primary">
-                        {faq.q}
-                      </AccordionTrigger>
-                      <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                        {faq.a}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </AnimatedSection>
-            </div>
-          </section>
-        </main>
+            <AnimatedSection delay={100}>
+              <Accordion type="single" collapsible className="w-full">
+                {faqs.map((faq, i) => (
+                  <AccordionItem key={i} value={`faq-${i}`} className="border-border">
+                    <AccordionTrigger className="text-left font-heading text-sm font-semibold text-foreground hover:text-primary">
+                      {faq.q}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                      {faq.a}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </AnimatedSection>
+          </div>
+        </section>
       </PageTransition>
-      <Footer />
-    </div>
+    </Layout>
   );
 };
 

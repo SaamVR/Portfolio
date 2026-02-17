@@ -25,6 +25,7 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
   description: string;
   sizes: string[];
@@ -32,6 +33,7 @@ export interface Product {
   category: string;
   type: ProductType;
   featured?: boolean;
+  badge?: "New" | "Sale";
 }
 
 export const productTypes: { label: string; value: ProductType | "All" }[] = [
@@ -67,6 +69,8 @@ export const products: Product[] = [
     category: "Essentials",
     type: "T-Shirt",
     featured: true,
+    badge: "Sale",
+    originalPrice: 1000,
   },
   {
     id: "2",
@@ -113,6 +117,7 @@ export const products: Product[] = [
     category: "Premium",
     type: "T-Shirt",
     featured: true,
+    badge: "New",
   },
   {
     id: "6",
@@ -199,6 +204,7 @@ export const products: Product[] = [
     category: "Street",
     type: "Drop Shoulder",
     featured: true,
+    badge: "New",
   },
   {
     id: "13",
@@ -259,6 +265,8 @@ export const products: Product[] = [
     category: "Essentials",
     type: "Pants",
     featured: true,
+    badge: "Sale",
+    originalPrice: 2200,
   },
   {
     id: "18",
@@ -281,6 +289,7 @@ export const products: Product[] = [
     colors: ["Olive"],
     category: "Street",
     type: "Pants",
+    badge: "New",
   },
   {
     id: "20",
