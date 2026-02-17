@@ -1,169 +1,98 @@
 
 
-# Expanding ThreadBD: Multi-Category Product Catalog and Premium Animations
+# Newsletter Signup, Announcement Bar, and Experience Boosters
 
 ## Overview
 
-Transform ThreadBD from a T-shirt-only store into a full men's clothing brand while keeping T-shirts as the hero category. We'll add new product types (Polo, Shirts, Drop Shoulders, Undergarments, Pants) with a proper category system, and upgrade all animations to feel premium and smooth.
+Three additions to elevate ThreadBD: a newsletter signup in the footer, a site-wide announcement bar, and a few high-impact experience features.
 
 ---
 
-## Part 1: Expanded Product Data Model
+## 1. Announcement Bar (Top of Site)
 
-### Update `Product` interface in `src/data/products.ts`
+Create `src/components/AnnouncementBar.tsx` -- a slim, dismissible banner that sits above the navbar.
 
-Add a `type` field to distinguish product types, keeping `category` for styling/tier:
+- Rotating messages with smooth crossfade (e.g., "Free Delivery on Orders Over 2000 BDT", "New Drop Shoulders Just Landed", "Pay with bKash for 5% Off")
+- Auto-rotates every 4 seconds
+- Dismissible with an X button (stores in sessionStorage so it stays hidden per session)
+- Primary background with subtle shimmer animation
+- Height: ~36px, fixed at the very top
 
-```text
-type: "T-Shirt" | "Polo" | "Shirt" | "Drop Shoulder" | "Undergarment" | "Pants"
-```
+**Integration changes:**
+- Update every page layout (or create a shared `Layout` component) to offset `pt-16` to `pt-[100px]` when the bar is visible
+- Better approach: Create a `src/components/Layout.tsx` wrapper used by all pages, containing AnnouncementBar + Navbar + Footer + the announcement-aware padding logic. This reduces duplication across 8+ page files.
 
-Add ~12-15 new products across the new types, using the existing T-shirt images as placeholders (since we don't have real images for other types yet). Each product gets appropriate pricing, sizes, and descriptions relevant to Bangladesh.
+## 2. Newsletter Signup in Footer
 
-### New product examples:
-- **Polo**: Classic Pique Polo (Black, White) -- 1200-1400 BDT
-- **Shirt**: Oxford Button-Down, Linen Casual -- 1500-1800 BDT
-- **Drop Shoulder**: Oversized Drop Shoulder in various colors -- 1100-1300 BDT
-- **Undergarment**: Cotton Vest, Boxer Briefs -- 350-500 BDT
-- **Pants**: Joggers, Chinos, Cargo -- 1800-2500 BDT
+Update `src/components/Footer.tsx`:
 
----
+- Replace the "Payment" column (move payment info to a one-liner below) with a **Newsletter** section
+- Email input + "Subscribe" button styled with primary color
+- Zod validation for email
+- Success toast on submit
+- Subtle "Join 5,000+ ThreadBD fans" social proof text
+- Store subscribed state in localStorage to show "You're subscribed!" instead
 
-## Part 2: Category Navigation Overhaul
+## 3. Shared Layout Component
 
-### Update `src/pages/Shop.tsx`
+Create `src/components/Layout.tsx`:
 
-- Replace the current flat category pills (Essentials/Street/Premium) with a **two-level filter**:
-  - **Product type tabs** at the top: All, T-Shirts, Polos, Shirts, Drop Shoulders, Undergarments, Pants
-  - Keep the tier sub-filter (Essentials/Street/Premium) as secondary pills
-- Update URL params to support both: `?type=Polo&category=Premium`
-- Dynamic page title based on selected type (e.g., "All Polos" instead of "All Tees")
-- Show product count per type in the filter tabs
+- Wraps AnnouncementBar, Navbar, main content (children), and Footer
+- Manages the dynamic top padding based on whether announcement bar is visible
+- Replace manual Navbar/Footer usage in all page files (Index, Shop, About, Contact, FAQ, Cart, Checkout, Wishlist, ProductDetail, OrderSuccess)
 
-### Update `src/components/Navbar.tsx`
+## 4. Experience Boosters
 
-- Add a "Shop" dropdown or mega-menu showing product types as links (e.g., `/shop?type=Polo`)
+### a. "Back to Top" Button
+- Create `src/components/BackToTop.tsx`
+- Floating button appears after scrolling 400px
+- Smooth scroll to top on click
+- Subtle fade-in/scale animation
 
-### Update `src/components/MobileMenu.tsx`
+### b. Recently Viewed Products
+- Create `src/components/RecentlyViewed.tsx`
+- Track viewed products in localStorage (max 8)
+- Show a horizontal scrollable strip on the homepage below Featured Products
+- Update `src/pages/ProductDetail.tsx` to record views
 
-- Add expandable product type links under "Shop"
-
----
-
-## Part 3: Homepage Category Showcase
-
-### Update `src/pages/Index.tsx`
-
-- Add a **"Shop by Category"** section between the hero and featured products
-- Grid of category cards with icons/illustrations linking to filtered shop views
-- Each card shows the category name and a brief tagline
-
-### Update `src/components/HeroSection.tsx`
-
-- Change copy from "Handcrafted tees" to broader messaging: "Premium Menswear from Dhaka"
-- Keep the streetwear vibe but make it inclusive of all product types
+### c. "New" and "Sale" Badges on Product Cards
+- Update `src/data/products.ts` to add optional `badge` field ("New" | "Sale") and `originalPrice` for sale items
+- Update `src/components/ProductCard.tsx` to render colored badge overlays
 
 ---
 
-## Part 4: Premium Animation Upgrades
+## Technical Details
 
-### New keyframes in `tailwind.config.ts`
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `src/components/AnnouncementBar.tsx` | Rotating dismissible promo banner |
+| `src/components/Layout.tsx` | Shared page layout wrapper |
+| `src/components/BackToTop.tsx` | Scroll-to-top floating button |
+| `src/components/RecentlyViewed.tsx` | Recently viewed products strip |
 
-- `blur-in`: Items fade in while deblurring (0 to sharp) -- premium Apple-style feel
-- `slide-up-fade`: Combined translate + opacity with spring-like easing
-- `stagger-in`: For grid items to cascade in sequence
-- `shimmer`: Subtle gradient sweep for loading states and hover effects
-- `float`: Gentle up-down float for decorative elements
-
-### Update `src/hooks/useScrollReveal.ts`
-
-- Add configurable animation variants (fade, blur-in, slide-left, slide-right)
-- Add `rootMargin` for earlier trigger (items start animating before fully in view)
-- Support staggered delays for grid children automatically
-
-### Update `src/components/AnimatedSection.tsx`
-
-- Accept an `animation` prop: "fade" (default), "blur", "slide-left", "slide-right"
-- Each variant applies different keyframes for variety across sections
-
-### Update `src/components/PageTransition.tsx`
-
-- Upgrade from simple opacity fade to a blur + opacity + subtle scale transition
-- Smoother easing curve (cubic-bezier for spring feel)
-
-### Update `src/components/ProductCard.tsx`
-
-- Add image shimmer/skeleton while loading
-- Smooth image zoom on hover with overflow clip
-- Subtle card lift effect (translateY + shadow increase) on hover
-- Price text gets a gentle color pulse on hover
-
-### Update `src/index.css`
-
-- Add premium utility classes:
-  - `.glass-effect` -- frosted glass background for overlays
-  - `.shimmer-bg` -- animated gradient background
-  - `.premium-shadow` -- layered multi-shadow for depth
-  - `.smooth-hover` -- standardized hover transition timing
-
-### Update `src/components/HeroSection.tsx`
-
-- Add a parallax-style effect (subtle background movement on scroll using a lightweight scroll listener)
-- Staggered text entrance with blur-in animation
-- Floating decorative accent elements
-
-### Update `src/components/FeaturedProducts.tsx`
-
-- Wrap in AnimatedSection with staggered delays per card
-- Add section entrance animation
-
----
-
-## Part 5: Shop Page Visual Polish
-
-### Update `src/pages/Shop.tsx`
-
-- Animated filter transitions: products fade out/in when switching categories (layout animation)
-- Product count indicator with animated number change
-- Empty state with a subtle animation
-- Grid items stagger in with increasing delays
-
----
-
-## Files Summary
-
-### Modified Files
+### Files to Modify
 | File | Changes |
 |------|---------|
-| `src/data/products.ts` | Add `type` field to interface, add ~15 new products across 5 new types |
-| `src/pages/Shop.tsx` | Two-level filtering (type + category), animated transitions, dynamic title |
-| `src/pages/Index.tsx` | Add "Shop by Category" section |
-| `src/components/Navbar.tsx` | Shop dropdown with product types |
-| `src/components/MobileMenu.tsx` | Expandable product type links |
-| `src/components/HeroSection.tsx` | Updated copy, parallax effect, blur-in animations |
-| `src/components/FeaturedProducts.tsx` | Staggered animation, section reveal |
-| `src/components/ProductCard.tsx` | Shimmer loading, premium hover effects |
-| `src/components/AnimatedSection.tsx` | Multiple animation variants |
-| `src/components/PageTransition.tsx` | Blur + scale page transition |
-| `src/hooks/useScrollReveal.ts` | Configurable variants, stagger support |
-| `tailwind.config.ts` | New keyframes: blur-in, shimmer, float, stagger |
-| `src/index.css` | Glass effect, shimmer, premium shadow utilities |
-| `src/components/Footer.tsx` | Add links to new product categories |
+| `src/components/Footer.tsx` | Add newsletter signup section |
+| `src/data/products.ts` | Add `badge` and `originalPrice` fields, mark some products as New/Sale |
+| `src/components/ProductCard.tsx` | Render badge overlays, show crossed-out original price |
+| `src/pages/Index.tsx` | Use Layout, add RecentlyViewed section |
+| `src/pages/Shop.tsx` | Use Layout |
+| `src/pages/ProductDetail.tsx` | Use Layout, record recently viewed |
+| `src/pages/About.tsx` | Use Layout |
+| `src/pages/Contact.tsx` | Use Layout |
+| `src/pages/FAQ.tsx` | Use Layout |
+| `src/pages/Cart.tsx` | Use Layout |
+| `src/pages/Checkout.tsx` | Use Layout |
+| `src/pages/Wishlist.tsx` | Use Layout |
+| `src/pages/OrderSuccess.tsx` | Use Layout |
+| `src/components/Navbar.tsx` | Adjust fixed positioning to account for announcement bar height |
 
-### No New Files Needed
-All changes fit within the existing component structure.
-
----
-
-## Implementation Order
-
-1. Product data model expansion (types + new products)
-2. Tailwind keyframes and CSS utilities
-3. Animation hook and component upgrades
-4. Shop page filtering overhaul
-5. Navbar and mobile menu updates
-6. Homepage category showcase section
-7. Hero section copy and animation upgrades
-8. ProductCard and FeaturedProducts polish
-9. Page transition upgrade
-
+### Implementation Order
+1. Create Layout component with AnnouncementBar
+2. Refactor all pages to use Layout
+3. Add newsletter signup to Footer
+4. Add badge system to products and ProductCard
+5. Add BackToTop button
+6. Add RecentlyViewed tracking and component
