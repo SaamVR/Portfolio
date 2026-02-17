@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer className="border-t border-border bg-card py-12">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div>
             <h3 className="font-heading text-lg font-bold text-foreground">
               THREAD<span className="text-primary">BD</span>
@@ -14,10 +14,20 @@ const Footer = () => {
             </p>
           </div>
           <div>
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Quick Links</h4>
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
             <div className="flex flex-col gap-2">
-              <Link to="/shop" className="text-sm text-muted-foreground hover:text-foreground">Shop All</Link>
-              <Link to="/cart" className="text-sm text-muted-foreground hover:text-foreground">Cart</Link>
+              <Link to="/shop" className="text-sm text-muted-foreground hover:text-foreground">All Tees</Link>
+              <Link to="/shop?category=Essentials" className="text-sm text-muted-foreground hover:text-foreground">Essentials</Link>
+              <Link to="/shop?category=Street" className="text-sm text-muted-foreground hover:text-foreground">Street</Link>
+              <Link to="/shop?category=Premium" className="text-sm text-muted-foreground hover:text-foreground">Premium</Link>
+            </div>
+          </div>
+          <div>
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
+            <div className="flex flex-col gap-2">
+              <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground">About Us</Link>
+              <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
+              <Link to="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ & Returns</Link>
             </div>
           </div>
           <div>

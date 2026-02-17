@@ -49,6 +49,7 @@ const Cart = () => {
                         <button
                           onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1)}
                           className="flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                          aria-label={`Decrease quantity of ${item.name}`}
                         >
                           <Minus className="h-3 w-3" />
                         </button>
@@ -56,6 +57,7 @@ const Cart = () => {
                         <button
                           onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1)}
                           className="flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                          aria-label={`Increase quantity of ${item.name}`}
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -64,6 +66,7 @@ const Cart = () => {
                       <button
                         onClick={() => removeItem(item.productId, item.size)}
                         className="text-muted-foreground hover:text-destructive"
+                        aria-label={`Remove ${item.name} from cart`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

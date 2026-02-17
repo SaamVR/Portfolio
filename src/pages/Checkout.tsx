@@ -53,7 +53,7 @@ const Checkout = () => {
       toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
     }
     clearCart();
-    setTimeout(() => navigate("/"), 2000);
+    setTimeout(() => navigate("/order-success"), 2000);
   };
 
   const update = (field: string, value: string) => {
