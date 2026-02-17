@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
@@ -14,6 +15,7 @@ import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import OrderSuccess from "./pages/OrderSuccess";
 import NotFound from "./pages/NotFound";
+import Wishlist from "./pages/Wishlist";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CartProvider>
+      <WishlistProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -34,9 +37,11 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/order-success" element={<OrderSuccess />} />
+            <Route path="/wishlist" element={<Wishlist />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+      </WishlistProvider>
       </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>

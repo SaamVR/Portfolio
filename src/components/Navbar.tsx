@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, X, ChevronDown } from "lucide-react";
+import { ShoppingBag, Search, X, ChevronDown, Heart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import SearchBar from "@/components/SearchBar";
 import MobileMenu from "@/components/MobileMenu";
 import { productTypes } from "@/data/products";
@@ -15,6 +16,7 @@ const navLinks = [
 
 const Navbar = () => {
   const { totalItems } = useCart();
+  const { totalItems: wishlistCount } = useWishlist();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
@@ -100,6 +102,22 @@ const Navbar = () => {
                 </button>
               )}
             </div>
+
+            <Link
+              to="/wishlist"
+              className="relative flex items-center text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={`Wishlist with ${wishlistCount} items`}
+            >
+              <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span
+                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground animate-bounce-in"
+                  aria-live="polite"
+                >
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
 
             <Link
               to="/cart"
