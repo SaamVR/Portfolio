@@ -1,15 +1,13 @@
 import { Link } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Layout from "@/components/Layout";
 import PageTransition from "@/components/PageTransition";
 
 const OrderSuccess = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <Layout>
       <PageTransition>
-        <main className="flex min-h-[70vh] items-center justify-center pt-16" id="main-content">
+        <div className="flex min-h-[70vh] items-center justify-center">
           <div className="container mx-auto max-w-md px-4 text-center">
             <CheckCircle className="mx-auto mb-6 h-16 w-16 text-primary animate-bounce-in" />
             <h1 className="mb-4 font-heading text-3xl font-bold text-foreground">Order Confirmed!</h1>
@@ -26,10 +24,9 @@ const OrderSuccess = () => {
               Continue Shopping
             </Link>
           </div>
-        </main>
+        </div>
       </PageTransition>
-      <Footer />
-    </div>
+    </Layout>
   );
 };
 

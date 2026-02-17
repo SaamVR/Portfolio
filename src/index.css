@@ -122,3 +122,21 @@
 *:focus-visible {
   @apply outline-2 outline-offset-2 outline-ring;
 }
+
+.announcement-shimmer {
+  background-image: linear-gradient(
+    110deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary)) 40%,
+    hsl(145 63% 50%) 50%,
+    hsl(var(--primary)) 60%,
+    hsl(var(--primary)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

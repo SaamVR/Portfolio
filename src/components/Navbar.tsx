@@ -14,7 +14,7 @@ const navLinks = [
   { label: "Contact", to: "/contact" },
 ];
 
-const Navbar = () => {
+const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean }) => {
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const location = useLocation();
@@ -27,7 +27,7 @@ const Navbar = () => {
         Skip to content
       </a>
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b border-border glass-effect"
+        className={`fixed left-0 right-0 z-50 border-b border-border glass-effect ${announcementVisible ? "top-9" : "top-0"}`}
         role="navigation"
         aria-label="Main navigation"
       >
