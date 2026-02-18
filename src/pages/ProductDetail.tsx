@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Ruler, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -20,10 +20,18 @@ const ProductDetail = () => {
   const { data: product, isLoading } = useProduct(id);
   const [selectedSize, setSelectedSize] = useState("");
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const prevIdRef = useRef(id);
 
-  // Scroll to top on product change
+  // Luxurious scroll-to-top with fade transition on product change
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (prevIdRef.current !== id) {
+      setIsTransitioning(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      const timer = setTimeout(() => setIsTransitioning(false), 500);
+      prevIdRef.current = id;
+      return () => clearTimeout(timer);
+    }
   }, [id]);
 
   // Record recently viewed
@@ -83,7 +91,14 @@ const ProductDetail = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
+      <div
+        className="container mx-auto px-4 py-12 transition-all duration-700 ease-out"
+        style={{
+          opacity: isTransitioning ? 0 : 1,
+          transform: isTransitioning ? "translateY(16px)" : "translateY(0)",
+          filter: isTransitioning ? "blur(6px)" : "blur(0px)",
+        }}
+      >
         <button
           onClick={() => navigate(-1)}
           className="mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
