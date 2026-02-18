@@ -1,9 +1,22 @@
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
-import { products } from "@/data/products";
+import { useFeaturedProducts } from "@/hooks/useProducts";
+import { Loader2 } from "lucide-react";
 
 const FeaturedProducts = () => {
-  const featured = products.filter((p) => p.featured);
+  const { data: featured = [], isLoading } = useFeaturedProducts();
+
+  if (isLoading) {
+    return (
+      <section className="py-20">
+        <div className="container mx-auto px-4 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </section>
+    );
+  }
+
+  if (featured.length === 0) return null;
 
   return (
     <section className="py-20">

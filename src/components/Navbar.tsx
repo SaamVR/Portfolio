@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, X, ChevronDown, Heart } from "lucide-react";
+import { ShoppingBag, Search, X, ChevronDown, Heart, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/SearchBar";
 import MobileMenu from "@/components/MobileMenu";
 import { productTypes } from "@/data/products";
@@ -17,6 +18,7 @@ const navLinks = [
 const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean }) => {
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
+  const { user } = useAuth();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
@@ -59,7 +61,6 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                   {link.hasDropdown && <ChevronDown className="h-3 w-3" />}
                 </Link>
 
-                {/* Shop dropdown */}
                 {link.hasDropdown && shopDropdownOpen && (
                   <div className="absolute left-0 top-full pt-2">
                     <div className="min-w-[180px] rounded-lg border border-border bg-card p-2 premium-shadow">
@@ -102,6 +103,14 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                 </button>
               )}
             </div>
+
+            <Link
+              to={user ? "/account" : "/auth"}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={user ? "My account" : "Sign in"}
+            >
+              <User className="h-5 w-5" />
+            </Link>
 
             <Link
               to="/wishlist"

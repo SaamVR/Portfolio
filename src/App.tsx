@@ -17,10 +17,13 @@ import FAQ from "./pages/FAQ";
 import OrderSuccess from "./pages/OrderSuccess";
 import NotFound from "./pages/NotFound";
 import Wishlist from "./pages/Wishlist";
+import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/admin/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
+import AdminOrders from "./pages/admin/Orders";
 import SiteSettings from "./pages/admin/SiteSettings";
 import InviteCodes from "./pages/admin/InviteCodes";
 import Users from "./pages/admin/Users";
@@ -47,10 +50,13 @@ const App = () => (
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/account" element={<Account />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="products" element={<AdminProducts />} />
+                  <Route path="orders" element={<AdminOrders />} />
                   <Route path="site-settings" element={<SiteSettings />} />
                   <Route path="invite-codes" element={<InviteCodes />} />
                   <Route path="users" element={<Users />} />

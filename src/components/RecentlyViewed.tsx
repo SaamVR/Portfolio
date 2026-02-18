@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
-import { products } from "@/data/products";
 import AnimatedSection from "@/components/AnimatedSection";
+import { useProducts } from "@/hooks/useProducts";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 
 const RecentlyViewed = () => {
+  const { data: products = [] } = useProducts();
+
   let recentIds: string[] = [];
   try {
     recentIds = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || "[]");

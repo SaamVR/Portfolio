@@ -5,6 +5,7 @@ import PageTransition from "@/components/PageTransition";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -16,7 +17,9 @@ const Contact = () => {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = contactSchema.safeParse(form);
     if (!result.success) {
@@ -28,8 +31,19 @@ const Contact = () => {
       return;
     }
     setErrors({});
-    toast.success("Message sent! We'll get back to you soon.");
-    setForm({ name: "", email: "", message: "" });
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("contact_messages")
+        .insert({ name: form.name, email: form.email, message: form.message } as any);
+      if (error) throw error;
+      toast.success("Message sent! We'll get back to you soon.");
+      setForm({ name: "", email: "", message: "" });
+    } catch {
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const update = (field: string, value: string) => {
@@ -81,9 +95,10 @@ const Contact = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full rounded-md bg-primary py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 glow-shadow transition-all active:animate-scale-pop"
+                    disabled={submitting}
+                    className="w-full rounded-md bg-primary py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 glow-shadow transition-all active:animate-scale-pop disabled:opacity-50"
                   >
-                    Send Message
+                    {submitting ? "Sending..." : "Send Message"}
                   </button>
                 </form>
               </AnimatedSection>
