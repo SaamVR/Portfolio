@@ -21,6 +21,11 @@ const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
+  // Scroll to top on product change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   // Record recently viewed
   useEffect(() => {
     if (!id) return;
