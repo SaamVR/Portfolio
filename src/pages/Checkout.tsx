@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreateOrder } from "@/hooks/useOrders";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -17,6 +19,8 @@ const checkoutSchema = z.object({
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
+  const createOrder = useCreateOrder();
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -31,7 +35,7 @@ const Checkout = () => {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = checkoutSchema.safeParse(form);
     if (!result.success) {
@@ -44,15 +48,39 @@ const Checkout = () => {
     }
     setErrors({});
 
-    if (form.paymentMethod === "bkash") {
-      toast.success("Redirecting to bKash payment...", { description: "bKash integration requires backend setup. Order placed as demo!" });
-    } else if (form.paymentMethod === "nagad") {
-      toast.success("Redirecting to Nagad payment...", { description: "Nagad integration requires backend setup. Order placed as demo!" });
-    } else {
-      toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
+    try {
+      const order = await createOrder.mutateAsync({
+        user_id: user?.id || null,
+        items: items.map((item) => ({
+          productId: item.productId,
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          size: item.size,
+          quantity: item.quantity,
+        })),
+        subtotal: totalPrice,
+        total: totalPrice,
+        customer_name: form.name,
+        customer_phone: form.phone,
+        customer_email: user?.email,
+        shipping_address: form.address,
+        shipping_city: form.city,
+        payment_method: form.paymentMethod,
+      });
+
+      if (form.paymentMethod === "bkash") {
+        toast.success("Order placed!", { description: "bKash payment integration coming soon. Order saved as COD." });
+      } else if (form.paymentMethod === "nagad") {
+        toast.success("Order placed!", { description: "Nagad payment integration coming soon. Order saved as COD." });
+      } else {
+        toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
+      }
+      clearCart();
+      navigate("/order-success", { state: { orderNumber: order.order_number } });
+    } catch {
+      toast.error("Failed to place order. Please try again.");
     }
-    clearCart();
-    setTimeout(() => navigate("/order-success"), 2000);
   };
 
   const update = (field: string, value: string) => {
@@ -92,6 +120,21 @@ const Checkout = () => {
                     className="w-full rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   {errors[key] && <p className="mt-1 text-xs text-destructive">{errors[key]}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Order summary */}
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Order Summary</h2>
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div key={`${item.productId}-${item.size}`} className="flex justify-between text-sm">
+                  <span className="text-foreground">
+                    {item.name} × {item.quantity} <span className="text-muted-foreground">({item.size})</span>
+                  </span>
+                  <span className="text-muted-foreground">৳{item.price * item.quantity}</span>
                 </div>
               ))}
             </div>
@@ -140,9 +183,14 @@ const Checkout = () => {
 
           <button
             type="submit"
-            className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
+            disabled={createOrder.isPending}
+            className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow disabled:opacity-50"
           >
-            {form.paymentMethod === "cod" ? "Place Order" : `Pay ৳${totalPrice} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
+            {createOrder.isPending
+              ? "Placing Order..."
+              : form.paymentMethod === "cod"
+                ? "Place Order"
+                : `Pay ৳${totalPrice} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
           </button>
         </form>
       </div>

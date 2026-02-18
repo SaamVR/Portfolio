@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { products, productTypes } from "@/data/products";
+import { productTypes } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import { Badge } from "@/components/ui/badge";
 
 interface SearchBarProps {
@@ -46,12 +47,13 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { data: products = [] } = useProducts();
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 200);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -64,7 +66,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     }
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -206,7 +207,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 
       {showDropdown && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-          {/* Typing but no results */}
           {!isEmptyState && filtered.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <SearchX className="h-8 w-8 opacity-40" />
@@ -215,7 +215,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
             </div>
           )}
 
-          {/* Product results */}
           {filtered.length > 0 && (
             <div className="p-1" role="listbox">
               {filtered.map((product, index) => (
@@ -253,7 +252,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
             </div>
           )}
 
-          {/* Empty input: history + categories */}
           {isEmptyState && (
             <>
               {history.length > 0 && (

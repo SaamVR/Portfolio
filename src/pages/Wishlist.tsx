@@ -4,11 +4,12 @@ import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { useWishlist } from "@/context/WishlistContext";
-import { products } from "@/data/products";
-import { Heart } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
+import { Heart, Loader2 } from "lucide-react";
 
 const Wishlist = () => {
   const { items } = useWishlist();
+  const { data: products = [], isLoading } = useProducts();
   const wishlistProducts = products.filter((p) => items.includes(p.id));
 
   return (
@@ -23,7 +24,11 @@ const Wishlist = () => {
               </div>
             </AnimatedSection>
 
-            {wishlistProducts.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : wishlistProducts.length === 0 ? (
               <AnimatedSection animation="blur">
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Heart className="mb-4 h-12 w-12 text-muted-foreground/30" />

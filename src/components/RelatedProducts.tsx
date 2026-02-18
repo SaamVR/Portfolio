@@ -2,13 +2,15 @@ import { Link } from "react-router-dom";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import type { Product } from "@/data/products";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 interface RelatedProductsProps {
   currentProduct: Product;
 }
 
 const RelatedProducts = ({ currentProduct }: RelatedProductsProps) => {
+  const { data: products = [] } = useProducts();
+
   const related = products
     .filter(
       (p) =>

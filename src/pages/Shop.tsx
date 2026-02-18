@@ -6,8 +6,9 @@ import ProductQuickView from "@/components/ProductQuickView";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import SizeGuide from "@/components/SizeGuide";
-import { products, productTypes, typeLabels, type Product } from "@/data/products";
-import { X, ArrowUpDown, Ruler } from "lucide-react";
+import { productTypes, typeLabels, type Product } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
+import { X, ArrowUpDown, Ruler, Loader2 } from "lucide-react";
 
 const tiers = ["All", "Essentials", "Street", "Premium"];
 
@@ -26,12 +27,16 @@ const Shop = () => {
   const activeTier = searchParams.get("category") || "All";
   const activeSort = (searchParams.get("sort") as SortOption) || "newest";
 
+  const { data: products = [], isLoading } = useProducts();
+
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
-  const filtered = products
+  const availableProducts = products.filter((p) => p.isAvailable !== false);
+
+  const filtered = availableProducts
     .filter((p) => {
       const matchesType = activeType === "All" || p.type === activeType;
       const matchesTier = activeTier === "All" || p.category === activeTier;
@@ -41,7 +46,7 @@ const Shop = () => {
     .sort((a, b) => {
       if (activeSort === "price-asc") return a.price - b.price;
       if (activeSort === "price-desc") return b.price - a.price;
-      return Number(b.id) - Number(a.id);
+      return 0; // newest is default from DB
     });
 
   const setType = (type: string) => {
@@ -74,7 +79,7 @@ const Shop = () => {
 
   const typeCounts = productTypes.map((t) => ({
     ...t,
-    count: t.value === "All" ? products.length : products.filter((p) => p.type === t.value).length,
+    count: t.value === "All" ? availableProducts.length : availableProducts.filter((p) => p.type === t.value).length,
   }));
 
   const handleQuickView = (product: Product) => {
@@ -190,31 +195,39 @@ const Shop = () => {
               </p>
             )}
 
-            <p className="mb-6 text-sm text-muted-foreground">
-              Showing <span className="text-foreground font-medium">{filtered.length}</span> product{filtered.length !== 1 ? "s" : ""}
-            </p>
-
-            {filtered.length === 0 ? (
-              <AnimatedSection animation="blur">
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <p className="mb-4 font-heading text-xl font-semibold text-foreground">No products found</p>
-                  <p className="mb-6 text-muted-foreground">Try adjusting your search or filters.</p>
-                  <button
-                    onClick={clearFilters}
-                    className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 smooth-hover"
-                  >
-                    Clear Filters
-                  </button>
-                </div>
-              </AnimatedSection>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((product, i) => (
-                  <AnimatedSection key={product.id} delay={i * 80} animation="blur">
-                    <ProductCard product={product} onQuickView={handleQuickView} />
-                  </AnimatedSection>
-                ))}
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <>
+                <p className="mb-6 text-sm text-muted-foreground">
+                  Showing <span className="text-foreground font-medium">{filtered.length}</span> product{filtered.length !== 1 ? "s" : ""}
+                </p>
+
+                {filtered.length === 0 ? (
+                  <AnimatedSection animation="blur">
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <p className="mb-4 font-heading text-xl font-semibold text-foreground">No products found</p>
+                      <p className="mb-6 text-muted-foreground">Try adjusting your search or filters.</p>
+                      <button
+                        onClick={clearFilters}
+                        className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 smooth-hover"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  </AnimatedSection>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {filtered.map((product, i) => (
+                      <AnimatedSection key={product.id} delay={i * 80} animation="blur">
+                        <ProductCard product={product} onQuickView={handleQuickView} />
+                      </AnimatedSection>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>

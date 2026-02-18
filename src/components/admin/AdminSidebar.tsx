@@ -8,6 +8,7 @@ import {
   LogOut,
   ArrowLeft,
   Users,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const AdminSidebar = () => {
   const links = [
     { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
     { to: "/admin/products", icon: Package, label: "Products", show: true },
+    { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
     { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },

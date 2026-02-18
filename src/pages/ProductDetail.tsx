@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Ruler } from "lucide-react";
+import { ArrowLeft, Ruler, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SizeGuide from "@/components/SizeGuide";
 import RelatedProducts from "@/components/RelatedProducts";
 import ProductReviews from "@/components/ProductReviews";
-import { products } from "@/data/products";
+import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 const MAX_RECENT = 8;
@@ -16,7 +17,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const product = products.find((p) => p.id === id);
+  const { data: product, isLoading } = useProduct(id);
   const [selectedSize, setSelectedSize] = useState("");
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
@@ -30,11 +31,31 @@ const ProductDetail = () => {
     } catch { /* ignore */ }
   }, [id]);
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
   if (!product) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">Product not found.</p>
-      </div>
+      <Layout>
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="text-center">
+            <p className="mb-4 font-heading text-xl font-semibold text-foreground">Product not found</p>
+            <button
+              onClick={() => navigate("/shop")}
+              className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
+              Browse Shop
+            </button>
+          </div>
+        </div>
+      </Layout>
     );
   }
 
@@ -52,6 +73,8 @@ const ProductDetail = () => {
     });
     toast.success("Added to cart!");
   };
+
+  const lowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
   return (
     <Layout>
@@ -75,8 +98,17 @@ const ProductDetail = () => {
               {product.originalPrice && (
                 <p className="font-heading text-lg text-muted-foreground line-through">৳{product.originalPrice}</p>
               )}
+              {product.badge && (
+                <Badge variant={product.badge === "Sale" ? "destructive" : "default"}>
+                  {product.badge}
+                </Badge>
+              )}
             </div>
             <p className="mb-8 leading-relaxed text-muted-foreground">{product.description}</p>
+
+            {lowStock && (
+              <p className="mb-4 text-sm font-medium text-destructive">🔥 Only {product.stock} left in stock!</p>
+            )}
 
             <div className="mb-8">
               <div className="mb-3 flex items-center justify-between">
@@ -110,9 +142,10 @@ const ProductDetail = () => {
 
             <button
               onClick={handleAddToCart}
-              className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow active:animate-scale-pop"
+              disabled={product.isAvailable === false}
+              className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow active:animate-scale-pop disabled:opacity-50"
             >
-              Add to Cart — ৳{product.price}
+              {product.isAvailable === false ? "Out of Stock" : `Add to Cart — ৳${product.price}`}
             </button>
 
             <div className="mt-8 space-y-2 border-t border-border pt-6">
