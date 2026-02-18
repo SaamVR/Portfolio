@@ -1,21 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, SearchX } from "lucide-react";
+import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { products } from "@/data/products";
+import { products, productTypes } from "@/data/products";
 import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 
 interface SearchBarProps {
   className?: string;
@@ -23,17 +11,69 @@ interface SearchBarProps {
   expanded?: boolean;
 }
 
+const HISTORY_KEY = "threadbd-search-history";
+const MAX_HISTORY = 5;
+
+function getSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSearchHistory(query: string) {
+  const history = getSearchHistory().filter((h) => h !== query);
+  history.unshift(query);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+}
+
+function removeHistoryItem(query: string) {
+  const history = getSearchHistory().filter((h) => h !== query);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+const categoryChips = productTypes.filter((t) => t.value !== "All");
+
 const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<string[]>(getSearchHistory);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 200);
     return () => clearTimeout(timer);
   }, [query]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    if (open) {
+      document.addEventListener("keydown", handleEsc);
+      return () => document.removeEventListener("keydown", handleEsc);
+    }
+  }, [open]);
 
   const filtered = debouncedQuery.trim()
     ? products
@@ -48,10 +88,15 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
         .slice(0, 6)
     : [];
 
+  const isEmptyState = query.trim() === "";
+  const hasContent = !isEmptyState ? true : history.length > 0 || categoryChips.length > 0;
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (query.trim()) {
+        saveSearchHistory(query.trim());
+        setHistory(getSearchHistory());
         navigate(`/shop?q=${encodeURIComponent(query.trim())}`);
         setQuery("");
         setOpen(false);
@@ -62,108 +107,200 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   );
 
   const handleSelect = (productId: string) => {
+    if (query.trim()) {
+      saveSearchHistory(query.trim());
+      setHistory(getSearchHistory());
+    }
     navigate(`/product/${productId}`);
     setQuery("");
     setOpen(false);
     onClose?.();
   };
 
+  const handleCategoryClick = (typeValue: string) => {
+    navigate(typeValue === "All" ? "/shop" : `/shop?type=${typeValue}`);
+    setQuery("");
+    setOpen(false);
+    onClose?.();
+  };
+
+  const handleHistoryClick = (term: string) => {
+    navigate(`/shop?q=${encodeURIComponent(term)}`);
+    setQuery("");
+    setOpen(false);
+    onClose?.();
+  };
+
+  const handleRemoveHistory = (e: React.MouseEvent, term: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    removeHistoryItem(term);
+    setHistory(getSearchHistory());
+  };
+
   const handleClear = () => {
     setQuery("");
     setDebouncedQuery("");
-    setOpen(false);
     inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || !filtered.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((i) => (i < filtered.length - 1 ? i + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((i) => (i > 0 ? i - 1 : filtered.length - 1));
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      handleSelect(filtered[selectedIndex].id);
+    }
   };
 
   if (!expanded) return null;
 
+  const showDropdown = open && hasContent;
+
   return (
-    <Popover open={open && query.trim().length > 0} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <form
-          onSubmit={handleSubmit}
-          role="search"
-          aria-label="Search products"
-          className={cn("relative flex items-center", className)}
-        >
-          <Search className="absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (e.target.value.trim()) setOpen(true);
-            }}
-            onFocus={() => {
-              if (query.trim()) setOpen(true);
-            }}
-            placeholder="Search products..."
-            className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
-            aria-label="Search products"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute right-2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </form>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
-        align="start"
-        sideOffset={4}
-        onOpenAutoFocus={(e) => e.preventDefault()}
+    <div ref={containerRef} className={cn("relative", className)}>
+      <form
+        onSubmit={handleSubmit}
+        role="search"
+        aria-label="Search products"
+        className="relative flex items-center"
       >
-        <Command shouldFilter={false}>
-          <CommandList>
-            <CommandEmpty>
-              <div className="flex flex-col items-center gap-2 py-4 text-muted-foreground">
-                <SearchX className="h-8 w-8 opacity-40" />
-                <p className="text-sm">No items found</p>
-                <p className="text-xs">Try searching for "Drop Shoulder"</p>
-              </div>
-            </CommandEmpty>
-            {filtered.length > 0 && (
-              <CommandGroup>
-                {filtered.map((product) => (
-                  <CommandItem
-                    key={product.id}
-                    value={product.id}
-                    onSelect={() => handleSelect(product.id)}
-                    className="flex items-center gap-3 px-3 py-2 cursor-pointer"
-                  >
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="h-10 w-10 rounded-md object-cover border border-border"
-                    />
-                    <div className="flex flex-1 flex-col gap-0.5 min-w-0">
-                      <span className="text-sm font-medium text-foreground truncate">
-                        {product.name}
+        <Search className="absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedIndex(-1);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setHistory(getSearchHistory());
+            setOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Search products..."
+          className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+          aria-label="Search products"
+          aria-expanded={showDropdown}
+          aria-haspopup="listbox"
+          autoComplete="off"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </form>
+
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+          {/* Typing but no results */}
+          {!isEmptyState && filtered.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+              <SearchX className="h-8 w-8 opacity-40" />
+              <p className="text-sm">No items found</p>
+              <p className="text-xs">Try searching for "Drop Shoulder"</p>
+            </div>
+          )}
+
+          {/* Product results */}
+          {filtered.length > 0 && (
+            <div className="p-1" role="listbox">
+              {filtered.map((product, index) => (
+                <button
+                  key={product.id}
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  onClick={() => handleSelect(product.id)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors cursor-pointer",
+                    index === selectedIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="h-10 w-10 rounded-md object-cover border border-border"
+                  />
+                  <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-medium truncate">{product.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {product.type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        ৳{product.price.toLocaleString()}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          {product.type}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          ৳{product.price.toLocaleString()}
-                        </span>
-                      </div>
                     </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Empty input: history + categories */}
+          {isEmptyState && (
+            <>
+              {history.length > 0 && (
+                <div className="p-1">
+                  <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Searches</p>
+                  {history.map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => handleHistoryClick(term)}
+                      className="flex w-full items-center gap-2 rounded-sm px-3 py-1.5 text-left hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                    >
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="flex-1 text-sm truncate">{term}</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => handleRemoveHistory(e, term)}
+                        className="text-muted-foreground hover:text-foreground p-0.5"
+                        aria-label={`Remove ${term} from history`}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {history.length > 0 && <div className="mx-1 h-px bg-border" />}
+              <div className="p-1">
+                <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Browse Categories</p>
+                <div className="flex flex-wrap gap-1.5 px-2 py-2">
+                  {categoryChips.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => handleCategoryClick(cat.value)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <Tag className="h-3 w-3" />
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
