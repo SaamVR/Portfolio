@@ -52,8 +52,11 @@ const AdminLogin = () => {
       const { data, error } = await supabase.functions.invoke("claim-invite-code", {
         body: { code: inviteCode.trim() },
       });
-      if (error || data?.error) {
-        toast.error(data?.error || "Failed to claim invite code");
+      if (error) {
+        const errMsg = typeof error === "object" && error.message ? error.message : String(error);
+        toast.error(errMsg);
+      } else if (data?.error) {
+        toast.error(data.error);
       } else {
         toast.success(`Role assigned: ${data.role === "admin" ? "Admin" : "Co-Admin"}`);
         // Refresh role in context
