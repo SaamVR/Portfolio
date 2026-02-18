@@ -83,7 +83,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             <div className="hidden md:block">
               {searchOpen ? (
                 <div className="flex items-center gap-2">
-                  <SearchBar className="w-52" onClose={() => setSearchOpen(false)} />
+                  <SearchBar className="w-64" onClose={() => setSearchOpen(false)} />
                   <button
                     onClick={() => setSearchOpen(false)}
                     className="text-muted-foreground hover:text-foreground smooth-hover"
