@@ -1,163 +1,136 @@
 
 
-# ThreadBD E-commerce Website -- Full Audit and Improvement Plan
+# ThreadBD Admin Powerhouse + bKash + Multi-Image + SEO Upgrade
 
-## Current State Summary
-
-After reviewing every page (Homepage, Shop, Product Detail, Cart, Checkout, About, Contact, FAQ, Wishlist, Admin) on both desktop and mobile, here's what's working well and what needs improvement.
-
-### What's Already Good
-- Clean dark theme with consistent branding
-- Smooth animations and hover effects
-- Mobile-responsive layout with hamburger menu
-- Search with history and category chips
-- Wishlist and cart functionality
-- Product quick-view modal
-- Size guide
-- Admin dashboard with RBAC
+This plan covers 5 major feature areas, broken into phases for clean implementation.
 
 ---
 
-## CRITICAL ISSUES (Must Fix)
+## Phase 1: Manual bKash Integration
 
-### 1. Storefront Still Uses Static Data
-The shop page displays hardcoded products from `src/data/products.ts` instead of the database. Products added via the admin dashboard don't appear on the store. This is the single biggest gap -- your admin panel is disconnected from the storefront.
+**How it works:** Admin sets their bKash number in the dashboard. At checkout, when a customer selects bKash, they see the merchant bKash number with instructions to "Send Money" and enter their Transaction ID (TrxID). The order is saved with status "pending_payment" and the TrxID for manual verification.
 
-### 2. No User Accounts for Customers
-Customers can't create accounts, track orders, or save addresses. There's no login/signup for shoppers -- only for admins.
-
-### 3. Orders Don't Save Anywhere
-Checkout clears the cart and shows a success page, but **no order is actually saved** to the database. There's no order history, no order tracking, no way for admins to see what was ordered.
-
-### 4. Contact Form Doesn't Send Anywhere
-The contact form shows a toast message but doesn't actually save or email the message.
+**Changes:**
+- Add a `payment_settings` key to the `site_settings` table with fields: `bkash_number`, `nagad_number`, `bkash_enabled`, `nagad_enabled`
+- New **Payment Settings** tab in Admin Site Settings page with fields to set bKash/Nagad merchant numbers
+- Update `Checkout.tsx`: when bKash/Nagad selected, show the merchant number, "Send Money" instructions, and a TrxID input field
+- Save `payment_trx_id` in the order's notes field
+- Admin Orders page shows TrxID for verification
 
 ---
 
-## VISITOR PERSPECTIVE -- UX Improvements
+## Phase 2: Multi-Image Product Gallery
 
-### 5. Product Detail Page -- Missing Features
-- **Only one image** per product (no gallery/carousel)
-- **No color selector** -- colors are in the data but not shown as selectable options
-- **No stock indicator** -- visitors can't see if something is running low
-- **No "Add to Wishlist" button** on the product detail page (only on cards)
-- Reviews section exists but likely shows nothing without data
+**Database changes:**
+- Add `images` column (text array, default `'{}'`) to `products` table to store up to 5 image URLs
+- Keep existing `image_url` as the primary/thumbnail image
 
-### 6. Homepage -- Content Gaps
-- The "Featured Drops" section only shows products marked as `featured` -- just a few items
-- No "New Arrivals" section
-- No "Best Sellers" or "Trending" section
-- No social proof (customer testimonials, Instagram feed)
-- No trust badges section (secure payment, fast delivery icons)
+**Admin Products page:**
+- Add up to 5 image URL input fields in the Add/Edit Product dialog
+- First image auto-populates `image_url` (main image)
 
-### 7. Cart Experience
-- No saved cart (lost on page refresh since it's in React context only)
-- No coupon/promo code field
-- No estimated delivery date
-- No "Continue Shopping" prominent button
-
-### 8. Checkout Gaps
-- No order summary showing individual items
-- bKash/Nagad payments are just demo toasts -- not actually integrated
-- No guest checkout vs logged-in checkout distinction
-- No address auto-save for returning customers
-
-### 9. Shop Page
-- No price range filter (only type and tier)
-- No "load more" or pagination -- all 20 products load at once
-- Both "Shop Now" and "View Collection" hero buttons go to the same `/shop` page
+**Product Detail page:**
+- Replace single image with a gallery: large main image + thumbnail strip below
+- Click thumbnails to switch the displayed image
+- Smooth fade transition between images
 
 ---
 
-## DESIGNER PERSPECTIVE -- Visual and UX Polish
+## Phase 3: Robust Admin Dashboard
 
-### 10. Missing Breadcrumbs
-Product pages, About, Contact -- none have breadcrumb navigation. Users lose context of where they are.
+**Enhanced Dashboard stats:**
+- Add total orders count, revenue, pending orders, recent orders list
+- Quick links to common actions
 
-### 11. Empty States Need Work
-- "Product not found" page is a plain text on a blank dark screen -- no layout, no navigation, no way back
-- Cart empty state could be more engaging with an illustration
+**New admin features:**
 
-### 12. Footer Improvements
-- No social media links (Instagram, Facebook, etc.)
-- "Join 5,000+ ThreadBD fans" claim has no social proof behind it
-- No links to Terms of Service, Privacy Policy, or Return Policy pages
+### 3a. Category Management
+- New admin page `/admin/categories` to manage product types and categories
+- Store in `site_settings` with key `categories` (JSON array of `{label, value, tagline, icon}`)
+- `CategoryShowcase` and Shop filter read from database instead of hardcoded array
+- Admin can add/edit/delete categories
 
-### 13. About Page
-- Very text-heavy, no images or team photos
-- No brand story timeline or milestones
-
-### 14. Map Placeholder
-Contact page has a gray box saying "Map placeholder" -- should be a real embedded map or removed
-
----
-
-## RECOMMENDED NEW FEATURES
-
-### Priority 1 -- Connect Everything (Foundation)
-1. **Connect storefront to database products** -- make Shop/ProductDetail fetch from the database instead of static file
-2. **Order management system** -- save orders to DB, create admin order view, add order status tracking
-3. **Customer accounts** -- signup/login for shoppers with order history and saved addresses
-
-### Priority 2 -- Revenue Boosters
-4. **Promo codes and discounts** -- admin can create discount codes, customers apply at checkout
-5. **Stock alerts** -- "Only 3 left!" badges, "Notify me when back in stock" for out-of-stock items
-6. **Product image gallery** -- multiple images per product with zoom capability
-7. **Color variant selector** -- let users pick colors on the product page
-
-### Priority 3 -- Trust and Engagement
-8. **Order tracking page** -- customers can check order status with a tracking number
-9. **Social media links** in footer and a mini Instagram feed on homepage
-10. **Customer reviews with ratings** -- let verified buyers leave reviews
-11. **Return/Exchange policy page** and Terms of Service
-
-### Priority 4 -- Growth Features
-12. **Email notifications** -- order confirmation, shipping updates via backend functions
-13. **Analytics dashboard** for admins -- revenue, top products, conversion metrics
-14. **SEO optimization** -- proper meta tags, Open Graph data, structured data for products
-15. **WhatsApp integration** -- floating WhatsApp button for customer support (very common in Bangladesh e-commerce)
+### 3b. Full CMS Site Settings Expansion
+Add new tabs to the existing Site Settings page:
+- **Contact Page**: edit address, phone, email, map placeholder text
+- **FAQ Page**: add/edit/delete FAQ entries (stored as JSON array in `site_settings`)
+- **SEO Settings**: site title, meta description, OG image URL, keywords
+- **Payment Settings**: bKash/Nagad merchant numbers (from Phase 1)
+- **Categories**: inline category management
 
 ---
 
-## Technical Implementation Details
+## Phase 4: Live In-Page Content Editing
 
-### Database Changes Needed
-- `orders` table: id, user_id, items (JSONB), total, status, shipping_address, payment_method, created_at
-- `order_items` table: order_id, product_id, size, color, quantity, price
-- `promo_codes` table: code, discount_type, discount_value, min_order, expires_at, usage_limit
-- `product_images` table: product_id, image_url, sort_order (for multiple images)
-- `contact_messages` table: name, email, message, created_at, read status
-- `customer_profiles` table: for shopper accounts with saved addresses
+For the About, FAQ, and Contact pages:
+- Fetch content from `site_settings` instead of hardcoded values
+- About page reads `about_page` setting (title, content, values array)
+- FAQ page reads `faq_entries` setting (array of Q&A pairs)
+- Contact page reads `contact_page` setting (address, phone, email)
+- Footer reads `footer` setting for about text
+- Hero section reads `hero_section` setting
+- Announcement bar reads `announcement_bar` setting (already partially done)
 
-### Key Code Changes
-- Refactor Shop.tsx and ProductDetail.tsx to fetch from database instead of `src/data/products.ts`
-- Add customer auth flow (separate from admin auth)
-- Create order processing edge function
-- Add cart persistence (localStorage or database for logged-in users)
-- Create admin Orders page to view and manage orders
-- Add product image upload using file storage
-
-### Pages to Create
-- `/orders` -- customer order history
-- `/order/:id` -- order tracking detail
-- `/account` -- customer profile and saved addresses
-- `/terms` -- Terms of Service
-- `/privacy` -- Privacy Policy
-- `/returns` -- Return Policy
-- `/admin/orders` -- admin order management
+All pages fall back to sensible defaults when no database content exists yet.
 
 ---
 
-## Suggested Implementation Order
+## Phase 5: SEO Improvements
 
-| Phase | What | Impact |
-|-------|------|--------|
-| Phase 1 | Connect storefront to DB products | Critical -- makes admin panel useful |
-| Phase 2 | Order system (save orders + admin view) | Critical -- actual e-commerce functionality |
-| Phase 3 | Customer accounts + order tracking | High -- retention and trust |
-| Phase 4 | Product images, color selector, stock badges | High -- better shopping experience |
-| Phase 5 | Promo codes, WhatsApp button, reviews | Medium -- growth and engagement |
-| Phase 6 | Email notifications, analytics, SEO | Medium -- operations and growth |
+- Add a `SEOHead` component using `document.title` and meta tag manipulation via `useEffect`
+- Each page sets its own title and meta description dynamically
+- Product detail page sets product-specific OG tags (title, description, image)
+- Add structured data (JSON-LD) for Product pages (name, price, availability, image)
+- Admin SEO settings tab for global site title, description, OG image
+- Update `index.html` with better base SEO tags
+- Add canonical URL meta tags
 
-This plan transforms ThreadBD from a beautiful demo into a functional e-commerce store. I recommend tackling it phase by phase -- each phase builds on the previous one.
+---
+
+## Technical Details
+
+### Database Migration
+```sql
+-- Add images array to products
+ALTER TABLE products ADD COLUMN images text[] NOT NULL DEFAULT '{}';
+```
+
+### New site_settings entries (seeded via insert)
+- `payment_settings`: `{bkash_number, nagad_number, bkash_enabled, nagad_enabled}`
+- `faq_entries`: `[{q, a}, ...]`
+- `contact_page`: `{address, phone, email}`
+- `categories`: `[{label, value, tagline}, ...]`
+- `seo_settings`: `{site_title, meta_description, og_image, keywords}`
+
+### Files to Create
+- `src/components/SEOHead.tsx` - Dynamic meta tag manager
+- `src/components/ProductImageGallery.tsx` - Multi-image gallery component
+
+### Files to Modify
+- `src/pages/admin/SiteSettings.tsx` - Add Payment, FAQ, Contact, SEO, Categories tabs
+- `src/pages/admin/Products.tsx` - Multi-image fields in dialog
+- `src/pages/admin/Dashboard.tsx` - Enhanced stats with orders/revenue
+- `src/pages/ProductDetail.tsx` - Image gallery integration
+- `src/pages/Checkout.tsx` - bKash/Nagad send-money flow with TrxID
+- `src/pages/About.tsx` - Fetch content from database
+- `src/pages/FAQ.tsx` - Fetch FAQ entries from database
+- `src/pages/Contact.tsx` - Fetch contact info from database
+- `src/components/AnnouncementBar.tsx` - Read from database settings
+- `src/components/HeroSection.tsx` - Read from database settings
+- `src/components/Footer.tsx` - Read from database settings
+- `src/components/CategoryShowcase.tsx` - Read categories from database
+- `src/components/admin/AdminSidebar.tsx` - Add Categories link
+- `src/App.tsx` - Add categories route
+- `index.html` - Better base SEO
+
+### Execution Order
+1. Database migration (add `images` column)
+2. Seed new site_settings entries
+3. Build SEOHead component + ProductImageGallery component
+4. Update Admin Site Settings with all new tabs
+5. Update Admin Products with multi-image
+6. Update Admin Dashboard with enhanced stats
+7. Update Checkout with bKash manual flow
+8. Update storefront pages to read from database
+9. Add SEO to all pages
 
