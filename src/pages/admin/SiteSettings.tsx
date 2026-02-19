@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 
 const SiteSettings = () => {
   const { role } = useAuth();
@@ -52,6 +52,34 @@ const SiteSettings = () => {
     }));
   };
 
+  // FAQ array helpers
+  const faqEntries: { q: string; a: string }[] = settings.faq_entries ?? [];
+
+  const updateFaq = (index: number, field: "q" | "a", value: string) => {
+    const updated = [...faqEntries];
+    updated[index] = { ...updated[index], [field]: value };
+    setSettings((prev) => ({ ...prev, faq_entries: updated }));
+  };
+
+  const addFaq = () => {
+    setSettings((prev) => ({
+      ...prev,
+      faq_entries: [...(prev.faq_entries ?? []), { q: "", a: "" }],
+    }));
+  };
+
+  const removeFaq = (index: number) => {
+    const updated = faqEntries.filter((_, i) => i !== index);
+    setSettings((prev) => ({ ...prev, faq_entries: updated }));
+  };
+
+  const SaveButton = ({ settingKey }: { settingKey: string }) => (
+    <Button onClick={() => saveSetting(settingKey)} disabled={saving === settingKey} className="gap-2">
+      {saving === settingKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+      Save
+    </Button>
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -69,13 +97,16 @@ const SiteSettings = () => {
 
       <Tabs defaultValue="announcement" className="space-y-6">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="announcement">Announcement Bar</TabsTrigger>
-          <TabsTrigger value="hero">Hero Section</TabsTrigger>
+          <TabsTrigger value="announcement">Announcement</TabsTrigger>
+          <TabsTrigger value="hero">Hero</TabsTrigger>
           <TabsTrigger value="payment">Payment</TabsTrigger>
-          <TabsTrigger value="about">About Page</TabsTrigger>
+          <TabsTrigger value="about">About</TabsTrigger>
+          <TabsTrigger value="faq">FAQ</TabsTrigger>
+          <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
         </TabsList>
 
+        {/* Announcement Bar */}
         <TabsContent value="announcement">
           <Card className="border-border">
             <CardHeader><CardTitle>Announcement Bar</CardTitle></CardHeader>
@@ -95,14 +126,12 @@ const SiteSettings = () => {
                 <Label>Link</Label>
                 <Input value={settings.announcement_bar?.link ?? ""} onChange={(e) => update("announcement_bar", "link", e.target.value)} />
               </div>
-              <Button onClick={() => saveSetting("announcement_bar")} disabled={saving === "announcement_bar"} className="gap-2">
-                {saving === "announcement_bar" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+              <SaveButton settingKey="announcement_bar" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Hero Section */}
         <TabsContent value="hero">
           <Card className="border-border">
             <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
@@ -125,14 +154,12 @@ const SiteSettings = () => {
                   <Input value={settings.hero_section?.cta_link ?? ""} onChange={(e) => update("hero_section", "cta_link", e.target.value)} />
                 </div>
               </div>
-              <Button onClick={() => saveSetting("hero_section")} disabled={saving === "hero_section"} className="gap-2">
-                {saving === "hero_section" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+              <SaveButton settingKey="hero_section" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Payment */}
         <TabsContent value="payment">
           <Card className="border-border">
             <CardHeader><CardTitle>Payment Settings</CardTitle></CardHeader>
@@ -140,47 +167,31 @@ const SiteSettings = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">bKash</h3>
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={settings.payment_settings?.bkash_enabled ?? false}
-                    onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)}
-                  />
+                  <Switch checked={settings.payment_settings?.bkash_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)} />
                   <Label>Enable bKash</Label>
                 </div>
                 <div className="grid gap-2">
                   <Label>bKash Merchant Number</Label>
-                  <Input
-                    value={settings.payment_settings?.bkash_number ?? ""}
-                    onChange={(e) => update("payment_settings", "bkash_number", e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                  />
+                  <Input value={settings.payment_settings?.bkash_number ?? ""} onChange={(e) => update("payment_settings", "bkash_number", e.target.value)} placeholder="01XXXXXXXXX" />
                 </div>
               </div>
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Nagad</h3>
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={settings.payment_settings?.nagad_enabled ?? false}
-                    onCheckedChange={(v) => update("payment_settings", "nagad_enabled", v)}
-                  />
+                  <Switch checked={settings.payment_settings?.nagad_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "nagad_enabled", v)} />
                   <Label>Enable Nagad</Label>
                 </div>
                 <div className="grid gap-2">
                   <Label>Nagad Merchant Number</Label>
-                  <Input
-                    value={settings.payment_settings?.nagad_number ?? ""}
-                    onChange={(e) => update("payment_settings", "nagad_number", e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                  />
+                  <Input value={settings.payment_settings?.nagad_number ?? ""} onChange={(e) => update("payment_settings", "nagad_number", e.target.value)} placeholder="01XXXXXXXXX" />
                 </div>
               </div>
-              <Button onClick={() => saveSetting("payment_settings")} disabled={saving === "payment_settings"} className="gap-2">
-                {saving === "payment_settings" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+              <SaveButton settingKey="payment_settings" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* About Page */}
         <TabsContent value="about">
           <Card className="border-border">
             <CardHeader><CardTitle>About Page</CardTitle></CardHeader>
@@ -190,17 +201,75 @@ const SiteSettings = () => {
                 <Input value={settings.about_page?.title ?? ""} onChange={(e) => update("about_page", "title", e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label>Content</Label>
+                <Label>Content (use new lines to separate paragraphs)</Label>
                 <Textarea value={settings.about_page?.content ?? ""} onChange={(e) => update("about_page", "content", e.target.value)} rows={6} />
               </div>
-              <Button onClick={() => saveSetting("about_page")} disabled={saving === "about_page"} className="gap-2">
-                {saving === "about_page" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+              <SaveButton settingKey="about_page" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* FAQ Entries */}
+        <TabsContent value="faq">
+          <Card className="border-border">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>FAQ Entries</CardTitle>
+                <Button variant="outline" size="sm" onClick={addFaq} className="gap-1">
+                  <Plus className="h-4 w-4" /> Add
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {faqEntries.length === 0 && (
+                <p className="text-sm text-muted-foreground">No FAQ entries yet. Click "Add" to create one.</p>
+              )}
+              {faqEntries.map((faq, i) => (
+                <div key={i} className="space-y-2 rounded-lg border border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">FAQ #{i + 1}</Label>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeFaq(i)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Question</Label>
+                    <Input value={faq.q} onChange={(e) => updateFaq(i, "q", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Answer</Label>
+                    <Textarea value={faq.a} onChange={(e) => updateFaq(i, "a", e.target.value)} rows={2} />
+                  </div>
+                </div>
+              ))}
+              <SaveButton settingKey="faq_entries" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Contact Page */}
+        <TabsContent value="contact">
+          <Card className="border-border">
+            <CardHeader><CardTitle>Contact Page</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Address</Label>
+                <Input value={settings.contact_page?.address ?? ""} onChange={(e) => update("contact_page", "address", e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Phone</Label>
+                <Input value={settings.contact_page?.phone ?? ""} onChange={(e) => update("contact_page", "phone", e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input value={settings.contact_page?.email ?? ""} onChange={(e) => update("contact_page", "email", e.target.value)} />
+              </div>
+              <SaveButton settingKey="contact_page" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Footer */}
         <TabsContent value="footer">
           <Card className="border-border">
             <CardHeader><CardTitle>Footer</CardTitle></CardHeader>
@@ -209,10 +278,7 @@ const SiteSettings = () => {
                 <Label>About Text</Label>
                 <Textarea value={settings.footer?.about_text ?? ""} onChange={(e) => update("footer", "about_text", e.target.value)} rows={3} />
               </div>
-              <Button onClick={() => saveSetting("footer")} disabled={saving === "footer"} className="gap-2">
-                {saving === "footer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+              <SaveButton settingKey="footer" />
             </CardContent>
           </Card>
         </TabsContent>
