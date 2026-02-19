@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
@@ -14,6 +15,7 @@ const Wishlist = () => {
 
   return (
     <Layout>
+      <SEOHead title="Wishlist" description="Your saved ThreadBD products." noindex />
       <PageTransition>
         <section className="py-16">
           <div className="container mx-auto px-4">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,7 @@ const Auth = () => {
 
   return (
     <Layout>
+      <SEOHead title="Sign In" description="Sign in or create your ThreadBD account." noindex />
       <div className="flex min-h-[70vh] items-center justify-center px-4">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">

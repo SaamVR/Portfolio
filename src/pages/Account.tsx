@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyOrders, type Order } from "@/hooks/useOrders";
@@ -141,6 +142,7 @@ const Account = () => {
 
   return (
     <Layout>
+      <SEOHead title="My Account" description="Manage your ThreadBD account, orders, and addresses." noindex />
       <PageTransition>
         <div className="container mx-auto max-w-4xl px-4 py-12">
           <div className="mb-8 flex items-center justify-between">

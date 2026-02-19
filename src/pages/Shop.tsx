@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import ProductCard from "@/components/ProductCard";
 import ProductQuickView from "@/components/ProductQuickView";
 import AnimatedSection from "@/components/AnimatedSection";
@@ -89,6 +90,11 @@ const Shop = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title={pageTitle}
+        description="Browse the full ThreadBD collection. Premium streetwear tees, polos, and more."
+        canonical="https://threadbd.lovable.app/shop"
+      />
       <PageTransition>
         <section className="py-16">
           <div className="container mx-auto px-4">

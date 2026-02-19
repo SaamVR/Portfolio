@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Phone, Copy, CheckCircle2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateOrder } from "@/hooks/useOrders";
@@ -138,6 +139,7 @@ const Checkout = () => {
 
   return (
     <Layout>
+      <SEOHead title="Checkout" description="Complete your ThreadBD order." noindex />
       <div className="container mx-auto max-w-2xl px-4 py-12">
         <button
           onClick={() => navigate(-1)}

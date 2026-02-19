@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { CheckCircle, Package } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 
 const OrderSuccess = () => {
@@ -9,6 +10,7 @@ const OrderSuccess = () => {
 
   return (
     <Layout>
+      <SEOHead title="Order Confirmed" description="Your ThreadBD order has been placed successfully." noindex />
       <PageTransition>
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="container mx-auto max-w-md px-4 text-center">

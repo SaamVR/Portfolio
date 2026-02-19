@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { Heart, Globe, Leaf, Loader2 } from "lucide-react";
@@ -27,6 +28,11 @@ const About = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="About Us"
+        description="Learn about ThreadBD — premium streetwear made with care in Bangladesh."
+        canonical="https://threadbd.lovable.app/about"
+      />
       <PageTransition>
         <section className="py-20">
           <div className="container mx-auto max-w-3xl px-4">

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
 
 const Cart = () => {
@@ -9,6 +10,7 @@ const Cart = () => {
   if (items.length === 0) {
     return (
       <Layout>
+        <SEOHead title="Cart" description="Review your ThreadBD shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="text-center">
             <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Your cart is empty</h1>
@@ -27,6 +29,7 @@ const Cart = () => {
 
   return (
     <Layout>
+      <SEOHead title="Cart" description="Review your ThreadBD shopping cart." noindex />
       <div className="container mx-auto px-4 py-12">
         <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">Your Cart</h1>
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
