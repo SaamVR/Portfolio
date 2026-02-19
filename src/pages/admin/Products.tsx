@@ -18,7 +18,7 @@ type Product = Tables<"products">;
 
 const PRODUCT_TYPES = ["T-Shirt", "Polo", "Shirt", "Drop Shoulder", "Undergarment", "Pants"];
 const CATEGORIES = ["Essentials", "Premium", "Street"];
-const BADGES = ["", "New", "Sale"];
+const BADGES = ["none", "New", "Sale"];
 
 const emptyProduct = {
   name: "",
@@ -285,10 +285,10 @@ const AdminProducts = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Badge</Label>
-                <Select value={form.badge ?? ""} onValueChange={(v) => setForm({ ...form, badge: v || null })}>
+                <Select value={form.badge ?? "none"} onValueChange={(v) => setForm({ ...form, badge: v === "none" ? null : v })}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    {BADGES.map((b) => <SelectItem key={b || "none"} value={b}>{b || "None"}</SelectItem>)}
+                    {BADGES.map((b) => <SelectItem key={b} value={b}>{b === "none" ? "None" : b}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
