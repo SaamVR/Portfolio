@@ -84,23 +84,36 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Theme toggle */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Theme toggle — full pill on desktop, icon-only on mobile */}
+            {/* Desktop pill toggle */}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
-              className="relative h-8 w-14 rounded-full border border-border bg-secondary transition-colors duration-300 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="relative hidden h-8 w-14 rounded-full border border-border bg-secondary transition-colors duration-300 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex"
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {/* Track icons */}
               <Sun
                 className={`absolute left-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-accent transition-all duration-300 ${isDark ? "opacity-30 scale-75" : "opacity-100 scale-100"}`}
               />
               <Moon
                 className={`absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary transition-all duration-300 ${isDark ? "opacity-100 scale-100" : "opacity-30 scale-75"}`}
               />
-              {/* Sliding knob */}
               <span
                 className={`absolute top-0.5 h-7 w-7 rounded-full bg-foreground shadow-md transition-transform duration-300 ease-out ${isDark ? "translate-x-[26px]" : "translate-x-0.5"}`}
+              />
+            </button>
+
+            {/* Mobile icon-only toggle */}
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground md:hidden"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              <Sun
+                className={`absolute h-5 w-5 transition-all duration-300 ${isDark ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100"}`}
+              />
+              <Moon
+                className={`absolute h-5 w-5 transition-all duration-300 ${isDark ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50"}`}
               />
             </button>
 
