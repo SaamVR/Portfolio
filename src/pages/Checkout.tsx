@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Phone, Copy, CheckCircle2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateOrder } from "@/hooks/useOrders";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -14,26 +15,64 @@ const checkoutSchema = z.object({
   address: z.string().trim().min(5, "Address is required").max(500),
   city: z.string().trim().min(1, "City is required").max(100),
   paymentMethod: z.enum(["bkash", "nagad", "cod"]),
+  trxId: z.string().trim().max(50).optional(),
 });
+
+interface PaymentSettings {
+  bkash_number: string;
+  nagad_number: string;
+  bkash_enabled: boolean;
+  nagad_enabled: boolean;
+}
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const createOrder = useCreateOrder();
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     address: "",
     city: "",
-    paymentMethod: "bkash" as "bkash" | "nagad" | "cod",
+    paymentMethod: "cod" as "bkash" | "nagad" | "cod",
+    trxId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "payment_settings")
+      .single()
+      .then(({ data }) => {
+        if (data?.value) setPaymentSettings(data.value as unknown as PaymentSettings);
+      });
+  }, []);
 
   if (items.length === 0) {
     navigate("/cart");
     return null;
   }
+
+  const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "nagad";
+  const merchantNumber =
+    form.paymentMethod === "bkash"
+      ? paymentSettings?.bkash_number
+      : form.paymentMethod === "nagad"
+        ? paymentSettings?.nagad_number
+        : "";
+
+  const copyNumber = () => {
+    if (merchantNumber) {
+      navigator.clipboard.writeText(merchantNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +85,19 @@ const Checkout = () => {
       setErrors(fieldErrors);
       return;
     }
+
+    if (isMobilePayment && !form.trxId.trim()) {
+      setErrors((prev) => ({ ...prev, trxId: "Transaction ID is required" }));
+      return;
+    }
+
     setErrors({});
 
     try {
+      const notes = isMobilePayment
+        ? `Payment: ${form.paymentMethod.toUpperCase()} | TrxID: ${form.trxId.trim()}`
+        : null;
+
       const order = await createOrder.mutateAsync({
         user_id: user?.id || null,
         items: items.map((item) => ({
@@ -67,12 +116,11 @@ const Checkout = () => {
         shipping_address: form.address,
         shipping_city: form.city,
         payment_method: form.paymentMethod,
+        notes: notes || undefined,
       });
 
-      if (form.paymentMethod === "bkash") {
-        toast.success("Order placed!", { description: "bKash payment integration coming soon. Order saved as COD." });
-      } else if (form.paymentMethod === "nagad") {
-        toast.success("Order placed!", { description: "Nagad payment integration coming soon. Order saved as COD." });
+      if (isMobilePayment) {
+        toast.success("Order placed!", { description: `Your ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment will be verified shortly.` });
       } else {
         toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
       }
@@ -144,33 +192,80 @@ const Checkout = () => {
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Payment Method</h2>
             <div className="space-y-3">
               {[
-                { value: "bkash", label: "bKash", desc: "Pay with bKash mobile wallet" },
-                { value: "nagad", label: "Nagad", desc: "Pay with Nagad" },
-                { value: "cod", label: "Cash on Delivery", desc: "Pay when you receive" },
-              ].map(({ value, label, desc }) => (
-                <label
-                  key={value}
-                  className={`flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-all ${
-                    form.paymentMethod === value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value={value}
-                    checked={form.paymentMethod === value}
-                    onChange={(e) => update("paymentMethod", e.target.value)}
-                    className="accent-primary"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                  </div>
-                </label>
-              ))}
+                { value: "bkash", label: "bKash", desc: "Send Money to our bKash number", enabled: paymentSettings?.bkash_enabled ?? false },
+                { value: "nagad", label: "Nagad", desc: "Send Money to our Nagad number", enabled: paymentSettings?.nagad_enabled ?? false },
+                { value: "cod", label: "Cash on Delivery", desc: "Pay when you receive", enabled: true },
+              ]
+                .filter((m) => m.enabled)
+                .map(({ value, label, desc }) => (
+                  <label
+                    key={value}
+                    className={`flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-all ${
+                      form.paymentMethod === value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={value}
+                      checked={form.paymentMethod === value}
+                      onChange={(e) => update("paymentMethod", e.target.value)}
+                      className="accent-primary"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  </label>
+                ))}
             </div>
+
+            {/* bKash / Nagad send-money instructions */}
+            {isMobilePayment && merchantNumber && (
+              <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+                <p className="text-sm font-medium text-foreground">
+                  Send <span className="font-bold text-primary">৳{totalPrice}</span> to this{" "}
+                  {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} number:
+                </p>
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-primary" />
+                  <span className="font-mono text-lg font-bold text-foreground">{merchantNumber}</span>
+                  <button
+                    type="button"
+                    onClick={copyNumber}
+                    className="ml-auto flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {copied ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+                  <li>Open your {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} app</li>
+                  <li>Select &quot;Send Money&quot;</li>
+                  <li>Enter the number above and send ৳{totalPrice}</li>
+                  <li>Enter the Transaction ID (TrxID) below</li>
+                </ol>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">Transaction ID (TrxID)</label>
+                  <input
+                    type="text"
+                    value={form.trxId}
+                    onChange={(e) => update("trxId", e.target.value)}
+                    placeholder="e.g. ABC1234XYZ"
+                    className="w-full rounded-md border border-border bg-background px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  {errors.trxId && <p className="mt-1 text-xs text-destructive">{errors.trxId}</p>}
+                </div>
+              </div>
+            )}
+
+            {isMobilePayment && !merchantNumber && (
+              <p className="mt-3 text-xs text-destructive">
+                {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment is currently unavailable. Please choose another method.
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-border bg-card p-6">
