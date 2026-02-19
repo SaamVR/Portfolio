@@ -68,9 +68,10 @@ const SiteSettings = () => {
       </div>
 
       <Tabs defaultValue="announcement" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="announcement">Announcement Bar</TabsTrigger>
           <TabsTrigger value="hero">Hero Section</TabsTrigger>
+          <TabsTrigger value="payment">Payment</TabsTrigger>
           <TabsTrigger value="about">About Page</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
         </TabsList>
@@ -126,6 +127,54 @@ const SiteSettings = () => {
               </div>
               <Button onClick={() => saveSetting("hero_section")} disabled={saving === "hero_section"} className="gap-2">
                 {saving === "hero_section" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payment">
+          <Card className="border-border">
+            <CardHeader><CardTitle>Payment Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">bKash</h3>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={settings.payment_settings?.bkash_enabled ?? false}
+                    onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)}
+                  />
+                  <Label>Enable bKash</Label>
+                </div>
+                <div className="grid gap-2">
+                  <Label>bKash Merchant Number</Label>
+                  <Input
+                    value={settings.payment_settings?.bkash_number ?? ""}
+                    onChange={(e) => update("payment_settings", "bkash_number", e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Nagad</h3>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={settings.payment_settings?.nagad_enabled ?? false}
+                    onCheckedChange={(v) => update("payment_settings", "nagad_enabled", v)}
+                  />
+                  <Label>Enable Nagad</Label>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Nagad Merchant Number</Label>
+                  <Input
+                    value={settings.payment_settings?.nagad_number ?? ""}
+                    onChange={(e) => update("payment_settings", "nagad_number", e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
+              </div>
+              <Button onClick={() => saveSetting("payment_settings")} disabled={saving === "payment_settings"} className="gap-2">
+                {saving === "payment_settings" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save
               </Button>
             </CardContent>
