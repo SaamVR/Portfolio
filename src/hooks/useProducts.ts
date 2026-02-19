@@ -9,6 +9,7 @@ interface DBProduct {
   price: number;
   original_price: number | null;
   image_url: string;
+  images: string[];
   description: string;
   sizes: string[];
   colors: string[];
@@ -23,12 +24,18 @@ interface DBProduct {
 }
 
 function mapDBProduct(p: DBProduct): Product {
+  const mainImage = resolveImageUrl(p.image_url);
+  const extraImages = (p.images || []).map(resolveImageUrl).filter(Boolean);
+  // Build gallery: main image first, then extras, deduplicated
+  const allImages = [mainImage, ...extraImages.filter((img) => img !== mainImage)];
+
   return {
     id: p.id,
     name: p.name,
     price: p.price,
     originalPrice: p.original_price ?? undefined,
-    image: resolveImageUrl(p.image_url),
+    image: mainImage,
+    images: allImages,
     description: p.description,
     sizes: p.sizes,
     colors: p.colors,
