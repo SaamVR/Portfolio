@@ -95,6 +95,7 @@ const AdminProducts = () => {
     setSaving(true);
     const payload = {
       ...form,
+      images: (form.images ?? []).filter((url) => url.trim() !== ""),
       badge: form.badge || null,
       original_price: form.original_price || null,
     };
@@ -238,14 +239,16 @@ const AdminProducts = () => {
             </div>
             <div className="grid gap-2">
               <Label>Additional Images (up to 4)</Label>
-              {Array.from({ length: 4 }).map((_, i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <Input
-                  key={i}
-                  value={form.images[i] || ""}
+                  key={`img-${i}`}
+                  value={(form.images ?? [])[i] ?? ""}
                   onChange={(e) => {
-                    const updated = [...form.images];
+                    const updated = [...(form.images ?? [])];
+                    // Ensure array is long enough
+                    while (updated.length <= i) updated.push("");
                     updated[i] = e.target.value;
-                    setForm({ ...form, images: updated.filter(Boolean) });
+                    setForm({ ...form, images: updated });
                   }}
                   placeholder={`Image ${i + 2} URL`}
                 />
