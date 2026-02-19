@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { Loader2 } from "lucide-react";
@@ -28,6 +29,20 @@ const FAQ = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="FAQ"
+        description="Frequently asked questions about ThreadBD orders, delivery, payments, and returns."
+        canonical="https://threadbd.lovable.app/faq"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: entries.map((e) => ({
+            "@type": "Question",
+            name: e.q,
+            acceptedAnswer: { "@type": "Answer", text: e.a },
+          })),
+        }}
+      />
       <PageTransition>
         <section className="py-20">
           <div className="container mx-auto max-w-2xl px-4">

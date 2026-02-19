@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Ruler, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import ProductImageGallery from "@/components/ProductImageGallery";
 import SizeGuide from "@/components/SizeGuide";
 import RelatedProducts from "@/components/RelatedProducts";
@@ -90,8 +91,32 @@ const ProductDetail = () => {
 
   const lowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: product.images?.[0] || product.image,
+    offers: {
+      "@type": "Offer",
+      price: product.price,
+      priceCurrency: "BDT",
+      availability: product.isAvailable === false
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
+    },
+  };
+
   return (
     <Layout>
+      <SEOHead
+        title={product.name}
+        description={product.description}
+        canonical={`https://threadbd.lovable.app/product/${product.id}`}
+        ogType="product"
+        ogImage={product.images?.[0] || product.image}
+        jsonLd={productJsonLd}
+      />
       <div
         className="container mx-auto px-4 py-12 transition-all duration-700 ease-out"
         style={{

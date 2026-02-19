@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
+import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { Mail, Phone, MapPin, Loader2 } from "lucide-react";
@@ -65,6 +66,11 @@ const Contact = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="Contact Us"
+        description="Get in touch with ThreadBD. Reach us by email, phone, or visit our store in Dhaka."
+        canonical="https://threadbd.lovable.app/contact"
+      />
       <PageTransition>
         <section className="py-20">
           <div className="container mx-auto max-w-4xl px-4">
