@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Ruler, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import ProductImageGallery from "@/components/ProductImageGallery";
 import SizeGuide from "@/components/SizeGuide";
 import RelatedProducts from "@/components/RelatedProducts";
 import ProductReviews from "@/components/ProductReviews";
@@ -107,9 +108,7 @@ const ProductDetail = () => {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-          <div className="aspect-square overflow-hidden rounded-lg bg-secondary">
-            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-          </div>
+          <ProductImageGallery images={product.images} alt={product.name} />
           <div className="flex flex-col justify-center">
             <p className="mb-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.category}</p>
             <h1 className="mb-4 font-heading text-3xl font-bold text-foreground md:text-4xl">{product.name}</h1>

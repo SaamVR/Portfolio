@@ -25,6 +25,7 @@ const emptyProduct = {
   price: 0,
   original_price: null as number | null,
   image_url: "",
+  images: [] as string[],
   description: "",
   sizes: [] as string[],
   colors: [] as string[],
@@ -73,6 +74,7 @@ const AdminProducts = () => {
       price: p.price,
       original_price: p.original_price,
       image_url: p.image_url,
+      images: p.images || [],
       description: p.description,
       sizes: p.sizes,
       colors: p.colors,
@@ -231,8 +233,23 @@ const AdminProducts = () => {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Image URL *</Label>
+              <Label>Main Image URL *</Label>
               <Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
+            </div>
+            <div className="grid gap-2">
+              <Label>Additional Images (up to 4)</Label>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Input
+                  key={i}
+                  value={form.images[i] || ""}
+                  onChange={(e) => {
+                    const updated = [...form.images];
+                    updated[i] = e.target.value;
+                    setForm({ ...form, images: updated.filter(Boolean) });
+                  }}
+                  placeholder={`Image ${i + 2} URL`}
+                />
+              ))}
             </div>
             <div className="grid gap-2">
               <Label>Description</Label>
