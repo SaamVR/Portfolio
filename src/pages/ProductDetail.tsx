@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Ruler, Loader2, Heart, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Ruler, Loader2, Heart, ShoppingBag, Minus, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import ProductImageGallery from "@/components/ProductImageGallery";
@@ -29,6 +29,7 @@ const ProductDetail = () => {
 
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [stickyBarVisible, setStickyBarVisible] = useState(false);
@@ -48,6 +49,7 @@ const ProductDetail = () => {
   useEffect(() => {
     setSelectedSize("");
     setSelectedColor("");
+    setQuantity(1);
   }, [id]);
 
   // Set default color when product loads
@@ -111,14 +113,16 @@ const ProductDetail = () => {
       toast.error("Please select a size");
       return;
     }
-    addItem({
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      size: selectedSize,
-    });
-    toast.success("Added to cart!");
+    for (let i = 0; i < quantity; i++) {
+      addItem({
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        size: selectedSize,
+      });
+    }
+    toast.success(quantity > 1 ? `${quantity}× ${product.name} added to cart!` : "Added to cart!");
   };
 
   const lowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
@@ -306,12 +310,39 @@ const ProductDetail = () => {
               </div>
             </div>
 
+            {/* Quantity selector */}
+            <div className="mb-4 flex items-center gap-4">
+              <p className="text-sm font-semibold uppercase tracking-wider text-foreground">Qty</p>
+              <div className="flex items-center rounded-md border border-border">
+                <button
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="w-10 text-center text-sm font-semibold text-foreground">{quantity}</span>
+                <button
+                  onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                  disabled={quantity >= 10}
+                  className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Total: <span className="font-semibold text-foreground">৳{product.price * quantity}</span>
+              </p>
+            </div>
+
             <button
               onClick={handleAddToCart}
               disabled={product.isAvailable === false}
               className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow active:animate-scale-pop disabled:opacity-50"
             >
-              {product.isAvailable === false ? "Out of Stock" : `Add to Cart — ৳${product.price}`}
+              {product.isAvailable === false ? "Out of Stock" : `Add ${quantity > 1 ? `${quantity}×` : ""} to Cart — ৳${product.price * quantity}`}
             </button>
 
             <div className="mt-8 space-y-4 border-t border-border pt-6">
