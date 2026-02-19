@@ -107,6 +107,7 @@ const SiteSettings = () => {
           <TabsTrigger value="promo">Promo Banner</TabsTrigger>
           <TabsTrigger value="hero">Hero</TabsTrigger>
           <TabsTrigger value="payment">Payment</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="faq">FAQ</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
@@ -354,6 +355,52 @@ const SiteSettings = () => {
                 </div>
               </div>
               <SaveButton settingKey="payment_settings" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Delivery Settings */}
+        <TabsContent value="delivery">
+          <Card className="border-border">
+            <CardHeader><CardTitle>Delivery Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={settings.delivery_settings?.enabled ?? false}
+                  onCheckedChange={(v) => update("delivery_settings", "enabled", v)}
+                />
+                <Label>Enable delivery fee</Label>
+              </div>
+
+              {settings.delivery_settings?.enabled && (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Standard Delivery Fee (৳)</Label>
+                    <Input
+                      type="number"
+                      value={settings.delivery_settings?.delivery_fee ?? 80}
+                      onChange={(e) => update("delivery_settings", "delivery_fee", Number(e.target.value))}
+                      placeholder="80"
+                      min={0}
+                    />
+                    <p className="text-xs text-muted-foreground">Charged when order is below the free delivery threshold.</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Free Delivery Threshold (৳)</Label>
+                    <Input
+                      type="number"
+                      value={settings.delivery_settings?.free_threshold ?? 2000}
+                      onChange={(e) => update("delivery_settings", "free_threshold", Number(e.target.value))}
+                      placeholder="2000"
+                      min={0}
+                    />
+                    <p className="text-xs text-muted-foreground">Orders at or above this amount get free delivery.</p>
+                  </div>
+                </>
+              )}
+
+              <SaveButton settingKey="delivery_settings" />
             </CardContent>
           </Card>
         </TabsContent>

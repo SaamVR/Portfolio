@@ -56,6 +56,12 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
               Featured
             </span>
           )}
+          {/* Low stock badge */}
+          {product.stock !== undefined && product.stock > 0 && product.stock <= 5 && (
+            <span className="absolute left-3 bottom-3 rounded-sm bg-destructive/90 px-2 py-1 text-xs font-bold text-destructive-foreground z-10">
+              Only {product.stock} left!
+            </span>
+          )}
           <span className="absolute right-3 top-3 rounded-sm bg-background/70 backdrop-blur-sm px-2 py-1 text-xs font-medium text-muted-foreground">
             {product.type}
           </span>

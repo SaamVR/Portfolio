@@ -72,6 +72,7 @@ export function useCreateOrder() {
       user_id?: string | null;
       items: Order["items"];
       subtotal: number;
+      delivery_fee?: number;
       total: number;
       customer_name: string;
       customer_phone: string;
@@ -86,6 +87,7 @@ export function useCreateOrder() {
         user_id: order.user_id || null,
         items: order.items as unknown as Record<string, unknown>[],
         subtotal: order.subtotal,
+        delivery_fee: order.delivery_fee ?? 0,
         total: order.total,
         customer_name: order.customer_name,
         customer_phone: order.customer_phone,

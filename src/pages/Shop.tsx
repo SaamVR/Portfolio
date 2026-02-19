@@ -9,7 +9,7 @@ import PageTransition from "@/components/PageTransition";
 import SizeGuide from "@/components/SizeGuide";
 import { productTypes, typeLabels, type Product } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
-import { X, ArrowUpDown, Ruler, Loader2 } from "lucide-react";
+import { X, ArrowUpDown, Ruler, Loader2, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 
 const tiers = ["All", "Essentials", "Street", "Premium"];
 
@@ -34,6 +34,9 @@ const Shop = () => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [showPriceFilter, setShowPriceFilter] = useState(false);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   const availableProducts = products.filter((p) => p.isAvailable !== false);
 
@@ -42,12 +45,14 @@ const Shop = () => {
       const matchesType = activeType === "All" || p.type === activeType;
       const matchesTier = activeTier === "All" || p.category === activeTier;
       const matchesQuery = !query || p.name.toLowerCase().includes(query.toLowerCase());
-      return matchesType && matchesTier && matchesQuery;
+      const matchesMin = !minPrice || p.price >= Number(minPrice);
+      const matchesMax = !maxPrice || p.price <= Number(maxPrice);
+      return matchesType && matchesTier && matchesQuery && matchesMin && matchesMax;
     })
     .sort((a, b) => {
       if (activeSort === "price-asc") return a.price - b.price;
       if (activeSort === "price-desc") return b.price - a.price;
-      return 0; // newest is default from DB
+      return 0;
     });
 
   const setType = (type: string) => {
@@ -72,9 +77,14 @@ const Shop = () => {
     setSortDropdownOpen(false);
   };
 
-  const clearFilters = () => setSearchParams({});
+  const clearFilters = () => {
+    setSearchParams({});
+    setMinPrice("");
+    setMaxPrice("");
+  };
 
-  const hasFilters = query || activeType !== "All" || activeTier !== "All" || activeSort !== "newest";
+  const hasPriceFilter = !!minPrice || !!maxPrice;
+  const hasFilters = query || activeType !== "All" || activeTier !== "All" || activeSort !== "newest" || hasPriceFilter;
 
   const pageTitle = activeType === "All" ? "All Products" : typeLabels[activeType] || "Products";
 
@@ -87,6 +97,7 @@ const Shop = () => {
     setQuickViewProduct(product);
     setQuickViewOpen(true);
   };
+
 
   return (
     <Layout>
@@ -125,7 +136,7 @@ const Shop = () => {
             </AnimatedSection>
 
             <AnimatedSection delay={150} animation="blur">
-              <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {tiers.map((tier) => (
                     <button
@@ -140,6 +151,18 @@ const Shop = () => {
                       {tier}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setShowPriceFilter((v) => !v)}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all duration-300 ${
+                      hasPriceFilter
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    Price
+                    {showPriceFilter ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
                   {hasFilters && (
                     <button
                       onClick={clearFilters}
@@ -193,6 +216,46 @@ const Shop = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Price range filter */}
+              {showPriceFilter && (
+                <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                  <span className="text-xs font-medium text-foreground">Price range:</span>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">৳</span>
+                      <input
+                        type="number"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        placeholder="Min"
+                        className="h-8 w-24 rounded-md border border-border bg-background pl-6 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        min={0}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">—</span>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">৳</span>
+                      <input
+                        type="number"
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value)}
+                        placeholder="Max"
+                        className="h-8 w-24 rounded-md border border-border bg-background pl-6 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        min={0}
+                      />
+                    </div>
+                    {hasPriceFilter && (
+                      <button
+                        onClick={() => { setMinPrice(""); setMaxPrice(""); }}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </AnimatedSection>
 
             {query && (

@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   Package,
@@ -9,6 +11,8 @@ import {
   ArrowLeft,
   Users,
   ShoppingCart,
+  Mail,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,10 +22,25 @@ const AdminSidebar = () => {
   const location = useLocation();
   const isAdmin = role === "admin";
 
+  // Fetch unread message count
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["unread-messages-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("contact_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("is_read", false);
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
   const links = [
     { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
     { to: "/admin/products", icon: Package, label: "Products", show: true },
     { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
+    { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
+    { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
     { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
@@ -56,6 +75,11 @@ const AdminSidebar = () => {
               >
                 <link.icon className="h-4 w-4" />
                 {link.label}
+                {link.badge !== undefined && link.badge > 0 && (
+                  <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {link.badge > 99 ? "99+" : link.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -80,3 +104,4 @@ const AdminSidebar = () => {
 };
 
 export default AdminSidebar;
+

@@ -96,11 +96,14 @@ const Cart = () => {
               to="/checkout"
               className="mt-6 block w-full rounded-md bg-primary py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
             >
-              Checkout with bKash
+              Proceed to Checkout
             </Link>
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-              Also accepting Nagad & Cash on Delivery
-            </p>
+            <Link
+              to="/shop"
+              className="mt-3 block w-full rounded-md border border-border py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:text-foreground hover:bg-secondary"
+            >
+              Continue Shopping
+            </Link>
           </div>
         </div>
       </div>

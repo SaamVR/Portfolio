@@ -3,6 +3,7 @@ import AnnouncementBar from "@/components/AnnouncementBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackToTop from "@/components/BackToTop";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [announcementVisible, setAnnouncementVisible] = useState(true);
@@ -15,13 +16,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen bg-background">
       <AnnouncementBar onVisibilityChange={handleVisibilityChange} />
       <Navbar announcementVisible={announcementVisible} />
-      <main className={announcementVisible ? "pt-[100px]" : "pt-16"} id="main-content">
+      <main className={`${announcementVisible ? "pt-[100px]" : "pt-16"} pb-16 md:pb-0`} id="main-content">
         {children}
       </main>
       <Footer />
       <BackToTop />
+      <MobileBottomNav />
     </div>
   );
 };
 
 export default Layout;
+

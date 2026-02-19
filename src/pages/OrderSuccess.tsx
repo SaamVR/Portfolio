@@ -36,6 +36,12 @@ const OrderSuccess = () => {
                 Continue Shopping
               </Link>
               <Link
+                to={orderNumber ? `/track-order?order=${orderNumber}` : "/track-order"}
+                className="inline-block rounded-md border border-primary/50 bg-primary/5 px-8 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary hover:bg-primary/10"
+              >
+                Track Order
+              </Link>
+              <Link
                 to="/account"
                 className="inline-block rounded-md border border-border px-8 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary"
               >
