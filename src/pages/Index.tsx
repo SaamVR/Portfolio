@@ -1,6 +1,7 @@
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import HeroSection from "@/components/HeroSection";
+import PromoBanner from "@/components/PromoBanner";
 import CategoryShowcase from "@/components/CategoryShowcase";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import RecentlyViewed from "@/components/RecentlyViewed";
@@ -26,6 +27,7 @@ const Index = () => {
         jsonLd={jsonLd}
       />
       <HeroSection />
+      <PromoBanner />
       <CategoryShowcase />
       <FeaturedProducts />
       <RecentlyViewed />

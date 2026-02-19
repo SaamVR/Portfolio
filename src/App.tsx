@@ -28,6 +28,7 @@ import AdminOrders from "./pages/admin/Orders";
 import SiteSettings from "./pages/admin/SiteSettings";
 import InviteCodes from "./pages/admin/InviteCodes";
 import Users from "./pages/admin/Users";
+import TrackOrder from "./pages/TrackOrder";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/order-success" element={<OrderSuccess />} />
+                <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/account" element={<Account />} />
