@@ -104,6 +104,7 @@ const SiteSettings = () => {
       <Tabs defaultValue="announcement" className="space-y-6">
         <TabsList className="flex-wrap">
           <TabsTrigger value="announcement">Announcement</TabsTrigger>
+          <TabsTrigger value="promo">Promo Banner</TabsTrigger>
           <TabsTrigger value="hero">Hero</TabsTrigger>
           <TabsTrigger value="payment">Payment</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
@@ -209,6 +210,90 @@ const SiteSettings = () => {
               </div>
 
               <SaveButton settingKey="announcement_bar" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Promo Banner */}
+        <TabsContent value="promo">
+          <Card className="border-border">
+            <CardHeader><CardTitle>Promotional Banner</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={settings.promo_banner?.enabled ?? false}
+                  onCheckedChange={(v) => update("promo_banner", "enabled", v)}
+                />
+                <Label>Show banner on homepage</Label>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Badge text (e.g. "Limited Time")</Label>
+                <Input
+                  value={settings.promo_banner?.badge_text ?? ""}
+                  placeholder="Summer Sale"
+                  onChange={(e) => update("promo_banner", "badge_text", e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Title</Label>
+                <Input
+                  value={settings.promo_banner?.title ?? ""}
+                  placeholder="Up to 40% off this season"
+                  onChange={(e) => update("promo_banner", "title", e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Subtitle</Label>
+                <Input
+                  value={settings.promo_banner?.subtitle ?? ""}
+                  placeholder="Shop the latest drops before they're gone"
+                  onChange={(e) => update("promo_banner", "subtitle", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Button text</Label>
+                  <Input
+                    value={settings.promo_banner?.cta_text ?? ""}
+                    placeholder="Shop Now"
+                    onChange={(e) => update("promo_banner", "cta_text", e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Button link</Label>
+                  <Input
+                    value={settings.promo_banner?.cta_link ?? ""}
+                    placeholder="/shop"
+                    onChange={(e) => update("promo_banner", "cta_link", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Colour style</Label>
+                <div className="flex gap-3">
+                  {(["gradient", "dark", "accent"] as const).map((style) => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => update("promo_banner", "bg_style", style)}
+                      className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${
+                        (settings.promo_banner?.bg_style ?? "gradient") === style
+                          ? "border-primary text-foreground"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {style === "gradient" ? "Green Gradient" : style === "dark" ? "Dark" : "Light"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <SaveButton settingKey="promo_banner" />
             </CardContent>
           </Card>
         </TabsContent>
