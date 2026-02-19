@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 interface UseScrollRevealOptions {
   threshold?: number;
@@ -11,7 +12,13 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
 ) {
   const { threshold = 0.1, rootMargin = "0px 0px -40px 0px", triggerOnce = true } = options;
   const ref = useRef<T>(null);
+  const { pathname } = useLocation();
+  // Reset visibility on every route change so animations re-trigger on new pages
   const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(false);
+  }, [pathname]);
 
   useEffect(() => {
     const el = ref.current;

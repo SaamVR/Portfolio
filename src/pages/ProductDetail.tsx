@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Ruler, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -26,17 +26,12 @@ const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const prevIdRef = useRef(id);
 
-  // Luxurious scroll-to-top with fade transition on product change
+  // Fade-in transition on product change
   useEffect(() => {
-    if (prevIdRef.current !== id) {
-      setIsTransitioning(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      const timer = setTimeout(() => setIsTransitioning(false), 500);
-      prevIdRef.current = id;
-      return () => clearTimeout(timer);
-    }
+    setIsTransitioning(true);
+    const timer = setTimeout(() => setIsTransitioning(false), 400);
+    return () => clearTimeout(timer);
   }, [id]);
 
   // Record recently viewed
