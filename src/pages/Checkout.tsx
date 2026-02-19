@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Phone, Copy, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Phone, Copy, CheckCircle2, Tag, X, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
@@ -26,12 +26,29 @@ interface PaymentSettings {
   nagad_enabled: boolean;
 }
 
+interface DeliverySettings {
+  enabled: boolean;
+  free_threshold: number;
+  delivery_fee: number;
+}
+
+interface CouponResult {
+  id: string;
+  code: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  min_order: number;
+  max_uses: number | null;
+  uses_count: number;
+}
+
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({ enabled: false, free_threshold: 2000, delivery_fee: 80 });
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -43,14 +60,22 @@ const Checkout = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
   useEffect(() => {
     supabase
       .from("site_settings")
-      .select("value")
-      .eq("key", "payment_settings")
-      .single()
+      .select("key, value")
+      .in("key", ["payment_settings", "delivery_settings"])
       .then(({ data }) => {
-        if (data?.value) setPaymentSettings(data.value as unknown as PaymentSettings);
+        data?.forEach((row) => {
+          if (row.key === "payment_settings") setPaymentSettings(row.value as unknown as PaymentSettings);
+          if (row.key === "delivery_settings") setDeliverySettings(row.value as unknown as DeliverySettings);
+        });
       });
   }, []);
 
@@ -58,6 +83,21 @@ const Checkout = () => {
     navigate("/cart");
     return null;
   }
+
+  // Delivery fee calculation
+  const deliveryFee =
+    deliverySettings.enabled && totalPrice < deliverySettings.free_threshold
+      ? deliverySettings.delivery_fee
+      : 0;
+
+  // Coupon discount
+  const couponDiscount = appliedCoupon
+    ? appliedCoupon.discount_type === "percentage"
+      ? Math.round((totalPrice * appliedCoupon.discount_value) / 100)
+      : appliedCoupon.discount_value
+    : 0;
+
+  const grandTotal = totalPrice - couponDiscount + deliveryFee;
 
   const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "nagad";
   const merchantNumber =
@@ -73,6 +113,45 @@ const Checkout = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    setCouponError("");
+    const { data, error } = await supabase
+      .from("coupon_codes" as any)
+      .select("id, code, discount_type, discount_value, min_order, max_uses, uses_count")
+      .eq("code", couponInput.trim().toUpperCase())
+      .eq("is_active", true)
+      .single();
+
+    setCouponLoading(false);
+
+    if (error || !data) {
+      setCouponError("Invalid or expired coupon code.");
+      return;
+    }
+
+    const coupon = data as unknown as CouponResult;
+
+    if (coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses) {
+      setCouponError("This coupon has reached its usage limit.");
+      return;
+    }
+    if (coupon.min_order > 0 && totalPrice < coupon.min_order) {
+      setCouponError(`Minimum order of ৳${coupon.min_order} required for this coupon.`);
+      return;
+    }
+
+    setAppliedCoupon(coupon);
+    toast.success(`Coupon "${coupon.code}" applied!`);
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,9 +174,9 @@ const Checkout = () => {
     setErrors({});
 
     try {
-      const notes = isMobilePayment
-        ? `Payment: ${form.paymentMethod.toUpperCase()} | TrxID: ${form.trxId.trim()}`
-        : null;
+      const notesParts = [];
+      if (isMobilePayment) notesParts.push(`Payment: ${form.paymentMethod.toUpperCase()} | TrxID: ${form.trxId.trim()}`);
+      if (appliedCoupon) notesParts.push(`Coupon: ${appliedCoupon.code} (-৳${couponDiscount})`);
 
       const order = await createOrder.mutateAsync({
         user_id: user?.id || null,
@@ -110,15 +189,24 @@ const Checkout = () => {
           quantity: item.quantity,
         })),
         subtotal: totalPrice,
-        total: totalPrice,
+        delivery_fee: deliveryFee,
+        total: grandTotal,
         customer_name: form.name,
         customer_phone: form.phone,
         customer_email: user?.email,
         shipping_address: form.address,
         shipping_city: form.city,
         payment_method: form.paymentMethod,
-        notes: notes || undefined,
+        notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
+
+      // Increment coupon uses_count
+      if (appliedCoupon) {
+        await supabase
+          .from("coupon_codes" as any)
+          .update({ uses_count: appliedCoupon.uses_count + 1 })
+          .eq("id", appliedCoupon.id);
+      }
 
       if (isMobilePayment) {
         toast.success("Order placed!", { description: `Your ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment will be verified shortly.` });
@@ -151,6 +239,7 @@ const Checkout = () => {
         <h1 className="mb-8 font-heading text-3xl font-bold text-foreground">Checkout</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Delivery Details */}
           <div className="rounded-lg border border-border bg-card p-6">
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Delivery Details</h2>
             <div className="space-y-4">
@@ -190,6 +279,7 @@ const Checkout = () => {
             </div>
           </div>
 
+          {/* Payment Method */}
           <div className="rounded-lg border border-border bg-card p-6">
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Payment Method</h2>
             <div className="space-y-3">
@@ -224,11 +314,10 @@ const Checkout = () => {
                 ))}
             </div>
 
-            {/* bKash / Nagad send-money instructions */}
             {isMobilePayment && merchantNumber && (
               <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <p className="text-sm font-medium text-foreground">
-                  Send <span className="font-bold text-primary">৳{totalPrice}</span> to this{" "}
+                  Send <span className="font-bold text-primary">৳{grandTotal}</span> to this{" "}
                   {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} number:
                 </p>
                 <div className="flex items-center gap-3">
@@ -246,7 +335,7 @@ const Checkout = () => {
                 <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
                   <li>Open your {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} app</li>
                   <li>Select &quot;Send Money&quot;</li>
-                  <li>Enter the number above and send ৳{totalPrice}</li>
+                  <li>Enter the number above and send ৳{grandTotal}</li>
                   <li>Enter the Transaction ID (TrxID) below</li>
                 </ol>
                 <div>
@@ -270,12 +359,75 @@ const Checkout = () => {
             )}
           </div>
 
+          {/* Coupon Code */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <div className="flex justify-between font-heading text-lg font-bold text-foreground">
-              <span>Total</span>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Discount Code</h2>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" />
+                  <span className="font-mono font-semibold text-foreground">{appliedCoupon.code}</span>
+                  <span className="text-sm text-primary">
+                    -{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : `৳${appliedCoupon.discount_value}`}
+                  </span>
+                </div>
+                <button type="button" onClick={removeCoupon} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                  placeholder="Enter coupon code"
+                  className="flex-1 rounded-md border border-border bg-background px-4 py-3 font-mono text-sm uppercase text-foreground placeholder:text-muted-foreground placeholder:normal-case focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), applyCoupon())}
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className="flex items-center gap-2 rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
+                >
+                  {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                </button>
+              </div>
+            )}
+            {couponError && <p className="mt-2 text-xs text-destructive">{couponError}</p>}
+          </div>
+
+          {/* Order Total */}
+          <div className="rounded-lg border border-border bg-card p-6 space-y-3">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Subtotal</span>
               <span>৳{totalPrice}</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{items.length} item(s) • Free delivery</p>
+            {couponDiscount > 0 && (
+              <div className="flex justify-between text-sm text-primary">
+                <span>Coupon discount</span>
+                <span>-৳{couponDiscount}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Delivery</span>
+              <span className={deliveryFee === 0 ? "text-primary" : ""}>
+                {deliveryFee === 0 ? "Free" : `৳${deliveryFee}`}
+              </span>
+            </div>
+            {deliveryFee === 0 && deliverySettings.enabled && totalPrice < deliverySettings.free_threshold && (
+              <p className="text-xs text-muted-foreground">
+                Add ৳{deliverySettings.free_threshold - totalPrice} more for free delivery
+              </p>
+            )}
+            <div className="border-t border-border pt-3">
+              <div className="flex justify-between font-heading text-lg font-bold text-foreground">
+                <span>Total</span>
+                <span>৳{grandTotal}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{items.length} item(s) • {items.reduce((a, i) => a + i.quantity, 0)} unit(s)</p>
           </div>
 
           <button
@@ -286,8 +438,8 @@ const Checkout = () => {
             {createOrder.isPending
               ? "Placing Order..."
               : form.paymentMethod === "cod"
-                ? "Place Order"
-                : `Pay ৳${totalPrice} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
+                ? `Place Order · ৳${grandTotal}`
+                : `Pay ৳${grandTotal} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
           </button>
         </form>
       </div>
