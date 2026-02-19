@@ -2,10 +2,18 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+
+interface ContactSettings {
+  address?: string;
+  phone?: string;
+  email?: string;
+  map_placeholder?: string;
+}
 
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -14,9 +22,9 @@ const contactSchema = z.object({
 });
 
 const Contact = () => {
+  const { data: contact, isLoading } = useSiteSettings<ContactSettings>("contact_page");
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +58,10 @@ const Contact = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
+
+  const address = contact?.address || "Dhaka, Bangladesh";
+  const phone = contact?.phone || "+880 1XXX-XXXXXX";
+  const emailAddr = contact?.email || "hello@threadbd.com";
 
   return (
     <Layout>
@@ -104,32 +116,36 @@ const Contact = () => {
               </AnimatedSection>
 
               <AnimatedSection delay={200}>
-                <div className="space-y-8">
-                  <div className="flex items-start gap-4">
-                    <MapPin className="mt-1 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-heading text-sm font-semibold text-foreground">Store Address</p>
-                      <p className="text-sm text-muted-foreground">Gulshan-2, Dhaka 1212, Bangladesh</p>
+                {isLoading ? (
+                  <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="flex items-start gap-4">
+                      <MapPin className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                      <div>
+                        <p className="font-heading text-sm font-semibold text-foreground">Store Address</p>
+                        <p className="text-sm text-muted-foreground">{address}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                      <Phone className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                      <div>
+                        <p className="font-heading text-sm font-semibold text-foreground">Phone</p>
+                        <p className="text-sm text-muted-foreground">{phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                      <Mail className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                      <div>
+                        <p className="font-heading text-sm font-semibold text-foreground">Email</p>
+                        <p className="text-sm text-muted-foreground">{emailAddr}</p>
+                      </div>
+                    </div>
+                    <div className="mt-8 h-48 rounded-lg border border-border bg-secondary flex items-center justify-center">
+                      <p className="text-sm text-muted-foreground">📍 Map placeholder — {address}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
-                    <Phone className="mt-1 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-heading text-sm font-semibold text-foreground">Phone</p>
-                      <p className="text-sm text-muted-foreground">+880 1XXX-XXXXXX</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <Mail className="mt-1 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-heading text-sm font-semibold text-foreground">Email</p>
-                      <p className="text-sm text-muted-foreground">hello@threadbd.com</p>
-                    </div>
-                  </div>
-                  <div className="mt-8 h-48 rounded-lg border border-border bg-secondary flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">📍 Map placeholder — Gulshan, Dhaka</p>
-                  </div>
-                </div>
+                )}
               </AnimatedSection>
             </div>
           </div>
