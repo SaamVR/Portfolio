@@ -59,6 +59,13 @@ export function useAllOrders() {
   });
 }
 
+function generateOrderNumber(): string {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `TBD-${date}-${rand}`;
+}
+
 export function useCreateOrder() {
   return useMutation({
     mutationFn: async (order: {
@@ -72,7 +79,9 @@ export function useCreateOrder() {
       shipping_address: string;
       shipping_city: string;
       payment_method: string;
+      notes?: string;
     }) => {
+      const orderNumber = generateOrderNumber();
       const payload = {
         user_id: order.user_id || null,
         items: order.items as unknown as Record<string, unknown>[],
@@ -84,15 +93,14 @@ export function useCreateOrder() {
         shipping_address: order.shipping_address,
         shipping_city: order.shipping_city,
         payment_method: order.payment_method,
-        order_number: "placeholder",
+        notes: order.notes || null,
+        order_number: orderNumber,
       };
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("orders")
-        .insert(payload as any)
-        .select()
-        .single();
+        .insert(payload as any);
       if (error) throw error;
-      return data as unknown as Order;
+      return { order_number: orderNumber } as unknown as Order;
     },
   });
 }
