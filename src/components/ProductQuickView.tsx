@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { productUrl } from "@/lib/slug";
 
 interface ProductQuickViewProps {
   product: Product | null;
@@ -98,7 +99,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
                 Add to Cart — ৳{product.price}
               </button>
               <Link
-                to={`/product/${product.id}`}
+                to={productUrl(product.id, product.name)}
                 onClick={() => onOpenChange(false)}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-border py-3 text-sm font-medium text-muted-foreground smooth-hover hover:border-foreground hover:text-foreground"
               >

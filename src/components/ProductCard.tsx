@@ -4,6 +4,7 @@ import { Eye, Heart } from "lucide-react";
 import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/WishlistContext";
 import { cn } from "@/lib/utils";
+import { productUrl } from "@/lib/slug";
 
 interface ProductCardProps {
   product: Product;
@@ -18,7 +19,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   return (
     <div className="group relative overflow-hidden rounded-lg border border-border bg-card smooth-hover hover:border-primary/30 hover:-translate-y-1 hover:premium-shadow">
       <Link
-        to={`/product/${product.id}`}
+        to={productUrl(product.id, product.name)}
         className="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label={`View ${product.name} - ${product.colors[0]} - ৳${product.price}`}
       >

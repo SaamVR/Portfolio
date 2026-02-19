@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useProducts } from "@/hooks/useProducts";
+import { productUrl } from "@/lib/slug";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 
@@ -29,7 +30,7 @@ const RecentlyViewed = () => {
           {recentProducts.map((product) => (
             <Link
               key={product!.id}
-              to={`/product/${product!.id}`}
+              to={productUrl(product!.id, product!.name)}
               className="group flex-shrink-0"
             >
               <div className="h-40 w-32 overflow-hidden rounded-lg bg-secondary">

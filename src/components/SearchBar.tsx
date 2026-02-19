@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { productTypes } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
 import { Badge } from "@/components/ui/badge";
+import { productUrl } from "@/lib/slug";
 
 interface SearchBarProps {
   className?: string;
@@ -107,12 +108,12 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     [query, navigate, onClose]
   );
 
-  const handleSelect = (productId: string) => {
+  const handleSelect = (product: { id: string; name: string }) => {
     if (query.trim()) {
       saveSearchHistory(query.trim());
       setHistory(getSearchHistory());
     }
-    navigate(`/product/${productId}`);
+    navigate(productUrl(product.id, product.name));
     setQuery("");
     setOpen(false);
     onClose?.();
@@ -155,7 +156,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       setSelectedIndex((i) => (i > 0 ? i - 1 : filtered.length - 1));
     } else if (e.key === "Enter" && selectedIndex >= 0) {
       e.preventDefault();
-      handleSelect(filtered[selectedIndex].id);
+      handleSelect(filtered[selectedIndex]);
     }
   };
 
@@ -222,7 +223,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
                   key={product.id}
                   role="option"
                   aria-selected={index === selectedIndex}
-                  onClick={() => handleSelect(product.id)}
+                  onClick={() => handleSelect(product)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors cursor-pointer",
