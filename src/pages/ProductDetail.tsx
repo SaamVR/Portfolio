@@ -7,16 +7,19 @@ import ProductImageGallery from "@/components/ProductImageGallery";
 import SizeGuide from "@/components/SizeGuide";
 import RelatedProducts from "@/components/RelatedProducts";
 import ProductReviews from "@/components/ProductReviews";
+import SocialShare from "@/components/SocialShare";
 import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { extractIdFromSlug, productUrl } from "@/lib/slug";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 const MAX_RECENT = 8;
 
 const ProductDetail = () => {
-  const { id } = useParams();
+  const { slugId } = useParams();
+  const id = slugId ? extractIdFromSlug(slugId) : undefined;
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { data: product, isLoading } = useProduct(id);
@@ -112,7 +115,7 @@ const ProductDetail = () => {
       <SEOHead
         title={product.name}
         description={product.description}
-        canonical={`https://threadbd.lovable.app/product/${product.id}`}
+        canonical={`https://threadbd.lovable.app${productUrl(product.id, product.name)}`}
         ogType="product"
         ogImage={product.images?.[0] || product.image}
         jsonLd={productJsonLd}
@@ -192,10 +195,16 @@ const ProductDetail = () => {
               {product.isAvailable === false ? "Out of Stock" : `Add to Cart — ৳${product.price}`}
             </button>
 
-            <div className="mt-8 space-y-2 border-t border-border pt-6">
-              <p className="text-xs text-muted-foreground">✓ Free delivery in Dhaka</p>
-              <p className="text-xs text-muted-foreground">✓ Pay with bKash or Cash on Delivery</p>
-              <p className="text-xs text-muted-foreground">✓ 7-day easy returns</p>
+            <div className="mt-8 space-y-4 border-t border-border pt-6">
+              <SocialShare
+                url={`https://threadbd.lovable.app${productUrl(product.id, product.name)}`}
+                title={product.name}
+              />
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">✓ Free delivery in Dhaka</p>
+                <p className="text-xs text-muted-foreground">✓ Pay with bKash or Cash on Delivery</p>
+                <p className="text-xs text-muted-foreground">✓ 7-day easy returns</p>
+              </div>
             </div>
           </div>
         </div>
