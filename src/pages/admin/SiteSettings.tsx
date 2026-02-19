@@ -11,9 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, Save, Plus, Trash2, GripVertical } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SiteSettings = () => {
   const { role } = useAuth();
+  const queryClient = useQueryClient();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -41,7 +43,11 @@ const SiteSettings = () => {
       .update({ value: settings[key] })
       .eq("key", key);
     if (error) toast.error("Failed to save");
-    else toast.success(`${key.replace(/_/g, " ")} updated`);
+    else {
+      toast.success(`${key.replace(/_/g, " ")} updated`);
+      // Invalidate cache so components pick up the new value immediately
+      queryClient.invalidateQueries({ queryKey: ["site_settings", key] });
+    }
     setSaving(null);
   };
 
