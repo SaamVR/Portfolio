@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, X, ChevronDown, Heart, User } from "lucide-react";
+import { ShoppingBag, Search, X, ChevronDown, Heart, User, Sun, Moon } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "next-themes";
 import SearchBar from "@/components/SearchBar";
 import MobileMenu from "@/components/MobileMenu";
 import { productTypes } from "@/data/products";
@@ -19,9 +20,12 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+
+  const isDark = theme === "dark";
 
   return (
     <>
@@ -81,6 +85,25 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme toggle */}
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className="relative h-8 w-14 rounded-full border border-border bg-secondary transition-colors duration-300 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {/* Track icons */}
+              <Sun
+                className={`absolute left-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-accent transition-all duration-300 ${isDark ? "opacity-30 scale-75" : "opacity-100 scale-100"}`}
+              />
+              <Moon
+                className={`absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary transition-all duration-300 ${isDark ? "opacity-100 scale-100" : "opacity-30 scale-75"}`}
+              />
+              {/* Sliding knob */}
+              <span
+                className={`absolute top-0.5 h-7 w-7 rounded-full bg-foreground shadow-md transition-transform duration-300 ease-out ${isDark ? "translate-x-[26px]" : "translate-x-0.5"}`}
+              />
+            </button>
+
             <div className="hidden md:block">
               {searchOpen ? (
                 <div className="flex items-center gap-2">
