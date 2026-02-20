@@ -9,7 +9,7 @@ import PageTransition from "@/components/PageTransition";
 import SizeGuide from "@/components/SizeGuide";
 import { productTypes, typeLabels, type Product } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
-import { X, ArrowUpDown, Ruler, Loader2, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ArrowUpDown, Ruler, Loader2, SlidersHorizontal, ChevronDown, ChevronUp, Tag } from "lucide-react";
 
 const tiers = ["All", "Essentials", "Street", "Premium"];
 
@@ -27,6 +27,7 @@ const Shop = () => {
   const activeType = searchParams.get("type") || "All";
   const activeTier = searchParams.get("category") || "All";
   const activeSort = (searchParams.get("sort") as SortOption) || "newest";
+  const saleOnly = searchParams.get("sale") === "1";
 
   const { data: products = [], isLoading } = useProducts();
 
@@ -40,6 +41,8 @@ const Shop = () => {
 
   const availableProducts = products.filter((p) => p.isAvailable !== false);
 
+  const saleCount = availableProducts.filter((p) => !!p.originalPrice).length;
+
   const filtered = availableProducts
     .filter((p) => {
       const matchesType = activeType === "All" || p.type === activeType;
@@ -47,7 +50,8 @@ const Shop = () => {
       const matchesQuery = !query || p.name.toLowerCase().includes(query.toLowerCase());
       const matchesMin = !minPrice || p.price >= Number(minPrice);
       const matchesMax = !maxPrice || p.price <= Number(maxPrice);
-      return matchesType && matchesTier && matchesQuery && matchesMin && matchesMax;
+      const matchesSale = !saleOnly || !!p.originalPrice;
+      return matchesType && matchesTier && matchesQuery && matchesMin && matchesMax && matchesSale;
     })
     .sort((a, b) => {
       if (activeSort === "price-asc") return a.price - b.price;
@@ -77,6 +81,13 @@ const Shop = () => {
     setSortDropdownOpen(false);
   };
 
+  const toggleSale = () => {
+    const params = new URLSearchParams(searchParams);
+    if (saleOnly) params.delete("sale");
+    else params.set("sale", "1");
+    setSearchParams(params);
+  };
+
   const clearFilters = () => {
     setSearchParams({});
     setMinPrice("");
@@ -84,7 +95,7 @@ const Shop = () => {
   };
 
   const hasPriceFilter = !!minPrice || !!maxPrice;
-  const hasFilters = query || activeType !== "All" || activeTier !== "All" || activeSort !== "newest" || hasPriceFilter;
+  const hasFilters = query || activeType !== "All" || activeTier !== "All" || activeSort !== "newest" || hasPriceFilter || saleOnly;
 
   const pageTitle = activeType === "All" ? "All Products" : typeLabels[activeType] || "Products";
 
@@ -151,6 +162,18 @@ const Shop = () => {
                       {tier}
                     </button>
                   ))}
+                  <button
+                    onClick={toggleSale}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all duration-300 ${
+                      saleOnly
+                        ? "border border-amber-500/30 bg-amber-500/15 text-amber-500"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Tag className="h-3 w-3" />
+                    Sale
+                    <span className="opacity-60">{saleCount}</span>
+                  </button>
                   <button
                     onClick={() => setShowPriceFilter((v) => !v)}
                     className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all duration-300 ${
