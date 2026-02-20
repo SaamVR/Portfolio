@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackToTop from "@/components/BackToTop";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [announcementVisible, setAnnouncementVisible] = useState(true);
@@ -22,6 +23,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <Footer />
       <BackToTop />
       <MobileBottomNav />
+      <WhatsAppButton />
     </div>
   );
 };
