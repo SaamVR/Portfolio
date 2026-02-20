@@ -444,6 +444,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_coupon: {
+        Args: { _code: string; _order_total: number }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
