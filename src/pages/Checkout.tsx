@@ -48,7 +48,7 @@ const Checkout = () => {
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({ enabled: false, free_threshold: 2000, delivery_fee: 80 });
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({ enabled: true, free_threshold: 2000, delivery_fee: 80 });
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: "",
