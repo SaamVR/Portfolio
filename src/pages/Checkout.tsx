@@ -115,16 +115,17 @@ const Checkout = () => {
     }
   };
 
+  // Stores the coupon snapshot at validation time (uses_count already incremented server-side)
   const applyCoupon = async () => {
     if (!couponInput.trim()) return;
     setCouponLoading(true);
     setCouponError("");
-    const { data, error } = await supabase
-      .from("coupon_codes" as any)
-      .select("id, code, discount_type, discount_value, min_order, max_uses, uses_count")
-      .eq("code", couponInput.trim().toUpperCase())
-      .eq("is_active", true)
-      .single();
+
+    // Use the atomic DB function — validates + increments uses_count in one transaction
+    const { data, error } = await supabase.rpc("claim_coupon" as any, {
+      _code: couponInput.trim(),
+      _order_total: totalPrice,
+    });
 
     setCouponLoading(false);
 
@@ -133,19 +134,15 @@ const Checkout = () => {
       return;
     }
 
-    const coupon = data as unknown as CouponResult;
+    const result = data as unknown as { error?: string } & CouponResult;
 
-    if (coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses) {
-      setCouponError("This coupon has reached its usage limit.");
-      return;
-    }
-    if (coupon.min_order > 0 && totalPrice < coupon.min_order) {
-      setCouponError(`Minimum order of ৳${coupon.min_order} required for this coupon.`);
+    if (result.error) {
+      setCouponError(result.error);
       return;
     }
 
-    setAppliedCoupon(coupon);
-    toast.success(`Coupon "${coupon.code}" applied!`);
+    setAppliedCoupon(result as CouponResult);
+    toast.success(`Coupon "${result.code}" applied!`);
   };
 
   const removeCoupon = () => {
@@ -200,13 +197,7 @@ const Checkout = () => {
         notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
 
-      // Increment coupon uses_count
-      if (appliedCoupon) {
-        await supabase
-          .from("coupon_codes" as any)
-          .update({ uses_count: appliedCoupon.uses_count + 1 })
-          .eq("id", appliedCoupon.id);
-      }
+      // uses_count was already incremented atomically by claim_coupon RPC at apply time
 
       if (isMobilePayment) {
         toast.success("Order placed!", { description: `Your ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment will be verified shortly.` });
