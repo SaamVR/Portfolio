@@ -1,11 +1,30 @@
 import { Link } from "react-router-dom";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface DeliverySettings {
+  enabled: boolean;
+  free_threshold: number;
+  delivery_fee: number;
+}
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
+  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings");
+
+  const deliveryFee = (() => {
+    if (!deliveryData) return 80; // safe default while loading
+    if (!deliveryData.enabled) return 0;
+    return totalPrice >= deliveryData.free_threshold ? 0 : deliveryData.delivery_fee;
+  })();
+
+  const grandTotal = totalPrice + deliveryFee;
+  const isFreeDelivery = deliveryData?.enabled && totalPrice >= (deliveryData?.free_threshold ?? 2000);
+  const amountToFreeDelivery = deliveryData ? Math.max(0, deliveryData.free_threshold - totalPrice) : 0;
 
   if (items.length === 0) {
     return (
@@ -83,12 +102,38 @@ const Cart = () => {
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Delivery</span>
-                <span className="text-primary">Free</span>
+                {deliveryLoading ? (
+                  <Skeleton className="h-4 w-12" />
+                ) : isFreeDelivery ? (
+                  <span className="font-medium text-primary">Free</span>
+                ) : (
+                  <span>৳{deliveryFee}</span>
+                )}
               </div>
+
+              {/* Free delivery nudge */}
+              {!deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
+                <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                  <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Add <strong>৳{amountToFreeDelivery}</strong> more for free delivery!</span>
+                </div>
+              )}
+
+              {!deliveryLoading && isFreeDelivery && (
+                <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                  <Truck className="h-3.5 w-3.5 shrink-0" />
+                  <span>You qualify for free delivery! 🎉</span>
+                </div>
+              )}
+
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                   <span>Total</span>
-                  <span>৳{totalPrice}</span>
+                  {deliveryLoading ? (
+                    <Skeleton className="h-5 w-16" />
+                  ) : (
+                    <span>৳{grandTotal}</span>
+                  )}
                 </div>
               </div>
             </div>
