@@ -540,6 +540,44 @@ const SiteSettings = () => {
                 <Label>Email</Label>
                 <Input value={settings.contact_page?.email ?? ""} onChange={(e) => update("contact_page", "email", e.target.value)} />
               </div>
+
+              <div className="border-t border-border pt-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={settings.contact_page?.map_enabled ?? false}
+                    onCheckedChange={(v) => update("contact_page", "map_enabled", v)}
+                  />
+                  <Label>Show map on contact page</Label>
+                </div>
+                {settings.contact_page?.map_enabled && (
+                  <div className="grid gap-2">
+                    <Label>Google Maps Embed URL</Label>
+                    <Input
+                      value={settings.contact_page?.map_embed_url ?? ""}
+                      onChange={(e) => update("contact_page", "map_embed_url", e.target.value)}
+                      placeholder="https://www.google.com/maps/embed?pb=..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Go to Google Maps → share your location → Embed a map → copy the <code className="bg-secondary px-1 rounded">src</code> URL from the iframe code.
+                    </p>
+                    {settings.contact_page?.map_embed_url && (
+                      <div className="mt-2 overflow-hidden rounded-lg border border-border">
+                        <iframe
+                          src={settings.contact_page.map_embed_url}
+                          width="100%"
+                          height="200"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          title="Map preview"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <SaveButton settingKey="contact_page" />
             </CardContent>
           </Card>

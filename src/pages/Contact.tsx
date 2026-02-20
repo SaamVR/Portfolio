@@ -13,7 +13,8 @@ interface ContactSettings {
   address?: string;
   phone?: string;
   email?: string;
-  map_placeholder?: string;
+  map_enabled?: boolean;
+  map_embed_url?: string;
 }
 
 const contactSchema = z.object({
@@ -147,9 +148,24 @@ const Contact = () => {
                         <p className="text-sm text-muted-foreground">{emailAddr}</p>
                       </div>
                     </div>
-                    <div className="mt-8 h-48 rounded-lg border border-border bg-secondary flex items-center justify-center">
-                      <p className="text-sm text-muted-foreground">📍 Map placeholder — {address}</p>
-                    </div>
+                    {contact?.map_enabled && contact?.map_embed_url ? (
+                      <div className="mt-8 overflow-hidden rounded-lg border border-border">
+                        <iframe
+                          src={contact.map_embed_url}
+                          width="100%"
+                          height="220"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          title="Store location"
+                        />
+                      </div>
+                    ) : contact?.map_enabled ? (
+                      <div className="mt-8 h-48 rounded-lg border border-border bg-secondary flex items-center justify-center">
+                        <p className="text-sm text-muted-foreground">📍 Map — {address}</p>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </AnimatedSection>
