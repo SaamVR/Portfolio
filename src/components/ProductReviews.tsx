@@ -87,15 +87,14 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 const ProductReviews = ({ productId }: { productId: string }) => {
   const [showAll, setShowAll] = useState(false);
 
-  // Fetch real approved reviews from DB
+  // Fetch real approved reviews from the public view (excludes user_id and order_id)
   const { data: dbReviews = [] } = useQuery({
     queryKey: ["product-reviews", productId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("product_reviews" as any)
-        .select("*")
+        .from("public_product_reviews" as any)
+        .select("id, author_name, rating, created_at, review_text, size_purchased, admin_reply")
         .eq("product_id", productId)
-        .eq("status", "approved")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as unknown) as Array<{
