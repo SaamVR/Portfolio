@@ -444,6 +444,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_contact_rate_limit: { Args: { _email: string }; Returns: boolean }
       claim_coupon: {
         Args: { _code: string; _order_total: number }
         Returns: Json
