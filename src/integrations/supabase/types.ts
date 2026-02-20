@@ -441,7 +441,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_product_reviews: {
+        Row: {
+          admin_reply: string | null
+          author_name: string | null
+          created_at: string | null
+          id: string | null
+          product_id: string | null
+          rating: number | null
+          review_text: string | null
+          size_purchased: string | null
+        }
+        Insert: {
+          admin_reply?: string | null
+          author_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          product_id?: string | null
+          rating?: number | null
+          review_text?: string | null
+          size_purchased?: string | null
+        }
+        Update: {
+          admin_reply?: string | null
+          author_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          product_id?: string | null
+          rating?: number | null
+          review_text?: string | null
+          size_purchased?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_contact_rate_limit: { Args: { _email: string }; Returns: boolean }
