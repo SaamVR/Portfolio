@@ -11,11 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
-  Loader2, Package, MapPin, LogOut, Plus, Trash2, Star,
+  Loader2, Package, MapPin, LogOut, Plus, Trash2, Star, CheckCircle2,
 } from "lucide-react";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 interface Address {
   id: string;
@@ -44,6 +52,183 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
+// --- Star Picker ---
+const StarPicker = ({
+  value,
+  hover,
+  onChange,
+  onHover,
+  onLeave,
+}: {
+  value: number;
+  hover: number;
+  onChange: (v: number) => void;
+  onHover: (v: number) => void;
+  onLeave: () => void;
+}) => (
+  <div className="flex items-center gap-1">
+    {[1, 2, 3, 4, 5].map((s) => (
+      <button
+        key={s}
+        type="button"
+        onClick={() => onChange(s)}
+        onMouseEnter={() => onHover(s)}
+        onMouseLeave={onLeave}
+        className="transition-transform hover:scale-110 focus:outline-none"
+        aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
+      >
+        <Star
+          className={cn(
+            "h-8 w-8 transition-colors",
+            s <= (hover || value)
+              ? "fill-primary text-primary"
+              : "text-border"
+          )}
+        />
+      </button>
+    ))}
+  </div>
+);
+
+// --- Review Sheet ---
+interface ReviewSheetProps {
+  open: boolean;
+  onClose: () => void;
+  productId: string;
+  productName: string;
+  productImage: string;
+  orderId: string;
+  sizePurchased: string;
+  authorName: string;
+  userId: string;
+  onSubmitted: () => void;
+}
+
+const ReviewSheet = ({
+  open,
+  onClose,
+  productId,
+  productName,
+  productImage,
+  orderId,
+  sizePurchased,
+  authorName,
+  userId,
+  onSubmitted,
+}: ReviewSheetProps) => {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [text, setText] = useState("");
+  const queryClient = useQueryClient();
+
+  const ratingLabels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
+
+  const submit = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("product_reviews" as any)
+        .insert({
+          product_id: productId,
+          user_id: userId,
+          order_id: orderId,
+          author_name: authorName,
+          rating,
+          review_text: text.trim() || null,
+          size_purchased: sizePurchased || null,
+          status: "pending",
+        } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-submitted-reviews", userId] });
+      toast.success("Review submitted! It'll appear after a quick check by our team.");
+      setRating(0);
+      setText("");
+      onSubmitted();
+      onClose();
+    },
+    onError: (err: any) => {
+      if (err?.code === "23505") {
+        toast.error("You've already reviewed this product from this order.");
+      } else {
+        toast.error("Failed to submit review. Please try again.");
+      }
+    },
+  });
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto pb-8">
+        <SheetHeader className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-border">
+              <img src={productImage} alt={productName} className="h-full w-full object-cover" />
+            </div>
+            <div>
+              <SheetTitle className="text-left font-heading text-base font-bold leading-tight">
+                {productName}
+              </SheetTitle>
+              {sizePurchased && (
+                <p className="text-xs text-muted-foreground">Size: {sizePurchased}</p>
+              )}
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="space-y-6">
+          {/* Star picker */}
+          <div>
+            <p className="mb-3 text-sm font-semibold text-foreground">Your Rating *</p>
+            <StarPicker
+              value={rating}
+              hover={hover}
+              onChange={setRating}
+              onHover={setHover}
+              onLeave={() => setHover(0)}
+            />
+            {(hover || rating) > 0 && (
+              <p className="mt-2 text-sm font-medium text-primary">
+                {ratingLabels[hover || rating]}
+              </p>
+            )}
+          </div>
+
+          {/* Text area */}
+          <div>
+            <p className="mb-2 text-sm font-semibold text-foreground">Your Review (optional)</p>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, 500))}
+              placeholder="What did you love about it? How was the fit? Would you recommend it?"
+              className="min-h-[100px] resize-none text-sm"
+            />
+            <p className="mt-1.5 text-right text-xs text-muted-foreground">{text.length}/500</p>
+          </div>
+
+          {/* Submit */}
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => submit.mutate()}
+            disabled={rating === 0 || submit.isPending}
+          >
+            {submit.isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
+            ) : (
+              "Post Review"
+            )}
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Your review will be visible after a quick check by our team.
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+// --- Main Account Component ---
 const Account = () => {
   const { user, loading, signOut } = useAuth();
   const { data: orders, isLoading: ordersLoading } = useMyOrders();
@@ -52,6 +237,13 @@ const Account = () => {
   const [addingAddress, setAddingAddress] = useState(false);
   const [addressForm, setAddressForm] = useState({ label: "Home", name: "", phone: "", address: "", city: "" });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const [reviewSheet, setReviewSheet] = useState<{
+    productId: string;
+    productName: string;
+    productImage: string;
+    orderId: string;
+    sizePurchased: string;
+  } | null>(null);
 
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ["my-addresses", user?.id],
@@ -62,6 +254,37 @@ const Account = () => {
         .order("is_default", { ascending: false });
       if (error) throw error;
       return data as unknown as Address[];
+    },
+    enabled: !!user,
+  });
+
+  // Batch-fetch all reviews submitted by this user (for "already reviewed" state)
+  const { data: submittedReviews = [] } = useQuery({
+    queryKey: ["my-submitted-reviews", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_reviews" as any)
+        .select("product_id, order_id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return (data as unknown as Array<{ product_id: string; order_id: string }>) ?? [];
+    },
+    enabled: !!user,
+  });
+
+  // O(1) lookup set
+  const reviewedSet = new Set(submittedReviews.map((r) => `${r.product_id}__${r.order_id}`));
+
+  // Fetch profile for author_name
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, email")
+        .eq("user_id", user!.id)
+        .single();
+      return data;
     },
     enabled: !!user,
   });
@@ -96,7 +319,6 @@ const Account = () => {
 
   const setDefaultAddress = useMutation({
     mutationFn: async (id: string) => {
-      // Unset all defaults first
       await supabase
         .from("customer_addresses")
         .update({ is_default: false } as Record<string, unknown>)
@@ -124,6 +346,9 @@ const Account = () => {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
+
+  const authorName =
+    profile?.display_name || profile?.email?.split("@")[0] || user.email?.split("@")[0] || "Customer";
 
   const handleAddAddress = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,41 +414,101 @@ const Account = () => {
                   <p className="text-sm text-muted-foreground">Your order history will appear here.</p>
                 </div>
               ) : (
-                orders.map((order: Order) => (
-                  <Card key={order.id} className="border-border">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="font-heading text-sm">{order.order_number}</CardTitle>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(order.created_at).toLocaleDateString("en-US", {
-                              year: "numeric", month: "long", day: "numeric",
-                            })}
-                          </p>
-                        </div>
-                        <Badge className={statusColors[order.status] || "bg-secondary text-foreground"}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {order.items.map((item, i) => (
-                          <div key={i} className="flex items-center justify-between text-sm">
-                            <span className="text-foreground">
-                              {item.name} × {item.quantity} <span className="text-muted-foreground">({item.size})</span>
-                            </span>
-                            <span className="text-muted-foreground">৳{item.price * item.quantity}</span>
+                orders.map((order: Order) => {
+                  const isDelivered = order.status === "delivered";
+                  return (
+                    <Card key={order.id} className="border-border">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="font-heading text-sm">{order.order_number}</CardTitle>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString("en-US", {
+                                year: "numeric", month: "long", day: "numeric",
+                              })}
+                            </p>
                           </div>
-                        ))}
-                        <div className="border-t border-border pt-2 flex justify-between font-heading font-bold text-foreground">
-                          <span>Total</span>
-                          <span>৳{order.total}</span>
+                          <Badge className={statusColors[order.status] || "bg-secondary text-foreground"}>
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </Badge>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {order.items.map((item, i) => {
+                            const alreadyReviewed = reviewedSet.has(`${item.productId}__${order.id}`);
+                            return (
+                              <div key={i} className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-foreground">
+                                    {item.name} × {item.quantity}{" "}
+                                    <span className="text-muted-foreground">({item.size})</span>
+                                  </span>
+                                  <span className="text-muted-foreground">৳{item.price * item.quantity}</span>
+                                </div>
+
+                                {/* Review CTA — only for delivered orders */}
+                                {isDelivered && (
+                                  <div className={cn(
+                                    "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-all",
+                                    alreadyReviewed
+                                      ? "bg-primary/5 border border-primary/15"
+                                      : "bg-secondary/60 border border-border hover:border-primary/30"
+                                  )}>
+                                    {alreadyReviewed ? (
+                                      <div className="flex items-center gap-2 text-primary">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <span className="text-xs font-medium">Review submitted — thank you!</span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex gap-0.5">
+                                            {[1, 2, 3, 4, 5].map((s) => (
+                                              <Star key={s} className="h-3 w-3 text-muted-foreground/40" />
+                                            ))}
+                                          </div>
+                                          <div>
+                                            <p className="text-xs font-medium text-foreground leading-tight">
+                                              How was {item.name}?
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                              Share your experience
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 px-3 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                                          onClick={() =>
+                                            setReviewSheet({
+                                              productId: item.productId,
+                                              productName: item.name,
+                                              productImage: item.image,
+                                              orderId: order.id,
+                                              sizePurchased: item.size,
+                                            })
+                                          }
+                                        >
+                                          Write a Review
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <div className="border-t border-border pt-2 flex justify-between font-heading font-bold text-foreground">
+                            <span>Total</span>
+                            <span>৳{order.total}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
           )}
@@ -340,6 +625,22 @@ const Account = () => {
           )}
         </div>
       </PageTransition>
+
+      {/* Review Submission Sheet */}
+      {reviewSheet && (
+        <ReviewSheet
+          open={!!reviewSheet}
+          onClose={() => setReviewSheet(null)}
+          productId={reviewSheet.productId}
+          productName={reviewSheet.productName}
+          productImage={reviewSheet.productImage}
+          orderId={reviewSheet.orderId}
+          sizePurchased={reviewSheet.sizePurchased}
+          authorName={authorName}
+          userId={user.id}
+          onSubmitted={() => setReviewSheet(null)}
+        />
+      )}
     </Layout>
   );
 };

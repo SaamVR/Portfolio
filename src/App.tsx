@@ -31,6 +31,7 @@ import InviteCodes from "./pages/admin/InviteCodes";
 import Users from "./pages/admin/Users";
 import Messages from "./pages/admin/Messages";
 import Coupons from "./pages/admin/Coupons";
+import Reviews from "./pages/admin/Reviews";
 import TrackOrder from "./pages/TrackOrder";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
                   <Route path="users" element={<Users />} />
                   <Route path="messages" element={<Messages />} />
                   <Route path="coupons" element={<Coupons />} />
+                  <Route path="reviews" element={<Reviews />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

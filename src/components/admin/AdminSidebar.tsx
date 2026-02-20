@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Mail,
   Tag,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,11 +36,25 @@ const AdminSidebar = () => {
     refetchInterval: 30000,
   });
 
+  // Fetch pending reviews count
+  const { data: pendingReviewsCount = 0 } = useQuery({
+    queryKey: ["pending-reviews-count"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("product_reviews" as any)
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
   const links = [
     { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
     { to: "/admin/products", icon: Package, label: "Products", show: true },
     { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
     { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
+    { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
     { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
     { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
