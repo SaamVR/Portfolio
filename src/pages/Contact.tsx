@@ -18,9 +18,13 @@ interface ContactSettings {
 }
 
 const contactSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  email: z.string().trim().email("Valid email required"),
-  message: z.string().trim().min(10, "Message must be at least 10 characters"),
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be under 100 characters"),
+  email: z.string().trim().email("Valid email required").max(255, "Email must be under 255 characters"),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Message must be at least 10 characters")
+    .max(2000, "Message must be under 2000 characters"),
 });
 
 const Contact = () => {
@@ -43,9 +47,21 @@ const Contact = () => {
     setErrors({});
     setSubmitting(true);
     try {
+      // Check server-side rate limit (5 messages per hour per email)
+      const { data: allowed, error: rateErr } = await supabase.rpc(
+        "check_contact_rate_limit" as any,
+        { _email: form.email.trim() }
+      );
+      if (rateErr) throw rateErr;
+      if (!allowed) {
+        toast.error("Too many messages sent recently. Please wait an hour before trying again.");
+        setSubmitting(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("contact_messages")
-        .insert({ name: form.name, email: form.email, message: form.message } as any);
+        .insert({ name: form.name.trim(), email: form.email.trim(), message: form.message.trim() } as any);
       if (error) throw error;
       toast.success("Message sent! We'll get back to you soon.");
       setForm({ name: "", email: "", message: "" });
@@ -108,9 +124,16 @@ const Contact = () => {
                       value={form.message}
                       onChange={(e) => update("message", e.target.value)}
                       placeholder="How can we help?"
+                      maxLength={2000}
                       className="w-full rounded-md border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    {errors.message && <p className="mt-1 text-xs text-destructive">{errors.message}</p>}
+                    <div className="flex justify-between">
+                      {errors.message
+                        ? <p className="mt-1 text-xs text-destructive">{errors.message}</p>
+                        : <span />
+                      }
+                      <p className="mt-1 text-xs text-muted-foreground">{form.message.length}/2000</p>
+                    </div>
                   </div>
                   <button
                     type="submit"

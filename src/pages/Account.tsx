@@ -201,6 +201,7 @@ const ReviewSheet = ({
               onChange={(e) => setText(e.target.value.slice(0, 500))}
               placeholder="What did you love about it? How was the fit? Would you recommend it?"
               className="min-h-[100px] resize-none text-sm"
+              maxLength={500}
             />
             <p className="mt-1.5 text-right text-xs text-muted-foreground">{text.length}/500</p>
           </div>
