@@ -67,10 +67,8 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created!", {
-          description: "Please check your email to verify your account before signing in.",
-        });
-        setMode("login");
+        toast.success("Account created! Welcome to ThreadBD.");
+        navigate("/account");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: form.email,

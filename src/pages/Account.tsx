@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyOrders, type Order } from "@/hooks/useOrders";
+import { useWishlist } from "@/context/WishlistContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
@@ -21,9 +23,12 @@ import {
 import { toast } from "sonner";
 import {
   Loader2, Package, MapPin, LogOut, Plus, Trash2, Star, CheckCircle2,
+  Heart, MessageSquare, User, Edit2, Camera, Save, X,
 } from "lucide-react";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import ProductCard from "@/components/ProductCard";
+import { useProducts } from "@/hooks/useProducts";
 
 interface Address {
   id: string;
@@ -176,7 +181,6 @@ const ReviewSheet = ({
         </SheetHeader>
 
         <div className="space-y-6">
-          {/* Star picker */}
           <div>
             <p className="mb-3 text-sm font-semibold text-foreground">Your Rating *</p>
             <StarPicker
@@ -193,7 +197,6 @@ const ReviewSheet = ({
             )}
           </div>
 
-          {/* Text area */}
           <div>
             <p className="mb-2 text-sm font-semibold text-foreground">Your Review (optional)</p>
             <Textarea
@@ -206,7 +209,6 @@ const ReviewSheet = ({
             <p className="mt-1.5 text-right text-xs text-muted-foreground">{text.length}/500</p>
           </div>
 
-          {/* Submit */}
           <Button
             className="w-full"
             size="lg"
@@ -229,12 +231,115 @@ const ReviewSheet = ({
   );
 };
 
+// --- Profile Header Card ---
+const ProfileHeader = ({
+  user,
+  profile,
+  onSignOut,
+}: {
+  user: any;
+  profile: any;
+  onSignOut: () => void;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [displayName, setDisplayName] = useState(profile?.display_name || "");
+  const queryClient = useQueryClient();
+
+  const updateProfile = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: displayName.trim() } as Record<string, unknown>)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-profile", user.id] });
+      toast.success("Profile updated");
+      setEditing(false);
+    },
+    onError: () => toast.error("Failed to update profile"),
+  });
+
+  const initials = (profile?.display_name || user.email || "U")
+    .split(" ")
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <Card className="border-border overflow-hidden">
+      <div className="h-20 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20" />
+      <CardContent className="relative px-6 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10">
+          <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
+            <AvatarImage src={profile?.avatar_url} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0 pt-2">
+            {editing ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your name"
+                  className="h-9 max-w-[240px]"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 text-primary"
+                  onClick={() => updateProfile.mutate()}
+                  disabled={updateProfile.isPending}
+                >
+                  {updateProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9"
+                  onClick={() => { setEditing(false); setDisplayName(profile?.display_name || ""); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="font-heading text-2xl font-bold text-foreground truncate">
+                  {profile?.display_name || "Set your name"}
+                </h1>
+                <button
+                  onClick={() => { setDisplayName(profile?.display_name || ""); setEditing(true); }}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+          </div>
+          <Button variant="outline" onClick={onSignOut} className="gap-2 self-start sm:self-auto">
+            <LogOut className="h-4 w-4" /> Sign Out
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // --- Main Account Component ---
+type TabKey = "orders" | "addresses" | "wishlist" | "reviews";
+
 const Account = () => {
   const { user, loading, signOut } = useAuth();
   const { data: orders, isLoading: ordersLoading } = useMyOrders();
+  const { items: wishlistIds } = useWishlist();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"orders" | "addresses">("orders");
+  const [tab, setTab] = useState<TabKey>("orders");
   const [addingAddress, setAddingAddress] = useState(false);
   const [addressForm, setAddressForm] = useState({ label: "Home", name: "", phone: "", address: "", city: "" });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
@@ -259,36 +364,55 @@ const Account = () => {
     enabled: !!user,
   });
 
-  // Batch-fetch all reviews submitted by this user (for "already reviewed" state)
   const { data: submittedReviews = [] } = useQuery({
     queryKey: ["my-submitted-reviews", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_reviews" as any)
-        .select("product_id, order_id")
+        .select("product_id, order_id, rating, review_text, status, created_at")
         .eq("user_id", user!.id);
       if (error) throw error;
-      return (data as unknown as Array<{ product_id: string; order_id: string }>) ?? [];
+      return (data as unknown as Array<{ product_id: string; order_id: string; rating: number; review_text: string | null; status: string; created_at: string }>) ?? [];
     },
     enabled: !!user,
   });
 
-  // O(1) lookup set
   const reviewedSet = new Set(submittedReviews.map((r) => `${r.product_id}__${r.order_id}`));
 
-  // Fetch profile for author_name
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, email")
+        .select("display_name, email, avatar_url")
         .eq("user_id", user!.id)
         .single();
       return data;
     },
     enabled: !!user,
   });
+
+  // Fetch wishlist products using the same mapper as useProducts
+  const { data: allProducts = [], isLoading: wishlistLoading } = useProducts();
+  const wishlistProducts = allProducts.filter(p => wishlistIds.includes(p.id));
+
+  // Fetch product names for reviews tab
+  const reviewProductIds = [...new Set(submittedReviews.map(r => r.product_id))];
+  const { data: reviewProducts = [] } = useQuery({
+    queryKey: ["review-products", reviewProductIds],
+    queryFn: async () => {
+      if (reviewProductIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, image_url")
+        .in("id", reviewProductIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: reviewProductIds.length > 0,
+  });
+
+  const reviewProductMap = new Map(reviewProducts.map(p => [p.id, p]));
 
   const addAddress = useMutation({
     mutationFn: async (addr: Omit<Address, "id" | "is_default">) => {
@@ -366,37 +490,72 @@ const Account = () => {
     addAddress.mutate(addressForm);
   };
 
+  const tabs: { key: TabKey; label: string; icon: any; count?: number }[] = [
+    { key: "orders", label: "Orders", icon: Package, count: orders?.length },
+    { key: "wishlist", label: "Wishlist", icon: Heart, count: wishlistIds.length },
+    { key: "reviews", label: "My Reviews", icon: MessageSquare, count: submittedReviews.length },
+    { key: "addresses", label: "Addresses", icon: MapPin, count: addresses.length },
+  ];
+
+  const reviewStatusColors: Record<string, string> = {
+    pending: "bg-yellow-500/10 text-yellow-500",
+    approved: "bg-primary/10 text-primary",
+    rejected: "bg-destructive/10 text-destructive",
+  };
+
   return (
     <Layout>
       <SEOHead title="My Account" description="Manage your ThreadBD account, orders, and addresses." noindex />
       <PageTransition>
-        <div className="container mx-auto max-w-4xl px-4 py-12">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="font-heading text-3xl font-bold text-foreground">My Account</h1>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-            <Button variant="outline" onClick={signOut} className="gap-2">
-              <LogOut className="h-4 w-4" /> Sign Out
-            </Button>
+        <div className="container mx-auto max-w-4xl px-4 py-8 sm:py-12">
+          {/* Profile Header */}
+          <ProfileHeader user={user} profile={profile} onSignOut={signOut} />
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 mb-8">
+            {[
+              { label: "Orders", value: orders?.length ?? 0, icon: Package },
+              { label: "Wishlist", value: wishlistIds.length, icon: Heart },
+              { label: "Reviews", value: submittedReviews.length, icon: MessageSquare },
+              { label: "Addresses", value: addresses.length, icon: MapPin },
+            ].map(({ label, value, icon: Icon }) => (
+              <Card key={label} className="border-border">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold font-heading text-foreground">{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Tabs */}
-          <div className="mb-8 flex gap-4 border-b border-border">
-            {[
-              { key: "orders" as const, label: "Orders", icon: Package },
-              { key: "addresses" as const, label: "Addresses", icon: MapPin },
-            ].map(({ key, label, icon: Icon }) => (
+          <div className="mb-8 flex gap-1 overflow-x-auto border-b border-border scrollbar-none">
+            {tabs.map(({ key, label, icon: Icon, count }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={cn(
+                  "flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                   tab === key
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
+                )}
               >
-                <Icon className="h-4 w-4" /> {label}
+                <Icon className="h-4 w-4" />
+                {label}
+                {typeof count === "number" && count > 0 && (
+                  <span className={cn(
+                    "ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                    tab === key ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -412,7 +571,10 @@ const Account = () => {
                 <div className="py-12 text-center">
                   <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="font-heading text-lg font-semibold text-foreground">No orders yet</p>
-                  <p className="text-sm text-muted-foreground">Your order history will appear here.</p>
+                  <p className="text-sm text-muted-foreground mb-4">Your order history will appear here.</p>
+                  <Button asChild variant="outline">
+                    <Link to="/shop">Start Shopping</Link>
+                  </Button>
                 </div>
               ) : (
                 orders.map((order: Order) => {
@@ -448,7 +610,6 @@ const Account = () => {
                                   <span className="text-muted-foreground">৳{item.price * item.quantity}</span>
                                 </div>
 
-                                {/* Review CTA — only for delivered orders */}
                                 {isDelivered && (
                                   <div className={cn(
                                     "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-all",
@@ -510,6 +671,95 @@ const Account = () => {
                     </Card>
                   );
                 })
+              )}
+            </div>
+          )}
+
+          {/* Wishlist Tab */}
+          {tab === "wishlist" && (
+            <div>
+              {wishlistLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : wishlistProducts.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Heart className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
+                  <p className="font-heading text-lg font-semibold text-foreground">Your wishlist is empty</p>
+                  <p className="text-sm text-muted-foreground mb-4">Save items you love and shop later.</p>
+                  <Button asChild variant="outline">
+                    <Link to="/shop">Browse Products</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {wishlistProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reviews Tab */}
+          {tab === "reviews" && (
+            <div className="space-y-4">
+              {submittedReviews.length === 0 ? (
+                <div className="py-12 text-center">
+                  <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
+                  <p className="font-heading text-lg font-semibold text-foreground">No reviews yet</p>
+                  <p className="text-sm text-muted-foreground">Your product reviews will appear here after you write them.</p>
+                </div>
+              ) : (
+                submittedReviews
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((review, i) => {
+                    const product = reviewProductMap.get(review.product_id);
+                    return (
+                      <Card key={i} className="border-border">
+                        <CardContent className="flex gap-4 p-4">
+                          {product && (
+                            <Link to={`/product/${product.id}`} className="flex-shrink-0">
+                              <div className="h-16 w-16 overflow-hidden rounded-lg border border-border">
+                                <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                              </div>
+                            </Link>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                  {product?.name || "Product"}
+                                </p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={cn(
+                                        "h-3.5 w-3.5",
+                                        s <= review.rating ? "fill-primary text-primary" : "text-border"
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <Badge className={cn("text-[10px] capitalize", reviewStatusColors[review.status] || "bg-secondary text-foreground")}>
+                                {review.status}
+                              </Badge>
+                            </div>
+                            {review.review_text && (
+                              <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{review.review_text}</p>
+                            )}
+                            <p className="mt-1 text-[10px] text-muted-foreground">
+                              {new Date(review.created_at).toLocaleDateString("en-US", {
+                                year: "numeric", month: "short", day: "numeric",
+                              })}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
               )}
             </div>
           )}
