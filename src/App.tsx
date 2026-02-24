@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import ScrollToTop from "@/components/ScrollToTop";
+import { useApplyTheme } from "@/hooks/useTheme";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -36,6 +37,11 @@ import TrackOrder from "./pages/TrackOrder";
 
 const queryClient = new QueryClient();
 
+const ThemeApplier = () => {
+  useApplyTheme();
+  return null;
+};
+
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
   <QueryClientProvider client={queryClient}>
@@ -43,6 +49,7 @@ const App = () => (
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
+            <ThemeApplier />
             <Toaster />
             <Sonner />
             <BrowserRouter>
