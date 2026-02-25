@@ -14,6 +14,7 @@ import {
   Mail,
   Tag,
   MessageSquare,
+  FolderTree,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ const AdminSidebar = () => {
     { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
     { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
     { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
+    { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
     { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
