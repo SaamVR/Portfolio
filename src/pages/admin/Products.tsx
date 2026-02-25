@@ -16,10 +16,6 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<"products">;
 
-const PRODUCT_TYPES = ["T-Shirt", "Polo", "Shirt", "Drop Shoulder", "Undergarment", "Pants"];
-const CATEGORIES = ["Essentials", "Premium", "Street"];
-const BADGES = ["none", "New", "Sale"];
-
 const emptyProduct = {
   name: "",
   price: 0,
@@ -36,6 +32,8 @@ const emptyProduct = {
   stock: 0,
 };
 
+const BADGES = ["none", "New", "Sale"];
+
 const AdminProducts = () => {
   const { role } = useAuth();
   const isAdmin = role === "admin";
@@ -46,6 +44,8 @@ const AdminProducts = () => {
   const [form, setForm] = useState(emptyProduct);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [dbTypes, setDbTypes] = useState<string[]>([]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -59,6 +59,13 @@ const AdminProducts = () => {
 
   useEffect(() => {
     fetchProducts();
+    // Fetch dynamic categories & types
+    supabase.from("product_categories").select("name").order("sort_order").then(({ data }) => {
+      setDbCategories((data ?? []).map((r: any) => r.name));
+    });
+    supabase.from("product_types").select("name").order("sort_order").then(({ data }) => {
+      setDbTypes((data ?? []).map((r: any) => r.name));
+    });
   }, []);
 
   const openNew = () => {
@@ -264,7 +271,7 @@ const AdminProducts = () => {
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {dbTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -273,7 +280,7 @@ const AdminProducts = () => {
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {dbCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
