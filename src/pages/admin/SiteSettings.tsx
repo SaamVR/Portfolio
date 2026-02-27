@@ -651,12 +651,178 @@ const SiteSettings = () => {
         {/* Footer */}
         <TabsContent value="footer">
           <Card className="border-border">
-            <CardHeader><CardTitle>Footer</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label>About Text</Label>
-                <Textarea value={settings.footer?.about_text ?? ""} onChange={(e) => update("footer", "about_text", e.target.value)} rows={3} />
+            <CardHeader><CardTitle>Footer Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              {/* Brand */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Brand</h3>
+                <div className="grid gap-2">
+                  <Label>Brand Name</Label>
+                  <Input value={settings.footer?.brand_name ?? ""} placeholder="THREADBD" onChange={(e) => update("footer", "brand_name", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Highlighted Part (colored)</Label>
+                  <Input value={settings.footer?.brand_highlight ?? ""} placeholder="BD" onChange={(e) => update("footer", "brand_highlight", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Tagline</Label>
+                  <Textarea value={settings.footer?.about_text ?? ""} placeholder="Premium menswear crafted in Bangladesh." onChange={(e) => update("footer", "about_text", e.target.value)} rows={2} />
+                </div>
               </div>
+
+              {/* Newsletter */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
+                <div className="grid gap-2">
+                  <Label>Heading</Label>
+                  <Input value={settings.footer?.newsletter_heading ?? ""} placeholder="Newsletter" onChange={(e) => update("footer", "newsletter_heading", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Description</Label>
+                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Join 5,000+ ThreadBD fans for drops & deals." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Subscribed Message</Label>
+                  <Input value={settings.footer?.newsletter_subscribed ?? ""} placeholder="You're subscribed!" onChange={(e) => update("footer", "newsletter_subscribed", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Company Links */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">Company Links</h3>
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => {
+                    const links = settings.footer?.company_links ?? [];
+                    setSettings((prev) => ({
+                      ...prev,
+                      footer: { ...prev.footer, company_links: [...links, { label: "", url: "" }] },
+                    }));
+                  }}>
+                    <Plus className="h-4 w-4" /> Add Link
+                  </Button>
+                </div>
+                {((settings.footer?.company_links as { label: string; url: string }[]) ?? []).map((link, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <Input value={link.label} placeholder="Label" onChange={(e) => {
+                      const updated = [...(settings.footer?.company_links ?? [])];
+                      updated[i] = { ...updated[i], label: e.target.value };
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, company_links: updated } }));
+                    }} />
+                    <Input value={link.url} placeholder="/about" onChange={(e) => {
+                      const updated = [...(settings.footer?.company_links ?? [])];
+                      updated[i] = { ...updated[i], url: e.target.value };
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, company_links: updated } }));
+                    }} />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-destructive hover:text-destructive" onClick={() => {
+                      const updated = (settings.footer?.company_links ?? []).filter((_: any, idx: number) => idx !== i);
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, company_links: updated } }));
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom Links Column */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Extra Links Column</h3>
+                    <p className="text-xs text-muted-foreground">Optional additional links section</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => {
+                    const links = settings.footer?.extra_links ?? [];
+                    setSettings((prev) => ({
+                      ...prev,
+                      footer: { ...prev.footer, extra_links: [...links, { label: "", url: "" }] },
+                    }));
+                  }}>
+                    <Plus className="h-4 w-4" /> Add Link
+                  </Button>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Column Title</Label>
+                  <Input value={settings.footer?.extra_links_title ?? ""} placeholder="Quick Links" onChange={(e) => update("footer", "extra_links_title", e.target.value)} />
+                </div>
+                {((settings.footer?.extra_links as { label: string; url: string }[]) ?? []).map((link, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <Input value={link.label} placeholder="Label" onChange={(e) => {
+                      const updated = [...(settings.footer?.extra_links ?? [])];
+                      updated[i] = { ...updated[i], label: e.target.value };
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, extra_links: updated } }));
+                    }} />
+                    <Input value={link.url} placeholder="/shop" onChange={(e) => {
+                      const updated = [...(settings.footer?.extra_links ?? [])];
+                      updated[i] = { ...updated[i], url: e.target.value };
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, extra_links: updated } }));
+                    }} />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-destructive hover:text-destructive" onClick={() => {
+                      const updated = (settings.footer?.extra_links ?? []).filter((_: any, idx: number) => idx !== i);
+                      setSettings((prev) => ({ ...prev, footer: { ...prev.footer, extra_links: updated } }));
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Section Order */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Section Order</h3>
+                <p className="text-xs text-muted-foreground">Drag to reorder footer columns. Use arrows to rearrange.</p>
+                {(() => {
+                  const sections: { id: string; label: string }[] = (settings.footer?.section_order ?? [
+                    { id: "brand", label: "Brand & Tagline" },
+                    { id: "shop", label: "Shop Links" },
+                    { id: "company", label: "Company Links" },
+                    { id: "newsletter", label: "Newsletter" },
+                  ]);
+                  return sections.map((section, i) => (
+                    <div key={section.id} className="flex items-center gap-2 rounded-md border border-border p-2">
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex-1 text-sm">{section.label}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={i === 0} onClick={() => {
+                        const updated = [...sections];
+                        [updated[i - 1], updated[i]] = [updated[i], updated[i - 1]];
+                        setSettings((prev) => ({ ...prev, footer: { ...prev.footer, section_order: updated } }));
+                      }}>↑</Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={i === sections.length - 1} onClick={() => {
+                        const updated = [...sections];
+                        [updated[i], updated[i + 1]] = [updated[i + 1], updated[i]];
+                        setSettings((prev) => ({ ...prev, footer: { ...prev.footer, section_order: updated } }));
+                      }}>↓</Button>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Bottom Bar */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Bottom Bar</h3>
+                <div className="grid gap-2">
+                  <Label>Payment Methods Text</Label>
+                  <Input value={settings.footer?.payment_text ?? ""} placeholder="We accept bKash, Nagad, and Cash on Delivery across Bangladesh." onChange={(e) => update("footer", "payment_text", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Copyright Text</Label>
+                  <Input value={settings.footer?.copyright ?? ""} placeholder="© 2026 ThreadBD. All rights reserved." onChange={(e) => update("footer", "copyright", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Show/hide Shop Links */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.footer?.show_shop_links ?? true} onCheckedChange={(v) => update("footer", "show_shop_links", v)} />
+                  <Label>Show Shop Category Links</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.footer?.show_newsletter ?? true} onCheckedChange={(v) => update("footer", "show_newsletter", v)} />
+                  <Label>Show Newsletter Section</Label>
+                </div>
+              </div>
+
               <SaveButton settingKey="footer" />
             </CardContent>
           </Card>

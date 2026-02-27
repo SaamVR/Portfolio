@@ -4,13 +4,71 @@ import { Send, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { productTypes } from "@/data/products";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const emailSchema = z.string().trim().email("Please enter a valid email");
+
+interface FooterLink {
+  label: string;
+  url: string;
+}
+
+interface FooterSection {
+  id: string;
+  label: string;
+}
+
+interface FooterSettings {
+  brand_name?: string;
+  brand_highlight?: string;
+  about_text?: string;
+  newsletter_heading?: string;
+  newsletter_description?: string;
+  newsletter_subscribed?: string;
+  company_links?: FooterLink[];
+  extra_links?: FooterLink[];
+  extra_links_title?: string;
+  section_order?: FooterSection[];
+  payment_text?: string;
+  copyright?: string;
+  show_shop_links?: boolean;
+  show_newsletter?: boolean;
+}
+
+const defaultCompanyLinks: FooterLink[] = [
+  { label: "About Us", url: "/about" },
+  { label: "Contact", url: "/contact" },
+  { label: "FAQ & Returns", url: "/faq" },
+  { label: "Track Order", url: "/track-order" },
+];
+
+const defaultSectionOrder: FooterSection[] = [
+  { id: "brand", label: "Brand & Tagline" },
+  { id: "shop", label: "Shop Links" },
+  { id: "company", label: "Company Links" },
+  { id: "newsletter", label: "Newsletter" },
+];
 
 const Footer = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(() => localStorage.getItem("threadbd-subscribed") === "true");
   const [error, setError] = useState("");
+  const { data: footer } = useSiteSettings<FooterSettings>("footer");
+
+  const brandName = footer?.brand_name || "THREAD";
+  const brandHighlight = footer?.brand_highlight || "BD";
+  const aboutText = footer?.about_text || "Premium menswear crafted in Bangladesh. Quality fabrics, bold designs.";
+  const newsletterHeading = footer?.newsletter_heading || "Newsletter";
+  const newsletterDesc = footer?.newsletter_description || "Join 5,000+ ThreadBD fans for drops & deals.";
+  const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
+  const companyLinks = footer?.company_links?.length ? footer.company_links : defaultCompanyLinks;
+  const extraLinks = footer?.extra_links ?? [];
+  const extraLinksTitle = footer?.extra_links_title || "Quick Links";
+  const sectionOrder = footer?.section_order?.length ? footer.section_order : defaultSectionOrder;
+  const paymentText = footer?.payment_text || "We accept bKash, Nagad, and Cash on Delivery across Bangladesh.";
+  const copyrightText = footer?.copyright || "© 2026 ThreadBD. All rights reserved.";
+  const showShopLinks = footer?.show_shop_links ?? true;
+  const showNewsletter = footer?.show_newsletter ?? true;
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,19 +84,21 @@ const Footer = () => {
     toast.success("You're subscribed!", { description: "Welcome to the ThreadBD family." });
   };
 
-  return (
-    <footer className="border-t border-border bg-card py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div>
+  const renderSection = (sectionId: string) => {
+    switch (sectionId) {
+      case "brand":
+        return (
+          <div key="brand">
             <h3 className="font-heading text-lg font-bold text-foreground">
-              THREAD<span className="text-primary">BD</span>
+              {brandName}<span className="text-primary">{brandHighlight}</span>
             </h3>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Premium menswear crafted in Bangladesh. Quality fabrics, bold designs.
-            </p>
+            <p className="mt-3 text-sm text-muted-foreground">{aboutText}</p>
           </div>
-          <div>
+        );
+      case "shop":
+        if (!showShopLinks) return null;
+        return (
+          <div key="shop">
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
             <div className="flex flex-col gap-2">
               {productTypes.map((t) => (
@@ -52,25 +112,33 @@ const Footer = () => {
               ))}
             </div>
           </div>
-          <div>
+        );
+      case "company":
+        return (
+          <div key="company">
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
             <div className="flex flex-col gap-2">
-              <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">About Us</Link>
-              <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">Contact</Link>
-              <Link to="/faq" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">FAQ & Returns</Link>
-              <Link to="/track-order" className="text-sm text-muted-foreground hover:text-foreground smooth-hover">Track Order</Link>
+              {companyLinks.map((link, i) => (
+                <Link key={i} to={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
-          <div>
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Newsletter</h4>
+        );
+      case "newsletter":
+        if (!showNewsletter) return null;
+        return (
+          <div key="newsletter">
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{newsletterHeading}</h4>
             {subscribed ? (
               <div className="flex items-center gap-2 text-sm text-primary">
                 <CheckCircle className="h-4 w-4" />
-                <span className="font-medium">You're subscribed!</span>
+                <span className="font-medium">{subscribedMsg}</span>
               </div>
             ) : (
               <>
-                <p className="mb-3 text-xs text-muted-foreground">Join 5,000+ ThreadBD fans for drops & deals.</p>
+                <p className="mb-3 text-xs text-muted-foreground">{newsletterDesc}</p>
                 <form onSubmit={handleSubscribe} className="flex gap-2">
                   <input
                     type="email"
@@ -91,10 +159,44 @@ const Footer = () => {
               </>
             )}
           </div>
+        );
+      case "extra":
+        if (!extraLinks.length) return null;
+        return (
+          <div key="extra">
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
+            <div className="flex flex-col gap-2">
+              {extraLinks.map((link, i) => (
+                <Link key={i} to={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Build sections list, include "extra" if links exist
+  const sections = [...sectionOrder];
+  if (extraLinks.length && !sections.find((s) => s.id === "extra")) {
+    sections.push({ id: "extra", label: "Extra Links" });
+  }
+
+  const renderedSections = sections.map((s) => renderSection(s.id)).filter(Boolean);
+  const colCount = renderedSections.length;
+
+  return (
+    <footer className="border-t border-border bg-card py-12">
+      <div className="container mx-auto px-4">
+        <div className={`grid grid-cols-1 gap-8 md:grid-cols-${Math.min(colCount, 4)}`}>
+          {renderedSections}
         </div>
         <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          <p className="mb-2">We accept bKash, Nagad, and Cash on Delivery across Bangladesh.</p>
-          © 2026 ThreadBD. All rights reserved.
+          <p className="mb-2">{paymentText}</p>
+          {copyrightText}
         </div>
       </div>
     </footer>
