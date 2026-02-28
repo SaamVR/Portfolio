@@ -41,22 +41,9 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
-    const { password } = await req.json();
-    if (!password || typeof password !== "string") {
-      return new Response(
-        JSON.stringify({ error: "Setup password is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // First-admin bootstrap is now passwordless: any authenticated user can claim
+    // admin only when no admin exists yet.
 
-    // Verify setup password
-    const setupPassword = Deno.env.get("ADMIN_SETUP_PASSWORD");
-    if (!setupPassword || password !== setupPassword) {
-      return new Response(
-        JSON.stringify({ error: "Invalid setup password" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Check if any admin already exists
     const { data: existingAdmins, error: existingAdminsError } = await supabaseAdmin

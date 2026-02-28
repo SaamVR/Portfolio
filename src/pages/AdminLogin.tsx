@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, KeyRound, Lock, Mail } from "lucide-react";
+import { Loader2, ShieldCheck, KeyRound, Mail } from "lucide-react";
 
 const AdminLogin = () => {
   const { user, role, loading, refreshRole } = useAuth();
@@ -15,7 +15,6 @@ const AdminLogin = () => {
 
   const [email, setEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [setupPassword, setSetupPassword] = useState("");
   const [sendingLink, setSendingLink] = useState(false);
   const [claimingInvite, setClaimingInvite] = useState(false);
   const [claimingSetup, setClaimingSetup] = useState(false);
@@ -29,6 +28,31 @@ const AdminLogin = () => {
     const next = new URLSearchParams(searchParams);
     next.set("mode", nextMode);
     setSearchParams(next, { replace: true });
+  };
+
+  const getFunctionErrorMessage = async (error: unknown, fallback: string) => {
+    if (error && typeof error === "object" && "context" in error) {
+      const context = (error as { context?: Response }).context;
+      if (context) {
+        try {
+          const payload = await context.clone().json();
+          if (payload?.error) {
+            return {
+              message: String(payload.error),
+              description: payload?.details ? String(payload.details) : undefined,
+            };
+          }
+        } catch {
+          // no-op
+        }
+      }
+    }
+
+    if (error instanceof Error) {
+      return { message: error.message || fallback, description: undefined };
+    }
+
+    return { message: fallback, description: undefined };
   };
 
   if (loading) {
@@ -81,7 +105,8 @@ const AdminLogin = () => {
       });
 
       if (error) {
-        toast.error(error.message || "Failed to claim invite code");
+        const parsed = await getFunctionErrorMessage(error, "Failed to claim invite code");
+        toast.error(parsed.message, { description: parsed.description });
         return;
       }
 
@@ -101,15 +126,13 @@ const AdminLogin = () => {
   };
 
   const handleSetup = async () => {
-    if (!setupPassword.trim()) return;
     setClaimingSetup(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-setup", {
-        body: { password: setupPassword.trim() },
-      });
+      const { data, error } = await supabase.functions.invoke("admin-setup");
 
       if (error) {
-        toast.error(error.message || "Failed to complete setup");
+        const parsed = await getFunctionErrorMessage(error, "Failed to complete setup");
+        toast.error(parsed.message, { description: parsed.description });
         return;
       }
 
@@ -137,7 +160,7 @@ const AdminLogin = () => {
           </div>
           <CardTitle className="font-heading text-2xl">Admin Access</CardTitle>
           <CardDescription>
-            {user ? "Choose setup password or invite code" : "Sign in first with your email"}
+            {user ? "Choose first-admin claim or invite code" : "Sign in first with your email"}
           </CardDescription>
         </CardHeader>
 
@@ -187,20 +210,12 @@ const AdminLogin = () => {
               </div>
 
               {mode === "setup" ? (
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={setupPassword}
-                      onChange={(e) => setSetupPassword(e.target.value)}
-                      placeholder="Setup password"
-                      className="pl-10"
-                      onKeyDown={(e) => e.key === "Enter" && handleSetup()}
-                    />
-                  </div>
-                  <Button onClick={handleSetup} disabled={claimingSetup || !setupPassword.trim()}>
-                    {claimingSetup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Claim"}
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    If no admin exists yet, click below to claim first-admin access for this account.
+                  </p>
+                  <Button onClick={handleSetup} disabled={claimingSetup} className="w-full">
+                    {claimingSetup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Claim Admin Access"}
                   </Button>
                 </div>
               ) : (
@@ -222,7 +237,7 @@ const AdminLogin = () => {
               )}
 
               <p className="text-xs text-muted-foreground">
-                Setup works only when no admin exists yet; otherwise use invite codes.
+                First-admin claim works only once; after that, use invite codes.
               </p>
             </div>
           )}
