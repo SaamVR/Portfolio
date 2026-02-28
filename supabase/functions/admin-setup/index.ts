@@ -14,13 +14,12 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "You must be signed in" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "You must be signed in" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Verify user using service role to avoid signing-key issues
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -33,19 +32,14 @@ Deno.serve(async (req) => {
     } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid session" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const userId = user.id;
 
-    // First-admin bootstrap is now passwordless: any authenticated user can claim
-    // admin only when no admin exists yet.
-
-
-    // Check if any admin already exists
     const { data: existingAdmins, error: existingAdminsError } = await supabaseAdmin
       .from("user_roles")
       .select("id")
@@ -66,7 +60,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user already has a role
     const { data: existingRoles, error: existingRoleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -87,7 +80,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Grant admin role (idempotent for retried requests)
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role", ignoreDuplicates: true });
@@ -100,15 +92,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, role: "admin" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, role: "admin" }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("admin-setup unexpected error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
