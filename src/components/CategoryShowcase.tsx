@@ -13,7 +13,7 @@ const categories = [
 
 const CategoryShowcase = () => {
   return (
-    <section className="py-20">
+    <section className="py-24">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
@@ -30,7 +30,7 @@ const CategoryShowcase = () => {
                   to={`/shop?type=${cat.type}`}
                   className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 text-center smooth-hover hover:border-primary/40 hover:-translate-y-1 hover:premium-shadow"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>

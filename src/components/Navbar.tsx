@@ -55,12 +55,15 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               >
                 <Link
                   to={link.to}
-                  className={`flex items-center gap-1 text-sm font-medium transition-colors ${
-                    location.pathname === link.to
+                  className={`relative flex items-center gap-1 py-1 text-sm font-medium transition-colors ${
+                    location.pathname === link.to || (link.to === "/shop" && location.pathname.startsWith("/shop"))
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
+                  {(location.pathname === link.to || (link.to === "/shop" && location.pathname.startsWith("/shop"))) && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-primary" />
+                  )}
                   {link.label}
                   {link.hasDropdown && <ChevronDown className="h-3 w-3" />}
                 </Link>
@@ -99,7 +102,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                 className={`absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary transition-all duration-300 ${isDark ? "opacity-100 scale-100" : "opacity-30 scale-75"}`}
               />
               <span
-                className={`absolute top-0.5 h-7 w-7 rounded-full bg-foreground shadow-md transition-transform duration-300 ease-out ${isDark ? "translate-x-[26px]" : "translate-x-0.5"}`}
+                className={`absolute top-0.5 h-7 w-7 rounded-full shadow-md transition-transform duration-300 ease-out ${isDark ? "translate-x-[26px] bg-foreground" : "translate-x-0.5 bg-card border border-border"}`}
               />
             </button>
 
