@@ -23,6 +23,7 @@ import Wishlist from "./pages/Wishlist";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import AdminLogin from "./pages/AdminLogin";
+import AdminSetup from "./pages/AdminSetup";
 import AdminLayout from "./components/admin/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
@@ -70,6 +71,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/setup" element={<AdminSetup />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="products" element={<AdminProducts />} />
