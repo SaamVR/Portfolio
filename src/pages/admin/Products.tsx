@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
 
 type Product = Tables<"products">;
 
@@ -241,26 +243,19 @@ const AdminProducts = () => {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Main Image URL *</Label>
-              <Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
+              <Label>Main Image *</Label>
+              <CloudinaryUpload
+                value={form.image_url}
+                onChange={(url) => setForm({ ...form, image_url: url })}
+                folder="products"
+                label="Upload main image"
+              />
             </div>
-            <div className="grid gap-2">
-              <Label>Additional Images (up to 4)</Label>
-              {[0, 1, 2, 3].map((i) => (
-                <Input
-                  key={`img-${i}`}
-                  value={(form.images ?? [])[i] ?? ""}
-                  onChange={(e) => {
-                    const updated = [...(form.images ?? [])];
-                    // Ensure array is long enough
-                    while (updated.length <= i) updated.push("");
-                    updated[i] = e.target.value;
-                    setForm({ ...form, images: updated });
-                  }}
-                  placeholder={`Image ${i + 2} URL`}
-                />
-              ))}
-            </div>
+            <CloudinaryMultiUpload
+              images={form.images ?? []}
+              onChange={(images) => setForm({ ...form, images })}
+              folder="products"
+            />
             <div className="grid gap-2">
               <Label>Description</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
