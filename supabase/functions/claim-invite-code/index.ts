@@ -13,17 +13,12 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -31,16 +26,16 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseUser.auth.getUser();
-    if (userError || !user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Invalid session" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userId = claimsData.claims.sub as string;
 
     const { code } = await req.json();
     if (!code || typeof code !== "string") {
@@ -50,11 +45,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     // Check if user already has a role
     const { data: existingRole } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (existingRole) {
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     // Assign role
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: user.id, role: invite.role });
+      .insert({ user_id: userId, role: invite.role });
 
     if (roleError) {
       return new Response(
@@ -102,14 +102,14 @@ Deno.serve(async (req) => {
     // Mark invite as used
     await supabaseAdmin
       .from("invite_codes")
-      .update({ used_by: user.id, used_at: new Date().toISOString() })
+      .update({ used_by: userId, used_at: new Date().toISOString() })
       .eq("id", invite.id);
 
     return new Response(
       JSON.stringify({ success: true, role: invite.role }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch {
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
