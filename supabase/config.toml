@@ -1,1 +1,7 @@
 project_id = "ycliisgipceqsjmlmnjj"
+
+[functions.admin-setup]
+verify_jwt = false
+
+[functions.claim-invite-code]
+verify_jwt = false

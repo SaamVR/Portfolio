@@ -27,7 +27,11 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid session" }),
@@ -54,14 +58,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if any admin already exists (reuse supabaseAdmin from above)
-
     // Check if any admin already exists
-    const { data: existingAdmins } = await supabaseAdmin
+    const { data: existingAdmins, error: existingAdminsError } = await supabaseAdmin
       .from("user_roles")
       .select("id")
       .eq("role", "admin")
       .limit(1);
+
+    if (existingAdminsError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to validate admin state", details: existingAdminsError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (existingAdmins && existingAdmins.length > 0) {
       return new Response(
@@ -71,26 +80,33 @@ Deno.serve(async (req) => {
     }
 
     // Check if user already has a role
-    const { data: existingRole } = await supabaseAdmin
+    const { data: existingRoles, error: existingRoleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .maybeSingle();
+      .limit(1);
 
-    if (existingRole) {
+    if (existingRoleError) {
       return new Response(
-        JSON.stringify({ error: "You already have a role assigned", role: existingRole.role }),
+        JSON.stringify({ error: "Failed to validate existing role", details: existingRoleError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingRoles && existingRoles.length > 0) {
+      return new Response(
+        JSON.stringify({ error: "You already have a role assigned", role: existingRoles[0].role }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Grant admin role
+    // Grant admin role (idempotent for retried requests)
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: userId, role: "admin" });
+      .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role", ignoreDuplicates: true });
 
     if (roleError) {
-      console.error("Role insert error:", JSON.stringify(roleError));
+      console.error("Role upsert error:", JSON.stringify(roleError));
       return new Response(
         JSON.stringify({ error: "Failed to assign admin role", details: roleError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -101,7 +117,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true, role: "admin" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch {
+  } catch (error) {
+    console.error("admin-setup unexpected error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
