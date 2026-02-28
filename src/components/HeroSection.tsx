@@ -72,8 +72,16 @@ const HeroSection = () => {
             style={{ transform: `translateY(${scrollY}px) scale(1.1)` }}
           />
         )}
-        {/* Dark gradient from bottom */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+        {/* Admin-configurable overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundColor: overlayColor || "hsl(var(--background))",
+            opacity: overlayOpacity / 100,
+          }}
+        />
+        {/* Bottom gradient for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         {/* Grain texture overlay */}
         <div className="absolute inset-0 grain-texture opacity-[0.03]" />
       </div>
