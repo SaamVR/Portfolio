@@ -17,7 +17,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const wishlisted = isInWishlist(product.id);
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-card smooth-hover hover:border-primary/30 hover:-translate-y-1 hover:premium-shadow">
+    <div className="group relative overflow-hidden rounded-xl border border-border bg-card smooth-hover hover:border-primary/30 hover:-translate-y-1 hover:premium-shadow">
       <Link
         to={productUrl(product.id, product.name)}
         className="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -79,6 +79,36 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
               </p>
             )}
           </div>
+        </div>
+        <div className="p-4">
+          <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{product.category}</p>
+          <h3 className="font-heading text-base font-semibold text-foreground">{product.name}</h3>
+          <div className="mt-2 flex items-center gap-2">
+            <p className="font-heading text-lg font-bold text-primary transition-colors duration-300 group-hover:text-accent">
+              ৳{product.price}
+            </p>
+            {product.originalPrice && (
+              <p className="font-heading text-sm text-muted-foreground line-through">
+                ৳{product.originalPrice}
+              </p>
+            )}
+          </div>
+          {/* Color swatches */}
+          {product.colors.length > 1 && (
+            <div className="mt-2.5 flex items-center gap-1.5">
+              {product.colors.slice(0, 5).map((color) => (
+                <span
+                  key={color}
+                  className="h-3 w-3 rounded-full border border-border"
+                  style={{ backgroundColor: color.toLowerCase() === 'white' ? '#f5f5f5' : color.toLowerCase() }}
+                  title={color}
+                />
+              ))}
+              {product.colors.length > 5 && (
+                <span className="text-[10px] text-muted-foreground">+{product.colors.length - 5}</span>
+              )}
+            </div>
+          )}
         </div>
       </Link>
 

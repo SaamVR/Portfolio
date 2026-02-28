@@ -52,7 +52,7 @@ const HeroSection = () => {
   const isVideo = mediaType === "video" && mediaUrl;
 
   return (
-    <section ref={sectionRef} className="relative flex min-h-[85vh] items-center justify-center overflow-hidden">
+    <section ref={sectionRef} className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
         {isVideo ? (
           <video
@@ -72,14 +72,10 @@ const HeroSection = () => {
             style={{ transform: `translateY(${scrollY}px) scale(1.1)` }}
           />
         )}
-        <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: overlayColor || "hsl(var(--background))",
-            opacity: overlayOpacity / 100,
-          }}
-        />
+        {/* Dark gradient from bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+        {/* Grain texture overlay */}
+        <div className="absolute inset-0 grain-texture opacity-[0.03]" />
       </div>
 
       {/* Floating accent */}
@@ -87,17 +83,19 @@ const HeroSection = () => {
       <div className="absolute left-16 bottom-40 h-14 w-14 rounded-full bg-accent/10 blur-xl animate-float" style={{ animationDelay: "1.5s" }} />
 
       <div className="relative z-10 container mx-auto px-4 text-center">
-        <p className="mb-4 opacity-0 animate-blur-in text-sm font-medium uppercase tracking-[0.3em] text-primary">
+        {/* Decorative line */}
+        <div className="mx-auto mb-6 h-px w-12 bg-primary opacity-0 animate-blur-in" />
+        <p className="mb-4 opacity-0 animate-blur-in text-sm font-medium uppercase tracking-[0.3em] text-primary drop-shadow-md">
           {tagline}
         </p>
         <h1
-          className="mb-6 font-heading text-5xl font-bold leading-tight text-foreground opacity-0 animate-blur-in md:text-7xl"
+          className="mb-6 font-heading text-5xl font-bold leading-tight text-white opacity-0 animate-blur-in md:text-7xl drop-shadow-lg"
           style={{ animationDelay: "0.15s" }}
         >
           {title} <span className="text-gradient">{highlight}</span>
         </h1>
         <p
-          className="mx-auto mb-10 max-w-lg text-lg text-muted-foreground opacity-0 animate-blur-in"
+          className="mx-auto mb-10 max-w-lg text-lg text-white/80 opacity-0 animate-blur-in drop-shadow-md"
           style={{ animationDelay: "0.3s" }}
         >
           {subtitle}
@@ -105,13 +103,13 @@ const HeroSection = () => {
         <div className="flex items-center justify-center gap-4 opacity-0 animate-blur-in" style={{ animationDelay: "0.45s" }}>
           <Link
             to={ctaLink}
-            className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground smooth-hover hover:opacity-90 glow-shadow"
+            className="rounded-md bg-primary px-8 py-3.5 font-heading text-sm font-semibold text-primary-foreground smooth-hover hover:opacity-90 glow-shadow"
           >
             {ctaText}
           </Link>
           <Link
             to={secondaryCtaLink}
-            className="rounded-md border border-border px-8 py-3 font-heading text-sm font-semibold text-foreground smooth-hover hover:bg-secondary"
+            className="rounded-md border border-white/30 bg-white/10 backdrop-blur-sm px-8 py-3.5 font-heading text-sm font-semibold text-white smooth-hover hover:bg-white/20"
           >
             {secondaryCtaText}
           </Link>

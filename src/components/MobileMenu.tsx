@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Heart, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/SearchBar";
 import { productTypes } from "@/data/products";
 import { useState } from "react";
@@ -27,6 +29,8 @@ const navLinks = [
 
 const MobileMenu = () => {
   const { totalItems } = useCart();
+  const { totalItems: wishlistCount } = useWishlist();
+  const { user } = useAuth();
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
 
@@ -99,7 +103,21 @@ const MobileMenu = () => {
           ))}
         </nav>
 
-        <div className="mt-6 border-t border-border pt-4">
+        <div className="mt-6 border-t border-border pt-4 flex flex-col gap-1">
+          <Link
+            to={user ? "/account" : "/auth"}
+            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <User className="h-5 w-5" />
+            {user ? "My Account" : "Sign In"}
+          </Link>
+          <Link
+            to="/wishlist"
+            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <Heart className="h-5 w-5" />
+            Wishlist {wishlistCount > 0 && `(${wishlistCount})`}
+          </Link>
           <Link
             to="/cart"
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
