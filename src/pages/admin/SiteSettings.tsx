@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Upload, Check, Palette } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette } from "lucide-react";
+import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { themePresets, type ThemePreset } from "@/lib/themePresets";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,8 +22,6 @@ const SiteSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -81,31 +80,6 @@ const SiteSettings = () => {
     setSettings((prev) => ({ ...prev, faq_entries: updated }));
   };
 
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const ext = file.name.split(".").pop();
-    const fileName = `hero-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("hero-media").upload(fileName, file, { upsert: true });
-    if (error) {
-      toast.error("Upload failed: " + error.message);
-      setUploading(false);
-      return;
-    }
-    const { data: urlData } = supabase.storage.from("hero-media").getPublicUrl(fileName);
-    const isVideo = file.type.startsWith("video/");
-    setSettings((prev) => ({
-      ...prev,
-      hero_section: {
-        ...prev.hero_section,
-        media_url: urlData.publicUrl,
-        media_type: isVideo ? "video" : "image",
-      },
-    }));
-    toast.success("Media uploaded!");
-    setUploading(false);
-  };
 
   const SaveButton = ({ settingKey }: { settingKey: string }) => (
     <Button onClick={() => saveSetting(settingKey)} disabled={saving === settingKey} className="gap-2">
@@ -348,8 +322,26 @@ const SiteSettings = () => {
               <div className="border-t border-border pt-4 space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Background Media</h3>
                 <div className="grid gap-2">
-                  <Label>Media URL (or upload below)</Label>
-                  <Input value={settings.hero_section?.media_url ?? ""} placeholder="https://..." onChange={(e) => update("hero_section", "media_url", e.target.value)} />
+                  <Label>Hero Image / Video</Label>
+                  <CloudinaryUpload
+                    value={settings.hero_section?.media_url ?? ""}
+                    onChange={(url) => {
+                      const isVideo = url && (url.includes("/video/") || url.match(/\.(mp4|webm|mov)$/i));
+                      setSettings((prev) => ({
+                        ...prev,
+                        hero_section: {
+                          ...prev.hero_section,
+                          media_url: url,
+                          media_type: isVideo ? "video" : "image",
+                        },
+                      }));
+                    }}
+                    folder="hero"
+                    accept="image/*,video/*"
+                    label="Upload hero media"
+                    resourceType="auto"
+                  />
+                  <p className="text-xs text-muted-foreground">Recommended: 1920×1080 for images, MP4 under 10MB for videos</p>
                 </div>
                 <div className="grid gap-2">
                   <Label>Media Type</Label>
@@ -360,14 +352,6 @@ const SiteSettings = () => {
                       <SelectItem value="video">Video</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div>
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleMediaUpload} />
-                  <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-2">
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    Upload Image or Video
-                  </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">Recommended: 1920×1080 for images, MP4 under 10MB for videos</p>
                 </div>
                 {settings.hero_section?.media_url && (
                   <div className="overflow-hidden rounded-lg border border-border">
