@@ -1,51 +1,84 @@
 
-# Fix Delivery Fee Display — Cart & Checkout Pages
 
-## Root Cause
+## Version 1.0 Review & Refinement Plan
 
-Two separate bugs:
+### Critical Issue Found
 
-### Bug 1 — Cart page (hardcoded, no fetch)
-`Cart.tsx` has no delivery fee logic at all. The "Delivery" row is permanently hardcoded to show "Free" regardless of what is configured in the admin settings. The cart never fetches `delivery_settings` from the database.
+**Hero section is broken in light mode** — the overlay completely washes out the hero image, CTA buttons, and subtitle text, making the entire section appear as a blank light grey area. This is the most urgent fix.
 
-### Bug 2 — Checkout page (wrong default state)
-`Checkout.tsx` initialises `deliverySettings` with `enabled: false` as the default:
+### Visual Design Improvements
+
+1. **Fix Hero Section Light Mode Contrast**
+   - Reduce the overlay opacity from 50% to ~25% in light mode so the hero image is visible
+   - Make the CTA buttons use solid backgrounds with strong contrast (primary green + bordered white)
+   - Ensure subtitle text is readable against the image by using a text-shadow or semi-transparent backdrop
+
+2. **Refine the Hero Section for Premium Feel**
+   - Add a subtle grain/noise texture overlay for editorial quality
+   - Increase the hero height to `min-h-[90vh]` for a more immersive first impression
+   - Add a thin decorative line or divider element above the tagline
+
+3. **Elevate Product Cards**
+   - Add subtle inner shadow on hover for depth
+   - Slightly increase border-radius to `rounded-xl` for a softer, more modern look
+   - Add a smooth color swatch preview row at the bottom of each card (small dots showing available colors)
+
+4. **Improve Category Showcase**
+   - Use a slightly larger card with more padding for a spacious, luxurious feel
+   - Add a subtle gradient background behind the icon circle on hover
+
+5. **Typography & Spacing Polish**
+   - Increase section spacing from `py-20` to `py-24` for more breathing room between homepage sections
+   - Add a subtle section divider (thin line or gradient fade) between major sections
+
+### UX & Navigation Improvements
+
+6. **Navbar Enhancement**
+   - Add an active link indicator (underline bar animation) on the current nav item
+   - The theme toggle knob is hard to see in light mode — improve its contrast
+
+7. **Mobile Menu**
+   - Add a Wishlist and Account link to the mobile slide-out menu (currently only Cart is in the footer section)
+
+8. **Footer Grid Fix**
+   - The dynamic `md:grid-cols-${colCount}` class won't work with Tailwind's JIT — it needs to use a fixed class or inline style. This is a hidden bug.
+
+### Technical Summary
+
+```text
+Files to modify:
+├── src/components/HeroSection.tsx      — fix overlay, increase height, add texture
+├── src/components/ProductCard.tsx      — rounded-xl, color dots preview
+├── src/components/CategoryShowcase.tsx — spacing & hover refinement
+├── src/components/Navbar.tsx           — active link indicator, toggle contrast
+├── src/components/MobileMenu.tsx       — add wishlist + account links
+├── src/components/Footer.tsx           — fix grid-cols dynamic class bug
+├── src/components/Layout.tsx           — no changes needed
+├── src/index.css                       — add grain texture utility class
+├── src/pages/Index.tsx                 — increase section spacing
 ```
-const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({ enabled: false, ... });
-```
-This means on the first render (before the async fetch completes), the fee is always calculated as `0`. While the data eventually loads and triggers a re-render, there is no loading indicator — users see "Free" flash first, then the correct fee appears (or doesn't, if the component unmounts or React batches the update poorly). The fix is to change the default to `enabled: true` so the default behaviour is to show the real fee while loading.
 
-## What Will Be Fixed
+### What's Already Working Well (No Changes Needed)
+- Checkout flow with bKash/Nagad/COD is solid
+- Product detail page with color swatches, size selector, quantity picker, sticky mobile bar
+- Cart page with delivery fee nudge
+- Account page with orders, addresses, wishlist, reviews tabs
+- Admin panel with sidebar navigation and role-based access
+- Shop page filtering/sorting system
+- Announcement bar with rotating messages
+- WhatsApp button placement
+- Mobile bottom navigation
 
-### Cart.tsx — Add real delivery fee logic
-- Import and use the `useSiteSettings` hook (already exists and is used elsewhere in the app) to fetch `delivery_settings`
-- Calculate `deliveryFee` the same way Checkout does: fee applies if `enabled && totalPrice < free_threshold`
-- Show a loading skeleton while the setting fetches
-- Display the actual fee (e.g. `৳80`) or `Free` with a green colour when the threshold is met
-- Update the "Total" to include `deliveryFee`
-- Show a helpful note like "Free delivery on orders over ৳2,000" if the threshold isn't yet met
+### Version 1.0 Confirmation
+After these refinements, the app will have:
+- A polished, premium visual identity in both light and dark modes
+- Fully working e-commerce flow (browse → detail → cart → checkout → order success → track)
+- Admin dashboard with products, orders, messages, reviews, coupons, categories, invite codes, users, and site settings management
+- Customer accounts with order history, addresses, wishlist, and reviews
+- Google OAuth for admin, email/password for customers
+- bKash, Nagad, and COD payment methods
+- SEO meta tags and structured data
+- Responsive design with dedicated mobile navigation
 
-### Checkout.tsx — Fix the default state
-- Change the `useState` default from `enabled: false` to `enabled: true` so the fee is shown immediately during loading (before the fetch resolves)
-- This prevents the "Free" flash that happens on first render
+This constitutes a complete Version 1.0 ready for production use.
 
-## Technical Changes
-
-### Files to Modify
-
-**`src/pages/Cart.tsx`**
-1. Import `useSiteSettings` hook
-2. Fetch `delivery_settings` with `useSiteSettings<DeliverySettings>("delivery_settings")`
-3. Compute `deliveryFee` from the fetched data (with `totalPrice` from cart)
-4. Update the Order Summary section to show the real fee and real total
-5. Add a small "Free delivery on orders over ৳X" nudge line when applicable (encourages users to add more to cart — industry standard e-commerce practice)
-
-**`src/pages/Checkout.tsx`**
-1. Change line 51: `{ enabled: false, ... }` → `{ enabled: true, free_threshold: 2000, delivery_fee: 80 }` so the fallback assumption matches the database defaults and avoids a "Free" flash
-
-## No Database or Schema Changes Needed
-The `delivery_settings` key already exists in the database with the correct value:
-```json
-{ "enabled": true, "delivery_fee": 80, "free_threshold": 2000 }
-```
-This is purely a frontend display fix.
