@@ -20,23 +20,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify user
-    const supabaseUser = createClient(
+    // Verify user using service role to avoid signing-key issues
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid session" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     const { password } = await req.json();
     if (!password || typeof password !== "string") {
@@ -55,10 +54,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Check if any admin already exists (reuse supabaseAdmin from above)
 
     // Check if any admin already exists
     const { data: existingAdmins } = await supabaseAdmin
@@ -94,8 +90,9 @@ Deno.serve(async (req) => {
       .insert({ user_id: userId, role: "admin" });
 
     if (roleError) {
+      console.error("Role insert error:", JSON.stringify(roleError));
       return new Response(
-        JSON.stringify({ error: "Failed to assign admin role" }),
+        JSON.stringify({ error: "Failed to assign admin role", details: roleError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
