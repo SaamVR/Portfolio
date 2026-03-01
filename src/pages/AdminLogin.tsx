@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,8 +60,11 @@ const AdminLogin = () => {
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/admin/login" + (mode === "setup" ? "?mode=setup" : ""),
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/admin/login" + (mode === "setup" ? "?mode=setup" : ""),
+        },
       });
       if (error) {
         toast.error("Google sign-in failed", { description: error.message });
