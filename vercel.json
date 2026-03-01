@@ -2,6 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/auth/(.*)", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" },
+    { "source": "/oauth/(.*)", "destination": "/index.html" }
   ]
 }
