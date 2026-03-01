@@ -79,20 +79,6 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
               </p>
             )}
           </div>
-        </div>
-        <div className="p-4">
-          <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{product.category}</p>
-          <h3 className="font-heading text-base font-semibold text-foreground">{product.name}</h3>
-          <div className="mt-2 flex items-center gap-2">
-            <p className="font-heading text-lg font-bold text-primary transition-colors duration-300 group-hover:text-accent">
-              ৳{product.price}
-            </p>
-            {product.originalPrice && (
-              <p className="font-heading text-sm text-muted-foreground line-through">
-                ৳{product.originalPrice}
-              </p>
-            )}
-          </div>
           {/* Color swatches */}
           {product.colors.length > 1 && (
             <div className="mt-2.5 flex items-center gap-1.5">
