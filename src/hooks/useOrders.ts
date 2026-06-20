@@ -113,7 +113,7 @@ export function useUpdateOrderStatus() {
     mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
       const { error } = await supabase
         .from("orders")
-        .update({ status } as Record<string, unknown>)
+        .update({ status } as any)
         .eq("id", orderId);
       if (error) throw error;
     },
