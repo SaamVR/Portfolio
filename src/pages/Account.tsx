@@ -249,7 +249,7 @@ const ProfileHeader = ({
     mutationFn: async () => {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: displayName.trim() } as Record<string, unknown>)
+        .update({ display_name: displayName.trim() } as any)
         .eq("user_id", user.id);
       if (error) throw error;
     },
@@ -446,11 +446,11 @@ const Account = () => {
     mutationFn: async (id: string) => {
       await supabase
         .from("customer_addresses")
-        .update({ is_default: false } as Record<string, unknown>)
+        .update({ is_default: false } as any)
         .eq("user_id", user!.id);
       const { error } = await supabase
         .from("customer_addresses")
-        .update({ is_default: true } as Record<string, unknown>)
+        .update({ is_default: true } as any)
         .eq("id", id);
       if (error) throw error;
     },
