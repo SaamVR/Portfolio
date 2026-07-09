@@ -1,7 +1,25 @@
-project_id = "tzscitueluztfacszeqp"
+project_id = "sndqmhxqvlpcogcnklss"
 
 [functions.admin-setup]
-verify_jwt = false
+verify_jwt = true
 
 [functions.claim-invite-code]
+verify_jwt = false
+
+[functions.stock-notifications]
+enabled = true
+verify_jwt = false
+import_map = "./functions/stock-notifications/deno.json"
+entrypoint = "./functions/stock-notifications/index.ts"
+
+[functions.bkash-payment]
+verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
+
+[functions.auth-bridge]
+verify_jwt = false
+
+[functions.merchant-signup]
 verify_jwt = false
