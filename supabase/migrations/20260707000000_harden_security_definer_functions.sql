@@ -1,4 +1,4 @@
-﻿-- Hardening Security Definer functions by revoking EXECUTE from public
+-- Hardening Security Definer functions by revoking EXECUTE from public
 
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM public;
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO authenticated;
