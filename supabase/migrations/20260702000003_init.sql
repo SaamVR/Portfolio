@@ -35,6 +35,16 @@ AS $$
   )
 $$;
 
+CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role text)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.has_role(_user_id, _role::public.app_role)
+$$;
+
 -- Helper: is any admin
 CREATE OR REPLACE FUNCTION public.is_admin(_user_id UUID)
 RETURNS BOOLEAN
