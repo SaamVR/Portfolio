@@ -278,13 +278,18 @@ ALTER TABLE IF EXISTS public.contact_messages
 ALTER TABLE IF EXISTS public.customer_addresses
   ADD COLUMN IF NOT EXISTS store_id uuid REFERENCES public.stores(id) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_store_key
-  ON public.site_settings(store_id, key)
-  WHERE store_id IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'site_settings') THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_store_key
+      ON public.site_settings(store_id, key)
+      WHERE store_id IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_global_key
-  ON public.site_settings(key)
-  WHERE store_id IS NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_site_settings_global_key
+      ON public.site_settings(key)
+      WHERE store_id IS NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_products_store_id ON public.products(store_id);
 CREATE INDEX IF NOT EXISTS idx_orders_store_id ON public.orders(store_id);
