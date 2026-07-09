@@ -1,6 +1,76 @@
 -- Squashed Migration generated on 2026-07-02T15:10:17.990Z
 
 -- =========================================
+-- Legacy platform auth helpers
+-- =========================================
+
+DO $$
+BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'co_admin');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role public.app_role NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role = _role
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role IN ('admin', 'co_admin')
+  );
+$$;
+
+DROP POLICY IF EXISTS "Admins can view roles" ON public.user_roles;
+CREATE POLICY "Admins can view roles"
+  ON public.user_roles FOR SELECT
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+
+DROP POLICY IF EXISTS "Admins can manage roles" ON public.user_roles;
+CREATE POLICY "Admins can manage roles"
+  ON public.user_roles FOR ALL
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+DROP POLICY IF EXISTS "Users can view own role" ON public.user_roles;
+CREATE POLICY "Users can view own role"
+  ON public.user_roles FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- =========================================
 -- Source: 01_platform_core.sql
 -- =========================================
 
@@ -88,6 +158,7 @@ CREATE TABLE IF NOT EXISTS public.stores (
   logo_url text,
   favicon_url text,
   is_published boolean NOT NULL DEFAULT false,
+  lifecycle_status text NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -875,5 +946,4 @@ VALUES
   )
 ON CONFLICT (store_id, key) DO UPDATE
 SET value = EXCLUDED.value, updated_at = now();
-
 

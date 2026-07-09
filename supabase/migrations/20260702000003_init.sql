@@ -4,10 +4,15 @@
 
 
 -- Role enum
-CREATE TYPE public.app_role AS ENUM ('admin', 'co_admin');
+DO $$
+BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'co_admin');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- User roles table
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   role app_role NOT NULL,
@@ -45,11 +50,13 @@ AS $$
 $$;
 
 -- RLS for user_roles: only admins can read
+DROP POLICY IF EXISTS "Admins can view roles" ON public.user_roles;
 CREATE POLICY "Admins can view roles"
   ON public.user_roles FOR SELECT
   TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Admins can manage roles" ON public.user_roles;
 CREATE POLICY "Admins can manage roles"
   ON public.user_roles FOR ALL
   TO authenticated
@@ -57,6 +64,7 @@ CREATE POLICY "Admins can manage roles"
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
 -- Users can see own role
+DROP POLICY IF EXISTS "Users can view own role" ON public.user_roles;
 CREATE POLICY "Users can view own role"
   ON public.user_roles FOR SELECT
   TO authenticated
