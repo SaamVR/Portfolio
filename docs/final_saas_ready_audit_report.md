@@ -324,6 +324,7 @@ Implemented status:
 
 - `.github/workflows/database-smoke.yml` now boots a disposable local Supabase stack in GitHub Actions, runs `supabase db reset --local`, exports local service-role credentials, and executes `npm run test:db` so CI uses the same combined RLS-plus-billing smoke gate as local release checks.
 - `.github/workflows/preview-smoke.yml` now boots a local Supabase stack plus the Next app in GitHub Actions and runs a Playwright smoke path for `admin login -> merchant signup -> onboarding -> product create -> publish -> storefront load`.
+- `.github/workflows/secret-scan.yml` now runs Gitleaks on pull requests and `main` pushes so committed env files or leaked credentials are more likely to get caught before release.
 
 ## Suggested 4-Week Roadmap
 

@@ -27,9 +27,13 @@ dist-ssr
 
 # Environment files
 .env
+.env.*
 .env.local
 .env.production
+!.env.example
 
 # Local working files
 scratch/
 supabase/.temp/
+
+.vercel
