@@ -9,9 +9,9 @@ interface AnnouncementSettings {
 }
 
 const DEFAULT_MESSAGES = [
+  "Enjoy 5% Off with bKash",
   "Free Delivery on Orders Over ৳2000",
   "New Drop Shoulders Just Landed 🔥",
-  "Pay with bKash for 5% Off",
 ];
 
 const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {
@@ -23,7 +23,9 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
     : DEFAULT_MESSAGES;
   const bgColor = settings?.bg_color ?? "";
 
-  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem("announcement-dismissed") === "true");
+  const [dismissed, setDismissed] = useState(() => 
+    typeof window !== "undefined" ? sessionStorage.getItem("announcement-dismissed") === "true" : false
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
 

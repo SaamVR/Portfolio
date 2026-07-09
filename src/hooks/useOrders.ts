@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth-context";
 
 export interface Order {
   id: string;
@@ -29,50 +29,63 @@ export interface Order {
   user_id: string | null;
 }
 
-export function useMyOrders() {
+export function useMyOrders(explicitStoreId?: string | null) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["my-orders", user?.id],
+    queryKey: ["my-orders", user?.id, explicitStoreId],
     queryFn: async () => {
+      if (!explicitStoreId) return [];
       const { data, error } = await supabase
         .from("orders")
         .select("*")
+        .eq("user_id", user!.id)
+        .eq("store_id", explicitStoreId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Order[];
     },
-    enabled: !!user,
+    enabled: !!user && !!explicitStoreId,
   });
 }
 
-export function useAllOrders() {
+export function useAllOrders(explicitStoreId?: string | null) {
   return useQuery({
-    queryKey: ["admin-orders"],
+    queryKey: ["admin-orders", explicitStoreId],
     queryFn: async () => {
+      if (!explicitStoreId) return [];
       const { data, error } = await supabase
         .from("orders")
         .select("*")
+        .eq("store_id", explicitStoreId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Order[];
     },
+    enabled: !!explicitStoreId,
   });
 }
 
-function generateOrderNumber(): string {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `TBD-${date}-${rand}`;
+function createIdempotencyKey() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function useCreateOrder() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (order: {
+      idempotencyKey?: string;
+      store_id?: string;
       user_id?: string | null;
       items: Order["items"];
       subtotal: number;
       delivery_fee?: number;
+      discount_amount?: number;
+      coupon_code?: string | null;
       total: number;
       customer_name: string;
       customer_phone: string;
@@ -82,27 +95,58 @@ export function useCreateOrder() {
       payment_method: string;
       notes?: string;
     }) => {
-      const orderNumber = generateOrderNumber();
-      const payload = {
-        user_id: order.user_id || null,
-        items: order.items as unknown as Record<string, unknown>[],
-        subtotal: order.subtotal,
-        delivery_fee: order.delivery_fee ?? 0,
-        total: order.total,
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        customer_email: order.customer_email || null,
-        shipping_address: order.shipping_address,
-        shipping_city: order.shipping_city,
-        payment_method: order.payment_method,
-        notes: order.notes || null,
-        order_number: orderNumber,
+      if (!order.store_id) {
+        throw new Error("No store selected");
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
       };
-      const { error } = await supabase
-        .from("orders")
-        .insert(payload as any);
-      if (error) throw error;
-      return { order_number: orderNumber } as unknown as Order;
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/orders/create", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          idempotencyKey: order.idempotencyKey || createIdempotencyKey(),
+          storeId: order.store_id,
+          items: order.items.map((item) => ({
+            productId: item.productId,
+            size: item.size,
+            quantity: item.quantity,
+          })),
+          deliveryFee: order.delivery_fee ?? 0,
+          discountAmount: order.discount_amount ?? Math.max(0, order.subtotal + (order.delivery_fee ?? 0) - order.total),
+          couponCode: order.coupon_code || null,
+          customerName: order.customer_name,
+          customerPhone: order.customer_phone,
+          customerEmail: order.customer_email || null,
+          shippingAddress: order.shipping_address,
+          shippingCity: order.shipping_city,
+          paymentMethod: order.payment_method,
+          notes: order.notes || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to create order");
+      }
+
+      const data = await response.json();
+      return data.order as Order;
+    },
+    onSuccess: (_data, variables) => {
+      if (variables.store_id) {
+        queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["admin-orders", variables.store_id] });
+        queryClient.invalidateQueries({ queryKey: ["products", variables.store_id] });
+      }
     },
   });
 }
@@ -110,15 +154,39 @@ export function useCreateOrder() {
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
-      const { error } = await supabase
-        .from("orders")
-        .update({ status } as any)
-        .eq("id", orderId);
-      if (error) throw error;
+    mutationFn: async ({ orderId, status, storeId }: { orderId: string; status: string; storeId?: string }) => {
+      if (!storeId) {
+        throw new Error("No active store selected");
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error("Please sign in again before updating orders");
+      }
+
+      const response = await fetch("/api/orders/status", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId, status, storeId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to update order status");
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    onSuccess: (_data, variables) => {
+      if (variables.storeId) {
+        queryClient.invalidateQueries({ queryKey: ["admin-orders", variables.storeId] });
+      }
     },
   });
 }
+
+
+
+

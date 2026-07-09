@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { absoluteUrl } from "@/lib/siteUrl";
 
 interface SEOHeadProps {
   title?: string;
@@ -10,20 +12,24 @@ interface SEOHeadProps {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const SITE_NAME = "ThreadBD";
-const DEFAULT_DESC = "Shop premium streetwear t-shirts from Bangladesh. Pay with bKash, Nagad, or COD.";
-const DEFAULT_OG_IMAGE = "https://threadbd.lovable.app/og-image.png";
+const DEFAULT_OG_IMAGE = absoluteUrl("/og-image.png");
 
 const SEOHead = ({
   title,
-  description = DEFAULT_DESC,
+  description,
   canonical,
   ogImage = DEFAULT_OG_IMAGE,
   ogType = "website",
   noindex = false,
   jsonLd,
 }: SEOHeadProps) => {
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Premium T-shirts from Bangladesh`;
+  const { data: brand } = useSiteSettings("brand_settings");
+
+  const SITE_NAME = brand?.name ? `${brand.name}${brand.highlight || ""}` : "Commerce Engine";
+  const DEFAULT_DESC = brand?.seo_description || "Launch and manage online stores with CMS pages, products, payments, and templates.";
+  
+  const finalDescription = description || DEFAULT_DESC;
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : (brand?.seo_title || `${SITE_NAME} - Ecommerce CMS`);
 
   useEffect(() => {
     document.title = fullTitle;
@@ -38,14 +44,14 @@ const SEOHead = ({
       el.setAttribute("content", content);
     };
 
-    setMeta("name", "description", description);
+    setMeta("name", "description", finalDescription);
     setMeta("property", "og:title", fullTitle);
-    setMeta("property", "og:description", description);
+    setMeta("property", "og:description", finalDescription);
     setMeta("property", "og:type", ogType);
     setMeta("property", "og:image", ogImage);
     setMeta("name", "twitter:card", "summary_large_image");
     setMeta("name", "twitter:title", fullTitle);
-    setMeta("name", "twitter:description", description);
+    setMeta("name", "twitter:description", finalDescription);
     setMeta("name", "twitter:image", ogImage);
 
     if (noindex) {
@@ -86,9 +92,10 @@ const SEOHead = ({
     return () => {
       document.querySelectorAll('script[data-seo-jsonld]').forEach((s) => s.remove());
     };
-  }, [fullTitle, description, canonical, ogImage, ogType, noindex, jsonLd]);
+  }, [fullTitle, finalDescription, canonical, ogImage, ogType, noindex, jsonLd]);
 
   return null;
 };
 
 export default SEOHead;
+

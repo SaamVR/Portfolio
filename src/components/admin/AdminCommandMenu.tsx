@@ -1,0 +1,177 @@
+"use client";
+
+import React, { useEffect } from "react";
+import { useNavigate } from "@/lib/react-router-dom-shim";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Mail,
+  MessageSquare,
+  Tag,
+  FolderTree,
+  PanelsTopLeft,
+  Settings,
+  KeyRound,
+  Users,
+  Palette,
+  CreditCard,
+  Truck,
+  HelpCircle,
+  Info,
+  Gift,
+  Compass,
+  Plus,
+  Flame,
+  MousePointerClick,
+  Eye,
+  Megaphone,
+  Rocket,
+  Images,
+  HardDriveDownload,
+  Shield,
+} from "lucide-react";
+import { useAuth } from "@/hooks/auth-context";
+import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
+import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandSeparator,
+} from "@/components/ui/command";
+
+interface AdminCommandMenuProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
+export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProps) {
+  const navigate = useNavigate();
+  const { platformRole, role , activeStoreId} = useAuth();
+  const { data: entitlementData } = useStoreEntitlements(activeStoreId);
+  const isPlatformAdmin = platformRole === "admin";
+  const isAdmin = role === "admin";
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen(!open);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, [open, setOpen]);
+
+  const runCommand = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  const navItems = [
+    { label: "Dashboard", icon: LayoutDashboard, category: "Pages", action: () => navigate("/admin") },
+    { label: "Products Catalog", icon: Package, category: "Pages", action: () => navigate("/admin/products") },
+    { label: "Orders Manager", icon: ShoppingCart, category: "Pages", action: () => navigate("/admin/orders") },
+    { label: "Messages & Inquiries", icon: Mail, category: "Pages", action: () => navigate("/admin/messages") },
+    { label: "Reviews Validation", icon: MessageSquare, category: "Pages", action: () => navigate("/admin/reviews") },
+    { label: "Discount Coupons", icon: Tag, category: "Pages", action: () => navigate("/admin/coupons") },
+    { label: "Categories & Types Manager", icon: FolderTree, category: "Pages", action: () => navigate("/admin/categories"), show: isAdmin },
+    { label: "Store Setup Onboarding", icon: Rocket, category: "Pages", action: () => navigate("/admin/onboarding"), show: isAdmin },
+    { label: "CMS Builder Workspace", icon: PanelsTopLeft, category: "Pages", action: () => navigate("/admin/cms"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { label: "Media Library Workspace", icon: Images, category: "Pages", action: () => navigate("/admin/media"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
+    { label: "Store Backup & Import Workspace", icon: HardDriveDownload, category: "Pages", action: () => navigate("/admin/backup"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
+    { label: "Site Customization Settings", icon: Settings, category: "Pages", action: () => navigate("/admin/site-settings"), show: isAdmin },
+    { label: "Invite Registration Codes", icon: KeyRound, category: "Pages", action: () => navigate("/admin/invite-codes"), show: isAdmin },
+    { label: "Users & Staff Permissions", icon: Users, category: "Pages", action: () => navigate("/admin/users"), show: isAdmin },
+    { label: "CMS Admin Workspace", icon: Shield, category: "Pages", action: () => navigate("/cms-admin"), show: isPlatformAdmin },
+  ].filter((item) => item.show ?? true);
+
+  const sectorItems = [
+    { label: "Brand & SEO (Global Store Settings)", icon: Compass, action: () => navigate("/admin/site-settings?tab=brand_seo") },
+    { label: "Home Page Sections Content Setup", icon: LayoutDashboard, action: () => navigate("/admin/site-settings?tab=home_sections") },
+    { label: "Hero Banner, Video & Overlay Editor", icon: Flame, action: () => navigate("/admin/site-settings?tab=hero") },
+    { label: "Media Library Assets Browser", icon: Images, action: () => navigate("/admin/media") },
+    { label: "Store Backup Export & Import Tools", icon: HardDriveDownload, action: () => navigate("/admin/backup") },
+    { label: "Promo Banner Text & Glow Customizer", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=promo") },
+    { label: "Announcement Rotating Messages Bar", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=announcement") },
+    { label: "Theme Preset Palettes, Fonts & Border Style", icon: Palette, action: () => navigate("/admin/site-settings?tab=themes") },
+    { label: "Exit-Intent Popups & Upsells Builder", icon: MousePointerClick, action: () => navigate("/admin/site-settings?tab=upsells") },
+    { label: "bKash & Nagad Merchant Numbers Setup", icon: CreditCard, action: () => navigate("/admin/site-settings?tab=payment") },
+    { label: "Inside/Outside Dhaka Delivery Fee Rates", icon: Truck, action: () => navigate("/admin/site-settings?tab=delivery") },
+    { label: "WhatsApp Support Helpline Number", icon: HelpCircle, action: () => navigate("/admin/site-settings?tab=support") },
+    { label: "About Page Content & Custom Text", icon: Info, action: () => navigate("/admin/site-settings?tab=about") },
+    { label: "FAQ & Refund Policy Editor", icon: HelpCircle, action: () => navigate("/admin/site-settings?tab=faq") },
+    { label: "Loyalty Points Rewards Rules", icon: Gift, action: () => navigate("/admin/site-settings?tab=loyalty") },
+    { label: "Contact Form Email Setup", icon: Mail, action: () => navigate("/admin/site-settings?tab=contact") },
+    { label: "Footer Links, Copywrite & Brand Text", icon: Settings, action: () => navigate("/admin/site-settings?tab=footer") },
+    { label: "CMS Pages, Blocks & Revision Builder", icon: PanelsTopLeft, action: () => navigate("/admin/cms") },
+  ];
+
+  const quickActions = [
+    { label: "Add New Product Drop", icon: Plus, action: () => navigate("/admin/products?action=add") },
+    { label: "Create Promo Coupon Code", icon: Plus, action: () => navigate("/admin/coupons?action=create") },
+    { label: "View Unread Inquiries", icon: Eye, action: () => navigate("/admin/messages?filter=unread") },
+    { label: "Review Pending Product Ratings", icon: Eye, action: () => navigate("/admin/reviews?filter=pending") },
+    { label: "Continue Store Setup", icon: Rocket, action: () => navigate("/admin/onboarding") },
+  ];
+
+  return (
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandInput placeholder="Search dashboard sectors, pages, actions... (e.g. bKash, Hero, Orders)" />
+      <CommandList className="max-h-[360px]">
+        <CommandEmpty>No matching dashboard sectors or actions found.</CommandEmpty>
+        
+        <CommandGroup heading="Quick Actions">
+          {quickActions.map((item, idx) => (
+            <CommandItem
+              key={idx}
+              onSelect={() => runCommand(item.action)}
+              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground"
+            >
+              <item.icon className="h-4 w-4 text-primary shrink-0" />
+              <span>{item.label}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        
+        <CommandSeparator />
+        
+        <CommandGroup heading="Dashboard Modules & Pages">
+          {navItems.map((item, idx) => (
+            <CommandItem
+              key={idx}
+              onSelect={() => runCommand(item.action)}
+              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground"
+            >
+              <item.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span>{item.label}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        
+        <CommandSeparator />
+        
+        <CommandGroup heading="Site Settings & Customization Sectors">
+          {sectorItems.map((item, idx) => (
+            <CommandItem
+              key={idx}
+              onSelect={() => runCommand(item.action)}
+              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground"
+            >
+              <item.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-medium">{item.label}</span>
+                <span className="text-[10px] text-muted-foreground">Site Settings Sector</span>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  );
+}
+

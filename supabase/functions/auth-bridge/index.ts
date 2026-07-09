@@ -1,241 +1,107 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { importX509, jwtVerify } from "https://esm.sh/jose@5.9.6";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type FirebaseJwtPayload = {
-  aud: string;
-  auth_time?: number;
-  exp: number;
-  firebase?: {
-    identities?: Record<string, string[]>;
-    sign_in_provider?: string;
-  };
-  iat: number;
-  iss: string;
-  phone_number?: string;
-  sub: string;
-  user_id?: string;
-};
-
-const FIREBASE_CERTS_URL =
-  "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
-
-function getEnv(name: string) {
-  return Deno.env.get(name) ?? "";
-}
-
-function getFirebaseProjectId() {
-  return (
-    getEnv("FIREBASE_PROJECT_ID") ||
-    getEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID") ||
-    ""
-  );
-}
-
-function getBridgeSecret() {
-  return getEnv("AUTH_BRIDGE_SECRET") || getFirebaseProjectId() || "commerce-engine-auth-bridge";
-}
-
-function buildSyntheticEmail(uid: string) {
-  return `firebase-${uid}@users.commerce-engine.local`;
-}
-
-async function buildBridgePassword(uid: string) {
-  const payload = new TextEncoder().encode(`${uid}:${getBridgeSecret()}`);
-  const digest = await crypto.subtle.digest("SHA-256", payload);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function verifyFirebaseIdToken(idToken: string) {
-  const projectId = getFirebaseProjectId();
-  if (!projectId) {
-    throw new Error("Firebase project ID is not configured");
-  }
-
-  const [headerSegment] = idToken.split(".");
-  if (!headerSegment) {
-    throw new Error("Invalid Firebase token");
-  }
-
-  const decodedHeader = JSON.parse(atob(headerSegment.replace(/-/g, "+").replace(/_/g, "/"))) as {
-    alg?: string;
-    kid?: string;
-  };
-
-  if (!decodedHeader.kid) {
-    throw new Error("Firebase token missing key id");
-  }
-
-  const certsResponse = await fetch(FIREBASE_CERTS_URL, { cache: "no-store" });
-  if (!certsResponse.ok) {
-    throw new Error("Failed to fetch Firebase verification certificates");
-  }
-
-  const certs = (await certsResponse.json()) as Record<string, string>;
-  const cert = certs[decodedHeader.kid];
-  if (!cert) {
-    throw new Error("Firebase token certificate not found");
-  }
-
-  const key = await importX509(cert, decodedHeader.alg || "RS256");
-  const issuer = `https://securetoken.google.com/${projectId}`;
-  const { payload } = await jwtVerify(idToken, key, {
-    issuer,
-    audience: projectId,
-  });
-
-  return payload as unknown as FirebaseJwtPayload;
-}
-
-async function findAuthUserIdByEmail(supabaseAdmin: ReturnType<typeof createClient>, email: string) {
-  const { data, error } = await supabaseAdmin
-    .rpc("get_user_id_by_email", { email_to_find: email });
-
-  if (error) {
-    throw new Error(`Failed to lookup auth user: ${error.message}`);
-  }
-
-  return (data as string) ?? null;
-}
-
-async function signInToSupabase(email: string, password: string) {
-  const supabaseUrl = getEnv("SUPABASE_URL");
-  const publishableKey =
-    getEnv("SUPABASE_ANON_KEY") ||
-    getEnv("SUPABASE_PUBLISHABLE_KEY") ||
-    getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
-
-  if (!supabaseUrl || !publishableKey) {
-    throw new Error("Supabase client credentials are not configured");
-  }
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: publishableKey,
-      Authorization: `Bearer ${publishableKey}`,
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload.error_description || payload.msg || "Failed to create Supabase session");
-  }
-
-  return payload;
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    const { id_token, display_name } = await req.json();
+
+    if (!id_token) {
+      throw new Error("Missing id_token");
+    }
+
+    // Call Google Identity Toolkit to verify the Firebase ID Token
+    const firebaseProjectId = Deno.env.get("FIREBASE_PROJECT_ID");
+    const firebaseApiKey = Deno.env.get("FIREBASE_API_KEY");
+    
+    if (!firebaseProjectId || !firebaseApiKey) {
+      throw new Error("Firebase environment variables are not configured on the server.");
+    }
+
+    const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: id_token })
+    });
+
+    const verifyData = await verifyRes.json();
+    if (verifyData.error) {
+      throw new Error(`Firebase token verification failed: ${verifyData.error.message}`);
+    }
+
+    const firebaseUser = verifyData.users[0];
+    const uid = firebaseUser.localId;
+    const email = firebaseUser.email || `${uid}@firebase-phone.local`;
+    const phone_number = firebaseUser.phoneNumber;
+
     const supabaseAdmin = createClient(
-      getEnv("SUPABASE_URL"),
-      getEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const body = await req.json();
-    const idToken = String(body.id_token ?? "").trim();
-    const displayName = typeof body.display_name === "string" ? body.display_name.trim() : null;
+    // Check if user exists in Supabase
+    const { data: users, error: searchError } = await supabaseAdmin.auth.admin.listUsers();
+    if (searchError) throw searchError;
 
-    if (!idToken) {
-      return new Response(JSON.stringify({ error: "Firebase ID token is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    let supabaseUser = users.users.find(u => u.email === email || (phone_number && u.phone === phone_number));
 
-    const firebaseUser = await verifyFirebaseIdToken(idToken);
-    const firebaseUid = firebaseUser.user_id || firebaseUser.sub;
-    const phoneNumber = firebaseUser.phone_number || firebaseUser.firebase?.identities?.phone?.[0] || null;
-
-    if (!firebaseUid || !phoneNumber) {
-      return new Response(JSON.stringify({ error: "Verified Firebase user is missing a phone number" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const email = buildSyntheticEmail(firebaseUid);
-    const password = await buildBridgePassword(firebaseUid);
-    const existingUserId = await findAuthUserIdByEmail(supabaseAdmin, email);
-
-    if (existingUserId) {
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUserId, {
-        password,
-        phone: phoneNumber,
-        phone_confirm: true,
-        user_metadata: {
-          auth_source: "firebase_phone",
-          firebase_uid: firebaseUid,
-          full_name: displayName || phoneNumber,
-          phone_number: phoneNumber,
-        },
-      });
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
-    } else {
-      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
+    if (!supabaseUser) {
+      // Create user
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        phone: phone_number,
         email_confirm: true,
-        phone: phoneNumber,
-        phone_confirm: true,
+        phone_confirm: !!phone_number,
         user_metadata: {
-          auth_source: "firebase_phone",
-          firebase_uid: firebaseUid,
-          full_name: displayName || phoneNumber,
-          phone_number: phoneNumber,
-        },
+          full_name: display_name || phone_number,
+          firebase_uid: uid
+        }
       });
-
-      if (createError) {
-        throw new Error(createError.message);
-      }
+      if (createError) throw createError;
+      supabaseUser = newUser.user;
     }
 
-    const session = await signInToSupabase(email, password);
+    // Generate custom JWT or trigger a magic link / OTP? 
+    // Wait, the best way to login as a user from admin is to generate a link or use sign in with password if we know it.
+    // Deno edge function can just return a custom token or we can use admin.generateLink.
+    // Alternatively, we can use an undocumented generate token endpoint, but for Supabase it's easier to just use `admin.generateLink` for magic link and return the token.
+    
+    // Instead of messing with tokens directly, let's just generate a magic link and parse the access token from it.
+    // Wait, generating a magic link sends an email.
+    // To seamlessly log in a user from the backend in Supabase, we can use Postgres function or create a custom JWT, but Supabase doesn't natively accept custom JWTs easily without setting up external auth provider.
+    // Another way is to just set a random password for the user, and then sign in with that password.
+    
+    const tempPassword = crypto.randomUUID() + crypto.randomUUID();
+    await supabaseAdmin.auth.admin.updateUserById(supabaseUser.id, { password: tempPassword });
+    
+    const { data: authData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      email: email,
+      password: tempPassword,
+    });
+    
+    if (signInError) throw signInError;
 
-    const { data: memberships } = await supabaseAdmin
-      .from("store_memberships")
-      .select("store_id, role, stores:store_id (slug, name)")
-      .eq("user_id", session.user.id);
-
-    return new Response(
-      JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        user: session.user,
-        memberships: memberships ?? [],
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  } catch (error) {
-    console.error("auth-bridge unexpected error:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal server error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({
+      access_token: authData.session?.access_token,
+      refresh_token: authData.session?.refresh_token,
+      user: authData.user
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    });
   }
 });

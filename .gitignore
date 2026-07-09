@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.next
+*.tsbuildinfo
 dist
 dist-ssr
 *.local
@@ -22,3 +24,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Local working files
+scratch/
+supabase/.temp/

@@ -1,13 +1,15 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "@/lib/react-router-dom-shim";
 import { ShoppingBag, Search, X, ChevronDown, Heart, User, Sun, Moon } from "lucide-react";
-import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
-import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/context/useCart";
+import { useWishlist } from "@/context/wishlist-context";
+import { useAuth } from "@/hooks/auth-context";
 import { useTheme } from "next-themes";
 import SearchBar from "@/components/SearchBar";
 import MobileMenu from "@/components/MobileMenu";
-import { productTypes } from "@/data/products";
+import { useProductTypes } from "@/hooks/useProductTypes";
+import { useProductCategories } from "@/hooks/useProductCategories";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const navLinks = [
   { label: "Home", to: "/" },
@@ -17,15 +19,29 @@ const navLinks = [
 ];
 
 const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean }) => {
-  const { totalItems } = useCart();
+  const { totalItems, setIsCartOpen } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const { data: brand } = useSiteSettings("brand_settings");
+  const { data: dynamicProductTypes = [] } = useProductTypes();
+  const { data: dynamicProductCategories = [] } = useProductCategories();
 
-  const isDark = theme === "dark";
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const brandName = brand?.name || "THREAD";
+  const brandHighlight = brand?.highlight || "BD";
+
+  const isDark = mounted ? theme === "dark" : false;
+  const displayWishlistCount = mounted ? wishlistCount : 0;
+  const displayTotalItems = mounted ? totalItems : 0;
 
   return (
     <>
@@ -33,53 +49,89 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
         Skip to content
       </a>
       <nav
-        className={`fixed left-0 right-0 z-50 border-b border-border glass-effect ${announcementVisible ? "top-9" : "top-0"}`}
+        className={`fixed left-0 right-0 z-50 border-b border-border glass-panel transition-all duration-500 ${announcementVisible ? "top-9" : "top-0"}`}
         role="navigation"
         aria-label="Main navigation"
       >
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <MobileMenu />
-            <Link to="/" className="font-heading text-xl font-bold tracking-wider text-foreground">
-              THREAD<span className="text-primary">BD</span>
+            <Link to="/" className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
+              {brandName}<span className="text-primary">{brandHighlight}</span>
             </Link>
           </div>
 
-          <div className="hidden items-center gap-6 md:flex">
+          <div className="hidden items-center gap-8 md:flex">
             {navLinks.map((link) => (
               <div
                 key={link.to}
-                className="relative"
+                className="relative group"
                 onMouseEnter={() => link.hasDropdown && setShopDropdownOpen(true)}
                 onMouseLeave={() => link.hasDropdown && setShopDropdownOpen(false)}
               >
                 <Link
                   to={link.to}
-                  className={`relative flex items-center gap-1 py-1 text-sm font-medium transition-colors ${
+                  className={`nav-link-anim relative flex items-center gap-1.5 py-2 text-[15px] font-semibold tracking-wide transition-colors ${
                     location.pathname === link.to || (link.to === "/shop" && location.pathname.startsWith("/shop"))
-                      ? "text-foreground"
+                      ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {(location.pathname === link.to || (link.to === "/shop" && location.pathname.startsWith("/shop"))) && (
-                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-primary" />
-                  )}
                   {link.label}
-                  {link.hasDropdown && <ChevronDown className="h-3 w-3" />}
+                  {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
                 </Link>
 
                 {link.hasDropdown && shopDropdownOpen && (
-                  <div className="absolute left-0 top-full pt-2">
-                    <div className="min-w-[180px] rounded-lg border border-border bg-card p-2 premium-shadow">
-                      {productTypes.map((t) => (
-                        <Link
-                          key={t.value}
-                          to={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
-                          className="block rounded-md px-3 py-2 text-sm text-muted-foreground smooth-hover hover:bg-secondary hover:text-foreground"
-                        >
-                          {t.label}
-                        </Link>
-                      ))}
+                  <div className="absolute left-1/2 top-full mt-0 w-screen max-w-4xl -translate-x-1/2 pt-6">
+                    <div className="grid grid-cols-3 gap-8 rounded-2xl border border-white/10 glass-panel p-8 premium-shadow animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div>
+                        <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary/80">Types</h4>
+                        <div className="flex flex-col gap-3">
+                          <Link
+                              key="all"
+                              to="/shop"
+                              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                            >
+                              All
+                            </Link>
+                          {dynamicProductTypes.map((t: any) => (
+                            <Link
+                              key={t.id}
+                              to={`/shop?type=${encodeURIComponent(t.name)}`}
+                              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                            >
+                              {t.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary/80">Categories</h4>
+                        <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                          {dynamicProductCategories.length > 0 ? dynamicProductCategories.map((c: any) => (
+                            <Link
+                              key={c.id}
+                              to={`/shop?category=${encodeURIComponent(c.name)}`}
+                              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                            >
+                              {c.name}
+                            </Link>
+                          )) : (
+                            <>
+                              <Link to="/shop?type=T-Shirts" className="hover:text-primary transition-colors">Premium Basics</Link>
+                              <Link to="/shop?type=Drop%20Shoulders" className="hover:text-primary transition-colors">Streetwear Collection</Link>
+                              <Link to="/shop" className="hover:text-primary transition-colors">New Arrivals</Link>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="relative overflow-hidden rounded-lg bg-secondary">
+                        <img src={brand?.mega_menu_image || "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=600"} alt="New Collection" className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+                          <h4 className="text-lg font-bold text-white">{brand?.mega_menu_title || "Summer Drop"}</h4>
+                          <p className="text-sm text-gray-300">{brand?.mega_menu_subtitle || "Explore the latest styles."}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -121,26 +173,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             </button>
 
             <div className="hidden md:block">
-              {searchOpen ? (
-                <div className="flex items-center gap-2">
-                  <SearchBar className="w-64" onClose={() => setSearchOpen(false)} />
-                  <button
-                    onClick={() => setSearchOpen(false)}
-                    className="text-muted-foreground hover:text-foreground smooth-hover"
-                    aria-label="Close search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="text-muted-foreground hover:text-foreground smooth-hover"
-                  aria-label="Open search"
-                >
-                  <Search className="h-5 w-5" />
-                </button>
-              )}
+              <SearchBar className="w-64" />
             </div>
 
             <Link
@@ -151,37 +184,37 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               <User className="h-5 w-5" />
             </Link>
 
-            <Link
+             <Link
               to="/wishlist"
               className="relative flex items-center text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={`Wishlist with ${wishlistCount} items`}
+              aria-label={`Wishlist with ${displayWishlistCount} items`}
             >
               <Heart className="h-5 w-5" />
-              {wishlistCount > 0 && (
+              {displayWishlistCount > 0 && (
                 <span
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground animate-bounce-in"
                   aria-live="polite"
                 >
-                  {wishlistCount}
+                  {displayWishlistCount}
                 </span>
               )}
             </Link>
 
-            <Link
-              to="/cart"
+            <button
+              onClick={() => setIsCartOpen(true)}
               className="relative flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={`Shopping cart with ${totalItems} items`}
+              aria-label={`Shopping cart with ${displayTotalItems} items`}
             >
               <ShoppingBag className="h-5 w-5" />
-              {totalItems > 0 && (
+              {displayTotalItems > 0 && (
                 <span
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground animate-bounce-in"
                   aria-live="polite"
                 >
-                  {totalItems}
+                  {displayTotalItems}
                 </span>
               )}
-            </Link>
+            </button>
           </div>
         </div>
       </nav>

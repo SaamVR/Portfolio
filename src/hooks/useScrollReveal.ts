@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "@/lib/react-router-dom-shim";
 
 interface UseScrollRevealOptions {
   threshold?: number;
@@ -42,3 +42,4 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
 
   return { ref, isVisible };
 }
+

@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://cotzhwvboxlxqnyysuta.supabase.co/functions/v1/sitemap
+Sitemap: https://commerce-engine.local/sitemap.xml

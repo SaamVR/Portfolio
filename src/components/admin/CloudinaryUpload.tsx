@@ -1,29 +1,40 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, X, Image as ImageIcon, Film } from "lucide-react";
+import { Upload, Loader2, X, Film } from "lucide-react";
+import { useAuth } from "@/hooks/auth-context";
+import { MediaLibraryPicker } from "@/components/admin/MediaLibraryPicker";
+import { uploadMediaAsset } from "@/lib/cloudinary-upload";
+import type { MediaLibraryAsset } from "@/lib/media-library";
 
 interface CloudinaryUploadProps {
   value: string;
   onChange: (url: string) => void;
+  onSelectAsset?: (asset: MediaLibraryAsset | null) => void;
   folder?: string;
   accept?: string;
   label?: string;
   showPreview?: boolean;
   resourceType?: "image" | "video" | "auto";
+  storeId?: string;
+  inputTestId?: string;
 }
 
 const CloudinaryUpload = ({
   value,
   onChange,
+  onSelectAsset,
   folder = "products",
   accept = "image/*",
   label = "Upload Image",
   showPreview = true,
   resourceType = "image",
+  storeId,
+  inputTestId,
 }: CloudinaryUploadProps) => {
+  const { activeStoreId } = useAuth();
+  const effectiveStoreId = storeId || activeStoreId;
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,41 +52,14 @@ const CloudinaryUpload = ({
     setUploading(true);
 
     try {
-      // Get signed upload params from edge function
-      const { data: sigData, error: sigError } = await supabase.functions.invoke(
-        "cloudinary-signature",
-        {
-          body: { folder, resource_type: resourceType },
-        }
-      );
-
-      if (sigError || !sigData) {
-        throw new Error(sigError?.message || "Failed to get upload signature");
-      }
-
-      const { signature, timestamp, cloud_name, api_key } = sigData;
-
-      // Upload to Cloudinary
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("signature", signature);
-      formData.append("timestamp", String(timestamp));
-      formData.append("api_key", api_key);
-      formData.append("folder", folder);
-
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/${resourceType}/upload`;
-      const response = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
+      const asset = await uploadMediaAsset({
+        file,
+        folder,
+        resourceType,
+        storeId: effectiveStoreId ?? "00000000-0000-4000-8000-000000000001",
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData?.error?.message || "Upload failed");
-      }
-
-      const result = await response.json();
-      onChange(result.secure_url);
+      onChange(asset.url);
+      onSelectAsset?.(asset);
       toast.success("Uploaded successfully!");
     } catch (err: any) {
       console.error("Cloudinary upload error:", err);
@@ -93,6 +77,7 @@ const CloudinaryUpload = ({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Input
+          data-testid={inputTestId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://... or upload"
@@ -119,12 +104,25 @@ const CloudinaryUpload = ({
             <Upload className="h-4 w-4" />
           )}
         </Button>
+        <MediaLibraryPicker
+          value={value}
+          storeId={effectiveStoreId ?? "00000000-0000-4000-8000-000000000001"}
+          folder={folder}
+          resourceType={resourceType}
+          onSelect={(asset) => {
+            onChange(asset.url);
+            onSelectAsset?.(asset);
+          }}
+        />
         {value && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => onChange("")}
+            onClick={() => {
+              onChange("");
+              onSelectAsset?.(null);
+            }}
             title="Clear"
             className="text-destructive hover:text-destructive"
           >
@@ -156,3 +154,4 @@ const CloudinaryUpload = ({
 };
 
 export default CloudinaryUpload;
+

@@ -18,8 +18,9 @@ import joggersBlack from "@/assets/joggers-black.jpg";
 import chinosNavy from "@/assets/chinos-navy.jpg";
 import cargoOlive from "@/assets/cargo-olive.jpg";
 import trousersGrey from "@/assets/trousers-grey.jpg";
+import type { StaticImageData } from "next/image";
 
-const imageMap: Record<string, string> = {
+const imageMap: Record<string, StaticImageData> = {
   "tshirt-black.jpg": tshirtBlack,
   "tshirt-white.jpg": tshirtWhite,
   "tshirt-olive.jpg": tshirtOlive,
@@ -45,5 +46,5 @@ const imageMap: Record<string, string> = {
 export function resolveImageUrl(url: string): string {
   if (!url) return "/placeholder.svg";
   if (url.startsWith("http") || url.startsWith("/") || url.startsWith("data:")) return url;
-  return imageMap[url] || url;
+  return imageMap[url]?.src || url;
 }

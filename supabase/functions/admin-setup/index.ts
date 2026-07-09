@@ -12,6 +12,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const setupPassword = Deno.env.get("ADMIN_SETUP_PASSWORD") ?? "";
+    if (!setupPassword) {
+      return new Response(JSON.stringify({ error: "Admin setup is not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "You must be signed in" }), {
@@ -39,6 +47,15 @@ Deno.serve(async (req) => {
     }
 
     const userId = user.id;
+    const body = await req.json().catch(() => ({}));
+    const providedPassword = typeof body?.password === "string" ? body.password.trim() : "";
+
+    if (!providedPassword || providedPassword !== setupPassword) {
+      return new Response(JSON.stringify({ error: "Invalid setup password" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: existingAdmins, error: existingAdminsError } = await supabaseAdmin
       .from("user_roles")
@@ -57,6 +74,26 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "An admin already exists. Use invite codes to add more admins." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: existingStoreMemberships, error: membershipError } = await supabaseAdmin
+      .from("store_memberships")
+      .select("store_id, role")
+      .eq("user_id", userId)
+      .limit(1);
+
+    if (membershipError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to validate store membership", details: membershipError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingStoreMemberships && existingStoreMemberships.length > 0) {
+      return new Response(
+        JSON.stringify({ error: "Merchant accounts cannot claim platform admin access" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

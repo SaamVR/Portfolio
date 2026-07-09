@@ -1,0 +1,315 @@
+# 🏗️ SaaS Architecture Audit — Commerce Engine
+> Where you are vs. where you need to be. What works, what's missing, and how to close the gap.
+
+---
+
+## 📐 What You're Actually Building
+
+A **Bangladesh-focused F-commerce SaaS** with the following layers:
+
+```
+┌─────────────────────── Commerce Engine Platform ───────────────────────┐
+│                                                                          │
+│  [/]  Marketing Landing     ← CmsLandingPage (exists ✅)               │
+│  [/plans]  Pricing          ← CmsPricing (exists ✅)                   │
+│  [/signup]  Merchant signup ← MerchantSignup + Edge Function (exists ✅)│
+│                                                                          │
+│  [/admin/*]  Merchant Admin ← AdminLayout + views (exists, buggy ⚠️)   │
+│                                                                          │
+│  [store.yourdomain.com/]    ← StorefrontPage via subdomain (partial ⚠️)│
+│  [/stores/slug]             ← Store preview route (exists ✅)           │
+│  [/slug]                    ← CMS page route (exists ✅)                │
+│                                                                          │
+│  [/admin/platform]          ← Platform Control Plane (exists ✅)        │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🎯 SaaS Readiness Scorecard
+
+| SaaS Capability | Status | Score |
+|---|---|---|
+| **Merchant Signup Flow** | Edge function exists, lead tracking works | ✅ 80% |
+| **Multi-tenant Data Isolation** | `store_id` on all tables, RLS policies present | ✅ 75% |
+| **Plan/Subscription System** | `cms_plans`, `store_subscriptions` tables wired up | ✅ 70% |
+| **Feature Entitlements / Gating** | `cms_features`, `cms_plan_features`, overrides — very solid | ✅ 90% |
+| **Platform Control Plane** | Full plans/features/lifecycle/email exceptions admin | ✅ 85% |
+| **Store Lifecycle Management** | Scan/remind/archive/restore/delete logic | ✅ 75% |
+| **Auth Bridge (Firebase→Supabase)** | Phone/Google OTP bridge for merchants | ✅ 80% |
+| **CMS Block Builder** | Pages, blocks, revisions, templates | ✅ 80% |
+| **Storefront Rendering (SSR)** | Hostname resolver, page → blocks pipeline | ✅ 70% |
+| **Subdomain Routing** | Resolver logic exists, not tested at scale | ⚠️ 55% |
+| **Payment Integration (bKash)** | Edge function exists | ⚠️ 60% |
+| **Billing / Subscription Collection** | **No payment gateway for SaaS billing** | ❌ 0% |
+| **Email Notifications** | **No transactional email system wired** | ❌ 5% |
+| **Merchant Onboarding UX** | Onboarding wizard exists but wired to old arch | ⚠️ 50% |
+| **Store-scoped Cart** | Global cart, not scoped to tenant | ❌ 15% |
+| **Multi-store Support** | 1 store per user enforced in signup | ⚠️ 40% |
+| **Custom Domains** | Field in DB, resolver logic exists, not production-ready | ⚠️ 30% |
+
+**Overall SaaS Readiness: ~62%** — You have the architecture scaffolding but many critical SaaS loops are not yet closed.
+
+---
+
+## 🔴 The 3 Biggest SaaS Gaps
+
+### Gap 1: No SaaS Billing Loop
+**The most important gap.** You have plans (`starter` free, `growth` ৳1,490/mo, `scale` custom), subscriptions table, and `payment_required` logic in the `merchant-signup` function — **but there is no mechanism to actually collect payment from merchants.**
+
+When a merchant signs up for "growth", `merchant-signup` sets `status = "past_due"` and returns `payment_required: true`. Then nothing happens. There's no payment page, no invoice, no Stripe/bKash business-tier integration, nothing.
+
+**What's missing:**
+- A merchant billing page (upgrade, downgrade, pay invoice)
+- Integration with a payment processor for recurring subscriptions (Stripe, or a Bangladesh-local equivalent)
+- Webhook handler to update `store_subscriptions.status` when payment succeeds/fails
+- Dunning logic (payment failure → grace period → downgrade)
+
+---
+
+### Gap 2: No Transactional Email System
+The lifecycle management system (`store_lifecycle_states`, remind/archive/delete) records state changes and events — but **never actually sends any emails**.
+
+Lifecycle `"remind"` action writes a row to `store_lifecycle_events` with `event_type = "reminder_sent"` and says "Reminder 1 queued" — but there is no queue, no email sender, no template, and no Resend/SendGrid/Postmark integration anywhere in the codebase.
+
+**What's missing:**
+- An email provider integration (Resend is the easiest for Supabase Edge Functions)
+- Transactional templates: welcome email, store ready, payment reminder, lifecycle warning
+- A `send-email` edge function or background job hooked into lifecycle events
+
+---
+
+### Gap 3: The Merchant Journey Has a Disconnection
+The intended SaaS funnel is:
+`Landing → Pricing → Signup → Setup wizard → Publish store → Merchant Dashboard`
+
+**Current reality:**
+1. `Landing` → works ✅
+2. `Pricing` → works ✅
+3. `Signup` → works, but after signup you're sent to `/admin` with no onboarding context ⚠️
+4. `Setup wizard` → `OnboardingWizard.tsx` (30KB) exists but links are wired to the old single-store system; it still references `defaultStore` and single-tenant assumptions ⚠️
+5. `Publish store` → works via CMS builder ✅
+6. `Merchant Dashboard` → works but shows the wrong store's data due to the auth race condition ❌
+
+The gap between step 3 and 4 is the biggest UX failure. A newly signed-up merchant lands at `/admin` and doesn't know what to do next — there's no "Continue setup" prompt tied to their actual fresh store.
+
+---
+
+## 🟡 What Exists But Is Half-Wired
+
+### The `auth-bridge` is Firebase-dependent (but you're not using Firebase on the frontend)
+The `auth-bridge` edge function is a sophisticated Firebase JWT → Supabase session bridge that handles phone OTP and Google Sign-In. It verifies Firebase ID tokens, creates Supabase users, and returns memberships.
+
+**But the main app `useAuth.tsx` uses `supabase.auth.*` directly — not Firebase at all.**
+
+This means the bridge exists but is only useful if the signup/auth flow actually calls Firebase first (phone OTP), then calls `auth-bridge`. If your merchant signup uses Supabase email/password (which it appears to), the bridge is currently unused dead weight.
+
+**Decision needed:** Are merchants signing up via:
+- `A)` Email/password via Supabase auth directly? (current frontend behavior)
+- `B)` Phone OTP via Firebase → auth-bridge → Supabase session? (what auth-bridge was built for)
+
+You need to pick one and fully implement it.
+
+---
+
+### The RLS Policies Have a Gap for Store Members (Non-Owners)
+`store_memberships` table has `owner`, `admin`, `editor`, `viewer` roles — but the RLS policies on `products`, `orders`, `site_settings`, etc. only check `owner_id` or `is_admin()` (the platform-level admin role).
+
+A store `editor` member cannot read products or orders for their store via RLS, even though they appear as a team member. The `can_manage_store()` function in the DB is correct but it's **not used in product/order/settings RLS policies** — only in `store_memberships` and `store_page_*` tables.
+
+**Practical impact:** Co-admins and editors added to a store cannot see anything in the admin dashboard.
+
+---
+
+### The `merchant-signup` Blocks Multi-Store by Design
+```ts
+if (existingMembership && existingMembership.length > 0) {
+  return Response({ error: "This account already belongs to a store workspace" }, { status: 409 });
+}
+```
+One user = one store forever. This was probably the right call to start, but it's a hard architectural limit. The `store_limit` field on `cms_plans` (which says "Scale" = unlimited stores) can never be honored while this check exists.
+
+---
+
+### The `OnboardingWizard.tsx` Is Not Connected to the New Multi-Tenant Flow
+The wizard is 30KB and handles store setup steps. But it calls functions referencing `defaultStore.id`, bootstraps data for the hardcoded UUID store, and doesn't receive/use the newly-created `store_id` from the `merchant-signup` response.
+
+A new merchant who signs up via `merchant-signup` gets a real, dynamically created store with a proper UUID. But then the wizard doesn't know about that store — it wires everything to the demo store UUID.
+
+---
+
+## ✅ What's Actually Impressive (Keep These)
+
+| Component | Why It's Good |
+|---|---|
+| **Platform Control Plane** | Full feature matrix, store overrides, email exceptions, lifecycle management — this is enterprise-grade SaaS admin tooling |
+| **`resolveEffectiveFeatures()`** | 4-layer override hierarchy (plan → store → email → platform admin) is sophisticated and correct |
+| **`store_lifecycle_states` schema** | Inactivity detection, reminder scheduling, archive/delete pipeline — exactly right for churn management |
+| **`merchant-signup` edge function** | Rate limiting (1 store/24hr), slug validation, lead tracking, plan linkage all in one atomic transaction |
+| **`auth-bridge` architecture** | Bridging Firebase phone OTP to Supabase is a smart approach for the Bangladesh market where phone auth matters |
+| **`cms_signup_leads` table** | Automatic CRM lead capture on every signup is a good SaaS habit |
+| **Feature flags on sidebar items** | `getFeatureEnabled()` gating CMS/media/backup links is clean plan enforcement |
+| **`store_page_revisions` system** | Revision history with labels is a premium CMS feature most SaaS don't have |
+
+---
+
+## 🗺️ The Actual Gap Map (Visual)
+
+```
+WHAT EXISTS (Database Level)
+────────────────────────────
+cms_plans          ✅  Starter / Growth / Scale defined
+store_subscriptions ✅  Per-store plan assignment + status
+cms_features       ✅  Feature registry
+cms_plan_features  ✅  Which plan includes which feature
+store_feature_overrides  ✅  Per-store manual override
+user_email_feature_overrides  ✅  Per-email override
+cms_signup_leads   ✅  Lead CRM
+store_lifecycle_states  ✅  Inactivity/churn tracking
+store_lifecycle_events  ✅  Audit log
+
+WHAT'S MISSING (Application Level)
+────────────────────────────────────
+❌  SaaS billing UI         → No payment page for merchants to pay their plan
+❌  Subscription webhooks   → No handler to flip subscription status from paid
+❌  Transactional email     → Lifecycle events fire but send nothing
+❌  Dunning/grace period    → Past-due stores not degraded, just stuck
+❌  Multi-store UI          → No store switcher for users who might own multiple
+❌  Store-scoped cart       → Cart is global, not keyed by store_id
+❌  Post-signup redirect    → New merchants land at /admin with no context
+❌  Wizard ↔ merchant store → Wizard doesn't know about the merchant's real store ID
+```
+
+---
+
+## 🛣️ How To Get There — Prioritized Roadmap
+
+### Sprint 1: Fix the Broken Loops (1 week)
+*Nothing else matters until these work correctly.*
+
+**1. Fix the auth race condition** in `useAuth.tsx`
+- Don't set `loading = false` until `fetchRole()` resolves
+- This fixes the "wrong dashboard data" problem for every merchant
+
+**2. Connect `merchant-signup` response → Onboarding Wizard**
+- After successful signup, redirect to `/admin/onboarding?storeId=<new-store-id>`
+- Pass the real `store_id` through context so the wizard bootstraps the correct store
+
+**3. Fix `activeStoreId` initial state**
+- Initialize as `null`, add `enabled: Boolean(activeStoreId)` to all queries
+- Prevents demo store data from flashing for real merchants
+
+**4. Fix the query invalidation key** in `SiteSettings`
+- Add `activeStoreId` to the cache key (the 2-part vs 3-part bug from the previous audit)
+
+---
+
+### Sprint 2: Merchant Storefront Experience (1-2 weeks)
+*Make the CMS-rendered storefront actually work as a multi-tenant system.*
+
+**5. Create a `StorefrontLayout` for CMS pages**
+- Separate from the ThreadBD storefront `Layout.tsx`
+- Tenant-aware navbar that reads nav items from `store_pages`, not hardcoded routes
+- Store-scoped cart — key `localStorage` cart by `store_id`
+
+**6. Fix the store member RLS gap**
+- Update `products`, `orders`, `site_settings` RLS policies to use `can_manage_store(_user_id, store_id)`
+- This makes editors/co-admins actually work
+
+**7. Wire the dynamic navbar**
+- Replace `productTypes` static import in `Navbar.tsx` with a query against `product_categories` + `product_types` filtered by `store_id`
+
+---
+
+### Sprint 3: SaaS Billing Foundation (2-3 weeks)
+*Without this, you have a free product forever.*
+
+**8. Choose and integrate a payment processor**
+- For Bangladesh SaaS billing: Stripe is available (for USD), or bKash Business API for BDT recurring
+- Minimum: a manual invoice page where the merchant sees their plan, next billing date, and a "Pay Now" button
+
+**9. Build the billing page** at `/admin/billing`
+- Current plan, usage stats, upgrade/downgrade options
+- Payment history
+
+**10. Build a subscription webhook handler**
+- `/api/billing/webhook` — handles payment success → set `status = "active"`, failure → set `status = "past_due"` → start grace period
+
+---
+
+### Sprint 4: Email & Lifecycle Automation (2 weeks)
+*Close the loop on the infrastructure you've already built.*
+
+**11. Integrate Resend (or Postmark)**
+- Add a `send-email` Supabase Edge Function
+- Create templates: welcome, store-published, payment-reminder, inactivity-warning, deletion-notice
+
+**12. Wire lifecycle events to real emails**
+- When `lifecycle_status = "reminded"` is written → trigger the email function
+- When `subscription.status = "past_due"` → trigger payment reminder
+
+**13. Build a Supabase cron job**
+- Daily scan that checks `stores.updated_at` against thresholds
+- Writes lifecycle state and fires lifecycle events automatically (currently all manual via Platform Control Plane)
+
+---
+
+### Sprint 5: Multi-store & Growth Features (Ongoing)
+*Unlock the higher tiers.*
+
+**14. Relax the 1-store-per-user limit**
+- Add a plan check: `if store count >= plan.store_limit → reject`
+- Replace the flat "already has store" rejection
+
+**15. Build a store switcher**
+- Dropdown in admin header: "Switch store / Create new store"
+- Uses `storeMemberships` array already available in auth context
+
+**16. Enable custom domain provisioning**
+- When a merchant enters a custom domain in site settings → validate via DNS check → store in `stores.custom_domain`
+- The resolver in `store-resolver.ts` already handles it; just needs the UI plumbing
+
+---
+
+## 💡 The Honest Assessment
+
+**You have built the SaaS skeleton correctly.** The database schema is multi-tenant, the entitlement system is sophisticated, and the platform control plane is genuinely impressive for something at this stage. The auth bridge architecture shows foresight for the Bangladesh market.
+
+**The problem is that many loops are open.** You write to `store_lifecycle_events` but never send emails. You set `subscription.status = "past_due"` but never actually collect payment. You track `cms_signup_leads` but have no CRM workflow around them. The infrastructure exists, but the wires connecting it to real business outcomes are missing.
+
+**The single highest-ROI thing you can build right now is:**
+> **A merchant billing page + a working payment webhook** — because without money flowing, every other SaaS feature is hypothetical.
+
+The second highest is:
+> **Fix the post-signup onboarding flow** — because right now a new merchant lands at `/admin` and has no idea what to do, which means every signup is a failed conversion.
+
+
+
+1. store_invoices RLS is missing write policies — The migration only has a SELECT policy. There's no INSERT (for when a new billing period starts) and no UPDATE (for when the webhook marks a payment as paid/failed). The webhook route uses the service role, which bypasses RLS, so writes work today — but it's a security smell. Add explicit policies.
+
+2. The Billing.tsx handlePayNow is a stub — alert("Payment processor integration pending") is not a billing system. This is the most important missing piece. You need a real payment flow here — even a minimal one: generate an invoice row in store_invoices, redirect to bKash, handle callback.
+
+3. Post-signup onboarding redirect still not connected — The merchant-signup edge function returns dashboard_path: "/admin" but doesn't pass the new store_id through. The frontend signup flow doesn't redirect to /admin/onboarding?storeId=<new-id>. New merchants still land at a generic /admin.
+
+4. Store member RLS gap still open — products, orders, site_settings tables still only check owner_id or the platform is_admin(). A store editor member still can't read anything.
+
+5. Firebase dead dependency not removed — src/lib/firebase.ts still exists, and the auth-bridge still imports Firebase JWT verification. This is dead code if you're using Supabase email auth.
+
+🎯 What To Fix Next
+Most impactful, in order:
+
+Next Fix: Invoice generation + bKash redirect flow
+The handlePayNow stub in Billing.tsx needs to become real. The minimal viable flow:
+
+On "Pay Now" click → call a Supabase edge function (or API route) that:
+Creates a row in store_invoices with status = "pending"
+Returns the bKash payment URL (or your payment initiation endpoint)
+Merchant pays via bKash
+bKash callback hits /api/billing/webhook → marks invoice paid, activates subscription
+Want me to implement this full flow now? I can wire up the edge function, the Billing.tsx pay button, and the callback handler end-to-end.
+
+After That: Fix the post-signup redirect
+This is your biggest conversion problem. I can fix the merchant-signup function to return the store ID properly and update the frontend signup handler to redirect to /admin/onboarding?storeId=....
+
+After That: Fix store member RLS
+A one-migration fix — update the 5 tables to use can_manage_store() instead of owner_id.

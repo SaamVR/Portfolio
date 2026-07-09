@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveImageUrl } from "@/lib/imageMap";
-import type { Product } from "@/data/products";
+import { launchProducts, type Product } from "@/data/products";
+import { isUuid } from "@/lib/slug";
+import { defaultStore } from "@/lib/cms/default-store";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface DBProduct {
   id: string;
@@ -48,51 +51,129 @@ function mapDBProduct(p: DBProduct): Product {
   };
 }
 
-export function useProducts() {
+const fallbackProducts = launchProducts.map((product) => ({
+  ...product,
+  image: resolveImageUrl(product.image),
+  images: product.images.map(resolveImageUrl),
+}));
+
+export function useProducts(explicitStoreId?: string | null) {
+  const currentStore = useOptionalStore();
+  const storeId = explicitStoreId ?? currentStore?.id;
+
   return useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", storeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data as unknown as DBProduct[]).map(mapDBProduct);
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("store_id", storeId as string)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
+        return mapped;
+      } catch (err) {
+        console.warn("Failed to fetch products from Supabase, using mock products:", err);
+        return [];
+      }
     },
     staleTime: 1000 * 60 * 2,
+    enabled: !!storeId,
   });
 }
 
-export function useProduct(id: string | undefined) {
+export function useProduct(id: string | undefined, explicitStoreId?: string | null) {
+  const currentStore = useOptionalStore();
+  const storeId = explicitStoreId ?? currentStore?.id;
+
   return useQuery({
-    queryKey: ["product", id],
+    queryKey: ["product", storeId, id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data ? mapDBProduct(data as unknown as DBProduct) : null;
+      const fallback = null;
+      if (!isUuid(id)) {
+        return null;
+      }
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .eq("store_id", storeId as string)
+          .maybeSingle();
+        if (error) throw error;
+        return data ? mapDBProduct(data as unknown as DBProduct) : null;
+      } catch (err) {
+        console.warn(`Failed to fetch product ${id} from Supabase, using mock fallback:`, err);
+        return null;
+      }
     },
-    enabled: !!id,
+    enabled: !!id && !!storeId,
   });
 }
 
-export function useFeaturedProducts() {
+export function useProductsByIds(ids: string[], explicitStoreId?: string | null) {
+  const currentStore = useOptionalStore();
+  const storeId = explicitStoreId ?? currentStore?.id;
+
   return useQuery({
-    queryKey: ["products", "featured"],
+    queryKey: ["products", storeId, "by-ids", ids.join(",")],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("featured", true)
-        .eq("is_available", true)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data as unknown as DBProduct[]).map(mapDBProduct);
+      if (!ids.length) return [];
+      const dbIds = ids.filter(isUuid);
+      const localIds = ids.filter((id) => !isUuid(id));
+      const localProducts: any[] = [];
+      if (!dbIds.length) return localProducts;
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("store_id", storeId as string)
+          .in("id", dbIds);
+        if (error) throw error;
+        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
+        const found = new Set(mapped.map((product) => product.id));
+        const fallbacks: any[] = [];
+        return [...mapped, ...fallbacks];
+      } catch (err) {
+        console.warn("Failed to fetch products by ids from Supabase, using mock products:", err);
+        const fallbacks: any[] = [];
+        return [...localProducts, ...fallbacks.filter(f => !localProducts.some(lp => lp.id === f.id))];
+      }
     },
+    enabled: ids.length > 0 && !!storeId,
     staleTime: 1000 * 60 * 2,
   });
 }
+
+export function useFeaturedProducts(explicitStoreId?: string | null) {
+  const currentStore = useOptionalStore();
+  const storeId = explicitStoreId ?? currentStore?.id;
+
+  return useQuery({
+    queryKey: ["products", storeId, "featured"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("store_id", storeId as string)
+          .eq("featured", true)
+          .eq("is_available", true)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
+        return mapped;
+      } catch (err) {
+        console.warn("Failed to fetch featured products from Supabase, using mock products:", err);
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 2,
+    enabled: !!storeId,
+  });
+}
+
+
+

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import type { Product } from "@/data/products";
@@ -22,16 +22,19 @@ const RelatedProducts = ({ currentProduct }: RelatedProductsProps) => {
   if (related.length === 0) return null;
 
   return (
-    <section className="border-t border-border py-16">
+    <section className="border-t border-border py-16 bg-card/30">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="blur">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-primary">You may also like</p>
-              <h2 className="font-heading text-2xl font-bold text-foreground">Related Products</h2>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">Complete the look</p>
+                <span className="rounded bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-500 border border-green-500/20">BUNDLE & SAVE 10%</span>
+              </div>
+              <h2 className="font-heading text-2xl font-bold text-foreground">Frequently Bought Together</h2>
             </div>
             <Link
-              to={`/shop?type=${currentProduct.type}`}
+              href={`/shop?type=${currentProduct.type}`}
               className="text-sm font-medium text-muted-foreground smooth-hover hover:text-foreground"
             >
               View all →

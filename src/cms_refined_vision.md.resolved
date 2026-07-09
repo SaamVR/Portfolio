@@ -1,0 +1,378 @@
+# COMMERCE ENGINE v2 — Refined Product Vision
+
+> **North Star**: "Can a clothing seller from Narayanganj set this up on her ৳8,000 Android phone in 5 minutes, and manage her entire business from it daily?"
+
+---
+
+## Critical Flaws in the Previous Plan (Fixed Below)
+
+> [!WARNING]
+> ### Technical Flaws
+> 1. **No Auth Strategy** — Previous plan had no concrete auth system. Now using Firebase Phone OTP (already set up) + Supabase for data. This is the correct BD-first approach.
+> 2. **Subdomain Routing on Vercel is Fragile** — Wildcard SSL, cold starts, and custom domain verification are all pain points. Need a robust middleware + DNS verification flow.
+> 3. **No Caching Layer** — Multi-tenant SaaS without caching = every store hits the DB on every request. Need ISR + edge caching per tenant.
+> 4. **No Version History / Undo** — Visual builder without undo = merchants destroying their own sites. Must have revision history.
+> 5. **JSON Page Blocks Without Schema Validation** — Raw JSON is fragile. Need Zod schemas per block type to prevent corruption.
+> 6. **No API Layer** — No mention of REST/webhook APIs for third-party integrations (courier, accounting, POS).
+> 7. **No Data Export / Portability** — Merchants fear vendor lock-in. Must offer CSV/JSON export of all their data.
+> 8. **No Rate Limiting or Abuse Prevention** — Free tier without limits = abuse. Need per-store request throttling.
+
+> [!WARNING]
+> ### Business & Feature Flaws
+> 1. **No Staff/Team Accounts** — Real businesses have employees. Need role-based access (Owner, Manager, Staff).
+> 2. **No Blog/Content System** — SEO-driven organic traffic requires a blog. Every competitor has this.
+> 3. **No Multi-Language Storefront** — Plan only mentions Bengali admin UI, not customer-facing multi-language.
+> 4. **No Migration Tools** — The #1 barrier to switching CMS is fear of data loss. Need import from eBitans/WooCommerce/Shopify CSV.
+> 5. **No Tax/VAT Handling** — BD has VAT requirements. Ignoring this loses enterprise customers.
+> 6. **No Subscription/Recurring Products** — Missing an entire product type (meal plans, monthly boxes).
+> 7. **Pricing Too Cheap** — ৳299 Basic plan with 200 products and custom domain is unsustainable. Revised below.
+> 8. **No Community or Education** — Merchants need hand-holding. No learning center, no community forum.
+
+---
+
+## Refined Architecture
+
+### Auth System (Firebase + Supabase Hybrid)
+```
+Firebase Auth (Phone OTP + Google + Facebook)
+        ↓ (on sign-in)
+Supabase JWT Custom Token (via Edge Function)
+        ↓
+Supabase RLS (all data queries use store_id from JWT)
+```
+- **Why Firebase for Auth**: Phone OTP is native, reliable, and free for BD phone numbers. Supabase phone auth has regional SMS delivery issues.
+- **Why Supabase for Data**: Postgres + RLS is the best multi-tenant data layer. Keep all business data here.
+- **The Bridge**: A Supabase Edge Function verifies the Firebase ID token and issues a Supabase JWT with `store_id` embedded in the claims.
+
+### Multi-Tenant Routing (Hardened)
+```
+Request → Vercel Edge Middleware
+  ├─ Extract hostname
+  ├─ Query edge-cached store config (KV store or ISR)
+  ├─ Inject store_id into request headers
+  └─ Rewrite to /_tenant/[store_slug]/[...path]
+
+App Router reads store_id from headers
+  ├─ Server Components fetch tenant-scoped data
+  ├─ CSS variables injected from store_themes table
+  └─ ISR caches pages per-tenant (revalidate on edit)
+```
+
+### Database Schema (Expanded)
+
+```sql
+-- === MULTI-TENANCY CORE ===
+stores (
+  id UUID PK, owner_id, name, slug UNIQUE, custom_domain,
+  plan TEXT, store_type TEXT, logo_url, favicon_url,
+  is_published BOOL, created_at, updated_at
+)
+
+-- === TEAM & PERMISSIONS ===
+store_members (
+  id, store_id FK, user_id FK, role ENUM('owner','manager','staff'),
+  permissions JSONB, invited_at, accepted_at
+)
+
+-- === THEMING ===
+store_themes (
+  store_id FK UNIQUE, template_id,
+  colors JSONB,        -- {primary, secondary, accent, background, text, success, error}
+  typography JSONB,    -- {headingFont, bodyFont, sizeScale}
+  components JSONB,    -- {buttonRadius, buttonStyle, cardStyle, imageRatio}
+  custom_css TEXT,
+  animations_enabled BOOL DEFAULT true
+)
+
+-- === PAGE BUILDER ===
+store_pages (id, store_id FK, slug, title, is_homepage BOOL, seo_title, seo_description)
+
+store_page_blocks (
+  id, page_id FK, store_id FK,
+  block_type TEXT NOT NULL,   -- validated against enum
+  props JSONB NOT NULL,       -- validated by Zod schema per block_type
+  sort_order INT, is_visible BOOL,
+  created_at, updated_at
+)
+
+-- VERSION HISTORY (undo/redo)
+store_page_revisions (
+  id, page_id FK, store_id FK,
+  blocks_snapshot JSONB,      -- full snapshot of all blocks
+  changed_by UUID, created_at,
+  revision_label TEXT         -- "Auto-save", "Published", etc.
+)
+
+-- === PRODUCTS (multi-tenant) ===
+products (id, store_id FK, name, slug, description, base_price, compare_price,
+  category_id FK, images JSONB, status ENUM, product_type ENUM,
+  seo_title, seo_description, weight, dimensions JSONB,
+  is_digital BOOL, digital_file_url, created_at, updated_at)
+
+product_variants (id, product_id FK, store_id FK, sku, price, stock,
+  attributes JSONB, image_url, is_active BOOL)
+
+-- === ORDERS ===
+orders (id, store_id FK, order_number, customer_id FK,
+  items JSONB, subtotal, discount, delivery_fee, tax, total,
+  payment_method, payment_status ENUM, payment_proof_url,
+  shipping_address JSONB, shipping_status ENUM,
+  courier_provider, tracking_number, notes TEXT,
+  created_at, updated_at)
+
+-- === CUSTOMERS ===
+customers (id, store_id FK, name, phone, email, address JSONB,
+  tags TEXT[], total_orders INT, total_spent NUMERIC,
+  loyalty_points INT, notes TEXT, created_at)
+
+-- === BLOG / CONTENT ===
+blog_posts (id, store_id FK, title, slug, content TEXT,
+  featured_image, status ENUM, seo_title, seo_description,
+  published_at, created_at)
+
+-- === ANALYTICS (lightweight) ===
+store_events (id, store_id FK, event_type TEXT,
+  metadata JSONB, session_id, referrer, created_at)
+```
+
+---
+
+## Refined Onboarding (6 Steps, Not 8)
+
+Previous plan had 8 steps — too many. Research shows every additional step loses ~15% of users.
+
+### Step 1 — Phone Login (30 sec)
+- Firebase Phone OTP (you already have this set up)
+- One-tap Google/Facebook as alternatives
+- No email, no password. PIN-based re-login later.
+
+### Step 2 — Name + Type (30 sec)
+- **Combined screen**: Store name input at top, business type tiles below
+- Auto-generates slug with availability check
+- Selecting type pre-loads everything (template, categories, placeholder content)
+
+### Step 3 — Pick Your Look (45 sec)
+- **Theme Selection**: 3-4 layout styles per store type (not just colors)
+- **Color Palette**: 8 curated palettes + "Custom" option with color picker
+- **Live Preview**: Tiny phone mockup updates in real-time as they tap
+- Font is auto-selected based on palette (no decision fatigue)
+
+### Step 4 — Your Storefront (45 sec)
+- Hero image: Camera / Gallery / Free stock photos (filtered by store type)
+- Headline + Subheadline (pre-filled with AI suggestion in Bengali)
+- One-tap to accept suggestion or type custom
+
+### Step 5 — Payments (30 sec)
+- Toggle: bKash | Nagad | COD (pre-checked based on store type)
+- Just enter merchant number. Done.
+- "Set up automated payments later" link for advanced users
+
+### Step 6 — LIVE! 🎉 (15 sec)
+- Confetti + celebration screen
+- Store URL in large text with copy button
+- **Share to WhatsApp** (pre-filled message: "আমার নতুন দোকান দেখুন! 🛍️ [URL]")
+- **Share to Facebook**
+- "Add your first product" CTA button
+
+**Total: ~3 minutes. Two fewer steps than before.**
+
+---
+
+## What Competitors Are Missing (Your Moat)
+
+Based on research into eBitans, eDokan, DeshiCommerce, and global platforms:
+
+### vs. Local BD Competitors (eBitans, eDokan, DeshiCommerce)
+| Gap in Their Product | Your Advantage |
+|---|---|
+| No in-site visual editing | **Tap-to-Edit live builder** |
+| Template selection is final, limited customization | **Every section editable, reorderable, removable** |
+| Desktop-first admin panels | **Mobile-native admin built for thumb navigation** |
+| No AI features | **Bengali AI copywriting, Voice-to-Product** |
+| No version history | **Undo/redo with revision snapshots** |
+| Basic analytics | **Simple but actionable insights (not GA complexity)** |
+| No blog system | **Built-in SEO-optimized blog** |
+
+### vs. Global Platforms (Shopify, Wix)
+| Gap in Their Product | Your Advantage |
+|---|---|
+| Expensive (৳3,500+/mo) | **Free tier, paid from ৳499/mo** |
+| No native bKash/Nagad | **Built-in, zero config** |
+| No Bengali UI | **Full Bengali admin + storefront** |
+| No Pathao/Steadfast integration | **One-tap courier booking** |
+| Desktop-required for editing | **100% mobile editing** |
+| No payment screenshot verification | **Built-in for BD workflow** |
+
+---
+
+## New Features (Not in Previous Plan)
+
+### 1. Staff & Team Accounts
+```
+Owner → Full access to everything
+Manager → Products, Orders, Analytics (no billing/theme)
+Staff → View orders, update stock, respond to messages
+```
+- Invite via phone number (not email)
+- Per-permission toggles on mobile
+
+### 2. Blog & Content Marketing
+- Simple markdown editor optimized for mobile
+- AI-generated blog posts from product descriptions
+- Auto-SEO: title tags, meta descriptions, Open Graph
+- Schedule posts for future publishing
+
+### 3. Store Health Score
+A gamified dashboard widget that scores 0-100:
+- ✅ Has logo (+10)
+- ✅ Has 5+ products (+15)
+- ✅ Payment method configured (+10)
+- ✅ Custom domain connected (+10)
+- ✅ Has at least 1 blog post (+5)
+- ⚠️ Missing product descriptions (-10)
+- ⚠️ No social links (-5)
+Shows specific action items to improve. Drives feature adoption.
+
+### 4. Smart Notifications (Not Just Alerts)
+Instead of dumb push notifications:
+- "তোমার সেরা পণ্য 'Blue Saree' গত ৩ দিনে ১৫ বার দেখা হয়েছে কিন্তু কেউ কেনেনি। দাম কমানোর কথা ভাবছ?" (Your top product was viewed 15 times but nobody bought it. Consider lowering the price?)
+- "গত সপ্তাহে ৫ জন কাস্টমার কার্টে পণ্য রেখে চলে গেছে। WhatsApp রিমাইন্ডার পাঠাবে?" (5 customers abandoned carts. Send WhatsApp reminder?)
+
+### 5. Import/Migration Tools
+- CSV import for products (with column mapping UI)
+- Import from eBitans / eDokan (if they expose data)
+- Import from Shopify CSV export format
+- Import from Facebook Shop catalog
+
+### 6. Subscription & Recurring Products
+- Weekly meal plans, monthly beauty boxes, etc.
+- Customer subscribes → auto-order created on schedule
+- bKash recurring payment or manual reminder via WhatsApp
+
+### 7. Multi-Page Support
+Not just homepage — merchants need:
+- `/about` — About Us page
+- `/contact` — Contact with map
+- `/blog` — Blog listing
+- `/policy` — Return/Refund policy
+- Custom pages via the visual builder
+
+### 8. Webhook & API System
+```
+POST /api/v1/webhooks/order.created
+POST /api/v1/webhooks/order.shipped
+POST /api/v1/webhooks/product.updated
+```
+- Allows third-party integrations (accounting software, custom apps)
+- Essential for enterprise customers and reseller partners
+
+### 9. Abandoned Cart Recovery
+- Automatic detection: cart items + phone number + no order within 2 hours
+- One-tap "Send WhatsApp Reminder" from admin dashboard
+- Auto-send option (premium feature): system sends reminder via WhatsApp Business API
+- Pre-written Bengali reminder template with product images
+
+### 10. QR Code Generator
+- Auto-generated QR code for the store URL
+- Printable QR cards for physical distribution (market stalls, flyers)
+- QR code for individual products
+- Essential for BD sellers who hand out physical cards at markets
+
+---
+
+## Revised Pricing (Sustainable)
+
+Previous pricing was too cheap to sustain. Based on BD market research:
+
+| Plan | Price/month | Products | Key Features |
+|---|---|---|---|
+| **Free** | ৳০ | 10 | Subdomain only, COD only, basic template, platform watermark |
+| **Starter** | ৳499 | 100 | Custom domain, bKash/Nagad manual, remove watermark, blog |
+| **Growth** | ৳999 | Unlimited | bKash automated, analytics, WhatsApp orders, staff accounts (2), abandoned cart |
+| **Business** | ৳1,999 | Unlimited | Everything + courier API, 5 staff, priority support, API access, no transaction fee |
+
+### Transaction Fee Strategy
+- **Free plan**: 2% per order (incentivizes upgrading)
+- **Starter**: 1% per order
+- **Growth+**: 0% platform fee (only payment gateway fees)
+
+### Why This Works
+- Free plan has enough friction (watermark, 10 products, 2% fee) to drive upgrades
+- ৳499 Starter is cheaper than a single Pathao delivery — affordable for any seller
+- ৳1,999 Business is still 40% cheaper than Shopify Basic
+
+---
+
+## Revised Implementation Roadmap
+
+### Phase 1: Multi-Tenant Foundation (6 weeks)
+- [ ] Firebase Auth integration (Phone OTP + Google)
+- [ ] Supabase JWT bridge Edge Function
+- [ ] `stores` table + RLS policies on all existing tables
+- [ ] Next.js Middleware for subdomain/custom domain routing
+- [ ] CSS variable theming engine (inject from `store_themes`)
+- [ ] Store registration API + slug availability check
+
+### Phase 2: Onboarding + 3 Templates (4 weeks)
+- [ ] 6-step mobile onboarding wizard
+- [ ] Color palette picker with live preview
+- [ ] 3 launch templates: Clothing, Food, General
+- [ ] Template auto-population with Bengali placeholders
+- [ ] Store publish/unpublish toggle
+
+### Phase 3: Visual Builder (5 weeks)
+- [ ] Block component library (Hero, Grid, Text, Gallery, etc.)
+- [ ] Zod schema validation per block type
+- [ ] Admin Mode overlay with floating toolbar
+- [ ] Bottom Sheet editor per block
+- [ ] Section manager (reorder, show/hide)
+- [ ] Revision history with undo (store_page_revisions)
+- [ ] Multi-page support (about, contact, custom)
+
+### Phase 4: Mobile Dashboard (4 weeks)
+- [ ] Full admin redesign: bottom tabs, swipe gestures
+- [ ] Camera-first product addition flow
+- [ ] Order management with swipe actions
+- [ ] Store Health Score widget
+- [ ] Push notifications (PWA)
+- [ ] Bengali language toggle
+
+### Phase 5: Growth Features (5 weeks)
+- [ ] Staff accounts with role-based permissions
+- [ ] Blog system with markdown editor
+- [ ] Abandoned cart detection + WhatsApp recovery
+- [ ] CSV product import/export
+- [ ] Simple analytics dashboard
+- [ ] QR code generator
+- [ ] Coupon system + Flash sale mode
+
+### Phase 6: BD-Specific + Intelligence (6 weeks)
+- [ ] WhatsApp order button + broadcast
+- [ ] Pathao/Steadfast courier API integration
+- [ ] Payment screenshot verification
+- [ ] Eid/Festival sale mode
+- [ ] AI Bengali product description generator
+- [ ] Voice-to-Product (record → AI fills fields)
+- [ ] Smart notification engine
+
+---
+
+## Key Technical Decisions
+
+| Decision | Choice | Reason |
+|---|---|---|
+| **Auth** | Firebase (Phone OTP) + Supabase (data) | BD users expect phone login. Firebase has best OTP delivery. |
+| **Database** | Supabase Postgres + RLS | Multi-tenant isolation without separate DBs. Cost-effective. |
+| **Framework** | Next.js 16 App Router | Server Components reduce JS bundle for low-end phones. |
+| **Styling** | Tailwind + CSS Variables | CSS vars for per-store theming. Tailwind for dev speed. |
+| **State (Builder)** | Zustand | Lightweight, perfect for real-time preview state. |
+| **Image CDN** | Cloudinary | Auto WebP, responsive sizes, watermarking API. |
+| **Hosting** | Vercel | Edge network, ISR support, easy custom domains. |
+| **Page Builder Schema** | Zod-validated JSON | Type-safe block props. Prevents data corruption. |
+| **Push Notifications** | Firebase Cloud Messaging | Already in the stack. Works with PWA. |
+
+> [!IMPORTANT]
+> **The Single Most Important Metric**: Time-to-First-Sale. Every feature, every UX decision, every onboarding step should be optimized to get a merchant from "I heard about this platform" to "I just received my first order" in the shortest time possible. That is the moment they become a paying, loyal customer.
+
+> [!TIP]
+> **Launch Strategy**: Don't build all 12 templates. Launch with 3 (Clothing, Food, General). Get 20 real BD merchants using it. Watch them on their phones. Fix what confuses them. Then expand. Your first 20 users will teach you more than 6 months of planning.

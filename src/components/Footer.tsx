@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Send, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -51,7 +51,16 @@ const defaultSectionOrder: FooterSection[] = [
 
 const Footer = () => {
   const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(() => localStorage.getItem("threadbd-subscribed") === "true");
+  const [subscribed, setSubscribed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("threadbd-subscribed") === "true";
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [error, setError] = useState("");
   const { data: footer } = useSiteSettings<FooterSettings>("footer");
 
@@ -104,7 +113,7 @@ const Footer = () => {
               {productTypes.map((t) => (
                 <Link
                   key={t.value}
-                  to={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
+                  href={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
                   className="text-sm text-muted-foreground hover:text-foreground smooth-hover"
                 >
                   {t.label}
@@ -119,7 +128,7 @@ const Footer = () => {
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
             <div className="flex flex-col gap-2">
               {companyLinks.map((link, i) => (
-                <Link key={i} to={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                <Link key={i} href={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
                   {link.label}
                 </Link>
               ))}
@@ -139,17 +148,17 @@ const Footer = () => {
             ) : (
               <>
                 <p className="mb-3 text-xs text-muted-foreground">{newsletterDesc}</p>
-                <form onSubmit={handleSubscribe} className="flex gap-2">
+                <form onSubmit={handleSubscribe} className="flex gap-2 relative z-10">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(""); }}
                     placeholder="you@email.com"
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="flex-1 rounded-md border border-white/10 bg-background/50 backdrop-blur-sm px-4 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/50 shadow-inner"
                   />
                   <button
                     type="submit"
-                    className="flex items-center justify-center rounded-md bg-primary px-3 py-2 text-primary-foreground hover:opacity-90 smooth-hover"
+                    className="button-premium flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-primary-foreground shadow-lg"
                     aria-label="Subscribe to newsletter"
                   >
                     <Send className="h-4 w-4" />
@@ -167,7 +176,7 @@ const Footer = () => {
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
             <div className="flex flex-col gap-2">
               {extraLinks.map((link, i) => (
-                <Link key={i} to={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                <Link key={i} href={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
                   {link.label}
                 </Link>
               ))}
@@ -189,14 +198,20 @@ const Footer = () => {
   const colCount = renderedSections.length;
 
   return (
-    <footer className="border-t border-border bg-card py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+    <footer className="relative border-t border-white/5 bg-secondary overflow-hidden">
+      {/* Decorative top gradient */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+      
+      <div className="container mx-auto px-4 pt-16 pb-24 md:pb-16 lg:py-20">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
           {renderedSections}
         </div>
-        <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          <p className="mb-2">{paymentText}</p>
-          {copyrightText}
+        <div className="mt-16 pt-8 flex flex-col items-center justify-center gap-4 text-[13px] text-muted-foreground/60 border-t border-white/5">
+          <p className="tracking-wide">{paymentText}</p>
+          <div className="flex items-center gap-6">
+            <p className="tracking-wider">{copyrightText}</p>
+            <Link href="/admin/login" className="hover:text-primary transition-colors tracking-wider">Dashboard</Link>
+          </div>
         </div>
       </div>
     </footer>

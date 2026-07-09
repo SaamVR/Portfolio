@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,8 +43,8 @@
     --sidebar-border: 220 15% 18%;
     --sidebar-ring: 145 63% 42%;
 
-    --font-heading: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
 
     --gradient-primary: linear-gradient(135deg, hsl(145 63% 42%), hsl(160 60% 35%));
     --gradient-hero: linear-gradient(180deg, hsla(220, 20%, 7%, 0) 0%, hsl(220, 20%, 7%) 100%);
@@ -101,8 +99,16 @@
   }
 
   .dark {
-    --background: 220 20% 7%;
+    --background: 0 0% 0%;
     --foreground: 40 10% 92%;
+    --card: 220 18% 5%;
+    --card-foreground: 40 10% 92%;
+    --popover: 220 18% 5%;
+    --popover-foreground: 40 10% 92%;
+    --secondary: 220 15% 10%;
+    --muted: 220 15% 10%;
+    --border: 220 15% 12%;
+    --input: 220 15% 12%;
   }
 }
 
@@ -160,6 +166,37 @@
     border: 1px solid hsl(var(--border) / 0.5);
   }
 
+  .glass-panel {
+    @apply bg-background/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)];
+    background-blend-mode: overlay;
+  }
+
+  .nav-link-anim {
+    @apply relative overflow-hidden transition-colors duration-300;
+  }
+  
+  .nav-link-anim::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-[2px] bg-primary origin-bottom-right scale-x-0 transition-transform duration-300 ease-out;
+  }
+
+  .nav-link-anim:hover::after {
+    @apply origin-bottom-left scale-x-100;
+  }
+
+  .button-premium {
+    @apply relative overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_0_20px_hsla(var(--primary),0.3)] z-10;
+  }
+
+  .button-premium::before {
+    content: '';
+    @apply absolute inset-0 bg-white/20 translate-y-full transition-transform duration-500 ease-out -z-10;
+  }
+
+  .button-premium:hover::before {
+    @apply translate-y-0;
+  }
+
   .shimmer-bg {
     background: linear-gradient(
       110deg,
@@ -206,4 +243,55 @@
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.35); }
+  50% { box-shadow: 0 0 28px rgba(255, 255, 255, 0.75); }
+}
+
+@keyframes pulse-glow-primary {
+  0%, 100% { box-shadow: 0 0 12px rgba(22, 163, 74, 0.4); }
+  50% { box-shadow: 0 0 28px rgba(22, 163, 74, 0.85); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.animate-pulse-glow-primary {
+  animation: pulse-glow-primary 2s infinite ease-in-out;
+}
+
+@keyframes float-slow-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.15); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+@keyframes float-slow-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1.1); }
+  33% { transform: translate(-40px, 25px) scale(0.85); }
+  66% { transform: translate(30px, -20px) scale(1.2); }
+}
+
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.25; }
+  50% { transform: translateY(-15px) rotate(180deg); opacity: 0.7; }
+}
+
+.animate-float-orb-1 {
+  animation: float-slow-1 12s infinite ease-in-out;
+}
+
+.animate-float-orb-2 {
+  animation: float-slow-2 15s infinite ease-in-out;
+}
+
+.animate-float-particle-slow {
+  animation: float-particle 8s infinite ease-in-out;
+}
+
+.animate-float-particle-fast {
+  animation: float-particle 5s infinite ease-in-out;
 }

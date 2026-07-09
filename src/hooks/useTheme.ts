@@ -1,10 +1,28 @@
 import { useEffect } from "react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/auth-context";
 import { themePresets } from "@/lib/themePresets";
 import { useTheme as useNextTheme } from "next-themes";
+import { DEFAULT_STORE_ID } from "@/hooks/useProductTypes";
 
 export function useApplyTheme() {
-  const { data: themeId } = useSiteSettings<string>("active_theme");
+  const { activeStoreId } = useAuth();
+  const storeId = activeStoreId ?? null;
+
+  const { data: themeId } = useQuery({
+    queryKey: ["store_themes" as any, storeId, "active_theme"],
+    queryFn: async () => {
+      if (!storeId) return "default";
+      const { data } = await supabase
+        .from("store_themes" as any)
+        .select("preset_id")
+        .eq("store_id", storeId as string)
+        .maybeSingle();
+      return (data as any)?.preset_id ?? "default";
+    },
+    enabled: Boolean(storeId),
+  });
   const { resolvedTheme } = useNextTheme();
 
   useEffect(() => {
@@ -26,3 +44,6 @@ export function useApplyTheme() {
     };
   }, [themeId, resolvedTheme]);
 }
+
+
+

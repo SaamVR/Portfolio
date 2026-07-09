@@ -1,73 +1,55 @@
-# Welcome to your Lovable project
+# ThreadBD Commerce Engine
 
-## Project info
+ThreadBD Commerce Engine is a Next.js and Supabase commerce CMS for Bangladesh-first storefronts. It includes a multi-tenant storefront runtime, merchant admin dashboard, page-builder CMS, onboarding flow, media management, store-scoped commerce data, and Supabase Edge Functions for platform operations.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- Next.js App Router
+- React and TypeScript
+- Tailwind CSS and shadcn/ui components
+- Supabase Postgres, Auth, RLS, and Edge Functions
+- Firebase-assisted phone and social auth flows
+- Cloudinary-backed media uploads
 
-There are several ways of editing your application.
+## Local Development
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Install dependencies:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Start the app:
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The local server runs on:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```txt
+http://localhost:8080
+```
 
-**Use GitHub Codespaces**
+## Useful Commands
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
 
-## What technologies are used for this project?
+## Project Areas
 
-This project is built with:
+- `src/app` - Next.js routes for platform, storefront, admin, and API surfaces.
+- `src/views/admin` - Admin dashboard screens.
+- `src/components/storefront` - Tenant storefront rendering.
+- `src/lib/cms` - CMS schemas, templates, validation, and store resolution.
+- `src/lib/platform` - Plan, entitlement, and lifecycle helpers.
+- `supabase/migrations` - Chronological database migrations.
+- `supabase/functions` - Supabase Edge Functions.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Environment
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Create `.env.local` with the Supabase, Firebase, Cloudinary, and platform URL values required by the features you are running locally. See the code paths under `src/integrations`, `src/lib/firebase-phone-auth.ts`, `src/lib/google-auth.ts`, and `supabase/functions` for the exact variable names used by each integration.

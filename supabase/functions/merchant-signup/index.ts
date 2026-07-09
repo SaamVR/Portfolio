@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
     const [{ data: existingStoreBySlug }, { count: existingMembershipCount }, { data: existingPlan }, { data: recentStore }] = await Promise.all([
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
-      supabaseAdmin.from("store_memberships").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+      supabaseAdmin.from("store_memberships").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "owner"),
       supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit").eq("id", planId).eq("is_active", true).maybeSingle(),
       supabaseAdmin.from("stores").select("created_at").eq("owner_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
     const storeLimit = existingPlan?.store_limit === null ? Infinity : (existingPlan?.store_limit ?? 1);
     if (existingMembershipCount !== null && existingMembershipCount >= storeLimit) {
-      return new Response(JSON.stringify({ error: `Your selected plan allows a maximum of ${storeLimit === Infinity ? 'unlimited' : storeLimit} store(s). Please select a higher tier to create more.` }), {
+      return new Response(JSON.stringify({ error: `Your selected plan allows a maximum of ${storeLimit} store(s). Please select a higher tier to create more.` }), {
         status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

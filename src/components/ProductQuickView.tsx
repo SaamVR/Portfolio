@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/react-router-dom-shim";
 import { X, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Product } from "@/data/products";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/context/useCart";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { productUrl } from "@/lib/slug";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface ProductQuickViewProps {
   product: Product | null;
@@ -17,6 +18,7 @@ interface ProductQuickViewProps {
 const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps) => {
   const [selectedSize, setSelectedSize] = useState("");
   const { addItem } = useCart();
+  const currentStore = useOptionalStore();
 
   if (!product) return null;
 
@@ -31,6 +33,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
       price: product.price,
       image: product.image,
       size: selectedSize,
+      storeId: currentStore?.id,
     });
     toast.success("Added to cart!");
     onOpenChange(false);
@@ -99,7 +102,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
                 Add to Cart — ৳{product.price}
               </button>
               <Link
-                to={productUrl(product.id, product.name)}
+                to={productUrl(product.id, product.name, currentStore?.slug)}
                 onClick={() => onOpenChange(false)}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-border py-3 text-sm font-medium text-muted-foreground smooth-hover hover:border-foreground hover:text-foreground"
               >

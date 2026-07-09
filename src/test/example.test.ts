@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 
 describe("example", () => {
   it("should pass", () => {

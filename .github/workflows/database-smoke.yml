@@ -1,0 +1,82 @@
+name: Database Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/database-smoke.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/**"
+      - "src/app/api/**"
+      - "src/lib/api/**"
+      - "supabase/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/database-smoke.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/**"
+      - "src/app/api/**"
+      - "src/lib/api/**"
+      - "supabase/**"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: >
+          supabase start
+          -x studio
+          -x imgproxy
+          -x inbucket
+          -x postgres-meta
+          -x logflare
+          -x vector
+          -x realtime
+          -x storage-api
+          -x edge-runtime
+          -x supavisor
+
+      - name: Reset local database from migrations
+        run: supabase db reset --local
+
+      - name: Export local Supabase env
+        shell: bash
+        run: |
+          eval "$(supabase status -o env --override-name ANON_KEY=NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          } >> "$GITHUB_ENV"
+
+      - name: Run DB smoke gate
+        run: npm run test:db
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup

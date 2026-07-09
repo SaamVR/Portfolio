@@ -1,0 +1,102 @@
+name: Preview Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/preview-smoke.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.preview.config.ts"
+      - "tests/**"
+      - "src/app/**"
+      - "src/components/**"
+      - "src/hooks/**"
+      - "src/integrations/**"
+      - "src/lib/**"
+      - "src/views/**"
+      - "supabase/**"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: >
+          supabase start
+          -x studio
+          -x imgproxy
+          -x inbucket
+          -x postgres-meta
+          -x logflare
+          -x vector
+          -x realtime
+          -x storage-api
+          -x supavisor
+
+      - name: Reset local database from migrations
+        run: supabase db reset --local
+
+      - name: Export local Supabase env
+        shell: bash
+        run: |
+          eval "$(supabase status -o env --override-name ANON_KEY=NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Playwright browser
+        run: npx playwright@1.51.1 install --with-deps chromium
+
+      - name: Start Next app
+        shell: bash
+        run: |
+          npm run dev > /tmp/ecomcms-preview.log 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8080 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/ecomcms-preview.log
+          exit 1
+
+      - name: Run preview smoke
+        run: npm run test:preview
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-smoke-artifacts
+          path: |
+            test-results
+            playwright-report
+            /tmp/ecomcms-preview.log
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup

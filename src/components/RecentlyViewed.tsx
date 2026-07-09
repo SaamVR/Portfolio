@@ -1,17 +1,21 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useProducts } from "@/hooks/useProducts";
 import { productUrl } from "@/lib/slug";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 
-const RecentlyViewed = () => {
+const RecentlyViewed = ({ title = "Recently Viewed" }: { title?: string }) => {
+  const currentStore = useOptionalStore();
   const { data: products = [] } = useProducts();
 
   let recentIds: string[] = [];
-  try {
-    recentIds = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || "[]");
-  } catch { /* ignore */ }
+  if (typeof window !== "undefined") {
+    try {
+      recentIds = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || "[]");
+    } catch { /* ignore */ }
+  }
 
   const recentProducts = recentIds
     .map((id) => products.find((p) => p.id === id))
@@ -24,13 +28,13 @@ const RecentlyViewed = () => {
     <section className="border-t border-border py-16">
       <div className="container mx-auto px-4">
         <AnimatedSection>
-          <h2 className="mb-8 font-heading text-2xl font-bold text-foreground">Recently Viewed</h2>
+          <h2 className="mb-8 font-heading text-2xl font-bold text-foreground">{title}</h2>
         </AnimatedSection>
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
           {recentProducts.map((product) => (
             <Link
               key={product!.id}
-              to={productUrl(product!.id, product!.name)}
+              href={productUrl(product!.id, product!.name, currentStore?.slug)}
               className="group flex-shrink-0"
             >
               <div className="h-40 w-32 overflow-hidden rounded-lg bg-secondary">

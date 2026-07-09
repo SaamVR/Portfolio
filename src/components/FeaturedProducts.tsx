@@ -2,9 +2,19 @@ import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useFeaturedProducts } from "@/hooks/useProducts";
 import { Loader2 } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
-const FeaturedProducts = () => {
+const FeaturedProducts = ({
+  limit = 6,
+  title,
+  tagline,
+}: {
+  limit?: number;
+  title?: string;
+  tagline?: string;
+}) => {
   const { data: featured = [], isLoading } = useFeaturedProducts();
+  const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured");
 
   if (isLoading) {
     return (
@@ -23,12 +33,12 @@ const FeaturedProducts = () => {
       <div className="container mx-auto px-4">
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Curated</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">Featured Drops</h2>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? settings?.tagline ?? "Curated"}</p>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? settings?.title ?? "Featured Drops"}</h2>
           </div>
         </AnimatedSection>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((product, i) => (
+          {featured.slice(0, limit).map((product, i) => (
             <AnimatedSection key={product.id} delay={i * 100} animation="blur">
               <ProductCard product={product} />
             </AnimatedSection>

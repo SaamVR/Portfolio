@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/react-router-dom-shim";
 import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { productTypes } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
 import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface SearchBarProps {
   className?: string;
@@ -47,6 +48,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentStore = useOptionalStore();
 
   const { data: products = [] } = useProducts();
 
@@ -113,7 +115,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       saveSearchHistory(query.trim());
       setHistory(getSearchHistory());
     }
-    navigate(productUrl(product.id, product.name));
+    navigate(productUrl(product.id, product.name, currentStore?.slug));
     setQuery("");
     setOpen(false);
     onClose?.();
@@ -165,7 +167,14 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const showDropdown = open && hasContent;
 
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <>
+      {showDropdown && (
+        <div 
+          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity" 
+          onClick={() => setOpen(false)}
+        />
+      )}
+      <div ref={containerRef} className={cn("relative z-[50]", className)}>
       <form
         onSubmit={handleSubmit}
         role="search"
@@ -300,6 +309,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

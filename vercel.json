@@ -1,8 +1,26 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/auth/(.*)", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" },
-    { "source": "/oauth/(.*)", "destination": "/index.html" }
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co https://www.facebook.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
+        }
+      ]
+    }
   ]
 }

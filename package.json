@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "test:watch": "tsx --test --watch \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
+    "test:preview": "npx playwright@1.51.1 test -c playwright.preview.config.ts",
     "test:db": "npm run test:db:rls && npm run test:db:billing",
     "test:db:rls": "node scripts/run-rls-smoke.mjs",
     "test:db:billing": "tsx scripts/run-billing-route-smoke.ts"
