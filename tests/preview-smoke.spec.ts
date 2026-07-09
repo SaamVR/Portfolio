@@ -48,11 +48,25 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     userId = createdUser.user.id;
 
+    page.on('console', msg => console.log('PAGE CONSOLE:', msg.text()));
+    page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
+
     await page.goto("/admin/login");
     await page.getByTestId("admin-login-email").fill(email);
     await page.getByTestId("admin-login-password").fill(password);
+    
+    console.log("Submitting login for:", email);
     await page.getByTestId("admin-login-submit").click();
-    await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+    
+    try {
+      await expect(page.getByText(`Signed in as ${email}`)).toBeVisible({ timeout: 5000 });
+    } catch (e) {
+      console.log("Failed to see 'Signed in as' - capturing current URL:", page.url());
+      // wait a bit to see if we were redirected
+      await page.waitForTimeout(2000);
+      console.log("URL after wait:", page.url());
+      throw e;
+    }
 
     await page.goto("/signup");
     await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
