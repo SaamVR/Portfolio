@@ -6,9 +6,11 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "preview-smoke.spec.ts",
   timeout: 120000,
+  outputDir: "test-results",
   expect: {
     timeout: 15000,
   },
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
     baseURL,
     headless: true,
