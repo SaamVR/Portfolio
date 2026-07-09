@@ -82,6 +82,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     expect(storeId).toBeTruthy();
 
     await page.goto("/admin/products");
+    await page.getByTestId("products-add-button").waitFor({ state: 'visible', timeout: 30000 });
     await page.getByTestId("products-add-button").click();
     await page.getByTestId("products-form-name").fill("Preview Smoke Product");
     await page.getByTestId("products-form-price").fill("999");

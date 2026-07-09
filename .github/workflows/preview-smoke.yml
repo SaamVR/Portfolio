@@ -45,13 +45,22 @@ jobs:
           supabase start
           -x studio
           -x imgproxy
-          -x inbucket
           -x postgres-meta
           -x logflare
           -x vector
-          -x realtime
-          -x storage-api
           -x supavisor
+
+      - name: Wait for Supabase to be ready
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:54321 >/dev/null 2>&1; then
+              echo "Supabase ready"
+              break
+            fi
+            echo "Waiting for Supabase..."
+            sleep 2
+          done
 
       - name: Reset local database from migrations
         run: supabase db reset --local
@@ -74,7 +83,7 @@ jobs:
       - name: Start Next app
         shell: bash
         run: |
-          HOST=127.0.0.1 npm run dev > /tmp/ecomcms-preview.log 2>&1 &
+          PORT=8080 HOST=127.0.0.1 npm run dev > /tmp/ecomcms-preview.log 2>&1 &
           for i in {1..60}; do
             if curl -fsS http://127.0.0.1:8080 >/dev/null; then
               exit 0
@@ -82,7 +91,7 @@ jobs:
             sleep 2
           done
           echo "Server didn't start or bind correctly. Dumping /tmp/ecomcms-preview.log:"
-          cat /tmp/ecomcms-preview.log || true
+          tail -n +1 /tmp/ecomcms-preview.log || true
           exit 1
 
       - name: Run preview smoke
