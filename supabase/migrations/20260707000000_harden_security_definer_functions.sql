@@ -73,7 +73,7 @@ BEGIN
     JOIN pg_namespace n ON p.pronamespace = n.oid 
     WHERE n.nspname = 'public' 
       AND p.proname = 'validate_coupon' 
-      AND pg_get_function_identity_arguments(p.oid) = '_code text, _order_total integer, _store_id uuid'
+      AND pg_get_function_identity_arguments(p.oid) = 'text, integer, uuid'
   ) THEN
     EXECUTE 'REVOKE EXECUTE ON FUNCTION public.validate_coupon(text, integer, uuid) FROM public';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.validate_coupon(text, integer, uuid) TO authenticated';
