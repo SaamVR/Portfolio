@@ -74,14 +74,15 @@ jobs:
       - name: Start Next app
         shell: bash
         run: |
-          npm run dev > /tmp/ecomcms-preview.log 2>&1 &
+          HOST=127.0.0.1 npm run dev > /tmp/ecomcms-preview.log 2>&1 &
           for i in {1..60}; do
             if curl -fsS http://127.0.0.1:8080 >/dev/null; then
               exit 0
             fi
             sleep 2
           done
-          cat /tmp/ecomcms-preview.log
+          echo "Server didn't start or bind correctly. Dumping /tmp/ecomcms-preview.log:"
+          cat /tmp/ecomcms-preview.log || true
           exit 1
 
       - name: Run preview smoke
