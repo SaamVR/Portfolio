@@ -82,16 +82,32 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     expect(storeId).toBeTruthy();
 
     await page.goto("/admin/products");
-    
-    // Log any failing network responses to debug 500 errors
+
+    // Capture failed network requests
+    const failedRequests: string[] = [];
     page.on('response', response => {
-      if (!response.ok()) {
-        console.log(`Network error: ${response.url()} - ${response.status()} ${response.statusText()}`);
+      if (!response.ok() && response.url().includes('/api/')) {
+        failedRequests.push(`${response.status()} ${response.url()}`);
+      }
+      // Also catch 500s that might not explicitly have /api/
+      if (response.status() >= 500) {
+        failedRequests.push(`${response.status()} ${response.url()} - ${response.statusText()}`);
       }
     });
 
-    await page.waitForLoadState('networkidle');
-    await page.getByTestId("products-add-button").waitFor({ state: 'visible', timeout: 60000 });
+    // Wait for page with timeout and better error message
+    try {
+      await page.getByTestId("products-add-button").waitFor({ 
+        state: 'visible', 
+        timeout: 30000 
+      });
+    } catch (error) {
+      if (failedRequests.length > 0) {
+        throw new Error(`Failed API calls detected:\n${failedRequests.join('\n')}\nOriginal error: ${(error as Error).message}`);
+      }
+      throw error;
+    }
+    
     await page.getByTestId("products-add-button").click();
     await page.getByTestId("products-form-name").fill("Preview Smoke Product");
     await page.getByTestId("products-form-price").fill("999");

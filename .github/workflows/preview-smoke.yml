@@ -110,8 +110,11 @@ jobs:
       - name: Dump server log on failure
         if: failure()
         run: |
-          echo "=== Server Output ==="
-          tail -n 100 /tmp/ecomcms-preview.log || true
+          echo "=== Server Output (Last 150 lines) ==="
+          tail -n 150 /tmp/ecomcms-preview.log || true
+          
+          echo -e "\n=== Checking for database errors ==="
+          grep -i "error\|failed\|exception" /tmp/ecomcms-preview.log | tail -n 20 || true
 
       - name: Upload Playwright artifacts
         if: failure()
