@@ -85,13 +85,21 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     // Capture failed network requests
     const failedRequests: string[] = [];
-    page.on('response', response => {
+    page.on('response', async response => {
       if (!response.ok() && response.url().includes('/api/')) {
         failedRequests.push(`${response.status()} ${response.url()}`);
       }
-      // Also catch 500s that might not explicitly have /api/
       if (response.status() >= 500) {
         failedRequests.push(`${response.status()} ${response.url()} - ${response.statusText()}`);
+      }
+      
+      if (!response.ok() && response.url().includes('/rest/v1/')) {
+        try {
+          const body = await response.text();
+          console.log(`API ERROR: ${response.status()} ${response.url()} -> ${body}`);
+        } catch (e) {
+          console.log(`API ERROR: ${response.status()} ${response.url()} -> <could not read body>`);
+        }
       }
     });
 
