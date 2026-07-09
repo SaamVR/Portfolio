@@ -63,5 +63,5 @@ VALUES
     'contact_page',
     '{"address": "Dhaka, Bangladesh", "phone": "+880 1XXX-XXXXXX", "email": "hello@example.com"}'::jsonb
   )
-ON CONFLICT (store_id, key) DO UPDATE
+ON CONFLICT (store_id, key) WHERE store_id IS NOT NULL DO UPDATE
 SET value = EXCLUDED.value, updated_at = now();
