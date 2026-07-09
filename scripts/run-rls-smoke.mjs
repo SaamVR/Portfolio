@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
-const sqlFile = path.join(repoRoot, "supabase", "schema", "sql", "rls_smoke_can_manage_store.sql");
+const sqlFile = path.join(repoRoot, "supabase", "migrations", "rls_smoke_can_manage_store.sql");
 
 const databaseUrl =
   process.env.SUPABASE_DB_URL ||
