@@ -66,11 +66,12 @@ jobs:
       - name: Export local Supabase env
         shell: bash
         run: |
-          eval "$(supabase status -o env --override-name ANON_KEY=NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+          eval "$(supabase status -o env)"
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
             echo "SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           } >> "$GITHUB_ENV"
 
