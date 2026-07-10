@@ -11,7 +11,26 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Save, ArrowUp, ArrowDown, Trash2, RefreshCcw, LayoutTemplate, Eye, EyeOff, History, Copy, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Save,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  RefreshCcw,
+  LayoutTemplate,
+  Eye,
+  EyeOff,
+  History,
+  Copy,
+  ExternalLink,
+  FileText,
+  Layers3,
+  Monitor,
+  Smartphone,
+  Store as StoreIcon,
+} from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
@@ -879,18 +898,50 @@ export default function CmsPagesManager() {
   
   const previewBlocks = selectedPage ? [...selectedPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const previewFrameClassName = previewViewport === "mobile" ? "mx-auto w-full max-w-[420px]" : "w-full";
+  const visibleBlockCount = selectedPage?.blocks.filter((block) => block.isVisible).length ?? 0;
+  const selectedPageNumber = selectedPage ? store.pages.findIndex((page) => page.id === selectedPage.id) + 1 : 0;
 
   return (
     <div className="space-y-6">
-      <Card className="border-border">
-        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle>CMS Pages</CardTitle>
-            <CardDescription>Manage storefront pages and homepage blocks from the new CMS tables.</CardDescription>
+      <div className="rounded-lg border border-border bg-card/70 p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={store.isPublished ? "default" : "secondary"}>{store.isPublished ? "Published" : "Draft"}</Badge>
+              <Badge variant={hasUnsavedChanges ? "secondary" : "outline"}>{hasUnsavedChanges ? "Unsaved changes" : "Saved"}</Badge>
+              {selectedPage?.isHomepage ? <Badge variant="outline">Homepage</Badge> : null}
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-normal text-foreground">CMS Builder</h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Shape storefront pages, theme settings, and live sections for {store.name}.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5" />
+                  Pages
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">{store.pages.length}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Layers3 className="h-3.5 w-3.5" />
+                  Visible Blocks
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">{visibleBlockCount}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <StoreIcon className="h-3.5 w-3.5" />
+                  Store Slug
+                </div>
+                <p className="mt-1 truncate text-sm font-semibold text-foreground">{store.slug}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={store.isPublished ? "default" : "secondary"}>{store.isPublished ? "Published" : "Draft"}</Badge>
-            <Badge variant={hasUnsavedChanges ? "secondary" : "outline"}>{hasUnsavedChanges ? "Unsaved changes" : "Saved"}</Badge>
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             {returnTo ? (
               <Button variant="outline" asChild className="gap-2">
                 <Link to={returnTo}>
@@ -914,9 +965,10 @@ export default function CmsPagesManager() {
               Save CMS
             </Button>
           </div>
-        </CardHeader>
+        </div>
+      </div>
         
-        <CardContent className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] relative">
+      <div className="relative grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <div className="lg:col-span-2 space-y-3">
             {recoverableDraft ? (
               <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -960,11 +1012,20 @@ export default function CmsPagesManager() {
 
           {/* Left Panel: Settings Form */}
           <div className={cn(
-            "space-y-4 transition-transform duration-300",
-            "lg:static lg:block lg:h-auto lg:w-auto lg:transform-none lg:shadow-none lg:bg-transparent lg:p-0",
+            "transition-transform duration-300",
+            "lg:static lg:block lg:h-auto lg:w-auto lg:transform-none lg:rounded-lg lg:border lg:border-border lg:bg-card/70 lg:p-4 lg:shadow-sm",
+            "lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto",
             "fixed inset-x-0 bottom-0 z-50 bg-background/95 backdrop-blur-xl border-t shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-4 pb-24 max-h-[75vh] overflow-y-auto rounded-t-3xl",
             isMobileSettingsOpen ? "translate-y-0" : "translate-y-full lg:translate-y-0"
           )}>
+            <div className="hidden items-start justify-between gap-3 lg:mb-4 lg:flex">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Store Workspace</p>
+                <p className="text-xs text-muted-foreground">Settings, theme, and page list</p>
+              </div>
+              <Badge variant="outline">{selectedPageNumber || 0}/{store.pages.length}</Badge>
+            </div>
+            <div className="space-y-4">
             <div className="flex items-center justify-between lg:hidden mb-4 pb-2 border-b">
               <h3 className="font-semibold">Edit Section</h3>
               <Button variant="ghost" size="icon" onClick={() => setIsMobileSettingsOpen(false)}>
@@ -1133,6 +1194,7 @@ export default function CmsPagesManager() {
                   </div>
                 </button>
               ))}
+            </div>
             </div>
           </div>
 
@@ -1683,19 +1745,25 @@ export default function CmsPagesManager() {
                     <div className="flex items-center rounded-lg border border-border p-1">
                       <Button
                         type="button"
-                        size="sm"
+                        size="icon"
                         variant={previewViewport === "desktop" ? "secondary" : "ghost"}
+                        aria-label="Desktop preview"
+                        title="Desktop preview"
+                        className="h-8 w-8"
                         onClick={() => setPreviewViewport("desktop")}
                       >
-                        Desktop
+                        <Monitor className="h-4 w-4" />
                       </Button>
                       <Button
                         type="button"
-                        size="sm"
+                        size="icon"
                         variant={previewViewport === "mobile" ? "secondary" : "ghost"}
+                        aria-label="Mobile preview"
+                        title="Mobile preview"
+                        className="h-8 w-8"
                         onClick={() => setPreviewViewport("mobile")}
                       >
-                        Mobile
+                        <Smartphone className="h-4 w-4" />
                       </Button>
                     </div>
                     <Badge variant="outline">{selectedPage.slug}</Badge>
@@ -1902,8 +1970,7 @@ export default function CmsPagesManager() {
               </CardContent>
             </Card>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

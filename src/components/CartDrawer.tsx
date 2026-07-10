@@ -100,7 +100,7 @@ const CartDrawer = () => {
                 <Tag className="h-4 w-4" />
                 {prepaymentDiscountType === "free_delivery" 
                   ? "Pay with bKash/Nagad for Free Delivery!" 
-                  : `Pay with bKash/Nagad to get ${prepaymentDiscountType === "percentage" ? prepaymentDiscountValue + "%" : "৳" + prepaymentDiscountValue} OFF!`}
+                  : `Pay with bKash/Nagad to get ${prepaymentDiscountType === "percentage" ? prepaymentDiscountValue + "%" : "BDT " + prepaymentDiscountValue} OFF!`}
               </div>
             )}
 
@@ -145,7 +145,7 @@ const CartDrawer = () => {
                               <Plus className="h-3 w-3" />
                             </button>
                           </div>
-                          <p className="font-semibold text-foreground">৳{item.price * item.quantity}</p>
+                          <p className="font-semibold text-foreground">BDT {item.price * item.quantity}</p>
                         </div>
                       </div>
                     </div>
@@ -161,7 +161,7 @@ const CartDrawer = () => {
                             <img src={upsell.image_url} alt={upsell.name} className="h-12 w-10 rounded object-cover" />
                             <div className="flex-1">
                               <p className="text-xs font-semibold text-foreground line-clamp-1">{upsell.name}</p>
-                              <p className="text-xs font-medium text-muted-foreground">৳{upsell.price}</p>
+                              <p className="text-xs font-medium text-muted-foreground">BDT {upsell.price}</p>
                             </div>
                             <button
                               onClick={() => {
@@ -195,9 +195,9 @@ const CartDrawer = () => {
                 <div className="mb-4 rounded-md bg-secondary p-3">
                   <div className="mb-2 flex items-center justify-between text-xs font-medium">
                     {drawerTotal >= freeThreshold ? (
-                      <span className="text-primary font-bold">🎉 You've unlocked FREE Shipping!</span>
+                      <span className="text-primary font-bold">You've unlocked free shipping.</span>
                     ) : (
-                      <span><span className="text-primary font-bold">৳{freeThreshold - drawerTotal}</span> away from FREE Shipping</span>
+                      <span><span className="text-primary font-bold">BDT {freeThreshold - drawerTotal}</span> away from free shipping</span>
                     )}
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-background border border-border/50">
@@ -210,7 +210,7 @@ const CartDrawer = () => {
 
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-medium text-foreground">Subtotal</span>
-                  <span className="font-heading text-lg font-bold text-foreground">৳{drawerTotal}</span>
+                  <span className="font-heading text-lg font-bold text-foreground">BDT {drawerTotal}</span>
                 </div>
 
                 {siteSettings?.loyalty_settings?.enabled && (

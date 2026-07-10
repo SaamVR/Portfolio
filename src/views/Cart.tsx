@@ -82,7 +82,7 @@ const Cart = () => {
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="font-heading font-bold text-primary">৳{item.price * item.quantity}</p>
+                    <p className="font-heading font-bold text-primary">BDT {item.price * item.quantity}</p>
                     <button
                       onClick={() => removeItem(item.productId, item.size, item.storeId)}
                       className="text-muted-foreground hover:text-destructive"
@@ -101,7 +101,7 @@ const Cart = () => {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>৳{totalPrice}</span>
+                <span>BDT {totalPrice}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Delivery</span>
@@ -110,14 +110,14 @@ const Cart = () => {
                 ) : isFreeDelivery ? (
                   <span className="font-medium text-primary">Free</span>
                 ) : (
-                  <span>৳{deliveryFee}</span>
+                  <span>BDT {deliveryFee}</span>
                 )}
               </div>
 
               {!deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
                 <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Add <strong>৳{amountToFreeDelivery}</strong> more for free delivery!</span>
+                  <span>Add <strong>BDT {amountToFreeDelivery}</strong> more for free delivery!</span>
                 </div>
               )}
 
@@ -131,7 +131,7 @@ const Cart = () => {
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                   <span>Total</span>
-                  {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span>৳{grandTotal}</span>}
+                  {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span>BDT {grandTotal}</span>}
                 </div>
               </div>
             </div>

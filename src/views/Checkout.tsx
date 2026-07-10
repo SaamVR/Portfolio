@@ -170,10 +170,10 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       setCouponError("Please checkout one store at a time.");
       return;
     }
-    setCouponLoading(true);
+    // Use the atomic DB function that validates + increments uses_count in one transaction
     setCouponError("");
 
-    // Use the atomic DB function ΓÇö validates + increments uses_count in one transaction
+    // Use the atomic DB function ÃŽâ€œÃƒâ€¡ÃƒÂ¶ validates + increments uses_count in one transaction
     const { data, error } = await supabase.rpc("validate_coupon" as any, {
       _code: couponInput.trim(),
       _order_total: checkoutSubtotal,
@@ -331,7 +331,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Delivery Details</h2>
             <div className="space-y-4">
               {[
-                { key: "name", label: "Full Name", placeholder: "αªåαª¬αª¿αª╛αª░ αª¿αª╛αª«" },
+                { key: "name", label: "Full Name", placeholder: "e.g. Hasan Mahmud" },
                 { key: "phone", label: "Phone Number", placeholder: "01XXXXXXXXX" },
                 { key: "address", label: "Delivery Address", placeholder: "House, Road, Area" },
                 { key: "city", label: "City", placeholder: "Dhaka" },
@@ -358,9 +358,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               {checkoutItems.map((item) => (
                 <div key={`${item.productId}-${item.size}`} className="flex justify-between text-sm">
                   <span className="text-foreground">
-                    {item.name} ├ù {item.quantity} <span className="text-muted-foreground">({item.size})</span>
+                    {item.name} x {item.quantity} <span className="text-muted-foreground">({item.size})</span>
                   </span>
-                  <span className="text-muted-foreground">αº│{item.price * item.quantity}</span>
+                  <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
                 </div>
               ))}
             </div>
@@ -409,7 +409,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             {isMobilePayment && merchantNumber && !(form.paymentMethod === "bkash" && hasBkashGateway) && (
               <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <p className="text-sm font-medium text-foreground">
-                  Send <span className="font-bold text-primary">৳{grandTotal}</span> to this{" "}
+                  Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this{" "}
                   {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} number:
                 </p>
                 <div className="flex items-center gap-3">
@@ -427,7 +427,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                 <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
                   <li>Open your {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} app</li>
                   <li>Select &quot;Send Money&quot;</li>
-                  <li>Enter the number above and send ৳{grandTotal}</li>
+                  <li>Enter the number above and send BDT {grandTotal}</li>
                   <li>Enter the Transaction ID (TrxID) below</li>
                 </ol>
                 <div>
@@ -460,7 +460,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   <Tag className="h-4 w-4 text-primary" />
                   <span className="font-mono font-semibold text-foreground">{appliedCoupon.code}</span>
                   <span className="text-sm text-primary">
-                    -{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : `αº│${appliedCoupon.discount_value}`}
+                    -{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : `BDT ${appliedCoupon.discount_value}`}
                   </span>
                 </div>
                 <button type="button" onClick={removeCoupon} className="text-muted-foreground hover:text-foreground">
@@ -494,32 +494,32 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           <div className="rounded-lg border border-border bg-card p-6 space-y-3">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Subtotal</span>
-              <span>αº│{checkoutSubtotal}</span>
+              <span>BDT {checkoutSubtotal}</span>
             </div>
             {couponDiscount > 0 && (
               <div className="flex justify-between text-sm text-primary">
                 <span>Coupon discount</span>
-                <span>-αº│{couponDiscount}</span>
+                <span>-BDT {couponDiscount}</span>
               </div>
             )}
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Delivery</span>
               <span className={deliveryFee === 0 ? "text-primary" : ""}>
-                {deliveryFee === 0 ? "Free" : `αº│${deliveryFee}`}
+                {deliveryFee === 0 ? "Free" : `BDT ${deliveryFee}`}
               </span>
             </div>
             {deliveryFee === 0 && deliverySettings.enabled && checkoutSubtotal < deliverySettings.free_threshold && (
               <p className="text-xs text-muted-foreground">
-                Add αº│{deliverySettings.free_threshold - checkoutSubtotal} more for free delivery
+                Add BDT {deliverySettings.free_threshold - checkoutSubtotal} more for free delivery
               </p>
             )}
             <div className="border-t border-border pt-3">
               <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                 <span>Total</span>
-                <span>αº│{grandTotal}</span>
+                <span>BDT {grandTotal}</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">{checkoutItems.length} item(s) ΓÇó {checkoutItems.reduce((a, i) => a + i.quantity, 0)} unit(s)</p>
+            <p className="text-xs text-muted-foreground">{checkoutItems.length} item(s) x {checkoutItems.reduce((a, i) => a + i.quantity, 0)} unit(s)</p>
           </div>
 
           <button
@@ -530,10 +530,10 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             {createOrder.isPending || isRedirecting
               ? (isRedirecting ? "Redirecting to bKash..." : "Placing Order...")
               : form.paymentMethod === "cod"
-                ? `Place Order · ৳${grandTotal}`
+                ? `Place Order - BDT ${grandTotal}`
                 : form.paymentMethod === "bkash" && hasBkashGateway
-                  ? `Pay ৳${grandTotal} with bKash`
-                  : `Pay ৳${grandTotal} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
+                  ? `Pay BDT ${grandTotal} with bKash`
+                  : `Pay BDT ${grandTotal} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
           </button>
         </form>
       </div>

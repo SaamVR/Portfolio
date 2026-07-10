@@ -361,7 +361,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                     >
                       <span className="font-semibold text-sm">Inside Dhaka</span>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `৳${deliverySettings?.delivery_fee || 80}`}
+                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee || 80}`}
                       </p>
                     </div>
                     <div 
@@ -373,7 +373,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                     >
                       <span className="font-semibold text-sm">Outside Dhaka</span>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `৳${deliverySettings?.delivery_fee_outside || 150}`}
+                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee_outside || 150}`}
                       </p>
                     </div>
                   </div>
@@ -452,23 +452,23 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
 
                   <div className="flex items-center justify-between mb-2 text-sm text-muted-foreground">
                     <span>Subtotal</span>
-                    <span>৳{checkoutSubtotal}</span>
+                    <span>BDT {checkoutSubtotal}</span>
                   </div>
                   <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
                     <span>Delivery Fee</span>
                     <span className={deliveryFee === 0 ? "text-primary font-medium" : ""}>
-                      {deliveryFee === 0 ? "Free" : `৳${deliveryFee}`}
+                      {deliveryFee === 0 ? "Free" : `BDT ${deliveryFee}`}
                     </span>
                   </div>
                   {discountApplied && (
                     <div className="flex items-center justify-between text-sm text-primary">
                       <span>Discount ({discountCode.toUpperCase()})</span>
-                      <span>-৳{discountAmount}</span>
+                      <span>-BDT {discountAmount}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between mb-6 border-t border-border pt-4">
                     <span className="font-medium text-foreground">Total to Pay</span>
-                    <span className="font-heading text-2xl font-bold text-primary">৳{grandTotal}</span>
+                    <span className="font-heading text-2xl font-bold text-primary">BDT {grandTotal}</span>
                   </div>
 
                   <button
@@ -535,13 +535,13 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                 {isBkashGateway ? (
                   <div className="space-y-4 rounded-md border border-primary/30 bg-primary/5 p-5 text-center">
                     <p className="text-sm font-medium text-foreground">
-                      You will be redirected to the secure bKash payment gateway to pay <span className="font-bold text-primary">৳{grandTotal}</span>.
+                      You will be redirected to the secure bKash payment gateway to pay <span className="font-bold text-primary">BDT {grandTotal}</span>.
                     </p>
                   </div>
                 ) : merchantNumber ? (
                   <div className="space-y-4 rounded-md border border-primary/30 bg-primary/5 p-5">
                     <p className="text-sm font-medium text-foreground">
-                      Send <span className="font-bold text-primary">৳{grandTotal}</span> to this {paymentGateway === "bkash" ? "bKash" : "Nagad"} number:
+                      Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this {paymentGateway === "bkash" ? "bKash" : "Nagad"} number:
                     </p>
                     <div className="flex items-center gap-3">
                       <Phone className="h-5 w-5 text-primary" />
@@ -558,7 +558,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                     <ol className="list-inside list-decimal space-y-1.5 text-sm text-muted-foreground mt-2">
                       <li>Open your {paymentGateway === "bkash" ? "bKash" : "Nagad"} app</li>
                       <li>Select &quot;Send Money&quot;</li>
-                      <li>Enter the number above and send exactly <span className="font-semibold text-foreground">৳{grandTotal}</span></li>
+                      <li>Enter the number above and send exactly <span className="font-semibold text-foreground">BDT {grandTotal}</span></li>
                       <li>Enter the Transaction ID (TrxID) below</li>
                     </ol>
                   </div>
@@ -583,7 +583,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                 <div className="mt-8 border-t border-border pt-6">
                   <div className="flex items-center justify-between mb-6">
                     <span className="font-medium text-foreground">Total Paid</span>
-                    <span className="font-heading text-2xl font-bold text-primary">৳{grandTotal}</span>
+                    <span className="font-heading text-2xl font-bold text-primary">BDT {grandTotal}</span>
                   </div>
 
                   <button

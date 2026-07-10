@@ -49,6 +49,7 @@ jobs:
           -x logflare
           -x vector
           -x supavisor
+          -x inbucket
 
       - name: Wait for Supabase to be ready
         shell: bash
@@ -61,11 +62,6 @@ jobs:
             echo "Waiting for Supabase..."
             sleep 2
           done
-
-      - name: Reset local database from migrations
-        run: |
-          supabase db reset --local
-          sleep 10
 
       - name: Export local Supabase env
         shell: bash
