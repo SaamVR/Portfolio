@@ -8,6 +8,7 @@ import { useCart } from "@/context/useCart";
 import { Button } from "@/components/ui/button";
 import CartDrawer from "@/components/CartDrawer";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import { storePageUrl } from "@/lib/slug";
 
 export function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const store = useStore();
@@ -25,7 +26,7 @@ export function StorefrontLayout({ children }: { children: React.ReactNode }) {
             {store.pages.map((page) => (
               <Link
                 key={page.slug}
-                href={page.isHomepage ? `/stores/${store.slug}` : `/stores/${store.slug}/${page.slug}`}
+                href={page.isHomepage ? `/stores/${store.slug}` : storePageUrl(store.slug, page.slug)}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {page.title}

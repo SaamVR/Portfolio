@@ -1,15 +1,16 @@
-import { useAuth } from "@/hooks/auth-context";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, Package, Printer } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/auth-context";
 import { useAllOrders, useUpdateOrderStatus, type Order } from "@/hooks/useOrders";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Package, Eye, Printer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 
 const STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
@@ -22,9 +23,25 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
+const formatCurrency = (amount: number) => `BDT ${amount.toLocaleString("en-BD")}`;
+
 const AdminOrders = () => {
   const { activeStoreId } = useAuth();
   const { data: orders, isLoading } = useAllOrders(activeStoreId);
+  const { data: activeStore } = useQuery({
+    queryKey: ["admin-orders-store", activeStoreId],
+    queryFn: async () => {
+      if (!activeStoreId) return null;
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await (supabase as any)
+        .from("stores")
+        .select("name")
+        .eq("id", activeStoreId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!activeStoreId,
+  });
   const updateStatus = useUpdateOrderStatus();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -42,13 +59,29 @@ const AdminOrders = () => {
   const handleStatusChange = (orderId: string, status: string) => {
     updateStatus.mutate(
       { orderId, status, storeId: activeStoreId ?? undefined },
-      { onSuccess: () => toast.success(`Order updated to ${status}`) }
+      { onSuccess: () => toast.success(`Order updated to ${status}`) },
     );
   };
 
   const handlePrintInvoice = (order: Order) => {
-    const printWindow = window.open('', '_blank');
+    const storeName = activeStore?.name?.trim() || "Store";
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const lineItems = order.items
+      .map(
+        (item) => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.size}</td>
+                  <td>${item.quantity}</td>
+                  <td>${formatCurrency(item.price)}</td>
+                  <td>${formatCurrency(item.price * item.quantity)}</td>
+                </tr>
+              `,
+      )
+      .join("");
+
     const html = `
       <html>
         <head>
@@ -69,7 +102,7 @@ const AdminOrders = () => {
         </head>
         <body>
           <div class="header">
-            <div class="brand">THREADBD</div>
+            <div class="brand">${storeName}</div>
             <div class="invoice-title">INVOICE</div>
           </div>
           <div class="grid">
@@ -77,7 +110,7 @@ const AdminOrders = () => {
               <strong>Billed To:</strong><br>
               ${order.customer_name}<br>
               ${order.customer_phone}<br>
-              ${order.customer_email || ''}
+              ${order.customer_email || ""}
             </div>
             <div>
               <strong>Shipping Address:</strong><br>
@@ -102,28 +135,20 @@ const AdminOrders = () => {
               </tr>
             </thead>
             <tbody>
-              ${order.items.map(item => `
-                <tr>
-                  <td>${item.name}</td>
-                  <td>${item.size}</td>
-                  <td>${item.quantity}</td>
-                  <td>৳${item.price}</td>
-                  <td>৳${item.price * item.quantity}</td>
-                </tr>
-              `).join('')}
+              ${lineItems}
               <tr>
                 <td colspan="3"></td>
                 <td>Delivery Fee</td>
-                <td>৳${order.delivery_fee}</td>
+                <td>${formatCurrency(order.delivery_fee)}</td>
               </tr>
               <tr class="total-row">
                 <td colspan="3"></td>
                 <td>Grand Total</td>
-                <td>৳${order.total}</td>
+                <td>${formatCurrency(order.total)}</td>
               </tr>
             </tbody>
           </table>
-          ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${order.notes}</div>` : ''}
+          ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${order.notes}</div>` : ""}
           <script>
             window.onload = () => {
               window.print();
@@ -133,6 +158,7 @@ const AdminOrders = () => {
         </body>
       </html>
     `;
+
     printWindow.document.write(html);
     printWindow.document.close();
   };
@@ -211,7 +237,7 @@ const AdminOrders = () => {
                       {order.customer_name} · {order.customer_phone}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(order.created_at).toLocaleDateString()} · {order.items.length} item(s) · ৳{order.total}
+                      {new Date(order.created_at).toLocaleDateString()} · {order.items.length} item(s) · {formatCurrency(order.total)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -219,7 +245,7 @@ const AdminOrders = () => {
                       value={order.status}
                       onValueChange={(v) => handleStatusChange(order.id, v)}
                     >
-                      <SelectTrigger className="w-[140px] h-9 text-xs">
+                      <SelectTrigger className="h-9 w-[140px] text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -241,7 +267,6 @@ const AdminOrders = () => {
         </div>
       )}
 
-      {/* Order Detail Dialog */}
       <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -269,12 +294,12 @@ const AdminOrders = () => {
                 {viewOrder.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
                     <span>{item.name} × {item.quantity} ({item.size})</span>
-                    <span>৳{item.price * item.quantity}</span>
+                    <span>{formatCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
-                <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground">
+                <div className="flex justify-between border-t border-border pt-2 font-bold text-foreground">
                   <span>Total</span>
-                  <span>৳{viewOrder.total}</span>
+                  <span>{formatCurrency(viewOrder.total)}</span>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
@@ -283,11 +308,11 @@ const AdminOrders = () => {
               </div>
               {viewOrder.notes && (
                 <div className="mt-4 rounded-md border border-border bg-secondary/50 p-3">
-                  <p className="text-xs font-semibold text-foreground mb-1">Customer Notes / TrxID:</p>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{viewOrder.notes}</p>
+                  <p className="mb-1 text-xs font-semibold text-foreground">Customer Notes / TrxID:</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{viewOrder.notes}</p>
                 </div>
               )}
-              <div className="pt-4 flex justify-end">
+              <div className="flex justify-end pt-4">
                 <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">
                   <Printer className="h-4 w-4" /> Print Invoice
                 </Button>
@@ -301,5 +326,3 @@ const AdminOrders = () => {
 };
 
 export default AdminOrders;
-
-

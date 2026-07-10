@@ -31,8 +31,7 @@ import { cn } from "@/lib/utils";
 import ProductCard from "@/components/ProductCard";
 import { useProductsByIds } from "@/hooks/useProducts";
 import { useCart } from "@/context/useCart";
-import { defaultStore } from "@/lib/cms/default-store";
-import { productUrl } from "@/lib/slug";
+import { productUrl, storefrontPath } from "@/lib/slug";
 
 interface Address {
   id: string;
@@ -126,7 +125,7 @@ const ReviewSheet = ({
   onSubmitted,
 }: ReviewSheetProps) => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
 
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -398,7 +397,7 @@ const OrderTimeline = ({ status }: { status: string }) => {
 
 const Account = () => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? '00000000-0000-4000-8000-000000000001';
+  const storeId = currentStore?.id;
   const { user, loading, signOut } = useAuth();
   const { data: orders, isLoading: ordersLoading } = useMyOrders(storeId);
   const { items: wishlistIds } = useWishlist();
@@ -433,29 +432,31 @@ const Account = () => {
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ["my-addresses", user?.id, storeId],
     queryFn: async () => {
+      if (!storeId) return [];
       const { data, error } = await supabase
         .from("customer_addresses")
         .select("*")
-        .eq("store_id", storeId)
+        .eq("store_id", storeId as string)
         .order("is_default", { ascending: false });
       if (error) throw error;
       return data as unknown as Address[];
     },
-    enabled: !!user,
+    enabled: !!user && !!storeId,
   });
 
   const { data: submittedReviews = [] } = useQuery({
     queryKey: ["my-submitted-reviews", user?.id, storeId],
     queryFn: async () => {
+      if (!storeId) return [];
       const { data, error } = await supabase
         .from("product_reviews" as any)
         .select("product_id, order_id, rating, review_text, status, created_at")
         .eq("user_id", user!.id)
-        .eq("store_id", storeId);
+        .eq("store_id", storeId as string);
       if (error) throw error;
       return (data as unknown as Array<{ product_id: string; order_id: string; rating: number; review_text: string | null; status: string; created_at: string }>) ?? [];
     },
-    enabled: !!user,
+    enabled: !!user && !!storeId,
   });
 
   const reviewedSet = new Set(submittedReviews.map((r) => `${r.product_id}__${r.order_id}`));
@@ -481,16 +482,16 @@ const Account = () => {
   const { data: reviewProducts = [] } = useQuery({
     queryKey: ["review-products", storeId, reviewProductIds],
     queryFn: async () => {
-      if (reviewProductIds.length === 0) return [];
+      if (reviewProductIds.length === 0 || !storeId) return [];
       const { data, error } = await supabase
         .from("products")
         .select("id, name, image_url")
-        .eq("store_id", storeId)
+        .eq("store_id", storeId as string)
         .in("id", reviewProductIds);
       if (error) throw error;
       return data ?? [];
     },
-    enabled: reviewProductIds.length > 0,
+    enabled: reviewProductIds.length > 0 && !!storeId,
   });
 
   const reviewProductMap = new Map(reviewProducts.map(p => [p.id, p]));
@@ -515,7 +516,8 @@ const Account = () => {
 
   const deleteAddress = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("customer_addresses").delete().eq("id", id).eq("store_id", storeId);
+      if (!storeId) throw new Error("No store selected");
+      const { error } = await supabase.from("customer_addresses").delete().eq("id", id).eq("store_id", storeId as string);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -526,16 +528,17 @@ const Account = () => {
 
   const setDefaultAddress = useMutation({
     mutationFn: async (id: string) => {
+      if (!storeId) throw new Error("No store selected");
       await supabase
         .from("customer_addresses")
         .update({ is_default: false } as any)
         .eq("user_id", user!.id)
-        .eq("store_id", storeId);
+        .eq("store_id", storeId as string);
       const { error } = await supabase
         .from("customer_addresses")
         .update({ is_default: true } as any)
         .eq("id", id)
-        .eq("store_id", storeId);
+        .eq("store_id", storeId as string);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -589,7 +592,7 @@ const Account = () => {
 
   return (
     <Layout>
-      <SEOHead title="My Account" description="Manage your ThreadBD account, orders, and addresses." noindex />
+      <SEOHead title="My Account" description="Manage your account, orders, and addresses." noindex />
       <PageTransition>
         <div className="container mx-auto max-w-4xl px-4 py-8 sm:py-12">
           {/* Profile Header */}
@@ -657,7 +660,7 @@ const Account = () => {
                   <p className="font-heading text-lg font-semibold text-foreground">No orders yet</p>
                   <p className="text-sm text-muted-foreground mb-4">Your order history will appear here.</p>
                   <Button asChild variant="outline">
-                    <Link to="/shop">Start Shopping</Link>
+                    <Link to={storefrontPath("/shop", currentStore?.slug)}>Start Shopping</Link>
                   </Button>
                 </div>
               ) : (
@@ -781,7 +784,7 @@ const Account = () => {
                   <p className="font-heading text-lg font-semibold text-foreground">Your wishlist is empty</p>
                   <p className="text-sm text-muted-foreground mb-4">Save items you love and shop later.</p>
                   <Button asChild variant="outline">
-                    <Link to="/shop">Browse Products</Link>
+                    <Link to={storefrontPath("/shop", currentStore?.slug)}>Browse Products</Link>
                   </Button>
                 </div>
               ) : (

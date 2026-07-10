@@ -4,11 +4,14 @@ import { Home, ShoppingBag, Heart, User, Store } from "lucide-react";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { cn } from "@/lib/utils";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const MobileBottomNav = () => {
   const location = useLocation();
   const { totalItems, setIsCartOpen } = useCart();
   const { items: wishlistItems } = useWishlist();
+  const currentStore = useOptionalStore();
   const wishlistCount = wishlistItems.length;
 
   const [mounted, setMounted] = useState(false);
@@ -20,11 +23,11 @@ const MobileBottomNav = () => {
   const displayWishlistCount = mounted ? wishlistCount : 0;
 
   const links = [
-    { to: "/", icon: Home, label: "Home", exact: true },
-    { to: "/shop", icon: Store, label: "Shop", exact: false },
-    { to: "/cart", icon: ShoppingBag, label: "Cart", exact: false, badge: displayTotalItems },
-    { to: "/wishlist", icon: Heart, label: "Wishlist", exact: false, badge: displayWishlistCount },
-    { to: "/account", icon: User, label: "Account", exact: false },
+    { to: storefrontPath("/", currentStore?.slug), icon: Home, label: "Home", exact: true },
+    { to: storefrontPath("/shop", currentStore?.slug), icon: Store, label: "Shop", exact: false },
+    { to: storefrontPath("/cart", currentStore?.slug), icon: ShoppingBag, label: "Cart", exact: false, badge: displayTotalItems },
+    { to: storefrontPath("/wishlist", currentStore?.slug), icon: Heart, label: "Wishlist", exact: false, badge: displayWishlistCount },
+    { to: storefrontPath("/account", currentStore?.slug), icon: User, label: "Account", exact: false },
   ];
 
   const isActive = (to: string, exact: boolean) =>

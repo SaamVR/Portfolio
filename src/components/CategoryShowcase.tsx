@@ -4,8 +4,8 @@ import { Shirt, Blend, Scissors, ShieldCheck, Footprints, StretchHorizontal, Fol
 import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { supabase } from "@/integrations/supabase/client";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const fallbackCategories = [
   { label: "T-Shirts", type: "T-Shirt", tagline: "Everyday essentials", icon: Shirt },
@@ -75,13 +75,18 @@ const getTaglineForType = (typeName: string) => {
 
 const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories");
   const { data: customData } = useSiteSettings<any>("categories_custom_data");
   const [dbTypes, setDbTypes] = useState<any[]>([]);
 
   useEffect(() => {
     const loadTypes = async () => {
+      if (!storeId) {
+        setDbTypes([]);
+        return;
+      }
+
       try {
         const { data } = await supabase.from("product_types").select("*").eq("store_id", storeId).order("sort_order");
         if (data && data.length > 0) {
@@ -133,7 +138,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             return (
               <AnimatedSection key={cat.type} delay={i * 80} animation="blur">
                 <Link
-                  to={`/shop?type=${cat.type}`}
+                  to={storefrontPath(`/shop?type=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
                   className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 text-center smooth-hover hover:border-primary/40 hover:-translate-y-1 hover:premium-shadow"
                 >
                   {cat.image_url ? (

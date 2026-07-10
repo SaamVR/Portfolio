@@ -5,6 +5,7 @@ import PageTransition from "@/components/PageTransition";
 import { Heart, Globe, Leaf, Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteUrl } from "@/lib/siteUrl";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface AboutSettings {
   title?: string;
@@ -21,10 +22,12 @@ const defaultValues = [
 ];
 
 const About = () => {
+  const currentStore = useOptionalStore();
+  const storeName = currentStore?.name ?? "Our Brand";
   const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page");
 
-  const title = about?.title || "About ThreadBD";
-  const defaultContent = `ThreadBD is a Dhaka-born menswear brand built around clean everyday essentials: tees, polos, shirts, pants, and innerwear that feel good in real Bangladeshi weather.
+  const title = about?.title || `About ${storeName}`;
+  const defaultContent = `${storeName} is built around clean everyday essentials that feel good in real Bangladeshi weather.
   
 We started with a simple idea: make premium-looking basics easier to buy locally, with clear sizing, honest pricing, and payment options people already trust, including bKash, Nagad, and Cash on Delivery.
 
@@ -38,7 +41,7 @@ We are still growing, but the promise is simple: thoughtful menswear, made for d
     <Layout>
       <SEOHead
         title="About Us"
-        description="Learn about ThreadBD - premium menswear and everyday essentials made for Bangladesh."
+        description={`Learn about ${storeName} and what the brand stands for.`}
         canonical={absoluteUrl("/about")}
       />
       <PageTransition>

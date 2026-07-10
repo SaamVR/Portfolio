@@ -10,7 +10,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { defaultStore } from "@/lib/cms/default-store";
+import { storefrontPath } from "@/lib/slug";
 
 interface GuestCheckoutModalProps {
   open: boolean;
@@ -27,7 +27,8 @@ function createCheckoutRequestKey() {
 
 export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckoutModalProps) {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
+  const storeSlug = currentStore?.slug;
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -122,11 +123,13 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
   useEffect(() => {
     if (user && open && !formData.name) {
       const fetchAddress = async () => {
+        if (!checkoutStoreId) return;
+
         const { data } = await supabase
           .from("customer_addresses")
           .select("name, phone, address, city")
           .eq("user_id", user.id)
-          .eq("store_id", checkoutStoreId)
+          .eq("store_id", checkoutStoreId as string)
           .eq("is_default", true)
           .maybeSingle();
 
@@ -146,7 +149,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
     }
   }, [checkoutStoreId, formData.name, open, user]);
 
-  if (!open) return null;
+  if (!open || !checkoutStoreId) return null;
 
   const merchantNumber = paymentGateway === "bkash" ? paymentSettings?.bkash_number : paymentSettings?.nagad_number;
   const hasBkashGateway = !!(paymentSettings?.bkash_app_key && paymentSettings?.bkash_username);
@@ -253,7 +256,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
       setTimeout(() => {
         setSuccess(false);
         onOpenChange(false);
-        navigate(`/order-success?order=${encodeURIComponent(result.order_number)}`);
+        navigate(storefrontPath(`/order-success?order=${encodeURIComponent(result.order_number)}`, storeSlug));
       }, 2000);
       
     } catch (err) {

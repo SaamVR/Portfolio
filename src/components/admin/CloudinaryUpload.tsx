@@ -34,13 +34,19 @@ const CloudinaryUpload = ({
   inputTestId,
 }: CloudinaryUploadProps) => {
   const { activeStoreId } = useAuth();
-  const effectiveStoreId = storeId || activeStoreId;
+  const effectiveStoreId = storeId || activeStoreId || undefined;
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!effectiveStoreId) {
+      toast.error("Select a store before uploading media.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
     // Validate file size (max 10MB for images, 50MB for videos)
     const maxSize = resourceType === "video" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
@@ -56,7 +62,7 @@ const CloudinaryUpload = ({
         file,
         folder,
         resourceType,
-        storeId: effectiveStoreId ?? "00000000-0000-4000-8000-000000000001",
+        storeId: effectiveStoreId,
       });
       onChange(asset.url);
       onSelectAsset?.(asset);
@@ -95,7 +101,7 @@ const CloudinaryUpload = ({
           variant="outline"
           size="icon"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || !effectiveStoreId}
           title={label}
         >
           {uploading ? (
@@ -106,7 +112,7 @@ const CloudinaryUpload = ({
         </Button>
         <MediaLibraryPicker
           value={value}
-          storeId={effectiveStoreId ?? "00000000-0000-4000-8000-000000000001"}
+          storeId={effectiveStoreId}
           folder={folder}
           resourceType={resourceType}
           onSelect={(asset) => {

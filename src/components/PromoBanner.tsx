@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowRight } from "lucide-react";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface PromoBannerSettings {
   enabled: boolean;
@@ -98,6 +100,7 @@ const SparkleSVG = ({ className }: { className: string }) => (
 
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner");
+  const currentStore = useOptionalStore();
 
   if (settings?.enabled === false) return null;
 
@@ -114,7 +117,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
     settings?.subtitle ??
     "Premium dropshoulder tees & summer polos designed in Dhaka. Grab yours before stocks run out. 20% flat discount on pre-orders!";
   const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore The Collection";
-  const ctaLink = overrides?.ctaLink ?? settings?.cta_link ?? "/shop?sale=1";
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? settings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
 
   const align = overrides?.textAlignment ?? settings?.text_alignment ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";

@@ -5,6 +5,8 @@ import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface DeliverySettings {
   enabled: boolean;
@@ -15,9 +17,10 @@ interface DeliverySettings {
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
   const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings");
+  const currentStore = useOptionalStore();
 
   const deliveryFee = (() => {
-    if (!deliveryData) return 80; // safe default while loading
+    if (!deliveryData) return 80;
     if (!deliveryData.enabled) return 0;
     return totalPrice >= deliveryData.free_threshold ? 0 : deliveryData.delivery_fee;
   })();
@@ -29,13 +32,13 @@ const Cart = () => {
   if (items.length === 0) {
     return (
       <Layout>
-        <SEOHead title="Cart" description="Review your ThreadBD shopping cart." noindex />
+        <SEOHead title="Cart" description="Review your shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="text-center">
             <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Your cart is empty</h1>
             <p className="mb-8 text-muted-foreground">Add some premium tees to get started.</p>
             <Link
-              to="/shop"
+              to={storefrontPath("/shop", currentStore?.slug)}
               className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               Browse Shop
@@ -48,11 +51,11 @@ const Cart = () => {
 
   return (
     <Layout>
-      <SEOHead title="Cart" description="Review your ThreadBD shopping cart." noindex />
+      <SEOHead title="Cart" description="Review your shopping cart." noindex />
       <div className="container mx-auto px-4 py-12">
         <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">Your Cart</h1>
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4 lg:col-span-2">
             {items.map((item) => (
               <div key={`${item.storeId ?? "default"}-${item.productId}-${item.size}`} className="flex gap-4 rounded-lg border border-border bg-card p-4">
                 <img src={item.image} alt={item.name} className="h-24 w-24 rounded-md object-cover" />
@@ -111,7 +114,6 @@ const Cart = () => {
                 )}
               </div>
 
-              {/* Free delivery nudge */}
               {!deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
                 <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -122,30 +124,26 @@ const Cart = () => {
               {!deliveryLoading && isFreeDelivery && (
                 <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="h-3.5 w-3.5 shrink-0" />
-                  <span>You qualify for free delivery! 🎉</span>
+                  <span>You qualify for free delivery!</span>
                 </div>
               )}
 
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                   <span>Total</span>
-                  {deliveryLoading ? (
-                    <Skeleton className="h-5 w-16" />
-                  ) : (
-                    <span>৳{grandTotal}</span>
-                  )}
+                  {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span>৳{grandTotal}</span>}
                 </div>
               </div>
             </div>
             <Link
-              to="/checkout"
+              to={storefrontPath("/checkout", currentStore?.slug)}
               className="mt-6 block w-full rounded-md bg-primary py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
             >
               Proceed to Checkout
             </Link>
             <Link
-              to="/shop"
-              className="mt-3 block w-full rounded-md border border-border py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:text-foreground hover:bg-secondary"
+              to={storefrontPath("/shop", currentStore?.slug)}
+              className="mt-3 block w-full rounded-md border border-border py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
             >
               Continue Shopping
             </Link>

@@ -5,6 +5,7 @@ import PageTransition from "@/components/PageTransition";
 import { Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteUrl } from "@/lib/siteUrl";
+import { useOptionalStore } from "@/components/storefront/store-context";
 import {
   Accordion,
   AccordionContent,
@@ -24,11 +25,13 @@ const defaultFaqs: FAQEntry[] = [
   { q: "Can I exchange size?", a: "Yes. You can request a size exchange within 7 days if the item is unused, unwashed, undamaged, and returned with its original packaging." },
   { q: "What is your return policy?", a: "Returns or exchanges are accepted within 7 days for unused products in original condition. Innerwear cannot be returned after opening for hygiene reasons." },
   { q: "How do I choose the right size?", a: "Use the size guide on product and shop pages. If you are between sizes, message us with your height, weight, and preferred fit before ordering." },
-  { q: "How can I track my order?", a: "Use the Track Order page with your ThreadBD order number. We also recommend keeping the confirmation message until delivery is complete." },
+  { q: "How can I track my order?", a: "Use the Track Order page with your order number. We also recommend keeping the confirmation message until delivery is complete." },
   { q: "Do product colors match the photos exactly?", a: "We photograph products as accurately as possible, but color can vary slightly by screen brightness, lighting, and fabric batch." },
 ];
 
 const FAQ = () => {
+  const currentStore = useOptionalStore();
+  const storeName = currentStore?.name ?? "the store";
   const { data: faqs, isLoading } = useSiteSettings<FAQEntry[]>("faq_entries");
 
   const entries = faqs && faqs.length > 0 ? faqs : defaultFaqs;
@@ -37,7 +40,7 @@ const FAQ = () => {
     <Layout>
       <SEOHead
         title="FAQ"
-        description="Frequently asked questions about ThreadBD orders, delivery, payments, and returns."
+        description={`Frequently asked questions about ${storeName} orders, delivery, payments, and returns.`}
         canonical={absoluteUrl("/faq")}
         jsonLd={{
           "@context": "https://schema.org",
@@ -55,7 +58,7 @@ const FAQ = () => {
             <AnimatedSection>
               <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Help</p>
               <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">Frequently Asked Questions</h1>
-              <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from ThreadBD.</p>
+              <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from {storeName}.</p>
             </AnimatedSection>
 
             {isLoading ? (

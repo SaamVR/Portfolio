@@ -5,11 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { defaultStore } from "@/lib/cms/default-store";
 
 export default function ExitIntentPopup() {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
 
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -17,6 +16,7 @@ export default function ExitIntentPopup() {
   const { data: siteSettings } = useQuery({
     queryKey: ["site_settings"],
     queryFn: async () => {
+      if (!storeId) return {};
       const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", storeId);
       const map: Record<string, any> = {};
       data?.forEach((row) => {
@@ -25,6 +25,7 @@ export default function ExitIntentPopup() {
       return map;
     },
     staleTime: 1000 * 60 * 5,
+    enabled: !!storeId,
   });
 
   const exitIntent = siteSettings?.exit_intent || {};

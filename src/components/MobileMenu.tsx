@@ -19,13 +19,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
-
-const navLinks = [
-  { label: "Home", to: "/" },
-  { label: "About", to: "/about" },
-  { label: "Contact", to: "/contact" },
-  { label: "FAQ", to: "/faq" },
-];
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const MobileMenu = () => {
   const { totalItems } = useCart();
@@ -33,6 +28,13 @@ const MobileMenu = () => {
   const { user } = useAuth();
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
+  const currentStore = useOptionalStore();
+  const navLinks = [
+    { label: "Home", to: storefrontPath("/", currentStore?.slug) },
+    { label: "About", to: "/about" },
+    { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
+    { label: "FAQ", to: "/faq" },
+  ];
 
   return (
     <Sheet>
@@ -59,7 +61,7 @@ const MobileMenu = () => {
 
         <nav className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-2 pb-6" aria-label="Mobile navigation">
           <Link
-            to="/"
+            to={storefrontPath("/", currentStore?.slug)}
             className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
               location.pathname === "/"
                 ? "bg-primary text-primary-foreground shadow-md"
@@ -79,7 +81,7 @@ const MobileMenu = () => {
               {productTypes.map((t) => (
                 <Link
                   key={t.value}
-                  to={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
+                  to={storefrontPath(t.value === "All" ? "/shop" : `/shop?type=${encodeURIComponent(t.value)}`, currentStore?.slug)}
                   className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                 >
                   {t.label}
@@ -105,14 +107,14 @@ const MobileMenu = () => {
 
         <div className="mt-auto border-t border-white/10 pt-6 flex flex-col gap-2">
           <Link
-            to={user ? "/account" : "/auth"}
+            to={user ? storefrontPath("/account", currentStore?.slug) : "/auth"}
             className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
           >
             <User className="h-5 w-5 text-primary/80" />
             {user ? "My Account" : "Sign In"}
           </Link>
           <Link
-            to="/wishlist"
+            to={storefrontPath("/wishlist", currentStore?.slug)}
             className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
           >
             <div className="flex items-center gap-3">
@@ -126,7 +128,7 @@ const MobileMenu = () => {
             )}
           </Link>
           <Link
-            to="/cart"
+            to={storefrontPath("/cart", currentStore?.slug)}
             className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
           >
             <div className="flex items-center gap-3">

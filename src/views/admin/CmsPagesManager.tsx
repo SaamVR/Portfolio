@@ -860,7 +860,7 @@ export default function CmsPagesManager() {
       <Card className="border-border">
         <CardHeader>
           <CardTitle>CMS Pages</CardTitle>
-          <CardDescription>Bootstrap the new multi-page storefront tables with the current ThreadBD storefront as the default store.</CardDescription>
+          <CardDescription>Bootstrap the new multi-page storefront tables with the current demo storefront as the default store.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={bootstrapDefaultStore} disabled={bootstrapping} className="gap-2">

@@ -10,13 +10,8 @@ import MobileMenu from "@/components/MobileMenu";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-
-const navLinks = [
-  { label: "Home", to: "/" },
-  { label: "Shop", to: "/shop", hasDropdown: true },
-  { label: "About", to: "/about" },
-  { label: "Contact", to: "/contact" },
-];
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean }) => {
   const { totalItems, setIsCartOpen } = useCart();
@@ -29,6 +24,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { data: brand } = useSiteSettings("brand_settings");
   const { data: dynamicProductTypes = [] } = useProductTypes();
   const { data: dynamicProductCategories = [] } = useProductCategories();
+  const currentStore = useOptionalStore();
 
   const [mounted, setMounted] = useState(false);
 
@@ -42,6 +38,12 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const isDark = mounted ? theme === "dark" : false;
   const displayWishlistCount = mounted ? wishlistCount : 0;
   const displayTotalItems = mounted ? totalItems : 0;
+  const navLinks = [
+    { label: "Home", to: storefrontPath("/", currentStore?.slug) },
+    { label: "Shop", to: storefrontPath("/shop", currentStore?.slug), hasDropdown: true },
+    { label: "About", to: "/about" },
+    { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
+  ];
 
   return (
     <>
@@ -56,7 +58,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <MobileMenu />
-            <Link to="/" className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
+            <Link to={storefrontPath("/", currentStore?.slug)} className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
               {brandName}<span className="text-primary">{brandHighlight}</span>
             </Link>
           </div>
@@ -72,7 +74,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                 <Link
                   to={link.to}
                   className={`nav-link-anim relative flex items-center gap-1.5 py-2 text-[15px] font-semibold tracking-wide transition-colors ${
-                    location.pathname === link.to || (link.to === "/shop" && location.pathname.startsWith("/shop"))
+                    location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -89,7 +91,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                         <div className="flex flex-col gap-3">
                           <Link
                               key="all"
-                              to="/shop"
+                              to={storefrontPath("/shop", currentStore?.slug)}
                               className="text-sm text-muted-foreground transition-colors hover:text-primary"
                             >
                               All
@@ -97,7 +99,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                           {dynamicProductTypes.map((t: any) => (
                             <Link
                               key={t.id}
-                              to={`/shop?type=${encodeURIComponent(t.name)}`}
+                              to={storefrontPath(`/shop?type=${encodeURIComponent(t.name)}`, currentStore?.slug)}
                               className="text-sm text-muted-foreground transition-colors hover:text-primary"
                             >
                               {t.name}
@@ -111,16 +113,16 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                           {dynamicProductCategories.length > 0 ? dynamicProductCategories.map((c: any) => (
                             <Link
                               key={c.id}
-                              to={`/shop?category=${encodeURIComponent(c.name)}`}
+                              to={storefrontPath(`/shop?category=${encodeURIComponent(c.name)}`, currentStore?.slug)}
                               className="text-sm text-muted-foreground transition-colors hover:text-primary"
                             >
                               {c.name}
                             </Link>
                           )) : (
                             <>
-                              <Link to="/shop?type=T-Shirts" className="hover:text-primary transition-colors">Premium Basics</Link>
-                              <Link to="/shop?type=Drop%20Shoulders" className="hover:text-primary transition-colors">Streetwear Collection</Link>
-                              <Link to="/shop" className="hover:text-primary transition-colors">New Arrivals</Link>
+                              <Link to={storefrontPath("/shop?type=T-Shirts", currentStore?.slug)} className="hover:text-primary transition-colors">Premium Basics</Link>
+                              <Link to={storefrontPath("/shop?type=Drop%20Shoulders", currentStore?.slug)} className="hover:text-primary transition-colors">Streetwear Collection</Link>
+                              <Link to={storefrontPath("/shop", currentStore?.slug)} className="hover:text-primary transition-colors">New Arrivals</Link>
                             </>
                           )}
                         </div>
@@ -177,7 +179,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             </div>
 
             <Link
-              to={user ? "/account" : "/auth"}
+              to={user ? storefrontPath("/account", currentStore?.slug) : "/auth"}
               className="text-muted-foreground transition-colors hover:text-foreground"
               aria-label={user ? "My account" : "Sign in"}
             >
@@ -185,7 +187,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             </Link>
 
              <Link
-              to="/wishlist"
+              to={storefrontPath("/wishlist", currentStore?.slug)}
               className="relative flex items-center text-muted-foreground transition-colors hover:text-foreground"
               aria-label={`Wishlist with ${displayWishlistCount} items`}
             >

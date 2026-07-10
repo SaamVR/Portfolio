@@ -1,6 +1,6 @@
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
-import { useFeaturedProducts } from "@/hooks/useProducts";
+import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
 import { Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -14,7 +14,9 @@ const FeaturedProducts = ({
   tagline?: string;
 }) => {
   const { data: featured = [], isLoading } = useFeaturedProducts();
+  const { data: allProducts = [] } = useProducts();
   const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured");
+  const productsToRender = featured.length > 0 ? featured : allProducts.filter((product) => product.isAvailable !== false);
 
   if (isLoading) {
     return (
@@ -26,7 +28,7 @@ const FeaturedProducts = ({
     );
   }
 
-  if (featured.length === 0) return null;
+  if (productsToRender.length === 0) return null;
 
   return (
     <section className="py-20">
@@ -38,7 +40,7 @@ const FeaturedProducts = ({
           </div>
         </AnimatedSection>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.slice(0, limit).map((product, i) => (
+          {productsToRender.slice(0, limit).map((product, i) => (
             <AnimatedSection key={product.id} delay={i * 100} animation="blur">
               <ProductCard product={product} />
             </AnimatedSection>

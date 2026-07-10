@@ -42,8 +42,8 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
   const saleOnly = searchParams.get("sale") === "1";
 
   const currentStore = useOptionalStore();
-  const storeId = explicitStoreId ?? currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
-  const storeName = currentStore?.name ?? "ThreadBD";
+  const storeId = explicitStoreId ?? currentStore?.id;
+  const storeName = currentStore?.name ?? "the store";
 
   const { data: products = [], isLoading } = useProducts(storeId);
   const { data: productTypeRows = [] } = useProductTypes(storeId);
@@ -199,7 +199,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
       {!explicitStoreId ? (
         <SEOHead
           title={pageTitle}
-          description="Browse the full ThreadBD collection. Premium streetwear tees, polos, and more."
+          description={`Browse the full ${storeName} collection.`}
           canonical={absoluteUrl("/shop")}
         />
       ) : null}
@@ -348,25 +348,25 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
                   <span className="text-xs font-medium text-foreground">Price range:</span>
                   <div className="flex items-center gap-2">
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">?</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">BDT</span>
                       <input
                         type="number"
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value)}
                         placeholder="Min"
-                        className="h-8 w-24 rounded-md border border-border bg-background pl-6 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        className="h-8 w-24 rounded-md border border-border bg-background pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                         min={0}
                       />
                     </div>
                     <span className="text-xs text-muted-foreground">-</span>
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">?</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">BDT</span>
                       <input
                         type="number"
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value)}
                         placeholder="Max"
-                        className="h-8 w-24 rounded-md border border-border bg-background pl-6 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        className="h-8 w-24 rounded-md border border-border bg-background pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                         min={0}
                       />
                     </div>
@@ -565,3 +565,5 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
 };
 
 export default Shop;
+
+

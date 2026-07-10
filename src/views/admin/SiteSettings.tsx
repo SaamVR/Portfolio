@@ -865,7 +865,7 @@ const SiteSettings = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Point Currency Name</Label>
-                <Input value={settings.loyalty_settings?.name ?? "ThreadBD Coins"} onChange={(e) => update("loyalty_settings", "name", e.target.value)} placeholder="e.g. ThreadBD Coins, Style Points" />
+                <Input value={settings.loyalty_settings?.name ?? "Reward Points"} onChange={(e) => update("loyalty_settings", "name", e.target.value)} placeholder="e.g. Reward Points, Style Points" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -951,7 +951,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Description</Label>
-                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Join 5,000+ ThreadBD fans for drops & deals." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
+                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Join our list for new drops, offers, and updates." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Subscribed Message</Label>
@@ -1079,7 +1079,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Copyright Text</Label>
-                  <Input value={settings.footer?.copyright ?? ""} placeholder="Copyright 2026 ThreadBD. All rights reserved." onChange={(e) => update("footer", "copyright", e.target.value)} />
+                  <Input value={settings.footer?.copyright ?? ""} placeholder="Copyright 2026 Your Store. All rights reserved." onChange={(e) => update("footer", "copyright", e.target.value)} />
                 </div>
               </div>
 

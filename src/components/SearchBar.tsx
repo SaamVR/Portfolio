@@ -7,6 +7,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface SearchBarProps {
   className?: string;
@@ -49,8 +50,9 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const currentStore = useOptionalStore();
+  const storeId = currentStore?.id;
 
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useProducts(storeId);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 200);
@@ -101,7 +103,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       if (query.trim()) {
         saveSearchHistory(query.trim());
         setHistory(getSearchHistory());
-        navigate(`/shop?q=${encodeURIComponent(query.trim())}`);
+        navigate(storefrontPath(`/shop?q=${encodeURIComponent(query.trim())}`, currentStore?.slug));
         setQuery("");
         setOpen(false);
         onClose?.();
@@ -122,14 +124,14 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   };
 
   const handleCategoryClick = (typeValue: string) => {
-    navigate(typeValue === "All" ? "/shop" : `/shop?type=${typeValue}`);
+    navigate(storefrontPath(typeValue === "All" ? "/shop" : `/shop?type=${encodeURIComponent(typeValue)}`, currentStore?.slug));
     setQuery("");
     setOpen(false);
     onClose?.();
   };
 
   const handleHistoryClick = (term: string) => {
-    navigate(`/shop?q=${encodeURIComponent(term)}`);
+    navigate(storefrontPath(`/shop?q=${encodeURIComponent(term)}`, currentStore?.slug));
     setQuery("");
     setOpen(false);
     onClose?.();
@@ -253,7 +255,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
                         {product.type}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        ৳{product.price.toLocaleString()}
+                        BDT {product.price.toLocaleString("en-BD")}
                       </span>
                     </div>
                   </div>
@@ -314,3 +316,4 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 };
 
 export default SearchBar;
+

@@ -7,17 +7,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import GuestCheckoutModal from "@/components/GuestCheckoutModal";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
+  const storeSlug = currentStore?.slug;
 
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, addItem } = useCart();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
-  const cartStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const cartStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : currentStore?.id;
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const drawerItems = items.filter((item) => (item.storeId ?? cartStoreId) === cartStoreId);
   const drawerTotal = drawerItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -25,6 +26,7 @@ const CartDrawer = () => {
   const { data: upsellProducts } = useQuery({
     queryKey: ["upsell-products", cartStoreId],
     queryFn: async () => {
+      if (!cartStoreId) return [];
       const { data } = await supabase
         .from("products")
         .select("*")
@@ -34,7 +36,7 @@ const CartDrawer = () => {
         .limit(5);
       return data || [];
     },
-    enabled: isCartOpen,
+    enabled: isCartOpen && !!cartStoreId,
   });
 
   const { data: siteSettings } = useQuery({
@@ -214,7 +216,7 @@ const CartDrawer = () => {
                 {siteSettings?.loyalty_settings?.enabled && (
                   <div className="mb-4 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2 border border-primary/20">
                     <span className="text-xs font-medium text-primary flex items-center gap-1.5">
-                      🎁 Earn {Math.floor(drawerTotal * (siteSettings.loyalty_settings.earn_rate || 0.05))} {siteSettings.loyalty_settings.name || "ThreadBD Coins"}
+                      Earn {Math.floor(drawerTotal * (siteSettings.loyalty_settings.earn_rate || 0.05))} {siteSettings.loyalty_settings.name || "Reward Points"}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">With this order</span>
                   </div>
@@ -223,7 +225,7 @@ const CartDrawer = () => {
                 <p className="mb-4 text-xs text-muted-foreground">Shipping and taxes calculated at checkout.</p>
                 <div className="flex flex-col gap-2">
                   <Link
-                    to="/cart"
+                    to={storefrontPath("/cart", storeSlug)}
                     onClick={() => setIsCartOpen(false)}
                     className="flex w-full items-center justify-center rounded-md border border-border py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                   >

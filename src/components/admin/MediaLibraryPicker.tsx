@@ -14,6 +14,7 @@ import {
 import { MediaLibraryBrowser } from "@/components/admin/MediaLibraryBrowser";
 import { useAuth } from "@/hooks/auth-context";
 import type { MediaLibraryAsset } from "@/lib/media-library";
+import { toast } from "sonner";
 
 type MediaLibraryPickerProps = {
   value?: string;
@@ -31,13 +32,24 @@ export function MediaLibraryPicker({
   onSelect,
 }: MediaLibraryPickerProps) {
   const { activeStoreId } = useAuth();
-  const effectiveStoreId = storeId || activeStoreId;
+  const effectiveStoreId = storeId || activeStoreId || undefined;
   const [open, setOpen] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="icon" title="Open media library">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          title="Open media library"
+          disabled={!effectiveStoreId}
+          onClick={() => {
+            if (!effectiveStoreId) {
+              toast.error("Select a store before opening the media library.");
+            }
+          }}
+        >
           <Images className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -48,7 +60,7 @@ export function MediaLibraryPicker({
         </DialogHeader>
         <div className="overflow-y-auto pr-1">
           <MediaLibraryBrowser
-            storeId={effectiveStoreId ?? "00000000-0000-4000-8000-000000000001"}
+            storeId={effectiveStoreId}
             folder={folder}
             resourceType={resourceType}
             selectedUrl={value}

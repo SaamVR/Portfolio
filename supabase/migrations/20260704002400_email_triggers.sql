@@ -1,86 +1,16 @@
 -- Add pg_net extension if not exists
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Create function to trigger email on store lifecycle updates
+-- Create function to trigger email on store lifecycle updates (dummy placeholder, replaced by 20260710000002)
 CREATE OR REPLACE FUNCTION public.handle_store_lifecycle_update()
 RETURNS TRIGGER AS $$
-DECLARE
-  v_owner_email text;
-  v_payload jsonb;
 BEGIN
-  -- We only want to trigger this when lifecycle_status changes
-  IF OLD.lifecycle_status IS DISTINCT FROM NEW.lifecycle_status THEN
-    
-    -- Get the owner's email
-    SELECT email INTO v_owner_email
-    FROM auth.users
-    WHERE id = NEW.owner_id;
-
-    IF v_owner_email IS NOT NULL THEN
-      IF NEW.lifecycle_status = 'reminded' THEN
-        v_payload := json_build_object(
-          'to', v_owner_email,
-          'templateName', 'inactivity-warning',
-          'storeName', NEW.name,
-          'storeSlug', NEW.slug
-        );
-      ELSIF NEW.lifecycle_status = 'deletion_queued' THEN
-        v_payload := json_build_object(
-          'to', v_owner_email,
-          'templateName', 'deletion-notice',
-          'storeName', NEW.name,
-          'storeSlug', NEW.slug
-        );
-      END IF;
-
-      IF v_payload IS NOT NULL THEN
-        PERFORM net.http_post(
-          url := current_setting('app.settings.edge_function_url', true) || '/send-email',
-          headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-          ),
-          body := v_payload
-        );
-      END IF;
-    END IF;
-  END IF;
-
-  -- Also trigger store-published if is_published changes to true
-  IF OLD.is_published IS FALSE AND NEW.is_published IS TRUE THEN
-    SELECT email INTO v_owner_email
-    FROM auth.users
-    WHERE id = NEW.owner_id;
-
-    IF v_owner_email IS NOT NULL THEN
-      v_payload := json_build_object(
-        'to', v_owner_email,
-        'templateName', 'store-published',
-        'storeName', NEW.name,
-        'storeSlug', NEW.slug
-      );
-      
-      PERFORM net.http_post(
-        url := current_setting('app.settings.edge_function_url', true) || '/send-email',
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-        ),
-        body := v_payload
-      );
-    END IF;
-  END IF;
-
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger on stores
+-- Create trigger on stores (removed because lifecycle_status is not on stores)
 DROP TRIGGER IF EXISTS on_store_lifecycle_update ON public.stores;
-CREATE TRIGGER on_store_lifecycle_update
-  AFTER UPDATE ON public.stores
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_store_lifecycle_update();
 
 -- Create function to trigger email on subscription status updates
 CREATE OR REPLACE FUNCTION public.handle_subscription_status_update()

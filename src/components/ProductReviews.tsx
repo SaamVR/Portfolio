@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isUuid } from "@/lib/slug";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface Review {
@@ -105,7 +104,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
 
   // Fetch real approved reviews from the public view (excludes user_id and order_id)
   const { data: dbReviews = [] } = useQuery({
@@ -115,7 +114,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
       const { data, error } = await supabase
         .from("public_product_reviews" as any)
         .select("id, author_name, rating, created_at, review_text, size_purchased, admin_reply, image_url")
-        .eq("store_id", storeId)
+        .eq("store_id", storeId as string)
         .eq("product_id", productId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -130,7 +129,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
         image_url: string | null;
       }>;
     },
-    enabled: !!productId,
+    enabled: !!productId && !!storeId,
   });
 
   const realReviews: Review[] = dbReviews.map((r) => ({
@@ -226,6 +225,10 @@ const ProductReviews = ({ productId }: { productId: string }) => {
 
     if (!isUuid(productId)) {
       toast.error("Reviews are not available for this demo product yet.");
+      return;
+    }
+    if (!storeId) {
+      toast.error("Reviews are unavailable until the store finishes loading.");
       return;
     }
 

@@ -5,6 +5,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { productTypes } from "@/data/products";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const emailSchema = z.string().trim().email("Please enter a valid email");
 
@@ -59,23 +61,25 @@ const Footer = () => {
         return false;
       }
     }
+
     return false;
   });
   const [error, setError] = useState("");
   const { data: footer } = useSiteSettings<FooterSettings>("footer");
+  const currentStore = useOptionalStore();
 
   const brandName = footer?.brand_name || "THREAD";
   const brandHighlight = footer?.brand_highlight || "BD";
   const aboutText = footer?.about_text || "Premium menswear crafted in Bangladesh. Quality fabrics, bold designs.";
   const newsletterHeading = footer?.newsletter_heading || "Newsletter";
-  const newsletterDesc = footer?.newsletter_description || "Join 5,000+ ThreadBD fans for drops & deals.";
+  const newsletterDesc = footer?.newsletter_description || "Get product drops, offers, and store updates.";
   const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
   const companyLinks = footer?.company_links?.length ? footer.company_links : defaultCompanyLinks;
   const extraLinks = footer?.extra_links ?? [];
   const extraLinksTitle = footer?.extra_links_title || "Quick Links";
   const sectionOrder = footer?.section_order?.length ? footer.section_order : defaultSectionOrder;
   const paymentText = footer?.payment_text || "We accept bKash, Nagad, and Cash on Delivery across Bangladesh.";
-  const copyrightText = footer?.copyright || "© 2026 ThreadBD. All rights reserved.";
+  const copyrightText = footer?.copyright || "Copyright 2026. All rights reserved.";
   const showShopLinks = footer?.show_shop_links ?? true;
   const showNewsletter = footer?.show_newsletter ?? true;
 
@@ -90,7 +94,7 @@ const Footer = () => {
     localStorage.setItem("threadbd-subscribed", "true");
     setSubscribed(true);
     setEmail("");
-    toast.success("You're subscribed!", { description: "Welcome to the ThreadBD family." });
+    toast.success("You're subscribed!", { description: "Thanks for joining the list." });
   };
 
   const renderSection = (sectionId: string) => {
@@ -113,7 +117,7 @@ const Footer = () => {
               {productTypes.map((t) => (
                 <Link
                   key={t.value}
-                  href={t.value === "All" ? "/shop" : `/shop?type=${t.value}`}
+                  href={storefrontPath(t.value === "All" ? "/shop" : `/shop?type=${encodeURIComponent(t.value)}`, currentStore?.slug)}
                   className="text-sm text-muted-foreground hover:text-foreground smooth-hover"
                 >
                   {t.label}
@@ -128,7 +132,7 @@ const Footer = () => {
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
             <div className="flex flex-col gap-2">
               {companyLinks.map((link, i) => (
-                <Link key={i} href={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
                   {link.label}
                 </Link>
               ))}
@@ -148,13 +152,16 @@ const Footer = () => {
             ) : (
               <>
                 <p className="mb-3 text-xs text-muted-foreground">{newsletterDesc}</p>
-                <form onSubmit={handleSubscribe} className="flex gap-2 relative z-10">
+                <form onSubmit={handleSubscribe} className="relative z-10 flex gap-2">
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
                     placeholder="you@email.com"
-                    className="flex-1 rounded-md border border-white/10 bg-background/50 backdrop-blur-sm px-4 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/50 shadow-inner"
+                    className="flex-1 rounded-md border border-white/10 bg-background/50 px-4 py-2.5 text-sm text-foreground shadow-inner outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/50 backdrop-blur-sm"
                   />
                   <button
                     type="submit"
@@ -176,7 +183,7 @@ const Footer = () => {
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
             <div className="flex flex-col gap-2">
               {extraLinks.map((link, i) => (
-                <Link key={i} href={link.url} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
+                <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
                   {link.label}
                 </Link>
               ))}
@@ -188,29 +195,24 @@ const Footer = () => {
     }
   };
 
-  // Build sections list, include "extra" if links exist
   const sections = [...sectionOrder];
   if (extraLinks.length && !sections.find((s) => s.id === "extra")) {
     sections.push({ id: "extra", label: "Extra Links" });
   }
 
   const renderedSections = sections.map((s) => renderSection(s.id)).filter(Boolean);
-  const colCount = renderedSections.length;
 
   return (
-    <footer className="relative border-t border-white/5 bg-secondary overflow-hidden">
-      {/* Decorative top gradient */}
+    <footer className="relative overflow-hidden border-t border-white/5 bg-secondary">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-      
+
       <div className="container mx-auto px-4 pt-16 pb-24 md:pb-16 lg:py-20">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
-          {renderedSections}
-        </div>
-        <div className="mt-16 pt-8 flex flex-col items-center justify-center gap-4 text-[13px] text-muted-foreground/60 border-t border-white/5">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">{renderedSections}</div>
+        <div className="mt-16 flex flex-col items-center justify-center gap-4 border-t border-white/5 pt-8 text-[13px] text-muted-foreground/60">
           <p className="tracking-wide">{paymentText}</p>
           <div className="flex items-center gap-6">
             <p className="tracking-wider">{copyrightText}</p>
-            <Link href="/admin/login" className="hover:text-primary transition-colors tracking-wider">Dashboard</Link>
+            <Link href="/admin/login" className="tracking-wider transition-colors hover:text-primary">Dashboard</Link>
           </div>
         </div>
       </div>

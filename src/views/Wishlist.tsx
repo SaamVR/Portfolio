@@ -7,15 +7,18 @@ import PageTransition from "@/components/PageTransition";
 import { useWishlist } from "@/context/wishlist-context";
 import { useProducts } from "@/hooks/useProducts";
 import { Heart, Loader2 } from "lucide-react";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 const Wishlist = () => {
   const { items } = useWishlist();
   const { data: products = [], isLoading } = useProducts();
+  const currentStore = useOptionalStore();
   const wishlistProducts = products.filter((p) => items.includes(p.id));
 
   return (
     <Layout>
-      <SEOHead title="Wishlist" description="Your saved ThreadBD products." noindex />
+      <SEOHead title="Wishlist" description="Your saved products." noindex />
       <PageTransition>
         <section className="py-16">
           <div className="container mx-auto px-4">
@@ -37,7 +40,7 @@ const Wishlist = () => {
                   <p className="mb-4 font-heading text-xl font-semibold text-foreground">Your wishlist is empty</p>
                   <p className="mb-6 text-muted-foreground">Save items you love by tapping the heart icon.</p>
                   <Link
-                    to="/shop"
+                    to={storefrontPath("/shop", currentStore?.slug)}
                     className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 smooth-hover"
                   >
                     Browse Collection

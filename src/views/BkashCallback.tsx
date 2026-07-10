@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/integrations/supabase/client";
+import { storefrontPath } from "@/lib/slug";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +20,18 @@ const BkashCallback = () => {
   const callbackStatus = searchParams.get("status");
   const orderId = searchParams.get("order_id");
   const storeId = searchParams.get("store_id");
+
+  const resolveStoreSlug = async () => {
+    if (!storeId) return undefined;
+
+    const { data } = await (supabase as any)
+      .from("stores")
+      .select("slug")
+      .eq("id", storeId)
+      .maybeSingle();
+
+    return data?.slug ?? undefined;
+  };
 
   useEffect(() => {
     if (executeCalled.current) return;
@@ -67,7 +80,10 @@ const BkashCallback = () => {
         toast.success("Payment verified successfully!");
         
         setTimeout(() => {
-          navigate(`/order-success?order=${encodeURIComponent(data.order_number)}`);
+          void (async () => {
+            const storeSlug = await resolveStoreSlug();
+            navigate(storefrontPath(`/order-success?order=${encodeURIComponent(data.order_number)}`, storeSlug));
+          })();
         }, 2000);
       } catch (err: any) {
         setStatus("error");
@@ -110,7 +126,7 @@ const BkashCallback = () => {
                   </div>
                   <h2 className="font-heading text-xl font-semibold text-foreground">Payment Cancelled</h2>
                   <p className="text-sm text-muted-foreground mb-4">{message}</p>
-                  <Button onClick={() => navigate("/checkout")} className="w-full">
+                  <Button onClick={() => void (async () => navigate(storefrontPath("/checkout", await resolveStoreSlug())))} className="w-full">
                     Return to Checkout
                   </Button>
                 </div>
@@ -124,10 +140,10 @@ const BkashCallback = () => {
                   <h2 className="font-heading text-xl font-semibold text-foreground">Payment Failed</h2>
                   <p className="text-sm text-muted-foreground mb-4">{message}</p>
                   <div className="flex w-full gap-3">
-                    <Button variant="outline" onClick={() => navigate("/")} className="flex-1">
+                    <Button variant="outline" onClick={() => void (async () => navigate(storefrontPath("/", await resolveStoreSlug())))} className="flex-1">
                       Go Home
                     </Button>
-                    <Button onClick={() => navigate("/checkout")} className="flex-1">
+                    <Button onClick={() => void (async () => navigate(storefrontPath("/checkout", await resolveStoreSlug())))} className="flex-1">
                       Try Again
                     </Button>
                   </div>

@@ -122,5 +122,5 @@ export const Outlet = () => {
   if (process.env.NODE_ENV === "development") {
     console.error("Outlet was rendered, which is a legacy React Router concept not supported in Next.js App Router. Please replace the layout routing implementation.");
   }
-  return <div className="text-red-500 font-bold p-4 border border-red-500">React Router Outlet is deprecated. Use Next.js children prop in Layouts instead.</div>;
+  return null;
 };

@@ -22,6 +22,64 @@ export function productUrl(id: string, name: string, storeSlug?: string | null):
   return `${basePath}/${slug}--${encodeURIComponent(id)}`;
 }
 
+export function storePageUrl(storeSlug: string, pageSlug: string): string {
+  const normalizedSlug = pageSlug.replace(/^\/+/, "");
+  return normalizedSlug ? `/stores/${encodeURIComponent(storeSlug)}/${normalizedSlug}` : `/stores/${encodeURIComponent(storeSlug)}`;
+}
+
+export function storefrontPath(path: string, storeSlug?: string | null): string {
+  if (!storeSlug) {
+    return path;
+  }
+
+  const [pathnamePart, queryPart] = path.split("?");
+  const pathname = pathnamePart.startsWith("/") ? pathnamePart : `/${pathnamePart}`;
+  const query = queryPart ? `?${queryPart}` : "";
+  const encodedStoreSlug = encodeURIComponent(storeSlug);
+
+  if (pathname === "/") {
+    return `/stores/${encodedStoreSlug}`;
+  }
+
+  if (pathname === "/shop") {
+    return `/stores/${encodedStoreSlug}/shop${query}`;
+  }
+
+  if (pathname.startsWith("/product/")) {
+    return `/stores/${encodedStoreSlug}${pathname}${query}`;
+  }
+
+  if (pathname === "/checkout") {
+    return `/stores/${encodedStoreSlug}/checkout${query}`;
+  }
+
+  if (pathname === "/order-success") {
+    return `/stores/${encodedStoreSlug}/order-success${query}`;
+  }
+
+  if (pathname === "/contact") {
+    return `/stores/${encodedStoreSlug}/contact${query}`;
+  }
+
+  if (pathname === "/cart") {
+    return `/stores/${encodedStoreSlug}/cart${query}`;
+  }
+
+  if (pathname === "/wishlist") {
+    return `/stores/${encodedStoreSlug}/wishlist${query}`;
+  }
+
+  if (pathname === "/account") {
+    return `/stores/${encodedStoreSlug}/account${query}`;
+  }
+
+  if (pathname === "/track-order") {
+    return `/stores/${encodedStoreSlug}/track-order${query}`;
+  }
+
+  return path;
+}
+
 export const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 

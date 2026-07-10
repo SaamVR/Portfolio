@@ -20,6 +20,11 @@ function compact(value: string | null | undefined) {
   return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
+function isGenericSeoTitle(value: string) {
+  const normalized = compact(value).toLowerCase();
+  return normalized === "online store" || normalized === "home";
+}
+
 function truncate(value: string, maxLength = 160) {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1).trimEnd()}...`;
@@ -73,7 +78,12 @@ function buildRobots(store: Store): Metadata["robots"] {
 }
 
 export function buildStorePageMetadata(store: Store, page: StorePage, path: string): Metadata {
-  const title = compact(page.seoTitle) || (page.isHomepage ? store.name : `${page.title} | ${store.name}`);
+  const rawSeoTitle = compact(page.seoTitle);
+  const title = rawSeoTitle && !isGenericSeoTitle(rawSeoTitle)
+    ? rawSeoTitle
+    : page.isHomepage
+      ? store.name
+      : `${page.title} | ${store.name}`;
   const description = truncate(compact(page.seoDescription) || compact(store.description));
   const canonical = absoluteUrl(path);
   const image = metadataImage(getPageShareImage(page));

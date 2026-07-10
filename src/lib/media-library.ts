@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { defaultStore } from "@/lib/cms/default-store";
 
 export const mediaLibraryAssetSchema = z.object({
   id: z.string(),
@@ -38,7 +37,7 @@ export function normalizeMediaLibrary(value: unknown): MediaLibraryAsset[] {
   return [...parsed.data].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function fetchMediaLibrary(storeId: string = defaultStore.id) {
+export async function fetchMediaLibrary(storeId: string) {
   const { supabase } = await import("@/integrations/supabase/client");
   const { data, error } = await (supabase as any)
     .from("site_settings")
@@ -56,7 +55,7 @@ export async function fetchMediaLibrary(storeId: string = defaultStore.id) {
 
 export async function saveMediaLibrary(
   assets: MediaLibraryAsset[],
-  storeId: string = defaultStore.id,
+  storeId: string,
 ) {
   const { supabase } = await import("@/integrations/supabase/client");
   const normalizedAssets = normalizeMediaLibrary(assets);

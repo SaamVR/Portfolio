@@ -257,7 +257,7 @@ export const launchTemplates: LaunchTemplate[] = [
       {
         slug: "/",
         title: "Home",
-        seoTitle: "Online Store",
+        seoTitle: "",
         seoDescription: "Browse curated products and local offers.",
         isHomepage: true,
         blocks: [

@@ -13,8 +13,10 @@ import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { extractIdFromSlug, productUrl } from "@/lib/slug";
+import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { absoluteUrl } from "@/lib/siteUrl";
 
 const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 const MAX_RECENT = 8;
@@ -25,7 +27,9 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
-  const { data: product, isLoading } = useProduct(id);
+  const currentStore = useOptionalStore();
+  const storeSlug = explicitStoreSlug ?? currentStore?.slug;
+  const { data: product, isLoading } = useProduct(id, explicitStoreId ?? currentStore?.id);
 
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
@@ -97,7 +101,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
           <div className="text-center">
             <p className="mb-4 font-heading text-xl font-semibold text-foreground">Product not found</p>
             <button
-              onClick={() => navigate("/shop")}
+              onClick={() => navigate(storefrontPath("/shop", storeSlug))}
               className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               Browse Shop
@@ -122,7 +126,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         size: selectedSize,
       });
     }
-    toast.success(quantity > 1 ? `${quantity}├ù ${product.name} added to cart!` : "Added to cart!");
+    toast.success(quantity > 1 ? `${quantity}x  ${product.name} added to cart!` : "Added to cart!");
   };
 
   const lowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
@@ -178,7 +182,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
       <SEOHead
         title={product.name}
         description={product.description}
-        canonical={`https://threadbd.com${productUrl(product.id, product.name)}`}
+        canonical={storeSlug ? undefined : absoluteUrl(productUrl(product.id, product.name))}
         ogType="product"
         ogImage={product.images?.[0] || product.image}
         jsonLd={productJsonLd}
@@ -333,7 +337,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
                 </button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Total: <span className="font-semibold text-foreground">αº│{product.price * quantity}</span>
+                Total: <span className="font-semibold text-foreground">BDT {product.price * quantity}</span>
               </p>
             </div>
 
@@ -342,18 +346,18 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
               disabled={product.isAvailable === false}
               className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow active:animate-scale-pop disabled:opacity-50"
             >
-              {product.isAvailable === false ? "Out of Stock" : `Add ${quantity > 1 ? `${quantity}├ù` : ""} to Cart ΓÇö αº│${product.price * quantity}`}
+              {product.isAvailable === false ? "Out of Stock" : `Add ${quantity > 1 ? `${quantity}x ` : ""}to Cart - BDT ${product.price * quantity}`}
             </button>
 
             <div className="mt-8 space-y-4 border-t border-border pt-6">
               <SocialShare
-                url={`https://threadbd.com${productUrl(product.id, product.name)}`}
+                url={absoluteUrl(productUrl(product.id, product.name))}
                 title={product.name}
               />
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Γ£ô Free delivery in Dhaka</p>
-                <p className="text-xs text-muted-foreground">Γ£ô Pay with bKash or Cash on Delivery</p>
-                <p className="text-xs text-muted-foreground">Γ£ô 7-day easy returns</p>
+                <p className="text-xs text-muted-foreground">Free delivery in Dhaka</p>
+                <p className="text-xs text-muted-foreground">Pay with bKash or Cash on Delivery</p>
+                <p className="text-xs text-muted-foreground">7-day easy returns</p>
               </div>
             </div>
           </div>
@@ -423,3 +427,4 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
 };
 
 export default ProductDetail;
+

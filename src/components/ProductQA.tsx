@@ -8,14 +8,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import GuestCheckoutModal from "./GuestCheckoutModal";
 import { isUuid } from "@/lib/slug";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
 export default function ProductQA({ productId }: { productId: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
   const [question, setQuestion] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -30,7 +29,7 @@ export default function ProductQA({ productId }: { productId: string }) {
       const { data, error } = await supabase
         .from("product_qa" as any)
         .select("*")
-        .eq("store_id", storeId)
+        .eq("store_id", storeId as string)
         .eq("product_id", productId)
         .order("created_at", { ascending: false });
 
@@ -40,12 +39,16 @@ export default function ProductQA({ productId }: { productId: string }) {
       }
       return data || [];
     },
+    enabled: !!storeId,
   });
 
   const submitQuestion = useMutation({
     mutationFn: async () => {
       if (!isUuid(productId)) {
         throw new Error("Q&A is not available for this demo product yet.");
+      }
+      if (!storeId) {
+        throw new Error("Store is still loading.");
       }
       const { error } = await supabase
         .from("product_qa" as any)
@@ -151,7 +154,7 @@ export default function ProductQA({ productId }: { productId: string }) {
                       </div>
                       <div>
                         <p className="text-foreground text-sm">{qa.answer}</p>
-                        <p className="text-xs text-muted-foreground mt-1">ThreadBD Support</p>
+                        <p className="text-xs text-muted-foreground mt-1">{currentStore?.name ?? "Store"} Support</p>
                       </div>
                     </div>
                   )}

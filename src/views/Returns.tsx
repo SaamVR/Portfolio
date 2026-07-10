@@ -1,20 +1,23 @@
 import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import { RefreshCcw, ShieldCheck, Clock, CheckCircle } from "lucide-react";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 const Returns = () => {
+  const currentStore = useOptionalStore();
+  const storeName = currentStore?.name ?? "our store";
   return (
     <Layout>
       <SEOHead 
         title="Returns & Exchanges" 
-        description="ThreadBD's 7-day return and exchange policy. Easy, hassle-free returns for our customers." 
+        description={`${storeName}'s 7-day return and exchange policy.`} 
       />
       
       <div className="container mx-auto max-w-4xl px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="font-heading text-4xl font-bold text-foreground mb-4">Returns & Exchanges</h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            We want you to love your ThreadBD gear. If something isn't right, we've made our return and exchange process as simple as possible.
+            We want you to love what you ordered. If something isn't right, we've made our return and exchange process as simple as possible.
           </p>
         </div>
 

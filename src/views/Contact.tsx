@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteUrl } from "@/lib/siteUrl";
-import { defaultStore } from "@/lib/cms/default-store";
 
 interface ContactSettings {
   address?: string;
@@ -33,7 +32,8 @@ const contactSchema = z.object({
 
 const Contact = () => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = currentStore?.id;
+  const storeName = currentStore?.name ?? "the store";
 
   const { data: contact, isLoading } = useSiteSettings<ContactSettings>("contact_page");
   const [form, setForm] = useState({ name: "", email: "", message: "" });
@@ -72,7 +72,7 @@ const Contact = () => {
           name: form.name.trim(),
           email: form.email.trim(),
           message: form.message.trim(),
-          store_id: storeId,
+          store_id: storeId ?? null,
         });
       if (error) throw error;
       toast.success("Message sent! We'll get back to you soon.");
@@ -98,7 +98,7 @@ const Contact = () => {
     <Layout>
       <SEOHead
         title="Contact Us"
-        description="Get in touch with the store team. Reach us by email, phone, or visit our location in Dhaka."
+        description={`Get in touch with ${storeName}. Reach us by email, phone, or visit our location.`}
         canonical={absoluteUrl("/contact")}
       />
       <PageTransition>
@@ -189,7 +189,7 @@ const Contact = () => {
                       <div>
                         <p className="font-heading text-sm font-semibold text-foreground">WhatsApp Support</p>
                         <a 
-                          href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, "").startsWith("0") && whatsapp.replace(/[^0-9]/g, "").length === 11 ? "88" : ""}${whatsapp.replace(/[^0-9]/g, "")}?text=Hi%20ThreadBD`}
+                          href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, "").startsWith("0") && whatsapp.replace(/[^0-9]/g, "").length === 11 ? "88" : ""}${whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${storeName}`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-primary hover:underline inline-flex items-center gap-1"

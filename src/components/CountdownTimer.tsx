@@ -2,6 +2,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowRight, Clock } from "lucide-react";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface CountdownSettings {
   enabled: boolean;
@@ -25,6 +27,7 @@ interface CountdownTimerProps {
 
 export const CountdownTimer = ({ overrides }: CountdownTimerProps) => {
   const { data: settings } = useSiteSettings<CountdownSettings>("countdown_timer");
+  const currentStore = useOptionalStore();
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -130,7 +133,7 @@ export const CountdownTimer = ({ overrides }: CountdownTimerProps) => {
 
         {(overrides?.ctaLink ?? settings?.cta_link) && (overrides?.ctaText ?? settings?.cta_text) ? (
           <Link
-            href={overrides?.ctaLink ?? settings?.cta_link ?? "/shop"}
+            href={storefrontPath(overrides?.ctaLink ?? settings?.cta_link ?? "/shop", currentStore?.slug)}
             className="flex items-center gap-1.5 bg-white text-gray-900 px-5 py-2 rounded-full text-sm font-bold tracking-wide hover:bg-white/90 transition-all duration-300 hover:scale-105 shadow-md active:scale-100"
           >
             {overrides?.ctaText ?? settings?.cta_text}

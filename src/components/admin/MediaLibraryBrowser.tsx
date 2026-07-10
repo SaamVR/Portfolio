@@ -63,15 +63,27 @@ export function MediaLibraryBrowser({
   }, [assets]);
 
   const persistAssets = async (nextAssets: MediaLibraryAsset[]) => {
+    if (!effectiveStoreId) {
+      throw new Error("Select a store before managing media.");
+    }
+
     // dynamically import saveMediaLibrary to avoid circular deps if any
     const { saveMediaLibrary } = await import("@/lib/media-library");
-    const saved = await saveMediaLibrary(nextAssets, effectiveStoreId ?? undefined);
+    const saved = await saveMediaLibrary(nextAssets, effectiveStoreId);
     queryClient.setQueryData(["media_library", effectiveStoreId], saved);
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+
+    if (!effectiveStoreId) {
+      toast.error("Select a store before uploading media.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
 
     setUploading(true);
 
@@ -86,7 +98,7 @@ export function MediaLibraryBrowser({
           file,
           folder,
           resourceType: effectiveType,
-          storeId: effectiveStoreId ?? "00000000-0000-4000-8000-000000000001",
+          storeId: effectiveStoreId,
         });
         uploadedAssets.push(nextAsset);
       }
@@ -137,12 +149,18 @@ export function MediaLibraryBrowser({
             multiple
             onChange={handleUpload}
           />
-          <Button type="button" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Button type="button" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || !effectiveStoreId}>
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Upload Media
           </Button>
         </div>
       </div>
+
+      {!effectiveStoreId ? (
+        <div className="rounded-xl border border-dashed border-border bg-secondary/20 p-6 text-sm text-muted-foreground">
+          Choose an active store to view, upload, and reuse media safely.
+        </div>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_160px]">
         <div className="relative">
@@ -180,7 +198,7 @@ export function MediaLibraryBrowser({
         </div>
       ) : null}
 
-      {!isLoading && visibleAssets.length === 0 ? (
+      {!isLoading && effectiveStoreId && visibleAssets.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           No assets yet. Upload your first store image or video to start building reusable media.
         </div>

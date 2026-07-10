@@ -1,4 +1,5 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 import { useState, useEffect } from "react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { ArrowLeft, Phone, Copy, CheckCircle2, Tag, X, Loader2 } from "lucide-react";
@@ -11,7 +12,6 @@ import { useCreateOrder } from "@/hooks/useOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { defaultStore } from "@/lib/cms/default-store";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -65,7 +65,9 @@ function createCheckoutRequestKey() {
 
 const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) => {
   const currentStore = useOptionalStore();
-  const storeId = explicitStoreId ?? currentStore?.id ?? "00000000-0000-4000-8000-000000000001";
+  const storeId = explicitStoreId ?? currentStore?.id;
+  const storeSlug = explicitStoreSlug ?? currentStore?.slug;
+  const storeName = currentStore?.name ?? "this store";
 
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
@@ -98,6 +100,10 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
+    if (!checkoutStoreId) {
+      return;
+    }
+
     (supabase as any)
       .from("site_settings")
       .select("key, value")
@@ -113,9 +119,13 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
   useEffect(() => {
     if (checkoutItems.length === 0) {
-      navigate("/cart");
+      navigate(storefrontPath("/cart", storeSlug));
     }
-  }, [checkoutItems.length, navigate]);
+  }, [checkoutItems.length, navigate, storeSlug]);
+
+  if (!checkoutStoreId) {
+    return null;
+  }
 
   if (checkoutItems.length === 0) {
     return null;
@@ -229,7 +239,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         notesParts.push(`Payment: bKash PGW (Automated)`);
       }
       
-      if (appliedCoupon) notesParts.push(`Coupon: ${appliedCoupon.code} (-৳${couponDiscount})`);
+      if (appliedCoupon) notesParts.push(`Coupon: ${appliedCoupon.code} (-BDT ${couponDiscount})`);
 
       const order = await createOrder.mutateAsync({
         idempotencyKey: orderRequestKey,
@@ -289,7 +299,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
       }
       clearCart(checkoutStoreId);
-      navigate("/order-success", { state: { orderNumber: order.order_number } });
+      navigate(storefrontPath(`/order-success?order=${encodeURIComponent(order.order_number)}`, storeSlug));
     } catch {
       toast.error("Failed to place order. Please try again.");
     }
@@ -304,7 +314,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
   return (
     <LayoutWrapper>
-      <SEOHead title="Checkout" description="Complete your ThreadBD order." noindex />
+      <SEOHead title="Checkout" description={`Complete your order with ${storeName}.`} noindex />
       <div className="container mx-auto max-w-2xl px-4 py-12">
         <button
           onClick={() => navigate(-1)}

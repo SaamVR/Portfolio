@@ -83,7 +83,7 @@ interface DraftState {
 
 function draftFromTemplate(templateId: LaunchTemplateId, previous?: Partial<DraftState>): DraftState {
   const template = getLaunchTemplate(templateId);
-  const storeName = previous?.storeName || "ThreadBD";
+  const storeName = previous?.storeName || "Demo Store";
 
   return {
     storeName,
@@ -184,7 +184,7 @@ export default function OnboardingWizard() {
 
   const activeStep = steps[activeIndex];
   const template = getLaunchTemplate(draft.businessType);
-  const previewStore = useMemo(() => buildPreviewStore(draft, activeStoreId ?? "00000000-0000-4000-8000-000000000001"), [draft, activeStoreId]);
+  const previewStore = useMemo(() => buildPreviewStore(draft, activeStoreId ?? defaultStore.id), [draft, activeStoreId]);
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
   const storeUrl = getStoreUrl(draft.slug);
   const canGoNext = activeIndex < steps.length - 1;
@@ -411,14 +411,30 @@ export default function OnboardingWizard() {
       return;
     }
 
-    const { error: paymentError } = await (supabase as any).from("site_settings").upsert(
-      {
-        store_id: activeStoreId,
-        key: "payment_settings",
-        value: draft.payment as any,
-      },
-      { onConflict: "store_id,key" },
-    );
+    const { data: existingPayment } = await (supabase as any)
+      .from("site_settings")
+      .select("id")
+      .eq("store_id", activeStoreId)
+      .eq("key", "payment_settings")
+      .maybeSingle();
+
+    let paymentError;
+    if (existingPayment) {
+      const { error } = await (supabase as any)
+        .from("site_settings")
+        .update({ value: draft.payment as any })
+        .eq("id", existingPayment.id);
+      paymentError = error;
+    } else {
+      const { error } = await (supabase as any)
+        .from("site_settings")
+        .insert({
+          store_id: activeStoreId,
+          key: "payment_settings",
+          value: draft.payment as any,
+        });
+      paymentError = error;
+    }
 
     if (paymentError) {
       toast.error("Failed to save payment setup.");

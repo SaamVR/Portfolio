@@ -6,25 +6,21 @@ import { CartContext, type CartItem } from "@/context/cart-context";
 
 const CART_STORAGE_KEY_PREFIX = "threadbd-cart-";
 const CART_TIME_KEY_PREFIX = "threadbd-cart-time-";
-const DEFAULT_STORE_ID = "00000000-0000-4000-8000-000000000001";
+const GLOBAL_CART_KEY = "global";
 
 function getStorageKey(storeId?: string) {
-  return `${CART_STORAGE_KEY_PREFIX}${storeId || DEFAULT_STORE_ID}`;
+  return `${CART_STORAGE_KEY_PREFIX}${storeId || GLOBAL_CART_KEY}`;
 }
 
 function getTimeKey(storeId?: string) {
-  return `${CART_TIME_KEY_PREFIX}${storeId || DEFAULT_STORE_ID}`;
-}
-
-function normalizeStoreId(storeId?: string) {
-  return storeId ?? DEFAULT_STORE_ID;
+  return `${CART_TIME_KEY_PREFIX}${storeId || GLOBAL_CART_KEY}`;
 }
 
 function isSameCartLine(item: CartItem, productId: string, size: string, storeId?: string) {
   return (
     item.productId === productId &&
     item.size === size &&
-    normalizeStoreId(item.storeId) === normalizeStoreId(storeId)
+    (item.storeId ?? null) === (storeId ?? null)
   );
 }
 
@@ -49,15 +45,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const hasMerged = React.useRef(false);
   const itemsRef = React.useRef(items);
   const initialItemsRef = React.useRef(items);
-
-  useEffect(() => {
-    setItems((prev) =>
-      prev.map((item) => ({
-        ...item,
-        storeId: normalizeStoreId(item.storeId),
-      })),
-    );
-  }, []);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -96,13 +83,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     if (!user) return;
 
     const loadAndMergeCart = async () => {
+      if (!storeId) {
+        hasMerged.current = true;
+        return;
+      }
+
       try {
         // 1. Fetch DB cart items
         const { data: dbCart, error } = await (supabase as any)
           .from("cart_items")
           .select("product_id, size, quantity, store_id")
           .eq("user_id", user.id)
-          .eq("store_id", normalizeStoreId(storeId));
+          .eq("store_id", storeId);
 
         if (error) throw error;
         if (!dbCart || dbCart.length === 0) {
@@ -113,7 +105,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
               product_id: item.productId,
               size: item.size,
               quantity: item.quantity,
-              store_id: normalizeStoreId(item.storeId)
+              store_id: item.storeId
             }));
             await (supabase as any).from("cart_items").upsert(inserts);
           }
@@ -135,7 +127,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           const prod = productsMap.get(item.product_id);
           return {
             productId: item.product_id,
-            storeId: normalizeStoreId(item.store_id ?? undefined),
+            storeId: item.store_id ?? undefined,
             name: prod?.name || "Product",
             price: prod?.price || 0,
             image: prod?.image_url || "",
@@ -173,22 +165,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   useEffect(() => {
     saveCart(items, storeId);
 
-    if (!user || !hasMerged.current) return;
+    if (!user || !hasMerged.current || !storeId) return;
 
     const syncToDb = async () => {
       try {
         // Delete all and insert to sync
-        await (supabase as any).from("cart_items").delete().eq("user_id", user.id).eq("store_id", normalizeStoreId(storeId));
+        await (supabase as any).from("cart_items").delete().eq("user_id", user.id).eq("store_id", storeId);
         if (items.length > 0) {
-          const inserts = items.map(item => ({
+          const inserts = items
+            .filter((item) => item.storeId)
+            .map(item => ({
             user_id: user.id,
             product_id: item.productId,
             size: item.size,
             quantity: item.quantity,
-            store_id: normalizeStoreId(item.storeId)
+            store_id: item.storeId
           }));
-          const { error } = await (supabase as any).from("cart_items").insert(inserts);
-          if (error) throw error;
+          if (inserts.length > 0) {
+            const { error } = await (supabase as any).from("cart_items").insert(inserts);
+            if (error) throw error;
+          }
         }
       } catch (err) {
         console.error("Failed to sync cart changes to db:", err);
@@ -209,7 +205,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             : i
         );
       }
-      return [...prev, { ...item, storeId: normalizeStoreId(item.storeId), quantity: 1 }];
+      return [...prev, { ...item, quantity: 1 }];
     });
     setIsCartOpen(true); // Auto-open cart when adding items
   }, []);
@@ -238,8 +234,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       return;
     }
 
-    const normalizedStoreId = normalizeStoreId(storeId);
-    setItems((prev) => prev.filter((item) => normalizeStoreId(item.storeId) !== normalizedStoreId));
+    setItems((prev) => prev.filter((item) => item.storeId !== storeId));
   }, []);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);

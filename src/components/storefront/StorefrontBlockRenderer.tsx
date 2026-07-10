@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import CategoryShowcase from "@/components/CategoryShowcase";
 import FeaturedProducts from "@/components/FeaturedProducts";
@@ -9,6 +10,8 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { AlertTriangle, Play, Instagram } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 function RichTextBlock({
   eyebrow,
@@ -75,6 +78,8 @@ function SocialFeedBlock({ title, subtitle, images }: { title?: string; subtitle
 }
 
 function VideoReelBlock({ title, videoUrl, ctaText, ctaLink }: { title?: string; videoUrl?: string; ctaText?: string; ctaLink?: string }) {
+  const currentStore = useOptionalStore();
+
   return (
     <section className="py-12 md:py-24 bg-foreground text-background overflow-hidden relative flex items-center justify-center min-h-[60vh] md:min-h-[80vh]">
       {videoUrl ? (
@@ -96,7 +101,7 @@ function VideoReelBlock({ title, videoUrl, ctaText, ctaLink }: { title?: string;
         {title && <h2 className="text-4xl md:text-6xl font-bold font-heading mb-6 tracking-tight text-white drop-shadow-lg">{title}</h2>}
         {ctaText && (
           <Button asChild size="lg" className="rounded-full bg-white text-black hover:bg-white/90 shadow-xl">
-            <a href={ctaLink || "#"}>{ctaText}</a>
+            <Link href={storefrontPath(ctaLink || "#", currentStore?.slug)}>{ctaText}</Link>
           </Button>
         )}
       </div>

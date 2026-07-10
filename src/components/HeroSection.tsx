@@ -2,6 +2,8 @@ import Link from "next/link";
 import heroBanner from "@/assets/hero-banner.jpg";
 import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface HeroSettings {
   tagline?: string;
@@ -40,6 +42,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const sectionRef = useRef<HTMLElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const { data: hero } = useSiteSettings<HeroSettings>("hero_section");
+  const currentStore = useOptionalStore();
 
   const tagline = overrides?.tagline ?? hero?.tagline ?? "Premium Menswear from Dhaka";
   const title = overrides?.title ?? hero?.title ?? "Wear Your";
@@ -49,9 +52,9 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     hero?.subtitle ??
     "Tees, polos, shirts & more - designed in Bangladesh. Premium fabrics, bold designs, bKash checkout.";
   const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Shop Now";
-  const ctaLink = overrides?.ctaLink ?? hero?.cta_link ?? "/shop";
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? hero?.cta_link ?? "/shop", currentStore?.slug);
   const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "View Collection";
-  const secondaryCtaLink = overrides?.secondaryCtaLink ?? hero?.secondary_cta_link ?? "/shop";
+  const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? hero?.secondary_cta_link ?? "/shop", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? hero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? hero?.media_type ?? "image";
   const overlayColor = overrides?.overlayColor ?? hero?.overlay_color ?? "";
@@ -74,7 +77,11 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const isVideo = mediaType === "video" && mediaUrl;
 
   return (
-    <section id={overrides?.anchorId} ref={sectionRef} className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
+    <section
+      id={overrides?.anchorId}
+      ref={sectionRef}
+      className="relative flex min-h-[82svh] items-center justify-center overflow-hidden md:min-h-[90vh]"
+    >
       <div className="absolute inset-0">
         {isVideo ? (
           <video
@@ -101,26 +108,23 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
             opacity: overlayOpacity / 100,
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10 md:from-black/55 md:via-transparent md:to-transparent" />
         <div className="absolute inset-0 grain-texture opacity-[0.03]" />
       </div>
 
-      <div className="absolute right-10 top-32 h-20 w-20 rounded-full bg-primary/10 blur-2xl animate-float" />
-      <div className="absolute left-16 bottom-40 h-14 w-14 rounded-full bg-accent/10 blur-xl animate-float" style={{ animationDelay: "1.5s" }} />
-
-      <div className="relative z-10 container mx-auto px-4 text-center">
-        <div className="mx-auto mb-4 sm:mb-6 h-px w-12 bg-primary opacity-0 animate-blur-in" />
-        <p className="mb-3 sm:mb-4 opacity-0 animate-blur-in text-xs sm:text-sm font-medium uppercase tracking-[0.3em] text-primary drop-shadow-md">
+      <div className="relative z-10 container mx-auto px-4 py-16 text-center sm:py-20 md:py-24">
+        <div className="mx-auto mb-4 h-px w-12 bg-primary opacity-0 animate-blur-in sm:mb-6" />
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-primary drop-shadow-md opacity-0 animate-blur-in sm:mb-4 sm:text-sm sm:tracking-[0.3em]">
           {tagline}
         </p>
         <h1
-          className="mb-4 sm:mb-6 font-heading text-5xl sm:text-6xl md:text-8xl font-black leading-[1.05] text-white opacity-0 animate-blur-in drop-shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+          className="mx-auto mb-4 max-w-[12ch] font-heading text-4xl font-black leading-[0.98] text-white opacity-0 animate-blur-in drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:mb-6 sm:max-w-[11ch] sm:text-6xl md:max-w-none md:text-8xl"
           style={{ animationDelay: "0.15s" }}
         >
           {title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-emerald-400 to-accent">{highlight}</span>
         </h1>
         <p
-          className="mx-auto mb-8 sm:mb-10 max-w-2xl text-base sm:text-lg md:text-xl text-gray-200 opacity-0 animate-blur-in drop-shadow-md font-light tracking-wide"
+          className="mx-auto mb-8 max-w-[34ch] text-sm leading-6 text-gray-100 opacity-0 animate-blur-in drop-shadow-md sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl"
           style={{ animationDelay: "0.3s" }}
         >
           {subtitle}
