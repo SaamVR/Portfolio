@@ -172,8 +172,7 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store> 
     return defaultStore;
   }
 
-  const store = await getStoreById(matchedStore.id);
-  return store ?? defaultStore;
+  return defaultStore;
 }
 
 export async function getStoreBySlug(slug: string): Promise<Store | null> {

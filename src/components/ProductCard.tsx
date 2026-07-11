@@ -21,7 +21,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const wishlisted = isInWishlist(product.id);
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] hover:border-primary/40 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)]">
+    <div className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all duration-500 ease-spring-2 hover:border-primary/40 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)]">
       <Link
         href={productUrl(product.id, product.name, currentStore?.slug)}
         className="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -33,7 +33,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
             src={product.image}
             alt={`${product.name} in ${product.colors[0]}`}
             className={cn(
-              "h-full w-full object-cover transition-transform duration-[800ms] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105",
+              "h-full w-full object-cover transition-transform duration-800 ease-spring-2 group-hover:scale-105",
               imageLoaded ? "opacity-100" : "opacity-0",
             )}
             loading="lazy"
@@ -105,7 +105,7 @@ const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
         <Heart className={cn("h-[18px] w-[18px] transition-all duration-300", wishlisted && "fill-primary scale-110")} />
       </button>
 
-      <div className="absolute bottom-[calc(theme(spacing.5)+6.5rem)] left-1/2 z-10 hidden -translate-x-1/2 translate-y-6 items-center gap-2 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:translate-y-0 group-hover:opacity-100 lg:flex">
+      <div className="absolute bottom-[calc(theme(spacing.5)+6.5rem)] left-1/2 z-10 hidden -translate-x-1/2 translate-y-6 items-center gap-2 opacity-0 transition-all duration-500 ease-spring-2 group-hover:translate-y-0 group-hover:opacity-100 lg:flex">
         {onQuickView && (
           <button
             onClick={(e) => {

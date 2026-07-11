@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 
 interface HeroSettings {
   tagline?: string;
@@ -18,6 +19,17 @@ interface HeroSettings {
   media_type?: "image" | "video";
   overlay_color?: string;
   overlay_opacity?: number;
+}
+
+interface PaymentSettings {
+  bkash_enabled?: boolean;
+  nagad_enabled?: boolean;
+  cod_enabled?: boolean;
+}
+
+interface DeliverySettings {
+  enabled?: boolean;
+  free_threshold?: number;
 }
 
 interface HeroSectionProps {
@@ -42,6 +54,8 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const sectionRef = useRef<HTMLElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const { data: hero } = useSiteSettings<HeroSettings>("hero_section");
+  const { data: paymentSettings } = useSiteSettings<PaymentSettings>("payment_settings");
+  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
   const currentStore = useOptionalStore();
 
   const tagline = overrides?.tagline ?? hero?.tagline ?? "Premium Menswear from Dhaka";
@@ -59,6 +73,18 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const mediaType = overrides?.mediaType ?? hero?.media_type ?? "image";
   const overlayColor = overrides?.overlayColor ?? hero?.overlay_color ?? "";
   const overlayOpacity = overrides?.overlayOpacity ?? hero?.overlay_opacity ?? 50;
+  const trustHighlights = [
+    paymentSettings?.cod_enabled !== false
+      ? { icon: Truck, label: "Cash on delivery available" }
+      : null,
+    paymentSettings?.bkash_enabled || paymentSettings?.nagad_enabled
+      ? { icon: CreditCard, label: "bKash and mobile payments" }
+      : null,
+    deliverySettings?.enabled !== false
+      ? { icon: BadgeCheck, label: `Fast delivery${deliverySettings?.free_threshold ? ` from BDT ${deliverySettings.free_threshold}` : ""}` }
+      : null,
+    { icon: ShieldCheck, label: "Trusted support after purchase" },
+  ].filter(Boolean) as Array<{ icon: typeof Truck; label: string }>;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -142,6 +168,23 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           >
             {secondaryCtaText}
           </Link>
+        </div>
+        <div
+          className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-2.5 opacity-0 animate-blur-in sm:mt-10"
+          style={{ animationDelay: "0.6s" }}
+        >
+          {trustHighlights.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs font-medium text-white/95 backdrop-blur-md"
+              >
+                <Icon className="h-3.5 w-3.5 text-primary" />
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

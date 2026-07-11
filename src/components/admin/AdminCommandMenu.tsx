@@ -81,7 +81,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Discount Coupons", icon: Tag, category: "Pages", action: () => navigate("/admin/coupons") },
     { label: "Categories & Types Manager", icon: FolderTree, category: "Pages", action: () => navigate("/admin/categories"), show: isAdmin },
     { label: "Store Setup Onboarding", icon: Rocket, category: "Pages", action: () => navigate("/admin/onboarding"), show: isAdmin },
-    { label: "CMS Builder Workspace", icon: PanelsTopLeft, category: "Pages", action: () => navigate("/admin/cms"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { label: "Page Builder Workspace", icon: PanelsTopLeft, category: "Pages", action: () => navigate("/admin/page-builder"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { label: "Media Library Workspace", icon: Images, category: "Pages", action: () => navigate("/admin/media"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { label: "Store Backup & Import Workspace", icon: HardDriveDownload, category: "Pages", action: () => navigate("/admin/backup"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { label: "Site Customization Settings", icon: Settings, category: "Pages", action: () => navigate("/admin/site-settings"), show: isAdmin },
@@ -108,7 +108,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Loyalty Points Rewards Rules", icon: Gift, action: () => navigate("/admin/site-settings?tab=loyalty") },
     { label: "Contact Form Email Setup", icon: Mail, action: () => navigate("/admin/site-settings?tab=contact") },
     { label: "Footer Links, Copywrite & Brand Text", icon: Settings, action: () => navigate("/admin/site-settings?tab=footer") },
-    { label: "CMS Pages, Blocks & Revision Builder", icon: PanelsTopLeft, action: () => navigate("/admin/cms") },
+    { label: "Page Builder: Pages, Blocks & Revisions", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
   ];
 
   const quickActions = [
@@ -116,6 +116,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Create Promo Coupon Code", icon: Plus, action: () => navigate("/admin/coupons?action=create") },
     { label: "View Unread Inquiries", icon: Eye, action: () => navigate("/admin/messages?filter=unread") },
     { label: "Review Pending Product Ratings", icon: Eye, action: () => navigate("/admin/reviews?filter=pending") },
+    { label: "Open Page Builder", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
     { label: "Continue Store Setup", icon: Rocket, action: () => navigate("/admin/onboarding") },
   ];
 

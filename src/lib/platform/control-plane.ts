@@ -67,6 +67,7 @@ export type StoreLifecycleStateRecord = {
 };
 
 export const PLATFORM_ROUTE_ENTITLEMENTS: Record<string, PlatformFeatureKey> = {
+  "/admin/page-builder": "cms_pages",
   "/admin/cms": "cms_pages",
   "/admin/media": "media_library",
   "/admin/backup": "backup_import",

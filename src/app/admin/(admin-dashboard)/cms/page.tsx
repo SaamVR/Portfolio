@@ -1,19 +1,12 @@
 "use client";
 
 import React, { Suspense } from "react";
-import PageComponent from "@/views/admin/CmsPagesManager";
-import { AdminFeatureGate } from "@/components/admin/AdminFeatureGate";
+import { Navigate } from "@/lib/react-router-dom-shim";
 
 export default function Page() {
   return (
     <Suspense fallback={null}>
-      <AdminFeatureGate
-        featureKey="cms_pages"
-        title="CMS Builder"
-        description="This store package does not currently include the CMS page builder."
-      >
-        <PageComponent />
-      </AdminFeatureGate>
+      <Navigate to="/admin/page-builder" replace />
     </Suspense>
   );
 }

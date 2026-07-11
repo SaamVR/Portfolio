@@ -37,7 +37,7 @@ const AnimatedSection = ({ children, className, delay = 0, animation = "fade" }:
     <div
       ref={ref}
       className={cn(
-        "transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "transition-all duration-700 ease-spring-1",
         isVisible ? variant.visible : variant.hidden,
         className
       )}

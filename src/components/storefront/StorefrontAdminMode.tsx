@@ -15,7 +15,7 @@ type StorefrontAdminModeProps = {
 export function StorefrontAdminMode({ pageId, block, index }: StorefrontAdminModeProps) {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  const blockEditorHref = `/admin/cms?page=${encodeURIComponent(pageId)}&block=${encodeURIComponent(block.id)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const blockEditorHref = `/admin/page-builder?page=${encodeURIComponent(pageId)}&block=${encodeURIComponent(block.id)}&returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
     <div className="pointer-events-none absolute inset-x-3 top-3 z-40 flex items-start justify-between gap-3">

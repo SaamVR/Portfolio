@@ -171,6 +171,14 @@
     background-blend-mode: overlay;
   }
 
+  .glass-luxe {
+    @apply border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.08)] transition-all duration-500;
+  }
+
+  .glass-chip {
+    @apply border border-white/10 bg-white/10 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.14)] transition-all duration-500 hover:border-primary/25 hover:bg-white/20;
+  }
+
   .nav-link-anim {
     @apply relative overflow-hidden transition-colors duration-300;
   }
@@ -280,6 +288,16 @@
   50% { transform: translateY(-15px) rotate(180deg); opacity: 0.7; }
 }
 
+@keyframes float-card {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes float-card-delayed {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(10px); }
+}
+
 .animate-float-orb-1 {
   animation: float-slow-1 12s infinite ease-in-out;
 }
@@ -294,4 +312,12 @@
 
 .animate-float-particle-fast {
   animation: float-particle 5s infinite ease-in-out;
+}
+
+.animate-float-card {
+  animation: float-card 7s infinite ease-in-out;
+}
+
+.animate-float-card-delayed {
+  animation: float-card-delayed 8s infinite ease-in-out;
 }

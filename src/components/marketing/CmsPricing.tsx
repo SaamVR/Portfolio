@@ -18,7 +18,7 @@ const fallbackPlans: PlanCard[] = [
     id: "starter",
     name: "Starter",
     price: "Free",
-    description: "Launch one store with core CMS blocks and manual payments.",
+    description: "For new merchants who need a cleaner way to launch one convincing storefront.",
     features: ["1 storefront", "Mobile onboarding", "CMS page builder", "Cash on delivery and manual payments"],
     cta: "Start Free",
     featured: false,
@@ -26,8 +26,8 @@ const fallbackPlans: PlanCard[] = [
   {
     id: "growth",
     name: "Growth",
-    price: "৳1,490/mo",
-    description: "For merchants ready to run campaigns, teams, and richer storefronts.",
+    price: "BDT 1,490/mo",
+    description: "For brands that want stronger campaigns, more polished storefront sections, and better store control.",
     features: ["3 storefronts", "Launch templates", "Staff roles", "Coupons, reviews, and analytics"],
     cta: "Choose Growth",
     featured: true,
@@ -36,7 +36,7 @@ const fallbackPlans: PlanCard[] = [
     id: "scale",
     name: "Scale",
     price: "Custom",
-    description: "For agencies and larger sellers managing multiple brands.",
+    description: "For agencies and larger operators managing multiple brands, teams, and high-touch launch needs.",
     features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration and setup help"],
     cta: "Talk to Sales",
     featured: false,
@@ -46,7 +46,7 @@ const fallbackPlans: PlanCard[] = [
 function formatPlanPrice(monthlyPrice: number | null | undefined) {
   if (monthlyPrice == null) return "Custom";
   if (monthlyPrice <= 0) return "Free";
-  return `৳${monthlyPrice.toLocaleString("en-BD")}/mo`;
+  return `BDT ${monthlyPrice.toLocaleString("en-BD")}/mo`;
 }
 
 async function loadPlanCards(): Promise<PlanCard[]> {
@@ -117,10 +117,10 @@ export async function CmsPricing() {
             Packages
           </div>
           <h2 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
-            Start lean, upgrade when the engine is paying for itself.
+            Choose the package that matches how serious the store needs to feel.
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Plans are shaped for Bangladesh-first commerce teams: quick launch, practical payments, and room to grow into multi-store operations.
+            These plans are shaped around launch quality, operational control, and how much persuasive storefront structure a merchant needs to convert buyers.
           </p>
         </div>
 
@@ -128,10 +128,10 @@ export async function CmsPricing() {
           {plans.map((plan) => (
             <article
               key={plan.name}
-              className={`rounded-lg border p-6 ${
+              className={`group rounded-[1.75rem] border p-6 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 ${
                 plan.featured
-                  ? "border-primary bg-primary text-primary-foreground shadow-xl"
-                  : "border-border bg-card text-card-foreground"
+                  ? "border-primary bg-primary text-primary-foreground shadow-[0_25px_80px_rgba(16,185,129,0.22)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.3)]"
+                  : "border-white/10 bg-white/5 text-card-foreground shadow-[0_18px_60px_rgba(0,0,0,0.06)] hover:border-primary/20 hover:bg-white/8 hover:shadow-[0_28px_80px_rgba(0,0,0,0.1)]"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -142,7 +142,7 @@ export async function CmsPricing() {
                   </p>
                 </div>
                 {plan.featured ? (
-                  <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-foreground">Popular</span>
+                  <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-foreground">Best balance</span>
                 ) : null}
               </div>
               <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>
@@ -154,7 +154,13 @@ export async function CmsPricing() {
                   </li>
                 ))}
               </ul>
-              <Button asChild className="mt-7 w-full" variant={plan.featured ? "secondary" : "default"}>
+              <Button
+                asChild
+                className={`mt-7 w-full rounded-full transition-all duration-300 group-hover:-translate-y-0.5 ${
+                  plan.featured ? "shadow-[0_12px_30px_rgba(255,255,255,0.16)]" : "shadow-[0_12px_30px_rgba(16,185,129,0.14)]"
+                }`}
+                variant={plan.featured ? "secondary" : "default"}
+              >
                 <Link href={`/signup?planId=${encodeURIComponent(plan.id)}`}>{plan.cta}</Link>
               </Button>
             </article>

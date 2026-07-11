@@ -20,7 +20,7 @@ export function StorefrontAdminOverlay({
 }: StorefrontAdminOverlayProps) {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  const pageEditorHref = `/admin/cms?page=${encodeURIComponent(pageId)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(pageId)}&returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col gap-2">
@@ -28,7 +28,7 @@ export function StorefrontAdminOverlay({
         <div className="pointer-events-auto rounded-lg border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">CMS Edit Mode</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Page Builder Mode</p>
               <p className="truncate text-sm font-semibold text-foreground">{pageTitle}</p>
             </div>
             <Badge variant="secondary">Live</Badge>
@@ -54,12 +54,12 @@ export function StorefrontAdminOverlay({
             {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={pageEditorHref} aria-label="Edit page in CMS">
+            <Link to={pageEditorHref} aria-label="Edit page in Page Builder">
               <SquarePen className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={pageEditorHref} aria-label="Open CMS Dashboard">
+            <Link to={pageEditorHref} aria-label="Open Page Builder">
               <ExternalLink className="h-4 w-4" />
             </Link>
           </Button>

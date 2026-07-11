@@ -11,7 +11,7 @@ interface PromoBannerSettings {
   cta_text: string;
   cta_link: string;
   badge_text: string;
-  bg_style: "gradient" | "dark" | "accent" | "luxury-gold" | "indigo" | "rose";
+  bg_style: "gradient" | "dark" | "accent" | "luxury-gold" | "indigo" | "rose" | "aurora" | "luxury-dark" | "confetti" | "mesh-gradient";
   enable_glow?: boolean;
   text_alignment?: "left" | "center" | "right";
   padding_size?: "compact" | "cozy" | "large";
@@ -47,6 +47,14 @@ const getBannerStyle = (bgStyle: string) => {
       return { background: "linear-gradient(135deg, #022c22 0%, #064e3b 40%, #166534 70%, #854d0e 100%)", borderColor: "transparent" };
     case "rose":
       return { background: "linear-gradient(135deg, #0a0204 0%, #4c0519 60%, #1c0209 100%)", borderColor: "transparent" };
+    case "aurora":
+      return { background: "linear-gradient(120deg, #06131f 0%, #064e3b 35%, #4c1d95 70%, #111827 100%)", borderColor: "transparent" };
+    case "luxury-dark":
+      return { background: "linear-gradient(135deg, #050505 0%, #111111 55%, #3f2f12 100%)", borderColor: "transparent" };
+    case "confetti":
+      return { background: "radial-gradient(circle at 12% 20%, rgba(244,63,94,.35), transparent 18%), radial-gradient(circle at 84% 18%, rgba(250,204,21,.32), transparent 16%), radial-gradient(circle at 70% 84%, rgba(16,185,129,.28), transparent 18%), linear-gradient(135deg, #24030a 0%, #5b1121 50%, #111827 100%)", borderColor: "transparent" };
+    case "mesh-gradient":
+      return { background: "radial-gradient(circle at 20% 20%, rgba(16,185,129,.32), transparent 28%), radial-gradient(circle at 80% 30%, rgba(217,119,6,.28), transparent 26%), radial-gradient(circle at 50% 90%, rgba(59,130,246,.22), transparent 30%), hsl(var(--background))", borderColor: "transparent" };
     case "dark":
       return { background: "linear-gradient(135deg, #050708 0%, #0d1216 50%, #111827 100%)", borderColor: "transparent" };
     case "accent":
@@ -66,6 +74,14 @@ const getOrbColors = (bgStyle: string) => {
       return { orb1: "bg-emerald-500/10", orb2: "bg-amber-500/10" };
     case "rose":
       return { orb1: "bg-rose-500/10", orb2: "bg-pink-500/10" };
+    case "aurora":
+      return { orb1: "bg-emerald-400/10", orb2: "bg-violet-500/10" };
+    case "luxury-dark":
+      return { orb1: "bg-amber-400/10", orb2: "bg-neutral-300/5" };
+    case "confetti":
+      return { orb1: "bg-rose-400/10", orb2: "bg-yellow-300/10" };
+    case "mesh-gradient":
+      return { orb1: "bg-primary/10", orb2: "bg-accent/10" };
     case "dark":
       return { orb1: "bg-emerald-500/5", orb2: "bg-slate-400/5" };
     default:
@@ -83,6 +99,14 @@ const getBorderGradient = (bgStyle: string) => {
       return "from-transparent via-emerald-400/30 to-transparent";
     case "rose":
       return "from-transparent via-rose-400/30 to-transparent";
+    case "aurora":
+      return "from-transparent via-violet-400/30 to-transparent";
+    case "luxury-dark":
+      return "from-transparent via-amber-300/30 to-transparent";
+    case "confetti":
+      return "from-transparent via-yellow-300/30 to-transparent";
+    case "mesh-gradient":
+      return "from-transparent via-primary/30 to-transparent";
     case "dark":
       return "from-transparent via-emerald-500/20 to-transparent";
     case "accent":
@@ -105,7 +129,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   if (settings?.enabled === false) return null;
 
   const bg = overrides?.bgStyle ?? settings?.bg_style ?? "gradient";
-  const isDarkBg = ["gradient", "luxury-gold", "indigo", "rose", "dark"].includes(bg);
+  const isDarkBg = ["gradient", "luxury-gold", "indigo", "rose", "dark", "aurora", "luxury-dark", "confetti", "mesh-gradient"].includes(bg);
   const style = getBannerStyle(bg);
   const orbCls = getOrbColors(bg);
   const borderGrad = getBorderGradient(bg);

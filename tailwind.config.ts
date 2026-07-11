@@ -124,6 +124,13 @@ export default {
         shimmer: "shimmer 1.8s ease-in-out infinite",
         float: "float 3s ease-in-out infinite",
       },
+      transitionDuration: {
+        '800': '800ms',
+      },
+      transitionTimingFunction: {
+        'spring-1': 'cubic-bezier(0.22,1,0.36,1)',
+        'spring-2': 'cubic-bezier(0.25,1,0.5,1)',
+      },
     },
   },
   plugins: [tailwindcssAnimate],

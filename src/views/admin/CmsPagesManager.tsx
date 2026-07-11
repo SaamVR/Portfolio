@@ -118,6 +118,16 @@ function readRecoverableDraft(key: string): RecoverableDraft | null {
   }
 }
 
+function cloneDefaultHomepageBlocks(): StorePageBlock[] {
+  const homepage = defaultStore.pages.find((page) => page.isHomepage) ?? defaultStore.pages[0];
+
+  return homepage.blocks.map((block, index) => ({
+    ...block,
+    id: crypto.randomUUID(),
+    sortOrder: index,
+  }));
+}
+
 function mapRecordsToStore(
   store: StoreRecord,
   theme: ThemeRecord | null,
@@ -504,6 +514,29 @@ export default function CmsPagesManager() {
     toast.success("Template applied to the current page.");
   };
 
+  const applyRecommendedHomepage = () => {
+    if (!selectedPage?.isHomepage) {
+      toast.error("Select the homepage before applying the recommended homepage layout.");
+      return;
+    }
+
+    if (
+      selectedPage.blocks.length > 0 &&
+      !window.confirm("Replace the current homepage blocks with the recommended default homepage layout?")
+    ) {
+      return;
+    }
+
+    updateSelectedPage((page) => ({
+      ...page,
+      slug: "/",
+      isHomepage: true,
+      blocks: cloneDefaultHomepageBlocks(),
+    }));
+    setSelectedBlockId("");
+    toast.success("Recommended homepage layout applied. Save Page Builder changes to publish it.");
+  };
+
   const removePage = (pageId: string) => {
     setStore((current) => {
       if (!current) return current;
@@ -807,7 +840,7 @@ export default function CmsPagesManager() {
       });
     }
 
-    toast.success("CMS pages saved.");
+    toast.success("Page Builder changes saved.");
     setRevisionLabel("");
     if (draftStorageKey && typeof window !== "undefined") {
       window.localStorage.removeItem(draftStorageKey);
@@ -835,7 +868,7 @@ export default function CmsPagesManager() {
       })),
     }));
 
-    toast.success("Revision restored into the editor. Save CMS to publish it.");
+    toast.success("Revision restored into the editor. Save Page Builder changes to publish it.");
   };
 
   const restoreLocalDraft = () => {
@@ -850,7 +883,7 @@ export default function CmsPagesManager() {
     setStore(parsedStore.data);
     setSelectedPageId((current) => (parsedStore.data.pages.some((page) => page.id === current) ? current : parsedStore.data.pages[0]?.id ?? ""));
     setRecoverableDraft(null);
-    toast.success("Local draft restored. Save CMS to publish it.");
+    toast.success("Local draft restored. Save Page Builder changes to publish it.");
   };
 
   const discardLocalDraft = () => {
@@ -878,7 +911,7 @@ export default function CmsPagesManager() {
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>CMS Pages</CardTitle>
+          <CardTitle>Page Builder</CardTitle>
           <CardDescription>Bootstrap the new multi-page storefront tables with the current demo storefront as the default store.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -912,7 +945,7 @@ export default function CmsPagesManager() {
               {selectedPage?.isHomepage ? <Badge variant="outline">Homepage</Badge> : null}
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-normal text-foreground">CMS Builder</h1>
+              <h1 className="text-2xl font-semibold tracking-normal text-foreground">Page Builder</h1>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                 Shape storefront pages, theme settings, and live sections for {store.name}.
               </p>
@@ -962,7 +995,7 @@ export default function CmsPagesManager() {
             </Button>
             <Button onClick={() => void saveAll()} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save CMS
+              Save Pages
             </Button>
           </div>
         </div>
@@ -997,7 +1030,7 @@ export default function CmsPagesManager() {
               <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
                 {lastDraftSavedAt
                   ? `Draft autosaved locally at ${lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}.`
-                  : "Editing draft locally. Save CMS to publish these changes."}
+                  : "Editing draft locally. Save Page Builder changes to publish them."}
               </div>
             ) : null}
           </div>
@@ -1110,7 +1143,7 @@ export default function CmsPagesManager() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Pages</p>
-                <p className="text-xs text-muted-foreground">Homepage plus custom CMS pages.</p>
+                <p className="text-xs text-muted-foreground">Homepage plus custom storefront pages.</p>
               </div>
             </div>
 
@@ -1148,14 +1181,21 @@ export default function CmsPagesManager() {
 
             <div className="space-y-2">
               {store.pages.map((page) => (
-                <button
+                <div
                   key={page.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setSelectedPageId(page.id);
+                      setSelectedBlockId("");
+                    }
+                  }}
                   onClick={() => {
                     setSelectedPageId(page.id);
                     setSelectedBlockId("");
                   }}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                  className={`w-full rounded-lg border p-3 text-left transition-colors cursor-pointer ${
                     selectedPageId === page.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30"
                   }`}
                 >
@@ -1192,7 +1232,7 @@ export default function CmsPagesManager() {
                       </Button>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
             </div>
@@ -1255,6 +1295,18 @@ export default function CmsPagesManager() {
                       <p className="text-xs text-muted-foreground">Enable the `launch_templates` feature to use prebuilt page structures here.</p>
                     ) : null}
                   </div>
+                  {selectedPage.isHomepage ? (
+                    <div className="flex flex-col gap-3 rounded-lg border border-border p-4 md:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Recommended Homepage</p>
+                        <p className="text-xs text-muted-foreground">Apply the updated conversion-focused block order and default trust sections.</p>
+                      </div>
+                      <Button type="button" variant="outline" onClick={applyRecommendedHomepage} className="gap-2">
+                        <LayoutTemplate className="h-4 w-4" />
+                        Apply Recommended Homepage
+                      </Button>
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-between rounded-lg border border-border p-3 md:col-span-2">
                     <div>
                       <p className="text-sm font-medium text-foreground">Homepage</p>
@@ -1554,6 +1606,10 @@ export default function CmsPagesManager() {
                                     <SelectItem value="luxury-gold">Luxury Gold</SelectItem>
                                     <SelectItem value="indigo">Indigo</SelectItem>
                                     <SelectItem value="rose">Rose</SelectItem>
+                                    <SelectItem value="aurora">Aurora</SelectItem>
+                                    <SelectItem value="luxury-dark">Luxury Dark</SelectItem>
+                                    <SelectItem value="confetti">Confetti</SelectItem>
+                                    <SelectItem value="mesh-gradient">Mesh Gradient</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1720,7 +1776,49 @@ export default function CmsPagesManager() {
                               </div>
                             ) : null}
 
-                            {isFocused && block.type !== "featured-products" && block.type !== "rich-text" && block.type !== "countdown" && block.type !== "hero" && block.type !== "promo-banner" && block.type !== "category-showcase" && block.type !== "recently-viewed" ? (
+                            {isFocused && block.type === "trust-badges" ? (
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-2 md:col-span-2">
+                                  <Label>Title</Label>
+                                  <Input value={block.props.title ?? ""} onChange={(e) => updateBlockProps(block.id, "trust-badges", { title: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2 md:col-span-2 border border-border p-3 rounded-lg">
+                                  <p className="text-sm font-medium mb-2">Badges</p>
+                                  <p className="text-xs text-muted-foreground mb-4">Edit via JSON. Icons: truck, payment, returns, support, shield.</p>
+                                  <Textarea rows={6} className="font-mono text-xs" value={JSON.stringify(block.props.badges || [], null, 2)} onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      updateBlockProps(block.id, "trust-badges", { badges: parsed });
+                                    } catch(err) { /* ignore JSON error until valid */ }
+                                  }} />
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {isFocused && block.type === "testimonials" ? (
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-2 md:col-span-2">
+                                  <Label>Title</Label>
+                                  <Input value={block.props.title ?? ""} onChange={(e) => updateBlockProps(block.id, "testimonials", { title: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2 md:col-span-2">
+                                  <Label>Subtitle</Label>
+                                  <Input value={block.props.subtitle ?? ""} onChange={(e) => updateBlockProps(block.id, "testimonials", { subtitle: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2 md:col-span-2 border border-border p-3 rounded-lg">
+                                  <p className="text-sm font-medium mb-2">Reviews</p>
+                                  <p className="text-xs text-muted-foreground mb-4">Edit via JSON. Format: {`[{"name": "Customer", "rating": 5, "comment": "Review"}]`}</p>
+                                  <Textarea rows={6} className="font-mono text-xs" value={JSON.stringify(block.props.reviews || [], null, 2)} onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      updateBlockProps(block.id, "testimonials", { reviews: parsed });
+                                    } catch(err) { /* ignore JSON error until valid */ }
+                                  }} />
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {isFocused && !["featured-products", "rich-text", "countdown", "hero", "promo-banner", "category-showcase", "recently-viewed", "social-feed", "video-reel", "faq-accordion", "trust-badges", "testimonials"].includes(block.type) ? (
                             <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
                               This block currently uses the existing storefront component and its existing site settings. Block-specific editing can be expanded next.
                             </div>
@@ -1784,13 +1882,19 @@ export default function CmsPagesManager() {
                                 const isFocused = selectedBlockId === block.id;
 
                                 return (
-                                  <button
+                                  <div
                                     key={block.id}
                                     id={`cms-preview-block-${block.id}`}
-                                    type="button"
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        setSelectedBlockId(block.id);
+                                      }
+                                    }}
                                     onClick={() => setSelectedBlockId(block.id)}
                                     className={cn(
-                                      "group relative block w-full text-left transition-colors",
+                                      "group relative block w-full text-left transition-colors cursor-pointer",
                                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                                       isFocused && "bg-primary/5",
                                     )}
@@ -1902,7 +2006,7 @@ export default function CmsPagesManager() {
                                     >
                                       <StorefrontBlockRenderer block={block} />
                                     </div>
-                                  </button>
+                                  </div>
                                 );
                               })
                             ) : (
@@ -1960,7 +2064,7 @@ export default function CmsPagesManager() {
               </Card>
 
               <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Custom CMS pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. For local previews, the app will load the `threadbd` store automatically on `localhost`.
+                Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. For local previews, the app will load the `threadbd` store automatically on `localhost`.
               </div>
             </div>
           ) : (

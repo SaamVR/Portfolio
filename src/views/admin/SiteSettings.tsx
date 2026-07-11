@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
-import { Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
+import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
-import CmsPagesManager from "@/views/admin/CmsPagesManager";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrandSeoTab } from "./settings/BrandSeoTab";
 import { AnnouncementTab } from "./settings/AnnouncementTab";
@@ -24,8 +23,11 @@ import { themePresets, type ThemePreset } from "@/lib/themePresets";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Database } from "lucide-react";
 import { seedDemoProducts } from "@/data/seedDemoProducts";
+import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
+import { getFeatureEnabled } from "@/lib/platform/control-plane";
 const SiteSettings = () => {
   const { role , activeStoreId} = useAuth();
+  const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [settings, setSettings] = useState<Record<string, any>>({});
@@ -34,7 +36,8 @@ const SiteSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
-  const activeTab = searchParams.get("tab") || "brand_seo";
+  const rawActiveTab = searchParams.get("tab") || "brand_seo";
+  const activeTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
@@ -60,8 +63,9 @@ const SiteSettings = () => {
     { value: "footer", label: "Footer Details", category: "Store Identity", keywords: "footer link social copyright pay text message description information links copy footer settings social social links" },
     { value: "domain", label: "Custom Domain", category: "Store Identity", keywords: "custom domain dns website url address connect" },
     { value: "notifications", label: "Notifications", category: "Information", keywords: "sms email notifications order receipt shipped tracking tracking sms alert email gateway resend greenweb sms api key" },
-    { value: "cms_pages", label: "CMS Pages", category: "CMS Engine", keywords: "cms pages blocks builder homepage custom page revisions seo slug layout rich text storefront sections" },
+    { value: "page_builder", label: "Page Builder", category: "Storefront", keywords: "page builder pages blocks homepage custom page revisions seo slug layout rich text storefront sections" },
   ];
+  const pageBuilderEnabled = getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
 
   const filteredTabs = tabOptions.filter(
     (t) =>
@@ -1100,8 +1104,34 @@ const SiteSettings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cms_pages">
-          <CmsPagesManager />
+        <TabsContent value="page_builder">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PanelsTopLeft className="h-5 w-5 text-primary" />
+                Page Builder
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Manage storefront pages in the dedicated builder.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Site Settings is for global store configuration. Pages, homepage blocks, SEO, revisions, and live preview now live in Page Builder.
+                </p>
+              </div>
+              {pageBuilderEnabled ? (
+                <Button asChild className="gap-2">
+                  <Link to="/admin/page-builder">
+                    <PanelsTopLeft className="h-4 w-4" />
+                    Open Page Builder
+                  </Link>
+                </Button>
+              ) : null}
+              {!pageBuilderEnabled ? (
+                <p className="text-xs text-muted-foreground">Page Builder is not enabled for this store package.</p>
+              ) : null}
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="domain">
           <CustomDomainTab />

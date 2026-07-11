@@ -18,11 +18,17 @@ import {
   CheckCircle2,
   CreditCard,
   X,
+  FileText,
+  Mail,
+  MessageSquare,
+  PanelsTopLeft,
 } from "lucide-react";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area 
 } from "recharts";
+import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
+import { getFeatureEnabled } from "@/lib/platform/control-plane";
 
 interface OrderRow {
   id: string;
@@ -67,8 +73,11 @@ const CHART_COLORS = ["hsl(145, 63%, 42%)", "hsl(220, 80%, 50%)", "hsl(40, 80%, 
 
 const Dashboard = () => {
   const { role , activeStoreId} = useAuth();
+  const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const [productStats, setProductStats] = useState({ total: 0, outOfStock: 0, featured: 0 });
   const [orderStats, setOrderStats] = useState({ total: 0, revenue: 0, pending: 0 });
+  const [engagementStats, setEngagementStats] = useState({ unreadMessages: 0, pendingReviews: 0 });
+  const [pageStats, setPageStats] = useState({ totalPages: 0, customPages: 0, visibleHomepageBlocks: 0 });
   const [recentOrders, setRecentOrders] = useState<OrderRow[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
@@ -92,6 +101,8 @@ const Dashboard = () => {
         { data: siteSettingsRows },
         { data: subscription },
         { data: plans },
+        { count: unreadMessages },
+        { count: pendingReviews },
       ] = await Promise.all([
         supabase.from("products").select("id, stock, featured").eq("store_id", activeStoreId as string),
         supabase.from("orders").select("id, order_number, status, total, customer_name, created_at").eq("store_id", activeStoreId as string).order("created_at", { ascending: false }).limit(100),
@@ -101,6 +112,8 @@ const Dashboard = () => {
         (supabase as any).from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
         (supabase as any).from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
         (supabase as any).from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
+        (supabase as any).from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
+        (supabase as any).from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
       ]);
 
       if (products) {
@@ -168,6 +181,15 @@ const Dashboard = () => {
       const customPageTotal = ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).filter(
         (page) => !page.is_homepage && page.slug !== "/",
       ).length;
+      setPageStats({
+        totalPages: ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).length,
+        customPages: customPageTotal,
+        visibleHomepageBlocks,
+      });
+      setEngagementStats({
+        unreadMessages: unreadMessages ?? 0,
+        pendingReviews: pendingReviews ?? 0,
+      });
       const paymentConfigured = Boolean(
         paymentSettings?.cod_enabled ||
         paymentSettings?.bkash_enabled ||
@@ -236,7 +258,13 @@ const Dashboard = () => {
     { title: "Products", value: productStats.total, icon: Package, color: "text-accent" },
     { title: "Out of Stock", value: productStats.outOfStock, icon: AlertTriangle, color: "text-destructive" },
     { title: "Featured", value: productStats.featured, icon: TrendingUp, color: "text-primary" },
+    { title: "Store Pages", value: pageStats.totalPages, icon: FileText, color: "text-primary" },
+    { title: "Custom Pages", value: pageStats.customPages, icon: FileText, color: "text-green-500" },
+    { title: "Home Blocks", value: pageStats.visibleHomepageBlocks, icon: PanelsTopLeft, color: "text-accent" },
+    { title: "Unread Messages", value: engagementStats.unreadMessages, icon: Mail, color: "text-yellow-500" },
+    { title: "Pending Reviews", value: engagementStats.pendingReviews, icon: MessageSquare, color: "text-primary" },
   ];
+  const advancedAnalyticsEnabled = getFeatureEnabled(entitlementData?.featureMap, "advanced_analytics", false);
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -382,6 +410,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Analytics Charts */}
+      {advancedAnalyticsEnabled ? (
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="col-span-2 border-border bg-card/50 backdrop-blur-sm">
           <CardHeader>
@@ -449,6 +478,21 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      ) : (
+        <Card className="border-border bg-card/50">
+          <CardHeader>
+            <CardTitle>Advanced Analytics</CardTitle>
+            <CardDescription>Revenue charts and order distribution are available on packages with advanced analytics.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/plans">
+                View upgrade options <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Quick actions */}
@@ -457,6 +501,7 @@ const Dashboard = () => {
           {[
             { label: "Manage Products", to: "/admin/products", icon: Package },
             { label: "View Orders", to: "/admin/orders", icon: ShoppingCart },
+            { label: "Page Builder", to: "/admin/page-builder", icon: PanelsTopLeft, adminOnly: true },
             { label: "Site Settings", to: "/admin/site-settings", icon: TrendingUp, adminOnly: true },
           ]
             .filter((a) => !a.adminOnly || role === "admin")

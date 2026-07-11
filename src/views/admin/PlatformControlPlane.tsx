@@ -3,10 +3,28 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, Clock3, Layers3, Loader2, Mail, Shield, Sparkles, Store, Wand2 } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  FileText,
+  Layers3,
+  Loader2,
+  Mail,
+  Package,
+  Search,
+  Shield,
+  ShoppingCart,
+  Sparkles,
+  Store,
+  Users,
+  Wand2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, PLATFORM_FEATURE_ORDER } from "@/lib/platform/control-plane";
+import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +34,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Navigate } from "@/lib/react-router-dom-shim";
+import { Link, Navigate } from "@/lib/react-router-dom-shim";
+import {
+  buildPlatformOverviewStats,
+  buildStorePlatformSummaries,
+  type PlatformAnalyticsInput,
+  type StorePlatformSummary,
+} from "@/lib/platform/admin-analytics";
 
 type PlanRow = {
   id: string;
@@ -28,10 +52,20 @@ type PlanRow = {
 
 type StoreRow = {
   id: string;
+  owner_id?: string | null;
   name: string;
   slug: string;
+  custom_domain?: string | null;
   is_published: boolean | null;
-  updated_at?: string;
+  updated_at?: string | null;
+};
+
+type OrderRow = {
+  id: string;
+  store_id: string;
+  status: string;
+  total: number | null;
+  created_at: string;
 };
 
 const LIFECYCLE_ACTIONS = [
@@ -43,10 +77,35 @@ const LIFECYCLE_ACTIONS = [
   { value: "delete_now", label: "Delete Now" },
 ] as const;
 
+function formatMoney(value: number) {
+  return `BDT ${Math.round(value).toLocaleString()}`;
+}
+
+type PlatformData = {
+  features: any[];
+  plans: PlanRow[];
+  planFeatures: any[];
+  stores: StoreRow[];
+  subscriptions: Array<{ store_id: string; plan_id: string | null; status: string | null }>;
+  storeOverrides: any[];
+  emailOverrides: any[];
+  lifecycleStates: Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>;
+  lifecycleEvents: any[];
+  orders: OrderRow[];
+  products: Array<{ id: string; store_id: string }>;
+  pages: Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>;
+  blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>;
+  memberships: Array<{ store_id: string; user_id: string; role: string }>;
+  messages: Array<{ id: string; store_id: string; is_read: boolean | null }>;
+  reviews: Array<{ id: string; store_id: string; status: string | null }>;
+  emailEvents: Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>;
+};
+
 export default function PlatformControlPlane() {
-  const { platformRole, user , activeStoreId} = useAuth();
+  const { platformRole, user, activeStoreId } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedStoreId, setSelectedStoreId] = useState(activeStoreId);
+  const [selectedStoreId, setSelectedStoreId] = useState(activeStoreId ?? "");
+  const [storeSearch, setStoreSearch] = useState("");
   const [exceptionEmail, setExceptionEmail] = useState("");
   const [exceptionFeatureKey, setExceptionFeatureKey] = useState("backup_import");
   const [exceptionEnabled, setExceptionEnabled] = useState(true);
@@ -56,7 +115,7 @@ export default function PlatformControlPlane() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["platform-control-plane"],
-    queryFn: async () => {
+    queryFn: async (): Promise<PlatformData> => {
       const [
         { data: features },
         { data: plans },
@@ -67,16 +126,32 @@ export default function PlatformControlPlane() {
         { data: emailOverrides },
         { data: lifecycleStates },
         { data: lifecycleEvents },
+        { data: orders },
+        { data: products },
+        { data: pages },
+        { data: blocks },
+        { data: memberships },
+        { data: messages },
+        { data: reviews },
+        { data: emailEvents },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
         (supabase as any).from("cms_plans").select("id, name, description, monthly_price, is_active").order("sort_order"),
         (supabase as any).from("cms_plan_features").select("plan_id, feature_key, enabled"),
-        (supabase as any).from("stores").select("id, name, slug, is_published, updated_at").order("name"),
+        (supabase as any).from("stores").select("id, owner_id, name, slug, custom_domain, is_published, updated_at").order("name"),
         (supabase as any).from("store_subscriptions").select("store_id, plan_id, status"),
         (supabase as any).from("store_feature_overrides").select("*"),
         (supabase as any).from("user_email_feature_overrides").select("*").order("created_at", { ascending: false }),
         (supabase as any).from("store_lifecycle_states").select("*").order("updated_at", { ascending: false }),
-        (supabase as any).from("store_lifecycle_events").select("*").order("created_at", { ascending: false }).limit(25),
+        (supabase as any).from("store_lifecycle_events").select("*").order("created_at", { ascending: false }).limit(50),
+        (supabase as any).from("orders").select("id, store_id, status, total, created_at"),
+        (supabase as any).from("products").select("id, store_id"),
+        (supabase as any).from("store_pages").select("id, store_id, slug, is_homepage"),
+        (supabase as any).from("store_page_blocks").select("id, store_id, page_id, is_visible"),
+        (supabase as any).from("store_memberships").select("store_id, user_id, role"),
+        (supabase as any).from("contact_messages").select("id, store_id, is_read"),
+        (supabase as any).from("product_reviews").select("id, store_id, status"),
+        (supabase as any).from("email_events").select("id, store_id, status, template_name, recipient, created_at").order("created_at", { ascending: false }).limit(50),
       ]);
 
       return {
@@ -84,20 +159,42 @@ export default function PlatformControlPlane() {
         plans: (plans ?? []) as PlanRow[],
         planFeatures: (planFeatures ?? []) as any[],
         stores: (stores ?? []) as StoreRow[],
-        subscriptions: (subscriptions ?? []) as any[],
+        subscriptions: (subscriptions ?? []) as Array<{ store_id: string; plan_id: string | null; status: string | null }>,
         storeOverrides: (storeOverrides ?? []) as any[],
         emailOverrides: (emailOverrides ?? []) as any[],
-        lifecycleStates: (lifecycleStates ?? []) as any[],
+        lifecycleStates: (lifecycleStates ?? []) as Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>,
         lifecycleEvents: (lifecycleEvents ?? []) as any[],
+        orders: (orders ?? []) as OrderRow[],
+        products: (products ?? []) as Array<{ id: string; store_id: string }>,
+        pages: (pages ?? []) as Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>,
+        blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>,
+        memberships: (memberships ?? []) as Array<{ store_id: string; user_id: string; role: string }>,
+        messages: (messages ?? []) as Array<{ id: string; store_id: string; is_read: boolean | null }>,
+        reviews: (reviews ?? []) as Array<{ id: string; store_id: string; status: string | null }>,
+        emailEvents: (emailEvents ?? []) as Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>,
       };
     },
     enabled: platformRole === "admin",
   });
 
-  const selectedStore = useMemo(() => data?.stores.find((store) => store.id === selectedStoreId) ?? null, [data?.stores, selectedStoreId]);
-  const selectedPlanId = useMemo(
-    () => data?.subscriptions.find((item) => item.store_id === selectedStoreId)?.plan_id ?? null,
-    [data?.subscriptions, selectedStoreId],
+  const summaries = useMemo<StorePlatformSummary[]>(() => (data ? buildStorePlatformSummaries(data as PlatformAnalyticsInput) : []), [data]);
+  const effectiveSelectedStoreId = selectedStoreId || summaries[0]?.id || "";
+  const selectedStore = summaries.find((store) => store.id === effectiveSelectedStoreId) ?? summaries[0] ?? null;
+  const selectedPlanId = selectedStore?.planId ?? null;
+
+  const filteredStores = useMemo(() => {
+    const query = storeSearch.trim().toLowerCase();
+    if (!query) return summaries;
+    return summaries.filter((store) =>
+      [store.name, store.slug, store.custom_domain, store.planName, store.subscriptionStatus, store.lifecycleStatus]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [storeSearch, summaries]);
+
+  const overview = useMemo(
+    () => buildPlatformOverviewStats(summaries, data ?? { orders: [], products: [], plans: [] }),
+    [data, summaries],
   );
 
   const effectiveFeatureMap = useMemo(() => {
@@ -106,14 +203,14 @@ export default function PlatformControlPlane() {
     return resolveEffectiveFeatures({
       features: data.features,
       planMappings: data.planFeatures.filter((row) => row.plan_id === selectedPlanId),
-      storeOverrides: data.storeOverrides.filter((row) => row.store_id === selectedStoreId),
+      storeOverrides: data.storeOverrides.filter((row) => row.store_id === selectedStore?.id),
       emailOverrides: data.emailOverrides.filter((row) => {
         const normalized = normalizeEmail(exceptionEmail);
         return normalized ? row.normalized_email === normalized : false;
       }),
-      isPlatformAdmin: true,
+      isPlatformAdmin: false,
     });
-  }, [data, exceptionEmail, selectedPlanId, selectedStoreId]);
+  }, [data, exceptionEmail, selectedPlanId, selectedStore?.id]);
 
   if (platformRole !== "admin") {
     return <Navigate to="/admin" replace />;
@@ -260,7 +357,7 @@ export default function PlatformControlPlane() {
           lifecycle_status: "reminded",
           reminder_count: nextReminderCount,
           last_reminder_at: now.toISOString(),
-          next_reminder_at: nextReminderCount >= 3 ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          next_reminder_at: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           reminder_1_sent_at: nextReminderCount >= 1 ? lifecycleState.reminder_1_sent_at ?? now.toISOString() : lifecycleState.reminder_1_sent_at,
           reminder_2_sent_at: nextReminderCount >= 2 ? lifecycleState.reminder_2_sent_at ?? now.toISOString() : lifecycleState.reminder_2_sent_at,
           reminder_3_sent_at: nextReminderCount >= 3 ? lifecycleState.reminder_3_sent_at ?? now.toISOString() : lifecycleState.reminder_3_sent_at,
@@ -338,21 +435,204 @@ export default function PlatformControlPlane() {
     );
   }
 
+  const overviewCards = [
+    { label: "Stores", value: overview.totalStores, icon: Store },
+    { label: "Published", value: overview.publishedStores, icon: CheckCircle2 },
+    { label: "Draft", value: overview.draftStores, icon: FileText },
+    { label: "Paid Stores", value: overview.paidStores, icon: CreditCard },
+    { label: "Trial Stores", value: overview.trialStores, icon: Sparkles },
+    { label: "Free Stores", value: overview.freeStores, icon: Layers3 },
+    { label: "Orders", value: overview.totalOrders, icon: ShoppingCart },
+    { label: "Platform GMV", value: formatMoney(overview.platformGmv), icon: BarChart3 },
+    { label: "Products", value: overview.totalProducts, icon: Package },
+    { label: "Lifecycle Risk", value: overview.lifecycleRisk, icon: AlertTriangle },
+  ];
+
+  const unhealthyStores = summaries.filter((store) => !store.hasHomepage || store.visibleBlockTotal < 3 || store.customPageTotal === 0 || !store.is_published);
+  const failingEmailEvents = data.emailEvents.filter((event) => !["sent", "delivered", "completed"].includes(String(event.status ?? "").toLowerCase()));
+  const nonActiveSubscriptions = summaries.filter((store) => !["active", "trialing"].includes(store.subscriptionStatus));
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-foreground">CMS Admin</h1>
-        <p className="text-sm text-muted-foreground">Manage CMS plans, tenant sites, feature access, exceptional grants, and lifecycle operations.</p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-foreground">CMS Admin</h1>
+          <p className="text-sm text-muted-foreground">SaaS control plane for merchants, stores, plans, feature access, lifecycle, and platform health.</p>
+        </div>
+        <Badge variant="outline" className="w-fit">Platform access only</Badge>
       </div>
 
-      <Tabs defaultValue="plans" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="plans">Plans & Features</TabsTrigger>
-          <TabsTrigger value="stores">Store Entitlements</TabsTrigger>
-          <TabsTrigger value="exceptions">User Exceptions</TabsTrigger>
-          <TabsTrigger value="lifecycle">Store Lifecycle</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="stores">Merchants</TabsTrigger>
+          <TabsTrigger value="plans">Plans</TabsTrigger>
+          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+          <TabsTrigger value="health">CMS Health</TabsTrigger>
+          <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {overviewCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <Card key={card.label} className="border-border">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
+                    <Icon className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-heading text-2xl font-bold text-foreground">{card.value}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Top Stores By Revenue</CardTitle>
+                <CardDescription>Existing order data aggregated across all stores.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[...summaries].sort((a, b) => b.revenue - a.revenue).slice(0, 8).map((store) => (
+                  <div key={store.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{store.name}</p>
+                      <p className="text-xs text-muted-foreground">/{store.slug} - {store.orderTotal} orders</p>
+                    </div>
+                    <Badge variant="secondary">{formatMoney(store.revenue)}</Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Platform Attention</CardTitle>
+                <CardDescription>Stores and systems that may need admin follow-up.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground">Stores with CMS issues</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{unhealthyStores.length}</p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground">Non-active subscriptions</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{nonActiveSubscriptions.length}</p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground">Unread merchant messages</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{data.messages.filter((message) => !message.is_read).length}</p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground">Email failures</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{failingEmailEvents.length}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="stores" className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Store className="h-4 w-4 text-primary" /> Merchants / Stores</CardTitle>
+                <CardDescription>Cross-tenant store list with plan, status, CMS, and commerce summary.</CardDescription>
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-9" value={storeSearch} onChange={(event) => setStoreSearch(event.target.value)} placeholder="Search stores, plans, domains, lifecycle..." />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {filteredStores.map((store) => (
+                  <button
+                    key={store.id}
+                    type="button"
+                    onClick={() => setSelectedStoreId(store.id)}
+                    className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedStore?.id === store.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="font-medium text-foreground">{store.name}</p>
+                        <p className="text-xs text-muted-foreground">/{store.slug}{store.custom_domain ? ` - ${store.custom_domain}` : ""}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Badge variant={store.is_published ? "default" : "outline"}>{store.is_published ? "Published" : "Draft"}</Badge>
+                          <Badge variant="secondary">{store.planName}</Badge>
+                          <Badge variant="outline">{store.subscriptionStatus}</Badge>
+                          <Badge variant="outline">{store.lifecycleStatus}</Badge>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-right text-xs text-muted-foreground">
+                        <div><p className="font-semibold text-foreground">{formatMoney(store.revenue)}</p><p>GMV</p></div>
+                        <div><p className="font-semibold text-foreground">{store.orderTotal}</p><p>Orders</p></div>
+                        <div><p className="font-semibold text-foreground">{store.pageTotal}</p><p>Pages</p></div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Store Detail</CardTitle>
+                <CardDescription>Inspect and manage the selected merchant store.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedStore ? (
+                  <>
+                    <div className="rounded-lg border border-border p-4">
+                      <p className="font-medium text-foreground">{selectedStore.name}</p>
+                      <p className="text-xs text-muted-foreground">Owner: {selectedStore.ownerLabel} - Members: {selectedStore.memberTotal}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div><p className="text-muted-foreground">Plan</p><p className="font-medium">{selectedStore.planName}</p></div>
+                        <div><p className="text-muted-foreground">Subscription</p><p className="font-medium">{selectedStore.subscriptionStatus}</p></div>
+                        <div><p className="text-muted-foreground">Revenue</p><p className="font-medium">{formatMoney(selectedStore.revenue)}</p></div>
+                        <div><p className="text-muted-foreground">Products</p><p className="font-medium">{selectedStore.productTotal}</p></div>
+                        <div><p className="text-muted-foreground">Pages</p><p className="font-medium">{selectedStore.pageTotal}</p></div>
+                        <div><p className="text-muted-foreground">Blocks</p><p className="font-medium">{selectedStore.visibleBlockTotal}/{selectedStore.blockTotal}</p></div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={`/stores/${selectedStore.slug}`}>View Storefront</Link>
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {data.features.map((feature) => {
+                        const state = effectiveFeatureMap.get(feature.key);
+                        const overrideRow = data.storeOverrides.find((row) => row.store_id === selectedStore.id && row.feature_key === feature.key);
+                        return (
+                          <div key={feature.key} className="rounded-lg border border-border p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{feature.name}</p>
+                                <p className="text-xs text-muted-foreground">{state?.enabled ? "Enabled" : "Disabled"} - {state?.reason ?? "unknown"}</p>
+                              </div>
+                              <Badge variant="outline">{feature.key}</Badge>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button type="button" size="sm" variant={overrideRow?.enabled === true ? "secondary" : "outline"} onClick={() => void setStoreOverride(feature.key, true)}>Enable</Button>
+                              <Button type="button" size="sm" variant={overrideRow?.enabled === false ? "secondary" : "outline"} onClick={() => void setStoreOverride(feature.key, false)}>Disable</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => void setStoreOverride(feature.key, null)}>Clear</Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No store selected.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="plans">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
@@ -420,159 +700,88 @@ export default function PlatformControlPlane() {
           </div>
         </TabsContent>
 
-        <TabsContent value="stores">
-          <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <TabsContent value="subscriptions">
+          <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Store className="h-4 w-4 text-primary" /> Store Selector</CardTitle>
-                <CardDescription>Select a tenant and manage store-level overrides.</CardDescription>
+                <CardTitle>Subscription Distribution</CardTitle>
+                <CardDescription>Current subscription status across all tenant stores.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <Select value={selectedStoreId ?? undefined} onValueChange={setSelectedStoreId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.stores.map((store) => (
-                      <SelectItem key={store.id} value={store.id}>
-                        {store.name} ({store.slug})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedStore ? (
-                  <div className="rounded-lg border border-border p-4 text-sm">
-                    <p className="font-medium text-foreground">{selectedStore.name}</p>
-                    <p className="text-xs text-muted-foreground">/{selectedStore.slug}</p>
-                    <div className="mt-3 flex gap-2">
-                      <Badge variant="secondary">{selectedPlanId ?? "No plan"}</Badge>
-                      <Badge variant={selectedStore.is_published ? "default" : "outline"}>
-                        {selectedStore.is_published ? "Published" : "Draft"}
-                      </Badge>
-                    </div>
+              <CardContent className="space-y-3">
+                {Array.from(new Set(summaries.map((store) => store.subscriptionStatus))).map((status) => (
+                  <div key={status} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <span className="text-sm font-medium text-foreground">{status}</span>
+                    <Badge variant="secondary">{summaries.filter((store) => store.subscriptionStatus === status).length}</Badge>
                   </div>
-                ) : null}
+                ))}
               </CardContent>
             </Card>
 
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Effective Entitlements</CardTitle>
-                <CardDescription>Package defaults with store-level overrides. CMS admins always retain access.</CardDescription>
+                <CardTitle>Needs Billing Attention</CardTitle>
+                <CardDescription>Stores without active or trialing subscriptions.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {data.features.map((feature) => {
-                  const state = effectiveFeatureMap.get(feature.key);
-                  const overrideRow = data.storeOverrides.find((row) => row.store_id === selectedStoreId && row.feature_key === feature.key);
-
-                  return (
-                    <div key={feature.key} className="rounded-lg border border-border p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{feature.name}</p>
-                          <p className="text-xs text-muted-foreground">{feature.description}</p>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            Effective result: <span className="font-medium text-foreground">{state?.enabled ? "Enabled" : "Disabled"}</span>
-                            {" "}({state?.reason ?? "unknown"})
-                          </p>
-                        </div>
-                        <Badge variant={state?.enabled ? "secondary" : "outline"}>{feature.key}</Badge>
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button type="button" size="sm" variant={overrideRow?.enabled === true ? "secondary" : "outline"} onClick={() => void setStoreOverride(feature.key, true)}>
-                          Force Enable
-                        </Button>
-                        <Button type="button" size="sm" variant={overrideRow?.enabled === false ? "secondary" : "outline"} onClick={() => void setStoreOverride(feature.key, false)}>
-                          Force Disable
-                        </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void setStoreOverride(feature.key, null)}>
-                          Clear Override
-                        </Button>
-                      </div>
+              <CardContent className="space-y-3">
+                {nonActiveSubscriptions.length === 0 ? <p className="text-sm text-muted-foreground">No subscription issues found.</p> : null}
+                {nonActiveSubscriptions.map((store) => (
+                  <div key={store.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{store.name}</p>
+                      <p className="text-xs text-muted-foreground">{store.planName} - {store.subscriptionStatus}</p>
                     </div>
-                  );
-                })}
+                    <Badge variant="outline">Follow up</Badge>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="exceptions">
-          <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <TabsContent value="health">
+          <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Wand2 className="h-4 w-4 text-primary" /> Grant Exception</CardTitle>
-                <CardDescription>Grant or revoke a feature for a specific email with optional store scope.</CardDescription>
+                <CardTitle>CMS Health</CardTitle>
+                <CardDescription>Stores with weak or incomplete page-builder setup.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <Label>User Email</Label>
-                  <Input value={exceptionEmail} onChange={(event) => setExceptionEmail(event.target.value)} placeholder="merchant@example.com" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Feature</Label>
-                  <Select value={exceptionFeatureKey} onValueChange={setExceptionFeatureKey}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {data.features.map((feature) => (
-                        <SelectItem key={feature.key} value={feature.key}>{feature.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Store Scope</Label>
-                  <Select value={exceptionScopeStoreId} onValueChange={setExceptionScopeStoreId}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="global">Global</SelectItem>
-                      {data.stores.map((store) => (
-                        <SelectItem key={store.id} value={store.id}>
-                          {store.name} ({store.slug})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{exceptionEnabled ? "Grant feature" : "Revoke feature"}</p>
-                    <p className="text-xs text-muted-foreground">Applies even if the package does not include the feature.</p>
+              <CardContent className="space-y-3">
+                {unhealthyStores.map((store) => (
+                  <div key={store.id} className="rounded-lg border border-border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{store.name}</p>
+                        <p className="text-xs text-muted-foreground">/{store.slug}</p>
+                      </div>
+                      <Badge variant="outline">{store.is_published ? "Published" : "Draft"}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {!store.hasHomepage ? <Badge variant="outline">No homepage</Badge> : null}
+                      {store.visibleBlockTotal < 3 ? <Badge variant="outline">Low block count</Badge> : null}
+                      {store.customPageTotal === 0 ? <Badge variant="outline">No custom pages</Badge> : null}
+                      {!store.is_published ? <Badge variant="outline">Unpublished</Badge> : null}
+                    </div>
                   </div>
-                  <Switch checked={exceptionEnabled} onCheckedChange={setExceptionEnabled} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Note</Label>
-                  <Textarea rows={3} value={exceptionNote} onChange={(event) => setExceptionNote(event.target.value)} placeholder="Beta access, support exception, agency pilot..." />
-                </div>
-                <Button type="button" onClick={() => void saveEmailException()} className="gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Save Exception
-                </Button>
+                ))}
               </CardContent>
             </Card>
 
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Existing Exceptions</CardTitle>
-                <CardDescription>Email-based overrides across stores and global scope.</CardDescription>
+                <CardTitle>Email / Notification Failures</CardTitle>
+                <CardDescription>Recent delivery attempts that did not report success.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {data.emailOverrides.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No email exceptions yet.</div>
-                ) : null}
-                {data.emailOverrides.map((row) => (
-                  <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{row.normalized_email}</p>
-                      <p className="text-xs text-muted-foreground">{row.feature_key} • {row.store_id ?? "global"} • {row.enabled ? "grant" : "revoke"}</p>
-                      {row.note ? <p className="mt-1 text-xs text-muted-foreground">{row.note}</p> : null}
+                {failingEmailEvents.length === 0 ? <p className="text-sm text-muted-foreground">No recent failures found.</p> : null}
+                {failingEmailEvents.slice(0, 12).map((event) => {
+                  const store = summaries.find((item) => item.id === event.store_id);
+                  return (
+                    <div key={event.id} className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium text-foreground">{event.template_name ?? "Notification"} - {event.status ?? "unknown"}</p>
+                      <p className="text-xs text-muted-foreground">{store?.name ?? event.store_id ?? "Platform"} - {event.recipient ?? "no recipient"} - {new Date(event.created_at).toLocaleString()}</p>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => void deleteEmailException(row.id)}>
-                      Remove
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
@@ -586,10 +795,10 @@ export default function PlatformControlPlane() {
                 <CardDescription>Scan, remind, archive, restore, and schedule deletion.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Select value={selectedStoreId ?? undefined} onValueChange={setSelectedStoreId}>
+                <Select value={effectiveSelectedStoreId || undefined} onValueChange={setSelectedStoreId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {data.stores.map((store) => (
+                    {summaries.map((store) => (
                       <SelectItem key={store.id} value={store.id}>
                         {store.name} ({store.slug})
                       </SelectItem>
@@ -617,64 +826,138 @@ export default function PlatformControlPlane() {
                 <CardDescription>Current lifecycle state for each store and its reminder schedule.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {data.stores.map((store) => {
-                  const state = data.lifecycleStates.find((row) => row.store_id === store.id) ?? getDefaultLifecycleState(store.id);
-                  return (
-                    <div key={store.id} className="rounded-lg border border-border p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{store.name}</p>
-                          <p className="text-xs text-muted-foreground">/{store.slug}</p>
-                        </div>
-                        <Badge variant={state.lifecycle_status === "active" ? "secondary" : "outline"}>
-                          {state.lifecycle_status}
-                        </Badge>
+                {summaries.map((store) => (
+                  <div key={store.id} className="rounded-lg border border-border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{store.name}</p>
+                        <p className="text-xs text-muted-foreground">/{store.slug}</p>
                       </div>
-                      <div className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                        <p>Last activity: {state.last_activity_at ?? store.updated_at ?? "never"}</p>
-                        <p>Reminder count: {state.reminder_count ?? 0}</p>
-                        <p>Next reminder: {state.next_reminder_at ?? "not scheduled"}</p>
-                        <p>Delete at: {state.scheduled_delete_at ?? "not scheduled"}</p>
-                      </div>
+                      <Badge variant={store.lifecycleStatus === "active" ? "secondary" : "outline"}>
+                        {store.lifecycleStatus}
+                      </Badge>
                     </div>
-                  );
-                })}
+                    <div className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                      <p>Last activity: {store.lastActivity ?? "never"}</p>
+                      <p>Orders: {store.orderTotal}</p>
+                      <p>Pages: {store.pageTotal}</p>
+                      <p>Blocks: {store.visibleBlockTotal}</p>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Activity & Actions</CardTitle>
-              <CardDescription>Recent CMS admin and lifecycle operations.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {data.lifecycleEvents.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No lifecycle events yet.</div>
-              ) : null}
-              {data.lifecycleEvents.map((event) => {
-                const store = data.stores.find((item) => item.id === event.store_id);
-                return (
-                  <div key={event.id} className="rounded-lg border border-border p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{event.event_type}</p>
-                        <p className="text-xs text-muted-foreground">{store?.name ?? event.store_id} • {new Date(event.created_at).toLocaleString()}</p>
-                      </div>
-                      <Badge variant="outline">{event.status}</Badge>
-                    </div>
-                    {event.message ? <p className="mt-2 text-sm text-muted-foreground">{event.message}</p> : null}
+          <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Wand2 className="h-4 w-4 text-primary" /> User Exceptions</CardTitle>
+                <CardDescription>Grant or revoke a feature for a specific email with optional store scope.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Label>User Email</Label>
+                  <Input value={exceptionEmail} onChange={(event) => setExceptionEmail(event.target.value)} placeholder="merchant@example.com" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Feature</Label>
+                  <Select value={exceptionFeatureKey} onValueChange={setExceptionFeatureKey}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {data.features.map((feature) => (
+                        <SelectItem key={feature.key} value={feature.key}>{feature.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Store Scope</Label>
+                  <Select value={exceptionScopeStoreId} onValueChange={setExceptionScopeStoreId}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global">Global</SelectItem>
+                      {summaries.map((store) => (
+                        <SelectItem key={store.id} value={store.id}>{store.name} ({store.slug})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{exceptionEnabled ? "Grant feature" : "Revoke feature"}</p>
+                    <p className="text-xs text-muted-foreground">Applies even if the package does not include the feature.</p>
                   </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  <Switch checked={exceptionEnabled} onCheckedChange={setExceptionEnabled} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Note</Label>
+                  <Textarea rows={3} value={exceptionNote} onChange={(event) => setExceptionNote(event.target.value)} placeholder="Beta access, support exception, agency pilot..." />
+                </div>
+                <Button type="button" onClick={() => void saveEmailException()} className="gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Save Exception
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Recent Platform Activity</CardTitle>
+                  <CardDescription>Recent CMS admin and lifecycle operations.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {data.lifecycleEvents.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No lifecycle events yet.</div>
+                  ) : null}
+                  {data.lifecycleEvents.map((event) => {
+                    const store = summaries.find((item) => item.id === event.store_id);
+                    return (
+                      <div key={event.id} className="rounded-lg border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{event.event_type}</p>
+                            <p className="text-xs text-muted-foreground">{store?.name ?? event.store_id} - {new Date(event.created_at).toLocaleString()}</p>
+                          </div>
+                          <Badge variant="outline">{event.status}</Badge>
+                        </div>
+                        {event.message ? <p className="mt-2 text-sm text-muted-foreground">{event.message}</p> : null}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Existing Exceptions</CardTitle>
+                  <CardDescription>Email-based overrides across stores and global scope.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {data.emailOverrides.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No email exceptions yet.</div>
+                  ) : null}
+                  {data.emailOverrides.map((row) => (
+                    <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{row.normalized_email}</p>
+                        <p className="text-xs text-muted-foreground">{row.feature_key} - {row.store_id ?? "global"} - {row.enabled ? "grant" : "revoke"}</p>
+                        {row.note ? <p className="mt-1 text-xs text-muted-foreground">{row.note}</p> : null}
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => void deleteEmailException(row.id)}>
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-

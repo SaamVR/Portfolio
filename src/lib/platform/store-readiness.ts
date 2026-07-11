@@ -89,14 +89,14 @@ export function buildStoreReadinessScore({
       done: visibleHomepageBlocks >= 3,
       points: 10,
       action: "Add or unhide more homepage sections in the CMS builder.",
-      href: "/admin/cms",
+      href: "/admin/page-builder",
     },
     {
       label: "Information page is added",
       done: customPageTotal >= 1,
       points: 10,
       action: "Create at least one page like About, Contact, Returns, or Policy.",
-      href: "/admin/cms",
+      href: "/admin/page-builder",
     },
   ];
 

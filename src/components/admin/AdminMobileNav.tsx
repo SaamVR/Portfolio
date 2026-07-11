@@ -93,7 +93,7 @@ const AdminMobileNav = () => {
     { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
     { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
     { to: "/admin/onboarding", icon: Rocket, label: "Store Setup", show: isAdmin },
-    { to: "/admin/cms", icon: PanelsTopLeft, label: "CMS Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },

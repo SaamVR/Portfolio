@@ -57,7 +57,7 @@ const promoBannerBlockSchema = z.object({
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
     badgeText: z.string().optional(),
-    bgStyle: z.enum(["gradient", "dark", "accent", "luxury-gold", "indigo", "rose"]).optional(),
+    bgStyle: z.enum(["gradient", "dark", "accent", "luxury-gold", "indigo", "rose", "aurora", "luxury-dark", "confetti", "mesh-gradient"]).optional(),
     textAlignment: z.enum(["left", "center", "right"]).optional(),
     paddingSize: z.enum(["compact", "cozy", "large"]).optional(),
     enableGlow: z.boolean().optional(),
@@ -153,6 +153,37 @@ const faqAccordionBlockSchema = z.object({
   }).default({}),
 });
 
+const trustBadgesBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal("trust-badges"),
+  isVisible: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative(),
+  props: z.object({
+    title: z.string().optional(),
+    badges: z.array(z.object({
+      label: z.string(),
+      description: z.string().optional(),
+      icon: z.enum(["truck", "payment", "returns", "support", "shield"]).optional(),
+    })).default([]),
+  }).default({}),
+});
+
+const testimonialsBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal("testimonials"),
+  isVisible: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative(),
+  props: z.object({
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    reviews: z.array(z.object({
+      name: z.string(),
+      rating: z.number().int().min(1).max(5).default(5),
+      comment: z.string(),
+    })).default([]),
+  }).default({}),
+});
+
 export const storePageBlockSchema = z.discriminatedUnion("type", [
   countdownBlockSchema,
   heroBlockSchema,
@@ -164,6 +195,8 @@ export const storePageBlockSchema = z.discriminatedUnion("type", [
   socialFeedBlockSchema,
   videoReelBlockSchema,
   faqAccordionBlockSchema,
+  trustBadgesBlockSchema,
+  testimonialsBlockSchema,
 ]);
 
 export const storePageSchema = z.object({

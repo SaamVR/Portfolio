@@ -110,8 +110,22 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 4, {
             eyebrow: "Why Shop Here",
             title: "Built for fast drops and loyal customers",
-            body: "Use this section for fit notes, fabric quality, exchange policy, or your brand story.",
-            align: "center",
+            body: "Turn first-time visitors into confident buyers with a clearer promise.\n\n- Premium fabrics and dependable sizing guidance\n- Fast order confirmation with local payment options\n- Straightforward exchange support if the fit is not right",
+            align: "left",
+          }),
+          block("faq-accordion", 5, {
+            title: "Questions customers ask before they buy",
+            subtitle: "Use these answers to remove hesitation around sizing, delivery, and payment.",
+            faqs: [
+              { q: "How long does delivery take?", a: "Inside Dhaka orders usually arrive within 24-48 hours. Outside Dhaka orders typically take 2-5 business days depending on courier coverage." },
+              { q: "Can customers pay with bKash or cash on delivery?", a: "Yes. Enable bKash, Nagad, and cash on delivery so buyers can choose the option they already trust." },
+              { q: "What if the size does not fit?", a: "Add your exchange window and clear size-change steps here so customers feel safe ordering their first item." },
+            ],
+          }),
+          block("social-feed", 6, {
+            title: "Seen on customers and creators",
+            subtitle: "Use real product photos, campaign shots, or creator images to make the brand feel active and trustworthy.",
+            images: [],
           }),
         ],
       },
@@ -125,8 +139,17 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 0, {
             eyebrow: "Store Policy",
             title: "Clear delivery and exchange rules",
-            body: "Add delivery timelines, exchange windows, size-change rules, and support hours here.",
+            body: "Customers are more likely to place an order when your rules feel clear and fair.\n\n- Delivery timelines by region\n- Exchange window and condition rules\n- Payment confirmation and support hours",
             align: "left",
+          }),
+          block("faq-accordion", 1, {
+            title: "Policy questions",
+            subtitle: "Answer the important details in plain language.",
+            faqs: [
+              { q: "How do exchanges work?", a: "Explain your exchange window, item condition rules, and how customers should contact support to start the process." },
+              { q: "Do delivery charges vary by location?", a: "Clarify Dhaka vs outside Dhaka delivery charges and when free delivery applies." },
+              { q: "How are prepaid orders confirmed?", a: "Let buyers know how bKash or Nagad payment confirmations are verified and when they receive an update." },
+            ],
           }),
         ],
       },
@@ -199,8 +222,17 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 3, {
             eyebrow: "Delivery Notes",
             title: "Set expectations before customers order",
-            body: "Add delivery zones, pre-order deadlines, freshness notes, and support contact details.",
-            align: "center",
+            body: "Food buyers need confidence around freshness, timing, and service.\n\n- Delivery zones and timing windows\n- Daily cut-off time for same-day orders\n- Hygiene, packaging, and support commitments",
+            align: "left",
+          }),
+          block("faq-accordion", 4, {
+            title: "Ordering questions",
+            subtitle: "Help customers understand exactly how ordering and delivery works.",
+            faqs: [
+              { q: "When should customers place an order?", a: "Use this answer to explain your same-day order cut-off time, pre-order rules, or seasonal availability." },
+              { q: "How is the food delivered?", a: "Describe your packaging, delivery zones, and how long items usually take to reach the customer." },
+              { q: "Can customers pay online or on delivery?", a: "Mention whether you accept bKash, Nagad, bank transfer, or cash on delivery depending on your setup." },
+            ],
           }),
         ],
       },
@@ -214,8 +246,13 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 0, {
             eyebrow: "Our Kitchen",
             title: "Tell customers what makes your food trusted",
-            body: "Share your cooking story, hygiene promise, ingredients, delivery process, or batch timings.",
+            body: "Use this page to tell a stronger trust story, not just a short intro.\n\n- Who cooks and prepares the food\n- Ingredient quality and hygiene standards\n- How delivery and freshness are protected",
             align: "left",
+          }),
+          block("social-feed", 1, {
+            title: "From our kitchen to your table",
+            subtitle: "Show real meals, prep moments, packaging, and happy customers.",
+            images: [],
           }),
         ],
       },
@@ -289,6 +326,21 @@ export const launchTemplates: LaunchTemplate[] = [
             title: "Featured Products",
             tagline: "Recommended",
           }),
+          block("rich-text", 4, {
+            eyebrow: "Why customers choose us",
+            title: "Make the store feel trustworthy before the first order",
+            body: "A general store converts better when people quickly understand what you sell and how the service works.\n\n- Clear product presentation and honest pricing\n- Trusted local payment options\n- Delivery support and responsive customer care",
+            align: "left",
+          }),
+          block("faq-accordion", 5, {
+            title: "Need-to-know questions",
+            subtitle: "Use this section to remove doubt around delivery, support, and payment.",
+            faqs: [
+              { q: "How long does delivery take?", a: "Set clear delivery expectations for Dhaka and outside Dhaka orders so customers know what to expect before checkout." },
+              { q: "Which payment methods are available?", a: "Tell customers whether they can use bKash, Nagad, cards, or cash on delivery." },
+              { q: "How do customers get support after ordering?", a: "Add your preferred support channel and response hours so buyers know they can reach you." },
+            ],
+          }),
         ],
       },
       {
@@ -301,8 +353,13 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 0, {
             eyebrow: "About",
             title: "Introduce your store clearly",
-            body: "Tell customers what you sell, how delivery works, and why they can trust you.",
+            body: "A short generic intro is not enough. Use this page to explain what you sell, who it is for, and why ordering feels safe.\n\n- What makes your products or sourcing different\n- How delivery and support work\n- Why first-time customers can order with confidence",
             align: "left",
+          }),
+          block("featured-products", 1, {
+            limit: 3,
+            title: "Best place to start",
+            tagline: "Recommended",
           }),
         ],
       },
