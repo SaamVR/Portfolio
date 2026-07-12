@@ -27,6 +27,11 @@ import { PageBlueprintEditorForm } from "@/components/admin/cms-library/PageBlue
 import { BlockRegistryEditorForm } from "@/components/admin/cms-library/BlockRegistryEditorForm";
 import { BlueprintEditorForm } from "@/components/admin/cms-library/BlueprintEditorForm";
 import {
+  buildSaveDialogRequest,
+  buildThemePromotionPayload,
+  getActiveDialogTitle,
+} from "@/components/admin/cms-library/mutations";
+import {
   blockLayerOptions,
   buildBlockForm,
   buildBlueprintForm,
@@ -42,13 +47,10 @@ import {
   knownPageBlueprintIds,
   legacyTemplateOptions,
   onboardingStepOptions,
-  parseJsonField,
-  parseStringArrayField,
   readJsonObject,
   readOnboardingSteps,
   readPagePayload,
   readStringArray,
-  slugify,
   updateObjectJsonField,
   updatePagePayloadBlocks,
   updatePagePayloadField,
@@ -302,95 +304,15 @@ export default function CmsLibraryManager() {
     if (!dialogState) return;
 
     try {
-      if (dialogState.type === "blueprint") {
-        const id = slugify(String(form.id || form.short_name || form.name || ""));
-        if (!id || !String(form.name || "").trim() || !String(form.short_name || "").trim()) {
-          toast.error("Blueprint id, name, and short name are required.");
-          return;
-        }
+      const request = buildSaveDialogRequest(dialogState, form);
 
-        const payload = {
-          id,
-          name: String(form.name).trim(),
-          short_name: String(form.short_name).trim(),
-          description: String(form.description || "").trim(),
-          business_family: String(form.business_family || "commerce").trim(),
-          catalog_mode: String(form.catalog_mode || "multi_product").trim(),
-          group_name: String(form.group_name || "General").trim(),
-          store_description: String(form.store_description || "").trim(),
-          legacy_template_id: String(form.legacy_template_id || "").trim() || null,
-          recommended_page_set: parseJsonField(String(form.recommended_page_set || "[]"), "Recommended page set"),
-          recommended_block_set: parseJsonField(String(form.recommended_block_set || "[]"), "Recommended block set"),
-          required_capabilities: parseStringArrayField(String(form.required_capabilities || "[]"), "Required capabilities"),
-          default_theme: parseJsonField(String(form.default_theme || "{}"), "Default theme"),
-          hero_payload: parseJsonField(String(form.hero_payload || "{}"), "Hero payload"),
-          onboarding_schema: parseJsonField(String(form.onboarding_schema || "{}"), "Onboarding schema"),
-          default_site_settings: parseJsonField(String(form.default_site_settings || "{}"), "Default site settings"),
-          is_active: Boolean(form.is_active),
-        };
-
-        if (dialogState.mode === "create") {
-          const created = await insertRow("store_blueprints", payload, id);
-          if (created) setDialogState(null);
-          return;
-        }
-
-        await updateRow("store_blueprints", "id", dialogState.item!.id, payload);
-        setDialogState(null);
-        return;
-      }
-
-      if (dialogState.type === "page") {
-        const id = slugify(String(form.id || form.name || ""));
-        if (!id || !String(form.name || "").trim()) {
-          toast.error("Page blueprint id and name are required.");
-          return;
-        }
-
-        const payload = {
-          id,
-          name: String(form.name).trim(),
-          description: String(form.description || "").trim(),
-          business_family: String(form.business_family || "commerce").trim(),
-          catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
-          page_payload: parseJsonField(String(form.page_payload || "{}"), "Page payload"),
-          is_active: Boolean(form.is_active),
-        };
-
-        if (dialogState.mode === "create") {
-          const created = await insertRow("page_blueprints", payload, id);
-          if (created) setDialogState(null);
-          return;
-        }
-
-        await updateRow("page_blueprints", "id", dialogState.item!.id, payload);
-        setDialogState(null);
-        return;
-      }
-
-      const blockType = slugify(String(form.block_type || ""));
-      if (!blockType || !String(form.label || "").trim()) {
-        toast.error("Block type and label are required.");
-        return;
-      }
-
-      const payload = {
-        block_type: blockType,
-        label: String(form.label).trim(),
-        description: String(form.description || "").trim(),
-        layer: String(form.layer || "core").trim(),
-        compatible_business_families: parseStringArrayField(String(form.compatible_business_families || "[]"), "Compatible business families"),
-        required_capabilities: parseStringArrayField(String(form.required_capabilities || "[]"), "Required capabilities"),
-        is_active: Boolean(form.is_active),
-      };
-
-      if (dialogState.mode === "create") {
-        const created = await insertRow("block_registry_entries", payload, blockType);
+      if (request.isCreate) {
+        const created = await insertRow(request.table, request.payload, request.idValue);
         if (created) setDialogState(null);
         return;
       }
 
-      await updateRow("block_registry_entries", "block_type", dialogState.item!.block_type, payload);
+      await updateRow(request.table, request.idColumn, request.idValue, request.payload);
       setDialogState(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save library item.");
@@ -398,26 +320,22 @@ export default function CmsLibraryManager() {
   };
 
   const promoteTheme = async (item: ThemeRow) => {
-    if (item.source_type === "admin_shared" || item.source_type === "system") {
-      toast.message("Theme is already shared.");
-      return;
-    }
-
     setSavingId(`theme_packages:${item.id}`);
-    const { error } = await (supabase as any)
-      .from("theme_packages")
-      .update({
-        source_type: "admin_shared",
-        owner_store_id: null,
-        created_by: user?.id ?? null,
-      })
-      .eq("id", item.id);
+    try {
+      const payload = buildThemePromotionPayload(item, user?.id);
+      const { error } = await (supabase as any)
+        .from("theme_packages")
+        .update(payload)
+        .eq("id", item.id);
 
-    if (error) {
-      toast.error(error.message || "Failed to promote theme.");
-    } else {
-      toast.success("Theme promoted to admin shared.");
-      await refresh();
+      if (error) {
+        toast.error(error.message || "Failed to promote theme.");
+      } else {
+        toast.success("Theme promoted to admin shared.");
+        await refresh();
+      }
+    } catch (error) {
+      toast.message(error instanceof Error ? error.message : "Theme is already shared.");
     }
     setSavingId(null);
   };
@@ -426,9 +344,7 @@ export default function CmsLibraryManager() {
   const themeCards = filteredData?.themes ?? [];
   const pageCards = filteredData?.pages ?? [];
   const blockCards = filteredData?.blocks ?? [];
-  const activeDialogTitle = dialogState
-    ? `${dialogState.mode === "create" ? "Create" : "Edit"} ${dialogState.type === "blueprint" ? "Blueprint" : dialogState.type === "page" ? "Page Blueprint" : "Block Registry Entry"}`
-    : "";
+  const activeDialogTitle = getActiveDialogTitle(dialogState);
   const selectedRecommendedPages = readStringArray(form.recommended_page_set);
   const selectedRecommendedBlocks = readStringArray(form.recommended_block_set);
   const selectedCapabilities = readStringArray(form.required_capabilities);
