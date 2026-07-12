@@ -13,12 +13,17 @@ export interface CmsBlockRegistryItem {
   requiredCapabilities: string[];
 }
 
+const allBusinessFamilies: StoreBusinessFamily[] = ["commerce", "booking", "listing", "service"];
+
 export const fallbackBlockRegistry: CmsBlockRegistryItem[] = cmsBlockTypeOptions.map((option) => ({
   ...option,
   layer: option.value === "hero" || option.value === "rich-text" || option.value === "social-feed" || option.value === "faq-accordion" || option.value === "testimonials" || option.value === "trust-badges"
     ? "core"
     : "commerce",
-  compatibleBusinessFamilies: ["commerce"],
+  compatibleBusinessFamilies:
+    option.value === "hero" || option.value === "rich-text" || option.value === "social-feed" || option.value === "faq-accordion" || option.value === "testimonials" || option.value === "trust-badges"
+      ? allBusinessFamilies
+      : ["commerce"],
   requiredCapabilities:
     option.value === "featured-products" || option.value === "recently-viewed" || option.value === "category-showcase"
       ? ["catalog"]

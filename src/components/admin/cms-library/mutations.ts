@@ -4,6 +4,7 @@ import {
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
 import { reservedCmsSlugs } from "@/lib/cms/block-library";
+import { getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
 import {
   type DialogState,
@@ -104,6 +105,7 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
     if (!id || !String(form.name || "").trim()) {
       throw new Error("Page blueprint id and name are required.");
     }
+    const businessFamily = String(form.business_family || "commerce").trim();
 
     const normalizedPagePayload = normalizePageBlueprintPayload(
       parseJsonField(String(form.page_payload || "{}"), "Page payload"),
@@ -111,6 +113,13 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
 
     if (normalizedPagePayload.slug !== "/" && reservedCmsSlugs.has(normalizedPagePayload.slug)) {
       throw new Error(`"${normalizedPagePayload.slug}" is reserved for storefront routing.`);
+    }
+
+    for (const block of normalizedPagePayload.blocks) {
+      const registryItem = getCmsBlockRegistryItem(block.type);
+      if (!registryItem.compatibleBusinessFamilies.includes(businessFamily as typeof registryItem.compatibleBusinessFamilies[number])) {
+        throw new Error(`Block "${block.type}" is not compatible with the ${businessFamily} business family.`);
+      }
     }
 
     return {
@@ -122,7 +131,7 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
         id,
         name: String(form.name).trim(),
         description: String(form.description || "").trim(),
-        business_family: String(form.business_family || "commerce").trim(),
+        business_family: businessFamily,
         catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
         page_payload: normalizedPagePayload,
         is_active: Boolean(form.is_active),

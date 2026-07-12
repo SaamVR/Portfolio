@@ -131,4 +131,68 @@ describe("cms library mutation builders", () => {
       },
     ), /reserved/i);
   });
+
+  it("allows core blocks in non-commerce page blueprints", () => {
+    const request = buildSaveDialogRequest(
+      { mode: "create", type: "page" },
+      {
+        id: "service-landing",
+        name: "Service Landing",
+        description: "Service page",
+        business_family: "service",
+        catalog_modes: JSON.stringify(["inquiry_only"]),
+        page_payload: JSON.stringify({
+          slug: "/service",
+          title: "Service",
+          blocks: [
+            {
+              id: "rich-service",
+              type: "rich-text",
+              isVisible: true,
+              sortOrder: 0,
+              props: {
+                title: "Service intro",
+                body: "Explain the offer",
+                align: "left",
+              },
+            },
+          ],
+        }),
+        is_active: true,
+      },
+    );
+
+    expect(request.table).toBe("page_blueprints");
+    expect((request.payload.page_payload as { blocks: Array<{ type: string }> }).blocks[0]?.type).toBe("rich-text");
+  });
+
+  it("rejects commerce-only blocks in non-commerce page blueprints", () => {
+    assert.throws(() => buildSaveDialogRequest(
+      { mode: "create", type: "page" },
+      {
+        id: "service-products",
+        name: "Service Products",
+        description: "Should fail",
+        business_family: "service",
+        catalog_modes: JSON.stringify(["inquiry_only"]),
+        page_payload: JSON.stringify({
+          slug: "/service-products",
+          title: "Service Products",
+          blocks: [
+            {
+              id: "featured-service",
+              type: "featured-products",
+              isVisible: true,
+              sortOrder: 0,
+              props: {
+                limit: 4,
+                title: "Products",
+              },
+            },
+          ],
+        }),
+        is_active: true,
+      },
+    ), /not compatible/i);
+  });
 });
