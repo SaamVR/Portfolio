@@ -341,7 +341,42 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function mergeBlueprintRow(row: StoreBlueprintRow): StoreBlueprintDefinition {
+function mergeBlueprintSiteSettings(
+  fallbackSettings: Record<string, Json>,
+  incomingSettings: Json | null | undefined,
+) {
+  if (!incomingSettings || typeof incomingSettings !== "object" || Array.isArray(incomingSettings)) {
+    return fallbackSettings;
+  }
+
+  const incoming = incomingSettings as Record<string, Json>;
+  const merged: Record<string, Json> = {
+    ...fallbackSettings,
+  };
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (
+      value
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && merged[key]
+      && typeof merged[key] === "object"
+      && !Array.isArray(merged[key])
+    ) {
+      merged[key] = {
+        ...(merged[key] as Record<string, Json>),
+        ...(value as Record<string, Json>),
+      };
+      continue;
+    }
+
+    merged[key] = value;
+  }
+
+  return merged;
+}
+
+export function buildBlueprintDefinitionFromRow(row: StoreBlueprintRow): StoreBlueprintDefinition {
   const fallback = getStoreBlueprintById(row.id);
   const onboardingSchema = row.onboarding_schema as { steps?: BlueprintOnboardingStep[] } | null;
   const defaultTheme = (row.default_theme ?? fallback.defaultTheme) as StoreTheme;
@@ -376,9 +411,7 @@ function mergeBlueprintRow(row: StoreBlueprintRow): StoreBlueprintDefinition {
     onboarding: {
       steps: onboardingSchema?.steps?.length ? onboardingSchema.steps : fallback.onboarding.steps,
     },
-    defaultSiteSettings: typeof row.default_site_settings === "object" && row.default_site_settings
-      ? (row.default_site_settings as Record<string, Json>)
-      : fallback.defaultSiteSettings,
+    defaultSiteSettings: mergeBlueprintSiteSettings(fallback.defaultSiteSettings, row.default_site_settings),
   };
 }
 
@@ -413,5 +446,5 @@ export async function loadStoreBlueprints(
     return fallbackStoreBlueprints;
   }
 
-  return data.map((row: StoreBlueprintRow) => mergeBlueprintRow(row));
+  return data.map((row: StoreBlueprintRow) => buildBlueprintDefinitionFromRow(row));
 }
