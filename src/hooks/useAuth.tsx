@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const mountedRef = useRef(true);
   const userIdRef = useRef<string | null>(null);
   const permissionRequestIdRef = useRef(0);
+  const blockingPermissionRequestIdRef = useRef<number | null>(null);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -127,6 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const preserveExistingOnError = options?.preserveExistingOnError ?? false;
 
       if (blockUi && mountedRef.current) {
+        blockingPermissionRequestIdRef.current = requestId;
         setLoading(true);
       }
 
@@ -143,7 +145,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           clearAccessState();
         }
       } finally {
-        if (blockUi && mountedRef.current && permissionRequestIdRef.current === requestId) {
+        if (blockUi && mountedRef.current && blockingPermissionRequestIdRef.current === requestId) {
+          blockingPermissionRequestIdRef.current = null;
           setLoading(false);
         }
       }
@@ -171,7 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Auth initialization error:", error);
         clearAccessState();
       } finally {
-        if (mountedRef.current) setLoading(false);
+        if (mountedRef.current && blockingPermissionRequestIdRef.current === null) setLoading(false);
       }
     };
 
