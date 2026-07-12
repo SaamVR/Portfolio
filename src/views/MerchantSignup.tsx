@@ -24,7 +24,43 @@ import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 
 type SignupStep = "methods" | "verify" | "details";
 
-const cmsRootDomain = process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN || "commerce-engine.local";
+function normalizeHost(value?: string | null) {
+  if (!value) return null;
+
+  return value
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .split(":")[0]
+    ?.trim()
+    .toLowerCase() || null;
+}
+
+function getSignupRootDomain() {
+  const configured = [
+    process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN,
+    process.env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN,
+    process.env.NEXT_PUBLIC_SITE_URL,
+  ]
+    .map(normalizeHost)
+    .filter((value): value is string => Boolean(value));
+
+  if (configured.length > 0) {
+    return configured[0];
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = normalizeHost(window.location.hostname);
+    if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
+      const parts = hostname.split(".");
+      if (parts.length >= 2) {
+        return parts.slice(-2).join(".");
+      }
+      return hostname;
+    }
+  }
+
+  return "localhost";
+}
 
 export default function MerchantSignup() {
   const { user, loading, refreshRole, setActiveStoreId } = useAuth();
@@ -63,7 +99,11 @@ export default function MerchantSignup() {
 
   const siteUrl = useMemo(() => {
     const slug = form.storeSlug || "your-store";
-    return `https://${slug}.${cmsRootDomain}`;
+    const rootDomain = getSignupRootDomain();
+    const protocol = rootDomain === "localhost" ? "http" : "https";
+    return rootDomain === "localhost"
+      ? `${protocol}://${slug}.localhost:3000`
+      : `${protocol}://${slug}.${rootDomain}`;
   }, [form.storeSlug]);
 
   useEffect(() => {
