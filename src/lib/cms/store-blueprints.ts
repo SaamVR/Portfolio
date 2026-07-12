@@ -339,7 +339,7 @@ export function buildBlueprintSiteSettingsEntries(
   }));
 }
 
-type StoreBlueprintRow = {
+export type StoreBlueprintRow = {
   id: string;
   legacy_template_id?: string | null;
   name: string;
@@ -490,4 +490,43 @@ export async function loadStoreBlueprints(
   }
 
   return Array.from(byId.values());
+}
+
+export async function loadStoreBlueprintById(
+  client: SupabaseClient<Database> | SupabaseClient<any>,
+  blueprintId: string | null | undefined,
+): Promise<StoreBlueprintDefinition | null> {
+  if (!blueprintId) {
+    return null;
+  }
+
+  const { data, error } = await (client as any)
+    .from("store_blueprints")
+    .select([
+      "id",
+      "legacy_template_id",
+      "name",
+      "short_name",
+      "description",
+      "business_family",
+      "catalog_mode",
+      "group_name",
+      "recommended_page_set",
+      "recommended_block_set",
+      "default_theme",
+      "store_description",
+      "hero_payload",
+      "required_capabilities",
+      "onboarding_schema",
+      "default_site_settings",
+      "is_active",
+    ].join(","))
+    .eq("id", blueprintId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return buildBlueprintDefinitionFromRow(data as StoreBlueprintRow);
 }

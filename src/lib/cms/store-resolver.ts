@@ -4,7 +4,7 @@ import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/li
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
-import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { getStoreBlueprintById, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
 
 const DEFAULT_STORE_CURRENCY_CODE = "BDT";
@@ -124,8 +124,9 @@ export function buildResolvedStoreFromRecords(
   pages: StorePageRow[],
   blocks: StoreBlockRow[],
   siteSettings: SiteSettingRecord[],
+  blueprintOverride?: StoreBlueprintDefinition | null,
 ): Store {
-  const blueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const blueprint = blueprintOverride ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(
     theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
     fallbackThemePackages,
@@ -267,6 +268,9 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     return null;
   }
 
+  const blueprintKey = ((businessProfile as StoreBusinessProfileRow | null)?.blueprint_id ?? (store as StoreRow).store_type ?? null) as string | null;
+  const blueprintDefinition = await loadStoreBlueprintById(supabase, blueprintKey);
+
   return buildResolvedStoreFromRecords(
     store as StoreRow,
     (businessProfile as StoreBusinessProfileRow | null) ?? null,
@@ -274,6 +278,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     (pages as StorePageRow[] | null) ?? [],
     (blocks as StoreBlockRow[] | null) ?? [],
     (siteSettings as SiteSettingRecord[] | null) ?? [],
+    blueprintDefinition,
   );
 }
 
