@@ -66,14 +66,32 @@ export async function loadBlockRegistry(
   const { data, error } = await client
     .from("block_registry_entries")
     .select("block_type, label, description, layer, compatible_business_families, required_capabilities, is_active")
-    .eq("is_active", true)
     .order("label");
 
   if (error || !Array.isArray(data) || data.length === 0) {
     return fallbackBlockRegistry;
   }
 
-  return data.map((row) => mergeBlockRegistryRow(row));
+  const inactiveTypes = new Set(
+    data
+      .filter((row) => row.is_active === false)
+      .map((row) => row.block_type),
+  );
+  const mergedRows = data
+    .filter((row) => row.is_active !== false)
+    .map((row) => mergeBlockRegistryRow(row));
+  const byType = new Map<string, CmsBlockRegistryItem>();
+
+  for (const entry of mergedRows) {
+    byType.set(entry.value, entry);
+  }
+
+  for (const fallback of fallbackBlockRegistry) {
+    if (inactiveTypes.has(fallback.value) || byType.has(fallback.value)) continue;
+    byType.set(fallback.value, fallback);
+  }
+
+  return Array.from(byType.values());
 }
 
 export function getCmsBlockRegistryItem(

@@ -454,12 +454,30 @@ export async function loadStoreBlueprints(
       "default_site_settings",
       "is_active",
     ].join(","))
-    .eq("is_active", true)
     .order("name");
 
   if (error || !Array.isArray(data) || data.length === 0) {
     return fallbackStoreBlueprints;
   }
 
-  return data.map((row: StoreBlueprintRow) => buildBlueprintDefinitionFromRow(row));
+  const inactiveIds = new Set(
+    data
+      .filter((row: StoreBlueprintRow) => row.is_active === false)
+      .map((row: StoreBlueprintRow) => row.id),
+  );
+  const mergedRows = data
+    .filter((row: StoreBlueprintRow) => row.is_active !== false)
+    .map((row: StoreBlueprintRow) => buildBlueprintDefinitionFromRow(row));
+  const byId = new Map<string, StoreBlueprintDefinition>();
+
+  for (const blueprint of mergedRows) {
+    byId.set(blueprint.id, blueprint);
+  }
+
+  for (const fallback of fallbackStoreBlueprints) {
+    if (inactiveIds.has(fallback.id) || byId.has(fallback.id)) continue;
+    byId.set(fallback.id, fallback);
+  }
+
+  return Array.from(byId.values());
 }

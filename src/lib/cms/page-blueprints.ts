@@ -59,14 +59,32 @@ export async function loadPageBlueprints(
   const { data, error } = await client
     .from("page_blueprints")
     .select("id, name, description, business_family, catalog_modes, page_payload, is_active")
-    .eq("is_active", true)
     .order("name");
 
   if (error || !Array.isArray(data) || data.length === 0) {
     return fallbackPageBlueprints;
   }
 
-  return data.map((row) => mergePageBlueprintRow(row));
+  const inactiveIds = new Set(
+    data
+      .filter((row) => row.is_active === false)
+      .map((row) => row.id),
+  );
+  const mergedRows = data
+    .filter((row) => row.is_active !== false)
+    .map((row) => mergePageBlueprintRow(row));
+  const byId = new Map<string, CmsPageBlueprint>();
+
+  for (const blueprint of mergedRows) {
+    byId.set(blueprint.id, blueprint);
+  }
+
+  for (const fallback of fallbackPageBlueprints) {
+    if (inactiveIds.has(fallback.id) || byId.has(fallback.id)) continue;
+    byId.set(fallback.id, fallback);
+  }
+
+  return Array.from(byId.values());
 }
 
 export function instantiatePageBlueprint(
