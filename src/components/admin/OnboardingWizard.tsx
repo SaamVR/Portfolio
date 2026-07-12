@@ -43,6 +43,7 @@ import {
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import {
+  buildBlueprintSiteSettingsEntries,
   fallbackStoreBlueprints,
   getStoreBlueprintById,
   getStoreBlueprintGroups,
@@ -114,24 +115,6 @@ function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePayment
     prepayment_discount_type: "none",
     prepayment_discount_value: 0,
   };
-}
-
-function buildBlueprintSiteSettingsPayload(
-  blueprint: StoreBlueprintDefinition,
-  payment: DraftState["payment"],
-): Array<{ key: string; value: Json }> {
-  const entries = Object.entries(blueprint.defaultSiteSettings).map(([key, value]) => ({
-    key,
-    value,
-  }));
-
-  const filtered = entries.filter((entry) => entry.key !== "payment_settings");
-  filtered.push({
-    key: "payment_settings",
-    value: payment as unknown as Json,
-  });
-
-  return filtered;
 }
 
 function getDefaultBlueprintId(availableBlueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
@@ -591,7 +574,9 @@ export default function OnboardingWizard() {
       return;
     }
 
-    const siteSettingsRows = buildBlueprintSiteSettingsPayload(selectedBlueprint, draft.payment).map((entry) => ({
+    const siteSettingsRows = buildBlueprintSiteSettingsEntries(selectedBlueprint, {
+      payment_settings: draft.payment as unknown as Json,
+    }).map((entry) => ({
       store_id: activeStoreId,
       key: entry.key,
       value: entry.value,

@@ -317,6 +317,21 @@ export function getStoreBlueprintGroups(blueprints: StoreBlueprintDefinition[]) 
   }, {});
 }
 
+export function buildBlueprintSiteSettingsEntries(
+  blueprint: StoreBlueprintDefinition,
+  overrides: Record<string, Json> = {},
+) {
+  const mergedSettings = {
+    ...blueprint.defaultSiteSettings,
+    ...overrides,
+  };
+
+  return Object.entries(mergedSettings).map(([key, value]) => ({
+    key,
+    value,
+  }));
+}
+
 type StoreBlueprintRow = {
   id: string;
   legacy_template_id?: string | null;

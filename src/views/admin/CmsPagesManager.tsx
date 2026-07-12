@@ -49,7 +49,7 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { buildBlueprintSiteSettingsEntries, getStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { getThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
@@ -578,6 +578,24 @@ export default function CmsPagesManager() {
       },
       { onConflict: "store_id" },
     );
+
+    const siteSettingsRows = buildBlueprintSiteSettingsEntries(blueprint).map((entry) => ({
+      store_id: activeStoreId as string,
+      key: entry.key,
+      value: entry.value,
+    }));
+
+    if (siteSettingsRows.length > 0) {
+      const { error: siteSettingsError } = await supabase
+        .from("site_settings")
+        .upsert(siteSettingsRows, { onConflict: "store_id,key" });
+
+      if (siteSettingsError) {
+        toast.error("Failed to seed blueprint site settings.");
+        setBootstrapping(false);
+        return;
+      }
+    }
 
     toast.success("Default CMS store is ready.");
     setBootstrapping(false);

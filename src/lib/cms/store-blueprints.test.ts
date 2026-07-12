@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { buildBlueprintDefinitionFromRow, fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
+import { buildBlueprintDefinitionFromRow, buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
 
 describe("store blueprint seeds", () => {
   it("include payment settings in every fallback blueprint", () => {
@@ -33,5 +33,18 @@ describe("store blueprint seeds", () => {
     expect(storefrontProfile.checkout_mode).toBe("whatsapp");
     expect(typeof paymentSettings.cod_enabled).toBe("boolean");
     expect(typeof paymentSettings.prepaid_badge_text).toBe("string");
+  });
+
+  it("builds site setting entries and allows targeted overrides", () => {
+    const entries = buildBlueprintSiteSettingsEntries(fallbackStoreBlueprints[0], {
+      payment_settings: {
+        cod_enabled: false,
+        bkash_enabled: true,
+      },
+    });
+
+    const paymentSettings = entries.find((entry) => entry.key === "payment_settings")?.value as Record<string, unknown> | undefined;
+    expect(paymentSettings?.cod_enabled).toBe(false);
+    expect(paymentSettings?.bkash_enabled).toBe(true);
   });
 });
