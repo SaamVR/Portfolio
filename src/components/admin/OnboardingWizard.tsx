@@ -88,6 +88,12 @@ function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePayment
   return launchTemplates.find((item) => item.id === templateId)?.paymentDefaults ?? launchTemplates[0].paymentDefaults;
 }
 
+function getDefaultBlueprintId(availableBlueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
+  return availableBlueprints.find((item) => item.id === "general-catalog")?.id
+    ?? availableBlueprints[0]?.id
+    ?? "general-catalog";
+}
+
 function draftFromBlueprint(
   blueprintId: string,
   themePackages: ThemePackageDefinition[],
@@ -248,7 +254,7 @@ export default function OnboardingWizard() {
   const [slugAvailable, setSlugAvailable] = useState(true);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
-  const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint("clothing", fallbackThemePackages));
+  const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
 
   const blueprint = getStoreBlueprintById(draft.blueprintId);
   const steps = blueprint.onboarding.steps;
@@ -317,7 +323,11 @@ export default function OnboardingWizard() {
         business_family?: DraftState["businessFamily"];
         catalog_mode?: DraftState["catalogMode"];
       } | null;
-      const resolvedBlueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store?.store_type ?? "clothing");
+      const resolvedBlueprint = getStoreBlueprintById(
+        businessProfile?.blueprint_id
+          ?? store?.store_type
+          ?? getDefaultBlueprintId(loadedBlueprints),
+      );
 
       setDraft(draftFromBlueprint(resolvedBlueprint.id, loadedThemePackages, {
         storeName: store?.name || defaultStore.name,

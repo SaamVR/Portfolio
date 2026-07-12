@@ -15,6 +15,11 @@ import { slugify } from "@/lib/slug";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
+import {
+  fallbackStoreBlueprints,
+  loadStoreBlueprints,
+  type StoreBlueprintDefinition,
+} from "@/lib/cms/store-blueprints";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 
 type SignupStep = "methods" | "verify" | "details";
@@ -35,15 +40,26 @@ export default function MerchantSignup() {
     { id: "growth", name: "Growth" },
     { id: "scale", name: "Scale" },
   ]);
+  const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     storeName: "",
     storeSlug: "",
-    businessType: "general",
+    businessType: "general-catalog",
     planId: searchParams.get("planId") || "starter",
     otpCode: "",
   });
+
+  const blueprintGroups = useMemo(() => {
+    const groups = new Map<string, StoreBlueprintDefinition[]>();
+    for (const blueprint of blueprints) {
+      const existing = groups.get(blueprint.group) ?? [];
+      existing.push(blueprint);
+      groups.set(blueprint.group, existing);
+    }
+    return Array.from(groups.entries());
+  }, [blueprints]);
 
   const siteUrl = useMemo(() => {
     const slug = form.storeSlug || "your-store";
@@ -69,6 +85,29 @@ export default function MerchantSignup() {
         }
       });
   }, [searchParams]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBlueprintOptions = async () => {
+      const loaded = await loadStoreBlueprints(supabase);
+      if (!active || loaded.length === 0) return;
+
+      setBlueprints(loaded);
+      setForm((prev) => {
+        const hasCurrent = loaded.some((item) => item.id === prev.businessType);
+        return {
+          ...prev,
+          businessType: hasCurrent ? prev.businessType : loaded[0].id,
+        };
+      });
+    };
+
+    void loadBlueprintOptions();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -333,9 +372,15 @@ export default function MerchantSignup() {
                 <div>
                   <Label htmlFor="business-type">Business Type</Label>
                   <select id="business-type" value={form.businessType} onChange={(event) => update("businessType", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                    <option value="general">General</option>
-                    <option value="clothing">Clothing</option>
-                    <option value="food">Food</option>
+                    {blueprintGroups.map(([group, items]) => (
+                      <optgroup key={group} label={group}>
+                        {items.map((blueprint) => (
+                          <option key={blueprint.id} value={blueprint.id}>
+                            {blueprint.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
                 <div>
