@@ -563,7 +563,7 @@ export default function CmsPagesManager() {
     );
 
     if (storeError) {
-      toast.error("Failed to create the default store.");
+      toast.error("Failed to initialize the storefront workspace.");
       setBootstrapping(false);
       return;
     }

@@ -259,7 +259,7 @@ export default function MerchantSignup() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <SEOHead title="Create CMS Workspace" description="Create a Commerce Engine merchant workspace." noindex />
+      <SEOHead title="Create CMS Workspace" description="Create a merchant CMS workspace." noindex />
       <section className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div>
           <Button asChild variant="ghost" className="mb-10 gap-2">
