@@ -78,6 +78,10 @@ export default function CmsLibraryManager() {
     heroPayload,
     defaultThemePayload,
     defaultSiteSettingsPayload,
+    themeEditorPayload,
+    updateThemePreviewField,
+    updateThemeTypographyField,
+    updateThemeBorderRadius,
     updateDefaultSiteSettingsSection,
   } = useCmsLibraryEditor();
   const {
@@ -398,7 +402,11 @@ export default function CmsLibraryManager() {
               isEditing={dialogState.mode === "edit"}
               themeSourceTypeOptions={themeSourceTypeOptions}
               themeModeOptions={themeModeOptions}
+              themeEditorPayload={themeEditorPayload}
               onUpdateField={updateField}
+              onUpdateThemePreviewField={updateThemePreviewField}
+              onUpdateThemeTypographyField={updateThemeTypographyField}
+              onUpdateThemeBorderRadius={updateThemeBorderRadius}
             />
           ) : null}
 

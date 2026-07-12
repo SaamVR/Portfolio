@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { createDefaultBlock } from "@/lib/cms/block-library";
 import {
   type BlueprintDefaultSiteSettings,
+  type ThemeEditorPayload,
   buildBlockForm,
   buildBlueprintForm,
   buildPageForm,
@@ -14,11 +15,13 @@ import {
   readJsonObject,
   readOnboardingSteps,
   readPagePayload,
+  readThemeEditorPayload,
   readStringArray,
   updateDefaultSiteSettingsField,
   updateObjectJsonField,
   updatePagePayloadBlocks,
   updatePagePayloadField,
+  updateThemeJsonField,
   writeOnboardingSteps,
   writeStringArray,
 } from "@/components/admin/cms-library/shared";
@@ -53,6 +56,32 @@ export function useCmsLibraryEditor() {
 
   const updateDefaultThemeField = (key: string, value: string) => {
     updateField("default_theme", updateObjectJsonField(form.default_theme, { [key]: value }));
+  };
+
+  const updateThemePreviewField = (key: "bg" | "primary" | "accent", value: string) => {
+    updateField("preview_metadata", updateThemeJsonField(form.preview_metadata, { [key]: value }));
+  };
+
+  const updateThemeTypographyField = (key: "headingFont" | "bodyFont", value: string) => {
+    const themePayload = readThemeEditorPayload(form.preview_metadata, form.tokens);
+    updateField("tokens", JSON.stringify({
+      ...themePayload.tokens,
+      typography: {
+        ...themePayload.tokens.typography,
+        [key]: value,
+      },
+    }, null, 2));
+  };
+
+  const updateThemeBorderRadius = (value: string) => {
+    const themePayload = readThemeEditorPayload(form.preview_metadata, form.tokens);
+    updateField("tokens", JSON.stringify({
+      ...themePayload.tokens,
+      components: {
+        ...themePayload.tokens.components,
+        borderRadius: value,
+      },
+    }, null, 2));
   };
 
   const updateDefaultSiteSettingsSection = (
@@ -199,6 +228,10 @@ export function useCmsLibraryEditor() {
     () => readDefaultSiteSettings(form.default_site_settings),
     [form.default_site_settings],
   );
+  const themeEditorPayload = useMemo<ThemeEditorPayload>(
+    () => readThemeEditorPayload(form.preview_metadata, form.tokens),
+    [form.preview_metadata, form.tokens],
+  );
 
   return {
     dialogState,
@@ -209,6 +242,9 @@ export function useCmsLibraryEditor() {
     updateDelimitedStringArrayField,
     updateHeroField,
     updateDefaultThemeField,
+    updateThemePreviewField,
+    updateThemeTypographyField,
+    updateThemeBorderRadius,
     updateDefaultSiteSettingsSection,
     onboardingSteps,
     updateOnboardingStep,
@@ -232,5 +268,6 @@ export function useCmsLibraryEditor() {
     heroPayload,
     defaultThemePayload,
     defaultSiteSettingsPayload,
+    themeEditorPayload,
   };
 }

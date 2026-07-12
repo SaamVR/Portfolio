@@ -1,4 +1,9 @@
 import {
+  themePackageSchema,
+  buildThemePackageExport,
+  type ThemePackageDefinition,
+} from "@/lib/theme-packages";
+import {
   type DialogState,
   type FormState,
   type ThemeRow,
@@ -122,26 +127,43 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
       throw new Error("Theme package id, slug, and name are required.");
     }
 
+    const validatedTheme = buildThemePackageExport(themePackageSchema.parse({
+      id,
+      slug,
+      name: String(form.name || "").trim(),
+      description: String(form.description || "").trim(),
+      sourceType: String(form.source_type || "admin_shared").trim(),
+      version: Math.max(1, Number(form.version || 1)),
+      compatibilityVersion: Math.max(1, Number(form.compatibility_version || 1)),
+      presetId: String(form.preset_id || "").trim(),
+      mode: String(form.mode || "dark").trim(),
+      preview: parseJsonField(String(form.preview_metadata || "{}"), "Preview metadata"),
+      tokens: parseJsonField(String(form.tokens || "{}"), "Tokens"),
+      recipes: parseJsonField(String(form.component_recipes || "{}"), "Component recipes"),
+      customCss: String(form.custom_css || "").trim() || undefined,
+      ownerStoreId: String(form.owner_store_id || "").trim() || null,
+    })) as ThemePackageDefinition;
+
     return {
       table: "theme_packages",
       idColumn: "id",
       idValue: dialogState.mode === "create" ? id : dialogState.item!.id,
       isCreate: dialogState.mode === "create",
       payload: {
-        id,
-        slug,
-        name: String(form.name || "").trim(),
-        description: String(form.description || "").trim(),
-        source_type: String(form.source_type || "admin_shared").trim(),
-        version: Math.max(1, Number(form.version || 1)),
-        compatibility_version: Math.max(1, Number(form.compatibility_version || 1)),
-        preset_id: String(form.preset_id || "").trim(),
-        mode: String(form.mode || "dark").trim(),
-        preview_metadata: parseJsonField(String(form.preview_metadata || "{}"), "Preview metadata"),
-        tokens: parseJsonField(String(form.tokens || "{}"), "Tokens"),
-        component_recipes: parseJsonField(String(form.component_recipes || "{}"), "Component recipes"),
-        custom_css: String(form.custom_css || "").trim() || null,
-        owner_store_id: String(form.owner_store_id || "").trim() || null,
+        id: validatedTheme.id,
+        slug: validatedTheme.slug,
+        name: validatedTheme.name,
+        description: validatedTheme.description,
+        source_type: validatedTheme.sourceType,
+        version: validatedTheme.version,
+        compatibility_version: validatedTheme.compatibilityVersion,
+        preset_id: validatedTheme.presetId,
+        mode: validatedTheme.mode,
+        preview_metadata: validatedTheme.preview,
+        tokens: validatedTheme.tokens,
+        component_recipes: validatedTheme.recipes,
+        custom_css: validatedTheme.customCss ?? null,
+        owner_store_id: validatedTheme.ownerStoreId ?? null,
       },
     };
   }

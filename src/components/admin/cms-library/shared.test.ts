@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { readDefaultSiteSettings, updateDefaultSiteSettingsField } from "@/components/admin/cms-library/shared";
+import {
+  readDefaultSiteSettings,
+  readThemeEditorPayload,
+  updateDefaultSiteSettingsField,
+  updateThemeJsonField,
+} from "@/components/admin/cms-library/shared";
 
 describe("cms library shared helpers", () => {
   it("reads structured default site settings from blueprint json", () => {
@@ -49,5 +54,34 @@ describe("cms library shared helpers", () => {
     expect(parsed.payment_settings.cod_enabled).toBe(false);
     expect(parsed.payment_settings.bkash_enabled).toBe(true);
     expect(parsed.payment_settings.prepaid_badge_text).toBe("Priority Delivery");
+  });
+
+  it("reads theme editor payload from preview and tokens json", () => {
+    const payload = readThemeEditorPayload(
+      JSON.stringify({ bg: "#111111", primary: "#22c55e", accent: "#38bdf8" }),
+      JSON.stringify({
+        light: { "--background": "#ffffff" },
+        dark: { "--background": "#111111" },
+        typography: { headingFont: "'Outfit', sans-serif", bodyFont: "'Inter', sans-serif" },
+        components: { borderRadius: "1rem" },
+      }),
+    );
+
+    expect(payload.preview.bg).toBe("#111111");
+    expect(payload.tokens.typography.headingFont).toBe("'Outfit', sans-serif");
+    expect(payload.tokens.components.borderRadius).toBe("1rem");
+  });
+
+  it("updates theme json fields without dropping existing values", () => {
+    const updated = updateThemeJsonField(JSON.stringify({
+      bg: "#000000",
+      primary: "#ffffff",
+    }), { accent: "#38bdf8" });
+
+    const parsed = JSON.parse(updated) as { bg: string; primary: string; accent: string };
+
+    expect(parsed.bg).toBe("#000000");
+    expect(parsed.primary).toBe("#ffffff");
+    expect(parsed.accent).toBe("#38bdf8");
   });
 });

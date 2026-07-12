@@ -10,7 +10,26 @@ type ThemeEditorFormProps = {
   isEditing: boolean;
   themeSourceTypeOptions: readonly string[];
   themeModeOptions: readonly string[];
+  themeEditorPayload: {
+    preview: {
+      bg: string;
+      primary: string;
+      accent: string;
+    };
+    tokens: {
+      typography: {
+        headingFont?: string;
+        bodyFont?: string;
+      };
+      components: {
+        borderRadius?: string;
+      };
+    };
+  };
   onUpdateField: (key: string, value: string | boolean) => void;
+  onUpdateThemePreviewField: (key: "bg" | "primary" | "accent", value: string) => void;
+  onUpdateThemeTypographyField: (key: "headingFont" | "bodyFont", value: string) => void;
+  onUpdateThemeBorderRadius: (value: string) => void;
 };
 
 export function ThemeEditorForm({
@@ -18,7 +37,11 @@ export function ThemeEditorForm({
   isEditing,
   themeSourceTypeOptions,
   themeModeOptions,
+  themeEditorPayload,
   onUpdateField,
+  onUpdateThemePreviewField,
+  onUpdateThemeTypographyField,
+  onUpdateThemeBorderRadius,
 }: ThemeEditorFormProps) {
   return (
     <div className="grid gap-4">
@@ -83,6 +106,54 @@ export function ThemeEditorForm({
         <div className="grid gap-2">
           <Label>Owner Store Id</Label>
           <Input value={String(form.owner_store_id ?? "")} onChange={(event) => onUpdateField("owner_store_id", event.target.value)} placeholder="Leave blank for shared/system themes" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label>Preview Colors</Label>
+          <div className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>Background</Label>
+              <Input value={themeEditorPayload.preview.bg} onChange={(event) => onUpdateThemePreviewField("bg", event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Primary</Label>
+              <Input value={themeEditorPayload.preview.primary} onChange={(event) => onUpdateThemePreviewField("primary", event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Accent</Label>
+              <Input value={themeEditorPayload.preview.accent} onChange={(event) => onUpdateThemePreviewField("accent", event.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label>Core Typography & Shape</Label>
+          <div className="grid gap-3 rounded-md border border-border p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Heading Font</Label>
+                <Input
+                  value={themeEditorPayload.tokens.typography.headingFont ?? ""}
+                  onChange={(event) => onUpdateThemeTypographyField("headingFont", event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Body Font</Label>
+                <Input
+                  value={themeEditorPayload.tokens.typography.bodyFont ?? ""}
+                  onChange={(event) => onUpdateThemeTypographyField("bodyFont", event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Border Radius</Label>
+              <Input
+                value={themeEditorPayload.tokens.components.borderRadius ?? ""}
+                onChange={(event) => onUpdateThemeBorderRadius(event.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

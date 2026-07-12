@@ -90,6 +90,25 @@ export type BlueprintDefaultSiteSettings = {
   };
 };
 
+export type ThemeEditorPayload = {
+  preview: {
+    bg: string;
+    primary: string;
+    accent: string;
+  };
+  tokens: {
+    light: Record<string, string>;
+    dark: Record<string, string>;
+    typography: {
+      headingFont?: string;
+      bodyFont?: string;
+    };
+    components: {
+      borderRadius?: string;
+    };
+  };
+};
+
 export const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as const;
 export const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
 export const legacyTemplateOptions = ["clothing", "food", "general"] as const;
@@ -192,6 +211,46 @@ export function updateDefaultSiteSettingsField(
       ...patch,
     },
   }, null, 2);
+}
+
+export function readThemeEditorPayload(
+  previewValue: string | boolean | undefined,
+  tokensValue: string | boolean | undefined,
+): ThemeEditorPayload {
+  const preview = readJsonObject(previewValue);
+  const tokens = readJsonObject(tokensValue);
+  const typography = tokens?.typography && typeof tokens.typography === "object"
+    ? tokens.typography as Record<string, unknown>
+    : {};
+  const components = tokens?.components && typeof tokens.components === "object"
+    ? tokens.components as Record<string, unknown>
+    : {};
+
+  return {
+    preview: {
+      bg: typeof preview?.bg === "string" ? preview.bg : "#0f172a",
+      primary: typeof preview?.primary === "string" ? preview.primary : "#22c55e",
+      accent: typeof preview?.accent === "string" ? preview.accent : "#38bdf8",
+    },
+    tokens: {
+      light: tokens?.light && typeof tokens.light === "object" ? tokens.light as Record<string, string> : {},
+      dark: tokens?.dark && typeof tokens.dark === "object" ? tokens.dark as Record<string, string> : {},
+      typography: {
+        headingFont: typeof typography.headingFont === "string" ? typography.headingFont : "",
+        bodyFont: typeof typography.bodyFont === "string" ? typography.bodyFont : "",
+      },
+      components: {
+        borderRadius: typeof components.borderRadius === "string" ? components.borderRadius : "0.75rem",
+      },
+    },
+  };
+}
+
+export function updateThemeJsonField(
+  existingValue: string | boolean | undefined,
+  patch: Record<string, unknown>,
+) {
+  return updateObjectJsonField(existingValue, patch);
 }
 
 export function readOnboardingSteps(value: string | boolean | undefined) {
