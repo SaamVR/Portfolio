@@ -208,6 +208,13 @@ function updatePagePayloadField(
   }, null, 2);
 }
 
+function updatePagePayloadBlocks(
+  existingValue: string | boolean | undefined,
+  blocks: Array<Record<string, unknown>>,
+) {
+  return updatePagePayloadField(existingValue, { blocks });
+}
+
 function buildBlueprintForm(item?: BlueprintRow): FormState {
   const fallback = fallbackStoreBlueprints.find((entry) => entry.id === item?.id) ?? fallbackStoreBlueprints[0];
   return {
@@ -417,6 +424,28 @@ export default function CmsLibraryManager() {
         sortOrder: blockIndex,
       })),
     }));
+  };
+
+  const updatePagePayloadBlock = (index: number, patch: Record<string, unknown>) => {
+    const nextBlocks = pagePayload.blocks.map((block, blockIndex) => (
+      blockIndex === index ? { ...block, ...patch } : block
+    ));
+    updateField("page_payload", updatePagePayloadBlocks(form.page_payload, nextBlocks));
+  };
+
+  const updatePagePayloadBlockProps = (index: number, patch: Record<string, unknown>) => {
+    const nextBlocks = pagePayload.blocks.map((block, blockIndex) => (
+      blockIndex === index
+        ? {
+            ...block,
+            props: {
+              ...(block.props && typeof block.props === "object" ? block.props : {}),
+              ...patch,
+            },
+          }
+        : block
+    ));
+    updateField("page_payload", updatePagePayloadBlocks(form.page_payload, nextBlocks));
   };
 
   const openCreateDialog = (type: NonNullable<DialogState>["type"]) => {
@@ -1184,16 +1213,169 @@ export default function CmsLibraryManager() {
                     </div>
                     <div className="grid gap-2">
                       {pagePayload.blocks.map((block, index) => (
-                        <div key={String(block.id ?? `${block.type}-${index}`)} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{String(block.type ?? "unknown")}</p>
-                            <p className="text-xs text-muted-foreground">Order {index + 1} • {block.isVisible === false ? "Hidden" : "Visible"}</p>
+                        <div key={String(block.id ?? `${block.type}-${index}`)} className="grid gap-3 rounded-md border border-border px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground">{String(block.type ?? "unknown")}</p>
+                              <p className="text-xs text-muted-foreground">Order {index + 1} • {block.isVisible === false ? "Hidden" : "Visible"}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 rounded-md border border-border px-2 py-1">
+                                <Switch
+                                  checked={block.isVisible !== false}
+                                  onCheckedChange={(checked) => updatePagePayloadBlock(index, { isVisible: checked })}
+                                />
+                                <span className="text-xs text-muted-foreground">Visible</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, -1)} disabled={index === 0}>Up</Button>
+                                <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, 1)} disabled={index === pagePayload.blocks.length - 1}>Down</Button>
+                                <Button type="button" variant="outline" size="sm" onClick={() => removePagePayloadBlock(index)}>Remove</Button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, -1)} disabled={index === 0}>Up</Button>
-                            <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, 1)} disabled={index === pagePayload.blocks.length - 1}>Down</Button>
-                            <Button type="button" variant="outline" size="sm" onClick={() => removePagePayloadBlock(index)}>Remove</Button>
-                          </div>
+
+                          {block.type === "hero" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>Tagline</Label>
+                                <Input value={String((block.props as any)?.tagline ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { tagline: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Anchor Id</Label>
+                                <Input value={String((block.props as any)?.anchorId ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { anchorId: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Highlight</Label>
+                                <Input value={String((block.props as any)?.highlight ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { highlight: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Subtitle</Label>
+                                <Textarea rows={3} value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Primary CTA Text</Label>
+                                <Input value={String((block.props as any)?.ctaText ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaText: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Primary CTA Link</Label>
+                                <Input value={String((block.props as any)?.ctaLink ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaLink: event.target.value })} />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "featured-products" ? (
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <div className="grid gap-2">
+                                <Label>Tagline</Label>
+                                <Input value={String((block.props as any)?.tagline ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { tagline: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Limit</Label>
+                                <Input type="number" min={1} max={24} value={String((block.props as any)?.limit ?? 6)} onChange={(event) => updatePagePayloadBlockProps(index, { limit: Number(event.target.value || 6) })} />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "rich-text" ? (
+                            <div className="grid gap-3">
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <div className="grid gap-2">
+                                  <Label>Eyebrow</Label>
+                                  <Input value={String((block.props as any)?.eyebrow ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { eyebrow: event.target.value })} />
+                                </div>
+                                <div className="grid gap-2 md:col-span-2">
+                                  <Label>Title</Label>
+                                  <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                                </div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Body</Label>
+                                <Textarea rows={5} value={String((block.props as any)?.body ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { body: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Alignment</Label>
+                                <Select value={String((block.props as any)?.align ?? "center")} onValueChange={(value) => updatePagePayloadBlockProps(index, { align: value })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="left">left</SelectItem>
+                                    <SelectItem value="center">center</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "faq-accordion" ? (
+                            <div className="grid gap-3">
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div className="grid gap-2">
+                                  <Label>Title</Label>
+                                  <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>Subtitle</Label>
+                                  <Input value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                                </div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>FAQs JSON</Label>
+                                <Textarea
+                                  rows={6}
+                                  value={JSON.stringify((block.props as any)?.faqs ?? [], null, 2)}
+                                  onChange={(event) => {
+                                    try {
+                                      updatePagePayloadBlockProps(index, { faqs: JSON.parse(event.target.value) });
+                                    } catch {}
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "trust-badges" ? (
+                            <div className="grid gap-3">
+                              <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Badges JSON</Label>
+                                <Textarea
+                                  rows={6}
+                                  value={JSON.stringify((block.props as any)?.badges ?? [], null, 2)}
+                                  onChange={(event) => {
+                                    try {
+                                      updatePagePayloadBlockProps(index, { badges: JSON.parse(event.target.value) });
+                                    } catch {}
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {!["hero", "featured-products", "rich-text", "faq-accordion", "trust-badges"].includes(String(block.type ?? "")) ? (
+                            <div className="grid gap-2">
+                              <Label>Props JSON</Label>
+                              <Textarea
+                                rows={5}
+                                value={JSON.stringify((block.props as any) ?? {}, null, 2)}
+                                onChange={(event) => {
+                                  try {
+                                    updatePagePayloadBlock(index, { props: JSON.parse(event.target.value) });
+                                  } catch {}
+                                }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                       {pagePayload.blocks.length === 0 ? (
