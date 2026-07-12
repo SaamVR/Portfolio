@@ -567,11 +567,11 @@ const SiteSettings = () => {
               <CardContent className="space-y-4">
                 <div className="grid gap-2">
                   <Label>Section Tagline</Label>
-                  <Input value={settings.home_featured?.tagline ?? ""} placeholder="Curated" onChange={(e) => update("home_featured", "tagline", e.target.value)} />
+                  <Input value={settings.home_featured?.tagline ?? ""} placeholder="Highlights" onChange={(e) => update("home_featured", "tagline", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Section Title</Label>
-                  <Input value={settings.home_featured?.title ?? ""} placeholder="Featured Products" onChange={(e) => update("home_featured", "title", e.target.value)} />
+                  <Input value={settings.home_featured?.title ?? ""} placeholder="Featured items" onChange={(e) => update("home_featured", "title", e.target.value)} />
                 </div>
                 <SaveButton settingKey="home_featured" />
               </CardContent>
@@ -586,7 +586,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Section Title</Label>
-                  <Input value={settings.home_categories?.title ?? ""} placeholder="Browse by Collection" onChange={(e) => update("home_categories", "title", e.target.value)} />
+                  <Input value={settings.home_categories?.title ?? ""} placeholder="Browse by category" onChange={(e) => update("home_categories", "title", e.target.value)} />
                 </div>
                 <SaveButton settingKey="home_categories" />
               </CardContent>
@@ -608,20 +608,20 @@ const SiteSettings = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Badge text</Label>
-                <Input value={settings.promo_banner?.badge_text ?? ""} placeholder="Summer Sale" onChange={(e) => update("promo_banner", "badge_text", e.target.value)} />
+                <Input value={settings.promo_banner?.badge_text ?? ""} placeholder="Limited offer" onChange={(e) => update("promo_banner", "badge_text", e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label>Title</Label>
-                <Input value={settings.promo_banner?.title ?? ""} placeholder="Up to 40% off" onChange={(e) => update("promo_banner", "title", e.target.value)} />
+                <Input value={settings.promo_banner?.title ?? ""} placeholder="Offer headline" onChange={(e) => update("promo_banner", "title", e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label>Subtitle</Label>
-                <Input value={settings.promo_banner?.subtitle ?? ""} placeholder="Shop the latest drops" onChange={(e) => update("promo_banner", "subtitle", e.target.value)} />
+                <Input value={settings.promo_banner?.subtitle ?? ""} placeholder="Offer details or supporting message" onChange={(e) => update("promo_banner", "subtitle", e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Button text</Label>
-                  <Input value={settings.promo_banner?.cta_text ?? ""} placeholder="Shop Now" onChange={(e) => update("promo_banner", "cta_text", e.target.value)} />
+                  <Input value={settings.promo_banner?.cta_text ?? ""} placeholder="Learn more" onChange={(e) => update("promo_banner", "cta_text", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Button link</Label>
@@ -702,16 +702,16 @@ const SiteSettings = () => {
             <CardContent className="space-y-5">
               <div className="grid gap-2">
                 <Label>Tagline (small text above title)</Label>
-                <Input value={settings.hero_section?.tagline ?? ""} placeholder="Built for your next launch" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
+                <Input value={settings.hero_section?.tagline ?? ""} placeholder="Built for your business" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Title</Label>
-                  <Input value={settings.hero_section?.title ?? ""} placeholder="Shape Your" onChange={(e) => update("hero_section", "title", e.target.value)} />
+                  <Input value={settings.hero_section?.title ?? ""} placeholder="Bring your" onChange={(e) => update("hero_section", "title", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Highlighted word (gradient)</Label>
-                  <Input value={settings.hero_section?.highlight ?? ""} placeholder="Storefront" onChange={(e) => update("hero_section", "highlight", e.target.value)} />
+                  <Input value={settings.hero_section?.highlight ?? ""} placeholder="brand online" onChange={(e) => update("hero_section", "highlight", e.target.value)} />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -721,7 +721,7 @@ const SiteSettings = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Primary CTA Text</Label>
-                  <Input value={settings.hero_section?.cta_text ?? ""} placeholder="Shop Now" onChange={(e) => update("hero_section", "cta_text", e.target.value)} />
+                  <Input value={settings.hero_section?.cta_text ?? ""} placeholder="Explore" onChange={(e) => update("hero_section", "cta_text", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Primary CTA Link</Label>
@@ -731,7 +731,7 @@ const SiteSettings = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Secondary CTA Text</Label>
-                  <Input value={settings.hero_section?.secondary_cta_text ?? ""} placeholder="View Collection" onChange={(e) => update("hero_section", "secondary_cta_text", e.target.value)} />
+                  <Input value={settings.hero_section?.secondary_cta_text ?? ""} placeholder="Learn more" onChange={(e) => update("hero_section", "secondary_cta_text", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Secondary CTA Link</Label>
@@ -866,7 +866,7 @@ const SiteSettings = () => {
                 <h3 className="text-sm font-semibold text-foreground">Checkout Persuasion</h3>
                 <div className="grid gap-2">
                   <Label>Prepaid Badge Text</Label>
-                  <Input value={settings.payment_settings?.prepaid_badge_text ?? "Priority Delivery"} onChange={(e) => update("payment_settings", "prepaid_badge_text", e.target.value)} placeholder="e.g. Priority Delivery" />
+                  <Input value={settings.payment_settings?.prepaid_badge_text ?? "Prepaid perks"} onChange={(e) => update("payment_settings", "prepaid_badge_text", e.target.value)} placeholder="e.g. Prepaid perks" />
                   <p className="text-xs text-muted-foreground">This text is shown as a green badge next to online payment methods to persuade users to pay upfront rather than Cash on Delivery.</p>
                 </div>
                 <div className="grid gap-2 mt-2">

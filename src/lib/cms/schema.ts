@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
+  themePackageId: z.string().optional(),
   mode: z.enum(["light", "dark"]).default("dark"),
   headingFont: z.string().optional(),
   bodyFont: z.string().optional(),

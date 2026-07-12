@@ -162,7 +162,8 @@ export function buildResolvedStoreFromRecords(
     locale: store.locale ?? defaultStore.locale,
     isPublished: store.is_published ?? false,
     theme: {
-      presetId: theme?.theme_package_id ?? theme?.preset_id ?? fallbackTheme.id,
+      presetId: theme?.preset_id ?? fallbackTheme.presetId,
+      themePackageId: theme?.theme_package_id ?? fallbackTheme.id,
       mode: theme?.mode ?? blueprint.defaultTheme.mode,
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),

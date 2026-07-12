@@ -18,7 +18,7 @@ const defaultPaymentSettings: PublicPaymentSettings = {
   cod_enabled: true,
   bkash_number: "",
   nagad_number: "",
-  prepaid_badge_text: "Priority Delivery",
+  prepaid_badge_text: "Prepaid perks",
   prepayment_discount_type: "none",
   prepayment_discount_value: 0,
   bkash_gateway_enabled: false,

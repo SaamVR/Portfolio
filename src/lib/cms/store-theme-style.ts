@@ -3,7 +3,7 @@ import type { StoreTheme } from "@/lib/cms/schema";
 import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
 
 export function getStoreThemeStyle(theme: StoreTheme): CSSProperties {
-  const themePackage = getThemePackageById(theme.presetId, fallbackThemePackages);
+  const themePackage = getThemePackageById(theme.themePackageId ?? theme.presetId, fallbackThemePackages);
   const vars = theme.mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark;
   const style: CSSProperties & Record<string, string> = {};
 

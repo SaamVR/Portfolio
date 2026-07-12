@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       cod_enabled: asBoolean(value.cod_enabled, true),
       bkash_number: asString(value.bkash_number),
       nagad_number: asString(value.nagad_number),
-      prepaid_badge_text: asString(value.prepaid_badge_text, "Priority Delivery"),
+      prepaid_badge_text: asString(value.prepaid_badge_text, "Prepaid perks"),
       prepayment_discount_type: asString(value.prepayment_discount_type, "none"),
       prepayment_discount_value: asNumber(value.prepayment_discount_value),
       bkash_gateway_enabled: Boolean(asString(value.bkash_app_key) && asString(value.bkash_username)),

@@ -33,6 +33,7 @@ describe("store resolver mapping", () => {
 
     expect(store.description).toBe("A focused storefront designed to sell one hero product with a tighter story and stronger conversion path.");
     expect(store.theme.presetId).toBe("ocean-teal");
+    expect(store.theme.themePackageId).toBe("ocean-teal");
     expect(store.theme.mode).toBe("dark");
     expect(store.pages[0]?.slug).toBe("/");
   });

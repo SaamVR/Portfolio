@@ -165,7 +165,8 @@ function mapRecordsToStore(
     locale: store.locale ?? defaultStore.locale,
     isPublished: store.is_published ?? false,
     theme: {
-      presetId: theme?.theme_package_id ?? theme?.preset_id ?? fallbackTheme.id,
+      presetId: theme?.preset_id ?? fallbackTheme.presetId,
+      themePackageId: theme?.theme_package_id ?? fallbackTheme.id,
       mode: theme?.mode ?? blueprint.defaultTheme.mode,
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
@@ -883,17 +884,19 @@ export default function CmsPagesManager() {
       return;
     }
 
+    const selectedThemePackage = getThemePackageById(safeStore.theme.themePackageId ?? safeStore.theme.presetId, themePackages);
+
     const { error: themeError } = await supabase.from("store_themes").upsert(
       {
         store_id: safeStore.id,
-        preset_id: getThemePackageById(safeStore.theme.presetId, themePackages).presetId,
-        theme_package_id: getThemePackageById(safeStore.theme.presetId, themePackages).id,
-        theme_package_version: getThemePackageById(safeStore.theme.presetId, themePackages).version,
+        preset_id: selectedThemePackage.presetId,
+        theme_package_id: selectedThemePackage.id,
+        theme_package_version: selectedThemePackage.version,
         mode: safeStore.theme.mode,
         colors: safeStore.theme.customCssVars,
         resolved_tokens: {
-          light: getThemePackageById(safeStore.theme.presetId, themePackages).tokens.light,
-          dark: getThemePackageById(safeStore.theme.presetId, themePackages).tokens.dark,
+          light: selectedThemePackage.tokens.light,
+          dark: selectedThemePackage.tokens.dark,
         },
         typography: {
           headingFont: safeStore.theme.headingFont,
@@ -1253,7 +1256,7 @@ export default function CmsPagesManager() {
               </div>
               <div className="grid gap-2">
                 <Label>Theme Package</Label>
-                <Select value={store.theme.presetId} onValueChange={(value) => updateStoreTheme({ presetId: value })} disabled={!themePresetsEnabled}>
+                <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={(value) => updateStoreTheme({ themePackageId: value })} disabled={!themePresetsEnabled}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a theme package" />
                   </SelectTrigger>
@@ -1266,7 +1269,7 @@ export default function CmsPagesManager() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {getThemePackageById(store.theme.presetId, themePackages).description}
+                  {getThemePackageById(store.theme.themePackageId ?? store.theme.presetId, themePackages).description}
                 </p>
                 {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
               </div>

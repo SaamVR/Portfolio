@@ -53,16 +53,16 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
 
-  const tagline = overrides?.tagline ?? hero?.tagline ?? "Built for your next launch";
-  const title = overrides?.title ?? hero?.title ?? "Shape Your";
-  const highlight = overrides?.highlight ?? hero?.highlight ?? "Storefront";
+  const tagline = overrides?.tagline ?? hero?.tagline ?? "Built for your business";
+  const title = overrides?.title ?? hero?.title ?? "Bring Your";
+  const highlight = overrides?.highlight ?? hero?.highlight ?? "Brand Online";
   const subtitle =
     overrides?.subtitle ??
     hero?.subtitle ??
-    "Showcase products, offers, and brand trust in a storefront that fits your business instead of a fixed niche.";
-  const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Shop Now";
+    "Showcase your catalog, services, or offers in a storefront that matches how your business actually sells.";
+  const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Explore";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? hero?.cta_link ?? "/shop", currentStore?.slug);
-  const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "View Collection";
+  const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "Learn More";
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? hero?.secondary_cta_link ?? "/shop", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? hero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? hero?.media_type ?? "image";
