@@ -327,86 +327,96 @@ export default function OnboardingWizard() {
     if (role !== "admin") return;
 
     const loadDraft = async () => {
+      if (!activeStoreId) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
+      try {
+        const [loadedBlueprints, loadedThemePackages, loadedPageBlueprints] = await Promise.all([
+          loadStoreBlueprints(supabase),
+          loadThemePackages(supabase, activeStoreId),
+          loadPageBlueprints(supabase),
+        ]);
+        setBlueprints(loadedBlueprints);
+        setThemePackages(loadedThemePackages);
+        setPageBlueprints(loadedPageBlueprints);
 
-      const [loadedBlueprints, loadedThemePackages, loadedPageBlueprints] = await Promise.all([
-        loadStoreBlueprints(supabase),
-        loadThemePackages(supabase, activeStoreId),
-        loadPageBlueprints(supabase),
-      ]);
-      setBlueprints(loadedBlueprints);
-      setThemePackages(loadedThemePackages);
-      setPageBlueprints(loadedPageBlueprints);
+        const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
+          supabase
+            .from("stores")
+            .select("name, slug, description, logo_url, store_type, is_published")
+            .eq("id", activeStoreId as string)
+            .maybeSingle(),
+          supabase
+            .from("store_themes")
+            .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
+            .eq("store_id", activeStoreId as string)
+            .maybeSingle(),
+          supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
+          supabase
+            .from("store_business_profiles")
+            .select("blueprint_id, business_family, catalog_mode")
+            .eq("store_id", activeStoreId as string)
+            .maybeSingle(),
+        ]);
 
-      const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
-        supabase
-          .from("stores")
-          .select("name, slug, description, logo_url, store_type, is_published")
-          .eq("id", activeStoreId as string)
-          .maybeSingle(),
-        supabase
-          .from("store_themes")
-          .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
-          .eq("store_id", activeStoreId as string)
-          .maybeSingle(),
-        supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
-        supabase
-          .from("store_business_profiles")
-          .select("blueprint_id, business_family, catalog_mode")
-          .eq("store_id", activeStoreId as string)
-          .maybeSingle(),
-      ]);
+        const store = storeRecord as {
+          name?: string;
+          slug?: string;
+          description?: string;
+          logo_url?: string;
+          store_type?: string;
+          is_published?: boolean;
+        } | null;
+        const theme = themeRecord as {
+          preset_id?: string;
+          theme_package_id?: string | null;
+          mode?: Store["theme"]["mode"];
+          typography?: { headingFont?: string; bodyFont?: string };
+          components?: { borderRadius?: string };
+        } | null;
+        const payment = (siteSettings?.value ?? {}) as Partial<DraftState["payment"]>;
+        const businessProfile = businessProfileResult?.data as {
+          blueprint_id?: string;
+          business_family?: DraftState["businessFamily"];
+          catalog_mode?: DraftState["catalogMode"];
+        } | null;
+        const resolvedBlueprint = findStoreBlueprintById(
+          businessProfile?.blueprint_id
+            ?? store?.store_type
+            ?? getDefaultBlueprintId(loadedBlueprints),
+          loadedBlueprints,
+        );
+        const safeBlueprint = resolvedBlueprint ?? getStoreBlueprintById(getDefaultBlueprintId(loadedBlueprints));
 
-      const store = storeRecord as {
-        name?: string;
-        slug?: string;
-        description?: string;
-        logo_url?: string;
-        store_type?: string;
-        is_published?: boolean;
-      } | null;
-      const theme = themeRecord as {
-        preset_id?: string;
-        theme_package_id?: string | null;
-        mode?: Store["theme"]["mode"];
-        typography?: { headingFont?: string; bodyFont?: string };
-        components?: { borderRadius?: string };
-      } | null;
-      const payment = (siteSettings?.value ?? {}) as Partial<DraftState["payment"]>;
-      const businessProfile = businessProfileResult?.data as {
-        blueprint_id?: string;
-        business_family?: DraftState["businessFamily"];
-        catalog_mode?: DraftState["catalogMode"];
-      } | null;
-      const resolvedBlueprint = findStoreBlueprintById(
-        businessProfile?.blueprint_id
-          ?? store?.store_type
-          ?? getDefaultBlueprintId(loadedBlueprints),
-        loadedBlueprints,
-      );
-      const safeBlueprint = resolvedBlueprint ?? getStoreBlueprintById(getDefaultBlueprintId(loadedBlueprints));
-
-      setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
-        storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
-        slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
-        description: store?.description || undefined,
-        logoUrl: store?.logo_url || "",
-        businessFamily: businessProfile?.business_family || safeBlueprint.businessFamily,
-        catalogMode: businessProfile?.catalog_mode || safeBlueprint.catalogMode,
-        themePackageId: theme?.theme_package_id || theme?.preset_id || safeBlueprint.defaultTheme.presetId,
-        themeMode: theme?.mode || undefined,
-        headingFont: theme?.typography?.headingFont || undefined,
-        bodyFont: theme?.typography?.bodyFont || undefined,
-        borderRadius: theme?.components?.borderRadius || undefined,
-        payment: {
-          ...getBlueprintPaymentDefaultsFromCollection(safeBlueprint.id, loadedBlueprints),
-          ...payment,
-          bkash_number: payment.bkash_number || "",
-          nagad_number: payment.nagad_number || "",
-        },
-        isPublished: store?.is_published ?? false,
-      }, loadedBlueprints));
-      setLoading(false);
+        setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
+          storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
+          slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
+          description: store?.description || undefined,
+          logoUrl: store?.logo_url || "",
+          businessFamily: businessProfile?.business_family || safeBlueprint.businessFamily,
+          catalogMode: businessProfile?.catalog_mode || safeBlueprint.catalogMode,
+          themePackageId: theme?.theme_package_id || theme?.preset_id || safeBlueprint.defaultTheme.presetId,
+          themeMode: theme?.mode || undefined,
+          headingFont: theme?.typography?.headingFont || undefined,
+          bodyFont: theme?.typography?.bodyFont || undefined,
+          borderRadius: theme?.components?.borderRadius || undefined,
+          payment: {
+            ...getBlueprintPaymentDefaultsFromCollection(safeBlueprint.id, loadedBlueprints),
+            ...payment,
+            bkash_number: payment.bkash_number || "",
+            nagad_number: payment.nagad_number || "",
+          },
+          isPublished: store?.is_published ?? false,
+        }, loadedBlueprints));
+      } catch (error) {
+        console.error("Failed to load onboarding draft:", error);
+        toast.error("Failed to refresh onboarding data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     };
 
     void loadDraft();

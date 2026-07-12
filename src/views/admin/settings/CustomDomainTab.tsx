@@ -18,22 +18,42 @@ export const CustomDomainTab = () => {
 
   useEffect(() => {
     const fetchDomain = async () => {
-      if (!activeStoreId) return;
-      const { data, error } = await (supabase as any)
-        .from("stores")
-        .select("custom_domain")
-        .eq("id", activeStoreId)
-        .single();
-      
-      if (!error && data?.custom_domain) {
-        setDomain(data.custom_domain);
-        setSavedDomain(data.custom_domain);
-        checkVerification(data.custom_domain);
-      } else {
+      if (!activeStoreId) {
+        setInitialLoading(false);
+        setDomain("");
+        setSavedDomain("");
+        setVerificationStatus(null);
+        return;
+      }
+
+      setInitialLoading(true);
+      try {
+        const { data, error } = await (supabase as any)
+          .from("stores")
+          .select("custom_domain")
+          .eq("id", activeStoreId)
+          .single();
+
+        if (error) throw error;
+
+        if (data?.custom_domain) {
+          setDomain(data.custom_domain);
+          setSavedDomain(data.custom_domain);
+          await checkVerification(data.custom_domain);
+          return;
+        }
+
+        setDomain("");
+        setSavedDomain("");
+        setVerificationStatus(null);
+      } catch (error) {
+        console.error("Failed to load custom domain:", error);
+        toast.error("Failed to refresh custom domain settings. Please try again.");
+      } finally {
         setInitialLoading(false);
       }
     };
-    fetchDomain();
+    void fetchDomain();
   }, [activeStoreId]);
 
   const checkVerification = async (domainToCheck: string) => {
@@ -50,8 +70,6 @@ export const CustomDomainTab = () => {
       }
     } catch (err) {
       setVerificationStatus("error");
-    } finally {
-      setInitialLoading(false);
     }
   };
 

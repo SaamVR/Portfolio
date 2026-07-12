@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Users as UsersIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const Users = () => {
   const { platformRole } = useAuth();
@@ -15,20 +16,32 @@ const Users = () => {
   useEffect(() => {
     if (platformRole !== "admin") return;
     const fetch = async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id, role");
-      const { data: profiles } = await supabase.from("profiles").select("*");
+      setLoading(true);
+      try {
+        const [{ data: roles, error: rolesError }, { data: profiles, error: profilesError }] = await Promise.all([
+          supabase.from("user_roles").select("user_id, role"),
+          supabase.from("profiles").select("*"),
+        ]);
 
-      const roleMap: Record<string, string> = {};
-      roles?.forEach((r) => { roleMap[r.user_id] = r.role; });
+        if (rolesError) throw rolesError;
+        if (profilesError) throw profilesError;
 
-      const combined = (profiles ?? [])
-        .filter((p) => roleMap[p.user_id])
-        .map((p) => ({ ...p, role: roleMap[p.user_id] }));
+        const roleMap: Record<string, string> = {};
+        roles?.forEach((r) => { roleMap[r.user_id] = r.role; });
 
-      setUsers(combined);
-      setLoading(false);
+        const combined = (profiles ?? [])
+          .filter((p) => roleMap[p.user_id])
+          .map((p) => ({ ...p, role: roleMap[p.user_id] }));
+
+        setUsers(combined);
+      } catch (error) {
+        console.error("Failed to load dashboard users:", error);
+        toast.error("Failed to refresh dashboard users. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
+    void fetch();
   }, [platformRole]);
 
   if (platformRole !== "admin") return <Navigate to="/admin" replace />;
