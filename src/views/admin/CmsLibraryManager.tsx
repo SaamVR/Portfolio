@@ -31,11 +31,14 @@ import {
   blockLayerOptions,
   businessFamilyOptions,
   catalogModeOptions,
+  checkoutModeOptions,
   knownBlockTypes,
   knownCapabilities,
   knownPageBlueprintIds,
   legacyTemplateOptions,
   onboardingStepOptions,
+  prepaymentDiscountTypeOptions,
+  productVisibilityOptions,
 } from "@/components/admin/cms-library/shared";
 
 export default function CmsLibraryManager() {
@@ -71,6 +74,8 @@ export default function CmsLibraryManager() {
     selectedCompatibleBusinessFamilies,
     heroPayload,
     defaultThemePayload,
+    defaultSiteSettingsPayload,
+    updateDefaultSiteSettingsSection,
   } = useCmsLibraryEditor();
   const {
     savingId,
@@ -334,12 +339,17 @@ export default function CmsLibraryManager() {
               selectedCapabilities={selectedCapabilities}
               heroPayload={heroPayload}
               defaultThemePayload={defaultThemePayload}
+              defaultSiteSettingsPayload={defaultSiteSettingsPayload}
               onboardingSteps={onboardingSteps}
+              productVisibilityOptions={productVisibilityOptions}
+              checkoutModeOptions={checkoutModeOptions}
+              prepaymentDiscountTypeOptions={prepaymentDiscountTypeOptions}
               onUpdateField={updateField}
               onUpdateDelimitedStringArrayField={updateDelimitedStringArrayField}
               onToggleStringArrayField={toggleStringArrayField}
               onUpdateHeroField={updateHeroField}
               onUpdateDefaultThemeField={updateDefaultThemeField}
+              onUpdateDefaultSiteSettingsSection={updateDefaultSiteSettingsSection}
               onUpdateOnboardingStep={updateOnboardingStep}
               onAddOnboardingStep={addOnboardingStep}
               onRemoveOnboardingStep={removeOnboardingStep}

@@ -68,11 +68,29 @@ export type DialogState =
 
 export type FormState = Record<string, string | boolean>;
 
+export type BlueprintDefaultSiteSettings = {
+  storefrontProfile: {
+    productVisibility: string;
+    checkoutMode: string;
+  };
+  paymentSettings: {
+    codEnabled: boolean;
+    bkashEnabled: boolean;
+    nagadEnabled: boolean;
+    prepaidBadgeText: string;
+    prepaymentDiscountType: string;
+    prepaymentDiscountValue: number;
+  };
+};
+
 export const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as const;
 export const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
 export const legacyTemplateOptions = ["clothing", "food", "general"] as const;
 export const blockLayerOptions = ["core", "commerce", "extension"] as const;
 export const onboardingStepOptions = ["blueprint", "brand", "content", "catalog", "theme", "payments", "launch"] as const;
+export const productVisibilityOptions = ["catalog", "single_product", "menu", "inquiry_only"] as const;
+export const checkoutModeOptions = ["standard", "whatsapp", "inquiry"] as const;
+export const prepaymentDiscountTypeOptions = ["none", "free_delivery", "percentage", "fixed"] as const;
 export const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
 export const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
 export const knownCapabilities = Array.from(new Set([
@@ -121,6 +139,50 @@ export function readJsonObject(value: string | boolean | undefined) {
   } catch {
     return null;
   }
+}
+
+export function readDefaultSiteSettings(value: string | boolean | undefined): BlueprintDefaultSiteSettings {
+  const parsed = readJsonObject(value);
+  const storefrontProfile = parsed?.storefront_profile && typeof parsed.storefront_profile === "object"
+    ? parsed.storefront_profile as Record<string, unknown>
+    : {};
+  const paymentSettings = parsed?.payment_settings && typeof parsed.payment_settings === "object"
+    ? parsed.payment_settings as Record<string, unknown>
+    : {};
+
+  return {
+    storefrontProfile: {
+      productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : "catalog",
+      checkoutMode: typeof storefrontProfile.checkout_mode === "string" ? storefrontProfile.checkout_mode : "standard",
+    },
+    paymentSettings: {
+      codEnabled: typeof paymentSettings.cod_enabled === "boolean" ? paymentSettings.cod_enabled : true,
+      bkashEnabled: typeof paymentSettings.bkash_enabled === "boolean" ? paymentSettings.bkash_enabled : false,
+      nagadEnabled: typeof paymentSettings.nagad_enabled === "boolean" ? paymentSettings.nagad_enabled : false,
+      prepaidBadgeText: typeof paymentSettings.prepaid_badge_text === "string" ? paymentSettings.prepaid_badge_text : "Priority Delivery",
+      prepaymentDiscountType: typeof paymentSettings.prepayment_discount_type === "string" ? paymentSettings.prepayment_discount_type : "none",
+      prepaymentDiscountValue: typeof paymentSettings.prepayment_discount_value === "number" ? paymentSettings.prepayment_discount_value : 0,
+    },
+  };
+}
+
+export function updateDefaultSiteSettingsField(
+  existingValue: string | boolean | undefined,
+  section: "storefront_profile" | "payment_settings",
+  patch: Record<string, unknown>,
+) {
+  const base = readJsonObject(existingValue) ?? {};
+  const currentSection = base[section] && typeof base[section] === "object"
+    ? base[section] as Record<string, unknown>
+    : {};
+
+  return JSON.stringify({
+    ...base,
+    [section]: {
+      ...currentSection,
+      ...patch,
+    },
+  }, null, 2);
 }
 
 export function readOnboardingSteps(value: string | boolean | undefined) {

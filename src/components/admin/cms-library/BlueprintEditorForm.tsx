@@ -22,6 +22,9 @@ type BlueprintEditorFormProps = {
   catalogModeOptions: readonly string[];
   legacyTemplateOptions: readonly string[];
   onboardingStepOptions: readonly string[];
+  productVisibilityOptions: readonly string[];
+  checkoutModeOptions: readonly string[];
+  prepaymentDiscountTypeOptions: readonly string[];
   knownPageBlueprintIds: string[];
   knownBlockTypes: string[];
   knownCapabilities: string[];
@@ -30,12 +33,30 @@ type BlueprintEditorFormProps = {
   selectedCapabilities: string[];
   heroPayload: Record<string, unknown>;
   defaultThemePayload: Record<string, unknown>;
+  defaultSiteSettingsPayload: {
+    storefrontProfile: {
+      productVisibility: string;
+      checkoutMode: string;
+    };
+    paymentSettings: {
+      codEnabled: boolean;
+      bkashEnabled: boolean;
+      nagadEnabled: boolean;
+      prepaidBadgeText: string;
+      prepaymentDiscountType: string;
+      prepaymentDiscountValue: number;
+    };
+  };
   onboardingSteps: OnboardingStep[];
   onUpdateField: (key: string, value: string | boolean) => void;
   onUpdateDelimitedStringArrayField: (key: string, raw: string) => void;
   onToggleStringArrayField: (key: string, value: string, checked: boolean) => void;
   onUpdateHeroField: (key: string, value: string) => void;
   onUpdateDefaultThemeField: (key: string, value: string) => void;
+  onUpdateDefaultSiteSettingsSection: (
+    section: "storefront_profile" | "payment_settings",
+    patch: Record<string, unknown>,
+  ) => void;
   onUpdateOnboardingStep: (index: number, key: "id" | "title" | "description", value: string) => void;
   onAddOnboardingStep: () => void;
   onRemoveOnboardingStep: (index: number) => void;
@@ -48,6 +69,9 @@ export function BlueprintEditorForm({
   catalogModeOptions,
   legacyTemplateOptions,
   onboardingStepOptions,
+  productVisibilityOptions,
+  checkoutModeOptions,
+  prepaymentDiscountTypeOptions,
   knownPageBlueprintIds,
   knownBlockTypes,
   knownCapabilities,
@@ -56,12 +80,14 @@ export function BlueprintEditorForm({
   selectedCapabilities,
   heroPayload,
   defaultThemePayload,
+  defaultSiteSettingsPayload,
   onboardingSteps,
   onUpdateField,
   onUpdateDelimitedStringArrayField,
   onToggleStringArrayField,
   onUpdateHeroField,
   onUpdateDefaultThemeField,
+  onUpdateDefaultSiteSettingsSection,
   onUpdateOnboardingStep,
   onAddOnboardingStep,
   onRemoveOnboardingStep,
@@ -330,9 +356,113 @@ export function BlueprintEditorForm({
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <Label>Default Site Settings JSON</Label>
-        <Textarea rows={8} value={String(form.default_site_settings ?? "")} onChange={(event) => onUpdateField("default_site_settings", event.target.value)} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label>Storefront Defaults</Label>
+            <div className="grid gap-3 rounded-md border border-border p-3">
+              <div className="grid gap-2 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Product Visibility</Label>
+                  <Select
+                    value={defaultSiteSettingsPayload.storefrontProfile.productVisibility}
+                    onValueChange={(value) => onUpdateDefaultSiteSettingsSection("storefront_profile", { product_visibility: value })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {productVisibilityOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Checkout Mode</Label>
+                  <Select
+                    value={defaultSiteSettingsPayload.storefrontProfile.checkoutMode}
+                    onValueChange={(value) => onUpdateDefaultSiteSettingsSection("storefront_profile", { checkout_mode: value })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {checkoutModeOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Payment Defaults</Label>
+            <div className="grid gap-3 rounded-md border border-border p-3">
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                  <Switch
+                    checked={defaultSiteSettingsPayload.paymentSettings.codEnabled}
+                    onCheckedChange={(checked) => onUpdateDefaultSiteSettingsSection("payment_settings", { cod_enabled: checked })}
+                  />
+                  <span>Cash on delivery</span>
+                </label>
+                <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                  <Switch
+                    checked={defaultSiteSettingsPayload.paymentSettings.bkashEnabled}
+                    onCheckedChange={(checked) => onUpdateDefaultSiteSettingsSection("payment_settings", { bkash_enabled: checked })}
+                  />
+                  <span>bKash</span>
+                </label>
+                <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                  <Switch
+                    checked={defaultSiteSettingsPayload.paymentSettings.nagadEnabled}
+                    onCheckedChange={(checked) => onUpdateDefaultSiteSettingsSection("payment_settings", { nagad_enabled: checked })}
+                  />
+                  <span>Nagad</span>
+                </label>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Prepaid Badge Text</Label>
+                <Input
+                  value={defaultSiteSettingsPayload.paymentSettings.prepaidBadgeText}
+                  onChange={(event) => onUpdateDefaultSiteSettingsSection("payment_settings", { prepaid_badge_text: event.target.value })}
+                  placeholder="Priority Delivery"
+                />
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_140px]">
+                <div className="grid gap-2">
+                  <Label>Prepayment Incentive</Label>
+                  <Select
+                    value={defaultSiteSettingsPayload.paymentSettings.prepaymentDiscountType}
+                    onValueChange={(value) => onUpdateDefaultSiteSettingsSection("payment_settings", { prepayment_discount_type: value })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {prepaymentDiscountTypeOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Discount Value</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={String(defaultSiteSettingsPayload.paymentSettings.prepaymentDiscountValue)}
+                    onChange={(event) => onUpdateDefaultSiteSettingsSection("payment_settings", { prepayment_discount_value: Number(event.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Default Site Settings JSON</Label>
+          <Textarea rows={18} value={String(form.default_site_settings ?? "")} onChange={(event) => onUpdateField("default_site_settings", event.target.value)} />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

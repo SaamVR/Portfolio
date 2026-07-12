@@ -3,15 +3,18 @@
 import { useMemo, useState } from "react";
 import { createDefaultBlock } from "@/lib/cms/block-library";
 import {
+  type BlueprintDefaultSiteSettings,
   buildBlockForm,
   buildBlueprintForm,
   buildPageForm,
   type DialogState,
   type FormState,
+  readDefaultSiteSettings,
   readJsonObject,
   readOnboardingSteps,
   readPagePayload,
   readStringArray,
+  updateDefaultSiteSettingsField,
   updateObjectJsonField,
   updatePagePayloadBlocks,
   updatePagePayloadField,
@@ -49,6 +52,13 @@ export function useCmsLibraryEditor() {
 
   const updateDefaultThemeField = (key: string, value: string) => {
     updateField("default_theme", updateObjectJsonField(form.default_theme, { [key]: value }));
+  };
+
+  const updateDefaultSiteSettingsSection = (
+    section: "storefront_profile" | "payment_settings",
+    patch: Record<string, unknown>,
+  ) => {
+    updateField("default_site_settings", updateDefaultSiteSettingsField(form.default_site_settings, section, patch));
   };
 
   const onboardingSteps = useMemo(
@@ -180,6 +190,10 @@ export function useCmsLibraryEditor() {
   );
   const heroPayload = useMemo(() => readJsonObject(form.hero_payload) ?? {}, [form.hero_payload]);
   const defaultThemePayload = useMemo(() => readJsonObject(form.default_theme) ?? {}, [form.default_theme]);
+  const defaultSiteSettingsPayload = useMemo<BlueprintDefaultSiteSettings>(
+    () => readDefaultSiteSettings(form.default_site_settings),
+    [form.default_site_settings],
+  );
 
   return {
     dialogState,
@@ -190,6 +204,7 @@ export function useCmsLibraryEditor() {
     updateDelimitedStringArrayField,
     updateHeroField,
     updateDefaultThemeField,
+    updateDefaultSiteSettingsSection,
     onboardingSteps,
     updateOnboardingStep,
     addOnboardingStep,
@@ -211,5 +226,6 @@ export function useCmsLibraryEditor() {
     selectedCompatibleBusinessFamilies,
     heroPayload,
     defaultThemePayload,
+    defaultSiteSettingsPayload,
   };
 }
