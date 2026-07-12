@@ -9,12 +9,6 @@ import { ThemeProvider } from "next-themes";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AuthProvider } from "@/hooks/useAuth";
-import { useApplyTheme } from "@/hooks/useTheme";
-
-const ThemeApplier = () => {
-  useApplyTheme();
-  return null;
-};
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Avoid sharing queryClient across requests in SSR
@@ -36,7 +30,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <AuthProvider>
             <CartProvider>
               <WishlistProvider>
-                <ThemeApplier />
                 {children}
                 <Toaster />
                 <Sonner />
