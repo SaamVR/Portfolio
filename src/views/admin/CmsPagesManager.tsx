@@ -64,6 +64,7 @@ type StoreRecord = {
 
 type ThemeRecord = {
   preset_id: string | null;
+  theme_package_id?: string | null;
   mode: "light" | "dark" | null;
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
@@ -142,7 +143,7 @@ function mapRecordsToStore(
   blocks: BlockRecord[],
 ): Store {
   const blueprint = getStoreBlueprintById(store.store_type ?? "general-catalog");
-  const fallbackTheme = getThemePackageById(theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
+  const fallbackTheme = getThemePackageById(theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
 
   return storeSchema.parse({
     id: store.id,
@@ -258,7 +259,7 @@ export default function CmsPagesManager() {
     }
 
     const [themeResponse, pagesResponse, blocksResponse] = await Promise.all([
-      supabase.from("store_themes").select("preset_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
+      supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
     ]);

@@ -13,43 +13,66 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Boxes, Loader2, Layers3, Palette, LayoutTemplate, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Boxes, Edit3, Loader2, Layers3, Palette, LayoutTemplate, Save, Share2 } from "lucide-react";
+
+type BlueprintRow = {
+  id: string;
+  name: string;
+  short_name: string;
+  description: string;
+  business_family: string;
+  catalog_mode: string;
+  group_name: string;
+  is_active: boolean;
+};
+
+type ThemeRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  source_type: string;
+  version: number;
+  preset_id: string;
+};
+
+type PageRow = {
+  id: string;
+  name: string;
+  description: string;
+  business_family: string;
+  is_active: boolean;
+};
+
+type BlockRow = {
+  block_type: string;
+  label: string;
+  description: string;
+  layer: string;
+  is_active: boolean;
+};
 
 type LibraryData = {
-  blueprints: Array<{
-    id: string;
-    name: string;
-    short_name: string;
-    description: string;
-    business_family: string;
-    catalog_mode: string;
-    group_name: string;
-    is_active: boolean;
-  }>;
-  themes: Array<{
-    id: string;
-    slug: string;
-    name: string;
-    description: string;
-    source_type: string;
-    version: number;
-    preset_id: string;
-  }>;
-  pages: Array<{
-    id: string;
-    name: string;
-    description: string;
-    business_family: string;
-    is_active: boolean;
-  }>;
-  blocks: Array<{
-    block_type: string;
-    label: string;
-    description: string;
-    layer: string;
-    is_active: boolean;
-  }>;
+  blueprints: BlueprintRow[];
+  themes: ThemeRow[];
+  pages: PageRow[];
+  blocks: BlockRow[];
 };
+
+type EditState =
+  | { type: "blueprint"; item: BlueprintRow }
+  | { type: "page"; item: PageRow }
+  | { type: "block"; item: BlockRow }
+  | null;
 
 export default function CmsLibraryManager() {
   const { platformRole } = useAuth();
@@ -57,6 +80,8 @@ export default function CmsLibraryManager() {
   const [activeTab, setActiveTab] = useState("blueprints");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [editState, setEditState] = useState<EditState>(null);
+  const [editForm, setEditForm] = useState<Record<string, string | boolean>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["cms-library-manager"],
@@ -99,7 +124,7 @@ export default function CmsLibraryManager() {
   };
 
   const updateRow = async (
-    table: "store_blueprints" | "page_blueprints" | "block_registry_entries",
+    table: "store_blueprints" | "page_blueprints" | "block_registry_entries" | "theme_packages",
     idColumn: string,
     idValue: string,
     patch: Record<string, unknown>,
@@ -113,6 +138,53 @@ export default function CmsLibraryManager() {
       await refresh();
     }
     setSavingId(null);
+  };
+
+  const openEditor = (state: NonNullable<EditState>) => {
+    setEditState(state);
+    setEditForm({ ...state.item });
+  };
+
+  const saveEditor = async () => {
+    if (!editState) return;
+
+    if (editState.type === "blueprint") {
+      await updateRow("store_blueprints", "id", editState.item.id, {
+        name: editForm.name,
+        short_name: editForm.short_name,
+        description: editForm.description,
+        business_family: editForm.business_family,
+        catalog_mode: editForm.catalog_mode,
+        group_name: editForm.group_name,
+      });
+    }
+
+    if (editState.type === "page") {
+      await updateRow("page_blueprints", "id", editState.item.id, {
+        name: editForm.name,
+        description: editForm.description,
+        business_family: editForm.business_family,
+      });
+    }
+
+    if (editState.type === "block") {
+      await updateRow("block_registry_entries", "block_type", editState.item.block_type, {
+        label: editForm.label,
+        description: editForm.description,
+        layer: editForm.layer,
+      });
+    }
+
+    setEditState(null);
+  };
+
+  const promoteTheme = async (item: ThemeRow) => {
+    if (item.source_type === "admin_shared" || item.source_type === "system") {
+      toast.message("Theme is already shared.");
+      return;
+    }
+
+    await updateRow("theme_packages", "id", item.id, { source_type: "admin_shared" });
   };
 
   const blueprintCards = filteredData?.blueprints ?? [];
@@ -175,15 +247,15 @@ export default function CmsLibraryManager() {
                   <Input value={item.business_family} readOnly />
                 </div>
                 <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditor({ type: "blueprint", item })}>
+                    <Edit3 className="h-4 w-4" />
+                    Edit
+                  </Button>
                   <Switch
                     checked={item.is_active}
                     onCheckedChange={(checked) => void updateRow("store_blueprints", "id", item.id, { is_active: checked })}
                     disabled={savingId === `store_blueprints:${item.id}`}
                   />
-                  <Button variant="outline" size="sm" disabled className="gap-2">
-                    {savingId === `store_blueprints:${item.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Shared
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -205,14 +277,28 @@ export default function CmsLibraryManager() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <Label>Slug</Label>
-                  <Input value={item.slug} readOnly />
+              <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div>
+                    <Label>Slug</Label>
+                    <Input value={item.slug} readOnly />
+                  </div>
+                  <div>
+                    <Label>Preset Bridge</Label>
+                    <Input value={item.preset_id} readOnly />
+                  </div>
                 </div>
-                <div>
-                  <Label>Preset Bridge</Label>
-                  <Input value={item.preset_id} readOnly />
+                <div className="flex items-center justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => void promoteTheme(item)}
+                    disabled={savingId === `theme_packages:${item.id}` || item.source_type === "admin_shared" || item.source_type === "system"}
+                  >
+                    {savingId === `theme_packages:${item.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                    Promote to Shared
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -231,8 +317,11 @@ export default function CmsLibraryManager() {
                   <Badge variant="outline">{item.business_family}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Shared page blueprint record</p>
+              <CardContent className="flex items-center justify-between gap-3">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditor({ type: "page", item })}>
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </Button>
                 <Switch
                   checked={item.is_active}
                   onCheckedChange={(checked) => void updateRow("page_blueprints", "id", item.id, { is_active: checked })}
@@ -255,21 +344,116 @@ export default function CmsLibraryManager() {
                   <Badge variant="outline">{item.layer}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
+              <CardContent className="flex items-center justify-between gap-3">
                 <div className="grid gap-1">
                   <Label>Block Type</Label>
                   <Input value={item.block_type} readOnly />
                 </div>
-                <Switch
-                  checked={item.is_active}
-                  onCheckedChange={(checked) => void updateRow("block_registry_entries", "block_type", item.block_type, { is_active: checked })}
-                  disabled={savingId === `block_registry_entries:${item.block_type}`}
-                />
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditor({ type: "block", item })}>
+                    <Edit3 className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Switch
+                    checked={item.is_active}
+                    onCheckedChange={(checked) => void updateRow("block_registry_entries", "block_type", item.block_type, { is_active: checked })}
+                    disabled={savingId === `block_registry_entries:${item.block_type}`}
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={Boolean(editState)} onOpenChange={(open) => !open && setEditState(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editState?.type === "blueprint" ? "Edit Blueprint"
+                : editState?.type === "page" ? "Edit Page Blueprint"
+                : editState?.type === "block" ? "Edit Block Registry Entry"
+                : "Edit Library Item"}
+            </DialogTitle>
+            <DialogDescription>
+              Update the shared-library metadata without changing merchant-installed snapshots in place.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editState?.type === "blueprint" ? (
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Name</Label>
+                <Input value={String(editForm.name ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Short Name</Label>
+                <Input value={String(editForm.short_name ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, short_name: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Textarea rows={4} value={String(editForm.description ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label>Business Family</Label>
+                  <Input value={String(editForm.business_family ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, business_family: event.target.value }))} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Catalog Mode</Label>
+                  <Input value={String(editForm.catalog_mode ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, catalog_mode: event.target.value }))} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Group</Label>
+                  <Input value={String(editForm.group_name ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, group_name: event.target.value }))} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {editState?.type === "page" ? (
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Name</Label>
+                <Input value={String(editForm.name ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Textarea rows={4} value={String(editForm.description ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Business Family</Label>
+                <Input value={String(editForm.business_family ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, business_family: event.target.value }))} />
+              </div>
+            </div>
+          ) : null}
+
+          {editState?.type === "block" ? (
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Label</Label>
+                <Input value={String(editForm.label ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, label: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Textarea rows={4} value={String(editForm.description ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Layer</Label>
+                <Input value={String(editForm.layer ?? "")} onChange={(event) => setEditForm((current) => ({ ...current, layer: event.target.value }))} />
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditState(null)}>Cancel</Button>
+            <Button onClick={() => void saveEditor()} className="gap-2" disabled={Boolean(savingId)}>
+              {savingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

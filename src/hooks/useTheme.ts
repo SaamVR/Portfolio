@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { useTheme as useNextTheme } from "next-themes";
-import { getStoreThemeStyle } from "@/lib/cms/store-theme-style";
+import { getStoreThemeStyleFromRecord } from "@/lib/cms/store-theme-style";
 
 export function useApplyTheme() {
   const { activeStoreId } = useAuth();
@@ -19,7 +19,7 @@ export function useApplyTheme() {
 
       const { data } = await (supabase as any)
         .from("store_themes")
-        .select("preset_id, mode, colors, typography, components")
+        .select("preset_id, mode, colors, resolved_tokens, typography, components")
         .eq("store_id", storeId as string)
         .maybeSingle();
 
@@ -31,14 +31,13 @@ export function useApplyTheme() {
   useEffect(() => {
     if (!themeConfig) return;
 
-    const resolvedMode = resolvedTheme === "light" ? "light" : "dark";
-    const style = getStoreThemeStyle({
-      presetId: themeConfig.preset_id ?? "default",
-      mode: resolvedMode,
-      headingFont: themeConfig.typography?.headingFont,
-      bodyFont: themeConfig.typography?.bodyFont,
-      borderRadius: themeConfig.components?.borderRadius,
-      customCssVars: themeConfig.colors ?? {},
+    const style = getStoreThemeStyleFromRecord({
+      preset_id: themeConfig.preset_id ?? "default",
+      mode: resolvedTheme === "light" ? "light" : (themeConfig.mode ?? "dark"),
+      colors: themeConfig.colors ?? null,
+      resolved_tokens: themeConfig.resolved_tokens ?? null,
+      typography: themeConfig.typography ?? null,
+      components: themeConfig.components ?? null,
     });
     const root = document.documentElement;
     const appliedKeys: string[] = [];

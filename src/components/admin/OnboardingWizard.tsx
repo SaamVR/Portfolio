@@ -285,7 +285,7 @@ export default function OnboardingWizard() {
           .maybeSingle(),
         supabase
           .from("store_themes")
-          .select("preset_id, mode, typography, components, colors, resolved_tokens")
+          .select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens")
           .eq("store_id", activeStoreId as string)
           .maybeSingle(),
         supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
@@ -306,6 +306,7 @@ export default function OnboardingWizard() {
       } | null;
       const theme = themeRecord as {
         preset_id?: string;
+        theme_package_id?: string | null;
         mode?: Store["theme"]["mode"];
         typography?: { headingFont?: string; bodyFont?: string };
         components?: { borderRadius?: string };
@@ -325,7 +326,7 @@ export default function OnboardingWizard() {
         logoUrl: store?.logo_url || "",
         businessFamily: businessProfile?.business_family || resolvedBlueprint.businessFamily,
         catalogMode: businessProfile?.catalog_mode || resolvedBlueprint.catalogMode,
-        themePackageId: theme?.preset_id || resolvedBlueprint.defaultTheme.presetId,
+        themePackageId: theme?.theme_package_id || theme?.preset_id || resolvedBlueprint.defaultTheme.presetId,
         themeMode: theme?.mode || undefined,
         headingFont: theme?.typography?.headingFont || undefined,
         bodyFont: theme?.typography?.bodyFont || undefined,

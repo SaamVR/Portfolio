@@ -36,6 +36,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 type StoreThemeSettingsRow = {
   preset_id: string;
+  theme_package_id?: string | null;
   mode: string;
   typography: { headingFont?: string; bodyFont?: string };
   components: { borderRadius?: string };
@@ -118,12 +119,13 @@ const SiteSettings = () => {
     queryFn: async (): Promise<StoreThemeSettingsRow> => {
       const { data } = await supabase
         .from("store_themes")
-        .select("preset_id, mode, typography, components")
+        .select("preset_id, theme_package_id, mode, typography, components")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
       return {
         preset_id: data?.preset_id ?? "default",
+        theme_package_id: data?.theme_package_id ?? null,
         mode: data?.mode ?? "dark",
         typography: typeof data?.typography === "object" && data?.typography ? data.typography as StoreThemeSettingsRow["typography"] : {},
         components: typeof data?.components === "object" && data?.components ? data.components as StoreThemeSettingsRow["components"] : {},
@@ -148,7 +150,7 @@ const SiteSettings = () => {
     enabled: Boolean(activeStoreId) && activeTab === "notifications",
   });
 
-  const activeThemeId = themeData?.preset_id ?? "default";
+  const activeThemeId = themeData?.theme_package_id ?? themeData?.preset_id ?? "default";
   const [localThemeId, setLocalThemeId] = useState(activeThemeId);
 
   useEffect(() => {
