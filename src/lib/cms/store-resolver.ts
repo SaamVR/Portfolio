@@ -1,14 +1,18 @@
 import { defaultStore } from "@/lib/cms/default-store";
+import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
+import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
 
 interface StoreRow {
   id: string;
   name: string;
   slug: string;
   custom_domain?: string | null;
+  store_type?: string | null;
   description: string | null;
   currency_code: string | null;
   locale: string | null;
@@ -17,6 +21,7 @@ interface StoreRow {
 
 interface StoreThemeRow {
   preset_id: string | null;
+  theme_package_id?: string | null;
   mode: "light" | "dark" | null;
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
@@ -25,6 +30,10 @@ interface StoreThemeRow {
     light?: Record<string, string>;
     dark?: Record<string, string>;
   } | null;
+}
+
+interface StoreBusinessProfileRow {
+  blueprint_id: string | null;
 }
 
 interface StorePageRow {
@@ -105,13 +114,20 @@ function getStoreSlugFromHostname(hostname: string) {
   return null;
 }
 
-function mapStoreRecord(
+export function buildResolvedStoreFromRecords(
   store: StoreRow,
+  businessProfile: StoreBusinessProfileRow | null,
   theme: StoreThemeRow | null,
   pages: StorePageRow[],
   blocks: StoreBlockRow[],
   siteSettings: SiteSettingRecord[],
 ): Store {
+  const blueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const fallbackTheme = getThemePackageById(
+    theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
+    fallbackThemePackages,
+  );
+  const fallbackPages = instantiateStorePagesFromBlueprint(blueprint.id);
   const mappedPages = applyLegacyHomepageSettingsToPages(
     pages
       .map((page) =>
@@ -141,19 +157,19 @@ function mapStoreRecord(
     id: store.id,
     name: store.name,
     slug: store.slug,
-    description: store.description ?? defaultStore.description,
-    currencyCode: store.currency_code ?? "BDT",
-    locale: store.locale ?? "en-BD",
+    description: store.description ?? blueprint.storeDescription ?? defaultStore.description,
+    currencyCode: store.currency_code ?? defaultStore.currencyCode,
+    locale: store.locale ?? defaultStore.locale,
     isPublished: store.is_published ?? false,
     theme: {
-      presetId: theme?.preset_id ?? defaultStore.theme.presetId,
-      mode: theme?.mode ?? defaultStore.theme.mode,
-      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : defaultStore.theme.headingFont,
-      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : defaultStore.theme.bodyFont,
-      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : defaultStore.theme.borderRadius,
+      presetId: theme?.theme_package_id ?? theme?.preset_id ?? fallbackTheme.id,
+      mode: theme?.mode ?? blueprint.defaultTheme.mode,
+      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
+      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
+      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
       customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? "dark"] ?? {},
     },
-    pages: mappedPages.length > 0 ? mappedPages : defaultStore.pages,
+    pages: mappedPages.length > 0 ? mappedPages : fallbackPages,
   });
 }
 
@@ -194,7 +210,7 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
 
   const { data: store, error } = await supabase
     .from("stores")
-    .select("id, name, slug, description, currency_code, locale, is_published")
+    .select("id, name, slug, description, currency_code, locale, is_published, store_type")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -212,15 +228,20 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     return null;
   }
 
-  const [{ data: store, error: storeError }, { data: theme }, { data: pages }, { data: blocks }, { data: siteSettings }] = await Promise.all([
+  const [{ data: store, error: storeError }, { data: businessProfile }, { data: theme }, { data: pages }, { data: blocks }, { data: siteSettings }] = await Promise.all([
     supabase
       .from("stores")
-      .select("id, name, slug, description, currency_code, locale, is_published")
+      .select("id, name, slug, description, currency_code, locale, is_published, store_type")
       .eq("id", storeId)
       .maybeSingle(),
     supabase
+      .from("store_business_profiles")
+      .select("blueprint_id")
+      .eq("store_id", storeId)
+      .maybeSingle(),
+    supabase
       .from("store_themes")
-      .select("preset_id, mode, typography, components, colors, resolved_tokens")
+      .select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
@@ -242,8 +263,9 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     return null;
   }
 
-  return mapStoreRecord(
+  return buildResolvedStoreFromRecords(
     store as StoreRow,
+    (businessProfile as StoreBusinessProfileRow | null) ?? null,
     (theme as StoreThemeRow | null) ?? null,
     (pages as StorePageRow[] | null) ?? [],
     (blocks as StoreBlockRow[] | null) ?? [],
