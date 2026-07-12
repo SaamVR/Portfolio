@@ -523,7 +523,7 @@ export default function CmsPagesManager() {
       }
     }
 
-    await (supabase as any).from("store_business_profiles").upsert(
+    await supabase.from("store_business_profiles").upsert(
       {
         store_id: activeStoreId as string,
         blueprint_id: blueprint.id,

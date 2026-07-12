@@ -278,18 +278,18 @@ export default function OnboardingWizard() {
       setThemePackages(loadedThemePackages);
 
       const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
-        (supabase as any)
+        supabase
           .from("stores")
           .select("name, slug, description, logo_url, store_type, is_published")
           .eq("id", activeStoreId as string)
           .maybeSingle(),
-        (supabase as any)
+        supabase
           .from("store_themes")
-          .select("preset_id, mode, typography, components")
+          .select("preset_id, mode, typography, components, colors, resolved_tokens")
           .eq("store_id", activeStoreId as string)
           .maybeSingle(),
-        (supabase as any).from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
-        (supabase as any)
+        supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
+        supabase
           .from("store_business_profiles")
           .select("blueprint_id, business_family, catalog_mode")
           .eq("store_id", activeStoreId as string)
@@ -428,7 +428,7 @@ export default function OnboardingWizard() {
     const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
     const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId, themePackages).pages;
 
-    const { error: storeError } = await (supabase as any).from("stores").update(
+    const { error: storeError } = await supabase.from("stores").update(
       {
         name: draft.storeName.trim() || defaultStore.name,
         slug: draft.slug.trim() || defaultStore.slug,
@@ -474,9 +474,9 @@ export default function OnboardingWizard() {
       custom_css: selectedThemePackage.customCss ?? null,
     };
 
-    let themeError = (await (supabase as any).from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
+    let themeError = (await supabase.from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
     if (themeError) {
-      themeError = (await (supabase as any).from("store_themes").upsert(
+      themeError = (await supabase.from("store_themes").upsert(
         {
           store_id: activeStoreId,
           preset_id: selectedThemePackage.presetId,
@@ -505,10 +505,10 @@ export default function OnboardingWizard() {
       seo_description: page.seoDescription ?? null,
       is_homepage: page.isHomepage,
     }));
-    await (supabase as any).from("store_page_blocks").delete().eq("store_id", activeStoreId as string);
-    await (supabase as any).from("store_pages").delete().eq("store_id", activeStoreId as string);
+    await supabase.from("store_page_blocks").delete().eq("store_id", activeStoreId as string);
+    await supabase.from("store_pages").delete().eq("store_id", activeStoreId as string);
 
-    const { error: pagesError } = await (supabase as any).from("store_pages").insert(pageRows);
+    const { error: pagesError } = await supabase.from("store_pages").insert(pageRows);
     if (pagesError) {
       toast.error("Failed to save storefront pages.");
       setSaving(false);
@@ -527,14 +527,14 @@ export default function OnboardingWizard() {
       })),
     );
 
-    const { error: blocksError } = await (supabase as any).from("store_page_blocks").insert(blockRows);
+    const { error: blocksError } = await supabase.from("store_page_blocks").insert(blockRows);
     if (blocksError) {
       toast.error("Failed to save storefront blocks.");
       setSaving(false);
       return;
     }
 
-    const { data: existingPayment } = await (supabase as any)
+    const { data: existingPayment } = await supabase
       .from("site_settings")
       .select("id")
       .eq("store_id", activeStoreId)
@@ -543,13 +543,13 @@ export default function OnboardingWizard() {
 
     let paymentError;
     if (existingPayment) {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("site_settings")
         .update({ value: draft.payment as any })
         .eq("id", existingPayment.id);
       paymentError = error;
     } else {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("site_settings")
         .insert({
           store_id: activeStoreId,
@@ -565,7 +565,7 @@ export default function OnboardingWizard() {
       return;
     }
 
-    await (supabase as any)
+    await supabase
       .from("store_business_profiles")
       .upsert(
         {

@@ -1402,6 +1402,44 @@ export type Database = {
           },
         ]
       }
+      store_business_profiles: {
+        Row: {
+          blueprint_id: string | null
+          business_family: string
+          catalog_mode: string
+          created_at: string
+          enabled_modules: Json
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          blueprint_id?: string | null
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          enabled_modules?: Json
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          blueprint_id?: string | null
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          enabled_modules?: Json
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_business_profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_themes: {
         Row: {
           colors: Json
@@ -1410,8 +1448,12 @@ export type Database = {
           custom_css: string | null
           id: string
           mode: string
+          overrides: Json
           preset_id: string
+          resolved_tokens: Json
           store_id: string
+          theme_package_id: string | null
+          theme_package_version: number | null
           typography: Json
           updated_at: string
         }
@@ -1422,8 +1464,12 @@ export type Database = {
           custom_css?: string | null
           id?: string
           mode?: string
+          overrides?: Json
           preset_id?: string
+          resolved_tokens?: Json
           store_id: string
+          theme_package_id?: string | null
+          theme_package_version?: number | null
           typography?: Json
           updated_at?: string
         }
@@ -1434,12 +1480,23 @@ export type Database = {
           custom_css?: string | null
           id?: string
           mode?: string
+          overrides?: Json
           preset_id?: string
+          resolved_tokens?: Json
           store_id: string
+          theme_package_id?: string | null
+          theme_package_version?: number | null
           typography?: Json
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "store_themes_theme_package_id_fkey"
+            columns: ["theme_package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_packages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "store_themes_store_id_fkey"
             columns: ["store_id"]
@@ -1505,6 +1562,140 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      store_blueprints: {
+        Row: {
+          business_family: string
+          catalog_mode: string
+          created_at: string
+          default_site_settings: Json
+          default_theme: Json
+          description: string
+          group_name: string
+          hero_payload: Json
+          id: string
+          is_active: boolean
+          legacy_template_id: string | null
+          name: string
+          onboarding_schema: Json
+          recommended_block_set: Json
+          recommended_page_set: Json
+          required_capabilities: Json
+          short_name: string
+          store_description: string
+          updated_at: string
+        }
+        Insert: {
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          default_site_settings?: Json
+          default_theme?: Json
+          description?: string
+          group_name?: string
+          hero_payload?: Json
+          id: string
+          is_active?: boolean
+          legacy_template_id?: string | null
+          name: string
+          onboarding_schema?: Json
+          recommended_block_set?: Json
+          recommended_page_set?: Json
+          required_capabilities?: Json
+          short_name: string
+          store_description?: string
+          updated_at?: string
+        }
+        Update: {
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          default_site_settings?: Json
+          default_theme?: Json
+          description?: string
+          group_name?: string
+          hero_payload?: Json
+          id?: string
+          is_active?: boolean
+          legacy_template_id?: string | null
+          name?: string
+          onboarding_schema?: Json
+          recommended_block_set?: Json
+          recommended_page_set?: Json
+          required_capabilities?: Json
+          short_name?: string
+          store_description?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      theme_packages: {
+        Row: {
+          compatibility_version: number
+          component_recipes: Json
+          created_at: string
+          created_by: string | null
+          custom_css: string | null
+          description: string
+          id: string
+          mode: string
+          name: string
+          owner_store_id: string | null
+          preset_id: string
+          preview_metadata: Json
+          slug: string
+          source_type: string
+          tokens: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          compatibility_version?: number
+          component_recipes?: Json
+          created_at?: string
+          created_by?: string | null
+          custom_css?: string | null
+          description?: string
+          id?: string
+          mode?: string
+          name: string
+          owner_store_id?: string | null
+          preset_id?: string
+          preview_metadata?: Json
+          slug: string
+          source_type?: string
+          tokens?: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          compatibility_version?: number
+          component_recipes?: Json
+          created_at?: string
+          created_by?: string | null
+          custom_css?: string | null
+          description?: string
+          id?: string
+          mode?: string
+          name?: string
+          owner_store_id?: string | null
+          preset_id?: string
+          preview_metadata?: Json
+          slug?: string
+          source_type?: string
+          tokens?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_packages_owner_store_id_fkey"
+            columns: ["owner_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_email_feature_overrides: {
         Row: {

@@ -32,6 +32,14 @@ import {
   parseThemePackageImport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
+import type { Json } from "@/integrations/supabase/types";
+
+type StoreThemeSettingsRow = {
+  preset_id: string;
+  mode: string;
+  typography: { headingFont?: string; bodyFont?: string };
+  components: { borderRadius?: string };
+};
 const SiteSettings = () => {
   const { role , activeStoreId} = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
@@ -107,14 +115,19 @@ const SiteSettings = () => {
 
   const { data: themeData } = useQuery({
     queryKey: ["store_themes", activeStoreId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
+    queryFn: async (): Promise<StoreThemeSettingsRow> => {
+      const { data } = await supabase
         .from("store_themes")
         .select("preset_id, mode, typography, components")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
-      return data ?? { preset_id: "default" };
+      return {
+        preset_id: data?.preset_id ?? "default",
+        mode: data?.mode ?? "dark",
+        typography: typeof data?.typography === "object" && data?.typography ? data.typography as StoreThemeSettingsRow["typography"] : {},
+        components: typeof data?.components === "object" && data?.components ? data.components as StoreThemeSettingsRow["components"] : {},
+      };
     },
     enabled: Boolean(activeStoreId),
   });
@@ -231,9 +244,9 @@ const SiteSettings = () => {
         custom_css: activeThemePackage.customCss ?? null,
       };
 
-      let { error } = await (supabase as any).from("store_themes").upsert(fullPayload, { onConflict: "store_id" });
+      let { error } = await supabase.from("store_themes").upsert(fullPayload, { onConflict: "store_id" });
       if (error) {
-        ({ error } = await (supabase as any).from("store_themes").upsert(
+        ({ error } = await supabase.from("store_themes").upsert(
           {
             store_id: activeStoreId,
             preset_id: activeThemePackage.presetId,
@@ -307,19 +320,19 @@ const SiteSettings = () => {
         },
       });
 
-      const { error } = await (supabase as any).from("theme_packages").insert({
+      const { error } = await supabase.from("theme_packages").insert({
         id: exportPayload.id,
         slug: exportPayload.slug,
         name: exportPayload.name,
         description: exportPayload.description,
-        preview_metadata: exportPayload.preview,
+        preview_metadata: exportPayload.preview as Json,
         source_type: exportPayload.sourceType,
         version: exportPayload.version,
         compatibility_version: exportPayload.compatibilityVersion,
         preset_id: exportPayload.presetId,
         mode: exportPayload.mode,
-        tokens: exportPayload.tokens,
-        component_recipes: exportPayload.recipes,
+        tokens: exportPayload.tokens as Json,
+        component_recipes: exportPayload.recipes as Json,
         custom_css: exportPayload.customCss ?? null,
         owner_store_id: activeStoreId,
       });
@@ -342,19 +355,19 @@ const SiteSettings = () => {
     try {
       const imported = parseThemePackageImport(raw);
       const packageId = crypto.randomUUID();
-      const { error } = await (supabase as any).from("theme_packages").insert({
+      const { error } = await supabase.from("theme_packages").insert({
         id: packageId,
         slug: `${imported.slug}-${Date.now()}`,
         name: imported.name,
         description: imported.description,
-        preview_metadata: imported.preview,
+        preview_metadata: imported.preview as Json,
         source_type: "merchant_private",
         version: imported.version,
         compatibility_version: imported.compatibilityVersion,
         preset_id: imported.presetId,
         mode: imported.mode,
-        tokens: imported.tokens,
-        component_recipes: imported.recipes,
+        tokens: imported.tokens as Json,
+        component_recipes: imported.recipes as Json,
         custom_css: imported.customCss ?? null,
         owner_store_id: activeStoreId,
       });
