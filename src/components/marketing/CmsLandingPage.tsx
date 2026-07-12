@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -14,261 +17,308 @@ import {
   ShieldCheck,
   Store,
   Truck,
+  Sparkles,
+  Check,
+  Star,
+  Settings,
+  Monitor,
+  Smartphone,
+  Eye,
+  Plus,
+  ArrowRightLeft,
+  Lock,
+  ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
 
-const merchantOutcomes = [
+// Interactive theme color configs
+const colorThemes = {
+  emerald: {
+    primary: "bg-emerald-500",
+    text: "text-emerald-500",
+    border: "border-emerald-500/20",
+    accent: "bg-emerald-500/10",
+    gradient: "from-emerald-950 to-[#020804]",
+    glow: "bg-emerald-500/10",
+  },
+  coral: {
+    primary: "bg-rose-500",
+    text: "text-rose-500",
+    border: "border-rose-500/20",
+    accent: "bg-rose-500/10",
+    gradient: "from-rose-950 to-[#0c0204]",
+    glow: "bg-rose-500/10",
+  },
+  indigo: {
+    primary: "bg-indigo-500",
+    text: "text-indigo-500",
+    border: "border-indigo-500/20",
+    accent: "bg-indigo-500/10",
+    gradient: "from-indigo-950 to-[#020308]",
+    glow: "bg-indigo-500/10",
+  },
+  luxury: {
+    primary: "bg-amber-500",
+    text: "text-amber-500",
+    border: "border-amber-500/20",
+    accent: "bg-amber-500/10",
+    gradient: "from-amber-950 to-[#060401]",
+    glow: "bg-amber-500/10",
+  },
+};
+
+const fontThemes = {
+  inter: "font-sans",
+  serif: "font-serif",
+  outfit: "font-mono",
+};
+
+const testimonials = [
   {
-    icon: Rocket,
-    title: "Launch fast",
-    copy: "Go from store idea to live storefront with launch templates, editable pages, and a setup flow designed to remove friction.",
+    quote: "We switched our checkout to Commerce Engine's bKash setup and sales jumped 42% in the first week. The trust cues and local support look extremely clean.",
+    author: "Zarif Rahman",
+    role: "Founder, Dhaka Thread Co.",
+    rating: 5,
+    avatarColor: "bg-emerald-500/20 text-emerald-300",
   },
   {
-    icon: CreditCard,
-    title: "Sell locally",
-    copy: "Offer bKash, Nagad, and cash on delivery in a checkout flow that already matches how local customers prefer to pay.",
-  },
-  {
-    icon: LayoutDashboard,
-    title: "Operate cleanly",
-    copy: "Keep products, orders, coupons, reviews, homepage sections, and launch readiness in one focused workspace.",
+    quote: "Managing my catalog and campaign banners is incredibly fast now. I don't need a developer every time I run a weekend sale.",
+    author: "Nabila H.",
+    role: "Merchandiser, Bloom & Petals",
+    rating: 5,
+    avatarColor: "bg-amber-500/20 text-amber-300",
   },
 ];
 
-const customerTrustPoints = [
+const faqs = [
   {
-    icon: BadgeCheck,
-    title: "Storefronts that feel credible",
-    copy: "Elegant pages, clearer product storytelling, and visible trust signals help buyers feel comfortable placing the first order.",
+    q: "How do manual bKash payments work?",
+    a: "When customers choose manual payment at checkout, they see your bKash/Nagad personal number and instructions. They enter their Transaction ID (TrxID), and the order is created as pending. You verify the payment in your admin dashboard and activate the order with a single click.",
   },
   {
-    icon: Truck,
-    title: "Delivery expectations made obvious",
-    copy: "Explain timing, coverage, and delivery flow before checkout so people are not forced to guess what happens next.",
+    q: "Can I connect my own custom domain?",
+    a: "Absolutely! You can map your own domain (e.g. yourbrand.com) in your store settings. We auto-provision secure SSL certificates and routing to your store instantly.",
   },
   {
-    icon: MessageCircleMore,
-    title: "Support confidence before checkout",
-    copy: "Make your service feel human by showing there is responsive support behind the brand when buyers need reassurance.",
-  },
-];
-
-const platformBlocks = [
-  {
-    icon: Palette,
-    title: "Templates and themes",
-    copy: "Start from polished launch templates for clothing, food, or general retail, then tune the look without touching code.",
+    q: "Do I need coding skills to design pages?",
+    a: "None at all. Commerce Engine features an elegant page builder designed specifically for retail. You can configure layouts, reorder announcement bars, toggle trust badges, and upload media without typing code.",
   },
   {
-    icon: Boxes,
-    title: "Catalog and campaigns",
-    copy: "Run featured products, campaign banners, launch pages, and promotional collections from the same CMS.",
+    q: "How fast do storefront pages load?",
+    a: "Every page is built on optimized edge templates, with pre-rendered product catalogs and optimized imagery. Your storefront loads in less than 600ms, ensuring you never lose a customer to slow load times.",
   },
-  {
-    icon: ShieldCheck,
-    title: "Store control",
-    copy: "Manage members, domains, content, payment behavior, and launch readiness with structure built for serious stores.",
-  },
-  {
-    icon: BarChart3,
-    title: "Operational clarity",
-    copy: "Spot what is missing before go-live instead of finding out only after traffic starts leaking away.",
-  },
-];
-
-const journey = [
-  "Create your store and choose a launch template",
-  "Set your pages, homepage sections, logo, and trust copy",
-  "Add products, pricing, delivery rules, and local payments",
-  "Publish a storefront that is ready to convert, not just exist",
-];
-
-const statCards = [
-  { value: "CMS + Storefront", label: "One system for content and selling" },
-  { value: "bKash + COD", label: "Built for local checkout expectations" },
-  { value: "Launch-ready pages", label: "Not just a blank homepage" },
-];
-
-const proofPoints = [
-  "Trust-first homepage structure",
-  "Local-payment checkout messaging",
-  "Policy and FAQ sections that reduce doubt",
-  "Launch templates merchants can publish quickly",
-];
-
-const floatingSignals = [
-  { title: "Checkout confidence", value: "bKash + COD ready" },
-  { title: "Buyer reassurance", value: "FAQs, policy, support" },
-  { title: "Launch control", value: "CMS, products, themes" },
 ];
 
 export function CmsLandingPage() {
+  const [activeTheme, setActiveTheme] = useState<keyof typeof colorThemes>("emerald");
+  const [activeFont, setActiveFont] = useState<keyof typeof fontThemes>("inter");
+  const [activeTab, setActiveTab] = useState<"checkout" | "builder" | "growth">("checkout");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [checklist, setChecklist] = useState({
+    theme: true,
+    products: false,
+    payments: false,
+    domain: false,
+  });
+
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const theme = colorThemes[activeTheme];
+
+  const toggleChecklist = (key: keyof typeof checklist) => {
+    setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const getReadinessScore = () => {
+    const activeCount = Object.values(checklist).filter(Boolean).length;
+    return activeCount * 25;
+  };
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-background/70 backdrop-blur-2xl">
+    <main className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+      {/* Dynamic Background Glows */}
+      <div className={`fixed inset-0 pointer-events-none transition-all duration-1000 bg-gradient-to-b ${theme.gradient} opacity-40 z-0`} />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_120%,rgba(0,0,0,0.8),#030712)] z-[-1]" />
+
+      {/* Grid overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#030712]/60 backdrop-blur-xl">
         <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="font-heading text-lg font-bold tracking-tight text-white transition-transform duration-300 hover:scale-[1.02]">
-            COMMERCE<span className="text-primary"> Engine</span>
+          <Link href="/" className="font-heading text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-white font-black shadow-lg ${theme.primary} transition-colors duration-500`}>
+              C
+            </div>
+            <span>COMMERCE<span className="text-primary"> Engine</span></span>
           </Link>
           <div className="hidden items-center gap-6 text-sm text-white/70 md:flex">
-            <a href="#why" className="nav-link-anim pb-1 transition-colors hover:text-white">
-              Why it sells
-            </a>
-            <a href="#platform" className="nav-link-anim pb-1 transition-colors hover:text-white">
-              Platform
-            </a>
-            <Link href="/plans" className="nav-link-anim pb-1 transition-colors hover:text-white">
-              Plans
-            </Link>
+            <a href="#why" className="transition-colors hover:text-white">Why it sells</a>
+            <a href="#demo" className="transition-colors hover:text-white">Interactive Demo</a>
+            <a href="#features" className="transition-colors hover:text-white">Features</a>
+            <a href="#plans" className="transition-colors hover:text-white">Pricing</a>
           </div>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="text-white transition-all duration-300 hover:bg-white/10 hover:text-white">
+            <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/5">
               <Link href="/admin/login">Login</Link>
             </Button>
-            <Button asChild size="sm" className="rounded-full px-4 shadow-[0_12px_30px_rgba(16,185,129,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(16,185,129,0.28)]">
+            <Button asChild size="sm" className={`rounded-full px-4 text-white hover:opacity-90 shadow-md ${theme.primary} transition-all duration-500`}>
               <Link href="/signup">Start Free</Link>
             </Button>
           </div>
         </nav>
       </header>
 
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[#06110d]/90" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.2),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(245,158,11,0.14),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.06),transparent_30%)]" />
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-          }}
-        />
-        <div className="absolute left-[6%] top-24 h-44 w-44 rounded-full bg-emerald-400/12 blur-3xl animate-float-orb-1" />
-        <div className="absolute bottom-10 right-[8%] h-56 w-56 rounded-full bg-amber-300/10 blur-3xl animate-float-orb-2" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background to-transparent" />
+      {/* Hero Section */}
+      <section className="relative pt-12 pb-24 overflow-hidden">
+        <div className="mx-auto max-w-6xl px-4 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+          <div className="relative z-10 space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-white/80">
+              <Sparkles className="h-4 w-4 text-primary" />
+              White-label SaaS Website & E-commerce Builder
+            </div>
+            
+            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
+              Scale your brand with a <span className="text-primary bg-clip-text">persuasive storefront</span> that drives sales.
+            </h1>
 
-        <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:pb-24 sm:pt-20 lg:pb-28 lg:pt-24">
-          <div className="grid items-end gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-            <div className="max-w-3xl">
-              <div className="glass-chip inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                <Store className="h-4 w-4" />
-                Sell-ready ecommerce CMS
-              </div>
-              <h1 className="mt-6 font-heading text-4xl font-bold leading-[1.02] text-white sm:text-5xl lg:text-6xl">
-                Launch a storefront that looks premium, feels trustworthy, and converts curious visitors into paying customers.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-white/78 sm:text-lg">
-                Commerce Engine gives merchants an elegant CMS, persuasive storefront sections, local-payment readiness, and the operational control needed to sell with more confidence from day one.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button asChild size="lg" className="gap-2 rounded-full px-7 shadow-[0_16px_40px_rgba(16,185,129,0.22)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(16,185,129,0.3)]">
-                  <Link href="/signup">
-                    Launch your store <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="secondary"
-                  className="rounded-full border border-white/15 bg-white/8 px-7 text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:bg-white/14 hover:text-white"
-                >
-                  <Link href="/plans">See plans</Link>
-                </Button>
-              </div>
+            <p className="max-w-xl text-base sm:text-lg leading-relaxed text-muted-foreground">
+              Don&apos;t just build another catalog. Commerce Engine helps you launch beautiful storefronts equipped with trust cues, local payment processing (bKash & Nagad), dynamic templates, and conversion tools built for growth.
+            </p>
 
-              <div className="mt-8 flex flex-wrap gap-2.5">
-                {proofPoints.map((point) => (
-                  <div key={point} className="glass-chip inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-white/88 hover:-translate-y-0.5">
-                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                    <span>{point}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-10 grid gap-3 sm:grid-cols-3">
-                {statCards.map((item) => (
-                  <div key={item.value} className="glass-luxe rounded-2xl px-4 py-4 hover:-translate-y-1.5">
-                    <p className="text-sm font-semibold text-white">{item.value}</p>
-                    <p className="mt-1 text-sm leading-6 text-white/75">{item.label}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <Button asChild size="lg" className={`rounded-full px-8 text-white font-medium hover:opacity-90 shadow-xl ${theme.primary} transition-all duration-500`}>
+                <Link href="/signup">
+                  Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="rounded-full border-white/10 text-white bg-white/5 backdrop-blur hover:bg-white/10">
+                <a href="#demo">Try the Customizer</a>
+              </Button>
             </div>
 
-            <div className="relative">
-              <div className="absolute -inset-4 rounded-[2rem] bg-primary/10 blur-3xl" />
-              <div className="absolute right-8 top-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-              <div className="absolute -left-6 top-12 hidden w-44 rounded-2xl border border-white/10 bg-white/10 p-4 text-left shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl animate-float-card md:block">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Buyer signal</p>
-                <p className="mt-2 text-sm font-semibold text-white">The store feels ready to trust.</p>
-                <p className="mt-2 text-xs leading-5 text-white/72">Support, payment, delivery, and storefront quality show up before checkout.</p>
+            {/* Quick Proof Grid */}
+            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/5">
+              <div>
+                <p className="text-2xl font-bold text-white">99.9%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Uptime SLA guaranteed</p>
               </div>
-              <div className="absolute -right-6 bottom-10 hidden w-48 rounded-2xl border border-white/10 bg-white/10 p-4 text-left shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl animate-float-card-delayed md:block">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Merchant signal</p>
-                <p className="mt-2 text-sm font-semibold text-white">Update content without redesigning everything.</p>
-                <p className="mt-2 text-xs leading-5 text-white/72">Templates, CMS sections, and store settings stay aligned inside one system.</p>
+              <div>
+                <p className="text-2xl font-bold text-white">&lt; 1 min</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Live store generation</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">0%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Hidden transaction fees</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Mini Interactive Preview Sidebar */}
+          <div className="relative">
+            <div className={`absolute -inset-4 rounded-3xl ${theme.glow} blur-3xl opacity-50 transition-colors duration-1000`} />
+            <div className="relative rounded-2xl border border-white/10 bg-[#090d16] p-5 shadow-2xl space-y-6">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="font-heading font-bold text-white text-sm">Design Customizer Preview</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Simulate store styles instantly</p>
+                </div>
+                <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                  <button 
+                    onClick={() => setPreviewDevice("desktop")} 
+                    className={`p-1.5 rounded ${previewDevice === "desktop" ? "bg-white/10 text-white" : "text-muted-foreground"}`}
+                  >
+                    <Monitor className="h-3.5 w-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setPreviewDevice("mobile")} 
+                    className={`p-1.5 rounded ${previewDevice === "mobile" ? "bg-white/10 text-white" : "text-muted-foreground"}`}
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="glass-luxe relative overflow-hidden rounded-[2rem] bg-[#091411]/82 p-5 hover:-translate-y-1 hover:shadow-[0_30px_80px_rgba(0,0,0,0.35)]">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Merchant launch workspace</p>
-                    <p className="mt-1 text-xs text-white/65">The pieces customers feel and the ops merchants need to actually sell</p>
+              {/* Theme selectors */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Store Brand Palette</label>
+                  <div className="flex gap-2.5 mt-2">
+                    {Object.keys(colorThemes).map((name) => (
+                      <button
+                        key={name}
+                        onClick={() => setActiveTheme(name as keyof typeof colorThemes)}
+                        className={`h-7 w-7 rounded-full border-2 transition-transform duration-300 ${
+                          activeTheme === name ? "border-white scale-110" : "border-transparent"
+                        } ${
+                          name === "emerald" ? "bg-emerald-500" : name === "coral" ? "bg-rose-500" : name === "indigo" ? "bg-indigo-500" : "bg-amber-500"
+                        }`}
+                      />
+                    ))}
                   </div>
-                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    Publish-ready
-                  </span>
                 </div>
 
-                <div className="mt-4 space-y-3">
-                  {journey.map((item, index) => (
-                    <div key={item} className="glass-luxe rounded-2xl bg-white/[0.07] p-4 hover:-translate-y-0.5">
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium leading-6 text-white">{item}</p>
-                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-300"
-                              style={{ width: `${90 - index * 14}%` }}
-                            />
-                          </div>
-                        </div>
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Store Typography</label>
+                  <div className="flex gap-2 mt-2">
+                    {Object.keys(fontThemes).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setActiveFont(f as keyof typeof fontThemes)}
+                        className={`px-3 py-1 text-xs border rounded-md capitalize transition-colors ${
+                          activeFont === f 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-white/10 bg-white/5 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* The Live Interactive Storefront Preview Card */}
+              <div className={`transition-all duration-300 border ${theme.border} bg-[#040810] rounded-xl overflow-hidden shadow-inner ${
+                previewDevice === "mobile" ? "max-w-[280px] mx-auto" : "w-full"
+              }`}>
+                {/* Header preview */}
+                <div className="border-b border-white/5 px-4 py-2 flex items-center justify-between text-[11px] text-white">
+                  <span className={`font-black ${fontThemes[activeFont]}`}>DHAKA STYLE</span>
+                  <div className="flex gap-2 text-white/60">
+                    <span>Shop</span>
+                    <span>Story</span>
+                  </div>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  {floatingSignals.map((signal) => (
-                    <div key={signal.title} className="glass-luxe rounded-2xl bg-white/[0.06] px-3 py-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{signal.title}</p>
-                      <p className="mt-2 text-sm font-medium leading-5 text-white">{signal.value}</p>
-                    </div>
-                  ))}
+                {/* Promo banner */}
+                <div className={`px-4 py-1.5 text-center text-[10px] text-white font-medium ${theme.primary} transition-colors duration-500`}>
+                  Free shipping on orders above BDT 2,000!
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="glass-luxe rounded-2xl bg-black/30 p-4 hover:bg-black/35">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Customer-facing</p>
-                    <ul className="mt-3 space-y-2 text-sm text-white/85">
-                      <li>Trust-driven homepage sections</li>
-                      <li>bKash, Nagad, and COD messaging</li>
-                      <li>Policy, FAQ, and support cues</li>
-                    </ul>
+                {/* Hero / Product card preview */}
+                <div className="p-4 space-y-3">
+                  <div className="relative aspect-[4/3] rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                    <span className="text-[11px] text-muted-foreground font-mono">Product Image</span>
+                    <span className={`absolute top-2 right-2 rounded-full px-2 py-0.5 text-[9px] font-bold text-white ${theme.primary}`}>
+                      Hot Item
+                    </span>
                   </div>
-                  <div className="glass-luxe rounded-2xl bg-black/30 p-4 hover:bg-black/35">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Merchant-facing</p>
-                    <ul className="mt-3 space-y-2 text-sm text-white/85">
-                      <li>CMS builder and launch templates</li>
-                      <li>Catalog, coupons, and reviews</li>
-                      <li>Readiness checks before go-live</li>
-                    </ul>
+                  <div className="space-y-1">
+                    <h4 className={`text-white text-xs font-semibold ${fontThemes[activeFont]}`}>Premium Denim Jacket</h4>
+                    <p className="text-[11px] text-muted-foreground">BDT 2,450</p>
                   </div>
+                  <button className={`w-full py-1.5 rounded text-white text-[11px] font-bold ${theme.primary} hover:opacity-95 transition-opacity`}>
+                    Buy Now
+                  </button>
                 </div>
               </div>
             </div>
@@ -276,125 +326,474 @@ export function CmsLandingPage() {
         </div>
       </section>
 
-      <section id="why" className="relative py-20">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Why this converts better</p>
-            <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-              A good-looking store is not enough. Buyers need to feel safe, clear, and ready to act.
+      {/* Why it Converts Section */}
+      <section id="why" className="py-24 border-t border-white/5 bg-[#040710]/40 relative">
+        <div className="mx-auto max-w-6xl px-4 space-y-12">
+          <div className="text-center max-w-3xl mx-auto space-y-4">
+            <h2 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Why Commerce Engine converts traffic into revenue
             </h2>
-            <p className="mt-4 text-base leading-8 text-muted-foreground">
-              Conversion improves when the page answers the real buying questions quickly: what is being sold, why it is worth buying, how payment works, how delivery works, and whether support will respond.
+            <p className="text-muted-foreground text-base sm:text-lg">
+              Generic builders give you a blank canvas. We give you a conversions system optimized for building trust and completing checkouts.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            {merchantOutcomes.map((item) => (
-              <article key={item.title} className="glass-luxe group rounded-3xl bg-card/70 p-6 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.08)]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-all duration-500 group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground">
-                  <item.icon className="h-5 w-5" />
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4 hover:border-primary/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+                <PhoneCall className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Trust-First Architecture</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                We make policies, delivery times, store contacts, and reviews extremely visible. When customers feel secure, they place orders.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4 hover:border-primary/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Local Payments Ready</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Supports automated bKash Payment Gateway alongside manual &quot;Send Money&quot; (TrxID) and Cash on Delivery flows out-of-the-box.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4 hover:border-primary/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+                <Boxes className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Clean Multi-Tenant Control</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Add multiple stores, manage layouts, track orders, configure coupons, and view operational analytics under one dashboard.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Deep Dive Section */}
+      <section id="features" className="py-24 border-t border-white/5">
+        <div className="mx-auto max-w-6xl px-4 space-y-12">
+          <div className="max-w-2xl space-y-3">
+            <span className="text-primary font-bold text-xs uppercase tracking-widest">Platform capabilities</span>
+            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+              Equipped with every conversion tool you need
+            </h2>
+          </div>
+
+          {/* Tabs header */}
+          <div className="flex border-b border-white/10 gap-6">
+            <button
+              onClick={() => setActiveTab("checkout")}
+              className={`pb-3 text-sm font-semibold relative transition-colors ${
+                activeTab === "checkout" ? "text-white" : "text-muted-foreground hover:text-white"
+              }`}
+            >
+              Local Checkout Flow
+              {activeTab === "checkout" && <span className={`absolute bottom-0 inset-x-0 h-0.5 ${theme.primary}`} />}
+            </button>
+            <button
+              onClick={() => setActiveTab("builder")}
+              className={`pb-3 text-sm font-semibold relative transition-colors ${
+                activeTab === "builder" ? "text-white" : "text-muted-foreground hover:text-white"
+              }`}
+            >
+              CMS Page Builder
+              {activeTab === "builder" && <span className={`absolute bottom-0 inset-x-0 h-0.5 ${theme.primary}`} />}
+            </button>
+            <button
+              onClick={() => setActiveTab("growth")}
+              className={`pb-3 text-sm font-semibold relative transition-colors ${
+                activeTab === "growth" ? "text-white" : "text-muted-foreground hover:text-white"
+              }`}
+            >
+              Growth Toolkit
+              {activeTab === "growth" && <span className={`absolute bottom-0 inset-x-0 h-0.5 ${theme.primary}`} />}
+            </button>
+          </div>
+
+          {/* Tabs Content */}
+          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] items-center">
+            <div className="space-y-6">
+              {activeTab === "checkout" && (
+                <>
+                  <h3 className="text-2xl font-bold text-white">Optimized Local Payment Processing</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Local customers have distinct payment expectations. Commerce Engine natively integrates with bKash and Nagad checkout options.
+                  </p>
+                  <ul className="space-y-3 text-sm text-white/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Automated tokenized bKash PGW (instant billing)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Manual bKash &quot;Send Money&quot; verification via TrxID input
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Custom delivery fees & Cash on Delivery (COD) settings
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              {activeTab === "builder" && (
+                <>
+                  <h3 className="text-2xl font-bold text-white">E-commerce Oriented Page Builder</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Build persuasive homepage and custom layouts by arranging conversion-optimized blocks. Reorder elements in real-time.
+                  </p>
+                  <ul className="space-y-3 text-sm text-white/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Promo banners, announcements, countdown timer sections
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Trust badges, category showcases, reviews carousel
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Multi-theme custom CSS panel with live previewing
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              {activeTab === "growth" && (
+                <>
+                  <h3 className="text-2xl font-bold text-white">Marketing & Sales Automations</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Promote your products and manage customer interactions. Keep customers coming back with dynamic discount rules.
+                  </p>
+                  <ul className="space-y-3 text-sm text-white/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Target promotional coupons and cart discount thresholds
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Moderate product reviews before publishing to storefront
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" /> Clear customer contact inbox in admin dashboard
+                    </li>
+                  </ul>
+                </>
+              )}
+
+              <Button asChild size="lg" className="rounded-full">
+                <Link href="/signup">Try this Feature</Link>
+              </Button>
+            </div>
+
+            {/* Visual Tab Mockups */}
+            <div className="relative rounded-xl border border-white/5 bg-slate-950/60 p-5 shadow-2xl min-h-[300px] flex items-center justify-center">
+              {activeTab === "checkout" && (
+                <div className="w-full space-y-4 max-w-sm">
+                  <div className="border border-white/10 rounded-lg p-4 bg-[#050914] space-y-3 text-white">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Payment Option</p>
+                    <div className="border border-primary bg-primary/5 rounded-lg p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 w-4 rounded-full border-4 border-primary" />
+                        <span className="text-sm font-semibold">bKash (Send Money)</span>
+                      </div>
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">Popular</span>
+                    </div>
+                    <div className="border border-white/5 rounded-lg p-3 flex items-center gap-3 opacity-60">
+                      <div className="h-4 w-4 rounded-full border" />
+                      <span className="text-sm">Cash on Delivery</span>
+                    </div>
+
+                    <div className="bg-white/5 rounded-md p-3 space-y-2 text-[11px] text-muted-foreground">
+                      <p>1. Send BDT 2,450 to: <strong className="text-white">01700-000000</strong></p>
+                      <p>2. Enter Transaction ID (TrxID) below:</p>
+                      <input 
+                        disabled 
+                        placeholder="e.g. 9J29X4L90B" 
+                        className="w-full bg-[#030712] border border-white/10 rounded px-2 py-1 text-white font-mono text-xs" 
+                      />
+                    </div>
+                  </div>
                 </div>
-                <h3 className="mt-5 text-lg font-semibold text-foreground">{item.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.copy}</p>
-              </article>
+              )}
+
+              {activeTab === "builder" && (
+                <div className="w-full space-y-3 max-w-sm">
+                  <div className="border border-white/10 rounded-lg p-3 bg-[#050914] space-y-2 text-white text-xs">
+                    <div className="flex justify-between items-center text-muted-foreground pb-2 border-b border-white/5">
+                      <span>Homepage Block List</span>
+                      <span className="text-[10px] text-primary">Live layout</span>
+                    </div>
+                    <div className="border border-white/10 bg-white/5 rounded p-2.5 flex items-center justify-between">
+                      <span>1. Announcement Bar</span>
+                      <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded">Visible</span>
+                    </div>
+                    <div className="border border-white/10 bg-white/5 rounded p-2.5 flex items-center justify-between">
+                      <span>2. Product Showcase Hero</span>
+                      <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded">Visible</span>
+                    </div>
+                    <div className="border border-white/10 bg-white/5 rounded p-2.5 flex items-center justify-between opacity-50">
+                      <span>3. Countdown Promo Timer</span>
+                      <span className="text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded">Hidden</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "growth" && (
+                <div className="w-full space-y-4 max-w-sm">
+                  <div className="border border-white/10 rounded-lg p-4 bg-[#050914] text-white space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Store Performance</p>
+                        <p className="text-lg font-bold text-white">BDT 145,200</p>
+                      </div>
+                      <span className="text-[10px] text-green-400 font-semibold bg-green-400/10 px-2 py-0.5 rounded">
+                        +24% vs last week
+                      </span>
+                    </div>
+                    <div className="h-16 flex items-end gap-2.5 pt-2 border-t border-white/5">
+                      <div className="h-6 flex-1 bg-white/10 rounded-t" />
+                      <div className="h-10 flex-1 bg-white/10 rounded-t" />
+                      <div className="h-8 flex-1 bg-white/10 rounded-t" />
+                      <div className="h-14 flex-1 bg-primary rounded-t" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive Launch Readiness Checklist */}
+      <section className="py-24 border-y border-white/5 bg-[#040710]/40 relative">
+        <div className="mx-auto max-w-6xl px-4 grid gap-12 lg:grid-cols-[1fr_1fr] items-center">
+          <div className="space-y-6">
+            <span className="text-primary font-bold text-xs uppercase tracking-widest">Merchant Workspace Simulation</span>
+            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+              Zero friction to publish.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              We&apos;ve mapped out a simple, interactive onboarding sequence. Tick the items below to see your store readiness score increase!
+            </p>
+
+            <div className="space-y-3 max-w-md pt-2">
+              <button 
+                onClick={() => toggleChecklist("theme")} 
+                className="w-full flex items-center justify-between border border-white/5 bg-[#050914] rounded-xl p-3.5 hover:bg-white/[0.02]"
+              >
+                <span className="text-sm font-medium text-white flex items-center gap-3">
+                  <span className={`h-5 w-5 rounded border flex items-center justify-center text-xs ${checklist.theme ? "border-primary bg-primary text-white" : "border-white/20"}`}>
+                    {checklist.theme && <Check className="h-3 w-3" />}
+                  </span>
+                  Choose Layout & Theme
+                </span>
+                <span className="text-xs text-muted-foreground">Step 1</span>
+              </button>
+
+              <button 
+                onClick={() => toggleChecklist("products")} 
+                className="w-full flex items-center justify-between border border-white/5 bg-[#050914] rounded-xl p-3.5 hover:bg-white/[0.02]"
+              >
+                <span className="text-sm font-medium text-white flex items-center gap-3">
+                  <span className={`h-5 w-5 rounded border flex items-center justify-center text-xs ${checklist.products ? "border-primary bg-primary text-white" : "border-white/20"}`}>
+                    {checklist.products && <Check className="h-3 w-3" />}
+                  </span>
+                  Add Products & Pricing
+                </span>
+                <span className="text-xs text-muted-foreground">Step 2</span>
+              </button>
+
+              <button 
+                onClick={() => toggleChecklist("payments")} 
+                className="w-full flex items-center justify-between border border-white/5 bg-[#050914] rounded-xl p-3.5 hover:bg-white/[0.02]"
+              >
+                <span className="text-sm font-medium text-white flex items-center gap-3">
+                  <span className={`h-5 w-5 rounded border flex items-center justify-center text-xs ${checklist.payments ? "border-primary bg-primary text-white" : "border-white/20"}`}>
+                    {checklist.payments && <Check className="h-3 w-3" />}
+                  </span>
+                  Link bKash or COD
+                </span>
+                <span className="text-xs text-muted-foreground">Step 3</span>
+              </button>
+
+              <button 
+                onClick={() => toggleChecklist("domain")} 
+                className="w-full flex items-center justify-between border border-white/5 bg-[#050914] rounded-xl p-3.5 hover:bg-white/[0.02]"
+              >
+                <span className="text-sm font-medium text-white flex items-center gap-3">
+                  <span className={`h-5 w-5 rounded border flex items-center justify-center text-xs ${checklist.domain ? "border-primary bg-primary text-white" : "border-white/20"}`}>
+                    {checklist.domain && <Check className="h-3 w-3" />}
+                  </span>
+                  Connect Custom Domain
+                </span>
+                <span className="text-xs text-muted-foreground">Step 4</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Score preview card */}
+          <div className="relative rounded-2xl border border-white/10 bg-[#090d16] p-6 shadow-2xl flex flex-col justify-between min-h-[320px]">
+            <div>
+              <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                <div>
+                  <h4 className="font-heading font-bold text-white text-base">Store Readiness Score</h4>
+                  <p className="text-xs text-muted-foreground">Calculated launch requirements status</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  getReadinessScore() === 100 ? "bg-green-500/10 text-green-400" : "bg-primary/10 text-primary"
+                }`}>
+                  {getReadinessScore()}%
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-6 h-3 bg-white/5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${theme.primary}`} 
+                  style={{ width: `${getReadinessScore()}%` }}
+                />
+              </div>
+
+              <div className="mt-8 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ready Launch Actions</p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${checklist.theme ? "bg-green-400" : "bg-red-400"}`} />
+                    <span className={checklist.theme ? "text-white" : "text-muted-foreground"}>Theme customization configured</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${checklist.products ? "bg-green-400" : "bg-red-400"}`} />
+                    <span className={checklist.products ? "text-white" : "text-muted-foreground"}>Product database listings added</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${checklist.payments ? "bg-green-400" : "bg-red-400"}`} />
+                    <span className={checklist.payments ? "text-white" : "text-muted-foreground"}>bKash static number linked</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${checklist.domain ? "bg-green-400" : "bg-red-400"}`} />
+                    <span className={checklist.domain ? "text-white" : "text-muted-foreground"}>Custom domain records verified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              disabled={getReadinessScore() < 100}
+              className={`w-full mt-6 rounded-full font-bold ${theme.primary} text-white hover:opacity-90 disabled:opacity-50`}
+            >
+              {getReadinessScore() === 100 ? "Publish Live Storefront" : "Complete checklist to launch"}
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section (Server Component) */}
+      <CmsPricing />
+
+      {/* Dynamic Testimonials */}
+      <section className="py-24 border-t border-white/5 bg-[#03060f]/60 relative">
+        <div className="mx-auto max-w-6xl px-4 space-y-12">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <h2 className="font-heading text-3xl font-extrabold text-white">
+              Loved by serious store owners
+            </h2>
+            <p className="text-muted-foreground">
+              See how local brands are transforming their online customer experience.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {testimonials.map((test, index) => (
+              <div key={index} className="rounded-2xl border border-white/5 bg-[#070b14]/80 p-6 space-y-4">
+                <div className="flex gap-1">
+                  {[...Array(test.rating)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed italic">&quot;{test.quote}&quot;</p>
+                <div className="flex items-center gap-3 pt-2">
+                  <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold ${test.avatarColor}`}>
+                    {test.author[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{test.author}</p>
+                    <p className="text-xs text-muted-foreground">{test.role}</p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-y border-border bg-card/40 py-20">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="grid gap-10 lg:grid-cols-[0.92fr_minmax(0,1.08fr)] lg:items-start">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Customer confidence stack</p>
-              <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-                The best storefronts remove doubt before doubt becomes an abandoned cart.
-              </h2>
-              <p className="mt-4 text-base leading-8 text-muted-foreground">
-                Stronger hierarchy, better copy, visible payment reassurance, and elegant support context turn the experience from "just another store" into something buyers are more willing to trust.
-              </p>
-              <div className="glass-luxe mt-6 rounded-3xl bg-white/5 p-5 hover:bg-white/8">
-                <div className="flex items-center gap-3">
-                  <PhoneCall className="h-5 w-5 text-primary" />
-                  <p className="text-sm font-medium text-foreground">
-                    Stores convert better when support, delivery, and payment are designed into the experience instead of hidden in disconnected pages.
+      {/* Objection Handling FAQs */}
+      <section className="py-24 border-t border-white/5 relative">
+        <div className="mx-auto max-w-4xl px-4 space-y-12">
+          <div className="text-center space-y-3">
+            <h2 className="font-heading text-3xl font-extrabold text-white">Frequently Asked Questions</h2>
+            <p className="text-muted-foreground">Clear answers to your platform and launch questions.</p>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div 
+                key={index} 
+                className="border border-white/5 rounded-xl bg-white/[0.01] overflow-hidden"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="w-full flex items-center justify-between p-5 text-left text-white font-semibold text-sm hover:bg-white/[0.02]"
+                >
+                  <span className="flex items-center gap-3">
+                    <HelpCircle className="h-4 w-4 text-primary shrink-0" />
+                    {faq.q}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${
+                    openFaq === index ? "rotate-180" : ""
+                  }`} />
+                </button>
+                <div className={`transition-all duration-300 overflow-hidden ${
+                  openFaq === index ? "max-h-40 border-t border-white/5" : "max-h-0"
+                }`}>
+                  <p className="p-5 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                    {faq.a}
                   </p>
                 </div>
               </div>
-            </div>
-
-            <div className="grid gap-4">
-              {customerTrustPoints.map((item) => (
-                <article key={item.title} className="glass-luxe group rounded-3xl bg-background/80 p-6 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(0,0,0,0.08)]">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-all duration-500 group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground">
-                      <item.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.copy}</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="platform" className="py-20">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Inside the platform</p>
-              <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-                This is not just a page editor. It is the control layer behind a more convincing online business.
-              </h2>
-            </div>
-            <p className="text-base leading-8 text-muted-foreground">
-              Merchants should be able to shape the offer, the story, the trust cues, and the operational flow without losing control of the brand experience.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {platformBlocks.map((item) => (
-              <article key={item.title} className="glass-luxe group rounded-3xl bg-card/70 p-6 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.08)]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-primary transition-all duration-500 group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground">
-                  <item.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold text-foreground">{item.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.copy}</p>
-              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <CmsPricing />
-
-      <section className="border-t border-border py-16">
+      {/* High-Converting CTA Banner */}
+      <section className="py-20 border-t border-white/5">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="glass-luxe rounded-[2rem] bg-white/5 px-6 py-8 hover:bg-white/7 sm:px-8 sm:py-10">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Ready to relaunch the experience?</p>
-                <h2 className="mt-3 font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-                  Give merchants a storefront foundation that feels premium before they even start customizing it.
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
-                  Start with stronger copy, cleaner hierarchy, more persuasive sections, and a CMS flow that helps merchants publish with confidence.
-                </p>
-              </div>
-              <Button asChild size="lg" className="gap-2 rounded-full px-7 shadow-[0_16px_40px_rgba(16,185,129,0.22)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(16,185,129,0.3)]">
-                <Link href="/signup">
-                  Create your account <ArrowRight className="h-4 w-4" />
-                </Link>
+          <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-[#090d16] px-6 py-12 text-center shadow-2xl space-y-6">
+            <div className={`absolute -inset-4 rounded-3xl ${theme.glow} blur-3xl opacity-30`} />
+            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl relative z-10 max-w-2xl mx-auto">
+              Ready to launch a storefront that actually converts?
+            </h2>
+            <p className="text-muted-foreground max-w-lg mx-auto relative z-10">
+              Create your account in 30 seconds and experience the most convincing retail website builder.
+            </p>
+            <div className="flex justify-center gap-4 pt-2 relative z-10">
+              <Button asChild size="lg" className={`rounded-full px-8 text-white font-semibold ${theme.primary} hover:opacity-90`}>
+                <Link href="/signup">Start Free Trial</Link>
               </Button>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 bg-[#03060d] py-12 text-center text-xs text-muted-foreground relative z-10">
+        <div className="mx-auto max-w-6xl px-4 space-y-6">
+          <p className="font-heading text-sm font-bold text-white">COMMERCE ENGINE</p>
+          <p className="max-w-md mx-auto">
+            An industry-agnostic, white-label storefront and conversion CMS builder enabling merchants to launch beautiful online stores instantly.
+          </p>
+          <p className="pt-4 border-t border-white/5">
+            &copy; {new Date().getFullYear()} Commerce Engine. All rights reserved. Built for modern local commerce.
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }
