@@ -25,7 +25,7 @@ export function useCmsLibraryManagerData(userId?: string | null) {
           .order("name"),
         supabase
           .from("theme_packages")
-          .select("id, slug, name, description, source_type, version, preset_id, owner_store_id")
+          .select("id, slug, name, description, source_type, version, compatibility_version, preset_id, mode, preview_metadata, tokens, component_recipes, custom_css, owner_store_id")
           .order("name"),
         supabase
           .from("page_blueprints")
@@ -83,7 +83,7 @@ export function useCmsLibraryManagerData(userId?: string | null) {
   };
 
   const insertRow = async (
-    table: "store_blueprints" | "page_blueprints" | "block_registry_entries",
+    table: "store_blueprints" | "theme_packages" | "page_blueprints" | "block_registry_entries",
     payload: Record<string, unknown>,
     identity: string,
   ) => {

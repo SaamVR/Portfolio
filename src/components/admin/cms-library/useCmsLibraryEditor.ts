@@ -7,6 +7,7 @@ import {
   buildBlockForm,
   buildBlueprintForm,
   buildPageForm,
+  buildThemeForm,
   type DialogState,
   type FormState,
   readDefaultSiteSettings,
@@ -163,6 +164,8 @@ export function useCmsLibraryEditor() {
     setForm(
       type === "blueprint"
         ? buildBlueprintForm()
+        : type === "theme"
+          ? buildThemeForm()
         : type === "page"
           ? buildPageForm()
           : buildBlockForm(),
@@ -174,6 +177,8 @@ export function useCmsLibraryEditor() {
     setForm(
       state.type === "blueprint"
         ? buildBlueprintForm(state.item)
+        : state.type === "theme"
+          ? buildThemeForm(state.item)
         : state.type === "page"
           ? buildPageForm(state.item)
           : buildBlockForm(state.item),

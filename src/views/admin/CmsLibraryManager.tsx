@@ -24,6 +24,7 @@ import { reservedCmsSlugs } from "@/lib/cms/block-library";
 import { PageBlueprintEditorForm } from "@/components/admin/cms-library/PageBlueprintEditorForm";
 import { BlockRegistryEditorForm } from "@/components/admin/cms-library/BlockRegistryEditorForm";
 import { BlueprintEditorForm } from "@/components/admin/cms-library/BlueprintEditorForm";
+import { ThemeEditorForm } from "@/components/admin/cms-library/ThemeEditorForm";
 import { useCmsLibraryEditor } from "@/components/admin/cms-library/useCmsLibraryEditor";
 import { useCmsLibraryManagerData } from "@/components/admin/cms-library/useCmsLibraryManagerData";
 import { buildSaveDialogRequest, getActiveDialogTitle } from "@/components/admin/cms-library/mutations";
@@ -39,6 +40,8 @@ import {
   onboardingStepOptions,
   prepaymentDiscountTypeOptions,
   productVisibilityOptions,
+  themeModeOptions,
+  themeSourceTypeOptions,
 } from "@/components/admin/cms-library/shared";
 
 export default function CmsLibraryManager() {
@@ -195,6 +198,12 @@ export default function CmsLibraryManager() {
         </TabsContent>
 
         <TabsContent value="themes" className="space-y-4">
+          <div className="flex justify-end">
+            <Button className="gap-2" onClick={() => openCreateDialog("theme")}>
+              <Plus className="h-4 w-4" />
+              New Theme Package
+            </Button>
+          </div>
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : themeCards.map((item) => (
             <Card key={item.id} className="border-border">
               <CardHeader>
@@ -225,6 +234,10 @@ export default function CmsLibraryManager() {
                   </div>
                 </div>
                 <div className="flex items-center justify-end">
+                  <Button variant="outline" size="sm" className="mr-2 gap-2" onClick={() => openEditDialog({ mode: "edit", type: "theme", item })}>
+                    <Edit3 className="h-4 w-4" />
+                    Edit
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -376,6 +389,16 @@ export default function CmsLibraryManager() {
               onMovePagePayloadBlock={movePagePayloadBlock}
               onUpdatePagePayloadBlock={updatePagePayloadBlock}
               onUpdatePagePayloadBlockProps={updatePagePayloadBlockProps}
+            />
+          ) : null}
+
+          {dialogState?.type === "theme" ? (
+            <ThemeEditorForm
+              form={form}
+              isEditing={dialogState.mode === "edit"}
+              themeSourceTypeOptions={themeSourceTypeOptions}
+              themeModeOptions={themeModeOptions}
+              onUpdateField={updateField}
             />
           ) : null}
 

@@ -9,12 +9,20 @@ import {
 
 export type LibraryMutationTable =
   | "store_blueprints"
+  | "theme_packages"
   | "page_blueprints"
   | "block_registry_entries";
 
 export type SaveDialogRequest =
   | {
       table: "store_blueprints";
+      idColumn: "id";
+      idValue: string;
+      payload: Record<string, unknown>;
+      isCreate: boolean;
+    }
+  | {
+      table: "theme_packages";
       idColumn: "id";
       idValue: string;
       payload: Record<string, unknown>;
@@ -41,6 +49,8 @@ export function getActiveDialogTitle(dialogState: DialogState) {
   const itemLabel =
     dialogState.type === "blueprint"
       ? "Blueprint"
+      : dialogState.type === "theme"
+        ? "Theme Package"
       : dialogState.type === "page"
         ? "Page Blueprint"
         : "Block Registry Entry";
@@ -101,6 +111,37 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
         catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
         page_payload: parseJsonField(String(form.page_payload || "{}"), "Page payload"),
         is_active: Boolean(form.is_active),
+      },
+    };
+  }
+
+  if (dialogState.type === "theme") {
+    const id = slugify(String(form.id || form.slug || form.name || ""));
+    const slug = slugify(String(form.slug || form.name || ""));
+    if (!id || !slug || !String(form.name || "").trim()) {
+      throw new Error("Theme package id, slug, and name are required.");
+    }
+
+    return {
+      table: "theme_packages",
+      idColumn: "id",
+      idValue: dialogState.mode === "create" ? id : dialogState.item!.id,
+      isCreate: dialogState.mode === "create",
+      payload: {
+        id,
+        slug,
+        name: String(form.name || "").trim(),
+        description: String(form.description || "").trim(),
+        source_type: String(form.source_type || "admin_shared").trim(),
+        version: Math.max(1, Number(form.version || 1)),
+        compatibility_version: Math.max(1, Number(form.compatibility_version || 1)),
+        preset_id: String(form.preset_id || "").trim(),
+        mode: String(form.mode || "dark").trim(),
+        preview_metadata: parseJsonField(String(form.preview_metadata || "{}"), "Preview metadata"),
+        tokens: parseJsonField(String(form.tokens || "{}"), "Tokens"),
+        component_recipes: parseJsonField(String(form.component_recipes || "{}"), "Component recipes"),
+        custom_css: String(form.custom_css || "").trim() || null,
+        owner_store_id: String(form.owner_store_id || "").trim() || null,
       },
     };
   }

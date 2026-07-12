@@ -29,7 +29,13 @@ export type ThemeRow = {
   description: string;
   source_type: string;
   version: number;
+  compatibility_version: number;
   preset_id: string;
+  mode: string;
+  preview_metadata: unknown;
+  tokens: unknown;
+  component_recipes: unknown;
+  custom_css: string | null;
   owner_store_id: string | null;
 };
 
@@ -62,6 +68,7 @@ export type LibraryData = {
 
 export type DialogState =
   | { mode: "create" | "edit"; type: "blueprint"; item?: BlueprintRow }
+  | { mode: "create" | "edit"; type: "theme"; item?: ThemeRow }
   | { mode: "create" | "edit"; type: "page"; item?: PageRow }
   | { mode: "create" | "edit"; type: "block"; item?: BlockRow }
   | null;
@@ -91,6 +98,8 @@ export const onboardingStepOptions = ["blueprint", "brand", "content", "catalog"
 export const productVisibilityOptions = ["catalog", "single_product", "menu", "inquiry_only"] as const;
 export const checkoutModeOptions = ["standard", "whatsapp", "inquiry"] as const;
 export const prepaymentDiscountTypeOptions = ["none", "free_delivery", "percentage", "fixed"] as const;
+export const themeSourceTypeOptions = ["system", "admin_shared", "merchant_private", "merchant_submitted"] as const;
+export const themeModeOptions = ["light", "dark"] as const;
 export const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
 export const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
 export const knownCapabilities = Array.from(new Set([
@@ -283,6 +292,36 @@ export function buildPageForm(item?: PageRow): FormState {
     catalog_modes: jsonStringify(item?.catalog_modes, fallback.catalogModes),
     page_payload: jsonStringify(item?.page_payload, fallback.page),
     is_active: item?.is_active ?? true,
+  };
+}
+
+export function buildThemeForm(item?: ThemeRow): FormState {
+  const fallbackTheme = fallbackStoreBlueprints[0]?.defaultTheme;
+  return {
+    id: item?.id ?? "",
+    slug: item?.slug ?? "",
+    name: item?.name ?? "",
+    description: item?.description ?? "",
+    source_type: item?.source_type ?? "admin_shared",
+    version: String(item?.version ?? 1),
+    compatibility_version: String(item?.compatibility_version ?? 1),
+    preset_id: item?.preset_id ?? fallbackTheme?.presetId ?? "default",
+    mode: item?.mode ?? fallbackTheme?.mode ?? "dark",
+    preview_metadata: jsonStringify(item?.preview_metadata, { bg: "#0f172a", primary: "#22c55e", accent: "#38bdf8" }),
+    tokens: jsonStringify(item?.tokens, {
+      light: {},
+      dark: {},
+      typography: {
+        headingFont: fallbackTheme?.headingFont ?? "",
+        bodyFont: fallbackTheme?.bodyFont ?? "",
+      },
+      components: {
+        borderRadius: fallbackTheme?.borderRadius ?? "0.75rem",
+      },
+    }),
+    component_recipes: jsonStringify(item?.component_recipes, {}),
+    custom_css: item?.custom_css ?? "",
+    owner_store_id: item?.owner_store_id ?? "",
   };
 }
 
