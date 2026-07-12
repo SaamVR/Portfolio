@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { buildBlueprintDefinitionFromRow, buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
+import { buildBlueprintDefinitionFromRow, buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, findStoreBlueprintById } from "@/lib/cms/store-blueprints";
 
 describe("store blueprint seeds", () => {
   it("include payment settings in every fallback blueprint", () => {
@@ -46,5 +46,32 @@ describe("store blueprint seeds", () => {
     const paymentSettings = entries.find((entry) => entry.key === "payment_settings")?.value as Record<string, unknown> | undefined;
     expect(paymentSettings?.cod_enabled).toBe(false);
     expect(paymentSettings?.bkash_enabled).toBe(true);
+  });
+
+  it("resolves custom blueprint rows from their legacy template or neutral fallback base", () => {
+    const blueprint = buildBlueprintDefinitionFromRow({
+      id: "luxury-hotel",
+      legacy_template_id: "general",
+      name: "Luxury Hotel",
+      short_name: "Hotel",
+      business_family: "service",
+      catalog_mode: "inquiry_only",
+    });
+
+    expect(blueprint.id).toBe("luxury-hotel");
+    expect(blueprint.shortName).toBe("Hotel");
+    expect(blueprint.defaultSiteSettings.payment_settings).toBeDefined();
+    expect(blueprint.hero.subtitle.length).toBeGreaterThan(0);
+  });
+
+  it("finds custom blueprints from a loaded blueprint collection", () => {
+    const customBlueprint = {
+      ...fallbackStoreBlueprints[0],
+      id: "custom-blueprint",
+      name: "Custom Blueprint",
+      shortName: "Custom",
+    };
+
+    expect(findStoreBlueprintById("custom-blueprint", [customBlueprint])).toEqual(customBlueprint);
   });
 });

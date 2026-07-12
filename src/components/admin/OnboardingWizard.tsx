@@ -45,6 +45,7 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import {
   buildBlueprintSiteSettingsEntries,
   fallbackStoreBlueprints,
+  findStoreBlueprintById,
   getStoreBlueprintById,
   getStoreBlueprintGroups,
   loadStoreBlueprints,
@@ -84,7 +85,14 @@ interface DraftState {
 }
 
 function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePaymentDefaults {
-  const blueprint = getStoreBlueprintById(blueprintId);
+  return getBlueprintPaymentDefaultsFromCollection(blueprintId);
+}
+
+function getBlueprintPaymentDefaultsFromCollection(
+  blueprintId: string,
+  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+): LaunchTemplatePaymentDefaults {
+  const blueprint = findStoreBlueprintById(blueprintId, blueprints) ?? getStoreBlueprintById(blueprintId);
   const blueprintPaymentSettings = blueprint.defaultSiteSettings.payment_settings;
   if (typeof blueprintPaymentSettings === "object" && blueprintPaymentSettings) {
     const paymentSettings = blueprintPaymentSettings as Record<string, unknown>;
@@ -131,8 +139,9 @@ function draftFromBlueprint(
   blueprintId: string,
   themePackages: ThemePackageDefinition[],
   previous?: Partial<DraftState>,
+  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): DraftState {
-  const blueprint = getStoreBlueprintById(blueprintId);
+  const blueprint = findStoreBlueprintById(blueprintId, blueprints) ?? getStoreBlueprintById(blueprintId);
   const themePackage = getThemePackageById(previous?.themePackageId ?? blueprint.defaultTheme.presetId, themePackages);
   const storeName = previous?.storeName || getBlueprintDraftStoreName(blueprint);
 
@@ -156,6 +165,7 @@ function draftFromBlueprint(
     heroMediaUrl: previous?.heroMediaUrl || "",
     payment: {
       ...getBlueprintPaymentDefaults(blueprint.id),
+      ...getBlueprintPaymentDefaultsFromCollection(blueprint.id, blueprints),
       bkash_number: previous?.payment?.bkash_number || "",
       nagad_number: previous?.payment?.nagad_number || "",
     },
@@ -233,8 +243,13 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
   }));
 }
 
-function buildPreviewStore(draft: DraftState, activeStoreId: string, themePackages: ThemePackageDefinition[]): Store {
-  const blueprint = getStoreBlueprintById(draft.blueprintId);
+function buildPreviewStore(
+  draft: DraftState,
+  activeStoreId: string,
+  themePackages: ThemePackageDefinition[],
+  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+): Store {
+  const blueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
   const themePackage = getThemePackageById(draft.themePackageId, themePackages);
   const templatePages = applyCatalogModeToPages(
     applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint.id), draft),
@@ -293,8 +308,8 @@ export default function OnboardingWizard() {
   const steps = blueprint.onboarding.steps;
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
-    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages),
-    [draft, activeStoreId, themePackages],
+    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages, blueprints),
+    [draft, activeStoreId, blueprints, themePackages],
   );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
   const storeUrl = getStoreUrl(draft.slug);
@@ -356,32 +371,34 @@ export default function OnboardingWizard() {
         business_family?: DraftState["businessFamily"];
         catalog_mode?: DraftState["catalogMode"];
       } | null;
-      const resolvedBlueprint = getStoreBlueprintById(
+      const resolvedBlueprint = findStoreBlueprintById(
         businessProfile?.blueprint_id
           ?? store?.store_type
           ?? getDefaultBlueprintId(loadedBlueprints),
+        loadedBlueprints,
       );
+      const safeBlueprint = resolvedBlueprint ?? getStoreBlueprintById(getDefaultBlueprintId(loadedBlueprints));
 
-      setDraft(draftFromBlueprint(resolvedBlueprint.id, loadedThemePackages, {
-        storeName: store?.name || getBlueprintDraftStoreName(resolvedBlueprint),
-        slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(resolvedBlueprint)),
+      setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
+        storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
+        slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
         description: store?.description || undefined,
         logoUrl: store?.logo_url || "",
-        businessFamily: businessProfile?.business_family || resolvedBlueprint.businessFamily,
-        catalogMode: businessProfile?.catalog_mode || resolvedBlueprint.catalogMode,
-        themePackageId: theme?.theme_package_id || theme?.preset_id || resolvedBlueprint.defaultTheme.presetId,
+        businessFamily: businessProfile?.business_family || safeBlueprint.businessFamily,
+        catalogMode: businessProfile?.catalog_mode || safeBlueprint.catalogMode,
+        themePackageId: theme?.theme_package_id || theme?.preset_id || safeBlueprint.defaultTheme.presetId,
         themeMode: theme?.mode || undefined,
         headingFont: theme?.typography?.headingFont || undefined,
         bodyFont: theme?.typography?.bodyFont || undefined,
         borderRadius: theme?.components?.borderRadius || undefined,
         payment: {
-          ...getBlueprintPaymentDefaults(resolvedBlueprint.id),
+          ...getBlueprintPaymentDefaultsFromCollection(safeBlueprint.id, loadedBlueprints),
           ...payment,
           bkash_number: payment.bkash_number || "",
           nagad_number: payment.nagad_number || "",
         },
         isPublished: store?.is_published ?? false,
-      }));
+      }, loadedBlueprints));
       setLoading(false);
     };
 
@@ -441,12 +458,12 @@ export default function OnboardingWizard() {
         bodyFont: current.bodyFont,
         borderRadius: current.borderRadius,
         payment: {
-          ...getBlueprintPaymentDefaults(blueprintId),
+          ...getBlueprintPaymentDefaultsFromCollection(blueprintId, blueprints),
           bkash_number: current.payment.bkash_number,
           nagad_number: current.payment.nagad_number,
         },
         isPublished: current.isPublished,
-      }),
+      }, blueprints),
     );
   };
 
@@ -468,9 +485,9 @@ export default function OnboardingWizard() {
     }
 
     setSaving(true);
-    const selectedBlueprint = getStoreBlueprintById(draft.blueprintId);
+    const selectedBlueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
     const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
-    const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId, themePackages).pages;
+    const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId, themePackages, blueprints).pages;
 
     const { error: storeError } = await supabase.from("stores").update(
       {

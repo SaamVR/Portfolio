@@ -300,9 +300,16 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
   },
 ];
 
+export function findStoreBlueprintById(
+  id: string | null | undefined,
+  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+): StoreBlueprintDefinition | undefined {
+  return blueprints.find((item) => item.id === id)
+    ?? blueprints.find((item) => item.legacyTemplateId === id);
+}
+
 export function getStoreBlueprintById(id: string | null | undefined): StoreBlueprintDefinition {
-  return fallbackStoreBlueprints.find((item) => item.id === id)
-    ?? fallbackStoreBlueprints.find((item) => item.legacyTemplateId === id)
+  return findStoreBlueprintById(id, fallbackStoreBlueprints)
     ?? fallbackStoreBlueprints[0];
 }
 
@@ -392,7 +399,10 @@ function mergeBlueprintSiteSettings(
 }
 
 export function buildBlueprintDefinitionFromRow(row: StoreBlueprintRow): StoreBlueprintDefinition {
-  const fallback = getStoreBlueprintById(row.id);
+  const fallback = findStoreBlueprintById(row.id, fallbackStoreBlueprints)
+    ?? findStoreBlueprintById(row.legacy_template_id, fallbackStoreBlueprints)
+    ?? findStoreBlueprintById("general-catalog", fallbackStoreBlueprints)
+    ?? fallbackStoreBlueprints[0];
   const onboardingSchema = row.onboarding_schema as { steps?: BlueprintOnboardingStep[] } | null;
   const defaultTheme = (row.default_theme ?? fallback.defaultTheme) as StoreTheme;
   const heroPayload = row.hero_payload as Partial<StoreBlueprintDefinition["hero"]> | null;

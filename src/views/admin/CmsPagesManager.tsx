@@ -49,7 +49,7 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { buildBlueprintSiteSettingsEntries, getStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, findStoreBlueprintById, getStoreBlueprintById, loadStoreBlueprints, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
 import { getThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
@@ -152,8 +152,10 @@ function mapRecordsToStore(
   pages: PageRecord[],
   blocks: BlockRecord[],
   siteSettings: SiteSettingRecord[],
+  blueprints: StoreBlueprintDefinition[] = [],
 ): Store {
-  const blueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const blueprint = findStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog", blueprints)
+    ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
 
   return storeSchema.parse({
@@ -221,6 +223,7 @@ export default function CmsPagesManager() {
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
+  const [storeBlueprints, setStoreBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
   const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
@@ -239,7 +242,10 @@ export default function CmsPagesManager() {
   const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
-  const activeBlueprint = useMemo(() => getStoreBlueprintById(storeBlueprintId), [storeBlueprintId]);
+  const activeBlueprint = useMemo(
+    () => findStoreBlueprintById(storeBlueprintId, storeBlueprints) ?? getStoreBlueprintById(storeBlueprintId),
+    [storeBlueprintId, storeBlueprints],
+  );
   const availablePageBlueprints = useMemo(
     () =>
       pageBlueprints.filter(
@@ -279,7 +285,7 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const [businessProfileResponse, themeResponse, pagesResponse, blocksResponse, siteSettingsResponse] = await Promise.all([
+    const [businessProfileResponse, themeResponse, pagesResponse, blocksResponse, siteSettingsResponse, loadedBlueprints] = await Promise.all([
       supabase
         .from("store_business_profiles")
         .select("blueprint_id, business_family, catalog_mode")
@@ -289,6 +295,7 @@ export default function CmsPagesManager() {
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
       supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
+      loadStoreBlueprints(supabase),
     ]);
 
     const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
@@ -300,8 +307,10 @@ export default function CmsPagesManager() {
       (pagesResponse.data as PageRecord[] | null) ?? [],
       (blocksResponse.data as BlockRecord[] | null) ?? [],
       (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
+      loadedBlueprints,
     );
 
+    setStoreBlueprints(loadedBlueprints);
     setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
     setStore(parsedStore);
     setPersistedSnapshot(serializeStoreDraft(parsedStore));
@@ -329,12 +338,12 @@ export default function CmsPagesManager() {
     if (role !== "admin") return;
 
     const loadSharedLibraries = async () => {
-      const [blueprints, registry, loadedThemePackages] = await Promise.all([
+      const [loadedPageBlueprints, registry, loadedThemePackages] = await Promise.all([
         loadPageBlueprints(supabase),
         loadBlockRegistry(supabase),
         loadThemePackages(supabase, activeStoreId),
       ]);
-      setPageBlueprints(blueprints);
+      setPageBlueprints(loadedPageBlueprints);
       setBlockRegistry(registry);
       setThemePackages(loadedThemePackages);
     };
