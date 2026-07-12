@@ -72,7 +72,7 @@ export function AnnouncementTab({
           <div className="space-y-2">
             <Label>Messages (rotate one-by-one)</Label>
             {((settings.announcement_bar?.messages as string[]) ?? []).length === 0 && (
-              <p className="text-xs text-muted-foreground">No messages added. Using built-in defaults.</p>
+              <p className="text-xs text-muted-foreground">No custom messages added yet. The storefront will use the current announcement configuration until you add one.</p>
             )}
             {((settings.announcement_bar?.messages as string[]) ?? []).map((msg, i) => (
               <div key={i} className="flex gap-2">

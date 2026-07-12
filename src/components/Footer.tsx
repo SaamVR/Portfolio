@@ -40,9 +40,9 @@ interface FooterSettings {
 }
 
 const defaultCompanyLinks: FooterLink[] = [
-  { label: "About Us", url: "/about" },
+  { label: "About", url: "/about" },
   { label: "Contact", url: "/contact" },
-  { label: "FAQ & Returns", url: "/faq" },
+  { label: "FAQ", url: "/faq" },
   { label: "Track Order", url: "/track-order" },
 ];
 
@@ -83,9 +83,9 @@ const Footer = () => {
 
   const brandName = footer?.brand_name || currentStore?.name || "Store";
   const brandHighlight = footer?.brand_highlight || "";
-  const aboutText = footer?.about_text || "Use this space to explain what the store offers, why customers trust it, and what makes it distinctive.";
-  const newsletterHeading = footer?.newsletter_heading || "Newsletter";
-  const newsletterDesc = footer?.newsletter_description || "Get product drops, offers, and store updates.";
+  const aboutText = footer?.about_text || "Use this space to explain what the store offers, who it serves, and what makes the experience worth choosing.";
+  const newsletterHeading = footer?.newsletter_heading || "Stay Updated";
+  const newsletterDesc = footer?.newsletter_description || "Share updates, launches, offers, or announcements with interested customers.";
   const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
   const companyLinks = footer?.company_links?.length ? footer.company_links : defaultCompanyLinks;
   const extraLinks = footer?.extra_links ?? [];
@@ -106,8 +106,8 @@ const Footer = () => {
           href: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
         }))
       : [
-          { label: "Browse All Items", href: storefrontPath("/shop", currentStore?.slug) },
-          { label: "Featured", href: storefrontPath("/shop?category=featured", currentStore?.slug) },
+          { label: "Browse Catalog", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Latest Additions", href: storefrontPath("/shop", currentStore?.slug) },
           { label: "Popular Picks", href: storefrontPath("/shop", currentStore?.slug) },
         ];
 

@@ -866,7 +866,7 @@ const SiteSettings = () => {
                 <h3 className="text-sm font-semibold text-foreground">Checkout Persuasion</h3>
                 <div className="grid gap-2">
                   <Label>Prepaid Badge Text</Label>
-                  <Input value={settings.payment_settings?.prepaid_badge_text ?? "Prepaid perks"} onChange={(e) => update("payment_settings", "prepaid_badge_text", e.target.value)} placeholder="e.g. Prepaid perks" />
+                  <Input value={settings.payment_settings?.prepaid_badge_text ?? ""} onChange={(e) => update("payment_settings", "prepaid_badge_text", e.target.value)} placeholder="Optional badge text for prepaid checkout" />
                   <p className="text-xs text-muted-foreground">This text is shown as a green badge next to online payment methods to persuade users to pay upfront rather than Cash on Delivery.</p>
                 </div>
                 <div className="grid gap-2 mt-2">
