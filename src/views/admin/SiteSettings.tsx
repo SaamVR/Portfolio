@@ -1054,20 +1054,20 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Popup Title</Label>
-                  <Input value={settings.exit_intent?.title ?? "Wait! Don't leave empty handed."} onChange={(e) => update("exit_intent", "title", e.target.value)} />
+                    <Input value={settings.exit_intent?.title ?? ""} onChange={(e) => update("exit_intent", "title", e.target.value)} placeholder="Optional popup headline" />
                 </div>
                 <div className="grid gap-2">
                   <Label>Offer Text (Subtitle)</Label>
-                  <Input value={settings.exit_intent?.offer_text ?? "Unlock 10% off your first order."} onChange={(e) => update("exit_intent", "offer_text", e.target.value)} />
+                    <Input value={settings.exit_intent?.offer_text ?? ""} onChange={(e) => update("exit_intent", "offer_text", e.target.value)} placeholder="Optional supporting offer text" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Discount Amount / Text</Label>
-                    <Input value={settings.exit_intent?.discount_amount ?? "10% OFF"} onChange={(e) => update("exit_intent", "discount_amount", e.target.value)} placeholder="e.g. 10% OFF or ৳200" />
+                      <Input value={settings.exit_intent?.discount_amount ?? ""} onChange={(e) => update("exit_intent", "discount_amount", e.target.value)} placeholder="e.g. 10% OFF or ৳200" />
                   </div>
                   <div className="grid gap-2">
                     <Label>Discount Code</Label>
-                    <Input value={settings.exit_intent?.discount_code ?? "WELCOME10"} onChange={(e) => update("exit_intent", "discount_code", e.target.value)} />
+                      <Input value={settings.exit_intent?.discount_code ?? ""} onChange={(e) => update("exit_intent", "discount_code", e.target.value)} placeholder="Optional promo code" />
                   </div>
                 </div>
                 

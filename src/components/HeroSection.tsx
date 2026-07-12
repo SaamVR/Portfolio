@@ -1,5 +1,4 @@
 import Link from "next/link";
-import heroBanner from "@/assets/hero-banner.jpg";
 import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
@@ -114,14 +113,14 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
             className="h-full w-full object-cover"
             style={{ transform: `translateY(${scrollY}px) scale(1.1)` }}
           />
-        ) : (
+        ) : mediaUrl ? (
           <img
-            src={mediaUrl || heroBanner.src}
+            src={mediaUrl}
             alt="Storefront hero media"
             className="h-full w-full object-cover transition-transform duration-100"
             style={{ transform: `translateY(${scrollY}px) scale(1.1)` }}
           />
-        )}
+        ) : null}
         <div
           className="absolute inset-0"
           style={{

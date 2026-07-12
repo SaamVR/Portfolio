@@ -45,9 +45,11 @@ export default function ExitIntentPopup() {
   }, [exitIntent.enabled, sessionStorageKey]);
 
   if (!isVisible || exitIntent.enabled === false) return null;
+  const discountCode = typeof exitIntent.discount_code === "string" ? exitIntent.discount_code.trim() : "";
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(exitIntent.discount_code || "WELCOME10");
+    if (!discountCode) return;
+    navigator.clipboard.writeText(discountCode);
     setCopied(true);
     toast.success("Discount code copied!");
     setTimeout(() => setCopied(false), 3000);
@@ -93,28 +95,30 @@ export default function ExitIntentPopup() {
             </div>
             
             <h2 className="mb-2 font-heading text-3xl md:text-4xl font-bold leading-tight">
-              {exitIntent.title || "Wait! Don't leave empty handed."}
+              {exitIntent.title || "Before You Go"}
             </h2>
             
             <p className="mb-8 text-white/80">
-              {exitIntent.offer_text || "Unlock 10% off your first order."}
+              {exitIntent.offer_text || "Share an offer, reminder, or reason to stay connected before visitors leave."}
             </p>
 
             <div className={cn("flex flex-col gap-4", !exitIntent.image_url && "w-full max-w-sm")}>
               <div className="flex items-center justify-between rounded-lg border border-dashed border-white/30 bg-white/5 p-4 backdrop-blur-sm">
                 <div>
-                  <p className="text-xs text-white/60 uppercase tracking-wider mb-1">Use Code at Checkout</p>
+                  <p className="text-xs text-white/60 uppercase tracking-wider mb-1">{discountCode ? "Use Code at Checkout" : "Offer"}</p>
                   <p className="font-mono text-2xl font-bold text-white tracking-widest">
-                    {exitIntent.discount_code || "WELCOME10"}
+                    {discountCode || (exitIntent.discount_amount || "Special offer")}
                   </p>
                 </div>
-                <button
-                  onClick={handleCopy}
-                  className="flex h-12 w-12 items-center justify-center rounded-md bg-white text-black hover:bg-white/90 transition-colors"
-                  aria-label="Copy code"
-                >
-                  {copied ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
-                </button>
+                {discountCode ? (
+                  <button
+                    onClick={handleCopy}
+                    className="flex h-12 w-12 items-center justify-center rounded-md bg-white text-black hover:bg-white/90 transition-colors"
+                    aria-label="Copy code"
+                  >
+                    {copied ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                  </button>
+                ) : null}
               </div>
 
               <button
