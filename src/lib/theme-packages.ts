@@ -9,6 +9,9 @@ export type ThemePackageSourceType =
   | "merchant_private"
   | "merchant_submitted";
 
+export const THEME_PACKAGE_SCHEMA_VERSION = 1;
+export const THEME_PACKAGE_COMPATIBILITY_VERSION = 1;
+
 export const themePackageSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -43,8 +46,25 @@ export const themePackageSchema = z.object({
 export type ThemePackageDefinition = z.infer<typeof themePackageSchema>;
 
 export const themePackageExportSchema = themePackageSchema.extend({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(THEME_PACKAGE_SCHEMA_VERSION),
 });
+
+const unsafeCustomCssPatterns = [
+  /@import/i,
+  /expression\s*\(/i,
+  /javascript:/i,
+  /url\s*\(/i,
+  /<\/style/i,
+  /<script/i,
+];
+
+function assertSafeThemePackageCustomCss(customCss?: string) {
+  if (!customCss) return;
+
+  if (unsafeCustomCssPatterns.some((pattern) => pattern.test(customCss))) {
+    throw new Error("Theme package custom CSS contains unsupported or unsafe rules.");
+  }
+}
 
 export function buildFallbackThemePackages(): ThemePackageDefinition[] {
   return themePresets.map((preset) =>
@@ -176,13 +196,27 @@ export function getThemePackageById(
 }
 
 export function buildThemePackageExport(themePackage: ThemePackageDefinition) {
+  assertSafeThemePackageCustomCss(themePackage.customCss);
+
   return themePackageExportSchema.parse({
     ...themePackage,
-    schemaVersion: 1,
+    schemaVersion: THEME_PACKAGE_SCHEMA_VERSION,
   });
 }
 
 export function parseThemePackageImport(raw: string) {
   const parsed = JSON.parse(raw) as unknown;
-  return themePackageExportSchema.parse(parsed);
+  const imported = themePackageExportSchema.parse(parsed);
+
+  if (imported.compatibilityVersion > THEME_PACKAGE_COMPATIBILITY_VERSION) {
+    throw new Error(`Theme package compatibility version ${imported.compatibilityVersion} is not supported yet.`);
+  }
+
+  assertSafeThemePackageCustomCss(imported.customCss);
+
+  return themePackageSchema.parse({
+    ...imported,
+    sourceType: "merchant_private",
+    ownerStoreId: null,
+  });
 }
