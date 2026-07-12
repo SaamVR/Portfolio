@@ -153,10 +153,15 @@ function mapRecordsToStore(
   blocks: BlockRecord[],
   siteSettings: SiteSettingRecord[],
   blueprints: StoreBlueprintDefinition[] = [],
+  themePackages: ThemePackageDefinition[] = fallbackThemePackages,
+  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): Store {
   const blueprint = findStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog", blueprints)
     ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
-  const fallbackTheme = getThemePackageById(theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
+  const fallbackTheme = getThemePackageById(
+    theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
+    themePackages,
+  );
 
   return storeSchema.parse({
     id: store.id,
@@ -201,7 +206,7 @@ function mapRecordsToStore(
               .filter((page): page is StorePage => Boolean(page)),
             siteSettings,
           )
-        : instantiateStorePagesFromBlueprint(blueprint.id),
+        : instantiateStorePagesFromBlueprint(blueprint, pageBlueprints),
   });
 }
 
@@ -285,7 +290,16 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const [businessProfileResponse, themeResponse, pagesResponse, blocksResponse, siteSettingsResponse, loadedBlueprints] = await Promise.all([
+    const [
+      businessProfileResponse,
+      themeResponse,
+      pagesResponse,
+      blocksResponse,
+      siteSettingsResponse,
+      loadedBlueprints,
+      loadedPageBlueprints,
+      loadedThemePackages,
+    ] = await Promise.all([
       supabase
         .from("store_business_profiles")
         .select("blueprint_id, business_family, catalog_mode")
@@ -296,6 +310,8 @@ export default function CmsPagesManager() {
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
       supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
       loadStoreBlueprints(supabase),
+      loadPageBlueprints(supabase),
+      loadThemePackages(supabase, storeRecord.id),
     ]);
 
     const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
@@ -308,9 +324,13 @@ export default function CmsPagesManager() {
       (blocksResponse.data as BlockRecord[] | null) ?? [],
       (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
       loadedBlueprints,
+      loadedThemePackages,
+      loadedPageBlueprints,
     );
 
     setStoreBlueprints(loadedBlueprints);
+    setPageBlueprints(loadedPageBlueprints);
+    setThemePackages(loadedThemePackages);
     setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
     setStore(parsedStore);
     setPersistedSnapshot(serializeStoreDraft(parsedStore));
