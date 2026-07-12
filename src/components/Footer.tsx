@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Send, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { productTypes } from "@/data/products";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useProductCategories } from "@/hooks/useProductCategories";
+import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
@@ -69,6 +70,8 @@ const Footer = () => {
   });
   const [error, setError] = useState("");
   const { data: footer } = useSiteSettings<FooterSettings>("footer");
+  const { data: dynamicProductTypes = [] } = useProductTypes();
+  const { data: dynamicProductCategories = [] } = useProductCategories();
 
   useEffect(() => {
     try {
@@ -78,9 +81,9 @@ const Footer = () => {
     }
   }, [subscribedStorageKey]);
 
-  const brandName = footer?.brand_name || "THREAD";
-  const brandHighlight = footer?.brand_highlight || "BD";
-  const aboutText = footer?.about_text || "Premium menswear crafted in Bangladesh. Quality fabrics, bold designs.";
+  const brandName = footer?.brand_name || currentStore?.name || "Store";
+  const brandHighlight = footer?.brand_highlight || "";
+  const aboutText = footer?.about_text || "Use this space to explain what the store offers, why customers trust it, and what makes it distinctive.";
   const newsletterHeading = footer?.newsletter_heading || "Newsletter";
   const newsletterDesc = footer?.newsletter_description || "Get product drops, offers, and store updates.";
   const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
@@ -92,6 +95,21 @@ const Footer = () => {
   const copyrightText = footer?.copyright || "Copyright 2026. All rights reserved.";
   const showShopLinks = footer?.show_shop_links ?? true;
   const showNewsletter = footer?.show_newsletter ?? true;
+  const shopLinks = dynamicProductCategories.length > 0
+    ? dynamicProductCategories.slice(0, 6).map((category: any) => ({
+        label: category.name,
+        href: storefrontPath(`/shop?category=${encodeURIComponent(category.name)}`, currentStore?.slug),
+      }))
+    : dynamicProductTypes.length > 0
+      ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
+          label: type.name,
+          href: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
+        }))
+      : [
+          { label: "Browse All Products", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Featured Collections", href: storefrontPath("/shop?category=featured", currentStore?.slug) },
+          { label: "Latest Arrivals", href: storefrontPath("/shop", currentStore?.slug) },
+        ];
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +131,7 @@ const Footer = () => {
         return (
           <div key="brand">
             <h3 className="font-heading text-lg font-bold text-foreground">
-              {brandName}<span className="text-primary">{brandHighlight}</span>
+              {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
             </h3>
             <p className="mt-3 text-sm text-muted-foreground">{aboutText}</p>
           </div>
@@ -124,13 +142,13 @@ const Footer = () => {
           <div key="shop">
             <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
             <div className="flex flex-col gap-2">
-              {productTypes.map((t) => (
+              {shopLinks.map((link) => (
                 <Link
-                  key={t.value}
-                  href={storefrontPath(t.value === "All" ? "/shop" : `/shop?type=${encodeURIComponent(t.value)}`, currentStore?.slug)}
+                  key={link.label}
+                  href={link.href}
                   className="text-sm text-muted-foreground hover:text-foreground smooth-hover"
                 >
-                  {t.label}
+                  {link.label}
                 </Link>
               ))}
             </div>

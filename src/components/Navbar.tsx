@@ -32,8 +32,14 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     setMounted(true);
   }, []);
 
-  const brandName = brand?.name || "THREAD";
-  const brandHighlight = brand?.highlight || "BD";
+  const fallbackBrandName = currentStore?.name?.trim() || "Store";
+  const brandName = brand?.name || fallbackBrandName;
+  const brandHighlight = brand?.highlight || "";
+  const fallbackCategoryLinks = [
+    { label: "New Arrivals", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Featured Collections", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
+    { label: "Browse All Products", to: storefrontPath("/shop", currentStore?.slug) },
+  ];
 
   const isDark = mounted ? theme === "dark" : false;
   const displayWishlistCount = mounted ? wishlistCount : 0;
@@ -59,7 +65,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
           <div className="flex items-center gap-4">
             <MobileMenu />
             <Link to={storefrontPath("/", currentStore?.slug)} className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
-              {brandName}<span className="text-primary">{brandHighlight}</span>
+              {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
             </Link>
           </div>
 
@@ -120,9 +126,9 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                             </Link>
                           )) : (
                             <>
-                              <Link to={storefrontPath("/shop?type=T-Shirts", currentStore?.slug)} className="hover:text-primary transition-colors">Premium Basics</Link>
-                              <Link to={storefrontPath("/shop?type=Drop%20Shoulders", currentStore?.slug)} className="hover:text-primary transition-colors">Streetwear Collection</Link>
-                              <Link to={storefrontPath("/shop", currentStore?.slug)} className="hover:text-primary transition-colors">New Arrivals</Link>
+                              {fallbackCategoryLinks.map((link) => (
+                                <Link key={link.label} to={link.to} className="hover:text-primary transition-colors">{link.label}</Link>
+                              ))}
                             </>
                           )}
                         </div>
@@ -130,8 +136,8 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                       <div className="relative overflow-hidden rounded-lg bg-secondary">
                         <img src={brand?.mega_menu_image || "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=600"} alt="New Collection" className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
-                          <h4 className="text-lg font-bold text-white">{brand?.mega_menu_title || "Summer Drop"}</h4>
-                          <p className="text-sm text-gray-300">{brand?.mega_menu_subtitle || "Explore the latest styles."}</p>
+                          <h4 className="text-lg font-bold text-white">{brand?.mega_menu_title || "Featured Collection"}</h4>
+                          <p className="text-sm text-gray-300">{brand?.mega_menu_subtitle || "Explore what this store wants customers to see first."}</p>
                         </div>
                       </div>
                     </div>

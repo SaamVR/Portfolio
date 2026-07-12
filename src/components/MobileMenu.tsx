@@ -4,7 +4,8 @@ import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
 import SearchBar from "@/components/SearchBar";
-import { productTypes } from "@/data/products";
+import { useProductCategories } from "@/hooks/useProductCategories";
+import { useProductTypes } from "@/hooks/useProductTypes";
 import { useState } from "react";
 import {
   Sheet,
@@ -29,6 +30,24 @@ const MobileMenu = () => {
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
   const currentStore = useOptionalStore();
+  const { data: dynamicProductTypes = [] } = useProductTypes();
+  const { data: dynamicProductCategories = [] } = useProductCategories();
+  const fallbackShopLinks = [
+    { label: "Browse All Products", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Featured Collections", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
+    { label: "Latest Arrivals", to: storefrontPath("/shop", currentStore?.slug) },
+  ];
+  const shopLinks = dynamicProductCategories.length > 0
+    ? dynamicProductCategories.slice(0, 6).map((category: any) => ({
+        label: category.name,
+        to: storefrontPath(`/shop?category=${encodeURIComponent(category.name)}`, currentStore?.slug),
+      }))
+    : dynamicProductTypes.length > 0
+      ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
+          label: type.name,
+          to: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
+        }))
+      : fallbackShopLinks;
   const navLinks = [
     { label: "Home", to: storefrontPath("/", currentStore?.slug) },
     { label: "About", to: storefrontPath("/about", currentStore?.slug) },
@@ -51,7 +70,7 @@ const MobileMenu = () => {
       <SheetContent side="left" className="w-[85vw] max-w-[340px] glass-panel border-r border-white/10 p-6 flex flex-col h-full bg-background/80">
         <SheetHeader className="mb-4 text-left">
           <SheetTitle className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm">
-            THREAD<span className="text-primary">BD</span>
+            {currentStore?.name || "Store"}
           </SheetTitle>
         </SheetHeader>
 
@@ -78,13 +97,13 @@ const MobileMenu = () => {
               <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${shopOpen ? "rotate-180 text-primary" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
-              {productTypes.map((t) => (
+              {shopLinks.map((link) => (
                 <Link
-                  key={t.value}
-                  to={storefrontPath(t.value === "All" ? "/shop" : `/shop?type=${encodeURIComponent(t.value)}`, currentStore?.slug)}
+                  key={link.label}
+                  to={link.to}
                   className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {t.label}
+                  {link.label}
                 </Link>
               ))}
             </CollapsibleContent>
