@@ -31,9 +31,9 @@ const MobileMenu = () => {
   const currentStore = useOptionalStore();
   const navLinks = [
     { label: "Home", to: storefrontPath("/", currentStore?.slug) },
-    { label: "About", to: "/about" },
+    { label: "About", to: storefrontPath("/about", currentStore?.slug) },
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
-    { label: "FAQ", to: "/faq" },
+    { label: "FAQ", to: storefrontPath("/faq", currentStore?.slug) },
   ];
 
   return (

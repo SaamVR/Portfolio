@@ -15,7 +15,7 @@ export function StoreProvider({
   return (
     <StoreContext.Provider value={store}>
       <CartProvider storeId={store.id}>
-        <WishlistProvider>
+        <WishlistProvider storeId={store.id}>
           {children}
         </WishlistProvider>
       </CartProvider>

@@ -41,7 +41,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const navLinks = [
     { label: "Home", to: storefrontPath("/", currentStore?.slug) },
     { label: "Shop", to: storefrontPath("/shop", currentStore?.slug), hasDropdown: true },
-    { label: "About", to: "/about" },
+    { label: "About", to: storefrontPath("/about", currentStore?.slug) },
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
   ];
 

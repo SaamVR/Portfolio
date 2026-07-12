@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 interface AnnouncementSettings {
   enabled: boolean;
@@ -15,6 +17,8 @@ const DEFAULT_MESSAGES = [
 ];
 
 const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {
+  const currentStore = useOptionalStore();
+  const dismissedStorageKey = getScopedStorefrontStorageKey("announcement-dismissed", currentStore?.id);
   const { data: settings } = useSiteSettings<AnnouncementSettings>("announcement_bar");
 
   const enabled = settings?.enabled ?? true;
@@ -24,7 +28,7 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
   const bgColor = settings?.bg_color ?? "";
 
   const [dismissed, setDismissed] = useState(() => 
-    typeof window !== "undefined" ? sessionStorage.getItem("announcement-dismissed") === "true" : false
+    typeof window !== "undefined" ? sessionStorage.getItem(dismissedStorageKey) === "true" : false
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
@@ -34,6 +38,10 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
   useEffect(() => {
     onVisibilityChange?.(visible);
   }, [visible, onVisibilityChange]);
+
+  useEffect(() => {
+    setDismissed(sessionStorage.getItem(dismissedStorageKey) === "true");
+  }, [dismissedStorageKey]);
 
   useEffect(() => {
     if (!visible || messages.length <= 1) return;
@@ -55,7 +63,7 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
   if (!visible) return null;
 
   const handleDismiss = () => {
-    sessionStorage.setItem("announcement-dismissed", "true");
+    sessionStorage.setItem(dismissedStorageKey, "true");
     setDismissed(true);
   };
 

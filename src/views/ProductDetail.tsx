@@ -126,6 +126,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         price: product.price,
         image: product.image,
         size: selectedSize,
+        storeId,
       });
     }
     toast.success(quantity > 1 ? `${quantity}x  ${product.name} added to cart!` : "Added to cart!");

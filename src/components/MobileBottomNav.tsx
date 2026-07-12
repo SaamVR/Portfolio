@@ -41,7 +41,7 @@ const MobileBottomNav = () => {
       <div className="flex items-center justify-around px-2 py-1 safe-area-inset-bottom">
         {links.map(({ to, icon: Icon, label, exact, badge }) => {
           const active = isActive(to, exact);
-          const isCart = to === "/cart";
+          const isCart = label === "Cart";
           const innerContent = (
             <>
               <div className="relative">

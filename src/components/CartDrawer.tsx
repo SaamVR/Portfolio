@@ -42,6 +42,7 @@ const CartDrawer = () => {
   const { data: siteSettings } = useQuery({
     queryKey: ["site_settings", cartStoreId],
     queryFn: async () => {
+      if (!cartStoreId) return {};
       const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", cartStoreId);
       const map: Record<string, any> = {};
       data?.forEach((row) => {
@@ -50,6 +51,7 @@ const CartDrawer = () => {
       return map;
     },
     staleTime: 1000 * 60 * 5,
+    enabled: isCartOpen && !!cartStoreId,
   });
 
   const paymentSettings = siteSettings?.payment_settings as any;

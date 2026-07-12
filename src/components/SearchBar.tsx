@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 interface SearchBarProps {
   className?: string;
@@ -15,27 +16,26 @@ interface SearchBarProps {
   expanded?: boolean;
 }
 
-const HISTORY_KEY = "threadbd-search-history";
 const MAX_HISTORY = 5;
 
-function getSearchHistory(): string[] {
+function getSearchHistory(storageKey: string): string[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(storageKey);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function saveSearchHistory(query: string) {
-  const history = getSearchHistory().filter((h) => h !== query);
+function saveSearchHistory(storageKey: string, query: string) {
+  const history = getSearchHistory(storageKey).filter((h) => h !== query);
   history.unshift(query);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  localStorage.setItem(storageKey, JSON.stringify(history.slice(0, MAX_HISTORY)));
 }
 
-function removeHistoryItem(query: string) {
-  const history = getSearchHistory().filter((h) => h !== query);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+function removeHistoryItem(storageKey: string, query: string) {
+  const history = getSearchHistory(storageKey).filter((h) => h !== query);
+  localStorage.setItem(storageKey, JSON.stringify(history));
 }
 
 const categoryChips = productTypes.filter((t) => t.value !== "All");
@@ -44,15 +44,20 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [history, setHistory] = useState<string[]>(getSearchHistory);
+  const currentStore = useOptionalStore();
+  const storeId = currentStore?.id;
+  const historyKey = getScopedStorefrontStorageKey("threadbd-search-history", storeId);
+  const [history, setHistory] = useState<string[]>(() => getSearchHistory(historyKey));
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const currentStore = useOptionalStore();
-  const storeId = currentStore?.id;
 
   const { data: products = [] } = useProducts(storeId);
+
+  useEffect(() => {
+    setHistory(getSearchHistory(historyKey));
+  }, [historyKey]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 200);
@@ -101,21 +106,21 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     (e: React.FormEvent) => {
       e.preventDefault();
       if (query.trim()) {
-        saveSearchHistory(query.trim());
-        setHistory(getSearchHistory());
+        saveSearchHistory(historyKey, query.trim());
+        setHistory(getSearchHistory(historyKey));
         navigate(storefrontPath(`/shop?q=${encodeURIComponent(query.trim())}`, currentStore?.slug));
         setQuery("");
         setOpen(false);
         onClose?.();
       }
     },
-    [query, navigate, onClose]
+    [currentStore?.slug, historyKey, navigate, onClose, query]
   );
 
   const handleSelect = (product: { id: string; name: string }) => {
     if (query.trim()) {
-      saveSearchHistory(query.trim());
-      setHistory(getSearchHistory());
+      saveSearchHistory(historyKey, query.trim());
+      setHistory(getSearchHistory(historyKey));
     }
     navigate(productUrl(product.id, product.name, currentStore?.slug));
     setQuery("");
@@ -140,8 +145,8 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const handleRemoveHistory = (e: React.MouseEvent, term: string) => {
     e.stopPropagation();
     e.preventDefault();
-    removeHistoryItem(term);
-    setHistory(getSearchHistory());
+    removeHistoryItem(historyKey, term);
+    setHistory(getSearchHistory(historyKey));
   };
 
   const handleClear = () => {
@@ -194,7 +199,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
             setOpen(true);
           }}
           onFocus={() => {
-            setHistory(getSearchHistory());
+            setHistory(getSearchHistory(historyKey));
             setOpen(true);
           }}
           onKeyDown={handleKeyDown}

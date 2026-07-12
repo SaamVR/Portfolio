@@ -12,11 +12,11 @@ function readWishlist(storageKey: string) {
   }
 }
 
-export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const WishlistProvider: React.FC<{ children: React.ReactNode; storeId?: string | null }> = ({ children, storeId }) => {
   const pathname = usePathname();
   const storageKey = useMemo(
-    () => getScopedStorefrontStorageKey("threadbd-wishlist", null),
-    [pathname],
+    () => getScopedStorefrontStorageKey("threadbd-wishlist", storeId),
+    [pathname, storeId],
   );
   const [items, setItems] = useState<string[]>(() => (typeof window === "undefined" ? [] : readWishlist(storageKey)));
 
