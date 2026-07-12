@@ -702,7 +702,7 @@ const SiteSettings = () => {
             <CardContent className="space-y-5">
               <div className="grid gap-2">
                 <Label>Tagline (small text above title)</Label>
-                <Input value={settings.hero_section?.tagline ?? ""} placeholder="Built for your business" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
+                  <Input value={settings.hero_section?.tagline ?? ""} placeholder="Short supporting text above the main title" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -1224,7 +1224,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Description</Label>
-                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Join our list for new drops, offers, and updates." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
+                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Optional note for updates, launches, or announcements." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Subscribed Message</Label>
@@ -1348,7 +1348,7 @@ const SiteSettings = () => {
                 <h3 className="text-sm font-semibold text-foreground">Bottom Bar</h3>
                 <div className="grid gap-2">
                   <Label>Payment Methods Text</Label>
-                  <Input value={settings.footer?.payment_text ?? ""} placeholder="We accept bKash, Nagad, and Cash on Delivery across Bangladesh." onChange={(e) => update("footer", "payment_text", e.target.value)} />
+                  <Input value={settings.footer?.payment_text ?? ""} placeholder="Optional note about accepted payment methods or checkout policies." onChange={(e) => update("footer", "payment_text", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Copyright Text</Label>

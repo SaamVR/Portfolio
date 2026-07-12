@@ -134,13 +134,13 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const orbCls = getOrbColors(bg);
   const borderGrad = getBorderGradient(bg);
 
-  const badgeText = overrides?.badgeText ?? settings?.badge_text ?? "FEATURED OFFER";
-  const title = overrides?.title ?? settings?.title ?? "Launch a timely offer";
+  const badgeText = overrides?.badgeText ?? settings?.badge_text ?? "";
+  const title = overrides?.title ?? settings?.title ?? "Highlight What Matters";
   const subtitle =
     overrides?.subtitle ??
     settings?.subtitle ??
-    "Highlight a campaign, bundle, seasonal push, or limited-time incentive without inheriting category-specific placeholder copy.";
-  const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore the Offer";
+    "Feature a promotion, announcement, launch, or conversion push without relying on category-specific placeholder copy.";
+  const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? settings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
 
   const align = overrides?.textAlignment ?? settings?.text_alignment ?? "center";

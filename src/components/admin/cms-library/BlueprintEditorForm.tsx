@@ -426,7 +426,7 @@ export function BlueprintEditorForm({
                 <Input
                   value={defaultSiteSettingsPayload.paymentSettings.prepaidBadgeText}
                   onChange={(event) => onUpdateDefaultSiteSettingsSection("payment_settings", { prepaid_badge_text: event.target.value })}
-                  placeholder="Prepaid perks"
+                  placeholder="Optional badge text for prepaid checkout"
                 />
               </div>
 

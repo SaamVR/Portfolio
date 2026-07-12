@@ -84,7 +84,7 @@ export const CountdownTimer = ({ overrides }: CountdownTimerProps) => {
     return { background: premiumGreenGradient };
   };
 
-  const gradientStyle = getGradientStyle(overrides?.bgGradient ?? settings?.bg_gradient ?? "from-destructive via-red-600 to-amber-600");
+  const gradientStyle = getGradientStyle(overrides?.bgGradient ?? settings?.bg_gradient ?? "");
 
   return (
     <div className="relative overflow-hidden text-white py-4 shadow-md" style={gradientStyle}>
@@ -95,9 +95,9 @@ export const CountdownTimer = ({ overrides }: CountdownTimerProps) => {
           </div>
           <div>
             <h3 className="font-heading font-bold text-base md:text-lg tracking-wide uppercase">
-              {overrides?.title ?? settings?.title ?? "Limited Time Offer!"}
+              {overrides?.title ?? settings?.title ?? "Offer Ends Soon"}
             </h3>
-            <p className="text-xs text-white font-semibold">{overrides?.subtitle ?? "Deals are vanishing fast. Grab yours now!"}</p>
+            <p className="text-xs text-white font-semibold">{overrides?.subtitle ?? "Use this space for launch windows, seasonal campaigns, or time-sensitive updates."}</p>
           </div>
         </div>
 

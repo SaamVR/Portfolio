@@ -53,13 +53,13 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
 
-  const tagline = overrides?.tagline ?? hero?.tagline ?? "Built for your business";
-  const title = overrides?.title ?? hero?.title ?? "Bring Your";
-  const highlight = overrides?.highlight ?? hero?.highlight ?? "Brand Online";
+  const tagline = overrides?.tagline ?? hero?.tagline ?? "Welcome";
+  const title = overrides?.title ?? hero?.title ?? "Create Your";
+  const highlight = overrides?.highlight ?? hero?.highlight ?? "Storefront";
   const subtitle =
     overrides?.subtitle ??
     hero?.subtitle ??
-    "Showcase your catalog, services, or offers in a storefront that matches how your business actually sells.";
+    "Share your products, services, and offers with a storefront shaped around your business.";
   const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Explore";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? hero?.cta_link ?? "/shop", currentStore?.slug);
   const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "Learn More";

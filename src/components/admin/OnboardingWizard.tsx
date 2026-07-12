@@ -109,7 +109,7 @@ function getBlueprintPaymentDefaultsFromCollection(
         : false,
       prepaid_badge_text: typeof paymentSettings.prepaid_badge_text === "string"
         ? paymentSettings.prepaid_badge_text
-        : "Prepaid perks",
+        : "",
       prepayment_discount_type: (paymentSettings.prepayment_discount_type as LaunchTemplatePaymentDefaults["prepayment_discount_type"] | undefined) ?? "none",
       prepayment_discount_value: typeof paymentSettings.prepayment_discount_value === "number"
         ? paymentSettings.prepayment_discount_value as number
@@ -120,7 +120,7 @@ function getBlueprintPaymentDefaultsFromCollection(
     cod_enabled: true,
     bkash_enabled: false,
     nagad_enabled: false,
-    prepaid_badge_text: "Prepaid perks",
+    prepaid_badge_text: "",
     prepayment_discount_type: "none",
     prepayment_discount_value: 0,
   };

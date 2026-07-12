@@ -89,7 +89,7 @@ export default function ExitIntentPopup() {
           <div className={cn("flex flex-1 flex-col justify-center p-8 md:p-12 text-white", !exitIntent.image_url && "items-center text-center")}>
             <div className="mb-2 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/20">
               <span className="mr-2 h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-              Limited Time Offer
+              Before You Go
             </div>
             
             <h2 className="mb-2 font-heading text-3xl md:text-4xl font-bold leading-tight">

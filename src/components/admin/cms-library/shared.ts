@@ -252,7 +252,7 @@ export function readDefaultSiteSettings(value: string | boolean | undefined): Bl
       codEnabled: typeof paymentSettings.cod_enabled === "boolean" ? paymentSettings.cod_enabled : true,
       bkashEnabled: typeof paymentSettings.bkash_enabled === "boolean" ? paymentSettings.bkash_enabled : false,
       nagadEnabled: typeof paymentSettings.nagad_enabled === "boolean" ? paymentSettings.nagad_enabled : false,
-      prepaidBadgeText: typeof paymentSettings.prepaid_badge_text === "string" ? paymentSettings.prepaid_badge_text : "Prepaid perks",
+      prepaidBadgeText: typeof paymentSettings.prepaid_badge_text === "string" ? paymentSettings.prepaid_badge_text : "",
       prepaymentDiscountType: typeof paymentSettings.prepayment_discount_type === "string" ? paymentSettings.prepayment_discount_type : "none",
       prepaymentDiscountValue: typeof paymentSettings.prepayment_discount_value === "number" ? paymentSettings.prepayment_discount_value : 0,
     },

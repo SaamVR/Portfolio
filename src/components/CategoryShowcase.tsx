@@ -143,8 +143,8 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
       <div className="container mx-auto px-4">
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? settings?.tagline ?? "Categories"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? settings?.title ?? "Browse by Category"}</h2>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? settings?.tagline ?? "Explore"}</p>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? settings?.title ?? "Browse the Catalog"}</h2>
           </div>
         </AnimatedSection>
 
