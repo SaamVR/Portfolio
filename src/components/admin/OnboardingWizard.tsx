@@ -56,6 +56,7 @@ import {
   loadThemePackages,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
+import type { Json } from "@/integrations/supabase/types";
 
 interface DraftState {
   storeName: string;
@@ -84,8 +85,48 @@ interface DraftState {
 
 function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePaymentDefaults {
   const blueprint = getStoreBlueprintById(blueprintId);
+  const blueprintPaymentSettings = blueprint.defaultSiteSettings.payment_settings;
+  if (typeof blueprintPaymentSettings === "object" && blueprintPaymentSettings) {
+    const paymentSettings = blueprintPaymentSettings as Record<string, unknown>;
+    return {
+      cod_enabled: typeof paymentSettings.cod_enabled === "boolean"
+        ? paymentSettings.cod_enabled as boolean
+        : true,
+      bkash_enabled: typeof paymentSettings.bkash_enabled === "boolean"
+        ? paymentSettings.bkash_enabled as boolean
+        : false,
+      nagad_enabled: typeof paymentSettings.nagad_enabled === "boolean"
+        ? paymentSettings.nagad_enabled as boolean
+        : false,
+      prepaid_badge_text: typeof paymentSettings.prepaid_badge_text === "string"
+        ? paymentSettings.prepaid_badge_text
+        : "Priority Delivery",
+      prepayment_discount_type: (paymentSettings.prepayment_discount_type as LaunchTemplatePaymentDefaults["prepayment_discount_type"] | undefined) ?? "none",
+      prepayment_discount_value: typeof paymentSettings.prepayment_discount_value === "number"
+        ? paymentSettings.prepayment_discount_value as number
+        : 0,
+    };
+  }
   const templateId = blueprint.legacyTemplateId ?? "general";
   return launchTemplates.find((item) => item.id === templateId)?.paymentDefaults ?? launchTemplates[0].paymentDefaults;
+}
+
+function buildBlueprintSiteSettingsPayload(
+  blueprint: StoreBlueprintDefinition,
+  payment: DraftState["payment"],
+): Array<{ key: string; value: Json }> {
+  const entries = Object.entries(blueprint.defaultSiteSettings).map(([key, value]) => ({
+    key,
+    value,
+  }));
+
+  const filtered = entries.filter((entry) => entry.key !== "payment_settings");
+  filtered.push({
+    key: "payment_settings",
+    value: payment as unknown as Json,
+  });
+
+  return filtered;
 }
 
 function getDefaultBlueprintId(availableBlueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
@@ -545,33 +586,18 @@ export default function OnboardingWizard() {
       return;
     }
 
-    const { data: existingPayment } = await supabase
+    const siteSettingsRows = buildBlueprintSiteSettingsPayload(selectedBlueprint, draft.payment).map((entry) => ({
+      store_id: activeStoreId,
+      key: entry.key,
+      value: entry.value,
+    }));
+
+    const { error: siteSettingsError } = await supabase
       .from("site_settings")
-      .select("id")
-      .eq("store_id", activeStoreId)
-      .eq("key", "payment_settings")
-      .maybeSingle();
+      .upsert(siteSettingsRows, { onConflict: "store_id,key" });
 
-    let paymentError;
-    if (existingPayment) {
-      const { error } = await supabase
-        .from("site_settings")
-        .update({ value: draft.payment as any })
-        .eq("id", existingPayment.id);
-      paymentError = error;
-    } else {
-      const { error } = await supabase
-        .from("site_settings")
-        .insert({
-          store_id: activeStoreId,
-          key: "payment_settings",
-          value: draft.payment as any,
-        });
-      paymentError = error;
-    }
-
-    if (paymentError) {
-      toast.error("Failed to save payment setup.");
+    if (siteSettingsError) {
+      toast.error("Failed to save blueprint defaults.");
       setSaving(false);
       return;
     }
