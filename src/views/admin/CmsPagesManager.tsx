@@ -136,7 +136,7 @@ function cloneHomepageBlocksForBlueprint(
   pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): StorePageBlock[] {
   const seededPages = instantiateStorePagesFromBlueprint(blueprintId, pageBlueprints);
-  const homepage = seededPages.find((page) => page.isHomepage) ?? defaultStore.pages[0];
+  const homepage = seededPages.find((page) => page.isHomepage) ?? createDefaultCmsPage(0);
 
   return homepage.blocks.map((block, index) => ({
     ...block,
@@ -199,8 +199,13 @@ function mapRecordsToStore(
               .filter((page): page is StorePage => Boolean(page)),
             siteSettings,
           )
-        : defaultStore.pages,
+        : instantiateStorePagesFromBlueprint(blueprint.id),
   });
+}
+
+function getBlueprintBootstrapStoreName(blueprintId: string) {
+  const blueprint = getStoreBlueprintById(blueprintId);
+  return `${blueprint.shortName} Store`;
 }
 
 export default function CmsPagesManager() {
@@ -499,12 +504,12 @@ export default function CmsPagesManager() {
       {
         id: activeStoreId as string,
         owner_id: user.id,
-        name: store?.name ?? defaultStore.name,
-        slug: store?.slug ?? defaultStore.slug,
+        name: store?.name ?? getBlueprintBootstrapStoreName(blueprint.id),
+        slug: store?.slug ?? `store-${String(activeStoreId).slice(0, 8)}`,
         description: blueprint.storeDescription,
-        currency_code: defaultStore.currencyCode,
-        locale: defaultStore.locale,
-        is_published: defaultStore.isPublished,
+        currency_code: "BDT",
+        locale: "en-BD",
+        is_published: false,
         store_type: blueprint.id,
       },
       { onConflict: "slug" },

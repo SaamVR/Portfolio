@@ -123,6 +123,10 @@ function getDefaultBlueprintId(availableBlueprints: StoreBlueprintDefinition[] =
     ?? "general-catalog";
 }
 
+function getBlueprintDraftStoreName(blueprint: StoreBlueprintDefinition) {
+  return `${blueprint.shortName} Store`;
+}
+
 function draftFromBlueprint(
   blueprintId: string,
   themePackages: ThemePackageDefinition[],
@@ -130,7 +134,7 @@ function draftFromBlueprint(
 ): DraftState {
   const blueprint = getStoreBlueprintById(blueprintId);
   const themePackage = getThemePackageById(previous?.themePackageId ?? blueprint.defaultTheme.presetId, themePackages);
-  const storeName = previous?.storeName || "Demo Store";
+  const storeName = previous?.storeName || getBlueprintDraftStoreName(blueprint);
 
   return {
     storeName,
@@ -289,7 +293,7 @@ export default function OnboardingWizard() {
   const steps = blueprint.onboarding.steps;
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
-    () => buildPreviewStore(draft, activeStoreId ?? defaultStore.id, themePackages),
+    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages),
     [draft, activeStoreId, themePackages],
   );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
@@ -359,8 +363,8 @@ export default function OnboardingWizard() {
       );
 
       setDraft(draftFromBlueprint(resolvedBlueprint.id, loadedThemePackages, {
-        storeName: store?.name || defaultStore.name,
-        slug: store?.slug || defaultStore.slug,
+        storeName: store?.name || getBlueprintDraftStoreName(resolvedBlueprint),
+        slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(resolvedBlueprint)),
         description: store?.description || undefined,
         logoUrl: store?.logo_url || "",
         businessFamily: businessProfile?.business_family || resolvedBlueprint.businessFamily,
@@ -470,13 +474,13 @@ export default function OnboardingWizard() {
 
     const { error: storeError } = await supabase.from("stores").update(
       {
-        name: draft.storeName.trim() || defaultStore.name,
-        slug: draft.slug.trim() || defaultStore.slug,
+        name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
+        slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
         description: draft.description.trim() || selectedBlueprint.storeDescription,
         store_type: draft.blueprintId,
         logo_url: draft.logoUrl.trim() || null,
-        currency_code: defaultStore.currencyCode,
-        locale: defaultStore.locale,
+        currency_code: "BDT",
+        locale: "en-BD",
         is_published: publish,
       },
     ).eq("id", activeStoreId);
