@@ -226,6 +226,40 @@ describe("store resolver mapping", () => {
 
     expect(store.theme.themePackageId).toBe("merchant-noir");
     expect(store.theme.headingFont).toBe("'Manrope', sans-serif");
+    expect(store.theme.customCssVars["--background"]).toBe("#111111");
     expect(store.pages.some((page) => page.slug === "/gallery")).toBe(true);
+  });
+
+  it("carries store-scoped custom css from the installed theme snapshot", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-4",
+        name: "Scoped Theme Store",
+        slug: "scoped-theme-store",
+        description: null,
+        currency_code: null,
+        locale: null,
+        is_published: true,
+        store_type: "general-catalog",
+      },
+      {
+        blueprint_id: "general-catalog",
+      },
+      {
+        preset_id: "default",
+        theme_package_id: "default",
+        mode: "dark",
+        typography: null,
+        components: null,
+        colors: null,
+        custom_css: ".hero { border: 3px solid red; }",
+        resolved_tokens: null,
+      },
+      [],
+      [],
+      [],
+    );
+
+    expect(store.theme.customCss).toBe(".hero { border: 3px solid red; }");
   });
 });

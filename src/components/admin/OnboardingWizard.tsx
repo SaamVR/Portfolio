@@ -268,6 +268,7 @@ function buildPreviewStore(
     isPublished: draft.isPublished,
     theme: {
       presetId: themePackage.presetId,
+      themePackageId: themePackage.id,
       mode: draft.themeMode,
       headingFont: draft.headingFont,
       bodyFont: draft.bodyFont,
@@ -275,6 +276,7 @@ function buildPreviewStore(
       customCssVars: {
         ...(themePackage.tokens[draft.themeMode] ?? {}),
       },
+      customCss: themePackage.customCss,
     },
     pages: templatePages,
   };
@@ -344,7 +346,7 @@ export default function OnboardingWizard() {
           .maybeSingle(),
         supabase
           .from("store_themes")
-          .select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens")
+          .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
           .eq("store_id", activeStoreId as string)
           .maybeSingle(),
         supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),

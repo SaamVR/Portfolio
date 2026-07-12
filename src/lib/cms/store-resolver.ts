@@ -30,6 +30,7 @@ interface StoreThemeRow {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  custom_css?: string | null;
   resolved_tokens?: {
     light?: Record<string, string>;
     dark?: Record<string, string>;
@@ -175,7 +176,8 @@ export function buildResolvedStoreFromRecords(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
-      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? "dark"] ?? {},
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
+      customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
     pages: mappedPages.length > 0 ? mappedPages : fallbackPages,
   });
@@ -258,7 +260,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .maybeSingle(),
     supabase
       .from("store_themes")
-      .select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens")
+      .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase

@@ -70,6 +70,7 @@ type ThemeRecord = {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  custom_css?: string | null;
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
 
@@ -178,7 +179,8 @@ function mapRecordsToStore(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
-      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? "dark"] ?? {},
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
+      customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
     pages:
       pages.length > 0
@@ -305,7 +307,7 @@ export default function CmsPagesManager() {
         .select("blueprint_id, business_family, catalog_mode")
         .eq("store_id", storeRecord.id)
         .maybeSingle(),
-      supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
+      supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
       supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),

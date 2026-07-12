@@ -4,7 +4,9 @@ import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages
 
 export function getStoreThemeStyle(theme: StoreTheme): CSSProperties {
   const themePackage = getThemePackageById(theme.themePackageId ?? theme.presetId, fallbackThemePackages);
-  const vars = theme.mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark;
+  const vars = Object.keys(theme.customCssVars).length > 0
+    ? theme.customCssVars
+    : (theme.mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark);
   const style: CSSProperties & Record<string, string> = {};
 
   for (const [key, value] of Object.entries(vars)) {
@@ -46,6 +48,7 @@ type StoredThemeRecord = {
   components?: {
     borderRadius?: string;
   } | null;
+  custom_css?: string | null;
 };
 
 export function getStoreThemeStyleFromRecord(theme: StoredThemeRecord): CSSProperties {

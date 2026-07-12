@@ -8,6 +8,7 @@ export const storeThemeSchema = z.object({
   bodyFont: z.string().optional(),
   borderRadius: z.string().optional(),
   customCssVars: z.record(z.string(), z.string()).default({}),
+  customCss: z.string().optional(),
 });
 
 const countdownBlockSchema = z.object({
