@@ -27,8 +27,10 @@ type BlueprintRecord = {
 
 type ThemePackageRecord = {
   id: string;
+  version?: number | null;
   preset_id: string | null;
   mode: "light" | "dark" | null;
+  custom_css?: string | null;
   tokens: {
     light?: Record<string, string>;
     dark?: Record<string, string>;
@@ -66,6 +68,7 @@ function buildThemeSeed(
       ? defaultTheme.presetId
       : (themePackage?.preset_id ?? themePackage?.id ?? "default"),
     theme_package_id: themePackage?.id ?? null,
+    theme_package_version: typeof themePackage?.version === "number" ? themePackage.version : null,
     mode,
     typography: {
       headingFont: typeof defaultTheme?.headingFont === "string"
@@ -85,6 +88,7 @@ function buildThemeSeed(
       light: themePackage?.tokens?.light ?? {},
       dark: themePackage?.tokens?.dark ?? {},
     },
+    custom_css: typeof themePackage?.custom_css === "string" ? themePackage.custom_css : null,
   };
 }
 
@@ -197,7 +201,7 @@ Deno.serve(async (req) => {
     const { data: themePackageRecord } = defaultThemePresetId
       ? await supabaseAdmin
         .from("theme_packages")
-        .select("id, preset_id, mode, tokens")
+        .select("id, version, preset_id, mode, tokens, custom_css")
         .or(`id.eq.${defaultThemePresetId},preset_id.eq.${defaultThemePresetId},slug.eq.${defaultThemePresetId}`)
         .limit(1)
         .maybeSingle()
