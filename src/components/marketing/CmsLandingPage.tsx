@@ -29,8 +29,8 @@ import {
   Layout,
   Sliders,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
+
 const faqs = [
   {
     q: "How do manual bKash payments work?",
@@ -119,6 +119,7 @@ export function CmsLandingPage() {
   const [sandboxDomain, setSandboxDomain] = useState("mybrand");
   const [domainConnecting, setDomainConnecting] = useState(false);
   const [domainConnected, setDomainConnected] = useState(false);
+  const [sandboxError, setSandboxError] = useState("");
   
   // FAQs Objections
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -133,6 +134,7 @@ export function CmsLandingPage() {
     ]);
     setNewProductName("");
     setNewProductPrice("");
+    setSandboxError("");
   };
 
   const handleRemoveProduct = (index: number) => {
@@ -142,6 +144,7 @@ export function CmsLandingPage() {
   const handleConnectDomain = () => {
     if (!sandboxDomain.trim()) return;
     setDomainConnecting(true);
+    setSandboxError("");
     setTimeout(() => {
       setDomainConnecting(false);
       setDomainConnected(true);
@@ -151,9 +154,36 @@ export function CmsLandingPage() {
   const isStepComplete = (step: number) => {
     if (step === 1) return !!sandboxTemplate;
     if (step === 2) return sandboxProducts.length > 0;
-    if (step === 3) return sandboxPaymentEnabled && sandboxPaymentNumber.length > 8;
+    if (step === 3) return sandboxPaymentEnabled && sandboxPaymentNumber.trim().length > 8;
     if (step === 4) return domainConnected;
     return false;
+  };
+
+  const handleNextStep = () => {
+    setSandboxError("");
+    if (sandboxStep === 1) {
+      if (!sandboxTemplate) {
+        setSandboxError("Please select a template layout layout first.");
+        return;
+      }
+      setSandboxStep(2);
+    } else if (sandboxStep === 2) {
+      if (sandboxProducts.length === 0) {
+        setSandboxError("Please add at least one product to the storefront catalog.");
+        return;
+      }
+      setSandboxStep(3);
+    } else if (sandboxStep === 3) {
+      if (!sandboxPaymentEnabled) {
+        setSandboxError("Please check manual payment to configure payments.");
+        return;
+      }
+      if (sandboxPaymentNumber.trim().length < 8) {
+        setSandboxError("Please enter a valid bKash personal receiver number.");
+        return;
+      }
+      setSandboxStep(4);
+    }
   };
 
   const getSandboxProgress = () => {
@@ -166,7 +196,7 @@ export function CmsLandingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white selection:bg-primary selection:text-primary-foreground relative overflow-x-hidden">
+    <main className="min-h-screen bg-slate-950 text-white selection:bg-emerald-500 selection:text-slate-950 relative overflow-x-hidden">
       {/* Background Decorative Mesh Orbs */}
       <div className={`absolute left-[-10%] top-[5%] h-[500px] w-[500px] rounded-full ${theme.glow} blur-[120px] opacity-40 transition-all duration-1000 animate-float-orb-1 pointer-events-none`} />
       <div className="absolute right-[-10%] top-[25%] h-[600px] w-[600px] rounded-full bg-indigo-500/10 blur-[130px] opacity-30 animate-float-orb-2 pointer-events-none" />
@@ -193,12 +223,18 @@ export function CmsLandingPage() {
             <a href="#plans" className="nav-link-anim pb-1 text-zinc-300 hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" className="text-zinc-300 hover:text-white hover:bg-white/5 transition-all">
-              <Link href="/admin/login">Login</Link>
-            </Button>
-            <Button asChild className={`rounded-full px-5 text-white font-semibold shadow-lg hover:brightness-110 ${theme.primary} transition-all duration-500`}>
-              <Link href="/signup">Start Building</Link>
-            </Button>
+            <Link 
+              href="/admin/login" 
+              className="text-zinc-300 hover:text-white px-4 py-2 text-sm font-semibold rounded-full hover:bg-white/5 transition-all"
+            >
+              Login
+            </Link>
+            <Link 
+              href="/signup" 
+              className={`rounded-full px-5 py-2.5 text-sm text-white font-bold shadow-lg hover:brightness-110 ${theme.primary} transition-all duration-500`}
+            >
+              Start Building
+            </Link>
           </div>
         </nav>
       </header>
@@ -226,44 +262,44 @@ export function CmsLandingPage() {
             {/* Live customizer controls inside hero */}
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-4 shadow-xl backdrop-blur-xl">
               <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                <Sliders className="h-4 w-4 text-primary" />
+                <Sliders className="h-4 w-4 text-emerald-400" />
                 Live Editor Input Controls
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-medium">Store Logo Name</label>
+                  <label className="text-xs text-zinc-300 font-medium">Store Logo Name</label>
                   <input 
                     type="text" 
                     value={storeName} 
                     onChange={(e) => setStoreName(e.target.value.toUpperCase())}
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all font-mono" 
+                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-all font-mono" 
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-medium">Promo Headline</label>
+                  <label className="text-xs text-zinc-300 font-medium">Promo Headline</label>
                   <input 
                     type="text" 
                     value={heroHeading} 
                     onChange={(e) => setHeroHeading(e.target.value)}
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all" 
+                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-all" 
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs text-zinc-400 font-medium">Header Announcement Notice</label>
+                <label className="text-xs text-zinc-300 font-medium">Header Announcement Notice</label>
                 <input 
                   type="text" 
                   value={announcementText} 
                   onChange={(e) => setAnnouncementText(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all" 
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-all" 
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-white/5">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-medium block">Color Preset</label>
+                  <label className="text-xs text-zinc-300 font-medium block">Color Preset</label>
                   <div className="flex gap-2.5">
                     {Object.keys(colorThemes).map((name) => (
                       <button
@@ -280,7 +316,7 @@ export function CmsLandingPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-medium block">Typography</label>
+                  <label className="text-xs text-zinc-300 font-medium block">Typography</label>
                   <div className="flex gap-1.5 bg-slate-950 p-1 rounded-lg border border-white/10">
                     {Object.keys(fontThemes).map((font) => (
                       <button
@@ -300,37 +336,49 @@ export function CmsLandingPage() {
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <Button asChild size="lg" className={`rounded-full px-8 font-bold text-white ${theme.primary} transition-all duration-500 shadow-xl`}>
-                <Link href="/signup">Save & Register Store</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full border-white/15 hover:bg-white/5">
-                <a href="#sandbox">Onboarding Sandbox</a>
-              </Button>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <Link 
+                href="/signup" 
+                className={`inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} hover:brightness-110`}
+              >
+                Save & Register Store
+              </Link>
+              <a 
+                href="#sandbox" 
+                className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold px-8 py-3.5 text-sm transition-all duration-300 hover:-translate-y-0.5"
+              >
+                Onboarding Sandbox
+              </a>
             </div>
           </div>
 
           {/* Visual Storefront Preview Output Panel */}
-          <div className="relative">
-            <div className="absolute right-4 top-4 z-20 flex gap-1.5 bg-slate-900/90 rounded-lg p-1 border border-white/10">
-              <button 
-                onClick={() => setPreviewDevice("desktop")} 
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
-                  previewDevice === "desktop" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-white"
-                }`}
-              >
-                <Monitor className="h-3 w-3" /> Desktop
-              </button>
-              <button 
-                onClick={() => setPreviewDevice("mobile")} 
-                className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
-                  previewDevice === "mobile" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-white"
-                }`}
-              >
-                <Smartphone className="h-3 w-3" /> Mobile
-              </button>
+          <div className="space-y-4">
+            
+            {/* Unified Devices Bar */}
+            <div className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-white/10">
+              <span className="text-xs font-semibold text-zinc-400">Storefront Live Preview</span>
+              <div className="flex gap-1.5 bg-slate-950 p-1 rounded-lg border border-white/5">
+                <button 
+                  onClick={() => setPreviewDevice("desktop")} 
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                    previewDevice === "desktop" ? `${theme.primary} text-white shadow` : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <Monitor className="h-3.5 w-3.5" /> Desktop view
+                </button>
+                <button 
+                  onClick={() => setPreviewDevice("mobile")} 
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                    previewDevice === "mobile" ? `${theme.primary} text-white shadow` : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <Smartphone className="h-3.5 w-3.5" /> Mobile view
+                </button>
+              </div>
             </div>
 
+            {/* Simulated browser container */}
             <div className={`transition-all duration-500 border-2 ${theme.border} bg-[#02050c] rounded-3xl shadow-2xl overflow-hidden relative ${
               previewDevice === "mobile" ? "max-w-[340px] mx-auto" : "w-full"
             }`}>
@@ -462,10 +510,13 @@ export function CmsLandingPage() {
                 {[1, 2, 3, 4].map((step) => (
                   <button
                     key={step}
-                    onClick={() => setSandboxStep(step as any)}
+                    onClick={() => {
+                      setSandboxStep(step as any);
+                      setSandboxError("");
+                    }}
                     className={`flex-1 py-3 px-4 rounded-xl border text-center font-bold text-xs transition-all ${
                       sandboxStep === step
-                        ? `border-primary ${theme.accent} text-white`
+                        ? `border-emerald-500 ${theme.accent} text-white`
                         : isStepComplete(step)
                         ? "border-green-500/20 bg-green-500/5 text-green-400"
                         : "border-white/5 bg-[#03060f] text-zinc-500 hover:text-white"
@@ -492,23 +543,29 @@ export function CmsLandingPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <button
-                        onClick={() => setSandboxTemplate("fashion")}
+                        onClick={() => {
+                          setSandboxTemplate("fashion");
+                          setSandboxError("");
+                        }}
                         className={`p-4 rounded-xl border text-left transition-all ${
-                          sandboxTemplate === "fashion" ? "border-primary bg-white/5" : "border-white/5 hover:bg-white/[0.02]"
+                          sandboxTemplate === "fashion" ? "border-emerald-500 bg-white/5" : "border-white/5 hover:bg-white/[0.02]"
                         }`}
                       >
-                        <Layout className="h-5 w-5 text-primary mb-2" />
+                        <Layout className="h-5 w-5 text-emerald-400 mb-2" />
                         <h5 className="text-xs font-bold text-white">Fashion & Apparel</h5>
                         <p className="text-[10px] text-zinc-500 mt-1">Optimized for sizing guides, reviews, and lookbooks.</p>
                       </button>
 
                       <button
-                        onClick={() => setSandboxTemplate("food")}
+                        onClick={() => {
+                          setSandboxTemplate("food");
+                          setSandboxError("");
+                        }}
                         className={`p-4 rounded-xl border text-left transition-all ${
-                          sandboxTemplate === "food" ? "border-primary bg-white/5" : "border-white/5 hover:bg-white/[0.02]"
+                          sandboxTemplate === "food" ? "border-emerald-500 bg-white/5" : "border-white/5 hover:bg-white/[0.02]"
                         }`}
                       >
-                        <Layout className="h-5 w-5 text-primary mb-2" />
+                        <Layout className="h-5 w-5 text-emerald-400 mb-2" />
                         <h5 className="text-xs font-bold text-white">Food & Grocery</h5>
                         <p className="text-[10px] text-zinc-500 mt-1">Optimized for quick add-to-carts and delivery timing.</p>
                       </button>
@@ -527,7 +584,7 @@ export function CmsLandingPage() {
                     {/* Add product input */}
                     <div className="grid gap-3 grid-cols-[2fr_1fr_auto] items-end bg-slate-900/60 p-3 rounded-lg border border-white/5">
                       <div className="space-y-1">
-                        <label className="text-[10px] text-zinc-400 font-bold uppercase">Item Name</label>
+                        <label className="text-[10px] text-zinc-300 font-bold uppercase">Item Name</label>
                         <input
                           type="text"
                           placeholder="e.g. Silk Scarf"
@@ -537,7 +594,7 @@ export function CmsLandingPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-zinc-400 font-bold uppercase">Price (BDT)</label>
+                        <label className="text-[10px] text-zinc-300 font-bold uppercase">Price (BDT)</label>
                         <input
                           type="number"
                           placeholder="1200"
@@ -546,9 +603,12 @@ export function CmsLandingPage() {
                           className="w-full bg-slate-950 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none"
                         />
                       </div>
-                      <Button onClick={handleAddProduct} size="sm" className="h-8">
-                        <Plus className="h-4 w-4" /> Add
-                      </Button>
+                      <button 
+                        onClick={handleAddProduct} 
+                        className={`h-9 px-4 rounded-lg text-xs font-bold text-white transition-all ${theme.primary} hover:brightness-110 flex items-center gap-1 shrink-0`}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add
+                      </button>
                     </div>
 
                     {/* Current products list */}
@@ -585,18 +645,24 @@ export function CmsLandingPage() {
                         <input
                           type="checkbox"
                           checked={sandboxPaymentEnabled}
-                          onChange={(e) => setSandboxPaymentEnabled(e.target.checked)}
-                          className="h-4 w-4 accent-primary rounded cursor-pointer"
+                          onChange={(e) => {
+                            setSandboxPaymentEnabled(e.target.checked);
+                            setSandboxError("");
+                          }}
+                          className="h-4 w-4 accent-emerald-500 rounded cursor-pointer"
                         />
                       </div>
 
                       {sandboxPaymentEnabled && (
                         <div className="space-y-1.5">
-                          <label className="text-xs text-zinc-400 font-medium">Merchant bKash Receiver Number</label>
+                          <label className="text-xs text-zinc-300 font-medium">Merchant bKash Receiver Number</label>
                           <input
                             type="text"
                             value={sandboxPaymentNumber}
-                            onChange={(e) => setSandboxPaymentNumber(e.target.value)}
+                            onChange={(e) => {
+                              setSandboxPaymentNumber(e.target.value);
+                              setSandboxError("");
+                            }}
                             className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono"
                           />
                         </div>
@@ -616,7 +682,7 @@ export function CmsLandingPage() {
                     <div className="space-y-3">
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <span className="absolute left-3 top-2.5 text-zinc-600 text-xs font-mono">www.</span>
+                          <span className="absolute left-3 top-2.5 text-zinc-650 text-xs font-mono">www.</span>
                           <input
                             type="text"
                             placeholder="mycoolbrand"
@@ -624,17 +690,25 @@ export function CmsLandingPage() {
                             onChange={(e) => {
                               setSandboxDomain(e.target.value.toLowerCase().replace(/\s+/g, ""));
                               setDomainConnected(false);
+                              setSandboxError("");
                             }}
                             className="w-full bg-slate-950 border border-white/10 rounded-lg pl-12 pr-12 py-2 text-xs text-white focus:outline-none font-mono"
                           />
-                          <span className="absolute right-3 top-2.5 text-zinc-600 text-xs font-mono">.com</span>
+                          <span className="absolute right-3 top-2.5 text-zinc-655 text-xs font-mono">.com</span>
                         </div>
-                        <Button 
+                        <button 
                           onClick={handleConnectDomain} 
                           disabled={domainConnecting || !sandboxDomain.trim() || domainConnected}
+                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                            domainConnected 
+                              ? "bg-green-500/20 text-green-400 border border-green-500/30" 
+                              : domainConnecting 
+                              ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
+                              : `${theme.primary} text-white hover:brightness-110`
+                          }`}
                         >
                           {domainConnecting ? "Securing..." : domainConnected ? "Connected" : "Connect"}
-                        </Button>
+                        </button>
                       </div>
 
                       {domainConnecting && (
@@ -644,13 +718,13 @@ export function CmsLandingPage() {
                             <span>In progress</span>
                           </div>
                           <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-primary animate-pulse w-2/3" />
+                            <div className="h-full bg-emerald-500 animate-pulse w-2/3" />
                           </div>
                         </div>
                       )}
 
                       {domainConnected && (
-                        <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-[11px] flex items-center gap-2">
+                        <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg text-[11px] flex items-center gap-2 animate-bounce-in">
                           <CheckCircle2 className="h-4 w-4 shrink-0" />
                           Domain mapped successfully! SSL certified and secure.
                         </div>
@@ -666,21 +740,39 @@ export function CmsLandingPage() {
                 <div className="text-xs text-zinc-400">
                   Current Step: <strong className="text-white">{sandboxStep} of 4</strong>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    disabled={sandboxStep === 1}
-                    onClick={() => setSandboxStep((sandboxStep - 1) as any)}
-                    className="text-zinc-300 hover:text-white"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    disabled={sandboxStep === 4 || !isStepComplete(sandboxStep)}
-                    onClick={() => setSandboxStep((sandboxStep + 1) as any)}
-                  >
-                    Next Step
-                  </Button>
+                <div className="flex flex-col items-end">
+                  <div className="flex gap-2">
+                    <button
+                      disabled={sandboxStep === 1}
+                      onClick={() => {
+                        setSandboxError("");
+                        setSandboxStep((sandboxStep - 1) as any);
+                      }}
+                      className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        sandboxStep === 1 
+                          ? "text-zinc-650 cursor-not-allowed" 
+                          : "text-zinc-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={handleNextStep}
+                      disabled={sandboxStep === 4}
+                      className={`px-5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        sandboxStep === 4 
+                          ? "bg-zinc-800 text-zinc-550 cursor-not-allowed" 
+                          : "bg-white hover:bg-zinc-200 text-slate-950"
+                      }`}
+                    >
+                      Next Step
+                    </button>
+                  </div>
+                  {sandboxError && (
+                    <span className="text-[11px] font-semibold text-rose-400 mt-2 text-right animate-pulse">
+                      ⚠️ {sandboxError}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -695,7 +787,7 @@ export function CmsLandingPage() {
                   <p className="text-xs text-zinc-500">Interactive live analytics metric</p>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${
-                  getSandboxProgress() === 100 ? "bg-green-500/10 text-green-400" : "bg-primary/10 text-primary"
+                  getSandboxProgress() === 100 ? "bg-green-500/10 text-green-400" : "bg-emerald-500/10 text-emerald-400"
                 }`}>
                   {getSandboxProgress()}% Setup Ready
                 </span>
@@ -714,7 +806,7 @@ export function CmsLandingPage() {
                 
                 <div className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg border border-white/5 text-xs">
                   <span className="flex items-center gap-2.5">
-                    <span className={`h-4.5 w-4.5 rounded-full flex items-center justify-center ${
+                    <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       isStepComplete(1) ? "bg-green-500/20 text-green-400" : "bg-white/5 text-zinc-500"
                     }`}>
                       {isStepComplete(1) ? <Check className="h-3.5 w-3.5" /> : "1"}
@@ -726,7 +818,7 @@ export function CmsLandingPage() {
 
                 <div className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg border border-white/5 text-xs">
                   <span className="flex items-center gap-2.5">
-                    <span className={`h-4.5 w-4.5 rounded-full flex items-center justify-center ${
+                    <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       isStepComplete(2) ? "bg-green-500/20 text-green-400" : "bg-white/5 text-zinc-500"
                     }`}>
                       {isStepComplete(2) ? <Check className="h-3.5 w-3.5" /> : "2"}
@@ -738,7 +830,7 @@ export function CmsLandingPage() {
 
                 <div className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg border border-white/5 text-xs">
                   <span className="flex items-center gap-2.5">
-                    <span className={`h-4.5 w-4.5 rounded-full flex items-center justify-center ${
+                    <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       isStepComplete(3) ? "bg-green-500/20 text-green-400" : "bg-white/5 text-zinc-500"
                     }`}>
                       {isStepComplete(3) ? <Check className="h-3.5 w-3.5" /> : "3"}
@@ -750,7 +842,7 @@ export function CmsLandingPage() {
 
                 <div className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg border border-white/5 text-xs">
                   <span className="flex items-center gap-2.5">
-                    <span className={`h-4.5 w-4.5 rounded-full flex items-center justify-center ${
+                    <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       isStepComplete(4) ? "bg-green-500/20 text-green-400" : "bg-white/5 text-zinc-500"
                     }`}>
                       {isStepComplete(4) ? <Check className="h-3.5 w-3.5" /> : "4"}
@@ -763,13 +855,14 @@ export function CmsLandingPage() {
               </div>
 
               {getSandboxProgress() === 100 ? (
-                <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/10 space-y-3">
+                <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/10 space-y-3 animate-fade-in">
                   <p className="text-xs text-green-400 font-bold">🎉 Store onboarding complete! Your storefront is fully ready to deploy and accept orders.</p>
-                  <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg py-2 flex items-center justify-center gap-2">
-                    <Link href={`/signup?planId=growth&domain=${sandboxDomain}`}>
-                      Launch Storefront to Live Server <Rocket className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <Link 
+                    href={`/signup?planId=growth&domain=${sandboxDomain}`}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg py-3 flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-green-600/20"
+                  >
+                    Launch Storefront to Live Server <Rocket className="h-4 w-4" />
+                  </Link>
                 </div>
               ) : (
                 <div className="p-3 text-center border border-white/5 bg-white/5 rounded-xl text-xs text-zinc-400">
@@ -789,7 +882,7 @@ export function CmsLandingPage() {
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] items-center">
           
           <div className="space-y-6">
-            <span className="text-primary font-bold text-xs uppercase tracking-widest">Growth Optimization</span>
+            <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest">Growth Optimization</span>
             <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
               Doubt kills checkout. We design trust.
             </h2>
@@ -799,7 +892,7 @@ export function CmsLandingPage() {
 
             <div className="space-y-4">
               <div className="flex gap-4">
-                <div className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+                <div className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                   <BadgeCheck className="h-5 w-5" />
                 </div>
                 <div>
@@ -809,7 +902,7 @@ export function CmsLandingPage() {
               </div>
 
               <div className="flex gap-4">
-                <div className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+                <div className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
@@ -822,8 +915,8 @@ export function CmsLandingPage() {
 
           {/* Marketing features details grid */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-primary/20 transition-all">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-emerald-500/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                 <Layout className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white">Section Builder</h4>
@@ -832,8 +925,8 @@ export function CmsLandingPage() {
               </p>
             </div>
 
-            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-primary/20 transition-all">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-emerald-500/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                 <Globe className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white">Custom Domain Settings</h4>
@@ -842,8 +935,8 @@ export function CmsLandingPage() {
               </p>
             </div>
 
-            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-primary/20 transition-all">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-emerald-500/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                 <Star className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white">Buyer Reviews Hub</h4>
@@ -852,8 +945,8 @@ export function CmsLandingPage() {
               </p>
             </div>
 
-            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-primary/20 transition-all">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-primary ${theme.accent}`}>
+            <div className="border border-white/5 bg-slate-900/30 p-6 rounded-2xl space-y-3 hover:border-emerald-500/20 transition-all">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-emerald-400 ${theme.accent}`}>
                 <RotateCcw className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white">Fast Reconciliations</h4>
@@ -884,7 +977,7 @@ export function CmsLandingPage() {
                 className="w-full flex items-center justify-between p-5 text-left text-white font-bold text-sm hover:bg-white/[0.02] transition-all"
               >
                 <span className="flex items-center gap-3">
-                  <HelpCircle className="h-4.5 w-4.5 text-primary shrink-0" />
+                  <HelpCircle className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
                   {faq.q}
                 </span>
                 <ChevronDown className={`h-4 w-4 text-zinc-500 transition-transform duration-300 ${
@@ -916,9 +1009,12 @@ export function CmsLandingPage() {
               Join local brands building beautiful storefronts with Commerce Engine. Setup takes less than a minute.
             </p>
             <div className="flex justify-center gap-4 pt-2">
-              <Button asChild size="lg" className={`rounded-full px-8 text-white font-bold shadow-xl ${theme.primary}`}>
-                <Link href="/signup">Start Free Trial</Link>
-              </Button>
+              <Link 
+                href="/signup" 
+                className={`rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} hover:brightness-110`}
+              >
+                Start Free Trial
+              </Link>
             </div>
           </div>
         </div>
