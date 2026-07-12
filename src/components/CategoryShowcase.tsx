@@ -9,12 +9,12 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 
 const fallbackCategories = [
-  { label: "New Arrivals", type: "new-arrivals", tagline: "Fresh additions for shoppers", icon: Shirt, filterKey: "category" as const },
-  { label: "Best Sellers", type: "best-sellers", tagline: "What customers are choosing most", icon: Blend, filterKey: "category" as const },
-  { label: "Featured", type: "featured", tagline: "Highlighted offers and key products", icon: StretchHorizontal, filterKey: "category" as const },
-  { label: "Bundles", type: "bundles", tagline: "Grouped offers and curated sets", icon: Scissors, filterKey: "category" as const },
-  { label: "Essentials", type: "essentials", tagline: "Core products buyers return to", icon: ShieldCheck, filterKey: "category" as const },
-  { label: "Collections", type: "collections", tagline: "Browse by curated collection", icon: Footprints, filterKey: "category" as const },
+  { label: "Popular", type: "popular", tagline: "Commonly explored items", icon: Shirt, filterKey: "category" as const },
+  { label: "Featured", type: "featured", tagline: "Highlighted items and offers", icon: Blend, filterKey: "category" as const },
+  { label: "New", type: "new", tagline: "Recently added options", icon: StretchHorizontal, filterKey: "category" as const },
+  { label: "Bundles", type: "bundles", tagline: "Grouped packages and sets", icon: Scissors, filterKey: "category" as const },
+  { label: "Essentials", type: "essentials", tagline: "Core items customers revisit", icon: ShieldCheck, filterKey: "category" as const },
+  { label: "Browse", type: "browse", tagline: "Explore more of the catalog", icon: Footprints, filterKey: "category" as const },
 ];
 
 interface CategoryShowcaseProps {
@@ -70,7 +70,7 @@ const getTaglineForType = (typeName: string) => {
     case "pant":
       return "Complete the look";
     default:
-      return "Browse the collection";
+      return "Explore this category";
   }
 };
 
@@ -108,7 +108,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
           return {
             label: category.name,
             type: category.name,
-            tagline: custom.tagline || "Browse this collection",
+            tagline: custom.tagline || "Explore this category",
             image_url: custom.image_url ?? null,
             icon: FolderTree,
             filterKey: "category" as const,
@@ -144,7 +144,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
             <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? settings?.tagline ?? "Categories"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? settings?.title ?? "Shop by Category"}</h2>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? settings?.title ?? "Browse by Category"}</h2>
           </div>
         </AnimatedSection>
 

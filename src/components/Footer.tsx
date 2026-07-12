@@ -106,9 +106,9 @@ const Footer = () => {
           href: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
         }))
       : [
-          { label: "Browse All Products", href: storefrontPath("/shop", currentStore?.slug) },
-          { label: "Featured Collections", href: storefrontPath("/shop?category=featured", currentStore?.slug) },
-          { label: "Latest Arrivals", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Browse All Items", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Featured", href: storefrontPath("/shop?category=featured", currentStore?.slug) },
+          { label: "Popular Picks", href: storefrontPath("/shop", currentStore?.slug) },
         ];
 
   const handleSubscribe = (e: React.FormEvent) => {

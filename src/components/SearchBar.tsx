@@ -60,8 +60,8 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       }))
     : [
         { label: "Featured", value: "featured" },
-        { label: "New Arrivals", value: "new-arrivals" },
-        { label: "Best Sellers", value: "best-sellers" },
+        { label: "Popular", value: "popular" },
+        { label: "New", value: "new" },
       ];
 
   useEffect(() => {

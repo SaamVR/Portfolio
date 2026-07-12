@@ -33,9 +33,9 @@ const MobileMenu = () => {
   const { data: dynamicProductTypes = [] } = useProductTypes();
   const { data: dynamicProductCategories = [] } = useProductCategories();
   const fallbackShopLinks = [
-    { label: "Browse All Products", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Featured Collections", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
-    { label: "Latest Arrivals", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Browse All Items", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Featured", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
+    { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
   const shopLinks = dynamicProductCategories.length > 0
     ? dynamicProductCategories.slice(0, 6).map((category: any) => ({

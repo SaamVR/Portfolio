@@ -36,9 +36,9 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const brandName = brand?.name || fallbackBrandName;
   const brandHighlight = brand?.highlight || "";
   const fallbackCategoryLinks = [
-    { label: "New Arrivals", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Featured Collections", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
-    { label: "Browse All Products", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Browse All Items", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Featured", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
+    { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
 
   const isDark = mounted ? theme === "dark" : false;
@@ -134,9 +134,9 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                         </div>
                       </div>
                       <div className="relative overflow-hidden rounded-lg bg-secondary">
-                        <img src={brand?.mega_menu_image || "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=600"} alt="New Collection" className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105" />
+                        <img src={brand?.mega_menu_image || "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=600"} alt="Store highlight" className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-overlay transition-transform duration-700 hover:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
-                          <h4 className="text-lg font-bold text-white">{brand?.mega_menu_title || "Featured Collection"}</h4>
+                          <h4 className="text-lg font-bold text-white">{brand?.mega_menu_title || "Store Highlights"}</h4>
                           <p className="text-sm text-gray-300">{brand?.mega_menu_subtitle || "Explore what this store wants customers to see first."}</p>
                         </div>
                       </div>
