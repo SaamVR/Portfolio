@@ -110,7 +110,12 @@ export function MediaLibraryBrowser({
       }
     } catch (error: any) {
       console.error("Media library upload error:", error);
-      toast.error(error?.message || "Upload failed");
+      const message = String(error?.message || "Upload failed");
+      toast.error(
+        message.includes("Failed to fetch")
+          ? "Upload service is unreachable. Redeploy the latest build and check Vercel/Supabase environment variables."
+          : message,
+      );
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

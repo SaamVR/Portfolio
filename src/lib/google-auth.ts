@@ -2,11 +2,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-export async function signInWithGoogle() {
+interface GoogleSignInOptions {
+  redirectPath?: string;
+}
+
+export async function signInWithGoogle(options: GoogleSignInOptions = {}) {
+  const redirectPath = options.redirectPath || "/admin/login";
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/admin/login`, // Redirect to admin login or a dedicated OAuth callback handler
+      redirectTo: `${window.location.origin}${redirectPath}`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',

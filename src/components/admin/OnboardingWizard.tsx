@@ -538,10 +538,11 @@ export default function OnboardingWizard() {
                   <CloudinaryUpload
                     value={draft.logoUrl}
                     onChange={(url) => updateDraft({ logoUrl: url })}
-                    folder={`stores/${draft.slug || defaultStore.slug}/logos`}
+                    folder="logos"
                     label="Upload logo"
                     showPreview
                     resourceType="image"
+                    storeId={activeStoreId ?? undefined}
                   />
                 </div>
               </div>
@@ -655,10 +656,11 @@ export default function OnboardingWizard() {
                   <CloudinaryUpload
                     value={draft.heroMediaUrl}
                     onChange={(url) => updateDraft({ heroMediaUrl: url })}
-                    folder={`stores/${draft.slug || defaultStore.slug}/hero`}
+                    folder="hero"
                     accept="image/*,video/*"
                     label="Upload hero media"
                     resourceType="auto"
+                    storeId={activeStoreId ?? undefined}
                   />
                 </div>
               </div>

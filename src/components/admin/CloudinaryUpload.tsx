@@ -69,7 +69,12 @@ const CloudinaryUpload = ({
       toast.success("Uploaded successfully!");
     } catch (err: any) {
       console.error("Cloudinary upload error:", err);
-      toast.error(err.message || "Upload failed");
+      const message = String(err?.message || "Upload failed");
+      toast.error(
+        message.includes("Failed to fetch")
+          ? "Upload service is unreachable. Redeploy the latest build and check Vercel/Supabase environment variables."
+          : message,
+      );
     } finally {
       setUploading(false);
       // Reset input so same file can be re-selected

@@ -88,7 +88,7 @@ export default function MerchantSignup() {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle({ redirectPath: "/signup" });
     } catch (error: any) {
       toast.error(error.message || "Google authentication failed");
       setGoogleLoading(false);
