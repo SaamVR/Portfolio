@@ -36,8 +36,8 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const brandName = brand?.name || fallbackBrandName;
   const brandHighlight = brand?.highlight || "";
   const fallbackCategoryLinks = [
-    { label: "Browse All Items", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Featured", to: storefrontPath("/shop?category=featured", currentStore?.slug) },
+    { label: "Browse Catalog", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
 

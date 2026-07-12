@@ -108,7 +108,7 @@ const Footer = () => {
       : [
           { label: "Browse Catalog", href: storefrontPath("/shop", currentStore?.slug) },
           { label: "Latest Additions", href: storefrontPath("/shop", currentStore?.slug) },
-          { label: "Popular Picks", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Explore More", href: storefrontPath("/shop", currentStore?.slug) },
         ];
 
   const handleSubscribe = (e: React.FormEvent) => {
