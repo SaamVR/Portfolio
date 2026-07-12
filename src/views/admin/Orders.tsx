@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Package, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +46,12 @@ const AdminOrders = () => {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    setSearch("");
+    setFilterStatus("all");
+    setViewOrder(null);
+  }, [activeStoreId]);
 
   const filtered = (orders || []).filter((o) => {
     const matchesSearch =

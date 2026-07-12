@@ -51,7 +51,7 @@ const AdminMobileNav = () => {
 
   // Fetch unread message count
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ["unread-messages-count-mobile", activeStoreId],
+    queryKey: ["unread-messages-count", activeStoreId],
     queryFn: async () => {
       if (!activeStoreId) return 0;
       const { count } = await supabase
@@ -67,7 +67,7 @@ const AdminMobileNav = () => {
 
   // Fetch pending reviews count
   const { data: pendingReviewsCount = 0 } = useQuery({
-    queryKey: ["pending-reviews-count-mobile", activeStoreId],
+    queryKey: ["pending-reviews-count", activeStoreId],
     queryFn: async () => {
       if (!activeStoreId) return 0;
       const { count } = await supabase

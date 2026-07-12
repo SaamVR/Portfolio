@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/auth-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,7 @@ const Reviews = () => {
       if (error) throw error;
       return data as unknown as ProductReview[];
     },
+    enabled: Boolean(activeStoreId),
   });
 
   const updateReview = useMutation({
@@ -82,7 +83,7 @@ const Reviews = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews", activeStoreId] });
-      queryClient.invalidateQueries({ queryKey: ["pending-reviews-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-reviews-count", activeStoreId] });
     },
   });
 
@@ -97,10 +98,16 @@ const Reviews = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews", activeStoreId] });
-      queryClient.invalidateQueries({ queryKey: ["pending-reviews-count"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-reviews-count", activeStoreId] });
       toast.success("Review deleted");
     },
   });
+
+  useEffect(() => {
+    setFilterTab("all");
+    setReplyingId(null);
+    setReplyText("");
+  }, [activeStoreId]);
 
   const handleApprove = (id: string) => {
     updateReview.mutate(

@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/auth-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Loader2, Tag, ToggleLeft, ToggleRight, Pencil, X, Check } from "lucide-react";
@@ -50,7 +50,14 @@ const Coupons = () => {
       if (error) throw error;
       return (data as unknown) as CouponCode[];
     },
+    enabled: Boolean(activeStoreId),
   });
+
+  useEffect(() => {
+    setShowForm(false);
+    setEditId(null);
+    setForm(emptyCoupon);
+  }, [activeStoreId]);
 
   const createCoupon = useMutation({
     mutationFn: async () => {

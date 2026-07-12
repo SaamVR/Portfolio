@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/auth-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, MailOpen, Trash2, Loader2, RefreshCw } from "lucide-react";
@@ -34,6 +34,7 @@ const Messages = () => {
       if (error) throw error;
       return data as ContactMessage[];
     },
+    enabled: Boolean(activeStoreId),
   });
 
   const markRead = useMutation({
@@ -45,8 +46,17 @@ const Messages = () => {
         .eq("store_id", activeStoreId as string);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-messages", activeStoreId] }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-messages", activeStoreId] }),
+        queryClient.invalidateQueries({ queryKey: ["unread-messages-count", activeStoreId] }),
+      ]);
+    },
   });
+
+  useEffect(() => {
+    setExpanded(null);
+  }, [activeStoreId]);
 
   const handleExpand = (msg: ContactMessage) => {
     if (expanded === msg.id) {
