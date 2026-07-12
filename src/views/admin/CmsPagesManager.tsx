@@ -571,6 +571,7 @@ export default function CmsPagesManager() {
           light: themePackage.tokens.light,
           dark: themePackage.tokens.dark,
         },
+        custom_css: themePackage.customCss ?? null,
       },
       { onConflict: "store_id" },
     );
@@ -634,7 +635,7 @@ export default function CmsPagesManager() {
       }
     }
 
-    toast.success("Default CMS store is ready.");
+    toast.success("Storefront workspace is ready.");
     setBootstrapping(false);
     await loadStore();
   };
@@ -1107,17 +1108,17 @@ export default function CmsPagesManager() {
   if (!store) {
     return (
       <Card className="border-border">
-        <CardHeader>
-          <CardTitle>Page Builder</CardTitle>
-          <CardDescription>Bootstrap the new multi-page storefront tables with the current demo storefront as the default store.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={bootstrapDefaultStore} disabled={bootstrapping} className="gap-2">
-            {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-            Create Default Store
-          </Button>
-        </CardContent>
-      </Card>
+          <CardHeader>
+            <CardTitle>Page Builder</CardTitle>
+            <CardDescription>Initialize the multi-page storefront workspace for the active store using the selected blueprint.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={bootstrapDefaultStore} disabled={bootstrapping} className="gap-2">
+              {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              Initialize Storefront Workspace
+            </Button>
+          </CardContent>
+        </Card>
     );
   }
 
@@ -2263,9 +2264,9 @@ export default function CmsPagesManager() {
                 </CardContent>
               </Card>
 
-              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. For local previews, the app will load the `threadbd` store automatically on `localhost`.
-              </div>
+                <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.
+                </div>
             </div>
           ) : (
             <Card className="border-border">
