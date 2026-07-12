@@ -38,7 +38,7 @@ import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
 import { cmsBlockRegistry, createRegistryDefaultBlock, getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
-import { applyPageBlueprint, cmsPageBlueprints, instantiatePageBlueprint } from "@/lib/cms/page-blueprints";
+import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
@@ -199,8 +199,9 @@ export default function CmsPagesManager() {
   const [bootstrapping, setBootstrapping] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
-  const [newPageTemplate, setNewPageTemplate] = useState(cmsPageBlueprints[0]?.id ?? "landing");
-  const [activeTemplateId, setActiveTemplateId] = useState(cmsPageBlueprints[0]?.id ?? "landing");
+  const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
+  const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
+  const [activeTemplateId, setActiveTemplateId] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
   const [revisions, setRevisions] = useState<Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: StorePageBlock[] }>>([]);
@@ -218,12 +219,12 @@ export default function CmsPagesManager() {
   const activeBlueprint = useMemo(() => getStoreBlueprintById(storeBlueprintId), [storeBlueprintId]);
   const availablePageBlueprints = useMemo(
     () =>
-      cmsPageBlueprints.filter(
+      pageBlueprints.filter(
         (template) =>
           template.businessFamily === activeBlueprint.businessFamily
           && template.catalogModes.includes(activeBlueprint.catalogMode),
       ),
-    [activeBlueprint],
+    [activeBlueprint, pageBlueprints],
   );
   const availableBlockRegistry = useMemo(
     () =>
@@ -290,6 +291,17 @@ export default function CmsPagesManager() {
     if (role !== "admin") return;
     void loadStore();
   }, [loadStore, role]);
+
+  useEffect(() => {
+    if (role !== "admin") return;
+
+    const loadBlueprintLibrary = async () => {
+      const blueprints = await loadPageBlueprints(supabase);
+      setPageBlueprints(blueprints);
+    };
+
+    void loadBlueprintLibrary();
+  }, [role]);
 
   useEffect(() => {
     if (!availablePageBlueprints.some((template) => template.id === newPageTemplate)) {
@@ -543,7 +555,7 @@ export default function CmsPagesManager() {
     setStore((current) => {
       if (!current) return current;
       const page = launchTemplatesEnabled
-        ? instantiatePageBlueprint(newPageTemplate, current.pages.length) ?? createDefaultCmsPage(current.pages.length)
+        ? instantiatePageBlueprint(newPageTemplate, current.pages.length, availablePageBlueprints) ?? createDefaultCmsPage(current.pages.length)
         : createDefaultCmsPage(current.pages.length);
       setSelectedPageId(page.id);
       return { ...current, pages: [...current.pages, page] };
@@ -580,7 +592,7 @@ export default function CmsPagesManager() {
       toast.error("Launch templates are not enabled for this store.");
       return;
     }
-    updateSelectedPage((page) => applyPageBlueprint(page, templateId) ?? page);
+    updateSelectedPage((page) => applyPageBlueprint(page, templateId, availablePageBlueprints) ?? page);
     setActiveTemplateId(templateId);
     toast.success("Template applied to the current page.");
   };

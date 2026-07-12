@@ -258,6 +258,42 @@ export type Database = {
           },
         ]
       }
+      page_blueprints: {
+        Row: {
+          business_family: string
+          catalog_modes: Json
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          page_payload: Json
+          updated_at: string
+        }
+        Insert: {
+          business_family?: string
+          catalog_modes?: Json
+          created_at?: string
+          description?: string
+          id: string
+          is_active?: boolean
+          name: string
+          page_payload?: Json
+          updated_at?: string
+        }
+        Update: {
+          business_family?: string
+          catalog_modes?: Json
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          page_payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupon_codes: {
         Row: {
           code: string
