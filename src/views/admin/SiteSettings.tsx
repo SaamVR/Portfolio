@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
@@ -19,12 +19,19 @@ import { BrandSeoTab } from "./settings/BrandSeoTab";
 import { AnnouncementTab } from "./settings/AnnouncementTab";
 import { ThemesTab } from "./settings/ThemesTab";
 import { CustomDomainTab } from "./settings/CustomDomainTab";
-import { themePresets, type ThemePreset } from "@/lib/themePresets";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Database } from "lucide-react";
 import { seedDemoProducts } from "@/data/seedDemoProducts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import {
+  buildThemePackageExport,
+  fallbackThemePackages,
+  getThemePackageById,
+  loadThemePackages,
+  parseThemePackageImport,
+  type ThemePackageDefinition,
+} from "@/lib/theme-packages";
 const SiteSettings = () => {
   const { role , activeStoreId} = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
@@ -35,6 +42,7 @@ const SiteSettings = () => {
   const [dbTypes, setDbTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
 
   const rawActiveTab = searchParams.get("tab") || "brand_seo";
   const activeTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
@@ -77,6 +85,9 @@ const SiteSettings = () => {
   useEffect(() => {
     if (role !== "admin") return;
     const fetch = async () => {
+      const loadedThemePackages = await loadThemePackages(supabase, activeStoreId);
+      setThemePackages(loadedThemePackages);
+
       supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).then(({ data }) => {
         setDbCategories((data ?? []).map((r: { name: string }) => r.name));
       });
@@ -97,13 +108,13 @@ const SiteSettings = () => {
   const { data: themeData } = useQuery({
     queryKey: ["store_themes", activeStoreId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("store_themes")
-        .select("preset_id")
+        .select("preset_id, mode, typography, components")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
-      return data?.preset_id ?? "default";
+      return data ?? { preset_id: "default" };
     },
     enabled: Boolean(activeStoreId),
   });
@@ -124,12 +135,17 @@ const SiteSettings = () => {
     enabled: Boolean(activeStoreId) && activeTab === "notifications",
   });
 
-  const activeThemeId = themeData ?? "default";
+  const activeThemeId = themeData?.preset_id ?? "default";
   const [localThemeId, setLocalThemeId] = useState(activeThemeId);
 
   useEffect(() => {
     setLocalThemeId(activeThemeId);
   }, [activeThemeId]);
+
+  const activeThemePackage = useMemo(
+    () => getThemePackageById(localThemeId, themePackages),
+    [localThemeId, themePackages],
+  );
 
   const saveSetting = async (key: string) => {
     setSaving(key);
@@ -189,16 +205,167 @@ const SiteSettings = () => {
 
     setSaving("active_theme");
     try {
-      const { error } = await supabase.from("store_themes").upsert(
-        { store_id: activeStoreId, preset_id: localThemeId },
-        { onConflict: "store_id" },
-      );
+      const fullPayload = {
+        store_id: activeStoreId,
+        preset_id: activeThemePackage.presetId,
+        mode: themeData?.mode ?? "dark",
+        theme_package_id: activeThemePackage.id,
+        theme_package_version: activeThemePackage.version,
+        colors: activeThemePackage.tokens[(themeData?.mode as "light" | "dark" | undefined) ?? "dark"] ?? {},
+        typography: {
+          headingFont: settings.theme_customization?.heading_font ?? themeData?.typography?.headingFont ?? activeThemePackage.tokens.typography.headingFont ?? "",
+          bodyFont: settings.theme_customization?.body_font ?? themeData?.typography?.bodyFont ?? activeThemePackage.tokens.typography.bodyFont ?? "",
+        },
+        components: {
+          borderRadius: settings.theme_customization?.border_radius ?? themeData?.components?.borderRadius ?? activeThemePackage.tokens.components.borderRadius ?? "0.5rem",
+        },
+        overrides: {
+          headingFont: settings.theme_customization?.heading_font ?? undefined,
+          bodyFont: settings.theme_customization?.body_font ?? undefined,
+          borderRadius: settings.theme_customization?.border_radius ?? undefined,
+        },
+        resolved_tokens: {
+          light: activeThemePackage.tokens.light,
+          dark: activeThemePackage.tokens.dark,
+        },
+        custom_css: activeThemePackage.customCss ?? null,
+      };
+
+      let { error } = await (supabase as any).from("store_themes").upsert(fullPayload, { onConflict: "store_id" });
+      if (error) {
+        ({ error } = await (supabase as any).from("store_themes").upsert(
+          {
+            store_id: activeStoreId,
+            preset_id: activeThemePackage.presetId,
+            mode: themeData?.mode ?? "dark",
+            colors: fullPayload.colors,
+            typography: fullPayload.typography,
+            components: fullPayload.components,
+            custom_css: fullPayload.custom_css,
+          },
+          { onConflict: "store_id" },
+        ));
+      }
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["store_themes", activeStoreId] });
       toast.success("Theme settings saved.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save theme settings.");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const exportCurrentTheme = () => {
+    const exportPayload = buildThemePackageExport({
+      ...activeThemePackage,
+      name: `${activeThemePackage.name} (${settings.brand_seo?.site_name || "Store"})`,
+      sourceType: "merchant_private",
+      tokens: {
+        ...activeThemePackage.tokens,
+        typography: {
+          headingFont: settings.theme_customization?.heading_font ?? activeThemePackage.tokens.typography.headingFont,
+          bodyFont: settings.theme_customization?.body_font ?? activeThemePackage.tokens.typography.bodyFont,
+        },
+        components: {
+          borderRadius: settings.theme_customization?.border_radius ?? activeThemePackage.tokens.components.borderRadius,
+        },
+      },
+    });
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${exportPayload.slug || "theme-package"}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const savePrivateTheme = async () => {
+    if (!activeStoreId) return;
+
+    setSaving("private_theme");
+    try {
+      const exportPayload = buildThemePackageExport({
+        ...activeThemePackage,
+        id: crypto.randomUUID(),
+        slug: `${settings.brand_seo?.site_name || "store"}-${Date.now()}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name: `${settings.brand_seo?.site_name || "Store"} Private Theme`,
+        sourceType: "merchant_private",
+        ownerStoreId: activeStoreId,
+        tokens: {
+          ...activeThemePackage.tokens,
+          typography: {
+            headingFont: settings.theme_customization?.heading_font ?? activeThemePackage.tokens.typography.headingFont,
+            bodyFont: settings.theme_customization?.body_font ?? activeThemePackage.tokens.typography.bodyFont,
+          },
+          components: {
+            borderRadius: settings.theme_customization?.border_radius ?? activeThemePackage.tokens.components.borderRadius,
+          },
+        },
+      });
+
+      const { error } = await (supabase as any).from("theme_packages").insert({
+        id: exportPayload.id,
+        slug: exportPayload.slug,
+        name: exportPayload.name,
+        description: exportPayload.description,
+        preview_metadata: exportPayload.preview,
+        source_type: exportPayload.sourceType,
+        version: exportPayload.version,
+        compatibility_version: exportPayload.compatibilityVersion,
+        preset_id: exportPayload.presetId,
+        mode: exportPayload.mode,
+        tokens: exportPayload.tokens,
+        component_recipes: exportPayload.recipes,
+        custom_css: exportPayload.customCss ?? null,
+        owner_store_id: activeStoreId,
+      });
+      if (error) throw error;
+
+      const refreshed = await loadThemePackages(supabase, activeStoreId);
+      setThemePackages(refreshed);
+      toast.success("Private theme saved.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save private theme.");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const importThemePackage = async (raw: string) => {
+    if (!activeStoreId) return;
+
+    setSaving("import_theme");
+    try {
+      const imported = parseThemePackageImport(raw);
+      const packageId = crypto.randomUUID();
+      const { error } = await (supabase as any).from("theme_packages").insert({
+        id: packageId,
+        slug: `${imported.slug}-${Date.now()}`,
+        name: imported.name,
+        description: imported.description,
+        preview_metadata: imported.preview,
+        source_type: "merchant_private",
+        version: imported.version,
+        compatibility_version: imported.compatibilityVersion,
+        preset_id: imported.presetId,
+        mode: imported.mode,
+        tokens: imported.tokens,
+        component_recipes: imported.recipes,
+        custom_css: imported.customCss ?? null,
+        owner_store_id: activeStoreId,
+      });
+      if (error) throw error;
+
+      const refreshed = await loadThemePackages(supabase, activeStoreId);
+      setThemePackages(refreshed);
+      setLocalThemeId(packageId);
+      toast.success("Theme package imported.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to import theme package.");
     } finally {
       setSaving(null);
     }
@@ -563,7 +730,19 @@ const SiteSettings = () => {
         </TabsContent>
 
         {/* Storefront Builder (Themes & Layout) */}
-        <ThemesTab settings={settings} update={update} SaveButton={SaveButton} localThemeId={localThemeId} handleThemeSelect={handleThemeSelect} saveTheme={saveTheme} saving={saving} />
+        <ThemesTab
+          settings={settings}
+          update={update}
+          SaveButton={SaveButton}
+          localThemeId={localThemeId}
+          handleThemeSelect={handleThemeSelect}
+          saveTheme={saveTheme}
+          saving={saving}
+          themePackages={themePackages}
+          onExportCurrentTheme={exportCurrentTheme}
+          onSavePrivateTheme={() => void savePrivateTheme()}
+          onImportThemePackage={(raw) => void importThemePackage(raw)}
+        />
 
           {/* Payment */}
         <TabsContent value="payment">

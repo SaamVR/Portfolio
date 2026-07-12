@@ -1,10 +1,11 @@
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Palette, Save, Loader2 } from "lucide-react";
-import { themePresets } from "@/lib/themePresets";
+import { Check, Download, Import, Palette, Save, Loader2, CopyPlus } from "lucide-react";
+import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 export function ThemesTab({
   settings,
@@ -14,6 +15,10 @@ export function ThemesTab({
   handleThemeSelect,
   saveTheme,
   saving,
+  themePackages,
+  onExportCurrentTheme,
+  onSavePrivateTheme,
+  onImportThemePackage,
 }: {
   settings: any;
   update: (category: string, key: string, value: any) => void;
@@ -22,7 +27,13 @@ export function ThemesTab({
   handleThemeSelect: (themeId: string) => void;
   saveTheme: () => void;
   saving: string | null;
+  themePackages: ThemePackageDefinition[];
+  onExportCurrentTheme: () => void;
+  onSavePrivateTheme: () => void;
+  onImportThemePackage: (raw: string) => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <TabsContent value="themes">
       <Card className="border-border">
@@ -33,23 +44,56 @@ export function ThemesTab({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="presets" className="w-full">
+          <Tabs defaultValue="library" className="w-full">
             <TabsList className="mb-6 bg-secondary/50 p-1 w-full flex h-auto">
-              <TabsTrigger value="presets" className="flex-1 py-2">Presets</TabsTrigger>
+              <TabsTrigger value="library" className="flex-1 py-2">Theme Library</TabsTrigger>
               <TabsTrigger value="layout" className="flex-1 py-2">Layout</TabsTrigger>
               <TabsTrigger value="typography" className="flex-1 py-2">Typography & Style</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="presets" className="space-y-6">
-              <p className="text-sm text-muted-foreground">Choose a master colour scheme for your store. The theme applies to both light and dark modes.</p>
+
+            <TabsContent value="library" className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={saveTheme} disabled={saving === "active_theme"} className="gap-2">
+                  {saving === "active_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Apply Theme
+                </Button>
+                <Button type="button" variant="outline" onClick={onSavePrivateTheme} disabled={saving === "private_theme"} className="gap-2">
+                  {saving === "private_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />}
+                  Save as Private Theme
+                </Button>
+                <Button type="button" variant="outline" onClick={onExportCurrentTheme} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export JSON
+                </Button>
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={saving === "import_theme"} className="gap-2">
+                  {saving === "import_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Import className="h-4 w-4" />}
+                  Import JSON
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    const raw = await file.text();
+                    onImportThemePackage(raw);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Choose a shared or private theme package, then install it as a store-local theme snapshot. Export and import stay store-scoped unless an admin promotes a package into the shared library.
+              </p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {themePresets.map((preset) => {
-                  const isActive = localThemeId === preset.id;
+                {themePackages.map((themePackage) => {
+                  const isActive = localThemeId === themePackage.id;
                   return (
                     <button
-                      key={preset.id}
+                      key={themePackage.id}
                       type="button"
-                      onClick={() => handleThemeSelect(preset.id)}
+                      onClick={() => handleThemeSelect(themePackage.id)}
                       className={`relative rounded-xl border-2 p-4 text-left transition-all ${isActive ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"}`}
                     >
                       {isActive && (
@@ -58,20 +102,17 @@ export function ThemesTab({
                         </div>
                       )}
                       <div className="mb-3 flex gap-1.5">
-                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: preset.preview.bg }} />
-                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: preset.preview.primary }} />
-                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: preset.preview.accent }} />
+                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.bg }} />
+                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.primary }} />
+                        <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.accent }} />
                       </div>
-                      <p className="text-sm font-semibold text-foreground">{preset.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{preset.description}</p>
+                      <p className="text-sm font-semibold text-foreground">{themePackage.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{themePackage.description}</p>
+                      <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">{themePackage.sourceType.replace(/_/g, " ")}</p>
                     </button>
                   );
                 })}
               </div>
-              <Button onClick={saveTheme} disabled={saving === "active_theme"} className="gap-2">
-                {saving === "active_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Apply Preset
-              </Button>
             </TabsContent>
 
             <TabsContent value="layout" className="space-y-6">

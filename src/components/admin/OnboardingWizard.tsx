@@ -35,36 +35,37 @@ import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
-import { themePresets } from "@/lib/themePresets";
 import {
   createStoreSlug,
-  getLaunchTemplate,
   instantiateLaunchPages,
   launchTemplates,
-  type LaunchTemplateId,
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-
-type OnboardingStepId = "identity" | "type" | "theme" | "hero" | "payments" | "launch";
-
-const steps: Array<{ id: OnboardingStepId; title: string; description: string }> = [
-  { id: "identity", title: "Store", description: "Name, URL, and description" },
-  { id: "type", title: "Type", description: "Choose the launch template" },
-  { id: "theme", title: "Look", description: "Theme and color mode" },
-  { id: "hero", title: "Front", description: "Hero copy and media" },
-  { id: "payments", title: "Pay", description: "Payment methods" },
-  { id: "launch", title: "Live", description: "Publish and share" },
-];
+import {
+  fallbackStoreBlueprints,
+  getStoreBlueprintById,
+  getStoreBlueprintGroups,
+  loadStoreBlueprints,
+  type StoreBlueprintDefinition,
+} from "@/lib/cms/store-blueprints";
+import {
+  fallbackThemePackages,
+  getThemePackageById,
+  loadThemePackages,
+  type ThemePackageDefinition,
+} from "@/lib/theme-packages";
 
 interface DraftState {
   storeName: string;
   slug: string;
   description: string;
   logoUrl: string;
-  businessType: LaunchTemplateId;
-  themePresetId: string;
+  blueprintId: string;
+  businessFamily: StoreBlueprintDefinition["businessFamily"];
+  catalogMode: StoreBlueprintDefinition["catalogMode"];
+  themePackageId: string;
   themeMode: Store["theme"]["mode"];
   headingFont: string;
   bodyFont: string;
@@ -81,28 +82,41 @@ interface DraftState {
   isPublished: boolean;
 }
 
-function draftFromTemplate(templateId: LaunchTemplateId, previous?: Partial<DraftState>): DraftState {
-  const template = getLaunchTemplate(templateId);
+function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePaymentDefaults {
+  const blueprint = getStoreBlueprintById(blueprintId);
+  const templateId = blueprint.legacyTemplateId ?? "general";
+  return launchTemplates.find((item) => item.id === templateId)?.paymentDefaults ?? launchTemplates[0].paymentDefaults;
+}
+
+function draftFromBlueprint(
+  blueprintId: string,
+  themePackages: ThemePackageDefinition[],
+  previous?: Partial<DraftState>,
+): DraftState {
+  const blueprint = getStoreBlueprintById(blueprintId);
+  const themePackage = getThemePackageById(previous?.themePackageId ?? blueprint.defaultTheme.presetId, themePackages);
   const storeName = previous?.storeName || "Demo Store";
 
   return {
     storeName,
     slug: previous?.slug || createStoreSlug(storeName),
-    description: previous?.description || template.storeDescription,
+    description: previous?.description || blueprint.storeDescription,
     logoUrl: previous?.logoUrl || "",
-    businessType: templateId,
-    themePresetId: previous?.themePresetId || template.theme.presetId,
-    themeMode: previous?.themeMode || template.theme.mode,
-    headingFont: previous?.headingFont || template.theme.headingFont || "",
-    bodyFont: previous?.bodyFont || template.theme.bodyFont || "",
-    borderRadius: previous?.borderRadius || template.theme.borderRadius || "0.75rem",
-    heroTagline: previous?.heroTagline || template.hero.tagline,
-    heroTitle: previous?.heroTitle || template.hero.title,
-    heroHighlight: previous?.heroHighlight || template.hero.highlight,
-    heroSubtitle: previous?.heroSubtitle || template.hero.subtitle,
-    heroMediaUrl: previous?.heroMediaUrl || template.hero.mediaUrl || "",
+    blueprintId: blueprint.id,
+    businessFamily: previous?.businessFamily || blueprint.businessFamily,
+    catalogMode: previous?.catalogMode || blueprint.catalogMode,
+    themePackageId: previous?.themePackageId || themePackage.id,
+    themeMode: previous?.themeMode || themePackage.mode || blueprint.defaultTheme.mode,
+    headingFont: previous?.headingFont || themePackage.tokens.typography.headingFont || blueprint.defaultTheme.headingFont || "",
+    bodyFont: previous?.bodyFont || themePackage.tokens.typography.bodyFont || blueprint.defaultTheme.bodyFont || "",
+    borderRadius: previous?.borderRadius || themePackage.tokens.components.borderRadius || blueprint.defaultTheme.borderRadius || "0.75rem",
+    heroTagline: previous?.heroTagline || blueprint.hero.tagline,
+    heroTitle: previous?.heroTitle || blueprint.hero.title,
+    heroHighlight: previous?.heroHighlight || blueprint.hero.highlight,
+    heroSubtitle: previous?.heroSubtitle || blueprint.hero.subtitle,
+    heroMediaUrl: previous?.heroMediaUrl || "",
     payment: {
-      ...template.paymentDefaults,
+      ...getBlueprintPaymentDefaults(blueprint.id),
       bkash_number: previous?.payment?.bkash_number || "",
       nagad_number: previous?.payment?.nagad_number || "",
     },
@@ -134,8 +148,59 @@ function applyHeroToPages(pages: StorePage[], draft: DraftState): StorePage[] {
   }));
 }
 
-function buildPreviewStore(draft: DraftState, activeStoreId: string): Store {
-  const templatePages = applyHeroToPages(instantiateLaunchPages(draft.businessType), draft);
+function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePage[] {
+  return pages.map((page) => ({
+    ...page,
+    blocks: page.blocks.map((block) => {
+      if (block.type === "featured-products") {
+        if (draft.catalogMode === "single_product") {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              limit: 1,
+              title: block.props.title || "The Product",
+              tagline: block.props.tagline || "Flagship",
+            },
+          };
+        }
+
+        if (draft.catalogMode === "inquiry_only") {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              title: block.props.title || "Browse the Collection",
+              tagline: block.props.tagline || "Inquiry",
+            },
+          };
+        }
+      }
+
+      if (block.type === "promo-banner" && draft.catalogMode === "inquiry_only") {
+        return {
+          ...block,
+          props: {
+            ...block.props,
+            title: "Discuss your order before checkout",
+            subtitle: "Use WhatsApp, phone, or form-based inquiry for custom pricing and assisted selling.",
+            ctaText: "Start an Inquiry",
+          },
+        };
+      }
+
+      return block;
+    }),
+  }));
+}
+
+function buildPreviewStore(draft: DraftState, activeStoreId: string, themePackages: ThemePackageDefinition[]): Store {
+  const blueprint = getStoreBlueprintById(draft.blueprintId);
+  const themePackage = getThemePackageById(draft.themePackageId, themePackages);
+  const templatePages = applyCatalogModeToPages(
+    applyHeroToPages(instantiateLaunchPages(blueprint.legacyTemplateId ?? "general"), draft),
+    draft,
+  );
 
   return {
     id: activeStoreId,
@@ -146,12 +211,14 @@ function buildPreviewStore(draft: DraftState, activeStoreId: string): Store {
     locale: "en-BD",
     isPublished: draft.isPublished,
     theme: {
-      presetId: draft.themePresetId,
+      presetId: themePackage.presetId,
       mode: draft.themeMode,
       headingFont: draft.headingFont,
       bodyFont: draft.bodyFont,
       borderRadius: draft.borderRadius,
-      customCssVars: {},
+      customCssVars: {
+        ...(themePackage.tokens[draft.themeMode] ?? {}),
+      },
     },
     pages: templatePages,
   };
@@ -164,8 +231,7 @@ function getStoreUrl(slug: string) {
 
   const host = window.location.host;
   const protocol = window.location.protocol;
-  
-  const rootHost = host.replace(/^www\./, '');
+  const rootHost = host.replace(/^www\./, "");
   return `${protocol}//${slug}.${rootHost}`;
 }
 
@@ -180,11 +246,17 @@ export default function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(true);
-  const [draft, setDraft] = useState<DraftState>(() => draftFromTemplate("clothing"));
+  const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
+  const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
+  const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint("clothing", fallbackThemePackages));
 
-  const activeStep = steps[activeIndex];
-  const template = getLaunchTemplate(draft.businessType);
-  const previewStore = useMemo(() => buildPreviewStore(draft, activeStoreId ?? defaultStore.id), [draft, activeStoreId]);
+  const blueprint = getStoreBlueprintById(draft.blueprintId);
+  const steps = blueprint.onboarding.steps;
+  const activeStep = steps[activeIndex] ?? steps[0];
+  const previewStore = useMemo(
+    () => buildPreviewStore(draft, activeStoreId ?? defaultStore.id, themePackages),
+    [draft, activeStoreId, themePackages],
+  );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
   const storeUrl = getStoreUrl(draft.slug);
   const canGoNext = activeIndex < steps.length - 1;
@@ -197,7 +269,15 @@ export default function OnboardingWizard() {
 
     const loadDraft = async () => {
       setLoading(true);
-      const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }] = await Promise.all([
+
+      const [loadedBlueprints, loadedThemePackages] = await Promise.all([
+        loadStoreBlueprints(supabase),
+        loadThemePackages(supabase, activeStoreId),
+      ]);
+      setBlueprints(loadedBlueprints);
+      setThemePackages(loadedThemePackages);
+
+      const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
         (supabase as any)
           .from("stores")
           .select("name, slug, description, logo_url, store_type, is_published")
@@ -209,6 +289,11 @@ export default function OnboardingWizard() {
           .eq("store_id", activeStoreId as string)
           .maybeSingle(),
         (supabase as any).from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
+        (supabase as any)
+          .from("store_business_profiles")
+          .select("blueprint_id, business_family, catalog_mode")
+          .eq("store_id", activeStoreId as string)
+          .maybeSingle(),
       ]);
 
       const store = storeRecord as {
@@ -216,7 +301,7 @@ export default function OnboardingWizard() {
         slug?: string;
         description?: string;
         logo_url?: string;
-        store_type?: LaunchTemplateId;
+        store_type?: string;
         is_published?: boolean;
       } | null;
       const theme = themeRecord as {
@@ -226,22 +311,27 @@ export default function OnboardingWizard() {
         components?: { borderRadius?: string };
       } | null;
       const payment = (siteSettings?.value ?? {}) as Partial<DraftState["payment"]>;
-      const templateId: LaunchTemplateId = store?.store_type && ["clothing", "food", "general"].includes(store.store_type)
-        ? store.store_type
-        : "clothing";
+      const businessProfile = businessProfileResult?.data as {
+        blueprint_id?: string;
+        business_family?: DraftState["businessFamily"];
+        catalog_mode?: DraftState["catalogMode"];
+      } | null;
+      const resolvedBlueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store?.store_type ?? "clothing");
 
-      setDraft(draftFromTemplate(templateId, {
+      setDraft(draftFromBlueprint(resolvedBlueprint.id, loadedThemePackages, {
         storeName: store?.name || defaultStore.name,
         slug: store?.slug || defaultStore.slug,
         description: store?.description || undefined,
         logoUrl: store?.logo_url || "",
-        themePresetId: theme?.preset_id || undefined,
+        businessFamily: businessProfile?.business_family || resolvedBlueprint.businessFamily,
+        catalogMode: businessProfile?.catalog_mode || resolvedBlueprint.catalogMode,
+        themePackageId: theme?.preset_id || resolvedBlueprint.defaultTheme.presetId,
         themeMode: theme?.mode || undefined,
         headingFont: theme?.typography?.headingFont || undefined,
         bodyFont: theme?.typography?.bodyFont || undefined,
         borderRadius: theme?.components?.borderRadius || undefined,
         payment: {
-          ...getLaunchTemplate(templateId).paymentDefaults,
+          ...getBlueprintPaymentDefaults(resolvedBlueprint.id),
           ...payment,
           bkash_number: payment.bkash_number || "",
           nagad_number: payment.nagad_number || "",
@@ -294,21 +384,26 @@ export default function OnboardingWizard() {
     }));
   };
 
-  const applyTemplate = (templateId: LaunchTemplateId) => {
-    setDraft((current) => {
-      const next = draftFromTemplate(templateId, {
+  const applyBlueprint = (blueprintId: string) => {
+    setDraft((current) =>
+      draftFromBlueprint(blueprintId, themePackages, {
         storeName: current.storeName,
         slug: current.slug,
+        description: current.description,
         logoUrl: current.logoUrl,
-        isPublished: current.isPublished,
+        themePackageId: current.themePackageId,
+        themeMode: current.themeMode,
+        headingFont: current.headingFont,
+        bodyFont: current.bodyFont,
+        borderRadius: current.borderRadius,
         payment: {
-          ...getLaunchTemplate(templateId).paymentDefaults,
+          ...getBlueprintPaymentDefaults(blueprintId),
           bkash_number: current.payment.bkash_number,
           nagad_number: current.payment.nagad_number,
         },
-      });
-      return next;
-    });
+        isPublished: current.isPublished,
+      }),
+    );
   };
 
   const saveAndLaunch = async (publish: boolean) => {
@@ -329,19 +424,21 @@ export default function OnboardingWizard() {
     }
 
     setSaving(true);
-    const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId).pages;
+    const selectedBlueprint = getStoreBlueprintById(draft.blueprintId);
+    const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
+    const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId, themePackages).pages;
 
     const { error: storeError } = await (supabase as any).from("stores").update(
       {
         name: draft.storeName.trim() || defaultStore.name,
         slug: draft.slug.trim() || defaultStore.slug,
-        description: draft.description.trim() || template.storeDescription,
-        store_type: draft.businessType,
+        description: draft.description.trim() || selectedBlueprint.storeDescription,
+        store_type: draft.blueprintId,
         logo_url: draft.logoUrl.trim() || null,
         currency_code: defaultStore.currencyCode,
         locale: defaultStore.locale,
         is_published: publish,
-      }
+      },
     ).eq("id", activeStoreId);
 
     if (storeError) {
@@ -350,22 +447,48 @@ export default function OnboardingWizard() {
       return;
     }
 
-    const { error: themeError } = await (supabase as any).from("store_themes").upsert(
-      {
-        store_id: activeStoreId,
-        preset_id: draft.themePresetId,
-        mode: draft.themeMode,
-        colors: {},
-        typography: {
-          headingFont: draft.headingFont,
-          bodyFont: draft.bodyFont,
-        },
-        components: {
-          borderRadius: draft.borderRadius,
-        },
+    const fullThemePayload = {
+      store_id: activeStoreId,
+      preset_id: selectedThemePackage.presetId,
+      mode: draft.themeMode,
+      theme_package_id: selectedThemePackage.id,
+      theme_package_version: selectedThemePackage.version,
+      colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
+      typography: {
+        headingFont: draft.headingFont,
+        bodyFont: draft.bodyFont,
       },
-      { onConflict: "store_id" },
-    );
+      components: {
+        borderRadius: draft.borderRadius,
+      },
+      overrides: {
+        themeMode: draft.themeMode,
+        headingFont: draft.headingFont,
+        bodyFont: draft.bodyFont,
+        borderRadius: draft.borderRadius,
+      },
+      resolved_tokens: {
+        light: selectedThemePackage.tokens.light,
+        dark: selectedThemePackage.tokens.dark,
+      },
+      custom_css: selectedThemePackage.customCss ?? null,
+    };
+
+    let themeError = (await (supabase as any).from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
+    if (themeError) {
+      themeError = (await (supabase as any).from("store_themes").upsert(
+        {
+          store_id: activeStoreId,
+          preset_id: selectedThemePackage.presetId,
+          mode: draft.themeMode,
+          colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
+          typography: fullThemePayload.typography,
+          components: fullThemePayload.components,
+          custom_css: fullThemePayload.custom_css,
+        },
+        { onConflict: "store_id" },
+      )).error;
+    }
 
     if (themeError) {
       toast.error("Failed to save theme setup.");
@@ -442,6 +565,19 @@ export default function OnboardingWizard() {
       return;
     }
 
+    await (supabase as any)
+      .from("store_business_profiles")
+      .upsert(
+        {
+          store_id: activeStoreId,
+          blueprint_id: draft.blueprintId,
+          business_family: draft.businessFamily,
+          catalog_mode: draft.catalogMode,
+          enabled_modules: selectedBlueprint.capabilities,
+        },
+        { onConflict: "store_id" },
+      );
+
     setDraft((current) => ({ ...current, isPublished: publish }));
     setSaving(false);
     toast.success(publish ? "Store is live." : "Store setup saved.");
@@ -466,15 +602,15 @@ export default function OnboardingWizard() {
         <div className="space-y-2">
           <Badge variant="secondary" className="gap-1">
             <Sparkles className="h-3.5 w-3.5" />
-            Phase 2 Setup
+            Flexible Store Launch
           </Badge>
           <h1 className="font-heading text-3xl font-bold text-foreground">Launch your store</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            A mobile-first setup flow for the default store. Pick a template, tune the look, add payment basics, and go live.
+            A blueprint-driven setup flow that keeps the current commerce engine intact while making each storefront more flexible, tenant-scoped, and themeable.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
           {steps.map((step, index) => (
             <button
               key={step.id}
@@ -505,13 +641,65 @@ export default function OnboardingWizard() {
             <CardDescription>{activeStep.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {activeStep.id === "identity" ? (
+            {activeStep.id === "blueprint" ? (
+              <div className="grid gap-5">
+                {!launchTemplatesEnabled ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                    Blueprint switching is disabled for this store package right now. The current storefront setup still works, but changing the launch model is locked.
+                  </div>
+                ) : null}
+                {Object.entries(getStoreBlueprintGroups(blueprints)).map(([groupName, groupedBlueprints]) => (
+                  <div key={groupName} className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{groupName}</p>
+                      <p className="text-xs text-muted-foreground">Each blueprint seeds store-local pages, blocks, and defaults only.</p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {groupedBlueprints.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            if (!launchTemplatesEnabled) return;
+                            applyBlueprint(item.id);
+                          }}
+                          disabled={!launchTemplatesEnabled}
+                          className={`rounded-lg border p-4 text-left transition-colors ${
+                            draft.blueprintId === item.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                          } ${!launchTemplatesEnabled ? "cursor-not-allowed opacity-60" : ""}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-foreground">{item.name}</p>
+                                <Badge variant="outline">{item.catalogMode.replace(/_/g, " ")}</Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{item.description}</p>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {item.capabilities.map((capability) => (
+                                  <Badge key={capability} variant="secondary" className="text-[11px]">
+                                    {capability.replace(/_/g, " ")}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            {draft.blueprintId === item.id ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : null}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {activeStep.id === "brand" ? (
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label>Store Name</Label>
-                <Input
-                  data-testid="onboarding-store-name"
-                  value={draft.storeName}
+                  <Input
+                    data-testid="onboarding-store-name"
+                    value={draft.storeName}
                     onChange={(event) => {
                       const storeName = event.target.value;
                       updateDraft({ storeName, slug: createStoreSlug(storeName) });
@@ -548,32 +736,66 @@ export default function OnboardingWizard() {
               </div>
             ) : null}
 
-            {activeStep.id === "type" ? (
-              <div className="grid gap-3">
-                {!launchTemplatesEnabled ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                    Launch templates are disabled for this store package right now. The current storefront type stays available, but template switching is locked.
+            {activeStep.id === "content" ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+                  This starts from the selected <span className="font-medium text-foreground">{blueprint.name}</span> blueprint and stays scoped to this store.
+                </div>
+                <div className="grid gap-2">
+                  <Label>Tagline</Label>
+                  <Input value={draft.heroTagline} onChange={(event) => updateDraft({ heroTagline: event.target.value })} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Title</Label>
+                    <Input value={draft.heroTitle} onChange={(event) => updateDraft({ heroTitle: event.target.value })} />
                   </div>
-                ) : null}
-                {launchTemplates.map((item) => (
+                  <div className="grid gap-2">
+                    <Label>Highlight</Label>
+                    <Input value={draft.heroHighlight} onChange={(event) => updateDraft({ heroHighlight: event.target.value })} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Subtitle</Label>
+                  <Textarea rows={4} value={draft.heroSubtitle} onChange={(event) => updateDraft({ heroSubtitle: event.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Hero Image or Video</Label>
+                  <CloudinaryUpload
+                    value={draft.heroMediaUrl}
+                    onChange={(url) => updateDraft({ heroMediaUrl: url })}
+                    folder="hero"
+                    accept="image/*,video/*"
+                    label="Upload hero media"
+                    resourceType="auto"
+                    storeId={activeStoreId ?? undefined}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep.id === "catalog" ? (
+              <div className="grid gap-3">
+                {(["single_product", "multi_product", "menu", "inquiry_only"] as const).map((mode) => (
                   <button
-                    key={item.id}
+                    key={mode}
                     type="button"
-                    onClick={() => {
-                      if (!launchTemplatesEnabled) return;
-                      applyTemplate(item.id);
-                    }}
-                    disabled={!launchTemplatesEnabled}
+                    onClick={() => updateDraft({ catalogMode: mode })}
                     className={`rounded-lg border p-4 text-left transition-colors ${
-                      draft.businessType === item.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
-                    } ${!launchTemplatesEnabled ? "cursor-not-allowed opacity-60" : ""}`}
+                      draft.catalogMode === mode ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium text-foreground">{item.name}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                        <p className="font-medium text-foreground">{mode.replace(/_/g, " ")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {mode === "single_product" ? "One flagship offer with a tighter conversion path."
+                            : mode === "multi_product" ? "A classic browse-and-buy product catalog."
+                            : mode === "menu" ? "Menu or assortment browsing with local ordering."
+                            : "Browse-only or quote-led selling with assisted conversion."}
+                        </p>
                       </div>
-                      {draft.businessType === item.id ? <CheckCircle2 className="h-5 w-5 text-primary" /> : null}
+                      {draft.catalogMode === mode ? <CheckCircle2 className="h-5 w-5 text-primary" /> : null}
                     </div>
                   </button>
                 ))}
@@ -582,25 +804,48 @@ export default function OnboardingWizard() {
 
             {activeStep.id === "theme" ? (
               <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label>Theme Preset</Label>
-                  <Select value={draft.themePresetId} onValueChange={(value) => updateDraft({ themePresetId: value })} disabled={!themePresetsEnabled}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {themePresets.map((preset) => (
-                        <SelectItem key={preset.id} value={preset.id}>
-                          {preset.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!themePresetsEnabled ? (
-                    <p className="text-xs text-muted-foreground">
-                      Theme preset switching is disabled for this store package. Saved colors and mode still preview normally.
-                    </p>
-                  ) : null}
+                {!themePresetsEnabled ? (
+                  <p className="text-xs text-muted-foreground">
+                    Theme switching is disabled for this store package. Saved theme data still previews normally.
+                  </p>
+                ) : null}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {themePackages.map((themePackage) => {
+                    const isActive = draft.themePackageId === themePackage.id;
+                    return (
+                      <button
+                        key={themePackage.id}
+                        type="button"
+                        onClick={() => {
+                          if (!themePresetsEnabled) return;
+                          updateDraft({
+                            themePackageId: themePackage.id,
+                            themeMode: themePackage.mode,
+                            headingFont: themePackage.tokens.typography.headingFont || draft.headingFont,
+                            bodyFont: themePackage.tokens.typography.bodyFont || draft.bodyFont,
+                            borderRadius: themePackage.tokens.components.borderRadius || draft.borderRadius,
+                          });
+                        }}
+                        disabled={!themePresetsEnabled}
+                        className={`rounded-lg border p-4 text-left transition-colors ${
+                          isActive ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                        } ${!themePresetsEnabled ? "cursor-not-allowed opacity-60" : ""}`}
+                      >
+                        <div className="mb-3 flex gap-1.5">
+                          <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.bg }} />
+                          <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.primary }} />
+                          <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: themePackage.preview.accent }} />
+                        </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-foreground">{themePackage.name}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{themePackage.description}</p>
+                          </div>
+                          {isActive ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : null}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="grid gap-2">
                   <Label>Mode</Label>
@@ -631,41 +876,6 @@ export default function OnboardingWizard() {
               </div>
             ) : null}
 
-            {activeStep.id === "hero" ? (
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label>Tagline</Label>
-                  <Input value={draft.heroTagline} onChange={(event) => updateDraft({ heroTagline: event.target.value })} />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label>Title</Label>
-                    <Input value={draft.heroTitle} onChange={(event) => updateDraft({ heroTitle: event.target.value })} />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Highlight</Label>
-                    <Input value={draft.heroHighlight} onChange={(event) => updateDraft({ heroHighlight: event.target.value })} />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Subtitle</Label>
-                  <Textarea rows={4} value={draft.heroSubtitle} onChange={(event) => updateDraft({ heroSubtitle: event.target.value })} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Hero Image URL</Label>
-                  <CloudinaryUpload
-                    value={draft.heroMediaUrl}
-                    onChange={(url) => updateDraft({ heroMediaUrl: url })}
-                    folder="hero"
-                    accept="image/*,video/*"
-                    label="Upload hero media"
-                    resourceType="auto"
-                    storeId={activeStoreId ?? undefined}
-                  />
-                </div>
-              </div>
-            ) : null}
-
             {activeStep.id === "payments" ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between rounded-lg border border-border p-4">
@@ -678,7 +888,7 @@ export default function OnboardingWizard() {
                 {draft.payment.bkash_enabled ? (
                   <div className="grid gap-2">
                     <Label>bKash Number</Label>
-                  <Input data-testid="onboarding-bkash-number" value={draft.payment.bkash_number} placeholder="01XXXXXXXXX" onChange={(event) => updatePayment({ bkash_number: event.target.value })} />
+                    <Input data-testid="onboarding-bkash-number" value={draft.payment.bkash_number} placeholder="01XXXXXXXXX" onChange={(event) => updatePayment({ bkash_number: event.target.value })} />
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between rounded-lg border border-border p-4">
@@ -715,6 +925,16 @@ export default function OnboardingWizard() {
                       Copy
                     </Button>
                   </div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">{blueprint.name}</Badge>
+                    <Badge variant="secondary">{draft.catalogMode.replace(/_/g, " ")}</Badge>
+                    <Badge variant="secondary">{draft.businessFamily}</Badge>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Saving now writes a store-local storefront snapshot, a store business profile, payment settings, and a theme install payload without mutating shared defaults in place.
+                  </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Button type="button" data-testid="onboarding-save-draft" variant="outline" onClick={() => void saveAndLaunch(false)} disabled={saving} className="gap-2">
@@ -766,7 +986,7 @@ export default function OnboardingWizard() {
         <Card className="overflow-hidden border-border">
           <CardHeader>
             <CardTitle className="text-lg">Live Preview</CardTitle>
-            <CardDescription>{template.shortName} template with your current draft.</CardDescription>
+            <CardDescription>{blueprint.shortName} blueprint with your current draft.</CardDescription>
           </CardHeader>
           <CardContent>
             <StoreProvider store={previewStore}>
@@ -788,7 +1008,3 @@ export default function OnboardingWizard() {
     </div>
   );
 }
-
-
-
-

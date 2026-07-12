@@ -2,47 +2,58 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
-import { themePresets } from "@/lib/themePresets";
 import { useTheme as useNextTheme } from "next-themes";
+import { getStoreThemeStyle } from "@/lib/cms/store-theme-style";
 
 export function useApplyTheme() {
   const { activeStoreId } = useAuth();
   const storeId = activeStoreId ?? null;
+  const { resolvedTheme } = useNextTheme();
 
-  const { data: themeId } = useQuery({
+  const { data: themeConfig } = useQuery({
     queryKey: ["store_themes", storeId, "active_theme"],
     queryFn: async () => {
-      if (!storeId) return "default";
-      const { data } = await supabase
+      if (!storeId) {
+        return null;
+      }
+
+      const { data } = await (supabase as any)
         .from("store_themes")
-        .select("preset_id")
+        .select("preset_id, mode, colors, typography, components")
         .eq("store_id", storeId as string)
         .maybeSingle();
-      return data?.preset_id ?? "default";
+
+      return data ?? null;
     },
     enabled: Boolean(storeId),
   });
-  const { resolvedTheme } = useNextTheme();
 
   useEffect(() => {
-    const preset = themePresets.find((t) => t.id === themeId);
-    if (!preset) return; // default theme = CSS file values
+    if (!themeConfig) return;
 
-    const vars = resolvedTheme === "light" ? preset.light : preset.dark;
+    const resolvedMode = resolvedTheme === "light" ? "light" : "dark";
+    const style = getStoreThemeStyle({
+      presetId: themeConfig.preset_id ?? "default",
+      mode: resolvedMode,
+      headingFont: themeConfig.typography?.headingFont,
+      bodyFont: themeConfig.typography?.bodyFont,
+      borderRadius: themeConfig.components?.borderRadius,
+      customCssVars: themeConfig.colors ?? {},
+    });
     const root = document.documentElement;
+    const appliedKeys: string[] = [];
 
-    Object.entries(vars).forEach(([key, value]) => {
-      root.style.setProperty(key, value);
+    Object.entries(style).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        root.style.setProperty(key, value);
+        appliedKeys.push(key);
+      }
     });
 
     return () => {
-      // Clean up inline styles so CSS file defaults take over
-      Object.keys(vars).forEach((key) => {
+      appliedKeys.forEach((key) => {
         root.style.removeProperty(key);
       });
     };
-  }, [themeId, resolvedTheme]);
+  }, [resolvedTheme, themeConfig]);
 }
-
-
-
