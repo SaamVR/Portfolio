@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { extractIdFromSlug, productUrl } from "./slug";
+import { createStoreSlug, extractIdFromSlug, productUrl } from "./slug";
 
 describe("product slugs", () => {
   it("round-trips non-UUID product ids with hyphens", () => {
@@ -17,5 +17,10 @@ describe("product slugs", () => {
     const id = "123e4567-e89b-12d3-a456-426614174000";
 
     expect(extractIdFromSlug(`premium-shirt-${id}`)).toBe(id);
+  });
+
+  it("creates slug-safe store urls with the shared slug style", () => {
+    expect(createStoreSlug("My Fancy Store!")).toBe("my-fancy-store");
+    expect(createStoreSlug("")).toBe("my-store");
   });
 });

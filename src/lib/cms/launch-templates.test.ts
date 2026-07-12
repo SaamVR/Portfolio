@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@/test/test-utils";
 import {
-  createStoreSlug,
   instantiateLaunchPages,
   launchTemplates,
   type LaunchTemplateId,
 } from "@/lib/cms/launch-templates";
+import { createStoreSlug } from "@/lib/slug";
 
 describe("launch templates", () => {
   it("exposes the three Phase 2 business templates", () => {

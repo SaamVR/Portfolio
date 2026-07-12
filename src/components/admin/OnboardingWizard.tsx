@@ -37,9 +37,9 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import {
-  createStoreSlug,
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
+import { createStoreSlug } from "@/lib/slug";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import {

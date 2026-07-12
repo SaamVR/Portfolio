@@ -12,6 +12,10 @@ export function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
+export function createStoreSlug(name: string) {
+  return slugify(name || "my-store") || "my-store";
+}
+
 /**
  * Build a product URL with slug: /product/premium-cotton-t-shirt-<id>
  * The id is appended after a double-hyphen delimiter for unambiguous extraction.

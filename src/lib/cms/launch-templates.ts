@@ -1,5 +1,5 @@
 import { createDefaultBlock } from "@/lib/cms/block-library";
-import { slugify } from "@/lib/slug";
+import { createStoreSlug, slugify } from "@/lib/slug";
 import type { StorePage, StorePageBlock, StoreTheme } from "@/lib/cms/schema";
 
 export type LaunchTemplateId = "clothing" | "food" | "general";
@@ -377,10 +377,6 @@ export const launchTemplates: LaunchTemplate[] = [
 
 export function getLaunchTemplate(templateId: LaunchTemplateId): LaunchTemplate {
   return launchTemplates.find((template) => template.id === templateId) ?? launchTemplates[0];
-}
-
-export function createStoreSlug(name: string) {
-  return slugify(name || "my-store") || "my-store";
 }
 
 export function instantiateLaunchPages(templateId: LaunchTemplateId): StorePage[] {
