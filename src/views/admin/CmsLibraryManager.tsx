@@ -101,6 +101,7 @@ const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as c
 const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
 const legacyTemplateOptions = ["clothing", "food", "general"] as const;
 const blockLayerOptions = ["core", "commerce", "extension"] as const;
+const onboardingStepOptions = ["blueprint", "brand", "content", "catalog", "theme", "payments", "launch"] as const;
 const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
 const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
 const knownCapabilities = Array.from(new Set([
@@ -136,6 +137,50 @@ function readStringArray(value: string | boolean | undefined) {
 
 function writeStringArray(values: string[]) {
   return JSON.stringify(Array.from(new Set(values)).sort(), null, 2);
+}
+
+function readJsonObject(value: string | boolean | undefined) {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function readOnboardingSteps(value: string | boolean | undefined) {
+  const parsed = readJsonObject(value);
+  const steps = Array.isArray(parsed?.steps) ? parsed.steps : [];
+  return steps
+    .filter((step): step is Record<string, unknown> => Boolean(step && typeof step === "object"))
+    .map((step) => ({
+      id: typeof step.id === "string" ? step.id : "blueprint",
+      title: typeof step.title === "string" ? step.title : "",
+      description: typeof step.description === "string" ? step.description : "",
+    }));
+}
+
+function writeOnboardingSteps(
+  steps: Array<{ id: string; title: string; description: string }>,
+  existingValue: string | boolean | undefined,
+) {
+  const base = readJsonObject(existingValue) ?? {};
+  return JSON.stringify({
+    ...base,
+    steps,
+  }, null, 2);
+}
+
+function updateObjectJsonField(
+  existingValue: string | boolean | undefined,
+  patch: Record<string, unknown>,
+) {
+  const base = readJsonObject(existingValue) ?? {};
+  return JSON.stringify({
+    ...base,
+    ...patch,
+  }, null, 2);
 }
 
 function buildBlueprintForm(item?: BlueprintRow): FormState {
@@ -270,6 +315,37 @@ export default function CmsLibraryManager() {
       .map((item) => item.trim())
       .filter(Boolean);
     updateField(key, writeStringArray(values));
+  };
+
+  const updateHeroField = (key: string, value: string) => {
+    updateField("hero_payload", updateObjectJsonField(form.hero_payload, { [key]: value }));
+  };
+
+  const updateDefaultThemeField = (key: string, value: string) => {
+    updateField("default_theme", updateObjectJsonField(form.default_theme, { [key]: value }));
+  };
+
+  const onboardingSteps = readOnboardingSteps(form.onboarding_schema);
+
+  const updateOnboardingStep = (
+    index: number,
+    key: "id" | "title" | "description",
+    value: string,
+  ) => {
+    const nextSteps = onboardingSteps.map((step, stepIndex) => (
+      stepIndex === index ? { ...step, [key]: value } : step
+    ));
+    updateField("onboarding_schema", writeOnboardingSteps(nextSteps, form.onboarding_schema));
+  };
+
+  const addOnboardingStep = () => {
+    const nextSteps = [...onboardingSteps, { id: "launch", title: "New Step", description: "Describe this step." }];
+    updateField("onboarding_schema", writeOnboardingSteps(nextSteps, form.onboarding_schema));
+  };
+
+  const removeOnboardingStep = (index: number) => {
+    const nextSteps = onboardingSteps.filter((_, stepIndex) => stepIndex !== index);
+    updateField("onboarding_schema", writeOnboardingSteps(nextSteps, form.onboarding_schema));
   };
 
   const openCreateDialog = (type: NonNullable<DialogState>["type"]) => {
@@ -466,6 +542,8 @@ export default function CmsLibraryManager() {
   const selectedCapabilities = readStringArray(form.required_capabilities);
   const selectedCatalogModes = readStringArray(form.catalog_modes);
   const selectedCompatibleBusinessFamilies = readStringArray(form.compatible_business_families);
+  const heroPayload = readJsonObject(form.hero_payload) ?? {};
+  const defaultThemePayload = readJsonObject(form.default_theme) ?? {};
 
   return (
     <div className="space-y-6">
@@ -796,14 +874,127 @@ export default function CmsLibraryManager() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
+                  <Label>Default Theme</Label>
+                  <div className="grid gap-3 rounded-md border border-border p-3">
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Preset Id</Label>
+                        <Input
+                          value={String(defaultThemePayload.presetId ?? "")}
+                          onChange={(event) => updateDefaultThemeField("presetId", event.target.value)}
+                          placeholder="midnight-blue"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Mode</Label>
+                        <Select value={String(defaultThemePayload.mode ?? "dark")} onValueChange={(value) => updateDefaultThemeField("mode", value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="light">light</SelectItem>
+                            <SelectItem value="dark">dark</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-3">
+                      <div className="grid gap-2">
+                        <Label>Heading Font</Label>
+                        <Input
+                          value={String(defaultThemePayload.headingFont ?? "")}
+                          onChange={(event) => updateDefaultThemeField("headingFont", event.target.value)}
+                          placeholder="'Outfit', sans-serif"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Body Font</Label>
+                        <Input
+                          value={String(defaultThemePayload.bodyFont ?? "")}
+                          onChange={(event) => updateDefaultThemeField("bodyFont", event.target.value)}
+                          placeholder="'Inter', sans-serif"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Border Radius</Label>
+                        <Input
+                          value={String(defaultThemePayload.borderRadius ?? "")}
+                          onChange={(event) => updateDefaultThemeField("borderRadius", event.target.value)}
+                          placeholder="0.75rem"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2">
                   <Label>Default Theme JSON</Label>
                   <Textarea rows={6} value={String(form.default_theme ?? "")} onChange={(event) => updateField("default_theme", event.target.value)} />
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
+                  <Label>Hero Content</Label>
+                  <div className="grid gap-3 rounded-md border border-border p-3">
+                    <div className="grid gap-2">
+                      <Label>Tagline</Label>
+                      <Input value={String(heroPayload.tagline ?? "")} onChange={(event) => updateHeroField("tagline", event.target.value)} />
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Title</Label>
+                        <Input value={String(heroPayload.title ?? "")} onChange={(event) => updateHeroField("title", event.target.value)} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Highlight</Label>
+                        <Input value={String(heroPayload.highlight ?? "")} onChange={(event) => updateHeroField("highlight", event.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Subtitle</Label>
+                      <Textarea rows={4} value={String(heroPayload.subtitle ?? "")} onChange={(event) => updateHeroField("subtitle", event.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2">
                   <Label>Hero Payload JSON</Label>
                   <Textarea rows={8} value={String(form.hero_payload ?? "")} onChange={(event) => updateField("hero_payload", event.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Onboarding Steps</Label>
+                  <div className="grid gap-3 rounded-md border border-border p-3">
+                    {onboardingSteps.map((step, index) => (
+                      <div key={`${step.id}-${index}`} className="grid gap-3 rounded-md border border-border p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="grid gap-2 flex-1 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <Label>Step Id</Label>
+                              <Select value={step.id} onValueChange={(value) => updateOnboardingStep(index, "id", value)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {onboardingStepOptions.map((option) => (
+                                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={step.title} onChange={(event) => updateOnboardingStep(index, "title", event.target.value)} />
+                            </div>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => removeOnboardingStep(index)}>
+                            Remove
+                          </Button>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Description</Label>
+                          <Textarea rows={3} value={step.description} onChange={(event) => updateOnboardingStep(index, "description", event.target.value)} />
+                        </div>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" className="gap-2" onClick={addOnboardingStep}>
+                      <Plus className="h-4 w-4" />
+                      Add Step
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label>Onboarding Schema JSON</Label>
