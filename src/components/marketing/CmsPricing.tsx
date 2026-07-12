@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
+import { PlanCtaButton } from "@/components/marketing/PlanCtaButton";
 
 type PlanCard = {
   id: string;
@@ -154,15 +153,7 @@ export async function CmsPricing() {
                   </li>
                 ))}
               </ul>
-              <Button
-                asChild
-                className={`mt-7 w-full rounded-full transition-all duration-300 group-hover:-translate-y-0.5 ${
-                  plan.featured ? "shadow-[0_12px_30px_rgba(255,255,255,0.16)]" : "shadow-[0_12px_30px_rgba(16,185,129,0.14)]"
-                }`}
-                variant={plan.featured ? "secondary" : "default"}
-              >
-                <Link href={`/signup?planId=${encodeURIComponent(plan.id)}`}>{plan.cta}</Link>
-              </Button>
+              <PlanCtaButton planId={plan.id} cta={plan.cta} featured={plan.featured} />
             </article>
           ))}
         </div>

@@ -47,7 +47,7 @@ export function AdminFeatureGate({
       </CardHeader>
       <CardContent className="flex flex-wrap gap-3">
         <Button asChild>
-          <Link to="/plans">View Packages</Link>
+          <Link to="/admin/billing">View Packages</Link>
         </Button>
       </CardContent>
     </Card>

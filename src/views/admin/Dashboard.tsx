@@ -298,7 +298,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild className="gap-2">
-              <Link to="/plans">
+              <Link to="/admin/billing">
                 Complete payment <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -327,7 +327,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/plans">
+              <Link to="/admin/billing">
                 Upgrade <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -486,7 +486,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/plans">
+              <Link to="/admin/billing">
                 View upgrade options <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
