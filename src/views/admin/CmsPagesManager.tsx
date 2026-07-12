@@ -36,10 +36,10 @@ import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import { defaultStore } from "@/lib/cms/default-store";
-import { createDefaultBlock, createDefaultCmsPage, cmsBlockTypeOptions, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { applyTemplateToPage, cmsPageTemplates, instantiateTemplate } from "@/lib/cms/page-templates";
+import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
+import { cmsBlockRegistry, createRegistryDefaultBlock, getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { applyPageBlueprint, cmsPageBlueprints, instantiatePageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
-import { themePresets } from "@/lib/themePresets";
 import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
@@ -47,6 +47,9 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { getThemePackageById, fallbackThemePackages } from "@/lib/theme-packages";
+import { instantiateLaunchPages } from "@/lib/cms/launch-templates";
 
 type StoreRecord = {
   id: string;
@@ -56,6 +59,7 @@ type StoreRecord = {
   currency_code: string | null;
   locale: string | null;
   is_published: boolean | null;
+  store_type?: string | null;
 };
 
 type ThemeRecord = {
@@ -64,6 +68,7 @@ type ThemeRecord = {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  resolved_tokens?: Record<string, Record<string, string>> | null;
 };
 
 type PageRecord = {
@@ -118,8 +123,10 @@ function readRecoverableDraft(key: string): RecoverableDraft | null {
   }
 }
 
-function cloneDefaultHomepageBlocks(): StorePageBlock[] {
-  const homepage = defaultStore.pages.find((page) => page.isHomepage) ?? defaultStore.pages[0];
+function cloneHomepageBlocksForBlueprint(blueprintId: string): StorePageBlock[] {
+  const blueprint = getStoreBlueprintById(blueprintId);
+  const seededPages = instantiateLaunchPages(blueprint.legacyTemplateId ?? "general");
+  const homepage = seededPages.find((page) => page.isHomepage) ?? defaultStore.pages[0];
 
   return homepage.blocks.map((block, index) => ({
     ...block,
@@ -134,21 +141,24 @@ function mapRecordsToStore(
   pages: PageRecord[],
   blocks: BlockRecord[],
 ): Store {
+  const blueprint = getStoreBlueprintById(store.store_type ?? "general-catalog");
+  const fallbackTheme = getThemePackageById(theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
+
   return storeSchema.parse({
     id: store.id,
     name: store.name,
     slug: store.slug,
-    description: store.description ?? defaultStore.description,
+    description: store.description ?? blueprint.storeDescription ?? defaultStore.description,
     currencyCode: store.currency_code ?? defaultStore.currencyCode,
     locale: store.locale ?? defaultStore.locale,
     isPublished: store.is_published ?? false,
     theme: {
-      presetId: theme?.preset_id ?? defaultStore.theme.presetId,
-      mode: theme?.mode ?? defaultStore.theme.mode,
-      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : defaultStore.theme.headingFont,
-      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : defaultStore.theme.bodyFont,
-      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : defaultStore.theme.borderRadius,
-      customCssVars: theme?.colors ?? {},
+      presetId: theme?.preset_id ?? fallbackTheme.presetId,
+      mode: theme?.mode ?? blueprint.defaultTheme.mode,
+      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
+      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
+      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? "dark"] ?? {},
     },
     pages:
       pages.length > 0
@@ -189,8 +199,8 @@ export default function CmsPagesManager() {
   const [bootstrapping, setBootstrapping] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
-  const [newPageTemplate, setNewPageTemplate] = useState(cmsPageTemplates[0]?.id ?? "landing");
-  const [activeTemplateId, setActiveTemplateId] = useState(cmsPageTemplates[0]?.id ?? "landing");
+  const [newPageTemplate, setNewPageTemplate] = useState(cmsPageBlueprints[0]?.id ?? "landing");
+  const [activeTemplateId, setActiveTemplateId] = useState(cmsPageBlueprints[0]?.id ?? "landing");
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
   const [revisions, setRevisions] = useState<Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: StorePageBlock[] }>>([]);
@@ -198,6 +208,7 @@ export default function CmsPagesManager() {
   const [persistedSnapshot, setPersistedSnapshot] = useState("");
   const [recoverableDraft, setRecoverableDraft] = useState<RecoverableDraft | null>(null);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
+  const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -209,7 +220,7 @@ export default function CmsPagesManager() {
     setLoading(true);
     const storeResponse = await supabase
       .from("stores")
-      .select("id, name, slug, description, currency_code, locale, is_published")
+      .select("id, name, slug, description, currency_code, locale, is_published, store_type")
       .eq("id", activeStoreId as string)
       .maybeSingle();
 
@@ -226,7 +237,7 @@ export default function CmsPagesManager() {
     }
 
     const [themeResponse, pagesResponse, blocksResponse] = await Promise.all([
-      supabase.from("store_themes").select("preset_id, mode, typography, components, colors").eq("store_id", storeRecord.id).maybeSingle(),
+      supabase.from("store_themes").select("preset_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
     ]);
@@ -238,6 +249,7 @@ export default function CmsPagesManager() {
       (blocksResponse.data as BlockRecord[] | null) ?? [],
     );
 
+    setStoreBlueprintId(storeRecord.store_type ?? "general-catalog");
     setStore(parsedStore);
     setPersistedSnapshot(serializeStoreDraft(parsedStore));
     setLastDraftSavedAt(null);
@@ -396,16 +408,21 @@ export default function CmsPagesManager() {
 
     setBootstrapping(true);
 
+    const blueprint = getStoreBlueprintById(storeBlueprintId);
+    const seedPages = instantiateLaunchPages(blueprint.legacyTemplateId ?? "general");
+    const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, fallbackThemePackages);
+
     const { error: storeError } = await supabase.from("stores").upsert(
       {
         id: activeStoreId as string,
         owner_id: user.id,
-        name: defaultStore.name,
-        slug: defaultStore.slug,
-        description: defaultStore.description,
+        name: store?.name ?? defaultStore.name,
+        slug: store?.slug ?? defaultStore.slug,
+        description: blueprint.storeDescription,
         currency_code: defaultStore.currencyCode,
         locale: defaultStore.locale,
         is_published: defaultStore.isPublished,
+        store_type: blueprint.id,
       },
       { onConflict: "slug" },
     );
@@ -419,21 +436,27 @@ export default function CmsPagesManager() {
     await supabase.from("store_themes").upsert(
       {
         store_id: activeStoreId as string,
-        preset_id: defaultStore.theme.presetId,
-        mode: defaultStore.theme.mode,
-        colors: defaultStore.theme.customCssVars,
+        preset_id: themePackage.presetId,
+        mode: blueprint.defaultTheme.mode,
+        theme_package_id: null,
+        theme_package_version: 1,
+        colors: themePackage.tokens[blueprint.defaultTheme.mode] ?? {},
         typography: {
-          headingFont: defaultStore.theme.headingFont,
-          bodyFont: defaultStore.theme.bodyFont,
+          headingFont: blueprint.defaultTheme.headingFont,
+          bodyFont: blueprint.defaultTheme.bodyFont,
         },
         components: {
-          borderRadius: defaultStore.theme.borderRadius,
+          borderRadius: blueprint.defaultTheme.borderRadius,
+        },
+        resolved_tokens: {
+          light: themePackage.tokens.light,
+          dark: themePackage.tokens.dark,
         },
       },
       { onConflict: "store_id" },
     );
 
-    for (const page of defaultStore.pages) {
+    for (const page of seedPages) {
       await supabase.from("store_pages").upsert(
         {
           id: page.id,
@@ -463,6 +486,17 @@ export default function CmsPagesManager() {
       }
     }
 
+    await (supabase as any).from("store_business_profiles").upsert(
+      {
+        store_id: activeStoreId as string,
+        blueprint_id: blueprint.id,
+        business_family: blueprint.businessFamily,
+        catalog_mode: blueprint.catalogMode,
+        enabled_modules: blueprint.capabilities,
+      },
+      { onConflict: "store_id" },
+    );
+
     toast.success("Default CMS store is ready.");
     setBootstrapping(false);
     await loadStore();
@@ -472,7 +506,7 @@ export default function CmsPagesManager() {
     setStore((current) => {
       if (!current) return current;
       const page = launchTemplatesEnabled
-        ? instantiateTemplate(newPageTemplate, current.pages.length) ?? createDefaultCmsPage(current.pages.length)
+        ? instantiatePageBlueprint(newPageTemplate, current.pages.length) ?? createDefaultCmsPage(current.pages.length)
         : createDefaultCmsPage(current.pages.length);
       setSelectedPageId(page.id);
       return { ...current, pages: [...current.pages, page] };
@@ -509,7 +543,7 @@ export default function CmsPagesManager() {
       toast.error("Launch templates are not enabled for this store.");
       return;
     }
-    updateSelectedPage((page) => applyTemplateToPage(page, templateId) ?? page);
+    updateSelectedPage((page) => applyPageBlueprint(page, templateId) ?? page);
     setActiveTemplateId(templateId);
     toast.success("Template applied to the current page.");
   };
@@ -531,7 +565,7 @@ export default function CmsPagesManager() {
       ...page,
       slug: "/",
       isHomepage: true,
-      blocks: cloneDefaultHomepageBlocks(),
+      blocks: cloneHomepageBlocksForBlueprint(storeBlueprintId),
     }));
     setSelectedBlockId("");
     toast.success("Recommended homepage layout applied. Save Page Builder changes to publish it.");
@@ -561,7 +595,7 @@ export default function CmsPagesManager() {
 
   const addBlock = () => {
     if (!selectedPage) return;
-    const nextBlock = createDefaultBlock(nextBlockType, selectedPage.blocks.length);
+    const nextBlock = createRegistryDefaultBlock(nextBlockType, selectedPage.blocks.length);
     updateSelectedPage((page) => ({
       ...page,
       blocks: [...page.blocks, nextBlock],
@@ -1100,17 +1134,17 @@ export default function CmsPagesManager() {
                     <SelectValue placeholder="Choose a theme preset" />
                   </SelectTrigger>
                   <SelectContent>
-                    {themePresets.map((preset) => (
-                      <SelectItem key={preset.id} value={preset.id}>
-                        {preset.name}
+                    {fallbackThemePackages.map((themePackage) => (
+                      <SelectItem key={themePackage.id} value={themePackage.presetId}>
+                        {themePackage.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {themePresets.find((preset) => preset.id === store.theme.presetId)?.description}
+                  {fallbackThemePackages.find((themePackage) => themePackage.presetId === store.theme.presetId)?.description}
                 </p>
-                {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme preset changes are disabled for this store package.</p> : null}
+                {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
               </div>
               <div className="grid gap-2">
                 <Label>Color Mode</Label>
@@ -1161,7 +1195,7 @@ export default function CmsPagesManager() {
                       <SelectValue placeholder="Choose a template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cmsPageTemplates.map((template) => (
+                      {cmsPageBlueprints.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
                         </SelectItem>
@@ -1169,7 +1203,7 @@ export default function CmsPagesManager() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {cmsPageTemplates.find((template) => template.id === newPageTemplate)?.description}
+                    {cmsPageBlueprints.find((template) => template.id === newPageTemplate)?.description}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
@@ -1276,7 +1310,7 @@ export default function CmsPagesManager() {
                           <SelectValue placeholder="Choose a template" />
                         </SelectTrigger>
                         <SelectContent>
-                          {cmsPageTemplates.map((template) => (
+                          {cmsPageBlueprints.map((template) => (
                             <SelectItem key={template.id} value={template.id}>
                               {template.name}
                             </SelectItem>
@@ -1289,7 +1323,7 @@ export default function CmsPagesManager() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {cmsPageTemplates.find((template) => template.id === activeTemplateId)?.description}
+                      {cmsPageBlueprints.find((template) => template.id === activeTemplateId)?.description}
                     </p>
                     {!launchTemplatesEnabled ? (
                       <p className="text-xs text-muted-foreground">Enable the `launch_templates` feature to use prebuilt page structures here.</p>
@@ -1349,7 +1383,7 @@ export default function CmsPagesManager() {
                         <SelectValue placeholder="Choose block type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cmsBlockTypeOptions.map((option) => (
+                        {cmsBlockRegistry.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -1373,7 +1407,7 @@ export default function CmsPagesManager() {
                     <div className="rounded-xl border border-border bg-muted/20 p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         {selectedPage.blocks.map((block, index) => {
-                          const blockMeta = cmsBlockTypeOptions.find((option) => option.value === block.type);
+                          const blockMeta = getCmsBlockRegistryItem(block.type);
 
                           return (
                             <Button
@@ -1393,7 +1427,7 @@ export default function CmsPagesManager() {
                   ) : null}
 
                   {selectedPage.blocks.map((block, index) => {
-                    const blockMeta = cmsBlockTypeOptions.find((option) => option.value === block.type);
+                    const blockMeta = getCmsBlockRegistryItem(block.type);
                     const isFocused = selectedBlockId === block.id;
 
                     return (
@@ -1878,7 +1912,7 @@ export default function CmsPagesManager() {
                           <div className="max-h-[720px] overflow-y-auto">
                             {previewBlocks.length > 0 ? (
                               previewBlocks.map((block, index) => {
-                                const blockMeta = cmsBlockTypeOptions.find((option) => option.value === block.type);
+                                const blockMeta = getCmsBlockRegistryItem(block.type);
                                 const isFocused = selectedBlockId === block.id;
 
                                 return (

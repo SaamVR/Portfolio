@@ -20,6 +20,10 @@ interface StoreThemeRow {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  resolved_tokens?: {
+    light?: Record<string, string>;
+    dark?: Record<string, string>;
+  } | null;
 }
 
 interface StorePageRow {
@@ -142,7 +146,7 @@ function mapStoreRecord(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : defaultStore.theme.headingFont,
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : defaultStore.theme.bodyFont,
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : defaultStore.theme.borderRadius,
-      customCssVars: theme?.colors ?? {},
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? "dark"] ?? {},
     },
     pages: mappedPages.length > 0 ? mappedPages : defaultStore.pages,
   });
@@ -211,7 +215,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .maybeSingle(),
     supabase
       .from("store_themes")
-      .select("preset_id, mode, typography, components, colors")
+      .select("preset_id, mode, typography, components, colors, resolved_tokens")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
