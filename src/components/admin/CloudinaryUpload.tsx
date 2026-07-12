@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ const CloudinaryUpload = ({
   const effectiveStoreId = storeId || activeStoreId || undefined;
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,6 +66,19 @@ const CloudinaryUpload = ({
         resourceType,
         storeId: effectiveStoreId,
       });
+
+      // Also register this asset in the store's media library so it appears in the Media Library browser!
+      try {
+        const { fetchMediaLibrary, saveMediaLibrary } = await import("@/lib/media-library");
+        const existingAssets = await fetchMediaLibrary(effectiveStoreId);
+        if (!existingAssets.some((a) => a.url === asset.url)) {
+          const updated = await saveMediaLibrary([asset, ...existingAssets], effectiveStoreId);
+          queryClient.setQueryData(["media_library", effectiveStoreId], updated);
+        }
+      } catch (mediaLibErr) {
+        console.warn("Failed to register asset in media library setting:", mediaLibErr);
+      }
+
       onChange(asset.url);
       onSelectAsset?.(asset);
       toast.success("Uploaded successfully!");
