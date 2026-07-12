@@ -13,7 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +28,6 @@ import { Boxes, Edit3, Layers3, LayoutTemplate, Loader2, Palette, Plus, Save, Sh
 import { fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
 import { fallbackPageBlueprints } from "@/lib/cms/page-blueprints";
 import { fallbackBlockRegistry } from "@/lib/cms/block-registry";
-import { fallbackThemePackages } from "@/lib/theme-packages";
 
 type BlueprintRow = {
   id: string;
@@ -96,6 +97,16 @@ type FormState = Record<string, string | boolean>;
 
 const jsonStringify = (value: unknown, fallback: unknown) => JSON.stringify(value ?? fallback, null, 2);
 const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as const;
+const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
+const legacyTemplateOptions = ["clothing", "food", "general"] as const;
+const blockLayerOptions = ["core", "commerce", "extension"] as const;
+const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
+const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
+const knownCapabilities = Array.from(new Set([
+  ...fallbackStoreBlueprints.flatMap((item) => item.capabilities),
+  ...fallbackBlockRegistry.flatMap((item) => item.requiredCapabilities),
+])).sort();
 
 function parseJsonField(value: string, fieldLabel: string) {
   try {
@@ -103,6 +114,28 @@ function parseJsonField(value: string, fieldLabel: string) {
   } catch {
     throw new Error(`${fieldLabel} must be valid JSON.`);
   }
+}
+
+function parseStringArrayField(value: string, fieldLabel: string) {
+  const parsed = parseJsonField(value, fieldLabel);
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+    throw new Error(`${fieldLabel} must be a JSON string array.`);
+  }
+  return parsed as string[];
+}
+
+function readStringArray(value: string | boolean | undefined) {
+  if (typeof value !== "string") return [] as string[];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStringArray(values: string[]) {
+  return JSON.stringify(Array.from(new Set(values)).sort(), null, 2);
 }
 
 function buildBlueprintForm(item?: BlueprintRow): FormState {
@@ -223,6 +256,22 @@ export default function CmsLibraryManager() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const toggleStringArrayField = (key: string, value: string, checked: boolean) => {
+    const currentValues = readStringArray(form[key]);
+    const nextValues = checked
+      ? [...currentValues, value]
+      : currentValues.filter((entry) => entry !== value);
+    updateField(key, writeStringArray(nextValues));
+  };
+
+  const updateDelimitedStringArrayField = (key: string, raw: string) => {
+    const values = raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    updateField(key, writeStringArray(values));
+  };
+
   const openCreateDialog = (type: NonNullable<DialogState>["type"]) => {
     setDialogState({ mode: "create", type });
     setForm(
@@ -304,7 +353,7 @@ export default function CmsLibraryManager() {
           legacy_template_id: String(form.legacy_template_id || "").trim() || null,
           recommended_page_set: parseJsonField(String(form.recommended_page_set || "[]"), "Recommended page set"),
           recommended_block_set: parseJsonField(String(form.recommended_block_set || "[]"), "Recommended block set"),
-          required_capabilities: parseJsonField(String(form.required_capabilities || "[]"), "Required capabilities"),
+          required_capabilities: parseStringArrayField(String(form.required_capabilities || "[]"), "Required capabilities"),
           default_theme: parseJsonField(String(form.default_theme || "{}"), "Default theme"),
           hero_payload: parseJsonField(String(form.hero_payload || "{}"), "Hero payload"),
           onboarding_schema: parseJsonField(String(form.onboarding_schema || "{}"), "Onboarding schema"),
@@ -335,7 +384,7 @@ export default function CmsLibraryManager() {
           name: String(form.name).trim(),
           description: String(form.description || "").trim(),
           business_family: String(form.business_family || "commerce").trim(),
-          catalog_modes: parseJsonField(String(form.catalog_modes || "[]"), "Catalog modes"),
+          catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
           page_payload: parseJsonField(String(form.page_payload || "{}"), "Page payload"),
           is_active: Boolean(form.is_active),
         };
@@ -362,8 +411,8 @@ export default function CmsLibraryManager() {
         label: String(form.label).trim(),
         description: String(form.description || "").trim(),
         layer: String(form.layer || "core").trim(),
-        compatible_business_families: parseJsonField(String(form.compatible_business_families || "[]"), "Compatible business families"),
-        required_capabilities: parseJsonField(String(form.required_capabilities || "[]"), "Required capabilities"),
+        compatible_business_families: parseStringArrayField(String(form.compatible_business_families || "[]"), "Compatible business families"),
+        required_capabilities: parseStringArrayField(String(form.required_capabilities || "[]"), "Required capabilities"),
         is_active: Boolean(form.is_active),
       };
 
@@ -412,6 +461,11 @@ export default function CmsLibraryManager() {
   const activeDialogTitle = dialogState
     ? `${dialogState.mode === "create" ? "Create" : "Edit"} ${dialogState.type === "blueprint" ? "Blueprint" : dialogState.type === "page" ? "Page Blueprint" : "Block Registry Entry"}`
     : "";
+  const selectedRecommendedPages = readStringArray(form.recommended_page_set);
+  const selectedRecommendedBlocks = readStringArray(form.recommended_block_set);
+  const selectedCapabilities = readStringArray(form.required_capabilities);
+  const selectedCatalogModes = readStringArray(form.catalog_modes);
+  const selectedCompatibleBusinessFamilies = readStringArray(form.compatible_business_families);
 
   return (
     <div className="space-y-6">
@@ -641,11 +695,25 @@ export default function CmsLibraryManager() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="grid gap-2">
                   <Label>Business Family</Label>
-                  <Input value={String(form.business_family ?? "")} onChange={(event) => updateField("business_family", event.target.value)} />
+                  <Select value={String(form.business_family ?? "commerce")} onValueChange={(value) => updateField("business_family", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {businessFamilyOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Catalog Mode</Label>
-                  <Input value={String(form.catalog_mode ?? "")} onChange={(event) => updateField("catalog_mode", event.target.value)} />
+                  <Select value={String(form.catalog_mode ?? "multi_product")} onValueChange={(value) => updateField("catalog_mode", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {catalogModeOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Group</Label>
@@ -653,28 +721,80 @@ export default function CmsLibraryManager() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Legacy Template</Label>
-                  <Input value={String(form.legacy_template_id ?? "")} onChange={(event) => updateField("legacy_template_id", event.target.value)} />
+                  <Select value={String(form.legacy_template_id ?? "general")} onValueChange={(value) => updateField("legacy_template_id", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {legacyTemplateOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-2">
                 <Label>Store Description</Label>
                 <Textarea rows={3} value={String(form.store_description ?? "")} onChange={(event) => updateField("store_description", event.target.value)} />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="grid gap-2">
-                  <Label>Recommended Page Set JSON</Label>
-                  <Textarea rows={6} value={String(form.recommended_page_set ?? "")} onChange={(event) => updateField("recommended_page_set", event.target.value)} />
+                  <Label>Recommended Page Set</Label>
+                  <Input
+                    value={selectedRecommendedPages.join(", ")}
+                    onChange={(event) => updateDelimitedStringArrayField("recommended_page_set", event.target.value)}
+                    placeholder="home, policy, about"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {knownPageBlueprintIds.map((pageId) => (
+                      <label key={pageId} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedRecommendedPages.includes(pageId)}
+                          onCheckedChange={(checked) => toggleStringArrayField("recommended_page_set", pageId, checked === true)}
+                        />
+                        <span>{pageId}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Recommended Block Set JSON</Label>
-                  <Textarea rows={6} value={String(form.recommended_block_set ?? "")} onChange={(event) => updateField("recommended_block_set", event.target.value)} />
+                  <Label>Recommended Block Set</Label>
+                  <Input
+                    value={selectedRecommendedBlocks.join(", ")}
+                    onChange={(event) => updateDelimitedStringArrayField("recommended_block_set", event.target.value)}
+                    placeholder="hero, featured-products, faq-accordion"
+                  />
+                  <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2">
+                    {knownBlockTypes.map((blockType) => (
+                      <label key={blockType} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedRecommendedBlocks.includes(blockType)}
+                          onCheckedChange={(checked) => toggleStringArrayField("recommended_block_set", blockType, checked === true)}
+                        />
+                        <span>{blockType}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Required Capabilities</Label>
+                  <Input
+                    value={selectedCapabilities.join(", ")}
+                    onChange={(event) => updateDelimitedStringArrayField("required_capabilities", event.target.value)}
+                    placeholder="catalog, checkout, promotions"
+                  />
+                  <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2">
+                    {knownCapabilities.map((capability) => (
+                      <label key={capability} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedCapabilities.includes(capability)}
+                          onCheckedChange={(checked) => toggleStringArrayField("required_capabilities", capability, checked === true)}
+                        />
+                        <span>{capability}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label>Required Capabilities JSON</Label>
-                  <Textarea rows={6} value={String(form.required_capabilities ?? "")} onChange={(event) => updateField("required_capabilities", event.target.value)} />
-                </div>
                 <div className="grid gap-2">
                   <Label>Default Theme JSON</Label>
                   <Textarea rows={6} value={String(form.default_theme ?? "")} onChange={(event) => updateField("default_theme", event.target.value)} />
@@ -714,7 +834,14 @@ export default function CmsLibraryManager() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Business Family</Label>
-                  <Input value={String(form.business_family ?? "")} onChange={(event) => updateField("business_family", event.target.value)} />
+                  <Select value={String(form.business_family ?? "commerce")} onValueChange={(value) => updateField("business_family", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {businessFamilyOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-2">
@@ -722,8 +849,23 @@ export default function CmsLibraryManager() {
                 <Textarea rows={3} value={String(form.description ?? "")} onChange={(event) => updateField("description", event.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label>Catalog Modes JSON</Label>
-                <Textarea rows={5} value={String(form.catalog_modes ?? "")} onChange={(event) => updateField("catalog_modes", event.target.value)} />
+                <Label>Catalog Modes</Label>
+                <Input
+                  value={selectedCatalogModes.join(", ")}
+                  onChange={(event) => updateDelimitedStringArrayField("catalog_modes", event.target.value)}
+                  placeholder="single_product, multi_product"
+                />
+                <div className="flex flex-wrap gap-2 rounded-md border border-border p-2">
+                  {catalogModeOptions.map((mode) => (
+                    <label key={mode} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                      <Checkbox
+                        checked={selectedCatalogModes.includes(mode)}
+                        onCheckedChange={(checked) => toggleStringArrayField("catalog_modes", mode, checked === true)}
+                      />
+                      <span>{mode.replace(/_/g, " ")}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label>Page Payload JSON</Label>
@@ -749,7 +891,14 @@ export default function CmsLibraryManager() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Layer</Label>
-                  <Input value={String(form.layer ?? "")} onChange={(event) => updateField("layer", event.target.value)} />
+                  <Select value={String(form.layer ?? "core")} onValueChange={(value) => updateField("layer", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {blockLayerOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-2">
@@ -758,12 +907,42 @@ export default function CmsLibraryManager() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label>Compatible Business Families JSON</Label>
-                  <Textarea rows={6} value={String(form.compatible_business_families ?? "")} onChange={(event) => updateField("compatible_business_families", event.target.value)} />
+                  <Label>Compatible Business Families</Label>
+                  <Input
+                    value={selectedCompatibleBusinessFamilies.join(", ")}
+                    onChange={(event) => updateDelimitedStringArrayField("compatible_business_families", event.target.value)}
+                    placeholder="commerce, booking"
+                  />
+                  <div className="flex flex-wrap gap-2 rounded-md border border-border p-2">
+                    {businessFamilyOptions.map((option) => (
+                      <label key={option} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedCompatibleBusinessFamilies.includes(option)}
+                          onCheckedChange={(checked) => toggleStringArrayField("compatible_business_families", option, checked === true)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Required Capabilities JSON</Label>
-                  <Textarea rows={6} value={String(form.required_capabilities ?? "")} onChange={(event) => updateField("required_capabilities", event.target.value)} />
+                  <Label>Required Capabilities</Label>
+                  <Input
+                    value={selectedCapabilities.join(", ")}
+                    onChange={(event) => updateDelimitedStringArrayField("required_capabilities", event.target.value)}
+                    placeholder="catalog, checkout"
+                  />
+                  <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2">
+                    {knownCapabilities.map((capability) => (
+                      <label key={capability} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedCapabilities.includes(capability)}
+                          onCheckedChange={(checked) => toggleStringArrayField("required_capabilities", capability, checked === true)}
+                        />
+                        <span>{capability}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
