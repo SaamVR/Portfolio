@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 type PageBlueprintBlockEditorProps = {
   block: Record<string, unknown>;
   index: number;
+  totalBlocks: number;
   knownBlockTypes: string[];
   onUpdateBlock: (index: number, patch: Record<string, unknown>) => void;
   onUpdateBlockProps: (index: number, patch: Record<string, unknown>) => void;
@@ -20,6 +21,7 @@ type PageBlueprintBlockEditorProps = {
 export function PageBlueprintBlockEditor({
   block,
   index,
+  totalBlocks,
   knownBlockTypes,
   onUpdateBlock,
   onUpdateBlockProps,
@@ -34,7 +36,7 @@ export function PageBlueprintBlockEditor({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{type || "unknown"}</p>
-          <p className="text-xs text-muted-foreground">Order {index + 1} • {block.isVisible === false ? "Hidden" : "Visible"}</p>
+          <p className="text-xs text-muted-foreground">Order {index + 1} | {block.isVisible === false ? "Hidden" : "Visible"}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-md border border-border px-2 py-1">
@@ -46,7 +48,7 @@ export function PageBlueprintBlockEditor({
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onMoveBlock(index, -1)} disabled={index === 0}>Up</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => onMoveBlock(index, 1)} disabled={false}>Down</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => onMoveBlock(index, 1)} disabled={index >= totalBlocks - 1}>Down</Button>
             <Button type="button" variant="outline" size="sm" onClick={() => onRemoveBlock(index)}>Remove</Button>
           </div>
         </div>
