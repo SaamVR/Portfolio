@@ -24,7 +24,7 @@ const BkashCallback = () => {
   const resolveStoreSlug = async () => {
     if (!storeId) return undefined;
 
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("stores")
       .select("slug")
       .eq("id", storeId)

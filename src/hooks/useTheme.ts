@@ -4,22 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { themePresets } from "@/lib/themePresets";
 import { useTheme as useNextTheme } from "next-themes";
-import { DEFAULT_STORE_ID } from "@/hooks/useProductTypes";
 
 export function useApplyTheme() {
   const { activeStoreId } = useAuth();
   const storeId = activeStoreId ?? null;
 
   const { data: themeId } = useQuery({
-    queryKey: ["store_themes" as any, storeId, "active_theme"],
+    queryKey: ["store_themes", storeId, "active_theme"],
     queryFn: async () => {
       if (!storeId) return "default";
       const { data } = await supabase
-        .from("store_themes" as any)
+        .from("store_themes")
         .select("preset_id")
         .eq("store_id", storeId as string)
         .maybeSingle();
-      return (data as any)?.preset_id ?? "default";
+      return data?.preset_id ?? "default";
     },
     enabled: Boolean(storeId),
   });

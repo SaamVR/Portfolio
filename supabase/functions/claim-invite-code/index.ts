@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
     const { data: storeInvite, error: storeInviteError } = await supabaseAdmin
       .from("store_staff_invites")
       .select("*")
-      .eq("code", code.trim())
-      .is("used_by", null)
+      .eq("invite_code", code.trim())
+      .is("claimed_by", null)
       .maybeSingle();
 
     if (storeInviteError) {
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
       await supabaseAdmin
         .from("store_staff_invites")
-        .update({ used_by: userId, used_at: new Date().toISOString() })
+        .update({ claimed_by: userId, claimed_at: new Date().toISOString() })
         .eq("id", storeInvite.id);
 
       return new Response(

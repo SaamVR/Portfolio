@@ -39,7 +39,7 @@ export function normalizeMediaLibrary(value: unknown): MediaLibraryAsset[] {
 
 export async function fetchMediaLibrary(storeId: string) {
   const { supabase } = await import("@/integrations/supabase/client");
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("site_settings")
     .select("value")
     .eq("store_id", storeId)
@@ -60,7 +60,7 @@ export async function saveMediaLibrary(
   const { supabase } = await import("@/integrations/supabase/client");
   const normalizedAssets = normalizeMediaLibrary(assets);
 
-  const { error } = await (supabase as any).from("site_settings").upsert(
+  const { error } = await supabase.from("site_settings").upsert(
     {
       store_id: storeId,
       key: "media_library",

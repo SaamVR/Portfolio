@@ -83,7 +83,7 @@ const SiteSettings = () => {
       supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).then(({ data }) => {
         setDbTypes((data ?? []).map((r: { name: string }) => r.name));
       });
-      const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", activeStoreId as string);
+      const { data } = await supabase.from("site_settings").select("*").eq("store_id", activeStoreId as string);
       const map: Record<string, any> = {};
       data?.forEach((row) => {
         map[row.key] = row.value;
@@ -95,15 +95,15 @@ const SiteSettings = () => {
   }, [activeStoreId, role]);
 
   const { data: themeData } = useQuery({
-    queryKey: ["store_themes" as any, activeStoreId],
+    queryKey: ["store_themes", activeStoreId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("store_themes" as any)
+        .from("store_themes")
         .select("preset_id")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
-      return (data as any)?.preset_id ?? "default";
+      return data?.preset_id ?? "default";
     },
     enabled: Boolean(activeStoreId),
   });
@@ -111,7 +111,7 @@ const SiteSettings = () => {
   const { data: notificationEvents, isLoading: notificationEventsLoading } = useQuery({
     queryKey: ["email-events", activeStoreId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("email_events")
         .select("id, template_name, recipient, channel, status, provider, error, created_at")
         .eq("store_id", activeStoreId as string)
@@ -135,7 +135,7 @@ const SiteSettings = () => {
     setSaving(key);
     const { error } = await supabase
       .from("site_settings")
-      .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} } as any, { onConflict: "store_id,key" });
+      .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} }, { onConflict: "store_id,key" });
     if (error) toast.error("Failed to save");
     else {
       toast.success(`${key.replace(/_/g, " ")} updated`);
@@ -189,13 +189,13 @@ const SiteSettings = () => {
 
     setSaving("active_theme");
     try {
-      const { error } = await supabase.from("store_themes" as any).upsert(
-        { store_id: activeStoreId, preset_id: localThemeId } as any,
+      const { error } = await supabase.from("store_themes").upsert(
+        { store_id: activeStoreId, preset_id: localThemeId },
         { onConflict: "store_id" },
       );
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ["store_themes" as any, activeStoreId] });
+      queryClient.invalidateQueries({ queryKey: ["store_themes", activeStoreId] });
       toast.success("Theme settings saved.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save theme settings.");

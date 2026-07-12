@@ -207,7 +207,7 @@ export default function CmsPagesManager() {
 
   const loadStore = useCallback(async () => {
     setLoading(true);
-    const storeResponse = await (supabase as any)
+    const storeResponse = await supabase
       .from("stores")
       .select("id, name, slug, description, currency_code, locale, is_published")
       .eq("id", activeStoreId as string)
@@ -226,9 +226,9 @@ export default function CmsPagesManager() {
     }
 
     const [themeResponse, pagesResponse, blocksResponse] = await Promise.all([
-      (supabase as any).from("store_themes").select("preset_id, mode, typography, components, colors").eq("store_id", storeRecord.id).maybeSingle(),
-      (supabase as any).from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
-      (supabase as any).from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
+      supabase.from("store_themes").select("preset_id, mode, typography, components, colors").eq("store_id", storeRecord.id).maybeSingle(),
+      supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
+      supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
     ]);
 
     const parsedStore = mapRecordsToStore(
@@ -344,7 +344,7 @@ export default function CmsPagesManager() {
 
     const loadRevisions = async () => {
       setLoadingRevisions(true);
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("store_page_revisions")
         .select("id, created_at, revision_label, blocks_snapshot")
         .eq("page_id", selectedPageId)
@@ -396,9 +396,9 @@ export default function CmsPagesManager() {
 
     setBootstrapping(true);
 
-    const { error: storeError } = await (supabase as any).from("stores").upsert(
+    const { error: storeError } = await supabase.from("stores").upsert(
       {
-        id: activeStoreId,
+        id: activeStoreId as string,
         owner_id: user.id,
         name: defaultStore.name,
         slug: defaultStore.slug,
@@ -416,9 +416,9 @@ export default function CmsPagesManager() {
       return;
     }
 
-    await (supabase as any).from("store_themes").upsert(
+    await supabase.from("store_themes").upsert(
       {
-        store_id: activeStoreId,
+        store_id: activeStoreId as string,
         preset_id: defaultStore.theme.presetId,
         mode: defaultStore.theme.mode,
         colors: defaultStore.theme.customCssVars,
@@ -434,10 +434,10 @@ export default function CmsPagesManager() {
     );
 
     for (const page of defaultStore.pages) {
-      await (supabase as any).from("store_pages").upsert(
+      await supabase.from("store_pages").upsert(
         {
           id: page.id,
-          store_id: activeStoreId,
+          store_id: activeStoreId as string,
           slug: page.slug,
           title: page.title,
           seo_title: page.seoTitle ?? null,
@@ -448,13 +448,13 @@ export default function CmsPagesManager() {
       );
 
       if (page.blocks.length > 0) {
-        await (supabase as any).from("store_page_blocks").upsert(
+        await supabase.from("store_page_blocks").upsert(
           page.blocks.map((block) => ({
             id: block.id,
             page_id: page.id,
-            store_id: activeStoreId,
-            block_type: block.type,
-            props: block.props,
+            store_id: activeStoreId as string,
+            block_type: block.type as any,
+            props: block.props as any,
             sort_order: block.sortOrder,
             is_visible: block.isVisible,
           })),
@@ -728,7 +728,7 @@ export default function CmsPagesManager() {
 
     setSaving(true);
 
-    const { error: storeError } = await (supabase as any).from("stores").upsert(
+    const { error: storeError } = await supabase.from("stores").upsert(
       {
         id: safeStore.id,
         owner_id: user.id,
@@ -748,7 +748,7 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const { error: themeError } = await (supabase as any).from("store_themes").upsert(
+    const { error: themeError } = await supabase.from("store_themes").upsert(
       {
         store_id: safeStore.id,
         preset_id: safeStore.theme.presetId,
@@ -781,7 +781,7 @@ export default function CmsPagesManager() {
       is_homepage: page.isHomepage,
     }));
 
-    const { error: pageError } = await (supabase as any).from("store_pages").upsert(pageRows, { onConflict: "id" });
+    const { error: pageError } = await supabase.from("store_pages").upsert(pageRows, { onConflict: "id" });
 
     if (pageError) {
       toast.error("Failed to save store pages.");
@@ -789,14 +789,14 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const { data: existingPages } = await (supabase as any).from("store_pages").select("id").eq("store_id", safeStore.id);
+    const { data: existingPages } = await supabase.from("store_pages").select("id").eq("store_id", safeStore.id);
     const existingPageIds = new Set<string>(((existingPages as Array<{ id: string }> | null) ?? []).map((page) => page.id));
     const localPageIds = new Set(safeStore.pages.map((page) => page.id));
     const pageIdsToDelete = Array.from(existingPageIds).filter((id) => !localPageIds.has(id));
 
     if (pageIdsToDelete.length > 0) {
-      await (supabase as any).from("store_page_blocks").delete().in("page_id", pageIdsToDelete);
-      await (supabase as any).from("store_pages").delete().in("id", pageIdsToDelete);
+      await supabase.from("store_page_blocks").delete().in("page_id", pageIdsToDelete);
+      await supabase.from("store_pages").delete().in("id", pageIdsToDelete);
     }
 
     const blockRows = safeStore.pages.flatMap((page) =>
@@ -804,15 +804,15 @@ export default function CmsPagesManager() {
         id: block.id,
         page_id: page.id,
         store_id: safeStore.id,
-        block_type: block.type,
-        props: block.props,
+        block_type: block.type as any,
+        props: block.props as any,
         sort_order: index,
         is_visible: block.isVisible,
       })),
     );
 
     if (blockRows.length > 0) {
-      const { error: blockError } = await (supabase as any).from("store_page_blocks").upsert(blockRows, { onConflict: "id" });
+      const { error: blockError } = await supabase.from("store_page_blocks").upsert(blockRows, { onConflict: "id" });
 
       if (blockError) {
         toast.error("Failed to save page blocks.");
@@ -821,22 +821,22 @@ export default function CmsPagesManager() {
       }
     }
 
-    const { data: existingBlocks } = await (supabase as any).from("store_page_blocks").select("id").eq("store_id", safeStore.id);
+    const { data: existingBlocks } = await supabase.from("store_page_blocks").select("id").eq("store_id", safeStore.id);
     const existingBlockIds = new Set<string>(((existingBlocks as Array<{ id: string }> | null) ?? []).map((block) => block.id));
     const localBlockIds = new Set(blockRows.map((block) => block.id));
     const blockIdsToDelete = Array.from(existingBlockIds).filter((id) => !localBlockIds.has(id));
 
     if (blockIdsToDelete.length > 0) {
-      await (supabase as any).from("store_page_blocks").delete().in("id", blockIdsToDelete);
+      await supabase.from("store_page_blocks").delete().in("id", blockIdsToDelete);
     }
 
     if (selectedPage) {
-      await (supabase as any).from("store_page_revisions").insert({
+      await supabase.from("store_page_revisions").insert({
         page_id: selectedPage.id,
         store_id: safeStore.id,
         revision_label: revisionLabel.trim() || "Manual save",
         changed_by: user.id,
-        blocks_snapshot: sanitizeStoreBlocks(selectedPage.blocks),
+        blocks_snapshot: sanitizeStoreBlocks(selectedPage.blocks) as any,
       });
     }
 

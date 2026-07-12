@@ -106,14 +106,14 @@ const Dashboard = () => {
       ] = await Promise.all([
         supabase.from("products").select("id, stock, featured").eq("store_id", activeStoreId as string),
         supabase.from("orders").select("id, order_number, status, total, customer_name, created_at").eq("store_id", activeStoreId as string).order("created_at", { ascending: false }).limit(100),
-        (supabase as any).from("stores").select("id, description, logo_url, is_published").eq("id", activeStoreId as string).maybeSingle(),
-        (supabase as any).from("store_pages").select("id, slug, is_homepage").eq("store_id", activeStoreId as string),
-        (supabase as any).from("store_page_blocks").select("page_id, is_visible").eq("store_id", activeStoreId as string),
-        (supabase as any).from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
-        (supabase as any).from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
-        (supabase as any).from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
-        (supabase as any).from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
-        (supabase as any).from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
+        supabase.from("stores").select("id, description, logo_url, is_published").eq("id", activeStoreId as string).maybeSingle(),
+        supabase.from("store_pages").select("id, slug, is_homepage").eq("store_id", activeStoreId as string),
+        supabase.from("store_page_blocks").select("page_id, is_visible").eq("store_id", activeStoreId as string),
+        supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
+        supabase.from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
+        supabase.from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
+        supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
+        supabase.from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
       ]);
 
       if (products) {

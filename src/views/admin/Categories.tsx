@@ -52,7 +52,7 @@ const AdminCategories = () => {
     const [catRes, typeRes, settingsRes] = await Promise.all([
       supabase.from("product_categories").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
       supabase.from("product_types").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
-      (supabase as any).from("site_settings").select("*").eq("key", "categories_custom_data").eq("store_id", activeStoreId as string).maybeSingle(),
+      supabase.from("site_settings").select("*").eq("key", "categories_custom_data").eq("store_id", activeStoreId as string).maybeSingle(),
     ]);
     setCategories((catRes.data as Category[]) ?? []);
     setTypes((typeRes.data as ProductType[]) ?? []);
@@ -64,7 +64,7 @@ const AdminCategories = () => {
 
   const saveCustomData = async (updatedData: any) => {
     setCustomData(updatedData);
-    await (supabase as any).from("site_settings").upsert({
+    await supabase.from("site_settings").upsert({
       store_id: activeStoreId,
       key: "categories_custom_data",
       value: updatedData
