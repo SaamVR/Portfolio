@@ -59,6 +59,42 @@ export type Database = {
           },
         ]
       }
+      block_registry_entries: {
+        Row: {
+          block_type: string
+          compatible_business_families: Json
+          created_at: string
+          description: string
+          is_active: boolean
+          label: string
+          layer: string
+          required_capabilities: Json
+          updated_at: string
+        }
+        Insert: {
+          block_type: string
+          compatible_business_families?: Json
+          created_at?: string
+          description?: string
+          is_active?: boolean
+          label: string
+          layer?: string
+          required_capabilities?: Json
+          updated_at?: string
+        }
+        Update: {
+          block_type?: string
+          compatible_business_families?: Json
+          created_at?: string
+          description?: string
+          is_active?: boolean
+          label?: string
+          layer?: string
+          required_capabilities?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cms_features: {
         Row: {
           category: string

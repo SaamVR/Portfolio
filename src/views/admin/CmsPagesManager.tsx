@@ -37,7 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { cmsBlockRegistry, createRegistryDefaultBlock, getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { cn } from "@/lib/utils";
@@ -199,6 +199,7 @@ export default function CmsPagesManager() {
   const [bootstrapping, setBootstrapping] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
+  const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
   const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
   const [activeTemplateId, setActiveTemplateId] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
@@ -228,12 +229,12 @@ export default function CmsPagesManager() {
   );
   const availableBlockRegistry = useMemo(
     () =>
-      cmsBlockRegistry.filter(
+      blockRegistry.filter(
         (block) =>
           block.compatibleBusinessFamilies.includes(activeBlueprint.businessFamily)
           && block.requiredCapabilities.every((capability) => activeBlueprint.capabilities.includes(capability)),
       ),
-    [activeBlueprint],
+    [activeBlueprint, blockRegistry],
   );
 
   const loadStore = useCallback(async () => {
@@ -295,12 +296,16 @@ export default function CmsPagesManager() {
   useEffect(() => {
     if (role !== "admin") return;
 
-    const loadBlueprintLibrary = async () => {
-      const blueprints = await loadPageBlueprints(supabase);
+    const loadSharedLibraries = async () => {
+      const [blueprints, registry] = await Promise.all([
+        loadPageBlueprints(supabase),
+        loadBlockRegistry(supabase),
+      ]);
       setPageBlueprints(blueprints);
+      setBlockRegistry(registry);
     };
 
-    void loadBlueprintLibrary();
+    void loadSharedLibraries();
   }, [role]);
 
   useEffect(() => {
@@ -1459,7 +1464,7 @@ export default function CmsPagesManager() {
                     <div className="rounded-xl border border-border bg-muted/20 p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         {selectedPage.blocks.map((block, index) => {
-                          const blockMeta = getCmsBlockRegistryItem(block.type);
+                          const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
 
                           return (
                             <Button
@@ -1479,7 +1484,7 @@ export default function CmsPagesManager() {
                   ) : null}
 
                   {selectedPage.blocks.map((block, index) => {
-                    const blockMeta = getCmsBlockRegistryItem(block.type);
+                    const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
                     const isFocused = selectedBlockId === block.id;
 
                     return (
@@ -1964,7 +1969,7 @@ export default function CmsPagesManager() {
                           <div className="max-h-[720px] overflow-y-auto">
                             {previewBlocks.length > 0 ? (
                               previewBlocks.map((block, index) => {
-                                const blockMeta = getCmsBlockRegistryItem(block.type);
+                                const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
                                 const isFocused = selectedBlockId === block.id;
 
                                 return (
