@@ -274,15 +274,7 @@ export default function CmsPagesManager() {
 
   const loadStore = useCallback(async () => {
     setLoading(true);
-    const storeResponse = await supabase
-      .from("stores")
-      .select("id, name, slug, description, currency_code, locale, is_published, store_type")
-      .eq("id", activeStoreId as string)
-      .maybeSingle();
-
-    const storeRecord = storeResponse.data as StoreRecord | null;
-
-    if (!storeRecord) {
+    if (!activeStoreId) {
       setStore(null);
       setSelectedPageId("");
       setPersistedSnapshot("");
@@ -292,60 +284,84 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const [
-      businessProfileResponse,
-      themeResponse,
-      pagesResponse,
-      blocksResponse,
-      siteSettingsResponse,
-      loadedBlueprints,
-      loadedPageBlueprints,
-      loadedThemePackages,
-    ] = await Promise.all([
-      supabase
-        .from("store_business_profiles")
-        .select("blueprint_id, business_family, catalog_mode")
-        .eq("store_id", storeRecord.id)
-        .maybeSingle(),
-      supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
-      supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
-      supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
-      supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
-      loadStoreBlueprints(supabase),
-      loadPageBlueprints(supabase),
-      loadThemePackages(supabase, storeRecord.id),
-    ]);
+    try {
+      const storeResponse = await supabase
+        .from("stores")
+        .select("id, name, slug, description, currency_code, locale, is_published, store_type")
+        .eq("id", activeStoreId as string)
+        .maybeSingle();
 
-    const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
+      const storeRecord = storeResponse.data as StoreRecord | null;
 
-    const parsedStore = mapRecordsToStore(
-      storeRecord,
-      businessProfile,
-      (themeResponse.data as ThemeRecord | null) ?? null,
-      (pagesResponse.data as PageRecord[] | null) ?? [],
-      (blocksResponse.data as BlockRecord[] | null) ?? [],
-      (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
-      loadedBlueprints,
-      loadedThemePackages,
-      loadedPageBlueprints,
-    );
-
-    setStoreBlueprints(loadedBlueprints);
-    setPageBlueprints(loadedPageBlueprints);
-    setThemePackages(loadedThemePackages);
-    setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
-    setStore(parsedStore);
-    setPersistedSnapshot(serializeStoreDraft(parsedStore));
-    setLastDraftSavedAt(null);
-    setSelectedPageId((current) => {
-      if (requestedPageId && parsedStore.pages.some((page) => page.id === requestedPageId)) {
-        return requestedPageId;
+      if (!storeRecord) {
+        setStore(null);
+        setSelectedPageId("");
+        setPersistedSnapshot("");
+        setRecoverableDraft(null);
+        setLastDraftSavedAt(null);
+        return;
       }
 
-      return current || parsedStore.pages[0]?.id || "";
-    });
-    setSelectedBlockId(requestedBlockId);
-    setLoading(false);
+      const [
+        businessProfileResponse,
+        themeResponse,
+        pagesResponse,
+        blocksResponse,
+        siteSettingsResponse,
+        loadedBlueprints,
+        loadedPageBlueprints,
+        loadedThemePackages,
+      ] = await Promise.all([
+        supabase
+          .from("store_business_profiles")
+          .select("blueprint_id, business_family, catalog_mode")
+          .eq("store_id", storeRecord.id)
+          .maybeSingle(),
+        supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
+        supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
+        supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
+        supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
+        loadStoreBlueprints(supabase),
+        loadPageBlueprints(supabase),
+        loadThemePackages(supabase, storeRecord.id),
+      ]);
+
+      const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
+
+      const parsedStore = mapRecordsToStore(
+        storeRecord,
+        businessProfile,
+        (themeResponse.data as ThemeRecord | null) ?? null,
+        (pagesResponse.data as PageRecord[] | null) ?? [],
+        (blocksResponse.data as BlockRecord[] | null) ?? [],
+        (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
+        loadedBlueprints,
+        loadedThemePackages,
+        loadedPageBlueprints,
+      );
+
+      setStoreBlueprints(loadedBlueprints);
+      setPageBlueprints(loadedPageBlueprints);
+      setThemePackages(loadedThemePackages);
+      setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
+      setStore(parsedStore);
+      setPersistedSnapshot(serializeStoreDraft(parsedStore));
+      setLastDraftSavedAt(null);
+      setSelectedPageId((current) => {
+        if (requestedPageId && parsedStore.pages.some((page) => page.id === requestedPageId)) {
+          return requestedPageId;
+        }
+
+        return current || parsedStore.pages[0]?.id || "";
+      });
+      setSelectedBlockId(requestedBlockId);
+    } catch (error) {
+      console.error("Failed to load CMS store workspace:", error);
+      toast.error("Failed to refresh the page builder workspace. Please try again.");
+      setStore(null);
+    } finally {
+      setLoading(false);
+    }
   }, [activeStoreId, requestedBlockId, requestedPageId]);
 
   const currentSnapshot = useMemo(() => (store ? serializeStoreDraft(store) : ""), [store]);

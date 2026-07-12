@@ -156,22 +156,41 @@ const SiteSettings = () => {
   useEffect(() => {
     if (role !== "admin") return;
     const fetch = async () => {
-      const loadedThemePackages = await loadThemePackages(supabase, activeStoreId);
-      setThemePackages(loadedThemePackages);
+      if (!activeStoreId) {
+        setSettings({});
+        setDbCategories([]);
+        setDbTypes([]);
+        setLoading(false);
+        return;
+      }
 
-      supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).then(({ data }) => {
-        setDbCategories((data ?? []).map((r: { name: string }) => r.name));
-      });
-      supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).then(({ data }) => {
-        setDbTypes((data ?? []).map((r: { name: string }) => r.name));
-      });
-      const { data } = await supabase.from("site_settings").select("*").eq("store_id", activeStoreId as string);
-      const map: Record<string, any> = {};
-      data?.forEach((row) => {
-        map[row.key] = row.value;
-      });
-      setSettings(map);
-      setLoading(false);
+      setLoading(true);
+      try {
+        const loadedThemePackages = await loadThemePackages(supabase, activeStoreId);
+        setThemePackages(loadedThemePackages);
+
+        const [{ data: categoryData }, { data: typeData }, { data: settingsData, error: settingsError }] = await Promise.all([
+          supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string),
+          supabase.from("product_types").select("name").eq("store_id", activeStoreId as string),
+          supabase.from("site_settings").select("*").eq("store_id", activeStoreId as string),
+        ]);
+
+        if (settingsError) throw settingsError;
+
+        setDbCategories((categoryData ?? []).map((r: { name: string }) => r.name));
+        setDbTypes((typeData ?? []).map((r: { name: string }) => r.name));
+
+        const map: Record<string, any> = {};
+        settingsData?.forEach((row) => {
+          map[row.key] = row.value;
+        });
+        setSettings(map);
+      } catch (error) {
+        console.error("Failed to load site settings:", error);
+        toast.error("Failed to refresh site settings. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, [activeStoreId, role]);
