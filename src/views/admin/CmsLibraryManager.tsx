@@ -34,6 +34,7 @@ import {
   catalogModeOptions,
   checkoutModeOptions,
   knownBlockTypes,
+  knownBlockOptions,
   knownCapabilities,
   knownPageBlueprintIds,
   legacyTemplateOptions,
@@ -380,6 +381,7 @@ export default function CmsLibraryManager() {
               businessFamilyOptions={businessFamilyOptions}
               catalogModeOptions={catalogModeOptions}
               knownBlockTypes={knownBlockTypes}
+              knownBlockOptions={knownBlockOptions}
               selectedCatalogModes={selectedCatalogModes}
               pagePayload={pagePayload}
               slugIsReserved={slugIsReserved}

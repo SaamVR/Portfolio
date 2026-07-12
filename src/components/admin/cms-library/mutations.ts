@@ -3,6 +3,8 @@ import {
   buildThemePackageExport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
+import { reservedCmsSlugs } from "@/lib/cms/block-library";
+import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
 import {
   type DialogState,
   type FormState,
@@ -103,6 +105,14 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
       throw new Error("Page blueprint id and name are required.");
     }
 
+    const normalizedPagePayload = normalizePageBlueprintPayload(
+      parseJsonField(String(form.page_payload || "{}"), "Page payload"),
+    );
+
+    if (normalizedPagePayload.slug !== "/" && reservedCmsSlugs.has(normalizedPagePayload.slug)) {
+      throw new Error(`"${normalizedPagePayload.slug}" is reserved for storefront routing.`);
+    }
+
     return {
       table: "page_blueprints",
       idColumn: "id",
@@ -114,7 +124,7 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
         description: String(form.description || "").trim(),
         business_family: String(form.business_family || "commerce").trim(),
         catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
-        page_payload: parseJsonField(String(form.page_payload || "{}"), "Page payload"),
+        page_payload: normalizedPagePayload,
         is_active: Boolean(form.is_active),
       },
     };

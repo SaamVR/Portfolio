@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyTemplateToPage, cmsPageTemplates, instantiateTemplate } from "@/lib/cms/page-templates";
+import { sanitizeStorePage } from "@/lib/cms/validation";
 import type { StorePage } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { StoreBusinessFamily, StoreCatalogMode } from "@/lib/cms/store-blueprints";
@@ -113,4 +114,28 @@ export function applyPageBlueprint(
       sortOrder: index,
     })),
   };
+}
+
+export function normalizePageBlueprintPayload(payload: unknown): Omit<StorePage, "id"> {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Page payload must be an object.");
+  }
+
+  const candidate = payload as Partial<Omit<StorePage, "id">> & { blocks?: unknown[] };
+  const sanitizedPage = sanitizeStorePage({
+    id: "page-blueprint-preview",
+    slug: typeof candidate.slug === "string" ? candidate.slug : "/page-1",
+    title: typeof candidate.title === "string" ? candidate.title : "Untitled Page",
+    seoTitle: typeof candidate.seoTitle === "string" ? candidate.seoTitle : "",
+    seoDescription: typeof candidate.seoDescription === "string" ? candidate.seoDescription : "",
+    isHomepage: candidate.isHomepage === true,
+    blocks: Array.isArray(candidate.blocks) ? candidate.blocks : [],
+  });
+
+  if (!sanitizedPage) {
+    throw new Error("Page payload must include at least one valid block and valid page metadata.");
+  }
+
+  const { id: _ignoredId, ...pageBlueprintPayload } = sanitizedPage;
+  return pageBlueprintPayload;
 }

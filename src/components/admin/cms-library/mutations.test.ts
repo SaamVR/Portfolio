@@ -52,4 +52,83 @@ describe("cms library mutation builders", () => {
       },
     ), /unsafe/i);
   });
+
+  it("sanitizes page blueprint payloads before saving", () => {
+    const request = buildSaveDialogRequest(
+      { mode: "create", type: "page" },
+      {
+        id: "custom-page",
+        name: "Custom Page",
+        description: "A page blueprint",
+        business_family: "commerce",
+        catalog_modes: JSON.stringify(["multi_product"]),
+        page_payload: JSON.stringify({
+          slug: "/campaign",
+          title: "Campaign Page",
+          seoTitle: "",
+          seoDescription: "",
+          isHomepage: false,
+          blocks: [
+            {
+              id: "valid-rich-text",
+              type: "rich-text",
+              isVisible: true,
+              sortOrder: 9,
+              props: {
+                title: "Trusted launch copy",
+                body: "Real content",
+                align: "center",
+              },
+            },
+            {
+              id: "invalid-rich-text",
+              type: "rich-text",
+              isVisible: true,
+              sortOrder: 10,
+              props: {
+                title: "",
+                body: "",
+              },
+            },
+          ],
+        }),
+        is_active: true,
+      },
+    );
+
+    expect(request.table).toBe("page_blueprints");
+    expect(Array.isArray((request.payload.page_payload as { blocks: unknown[] }).blocks)).toBe(true);
+    expect((request.payload.page_payload as { blocks: unknown[] }).blocks).toHaveLength(1);
+  });
+
+  it("rejects reserved page blueprint slugs outside homepage", () => {
+    assert.throws(() => buildSaveDialogRequest(
+      { mode: "create", type: "page" },
+      {
+        id: "shop-page",
+        name: "Shop Page",
+        description: "Invalid reserved slug",
+        business_family: "commerce",
+        catalog_modes: JSON.stringify(["multi_product"]),
+        page_payload: JSON.stringify({
+          slug: "/shop",
+          title: "Shop Page",
+          blocks: [
+            {
+              id: "rich-text-1",
+              type: "rich-text",
+              isVisible: true,
+              sortOrder: 0,
+              props: {
+                title: "Reserved",
+                body: "Should fail",
+                align: "center",
+              },
+            },
+          ],
+        }),
+        is_active: true,
+      },
+    ), /reserved/i);
+  });
 });

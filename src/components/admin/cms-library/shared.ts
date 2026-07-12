@@ -121,6 +121,12 @@ export const themeSourceTypeOptions = ["system", "admin_shared", "merchant_priva
 export const themeModeOptions = ["light", "dark"] as const;
 export const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
 export const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
+export const knownBlockOptions = fallbackBlockRegistry.map((item) => ({
+  value: item.value,
+  label: item.label,
+  description: item.description,
+  layer: item.layer,
+}));
 export const knownCapabilities = Array.from(new Set([
   ...fallbackStoreBlueprints.flatMap((item) => item.capabilities),
   ...fallbackBlockRegistry.flatMap((item) => item.requiredCapabilities),

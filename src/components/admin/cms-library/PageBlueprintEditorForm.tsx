@@ -16,6 +16,12 @@ type PageBlueprintEditorFormProps = {
   businessFamilyOptions: readonly string[];
   catalogModeOptions: readonly string[];
   knownBlockTypes: string[];
+  knownBlockOptions: Array<{
+    value: string;
+    label: string;
+    description: string;
+    layer: string;
+  }>;
   selectedCatalogModes: string[];
   pagePayload: {
     slug: string;
@@ -44,6 +50,7 @@ export function PageBlueprintEditorForm({
   businessFamilyOptions,
   catalogModeOptions,
   knownBlockTypes,
+  knownBlockOptions,
   selectedCatalogModes,
   pagePayload,
   slugIsReserved,
@@ -143,12 +150,28 @@ export function PageBlueprintEditorForm({
           </div>
 
           <div className="grid gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {knownBlockTypes.map((blockType) => (
-                <Button key={blockType} type="button" variant="outline" size="sm" onClick={() => onAddPagePayloadBlock(blockType)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {blockType}
-                </Button>
+            <div className="grid gap-3 md:grid-cols-2">
+              {knownBlockOptions.map((blockOption) => (
+                <button
+                  key={blockOption.value}
+                  type="button"
+                  onClick={() => onAddPagePayloadBlock(blockOption.value)}
+                  className="rounded-md border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">{blockOption.label}</p>
+                      <p className="text-xs text-muted-foreground">{blockOption.description}</p>
+                    </div>
+                    <span className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground">
+                      {blockOption.layer}
+                    </span>
+                  </div>
+                  <div className="mt-3 inline-flex items-center text-xs font-medium text-primary">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add block
+                  </div>
+                </button>
               ))}
             </div>
 
