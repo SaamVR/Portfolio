@@ -1285,6 +1285,129 @@ export default function CmsLibraryManager() {
                             </div>
                           ) : null}
 
+                          {block.type === "countdown" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Subtitle</Label>
+                                <Textarea rows={3} value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>End Date</Label>
+                                <Input value={String((block.props as any)?.endDate ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { endDate: event.target.value })} placeholder="2026-12-31T23:59:59Z" />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Background Gradient</Label>
+                                <Input value={String((block.props as any)?.bgGradient ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { bgGradient: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Text</Label>
+                                <Input value={String((block.props as any)?.ctaText ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaText: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Link</Label>
+                                <Input value={String((block.props as any)?.ctaLink ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaLink: event.target.value })} />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "promo-banner" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Subtitle</Label>
+                                <Textarea rows={3} value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Badge Text</Label>
+                                <Input value={String((block.props as any)?.badgeText ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { badgeText: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Background Style</Label>
+                                <Select value={String((block.props as any)?.bgStyle ?? "gradient")} onValueChange={(value) => updatePagePayloadBlockProps(index, { bgStyle: value })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="gradient">gradient</SelectItem>
+                                    <SelectItem value="dark">dark</SelectItem>
+                                    <SelectItem value="accent">accent</SelectItem>
+                                    <SelectItem value="luxury-gold">luxury-gold</SelectItem>
+                                    <SelectItem value="indigo">indigo</SelectItem>
+                                    <SelectItem value="rose">rose</SelectItem>
+                                    <SelectItem value="aurora">aurora</SelectItem>
+                                    <SelectItem value="luxury-dark">luxury-dark</SelectItem>
+                                    <SelectItem value="confetti">confetti</SelectItem>
+                                    <SelectItem value="mesh-gradient">mesh-gradient</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Text</Label>
+                                <Input value={String((block.props as any)?.ctaText ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaText: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Link</Label>
+                                <Input value={String((block.props as any)?.ctaLink ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaLink: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Text Alignment</Label>
+                                <Select value={String((block.props as any)?.textAlignment ?? "center")} onValueChange={(value) => updatePagePayloadBlockProps(index, { textAlignment: value })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="left">left</SelectItem>
+                                    <SelectItem value="center">center</SelectItem>
+                                    <SelectItem value="right">right</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Padding Size</Label>
+                                <Select value={String((block.props as any)?.paddingSize ?? "cozy")} onValueChange={(value) => updatePagePayloadBlockProps(index, { paddingSize: value })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="compact">compact</SelectItem>
+                                    <SelectItem value="cozy">cozy</SelectItem>
+                                    <SelectItem value="large">large</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Card Opacity</Label>
+                                <Input type="number" min={0} max={100} value={String((block.props as any)?.cardOpacity ?? 0)} onChange={(event) => updatePagePayloadBlockProps(index, { cardOpacity: Number(event.target.value || 0) })} />
+                              </div>
+                              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                                <Label>Glow</Label>
+                                <Switch checked={Boolean((block.props as any)?.enableGlow)} onCheckedChange={(checked) => updatePagePayloadBlockProps(index, { enableGlow: checked })} />
+                              </div>
+                              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                                <Label>Particles</Label>
+                                <Switch checked={(block.props as any)?.enableParticles !== false} onCheckedChange={(checked) => updatePagePayloadBlockProps(index, { enableParticles: checked })} />
+                              </div>
+                              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                                <Label>Orbs</Label>
+                                <Switch checked={(block.props as any)?.enableOrbs !== false} onCheckedChange={(checked) => updatePagePayloadBlockProps(index, { enableOrbs: checked })} />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "category-showcase" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>Tagline</Label>
+                                <Input value={String((block.props as any)?.tagline ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { tagline: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                            </div>
+                          ) : null}
+
                           {block.type === "rich-text" ? (
                             <div className="grid gap-3">
                               <div className="grid gap-3 md:grid-cols-3">
@@ -1310,6 +1433,58 @@ export default function CmsLibraryManager() {
                                     <SelectItem value="center">center</SelectItem>
                                   </SelectContent>
                                 </Select>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "recently-viewed" ? (
+                            <div className="grid gap-2">
+                              <Label>Section Title</Label>
+                              <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                            </div>
+                          ) : null}
+
+                          {block.type === "social-feed" ? (
+                            <div className="grid gap-3">
+                              <div className="grid gap-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Subtitle</Label>
+                                <Input value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Image URLs</Label>
+                                <Textarea
+                                  rows={4}
+                                  value={((block.props as any)?.images ?? []).join(", ")}
+                                  onChange={(event) => updatePagePayloadBlockProps(index, {
+                                    images: event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+                                  })}
+                                  placeholder="https://..., https://..."
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {block.type === "video-reel" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Title</Label>
+                                <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2 md:col-span-2">
+                                <Label>Video URL</Label>
+                                <Input value={String((block.props as any)?.videoUrl ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { videoUrl: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Text</Label>
+                                <Input value={String((block.props as any)?.ctaText ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaText: event.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Link</Label>
+                                <Input value={String((block.props as any)?.ctaLink ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { ctaLink: event.target.value })} />
                               </div>
                             </div>
                           ) : null}
@@ -1362,7 +1537,34 @@ export default function CmsLibraryManager() {
                             </div>
                           ) : null}
 
-                          {!["hero", "featured-products", "rich-text", "faq-accordion", "trust-badges"].includes(String(block.type ?? "")) ? (
+                          {block.type === "testimonials" ? (
+                            <div className="grid gap-3">
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div className="grid gap-2">
+                                  <Label>Title</Label>
+                                  <Input value={String((block.props as any)?.title ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { title: event.target.value })} />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>Subtitle</Label>
+                                  <Input value={String((block.props as any)?.subtitle ?? "")} onChange={(event) => updatePagePayloadBlockProps(index, { subtitle: event.target.value })} />
+                                </div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Reviews JSON</Label>
+                                <Textarea
+                                  rows={6}
+                                  value={JSON.stringify((block.props as any)?.reviews ?? [], null, 2)}
+                                  onChange={(event) => {
+                                    try {
+                                      updatePagePayloadBlockProps(index, { reviews: JSON.parse(event.target.value) });
+                                    } catch {}
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {!["hero", "featured-products", "countdown", "promo-banner", "category-showcase", "rich-text", "recently-viewed", "social-feed", "video-reel", "faq-accordion", "trust-badges", "testimonials"].includes(String(block.type ?? "")) ? (
                             <div className="grid gap-2">
                               <Label>Props JSON</Label>
                               <Textarea
