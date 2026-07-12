@@ -16,9 +16,9 @@ interface AboutSettings {
 const iconMap: Record<string, React.ElementType> = { Heart, Globe, Leaf };
 
 const defaultValues = [
-  { icon: "Heart", title: "Comfort First", desc: "Every piece is selected for fabric feel, fit, stitching, and durability before it reaches your wardrobe." },
-  { icon: "Globe", title: "Made for Bangladesh", desc: "Our fits, fabrics, and delivery experience are built around local weather, daily movement, and Bangladeshi shoppers." },
-  { icon: "Leaf", title: "Responsible Growth", desc: "We keep collections focused, avoid unnecessary waste, and work toward better sourcing as the brand grows." },
+  { icon: "Heart", title: "Customer First", desc: "We focus on clarity, responsiveness, and a buying experience that feels straightforward from discovery to delivery." },
+  { icon: "Globe", title: "Built with Care", desc: "Every collection, service, or offer is shaped to reflect the brand clearly and help shoppers understand what makes it worth choosing." },
+  { icon: "Leaf", title: "Steady Growth", desc: "We improve the store thoughtfully over time, with better presentation, better operations, and a stronger customer experience." },
 ];
 
 const About = () => {
@@ -27,13 +27,13 @@ const About = () => {
   const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page");
 
   const title = about?.title || `About ${storeName}`;
-  const defaultContent = `${storeName} is built around clean everyday essentials that feel good in real Bangladeshi weather.
-  
-We started with a simple idea: make premium-looking basics easier to buy locally, with clear sizing, honest pricing, and payment options people already trust, including bKash, Nagad, and Cash on Delivery.
+  const defaultContent = `${storeName} is built to offer a clearer, more trustworthy buying experience for customers discovering the brand online.
 
-Our focus is not loud fashion for one photo. It is reliable clothing you can wear often: sharper fits, softer fabrics, better finishing, and support that answers quickly when you need help.
+We started with a simple goal: present what we offer in a way that feels useful, honest, and easy to navigate, with clear details, practical support, and checkout options that fit how our customers buy.
 
-We are still growing, but the promise is simple: thoughtful menswear, made for daily life in Bangladesh, with a shopping experience that feels clear from product page to delivery.`;
+As the store grows, we keep refining the experience across product discovery, communication, and delivery so the brand feels consistent from first visit to completed order.
+
+Our promise is simple: thoughtful presentation, dependable service, and a storefront experience designed to make choosing with confidence easier.`;
   const content = about?.content || defaultContent;
   const values = about?.values ?? defaultValues;
 

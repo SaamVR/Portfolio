@@ -19,14 +19,14 @@ interface FAQEntry {
 }
 
 const defaultFaqs: FAQEntry[] = [
-  { q: "How long does delivery take?", a: "Inside Dhaka: 1-2 business days after order confirmation. Outside Dhaka: usually 3-5 business days depending on courier coverage." },
-  { q: "What payment methods do you accept?", a: "We accept bKash, Nagad, and Cash on Delivery across Bangladesh. For prepaid orders, send payment to the number shown at checkout and add your transaction ID." },
-  { q: "How much is delivery?", a: "Delivery fees are shown at checkout before you place the order. Dhaka and outside-Dhaka fees can be different, and eligible orders may receive free delivery." },
-  { q: "Can I exchange size?", a: "Yes. You can request a size exchange within 7 days if the item is unused, unwashed, undamaged, and returned with its original packaging." },
-  { q: "What is your return policy?", a: "Returns or exchanges are accepted within 7 days for unused products in original condition. Innerwear cannot be returned after opening for hygiene reasons." },
-  { q: "How do I choose the right size?", a: "Use the size guide on product and shop pages. If you are between sizes, message us with your height, weight, and preferred fit before ordering." },
-  { q: "How can I track my order?", a: "Use the Track Order page with your order number. We also recommend keeping the confirmation message until delivery is complete." },
-  { q: "Do product colors match the photos exactly?", a: "We photograph products as accurately as possible, but color can vary slightly by screen brightness, lighting, and fabric batch." },
+  { q: "How long does delivery take?", a: "Delivery timelines depend on the shipping zone and the fulfillment method chosen for the order. The latest estimate is usually shown during checkout or in the order confirmation." },
+  { q: "What payment methods do you accept?", a: "Available payment methods are shown during checkout and may include online payment, manual transfer, or cash on delivery depending on the store configuration." },
+  { q: "How much is delivery?", a: "Shipping or delivery fees are calculated based on the current store rules and appear before the order is placed." },
+  { q: "Can I update an order after placing it?", a: "If the order has not been processed yet, contact the store as soon as possible. Change requests usually depend on fulfillment status and item availability." },
+  { q: "What is your return policy?", a: "Return and exchange eligibility depends on the store policy for the product type, order condition, and return window. Check the store policy page or contact support for the latest details." },
+  { q: "How can I track my order?", a: "Use the Track Order page or the order confirmation details provided after purchase. Some orders may also receive shipping or status updates directly from the store." },
+  { q: "How do I get help before buying?", a: "If you need help choosing, sizing, availability details, or clarification before ordering, use the contact or support options listed on the storefront." },
+  { q: "What happens if an item becomes unavailable?", a: "If something becomes unavailable after purchase, the store may contact the customer with replacement, delay, or refund options depending on the order status." },
 ];
 
 const FAQ = () => {
