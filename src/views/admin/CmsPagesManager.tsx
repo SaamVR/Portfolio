@@ -50,7 +50,7 @@ import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
-import { getThemePackageById, fallbackThemePackages } from "@/lib/theme-packages";
+import { getThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
   id: string;
@@ -158,7 +158,7 @@ function mapRecordsToStore(
     locale: store.locale ?? defaultStore.locale,
     isPublished: store.is_published ?? false,
     theme: {
-      presetId: theme?.preset_id ?? fallbackTheme.presetId,
+      presetId: theme?.theme_package_id ?? theme?.preset_id ?? fallbackTheme.id,
       mode: theme?.mode ?? blueprint.defaultTheme.mode,
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
@@ -209,6 +209,7 @@ export default function CmsPagesManager() {
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
+  const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
   const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
   const [activeTemplateId, setActiveTemplateId] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
@@ -307,16 +308,18 @@ export default function CmsPagesManager() {
     if (role !== "admin") return;
 
     const loadSharedLibraries = async () => {
-      const [blueprints, registry] = await Promise.all([
+      const [blueprints, registry, loadedThemePackages] = await Promise.all([
         loadPageBlueprints(supabase),
         loadBlockRegistry(supabase),
+        loadThemePackages(supabase, activeStoreId),
       ]);
       setPageBlueprints(blueprints);
       setBlockRegistry(registry);
+      setThemePackages(loadedThemePackages);
     };
 
     void loadSharedLibraries();
-  }, [role]);
+  }, [activeStoreId, role]);
 
   useEffect(() => {
     if (!availablePageBlueprints.some((template) => template.id === newPageTemplate)) {
@@ -474,7 +477,7 @@ export default function CmsPagesManager() {
 
     const blueprint = getStoreBlueprintById(storeBlueprintId);
     const seedPages = instantiateStorePagesFromBlueprint(blueprint.id, pageBlueprints);
-    const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, fallbackThemePackages);
+    const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, themePackages);
 
     const { error: storeError } = await supabase.from("stores").upsert(
       {
@@ -502,8 +505,8 @@ export default function CmsPagesManager() {
         store_id: activeStoreId as string,
         preset_id: themePackage.presetId,
         mode: blueprint.defaultTheme.mode,
-        theme_package_id: null,
-        theme_package_version: 1,
+        theme_package_id: themePackage.id,
+        theme_package_version: themePackage.version,
         colors: themePackage.tokens[blueprint.defaultTheme.mode] ?? {},
         typography: {
           headingFont: blueprint.defaultTheme.headingFont,
@@ -849,9 +852,15 @@ export default function CmsPagesManager() {
     const { error: themeError } = await supabase.from("store_themes").upsert(
       {
         store_id: safeStore.id,
-        preset_id: safeStore.theme.presetId,
+        preset_id: getThemePackageById(safeStore.theme.presetId, themePackages).presetId,
+        theme_package_id: getThemePackageById(safeStore.theme.presetId, themePackages).id,
+        theme_package_version: getThemePackageById(safeStore.theme.presetId, themePackages).version,
         mode: safeStore.theme.mode,
         colors: safeStore.theme.customCssVars,
+        resolved_tokens: {
+          light: getThemePackageById(safeStore.theme.presetId, themePackages).tokens.light,
+          dark: getThemePackageById(safeStore.theme.presetId, themePackages).tokens.dark,
+        },
         typography: {
           headingFont: safeStore.theme.headingFont,
           bodyFont: safeStore.theme.bodyFont,
@@ -1192,21 +1201,21 @@ export default function CmsPagesManager() {
                 <p className="text-xs text-muted-foreground">These settings are saved to `store_themes` and power the live storefront preview.</p>
               </div>
               <div className="grid gap-2">
-                <Label>Theme Preset</Label>
+                <Label>Theme Package</Label>
                 <Select value={store.theme.presetId} onValueChange={(value) => updateStoreTheme({ presetId: value })} disabled={!themePresetsEnabled}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a theme preset" />
+                    <SelectValue placeholder="Choose a theme package" />
                   </SelectTrigger>
                   <SelectContent>
-                    {fallbackThemePackages.map((themePackage) => (
-                      <SelectItem key={themePackage.id} value={themePackage.presetId}>
+                    {themePackages.map((themePackage) => (
+                      <SelectItem key={themePackage.id} value={themePackage.id}>
                         {themePackage.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {fallbackThemePackages.find((themePackage) => themePackage.presetId === store.theme.presetId)?.description}
+                  {getThemePackageById(store.theme.presetId, themePackages).description}
                 </p>
                 {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
               </div>
