@@ -6,17 +6,34 @@ import { useAuth } from "@/hooks/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, History, Zap, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { CreditCard, History, Zap, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function Billing() {
   const { activeStoreId, role } = useAuth();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [actionPlanId, setActionPlanId] = useState<string | null>(null);
+
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<any | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"choose" | "automated" | "manual">("choose");
+  const [trxId, setTrxId] = useState("");
+  const [submittingManualPayment, setSubmittingManualPayment] = useState(false);
+
+  const platformManualBkashNumber = process.env.NEXT_PUBLIC_PLATFORM_BKASH_NUMBER || "01700-000000";
 
   useEffect(() => {
     const paymentStatus = searchParams?.get("payment");
@@ -109,6 +126,13 @@ export default function Billing() {
     ]);
   };
 
+  const handleInitiatePayment = (plan: any) => {
+    setSelectedPlanForPayment(plan);
+    setPaymentMode("choose");
+    setTrxId("");
+    setPaymentDialogOpen(true);
+  };
+
   const handlePayNow = async (targetPlanId?: string) => {
     try {
       if (!activeStoreId) {
@@ -157,7 +181,7 @@ export default function Billing() {
 
       const monthlyPrice = Number(plan.monthly_price ?? 0);
       if (monthlyPrice > 0) {
-        await handlePayNow(plan.id);
+        handleInitiatePayment(plan);
         return;
       }
 
@@ -184,6 +208,44 @@ export default function Billing() {
       toast.error(err instanceof Error ? err.message : "Failed to update plan.");
     } finally {
       setActionPlanId(null);
+    }
+  };
+
+  const handleManualPaymentSubmit = async () => {
+    if (!trxId.trim()) {
+      toast.error("Please enter the Transaction ID (TrxID) first.");
+      return;
+    }
+
+    try {
+      setSubmittingManualPayment(true);
+      if (!activeStoreId || !selectedPlanForPayment) {
+        throw new Error("No active store or plan selected");
+      }
+
+      const { error } = await supabase
+        .from("store_invoices")
+        .insert({
+          store_id: activeStoreId,
+          plan_id: selectedPlanForPayment.id,
+          amount: Number(selectedPlanForPayment.monthly_price),
+          currency: "BDT",
+          status: "pending",
+          provider: "bkash_manual",
+          payment_method: "bkash_manual",
+          provider_invoice_id: trxId.trim(),
+        });
+
+      if (error) throw error;
+
+      toast.success("Manual payment request submitted! An admin will verify the payment shortly.");
+      setPaymentDialogOpen(false);
+      await refreshBilling();
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to submit manual payment.");
+    } finally {
+      setSubmittingManualPayment(false);
     }
   };
 
@@ -256,7 +318,7 @@ export default function Billing() {
           </CardContent>
           <CardFooter className="bg-muted/50 border-t border-border flex flex-col gap-3 items-stretch">
             {status === "past_due" || status === "trialing" ? (
-              <Button onClick={() => handlePayNow()} className="w-full" disabled={Boolean(actionPlanId)}>
+              <Button onClick={() => handleInitiatePayment(subscription?.cms_plans)} className="w-full" disabled={Boolean(actionPlanId)}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 Pay Now (BDT {planPrice})
               </Button>
@@ -359,6 +421,100 @@ export default function Billing() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>
+              {paymentMode === "choose" ? "Choose Payment Method" : "Manual bKash Payment"}
+            </DialogTitle>
+            <DialogDescription>
+              {paymentMode === "choose" 
+                ? `Upgrade your store to the ${selectedPlanForPayment?.name} plan for BDT ${selectedPlanForPayment?.monthly_price}/month.`
+                : `Please follow instructions below to pay BDT ${selectedPlanForPayment?.monthly_price} using manual bKash.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          {paymentMode === "choose" ? (
+            <div className="flex flex-col gap-4 py-4">
+              <Button 
+                onClick={() => {
+                  setPaymentDialogOpen(false);
+                  handlePayNow(selectedPlanForPayment?.id);
+                }} 
+                className="w-full h-14 flex flex-col items-center justify-center gap-0.5"
+              >
+                <span className="font-semibold text-sm">Automated bKash Checkout</span>
+                <span className="text-[10px] opacity-80">Pay instantly & activate plan immediately</span>
+              </Button>
+
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+
+              <Button 
+                variant="outline"
+                onClick={() => setPaymentMode("manual")} 
+                className="w-full h-14 flex flex-col items-center justify-center gap-0.5 border-primary text-primary hover:bg-primary/5"
+              >
+                <span className="font-semibold text-sm">Manual bKash (Send Money)</span>
+                <span className="text-[10px] opacity-80">Send money manually & submit TrxID</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="rounded-lg bg-primary/5 p-4 border border-primary/10 text-sm space-y-2">
+                <p className="font-medium text-foreground">Payment Instructions:</p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-muted-foreground text-xs">
+                  <li>Go to your bKash app or dial *247#</li>
+                  <li>Choose <span className="font-bold text-foreground">Send Money</span></li>
+                  <li>Enter Merchant/Receiver Number: <span className="font-bold text-foreground text-sm font-mono tracking-wider">{platformManualBkashNumber}</span></li>
+                  <li>Amount: <span className="font-bold text-foreground text-sm">BDT {selectedPlanForPayment?.monthly_price}</span></li>
+                  <li>Complete transaction and copy the Transaction ID (TrxID)</li>
+                </ol>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Transaction ID (TrxID)</label>
+                <Input 
+                  placeholder="e.g. 8N70X9K1A4" 
+                  value={trxId} 
+                  onChange={(e) => setTrxId(e.target.value)} 
+                  className="font-mono"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setPaymentMode("choose")} 
+                  disabled={submittingManualPayment}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                </Button>
+                <Button 
+                  onClick={handleManualPaymentSubmit} 
+                  disabled={submittingManualPayment || !trxId.trim()}
+                  className="flex-[2]"
+                >
+                  {submittingManualPayment ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                    </>
+                  ) : "Submit Transaction"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

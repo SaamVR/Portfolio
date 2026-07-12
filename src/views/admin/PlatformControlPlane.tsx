@@ -103,6 +103,7 @@ type PlatformData = {
   messages: Array<{ id: string; store_id: string; is_read: boolean | null }>;
   reviews: Array<{ id: string; store_id: string; status: string | null }>;
   emailEvents: Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>;
+  invoices: any[];
 };
 
 export default function PlatformControlPlane() {
@@ -182,6 +183,7 @@ export default function PlatformControlPlane() {
         { data: messages },
         { data: reviews },
         { data: emailEvents },
+        { data: invoices },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
         (supabase as any).from("cms_plans").select("id, name, description, monthly_price, currency_code, store_limit, sort_order, is_active").order("sort_order"),
@@ -200,6 +202,7 @@ export default function PlatformControlPlane() {
         (supabase as any).from("contact_messages").select("id, store_id, is_read"),
         (supabase as any).from("product_reviews").select("id, store_id, status"),
         (supabase as any).from("email_events").select("id, store_id, status, template_name, recipient, created_at").order("created_at", { ascending: false }).limit(50),
+        (supabase as any).from("store_invoices").select("*, stores(name, slug)").order("created_at", { ascending: false }),
       ]);
 
       return {
@@ -220,6 +223,7 @@ export default function PlatformControlPlane() {
         messages: (messages ?? []) as Array<{ id: string; store_id: string; is_read: boolean | null }>,
         reviews: (reviews ?? []) as Array<{ id: string; store_id: string; status: string | null }>,
         emailEvents: (emailEvents ?? []) as Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>,
+        invoices: (invoices ?? []) as any[],
       };
     },
     enabled: platformRole === "admin",
@@ -520,6 +524,63 @@ export default function PlatformControlPlane() {
     }
   };
 
+  const approveManualInvoice = async (invoice: any) => {
+    try {
+      const now = new Date();
+      const periodEnd = new Date();
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+      const { error: invoiceError } = await (supabase as any)
+        .from("store_invoices")
+        .update({
+          status: "paid",
+          paid_at: now.toISOString(),
+          billing_period_end: periodEnd.toISOString(),
+        })
+        .eq("id", invoice.id);
+
+      if (invoiceError) throw invoiceError;
+
+      const { error: subError } = await (supabase as any)
+        .from("store_subscriptions")
+        .upsert(
+          {
+            store_id: invoice.store_id,
+            plan_id: invoice.plan_id,
+            status: "active",
+            provider: "bkash_manual",
+            provider_subscription_id: invoice.provider_invoice_id,
+            current_period_ends_at: periodEnd.toISOString(),
+          },
+          { onConflict: "store_id" }
+        );
+
+      if (subError) throw subError;
+
+      toast.success("Manual bKash invoice approved and subscription activated!");
+      await refreshAll();
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to approve payment");
+    }
+  };
+
+  const rejectManualInvoice = async (invoice: any) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("store_invoices")
+        .update({ status: "failed" })
+        .eq("id", invoice.id);
+
+      if (error) throw error;
+      toast.info("Invoice marked as failed.");
+      await refreshAll();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to reject invoice.");
+    }
+  };
+
   if (isLoading || !data) {
     return (
       <div className="flex justify-center py-20">
@@ -544,6 +605,8 @@ export default function PlatformControlPlane() {
   const unhealthyStores = summaries.filter((store) => !store.hasHomepage || store.visibleBlockTotal < 3 || store.customPageTotal === 0 || !store.is_published);
   const failingEmailEvents = data.emailEvents.filter((event) => !["sent", "delivered", "completed"].includes(String(event.status ?? "").toLowerCase()));
   const nonActiveSubscriptions = summaries.filter((store) => !["active", "trialing"].includes(store.subscriptionStatus));
+  const invoices = data.invoices ?? [];
+  const pendingManualInvoices = invoices.filter((invoice) => invoice.payment_method === "bkash_manual" && invoice.status === "pending");
 
   return (
     <div className="space-y-6">
@@ -843,6 +906,68 @@ export default function PlatformControlPlane() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-border mt-6">
+            <CardHeader>
+              <CardTitle>Manual bKash Verification Requests</CardTitle>
+              <CardDescription>Review and verify manual bKash &quot;Send Money&quot; transaction submissions from store owners.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {pendingManualInvoices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No pending manual payment verification requests.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="pb-3 pt-2 font-medium">Store</th>
+                        <th className="pb-3 pt-2 font-medium">Plan Package</th>
+                        <th className="pb-3 pt-2 font-medium">Amount</th>
+                        <th className="pb-3 pt-2 font-medium">Transaction ID (TrxID)</th>
+                        <th className="pb-3 pt-2 font-medium">Submitted At</th>
+                        <th className="pb-3 pt-2 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {pendingManualInvoices.map((invoice: any) => (
+                        <tr key={invoice.id} className="text-foreground">
+                          <td className="py-3 font-medium">
+                            {invoice.stores?.name || "Unknown Store"}
+                            <span className="block text-xs font-normal text-muted-foreground">{invoice.stores?.slug}</span>
+                          </td>
+                          <td className="py-3 font-mono text-xs">{invoice.plan_id}</td>
+                          <td className="py-3 font-semibold">BDT {invoice.amount}</td>
+                          <td className="py-3 font-mono text-xs text-primary font-bold">{invoice.provider_invoice_id}</td>
+                          <td className="py-3 text-xs text-muted-foreground">
+                            {invoice.created_at ? new Date(invoice.created_at).toLocaleString() : "N/A"}
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                className="bg-green-600 text-white hover:bg-green-700 h-8 px-3"
+                                onClick={() => approveManualInvoice(invoice)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-destructive text-destructive hover:bg-destructive/10 h-8 px-3"
+                                onClick={() => rejectManualInvoice(invoice)}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="health">

@@ -20,7 +20,7 @@ const checkoutSchema = z.object({
   phone: z.string().trim().min(11, "Valid phone number required").max(14),
   address: z.string().trim().min(5, "Address is required").max(500),
   city: z.string().trim().min(1, "City is required").max(100),
-  paymentMethod: z.enum(["bkash", "nagad", "cod"]),
+  paymentMethod: z.enum(["bkash", "bkash_manual", "nagad", "cod"]),
   trxId: z.string().trim().max(50).optional(),
 });
 
@@ -78,7 +78,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     phone: "",
     address: "",
     city: "",
-    paymentMethod: "cod" as "bkash" | "nagad" | "cod",
+    paymentMethod: "cod" as "bkash" | "bkash_manual" | "nagad" | "cod",
     trxId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -120,9 +120,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const grandTotal = checkoutSubtotal - couponDiscount + deliveryFee;
 
   const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
-  const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "nagad";
+  const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual" || form.paymentMethod === "nagad";
   const merchantNumber =
-    form.paymentMethod === "bkash"
+    (form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual")
       ? paymentSettings?.bkash_number
       : form.paymentMethod === "nagad"
         ? paymentSettings?.nagad_number
@@ -344,10 +344,16 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Payment Method</h2>
             <div className="space-y-3">
               {[
-                { 
+                ...(hasBkashGateway ? [{ 
                   value: "bkash", 
-                  label: "bKash", 
-                  desc: hasBkashGateway ? "Pay instantly via bKash Account" : "Send Money to our bKash number", 
+                  label: "bKash (Automated)", 
+                  desc: "Pay instantly via bKash Account", 
+                  enabled: paymentSettings?.bkash_enabled ?? false 
+                }] : []),
+                { 
+                  value: "bkash_manual", 
+                  label: "bKash (Manual / Send Money)", 
+                  desc: "Send Money to our bKash number", 
                   enabled: paymentSettings?.bkash_enabled ?? false 
                 },
                 { value: "nagad", label: "Nagad", desc: "Send Money to our Nagad number", enabled: paymentSettings?.nagad_enabled ?? false },
@@ -383,7 +389,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <p className="text-sm font-medium text-foreground">
                   Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this{" "}
-                  {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} number:
+                  {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} number:
                 </p>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-primary" />
@@ -398,7 +404,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   </button>
                 </div>
                 <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
-                  <li>Open your {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} app</li>
+                  <li>Open your {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} app</li>
                   <li>Select &quot;Send Money&quot;</li>
                   <li>Enter the number above and send BDT {grandTotal}</li>
                   <li>Enter the Transaction ID (TrxID) below</li>
@@ -419,7 +425,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
             {isMobilePayment && !merchantNumber && !(form.paymentMethod === "bkash" && hasBkashGateway) && (
               <p className="mt-3 text-xs text-destructive">
-                {form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment is currently unavailable. Please choose another method.
+                {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} payment is currently unavailable. Please choose another method.
               </p>
             )}
           </div>
@@ -506,7 +512,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                 ? `Place Order - BDT ${grandTotal}`
                 : form.paymentMethod === "bkash" && hasBkashGateway
                   ? `Pay BDT ${grandTotal} with bKash`
-                  : `Pay BDT ${grandTotal} with ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"}`}
+                  : `Pay BDT ${grandTotal} with ${form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"}`}
           </button>
         </form>
       </div>
