@@ -9,7 +9,7 @@ describe("request store helpers", () => {
     expect(shouldTryLocalStoreSlugFallback("localhost:3000", "store-2")).toBe(false);
   });
 
-  it("prefers configured local store slugs before the baked-in demo slug", () => {
+  it("uses only explicitly configured local store slugs", () => {
     const candidates = getLocalStoreSlugCandidates({
       CMS_LOCAL_STORE_SLUG: "configured-store",
       NEXT_PUBLIC_STORE_LOCAL_SLUG: "public-store",
@@ -17,6 +17,6 @@ describe("request store helpers", () => {
 
     expect(candidates[0]).toBe("configured-store");
     expect(candidates[1]).toBe("public-store");
-    expect(candidates.includes("threadbd")).toBe(true);
+    expect(candidates.includes("threadbd")).toBe(false);
   });
 });

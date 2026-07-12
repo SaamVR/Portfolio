@@ -7,6 +7,9 @@ import { sanitizeStorePage } from "@/lib/cms/validation";
 import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
 
+const DEFAULT_STORE_CURRENCY_CODE = "BDT";
+const DEFAULT_STORE_LOCALE = "en-BD";
+
 interface StoreRow {
   id: string;
   name: string;
@@ -158,8 +161,8 @@ export function buildResolvedStoreFromRecords(
     name: store.name,
     slug: store.slug,
     description: store.description ?? blueprint.storeDescription ?? defaultStore.description,
-    currencyCode: store.currency_code ?? defaultStore.currencyCode,
-    locale: store.locale ?? defaultStore.locale,
+    currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
+    locale: store.locale ?? DEFAULT_STORE_LOCALE,
     isPublished: store.is_published ?? false,
     theme: {
       presetId: theme?.preset_id ?? fallbackTheme.presetId,

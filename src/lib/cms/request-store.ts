@@ -24,7 +24,6 @@ export function getLocalStoreSlugCandidates(env: Record<string, string | undefin
     env.STORE_LOCAL_SLUG,
     env.NEXT_PUBLIC_CMS_LOCAL_STORE_SLUG,
     env.NEXT_PUBLIC_STORE_LOCAL_SLUG,
-    defaultStore.slug,
   ].filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim())));
 }
 
