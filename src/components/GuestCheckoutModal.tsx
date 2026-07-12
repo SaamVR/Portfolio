@@ -408,9 +408,11 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                         {paymentMethod === "prepaid" && <CheckCircle2 className="h-4 w-4 text-primary" />}
                       </div>
                       <p className="text-xs text-muted-foreground">bKash, Nagad, Cards</p>
-                      <span className="mt-2 inline-block rounded-sm bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-600">
-                        {paymentSettings?.prepaid_badge_text || "Prepaid perks"}
-                      </span>
+                      {paymentSettings?.prepaid_badge_text ? (
+                        <span className="mt-2 inline-block rounded-sm bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-600">
+                          {paymentSettings.prepaid_badge_text}
+                        </span>
+                      ) : null}
                     </div>
 
                     <div 
