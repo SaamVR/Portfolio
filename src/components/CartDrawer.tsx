@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import GuestCheckoutModal from "@/components/GuestCheckoutModal";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
@@ -39,25 +41,12 @@ const CartDrawer = () => {
     enabled: isCartOpen && !!cartStoreId,
   });
 
-  const { data: siteSettings } = useQuery({
-    queryKey: ["site_settings", cartStoreId],
-    queryFn: async () => {
-      if (!cartStoreId) return {};
-      const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", cartStoreId);
-      const map: Record<string, any> = {};
-      data?.forEach((row) => {
-        map[row.key] = row.value;
-      });
-      return map;
-    },
-    staleTime: 1000 * 60 * 5,
-    enabled: isCartOpen && !!cartStoreId,
-  });
-
-  const paymentSettings = siteSettings?.payment_settings as any;
+  const { data: paymentSettings } = usePublicPaymentSettings(isCartOpen ? cartStoreId : null);
+  const { data: deliverySettings } = useSiteSettings<any>("delivery_settings", isCartOpen ? cartStoreId : null);
+  const { data: loyaltySettings } = useSiteSettings<any>("loyalty_settings", isCartOpen ? cartStoreId : null);
   const prepaymentDiscountType = paymentSettings?.prepayment_discount_type;
   const prepaymentDiscountValue = paymentSettings?.prepayment_discount_value;
-  const freeThreshold = siteSettings?.delivery_settings?.free_threshold ?? 2000;
+  const freeThreshold = deliverySettings?.free_threshold ?? 2000;
 
   // Filter out products already in the cart
   const availableUpsells = upsellProducts?.filter(
@@ -215,10 +204,10 @@ const CartDrawer = () => {
                   <span className="font-heading text-lg font-bold text-foreground">BDT {drawerTotal}</span>
                 </div>
 
-                {siteSettings?.loyalty_settings?.enabled && (
+                {loyaltySettings?.enabled && (
                   <div className="mb-4 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2 border border-primary/20">
                     <span className="text-xs font-medium text-primary flex items-center gap-1.5">
-                      Earn {Math.floor(drawerTotal * (siteSettings.loyalty_settings.earn_rate || 0.05))} {siteSettings.loyalty_settings.name || "Reward Points"}
+                      Earn {Math.floor(drawerTotal * (loyaltySettings.earn_rate || 0.05))} {loyaltySettings.name || "Reward Points"}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">With this order</span>
                   </div>

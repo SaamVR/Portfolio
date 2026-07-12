@@ -1,9 +1,21 @@
-import { useEffect, useState, useCallback, ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
+const ROLE_FETCH_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -14,6 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [storeMemberships, setStoreMemberships] = useState<StoreMembership[]>([]);
   const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const userIdRef = useRef<string | null>(null);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -27,18 +40,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchRole = useCallback(async (userId: string) => {
-    const [{ data: platformRole }, { data: memberships }] = await Promise.all([
-      supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      (supabase as any)
-        .from("store_memberships")
-        .select("role, store_id")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
-    ]);
+    const [{ data: platformRole, error: platformRoleError }, { data: memberships, error: membershipsError }] =
+      await withTimeout(
+        Promise.all([
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .maybeSingle(),
+          (supabase as any)
+            .from("store_memberships")
+            .select("role, store_id")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: true }),
+        ]),
+        ROLE_FETCH_TIMEOUT_MS,
+        "Timed out while refreshing account permissions",
+      );
+
+    if (platformRoleError) throw platformRoleError;
+    if (membershipsError) throw membershipsError;
 
     const membershipRows = ((memberships ?? []) as Array<{ role: StoreRole; store_id: string }>).filter(
       (membership): membership is { role: NonNullable<StoreRole>; store_id: string } => Boolean(membership.role && membership.store_id),
@@ -96,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mounted) {
           setSession(session);
           setUser(session?.user ?? null);
+          userIdRef.current = session?.user?.id ?? null;
           if (session?.user) {
             await fetchRole(session.user.id);
           } else {
@@ -119,21 +141,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       async (_event, session) => {
         if (!mounted) return;
         
+        const nextUserId = session?.user?.id ?? null;
+        const isSameUser = Boolean(nextUserId && userIdRef.current === nextUserId);
+
         setSession(session);
         setUser(session?.user ?? null);
+        userIdRef.current = nextUserId;
         
         if (session?.user) {
-          // If we receive an auth event for a user, we must ensure loading is true
-          // until we have fetched their role, to prevent UI flashes.
-          setLoading(true);
-          await fetchRole(session.user.id);
-          if (mounted) setLoading(false);
+          if (!isSameUser) setLoading(true);
+          try {
+            await fetchRole(session.user.id);
+          } catch (error) {
+            console.error("Auth role refresh error:", error);
+          } finally {
+            if (mounted) setLoading(false);
+          }
         } else {
           setRole(null);
           setPlatformRole(null);
           setStoreRole(null);
           setStoreMemberships([]);
           setActiveStoreId(null);
+          userIdRef.current = null;
           if (mounted) setLoading(false);
         }
       }
@@ -154,6 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoreRole(null);
     setStoreMemberships([]);
     setActiveStoreId(null);
+    userIdRef.current = null;
   };
 
   const canManageStore = useCallback(

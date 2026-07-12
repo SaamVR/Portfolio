@@ -12,6 +12,8 @@ import { useCreateOrder } from "@/hooks/useOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -21,18 +23,6 @@ const checkoutSchema = z.object({
   paymentMethod: z.enum(["bkash", "nagad", "cod"]),
   trxId: z.string().trim().max(50).optional(),
 });
-
-interface PaymentSettings {
-  bkash_number: string;
-  nagad_number: string;
-  bkash_enabled: boolean;
-  nagad_enabled: boolean;
-  bkash_app_key?: string;
-  bkash_username?: string;
-  bkash_password?: string;
-  bkash_app_secret?: string;
-  prepaid_badge_text?: string;
-}
 
 interface DeliverySettings {
   enabled: boolean;
@@ -78,8 +68,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const checkoutItems = items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({ enabled: true, free_threshold: 2000, delivery_fee: 80 });
+  const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
+  const { data: deliverySettingsData } = useSiteSettings<DeliverySettings>("delivery_settings", checkoutStoreId);
+  const deliverySettings = deliverySettingsData ?? { enabled: true, free_threshold: 2000, delivery_fee: 80 };
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [form, setForm] = useState({
@@ -98,24 +89,6 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
-
-  useEffect(() => {
-    if (!checkoutStoreId) {
-      return;
-    }
-
-    (supabase as any)
-      .from("site_settings")
-      .select("key, value")
-      .eq("store_id", checkoutStoreId)
-      .in("key", ["payment_settings", "delivery_settings"])
-      .then(({ data }) => {
-        data?.forEach((row) => {
-          if (row.key === "payment_settings") setPaymentSettings(row.value as unknown as PaymentSettings);
-          if (row.key === "delivery_settings") setDeliverySettings(row.value as unknown as DeliverySettings);
-        });
-      });
-  }, [checkoutStoreId]);
 
   useEffect(() => {
     if (checkoutItems.length === 0) {
@@ -146,7 +119,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
   const grandTotal = checkoutSubtotal - couponDiscount + deliveryFee;
 
-  const hasBkashGateway = !!(paymentSettings?.bkash_app_key && paymentSettings?.bkash_username);
+  const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
   const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "nagad";
   const merchantNumber =
     form.paymentMethod === "bkash"
@@ -220,7 +193,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       return;
     }
 
-    const hasBkashGateway = !!(paymentSettings?.bkash_app_key && paymentSettings?.bkash_username);
+    const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
     const requiresTrxId = isMobilePayment && !(form.paymentMethod === "bkash" && hasBkashGateway);
     if (requiresTrxId && !form.trxId.trim()) {
       setErrors((prev) => ({ ...prev, trxId: "Transaction ID is required" }));

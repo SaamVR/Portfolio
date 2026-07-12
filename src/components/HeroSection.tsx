@@ -2,6 +2,7 @@ import Link from "next/link";
 import heroBanner from "@/assets/hero-banner.jpg";
 import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
@@ -19,12 +20,6 @@ interface HeroSettings {
   media_type?: "image" | "video";
   overlay_color?: string;
   overlay_opacity?: number;
-}
-
-interface PaymentSettings {
-  bkash_enabled?: boolean;
-  nagad_enabled?: boolean;
-  cod_enabled?: boolean;
 }
 
 interface DeliverySettings {
@@ -54,9 +49,9 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const sectionRef = useRef<HTMLElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const { data: hero } = useSiteSettings<HeroSettings>("hero_section");
-  const { data: paymentSettings } = useSiteSettings<PaymentSettings>("payment_settings");
-  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
   const currentStore = useOptionalStore();
+  const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
+  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
 
   const tagline = overrides?.tagline ?? hero?.tagline ?? "Premium Menswear from Dhaka";
   const title = overrides?.title ?? hero?.title ?? "Wear Your";

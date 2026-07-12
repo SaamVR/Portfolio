@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const checkoutItems = items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const { data: paymentSettings } = useSiteSettings("payment_settings", checkoutStoreId);
+  const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
   const { data: deliverySettingsData } = useSiteSettings("delivery_settings", checkoutStoreId);
   const deliverySettings = deliverySettingsData as any;
   const [loading, setLoading] = useState(false);
@@ -152,7 +153,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
   if (!open || !checkoutStoreId) return null;
 
   const merchantNumber = paymentGateway === "bkash" ? paymentSettings?.bkash_number : paymentSettings?.nagad_number;
-  const hasBkashGateway = !!(paymentSettings?.bkash_app_key && paymentSettings?.bkash_username);
+  const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
   const isBkashGateway = paymentGateway === "bkash" && hasBkashGateway;
 
   const copyNumber = () => {
@@ -173,7 +174,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
       toast.error("Please checkout one store at a time.");
       return;
     }
-    const hasBkashGateway = !!(paymentSettings?.bkash_app_key && paymentSettings?.bkash_username);
+    const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
     const isBkashGateway = paymentMethod === "prepaid" && paymentGateway === "bkash" && hasBkashGateway;
 
     if (step === 1 && paymentMethod === "prepaid") {

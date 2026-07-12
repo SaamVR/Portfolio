@@ -1,11 +1,10 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useState, useEffect } from "react";
 import { X, Copy, CheckCircle2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export default function ExitIntentPopup() {
   const currentStore = useOptionalStore();
@@ -15,22 +14,7 @@ export default function ExitIntentPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data: siteSettings } = useQuery({
-    queryKey: ["site_settings", storeId, "exit_intent"],
-    queryFn: async () => {
-      if (!storeId) return {};
-      const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", storeId);
-      const map: Record<string, any> = {};
-      data?.forEach((row) => {
-        map[row.key] = row.value;
-      });
-      return map;
-    },
-    staleTime: 1000 * 60 * 5,
-    enabled: !!storeId,
-  });
-
-  const exitIntent = siteSettings?.exit_intent || {};
+  const { data: exitIntent = {} } = useSiteSettings<any>("exit_intent", storeId);
 
   useEffect(() => {
     // Only run if enabled
