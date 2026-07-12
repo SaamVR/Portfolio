@@ -40,6 +40,12 @@ type LegacyHomepageSettings = Partial<{
   };
 }>;
 
+export type LegacyHomepageSettingKey =
+  | "hero_section"
+  | "promo_banner"
+  | "home_featured"
+  | "home_categories";
+
 export type SiteSettingRecord = {
   key: string;
   value: unknown;
@@ -53,6 +59,21 @@ function mergeBlockProps<T extends StorePageBlock["props"]>(
 
   for (const [key, value] of Object.entries(fallback)) {
     if (nextProps[key] === undefined && value !== undefined) {
+      nextProps[key] = value;
+    }
+  }
+
+  return nextProps as T;
+}
+
+function overwriteDefinedBlockProps<T extends StorePageBlock["props"]>(
+  props: T,
+  updates: Partial<T>,
+): T {
+  const nextProps = { ...props } as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined) {
       nextProps[key] = value;
     }
   }
@@ -115,6 +136,82 @@ function adaptBlockFromLegacySettings(
         props: mergeBlockProps(block.props, {
           tagline: settings.home_categories?.tagline,
           title: settings.home_categories?.title,
+        }),
+      };
+    default:
+      return block;
+  }
+}
+
+export function applyLegacyHomepageSettingToBlock(
+  block: StorePageBlock,
+  key: LegacyHomepageSettingKey,
+  value: unknown,
+): StorePageBlock {
+  switch (key) {
+    case "hero_section":
+      if (block.type !== "hero" || typeof value !== "object" || !value) {
+        return block;
+      }
+      return {
+        ...block,
+        props: overwriteDefinedBlockProps(block.props, {
+          tagline: (value as LegacyHomepageSettings["hero_section"])?.tagline,
+          title: (value as LegacyHomepageSettings["hero_section"])?.title,
+          highlight: (value as LegacyHomepageSettings["hero_section"])?.highlight,
+          subtitle: (value as LegacyHomepageSettings["hero_section"])?.subtitle,
+          ctaText: (value as LegacyHomepageSettings["hero_section"])?.cta_text,
+          ctaLink: (value as LegacyHomepageSettings["hero_section"])?.cta_link,
+          secondaryCtaText: (value as LegacyHomepageSettings["hero_section"])?.secondary_cta_text,
+          secondaryCtaLink: (value as LegacyHomepageSettings["hero_section"])?.secondary_cta_link,
+          mediaUrl: (value as LegacyHomepageSettings["hero_section"])?.media_url,
+          mediaType: (value as LegacyHomepageSettings["hero_section"])?.media_type,
+          overlayColor: (value as LegacyHomepageSettings["hero_section"])?.overlay_color,
+          overlayOpacity: (value as LegacyHomepageSettings["hero_section"])?.overlay_opacity,
+        }),
+      };
+    case "promo_banner":
+      if (block.type !== "promo-banner" || typeof value !== "object" || !value) {
+        return block;
+      }
+      return {
+        ...block,
+        isVisible: (value as LegacyHomepageSettings["promo_banner"])?.enabled ?? block.isVisible,
+        props: overwriteDefinedBlockProps(block.props, {
+          title: (value as LegacyHomepageSettings["promo_banner"])?.title,
+          subtitle: (value as LegacyHomepageSettings["promo_banner"])?.subtitle,
+          ctaText: (value as LegacyHomepageSettings["promo_banner"])?.cta_text,
+          ctaLink: (value as LegacyHomepageSettings["promo_banner"])?.cta_link,
+          badgeText: (value as LegacyHomepageSettings["promo_banner"])?.badge_text,
+          bgStyle: (value as LegacyHomepageSettings["promo_banner"])?.bg_style,
+          textAlignment: (value as LegacyHomepageSettings["promo_banner"])?.text_alignment,
+          paddingSize: (value as LegacyHomepageSettings["promo_banner"])?.padding_size,
+          enableGlow: (value as LegacyHomepageSettings["promo_banner"])?.enable_glow,
+          enableParticles: (value as LegacyHomepageSettings["promo_banner"])?.enable_particles,
+          enableOrbs: (value as LegacyHomepageSettings["promo_banner"])?.enable_orbs,
+          cardOpacity: (value as LegacyHomepageSettings["promo_banner"])?.card_opacity,
+        }),
+      };
+    case "home_featured":
+      if (block.type !== "featured-products" || typeof value !== "object" || !value) {
+        return block;
+      }
+      return {
+        ...block,
+        props: overwriteDefinedBlockProps(block.props, {
+          tagline: (value as LegacyHomepageSettings["home_featured"])?.tagline,
+          title: (value as LegacyHomepageSettings["home_featured"])?.title,
+        }),
+      };
+    case "home_categories":
+      if (block.type !== "category-showcase" || typeof value !== "object" || !value) {
+        return block;
+      }
+      return {
+        ...block,
+        props: overwriteDefinedBlockProps(block.props, {
+          tagline: (value as LegacyHomepageSettings["home_categories"])?.tagline,
+          title: (value as LegacyHomepageSettings["home_categories"])?.title,
         }),
       };
     default:

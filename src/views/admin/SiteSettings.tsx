@@ -24,6 +24,7 @@ import { Database } from "lucide-react";
 import { seedDemoProducts } from "@/data/seedDemoProducts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import {
   buildThemePackageExport,
   fallbackThemePackages,
@@ -41,6 +42,26 @@ type StoreThemeSettingsRow = {
   typography: { headingFont?: string; bodyFont?: string };
   components: { borderRadius?: string };
 };
+
+type HomepagePageRow = {
+  id: string;
+};
+
+type HomepageBlockRow = {
+  id: string;
+  block_type: "hero" | "promo-banner" | "featured-products" | "category-showcase";
+  props: Record<string, unknown> | null;
+  sort_order: number | null;
+  is_visible: boolean | null;
+};
+
+const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
+  "hero_section",
+  "promo_banner",
+  "home_featured",
+  "home_categories",
+]);
+
 const SiteSettings = () => {
   const { role , activeStoreId} = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
@@ -162,6 +183,57 @@ const SiteSettings = () => {
     [localThemeId, themePackages],
   );
 
+  const syncHomepageSettingToBlocks = async (key: LegacyHomepageSettingKey, value: unknown) => {
+    if (!activeStoreId) return;
+
+    const { data: homepage } = await supabase
+      .from("store_pages")
+      .select("id")
+      .eq("store_id", activeStoreId as string)
+      .eq("is_homepage", true)
+      .maybeSingle();
+
+    const homepageRow = homepage as HomepagePageRow | null;
+    if (!homepageRow?.id) return;
+
+    const { data: blocks, error: blocksError } = await supabase
+      .from("store_page_blocks")
+      .select("id, block_type, props, sort_order, is_visible")
+      .eq("store_id", activeStoreId as string)
+      .eq("page_id", homepageRow.id)
+      .in("block_type", ["hero", "promo-banner", "featured-products", "category-showcase"]);
+
+    if (blocksError || !Array.isArray(blocks) || blocks.length === 0) {
+      return;
+    }
+
+    const updatedBlocks = (blocks as HomepageBlockRow[]).map((block) => {
+      const adapted = applyLegacyHomepageSettingToBlock(
+        {
+          id: block.id,
+          type: block.block_type,
+          props: (block.props ?? {}) as any,
+          sortOrder: block.sort_order ?? 0,
+          isVisible: block.is_visible ?? true,
+        },
+        key,
+        value,
+      );
+
+      return {
+        id: adapted.id,
+        store_id: activeStoreId,
+        page_id: homepageRow.id,
+        block_type: adapted.type,
+        props: adapted.props as Json,
+        sort_order: adapted.sortOrder,
+        is_visible: adapted.isVisible,
+      };
+    });
+
+    await supabase.from("store_page_blocks").upsert(updatedBlocks, { onConflict: "id" });
+  };
+
   const saveSetting = async (key: string) => {
     setSaving(key);
     const { error } = await supabase
@@ -169,6 +241,9 @@ const SiteSettings = () => {
       .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} }, { onConflict: "store_id,key" });
     if (error) toast.error("Failed to save");
     else {
+      if (homepageSyncKeys.has(key as LegacyHomepageSettingKey)) {
+        await syncHomepageSettingToBlocks(key as LegacyHomepageSettingKey, settings[key] ?? {});
+      }
       toast.success(`${key.replace(/_/g, " ")} updated`);
       queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId, key] });
     }

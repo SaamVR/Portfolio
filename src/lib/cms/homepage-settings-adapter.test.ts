@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { applyLegacyHomepageSettingsToPages } from "@/lib/cms/homepage-settings-adapter";
+import { applyLegacyHomepageSettingToBlock, applyLegacyHomepageSettingsToPages } from "@/lib/cms/homepage-settings-adapter";
 import type { StorePage } from "@/lib/cms/schema";
 
 describe("homepage settings adapter", () => {
@@ -72,6 +72,29 @@ describe("homepage settings adapter", () => {
     expect(page.blocks[2]?.props).toEqual({
       title: "Keep mine",
       subtitle: "Legacy subtitle",
+    });
+  });
+
+  it("maps saved legacy settings back into matching homepage blocks", () => {
+    const updatedHero = applyLegacyHomepageSettingToBlock(homepage.blocks[0]!, "hero_section", {
+      title: "Updated hero",
+      cta_text: "Browse now",
+    });
+    const updatedPromo = applyLegacyHomepageSettingToBlock(homepage.blocks[2]!, "promo_banner", {
+      enabled: false,
+      subtitle: "Updated promo",
+    });
+
+    expect(updatedHero.type).toBe("hero");
+    expect(updatedHero.props).toEqual({
+      title: "Updated hero",
+      ctaText: "Browse now",
+    });
+    expect(updatedPromo.type).toBe("promo-banner");
+    expect(updatedPromo.isVisible).toBe(false);
+    expect(updatedPromo.props).toEqual({
+      title: "Keep mine",
+      subtitle: "Updated promo",
     });
   });
 });
