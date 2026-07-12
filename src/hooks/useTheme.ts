@@ -19,7 +19,7 @@ export function useApplyTheme() {
 
       const { data } = await (supabase as any)
         .from("store_themes")
-        .select("preset_id, mode, colors, resolved_tokens, typography, components")
+        .select("preset_id, theme_package_id, mode, colors, resolved_tokens, typography, components")
         .eq("store_id", storeId as string)
         .maybeSingle();
 
@@ -33,6 +33,7 @@ export function useApplyTheme() {
 
     const style = getStoreThemeStyleFromRecord({
       preset_id: themeConfig.preset_id ?? "default",
+      theme_package_id: themeConfig.theme_package_id ?? null,
       mode: resolvedTheme === "light" ? "light" : (themeConfig.mode ?? "dark"),
       colors: themeConfig.colors ?? null,
       resolved_tokens: themeConfig.resolved_tokens ?? null,
