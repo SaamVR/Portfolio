@@ -6,11 +6,12 @@ import { useAuth } from "@/hooks/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/components/admin/ChangePasswordDialog";
-import { ArrowLeft, Building2, LayoutDashboard, Loader2, LogOut, Search, Shield } from "lucide-react";
+import { ArrowLeft, Building2, LayoutDashboard, Layers3, Loader2, LogOut, Search, Shield } from "lucide-react";
 import AdminCommandMenu from "@/components/admin/AdminCommandMenu";
 
 const cmsAdminLinks = [
   { to: "/cms-admin", icon: Shield, label: "CMS Control" },
+  { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library" },
 ];
 
 export default function CmsAdminLayout({ children }: { children: React.ReactNode }) {
