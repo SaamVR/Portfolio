@@ -51,7 +51,7 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
               <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : (
               <AnimatedSection>
-                <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Our Story</p>
+                <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">About</p>
                 <h1 className="mb-6 font-heading text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
                 {content.split("\n").filter(Boolean).map((para, i) => (
                   <p key={i} className="mb-4 text-lg leading-relaxed text-muted-foreground">{para}</p>

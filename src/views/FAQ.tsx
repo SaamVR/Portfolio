@@ -56,7 +56,7 @@ const FAQ = () => {
         <section className="py-20">
           <div className="container mx-auto max-w-2xl px-4">
             <AnimatedSection>
-              <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Help</p>
+              <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Information</p>
               <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">Frequently Asked Questions</h1>
               <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from {storeName}.</p>
             </AnimatedSection>

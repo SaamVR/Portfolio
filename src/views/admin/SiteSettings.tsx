@@ -571,7 +571,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Section Title</Label>
-                  <Input value={settings.home_featured?.title ?? ""} placeholder="Featured items" onChange={(e) => update("home_featured", "title", e.target.value)} />
+                  <Input value={settings.home_featured?.title ?? ""} placeholder="Section heading for highlighted products" onChange={(e) => update("home_featured", "title", e.target.value)} />
                 </div>
                 <SaveButton settingKey="home_featured" />
               </CardContent>
@@ -1220,7 +1220,7 @@ const SiteSettings = () => {
                 <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
                 <div className="grid gap-2">
                   <Label>Heading</Label>
-                  <Input value={settings.footer?.newsletter_heading ?? ""} placeholder="Newsletter" onChange={(e) => update("footer", "newsletter_heading", e.target.value)} />
+                  <Input value={settings.footer?.newsletter_heading ?? ""} placeholder="Optional heading for updates or announcements" onChange={(e) => update("footer", "newsletter_heading", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Description</Label>
@@ -1352,7 +1352,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Copyright Text</Label>
-                  <Input value={settings.footer?.copyright ?? ""} placeholder="Copyright 2026 Your Store. All rights reserved." onChange={(e) => update("footer", "copyright", e.target.value)} />
+                  <Input value={settings.footer?.copyright ?? ""} placeholder="Optional copyright or legal footer text" onChange={(e) => update("footer", "copyright", e.target.value)} />
                 </div>
               </div>
 
