@@ -17,8 +17,8 @@ import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { absoluteUrl } from "@/lib/siteUrl";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
-const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
 const MAX_RECENT = 8;
 
 const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId?: string; explicitStoreSlug?: string }) => {
@@ -28,8 +28,10 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
   const currentStore = useOptionalStore();
+  const storeId = explicitStoreId ?? currentStore?.id;
   const storeSlug = explicitStoreSlug ?? currentStore?.slug;
-  const { data: product, isLoading } = useProduct(id, explicitStoreId ?? currentStore?.id);
+  const recentlyViewedKey = getScopedStorefrontStorageKey("threadbd-recently-viewed", storeId);
+  const { data: product, isLoading } = useProduct(id, storeId);
 
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
@@ -67,11 +69,11 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   useEffect(() => {
     if (!id) return;
     try {
-      const stored = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || "[]") as string[];
+      const stored = JSON.parse(localStorage.getItem(recentlyViewedKey) || "[]") as string[];
       const updated = [id, ...stored.filter((pid) => pid !== id)].slice(0, MAX_RECENT);
-      localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(updated));
+      localStorage.setItem(recentlyViewedKey, JSON.stringify(updated));
     } catch { /* ignore */ }
-  }, [id]);
+  }, [id, recentlyViewedKey]);
 
   // Sticky bar: show when user scrolls past the product section
   useEffect(() => {

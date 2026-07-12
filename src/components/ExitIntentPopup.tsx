@@ -5,16 +5,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 export default function ExitIntentPopup() {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
+  const sessionStorageKey = getScopedStorefrontStorageKey("exit_intent_shown", storeId);
 
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data: siteSettings } = useQuery({
-    queryKey: ["site_settings"],
+    queryKey: ["site_settings", storeId, "exit_intent"],
     queryFn: async () => {
       if (!storeId) return {};
       const { data } = await (supabase as any).from("site_settings").select("*").eq("store_id", storeId);
@@ -35,13 +37,13 @@ export default function ExitIntentPopup() {
     if (exitIntent.enabled === false) return;
     
     // Check if already shown in this session
-    if (sessionStorage.getItem("exit_intent_shown")) return;
+    if (sessionStorage.getItem(sessionStorageKey)) return;
 
     const handleMouseLeave = (e: MouseEvent) => {
       // Trigger when mouse moves up towards the address bar
       if (e.clientY <= 0 || e.clientX <= 0 || (e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
         setIsVisible(true);
-        sessionStorage.setItem("exit_intent_shown", "true");
+        sessionStorage.setItem(sessionStorageKey, "true");
         // Remove listener after triggering
         document.removeEventListener("mouseleave", handleMouseLeave);
       }
@@ -56,7 +58,7 @@ export default function ExitIntentPopup() {
       clearTimeout(timer);
       document.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [exitIntent.enabled]);
+  }, [exitIntent.enabled, sessionStorageKey]);
 
   if (!isVisible || exitIntent.enabled === false) return null;
 

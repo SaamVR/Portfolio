@@ -3,17 +3,17 @@ import AnimatedSection from "@/components/AnimatedSection";
 import { useProducts } from "@/hooks/useProducts";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
-
-const RECENTLY_VIEWED_KEY = "threadbd-recently-viewed";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const RecentlyViewed = ({ title = "Recently Viewed" }: { title?: string }) => {
   const currentStore = useOptionalStore();
+  const recentlyViewedKey = getScopedStorefrontStorageKey("threadbd-recently-viewed", currentStore?.id);
   const { data: products = [] } = useProducts();
 
   let recentIds: string[] = [];
   if (typeof window !== "undefined") {
     try {
-      recentIds = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || "[]");
+      recentIds = JSON.parse(localStorage.getItem(recentlyViewedKey) || "[]");
     } catch { /* ignore */ }
   }
 

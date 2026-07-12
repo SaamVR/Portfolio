@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { productTypes } from "@/data/products";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const emailSchema = z.string().trim().email("Please enter a valid email");
 
@@ -52,11 +53,13 @@ const defaultSectionOrder: FooterSection[] = [
 ];
 
 const Footer = () => {
+  const currentStore = useOptionalStore();
+  const subscribedStorageKey = getScopedStorefrontStorageKey("threadbd-subscribed", currentStore?.id);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(() => {
     if (typeof window !== "undefined") {
       try {
-        return localStorage.getItem("threadbd-subscribed") === "true";
+        return localStorage.getItem(subscribedStorageKey) === "true";
       } catch {
         return false;
       }
@@ -66,7 +69,14 @@ const Footer = () => {
   });
   const [error, setError] = useState("");
   const { data: footer } = useSiteSettings<FooterSettings>("footer");
-  const currentStore = useOptionalStore();
+
+  useEffect(() => {
+    try {
+      setSubscribed(localStorage.getItem(subscribedStorageKey) === "true");
+    } catch {
+      setSubscribed(false);
+    }
+  }, [subscribedStorageKey]);
 
   const brandName = footer?.brand_name || "THREAD";
   const brandHighlight = footer?.brand_highlight || "BD";
@@ -91,7 +101,7 @@ const Footer = () => {
       return;
     }
     setError("");
-    localStorage.setItem("threadbd-subscribed", "true");
+    localStorage.setItem(subscribedStorageKey, "true");
     setSubscribed(true);
     setEmail("");
     toast.success("You're subscribed!", { description: "Thanks for joining the list." });
