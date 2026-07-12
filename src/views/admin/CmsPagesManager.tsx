@@ -91,6 +91,12 @@ type BlockRecord = {
   is_visible: boolean | null;
 };
 
+type BusinessProfileRecord = {
+  blueprint_id: string | null;
+  business_family: string | null;
+  catalog_mode: string | null;
+};
+
 type RecoverableDraft = {
   snapshot: string;
   updatedAt: string;
@@ -141,12 +147,13 @@ function cloneHomepageBlocksForBlueprint(
 
 function mapRecordsToStore(
   store: StoreRecord,
+  businessProfile: BusinessProfileRecord | null,
   theme: ThemeRecord | null,
   pages: PageRecord[],
   blocks: BlockRecord[],
   siteSettings: SiteSettingRecord[],
 ): Store {
-  const blueprint = getStoreBlueprintById(store.store_type ?? "general-catalog");
+  const blueprint = getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
 
   return storeSchema.parse({
@@ -266,22 +273,30 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const [themeResponse, pagesResponse, blocksResponse, siteSettingsResponse] = await Promise.all([
+    const [businessProfileResponse, themeResponse, pagesResponse, blocksResponse, siteSettingsResponse] = await Promise.all([
+      supabase
+        .from("store_business_profiles")
+        .select("blueprint_id, business_family, catalog_mode")
+        .eq("store_id", storeRecord.id)
+        .maybeSingle(),
       supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
       supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
     ]);
 
+    const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
+
     const parsedStore = mapRecordsToStore(
       storeRecord,
+      businessProfile,
       (themeResponse.data as ThemeRecord | null) ?? null,
       (pagesResponse.data as PageRecord[] | null) ?? [],
       (blocksResponse.data as BlockRecord[] | null) ?? [],
       (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
     );
 
-    setStoreBlueprintId(storeRecord.store_type ?? "general-catalog");
+    setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
     setStore(parsedStore);
     setPersistedSnapshot(serializeStoreDraft(parsedStore));
     setLastDraftSavedAt(null);
@@ -839,6 +854,7 @@ export default function CmsPagesManager() {
         currency_code: safeStore.currencyCode,
         locale: safeStore.locale,
         is_published: safeStore.isPublished,
+        store_type: storeBlueprintId,
       },
       { onConflict: "id" },
     );
@@ -935,6 +951,23 @@ export default function CmsPagesManager() {
 
     if (blockIdsToDelete.length > 0) {
       await supabase.from("store_page_blocks").delete().in("id", blockIdsToDelete);
+    }
+
+    const { error: businessProfileError } = await supabase.from("store_business_profiles").upsert(
+      {
+        store_id: safeStore.id,
+        blueprint_id: activeBlueprint.id,
+        business_family: activeBlueprint.businessFamily,
+        catalog_mode: activeBlueprint.catalogMode,
+        enabled_modules: activeBlueprint.capabilities,
+      },
+      { onConflict: "store_id" },
+    );
+
+    if (businessProfileError) {
+      toast.error("Failed to save store business profile.");
+      setSaving(false);
+      return;
     }
 
     if (selectedPage) {
