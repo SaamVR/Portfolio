@@ -28,6 +28,7 @@ import { Boxes, Edit3, Layers3, LayoutTemplate, Loader2, Palette, Plus, Save, Sh
 import { fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
 import { fallbackPageBlueprints } from "@/lib/cms/page-blueprints";
 import { fallbackBlockRegistry } from "@/lib/cms/block-registry";
+import { createDefaultBlock, reservedCmsSlugs } from "@/lib/cms/block-library";
 
 type BlueprintRow = {
   id: string;
@@ -179,6 +180,30 @@ function updateObjectJsonField(
   const base = readJsonObject(existingValue) ?? {};
   return JSON.stringify({
     ...base,
+    ...patch,
+  }, null, 2);
+}
+
+function readPagePayload(value: string | boolean | undefined) {
+  const parsed = readJsonObject(value);
+  const blocks = Array.isArray(parsed?.blocks) ? parsed.blocks : [];
+  return {
+    slug: typeof parsed?.slug === "string" ? parsed.slug : "/page-1",
+    title: typeof parsed?.title === "string" ? parsed.title : "Untitled Page",
+    seoTitle: typeof parsed?.seoTitle === "string" ? parsed.seoTitle : "",
+    seoDescription: typeof parsed?.seoDescription === "string" ? parsed.seoDescription : "",
+    isHomepage: typeof parsed?.isHomepage === "boolean" ? parsed.isHomepage : false,
+    blocks: blocks.filter((block): block is Record<string, unknown> => Boolean(block && typeof block === "object")),
+  };
+}
+
+function updatePagePayloadField(
+  existingValue: string | boolean | undefined,
+  patch: Record<string, unknown>,
+) {
+  const current = readPagePayload(existingValue);
+  return JSON.stringify({
+    ...current,
     ...patch,
   }, null, 2);
 }
@@ -346,6 +371,52 @@ export default function CmsLibraryManager() {
   const removeOnboardingStep = (index: number) => {
     const nextSteps = onboardingSteps.filter((_, stepIndex) => stepIndex !== index);
     updateField("onboarding_schema", writeOnboardingSteps(nextSteps, form.onboarding_schema));
+  };
+
+  const pagePayload = readPagePayload(form.page_payload);
+
+  const updatePagePayloadMeta = (key: "slug" | "title" | "seoTitle" | "seoDescription", value: string) => {
+    updateField("page_payload", updatePagePayloadField(form.page_payload, { [key]: value }));
+  };
+
+  const updatePagePayloadHomepage = (checked: boolean) => {
+    updateField("page_payload", updatePagePayloadField(form.page_payload, { isHomepage: checked }));
+  };
+
+  const addPagePayloadBlock = (type: string) => {
+    const nextBlocks = [
+      ...pagePayload.blocks,
+      createDefaultBlock(type as any, pagePayload.blocks.length),
+    ].map((block, index) => ({
+      ...block,
+      sortOrder: index,
+    }));
+    updateField("page_payload", updatePagePayloadField(form.page_payload, { blocks: nextBlocks }));
+  };
+
+  const removePagePayloadBlock = (index: number) => {
+    const nextBlocks = pagePayload.blocks
+      .filter((_, blockIndex) => blockIndex !== index)
+      .map((block, blockIndex) => ({
+        ...block,
+        sortOrder: blockIndex,
+      }));
+    updateField("page_payload", updatePagePayloadField(form.page_payload, { blocks: nextBlocks }));
+  };
+
+  const movePagePayloadBlock = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= pagePayload.blocks.length) return;
+
+    const blocks = [...pagePayload.blocks];
+    const [block] = blocks.splice(index, 1);
+    blocks.splice(nextIndex, 0, block);
+    updateField("page_payload", updatePagePayloadField(form.page_payload, {
+      blocks: blocks.map((item, blockIndex) => ({
+        ...item,
+        sortOrder: blockIndex,
+      })),
+    }));
   };
 
   const openCreateDialog = (type: NonNullable<DialogState>["type"]) => {
@@ -544,6 +615,8 @@ export default function CmsLibraryManager() {
   const selectedCompatibleBusinessFamilies = readStringArray(form.compatible_business_families);
   const heroPayload = readJsonObject(form.hero_payload) ?? {};
   const defaultThemePayload = readJsonObject(form.default_theme) ?? {};
+  const canUseHomepageSlug = pagePayload.isHomepage || pagePayload.slug === "/";
+  const slugIsReserved = pagePayload.slug !== "/" && reservedCmsSlugs.has(pagePayload.slug);
 
   return (
     <div className="space-y-6">
@@ -1060,6 +1133,75 @@ export default function CmsLibraryManager() {
               </div>
               <div className="grid gap-2">
                 <Label>Page Payload JSON</Label>
+                <div className="grid gap-3 rounded-md border border-border p-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>Slug</Label>
+                      <Input
+                        value={pagePayload.slug}
+                        onChange={(event) => updatePagePayloadMeta("slug", event.target.value)}
+                        placeholder="/landing"
+                      />
+                      {slugIsReserved ? (
+                        <p className="text-xs text-amber-600">This slug is reserved for storefront routing. Use `/` only for a homepage or choose a different path.</p>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Title</Label>
+                      <Input value={pagePayload.title} onChange={(event) => updatePagePayloadMeta("title", event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>SEO Title</Label>
+                      <Input value={pagePayload.seoTitle} onChange={(event) => updatePagePayloadMeta("seoTitle", event.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Homepage</Label>
+                      <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                        <Switch checked={pagePayload.isHomepage} onCheckedChange={updatePagePayloadHomepage} />
+                        <span className="text-sm text-muted-foreground">
+                          {canUseHomepageSlug ? "Treat this page as the homepage." : "Homepage pages should use `/` as the slug."}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>SEO Description</Label>
+                    <Textarea rows={3} value={pagePayload.seoDescription} onChange={(event) => updatePagePayloadMeta("seoDescription", event.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>Blocks</Label>
+                      <Select onValueChange={(value) => addPagePayloadBlock(value)}>
+                        <SelectTrigger className="w-[220px]"><SelectValue placeholder="Add block" /></SelectTrigger>
+                        <SelectContent>
+                          {knownBlockTypes.map((blockType) => (
+                            <SelectItem key={blockType} value={blockType}>{blockType}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      {pagePayload.blocks.map((block, index) => (
+                        <div key={String(block.id ?? `${block.type}-${index}`)} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{String(block.type ?? "unknown")}</p>
+                            <p className="text-xs text-muted-foreground">Order {index + 1} • {block.isVisible === false ? "Hidden" : "Visible"}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, -1)} disabled={index === 0}>Up</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => movePagePayloadBlock(index, 1)} disabled={index === pagePayload.blocks.length - 1}>Down</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => removePagePayloadBlock(index)}>Remove</Button>
+                          </div>
+                        </div>
+                      ))}
+                      {pagePayload.blocks.length === 0 ? (
+                        <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">No blocks yet. Add one from the menu above.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
                 <Textarea rows={16} value={String(form.page_payload ?? "")} onChange={(event) => updateField("page_payload", event.target.value)} />
               </div>
               <div className="flex items-center gap-3">
