@@ -35,14 +35,28 @@ const InviteCodes = () => {
   const [inviteEmail, setInviteEmail] = useState("");
 
   const fetchCodes = useCallback(async () => {
+    if (!activeStoreId) {
+      setCodes([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from("store_staff_invites")
-      .select("id, code, role, used_by, created_at, email")
-      .eq("store_id", activeStoreId as string)
-      .order("created_at", { ascending: false });
-    setCodes((data ?? []) as StaffInvite[]);
-    setLoading(false);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("store_staff_invites")
+        .select("id, code, role, used_by, created_at, email")
+        .eq("store_id", activeStoreId as string)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setCodes((data ?? []) as StaffInvite[]);
+    } catch (error) {
+      console.error("Failed to load invite codes:", error);
+      toast.error("Failed to refresh invite codes. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [activeStoreId]);
 
   useEffect(() => {

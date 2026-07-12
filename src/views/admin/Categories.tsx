@@ -48,18 +48,35 @@ const AdminCategories = () => {
   const [savingType, setSavingType] = useState(false);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [catRes, typeRes, settingsRes] = await Promise.all([
-      supabase.from("product_categories").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
-      supabase.from("product_types").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
-      supabase.from("site_settings").select("*").eq("key", "categories_custom_data").eq("store_id", activeStoreId as string).maybeSingle(),
-    ]);
-    setCategories((catRes.data as Category[]) ?? []);
-    setTypes((typeRes.data as ProductType[]) ?? []);
-    if (settingsRes.data?.value) {
-      setCustomData(settingsRes.data.value as Record<string, any>);
+    if (!activeStoreId) {
+      setCategories([]);
+      setTypes([]);
+      setCustomData({ categories: {}, types: {} });
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const [catRes, typeRes, settingsRes] = await Promise.all([
+        supabase.from("product_categories").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
+        supabase.from("product_types").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
+        supabase.from("site_settings").select("*").eq("key", "categories_custom_data").eq("store_id", activeStoreId as string).maybeSingle(),
+      ]);
+
+      if (catRes.error) throw catRes.error;
+      if (typeRes.error) throw typeRes.error;
+      if (settingsRes.error) throw settingsRes.error;
+
+      setCategories((catRes.data as Category[]) ?? []);
+      setTypes((typeRes.data as ProductType[]) ?? []);
+      setCustomData(settingsRes.data?.value ? settingsRes.data.value as Record<string, any> : { categories: {}, types: {} });
+    } catch (error) {
+      console.error("Failed to load categories and types:", error);
+      toast.error("Failed to refresh categories and types. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [activeStoreId]);
 
   const saveCustomData = async (updatedData: any) => {

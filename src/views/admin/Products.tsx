@@ -50,24 +50,50 @@ const AdminProducts = () => {
   const [dbTypes, setDbTypes] = useState<string[]>([]);
 
   const fetchProducts = useCallback(async () => {
+    if (!activeStoreId) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .eq("store_id", activeStoreId as string)
-      .order("created_at", { ascending: false });
-    setProducts(data ?? []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("store_id", activeStoreId as string)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+      toast.error("Failed to refresh products. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [activeStoreId]);
 
   useEffect(() => {
-    fetchProducts();
-    // Fetch dynamic categories & types
-    supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order").then(({ data }) => {
-      setDbCategories((data ?? []).map((r: any) => r.name));
-    });
-    supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).order("sort_order").then(({ data }) => {
-      setDbTypes((data ?? []).map((r: any) => r.name));
+    void fetchProducts();
+
+    if (!activeStoreId) {
+      setDbCategories([]);
+      setDbTypes([]);
+      return;
+    }
+
+    void Promise.all([
+      supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
+      supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
+    ]).then(([categoriesRes, typesRes]) => {
+      if (categoriesRes.error || typesRes.error) {
+        console.error("Failed to load product taxonomy:", categoriesRes.error || typesRes.error);
+        return;
+      }
+
+      setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
+      setDbTypes((typesRes.data ?? []).map((r: any) => r.name));
     });
   }, [activeStoreId, fetchProducts]);
 
