@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Loader2, Mail, Phone, Shield } from "lucide-react";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
+import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 
 type AuthMode = "login" | "signup";
@@ -122,10 +123,10 @@ const Auth = () => {
     try {
       const credential = await confirmation.confirm(form.otpCode.trim());
       const idToken = await credential.user.getIdToken();
-      const { data, error } = await supabase.functions.invoke("auth-bridge", {
-        body: { id_token: idToken, display_name: form.phone },
+      const data = await exchangeFirebaseTokenForSupabaseSession({
+        id_token: idToken,
+        display_name: form.phone,
       });
-      if (error) throw error;
       if (data?.error) throw new Error(String(data.error));
       if (!data?.access_token || !data?.refresh_token) {
         throw new Error("Phone verification did not return a valid session.");
