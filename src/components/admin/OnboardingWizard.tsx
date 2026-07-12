@@ -38,7 +38,6 @@ import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import {
   createStoreSlug,
-  launchTemplates,
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
 import type { Store, StorePage } from "@/lib/cms/schema";
@@ -107,8 +106,14 @@ function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePayment
         : 0,
     };
   }
-  const templateId = blueprint.legacyTemplateId ?? "general";
-  return launchTemplates.find((item) => item.id === templateId)?.paymentDefaults ?? launchTemplates[0].paymentDefaults;
+  return {
+    cod_enabled: true,
+    bkash_enabled: false,
+    nagad_enabled: false,
+    prepaid_badge_text: "Priority Delivery",
+    prepayment_discount_type: "none",
+    prepayment_discount_value: 0,
+  };
 }
 
 function buildBlueprintSiteSettingsPayload(

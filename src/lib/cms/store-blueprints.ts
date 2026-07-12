@@ -64,6 +64,28 @@ function themeFromTemplate(id: LaunchTemplateId): StoreTheme {
   };
 }
 
+function paymentSettingsFromTemplate(id: LaunchTemplateId) {
+  const template = launchTemplates.find((item) => item.id === id) ?? launchTemplates[0];
+  return {
+    cod_enabled: template.paymentDefaults.cod_enabled,
+    bkash_enabled: template.paymentDefaults.bkash_enabled,
+    nagad_enabled: template.paymentDefaults.nagad_enabled,
+    prepaid_badge_text: template.paymentDefaults.prepaid_badge_text,
+    prepayment_discount_type: template.paymentDefaults.prepayment_discount_type,
+    prepayment_discount_value: template.paymentDefaults.prepayment_discount_value,
+  } satisfies Json;
+}
+
+function buildDefaultSiteSettings(
+  templateId: LaunchTemplateId,
+  storefrontProfile: Record<string, Json>,
+) {
+  return {
+    storefront_profile: storefrontProfile,
+    payment_settings: paymentSettingsFromTemplate(templateId),
+  } satisfies Record<string, Json>;
+}
+
 export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
   {
     id: "clothing",
@@ -86,12 +108,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "cart", "checkout", "promotions"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("clothing", {
         product_visibility: "catalog",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "gadgets",
@@ -121,12 +141,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "cart", "checkout", "specs"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("general", {
         product_visibility: "catalog",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "crafts",
@@ -156,12 +174,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "cart", "checkout", "storytelling"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("general", {
         product_visibility: "catalog",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "food",
@@ -184,12 +200,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "cart", "local_delivery"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("food", {
         product_visibility: "menu",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "single-product",
@@ -219,12 +233,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["single_product", "cart", "checkout", "campaigns"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("general", {
         product_visibility: "single_product",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "general-catalog",
@@ -247,12 +259,10 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "cart", "checkout"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("general", {
         product_visibility: "catalog",
         checkout_mode: "standard",
-      },
-    },
+      }),
   },
   {
     id: "inquiry-catalog",
@@ -282,13 +292,11 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     },
     capabilities: ["catalog", "inquiry_only", "lead_capture"],
     onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: {
-      storefront_profile: {
+    defaultSiteSettings: buildDefaultSiteSettings("general", {
         product_visibility: "inquiry_only",
         checkout_mode: "whatsapp",
         hide_prices: true,
-      },
-    },
+      }),
   },
 ];
 
