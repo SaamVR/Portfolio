@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { productTypes } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
+import { useProductTypes } from "@/hooks/useProductTypes";
 import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -38,8 +38,6 @@ function removeHistoryItem(storageKey: string, query: string) {
   localStorage.setItem(storageKey, JSON.stringify(history));
 }
 
-const categoryChips = productTypes.filter((t) => t.value !== "All");
-
 const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -54,6 +52,17 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: products = [] } = useProducts(storeId);
+  const { data: dynamicProductTypes = [] } = useProductTypes(storeId);
+  const categoryChips = dynamicProductTypes.length > 0
+    ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
+        label: type.name,
+        value: type.name,
+      }))
+    : [
+        { label: "Featured", value: "featured" },
+        { label: "New Arrivals", value: "new-arrivals" },
+        { label: "Best Sellers", value: "best-sellers" },
+      ];
 
   useEffect(() => {
     setHistory(getSearchHistory(historyKey));
@@ -129,7 +138,15 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   };
 
   const handleCategoryClick = (typeValue: string) => {
-    navigate(storefrontPath(typeValue === "All" ? "/shop" : `/shop?type=${encodeURIComponent(typeValue)}`, currentStore?.slug));
+    const isDynamicProductType = dynamicProductTypes.some((type: any) => type.name === typeValue);
+    navigate(
+      storefrontPath(
+        isDynamicProductType
+          ? `/shop?type=${encodeURIComponent(typeValue)}`
+          : `/shop?category=${encodeURIComponent(typeValue)}`,
+        currentStore?.slug,
+      ),
+    );
     setQuery("");
     setOpen(false);
     onClose?.();
@@ -225,10 +242,10 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       {showDropdown && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
           {!isEmptyState && filtered.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+              <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <SearchX className="h-8 w-8 opacity-40" />
               <p className="text-sm">No items found</p>
-              <p className="text-xs">Try searching for "Drop Shoulder"</p>
+              <p className="text-xs">Try a product name, category, or type.</p>
             </div>
           )}
 

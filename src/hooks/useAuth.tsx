@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
@@ -26,7 +26,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [storeMemberships, setStoreMemberships] = useState<StoreMembership[]>([]);
   const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
   const userIdRef = useRef<string | null>(null);
+  const permissionRequestIdRef = useRef(0);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -104,34 +106,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(null);
   }, [setActiveStoreId]);
 
+  const clearAccessState = useCallback(() => {
+    setRole(null);
+    setPlatformRole(null);
+    setStoreRole(null);
+    setStoreMemberships([]);
+    setActiveStoreId(null);
+  }, [setActiveStoreId]);
+
+  const resolvePermissions = useCallback(
+    async (
+      nextUserId: string | null,
+      options?: {
+        blockUi?: boolean;
+        preserveExistingOnError?: boolean;
+      },
+    ) => {
+      const requestId = ++permissionRequestIdRef.current;
+      const blockUi = options?.blockUi ?? false;
+      const preserveExistingOnError = options?.preserveExistingOnError ?? false;
+
+      if (blockUi && mountedRef.current) {
+        setLoading(true);
+      }
+
+      try {
+        if (!nextUserId) {
+          clearAccessState();
+          return;
+        }
+
+        await fetchRole(nextUserId);
+      } catch (error) {
+        console.error("Auth permission refresh error:", error);
+        if (!preserveExistingOnError || !nextUserId) {
+          clearAccessState();
+        }
+      } finally {
+        if (blockUi && mountedRef.current && permissionRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
+      }
+    },
+    [clearAccessState, fetchRole],
+  );
+
   const refreshRole = useCallback(async () => {
-    if (user) await fetchRole(user.id);
-  }, [user, fetchRole]);
+    if (user) await resolvePermissions(user.id, { blockUi: false, preserveExistingOnError: true });
+  }, [resolvePermissions, user]);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
+        if (mountedRef.current) {
           setSession(session);
           setUser(session?.user ?? null);
           userIdRef.current = session?.user?.id ?? null;
-          if (session?.user) {
-            await fetchRole(session.user.id);
-          } else {
-            setRole(null);
-            setPlatformRole(null);
-            setStoreRole(null);
-            setStoreMemberships([]);
-            setActiveStoreId(null);
-          }
         }
+        await resolvePermissions(session?.user?.id ?? null, { blockUi: true, preserveExistingOnError: false });
       } catch (error) {
         console.error("Auth initialization error:", error);
+        clearAccessState();
       } finally {
-        if (mounted) setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     };
 
@@ -139,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         
         const nextUserId = session?.user?.id ?? null;
         const isSameUser = Boolean(nextUserId && userIdRef.current === nextUserId);
@@ -149,41 +189,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userIdRef.current = nextUserId;
         
         if (session?.user) {
-          if (!isSameUser) setLoading(true);
-          try {
-            await fetchRole(session.user.id);
-          } catch (error) {
-            console.error("Auth role refresh error:", error);
-          } finally {
-            if (mounted) setLoading(false);
+          if (!isSameUser) {
+            clearAccessState();
           }
+          await resolvePermissions(session.user.id, {
+            blockUi: !isSameUser,
+            preserveExistingOnError: isSameUser,
+          });
         } else {
-          setRole(null);
-          setPlatformRole(null);
-          setStoreRole(null);
-          setStoreMemberships([]);
-          setActiveStoreId(null);
+          clearAccessState();
           userIdRef.current = null;
-          if (mounted) setLoading(false);
+          if (mountedRef.current) setLoading(false);
         }
       }
     );
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      const visibleUserId = userIdRef.current;
+      if (!visibleUserId) return;
+
+      void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
     };
-  }, [fetchRole, setActiveStoreId]);
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+    };
+  }, [clearAccessState, resolvePermissions]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setRole(null);
-    setPlatformRole(null);
-    setStoreRole(null);
-    setStoreMemberships([]);
-    setActiveStoreId(null);
+    clearAccessState();
     userIdRef.current = null;
   };
 

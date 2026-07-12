@@ -54,7 +54,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
         <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <span className="md:hidden font-heading text-lg font-bold text-foreground">
-              THREAD<span className="text-primary">BD</span>
+              Merchant<span className="text-primary">Admin</span>
             </span>
             <div className="hidden min-w-0 md:block">
               <div className="flex items-center gap-2">

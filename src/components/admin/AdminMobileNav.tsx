@@ -152,7 +152,7 @@ const AdminMobileNav = () => {
               <SheetHeader className="text-left pb-4 border-b border-border/50">
                 <SheetTitle className="flex items-center gap-3">
                   <span className="font-heading text-xl font-bold text-foreground">
-                    THREAD<span className="text-primary">BD</span>
+                    Merchant<span className="text-primary">Admin</span>
                   </span>
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     {isAdmin ? "Owner" : "Staff"}
