@@ -223,7 +223,7 @@ const Dashboard = () => {
 
       const typedPlans = ((plans as PlanRecord[] | null) ?? []);
       const typedSubscription = (subscription as SubscriptionRecord | null) ?? null;
-      const starterPlan = typedPlans.find((plan) => plan.id === "starter") ?? null;
+      const starterPlan = typedPlans.find((plan) => plan.id === "starter") ?? typedPlans[0] ?? null;
       const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? starterPlan;
       const monthlyPrice = currentPlan?.monthly_price;
       const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;

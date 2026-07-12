@@ -30,6 +30,11 @@ export default function MerchantSignup() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
+  const [plans, setPlans] = useState<Array<{ id: string; name: string }>>([
+    { id: "starter", name: "Starter" },
+    { id: "growth", name: "Growth" },
+    { id: "scale", name: "Scale" },
+  ]);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -46,10 +51,23 @@ export default function MerchantSignup() {
   }, [form.storeSlug]);
 
   useEffect(() => {
-    const requestedPlanId = searchParams.get("planId");
-    if (requestedPlanId) {
-      setForm((prev) => ({ ...prev, planId: requestedPlanId }));
-    }
+    supabase
+      .from("cms_plans")
+      .select("id, name, is_active")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setPlans(data);
+          const requestedPlanId = searchParams.get("planId");
+          const hasRequestedPlan = data.some((p) => p.id === requestedPlanId);
+          if (hasRequestedPlan) {
+            setForm((prev) => ({ ...prev, planId: requestedPlanId || "starter" }));
+          } else {
+            setForm((prev) => ({ ...prev, planId: data[0].id }));
+          }
+        }
+      });
   }, [searchParams]);
 
   useEffect(() => {
@@ -323,9 +341,11 @@ export default function MerchantSignup() {
                 <div>
                   <Label htmlFor="plan-id">Plan</Label>
                   <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                    <option value="starter">Starter</option>
-                    <option value="growth">Growth</option>
-                    <option value="scale">Scale</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

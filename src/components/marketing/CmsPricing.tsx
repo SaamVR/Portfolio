@@ -76,7 +76,7 @@ async function loadPlanCards(): Promise<PlanCard[]> {
 
   const visibleFeatureMap = new Map(features.map((feature) => [feature.key, feature.name]));
 
-  const cards = plans.map((plan) => {
+  const cards = plans.map((plan, index) => {
     const enabledFeatureNames =
       mappings
         ?.filter((mapping) => mapping.plan_id === plan.id && mapping.enabled)
@@ -90,14 +90,17 @@ async function loadPlanCards(): Promise<PlanCard[]> {
           ? "1 storefront"
           : `${plan.store_limit} storefronts`;
 
+    const isFree = plan.monthly_price === 0 || plan.id === "starter";
+    const isCustom = plan.monthly_price === null || plan.id === "scale";
+
     return {
       name: plan.name,
       id: plan.id,
       price: formatPlanPrice(plan.monthly_price),
       description: plan.description,
       features: [limitLabel, ...enabledFeatureNames].slice(0, 6),
-      cta: plan.id === "starter" ? "Start Free" : plan.id === "scale" ? "Talk to Sales" : `Choose ${plan.name}`,
-      featured: plan.id === "growth",
+      cta: isFree ? "Start Free" : isCustom ? "Talk to Sales" : `Choose ${plan.name}`,
+      featured: plan.id === "growth" || index === 1,
     } satisfies PlanCard;
   });
 

@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, Navigate } from "@/lib/react-router-dom-shim";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   buildPlatformOverviewStats,
   buildStorePlatformSummaries,
@@ -47,6 +48,9 @@ type PlanRow = {
   name: string;
   description: string;
   monthly_price: number | null;
+  currency_code?: string;
+  store_limit?: number | null;
+  sort_order?: number;
   is_active: boolean;
 };
 
@@ -113,6 +117,50 @@ export default function PlatformControlPlane() {
   const [exceptionNote, setExceptionNote] = useState("");
   const [lifecycleAction, setLifecycleAction] = useState<(typeof LIFECYCLE_ACTIONS)[number]["value"]>("scan");
 
+  // Plan creation / editing state
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PlanRow | null>(null);
+  const [planForm, setPlanForm] = useState({
+    id: "",
+    name: "",
+    description: "",
+    monthly_price: "",
+    currency_code: "BDT",
+    store_limit: "",
+    is_active: true,
+    sort_order: "0",
+  });
+
+  const openCreatePlan = () => {
+    setEditingPlan(null);
+    setPlanForm({
+      id: "",
+      name: "",
+      description: "",
+      monthly_price: "",
+      currency_code: "BDT",
+      store_limit: "",
+      is_active: true,
+      sort_order: "0",
+    });
+    setIsPlanDialogOpen(true);
+  };
+
+  const openEditPlan = (plan: PlanRow) => {
+    setEditingPlan(plan);
+    setPlanForm({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      monthly_price: plan.monthly_price != null ? String(plan.monthly_price) : "",
+      currency_code: (plan as any).currency_code || "BDT",
+      store_limit: (plan as any).store_limit != null ? String((plan as any).store_limit) : "",
+      is_active: plan.is_active,
+      sort_order: String((plan as any).sort_order || 0),
+    });
+    setIsPlanDialogOpen(true);
+  };
+
   const { data, isLoading } = useQuery({
     queryKey: ["platform-control-plane"],
     queryFn: async (): Promise<PlatformData> => {
@@ -136,7 +184,7 @@ export default function PlatformControlPlane() {
         { data: emailEvents },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
-        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, is_active").order("sort_order"),
+        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, currency_code, store_limit, sort_order, is_active").order("sort_order"),
         (supabase as any).from("cms_plan_features").select("plan_id, feature_key, enabled"),
         (supabase as any).from("stores").select("id, owner_id, name, slug, custom_domain, is_published, updated_at").order("name"),
         (supabase as any).from("store_subscriptions").select("store_id, plan_id, status"),
@@ -427,6 +475,51 @@ export default function PlatformControlPlane() {
     }
   };
 
+  const savePlan = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!planForm.id.trim() || !planForm.name.trim() || !planForm.description.trim()) {
+      toast.error("Please fill in plan ID, name, and description");
+      return;
+    }
+
+    const payload = {
+      id: planForm.id.trim().toLowerCase(),
+      name: planForm.name.trim(),
+      description: planForm.description.trim(),
+      monthly_price: planForm.monthly_price.trim() !== "" ? parseInt(planForm.monthly_price.trim(), 10) : null,
+      currency_code: planForm.currency_code.trim(),
+      store_limit: planForm.store_limit.trim() !== "" ? parseInt(planForm.store_limit.trim(), 10) : null,
+      is_active: planForm.is_active,
+      sort_order: parseInt(planForm.sort_order.trim(), 10) || 0,
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      let error;
+      if (editingPlan) {
+        const { error: err } = await (supabase as any)
+          .from("cms_plans")
+          .update(payload)
+          .eq("id", editingPlan.id);
+        error = err;
+      } else {
+        const { error: err } = await (supabase as any)
+          .from("cms_plans")
+          .insert({ ...payload, created_at: new Date().toISOString() });
+        error = err;
+      }
+
+      if (error) throw error;
+
+      toast.success(editingPlan ? "Plan updated successfully!" : "Plan created successfully!");
+      setIsPlanDialogOpen(false);
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to save plan");
+    }
+  };
+
   if (isLoading || !data) {
     return (
       <div className="flex justify-center py-20">
@@ -637,21 +730,35 @@ export default function PlatformControlPlane() {
         <TabsContent value="plans">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4 text-primary" /> Plans</CardTitle>
-                <CardDescription>Public packages and their current feature matrix.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4 text-primary" /> Plans</CardTitle>
+                  <CardDescription>Public packages and their current feature matrix.</CardDescription>
+                </div>
+                <Button type="button" size="sm" onClick={openCreatePlan}>Create Plan</Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.plans.map((plan) => (
                   <div key={plan.id} className="rounded-lg border border-border p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{plan.name}</p>
-                        <p className="text-xs text-muted-foreground">{plan.description}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground">{plan.name}</p>
+                          <Badge variant="outline" className="font-mono text-[10px]">{plan.id}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Store limit: {plan.store_limit != null ? plan.store_limit : "Unlimited"} | Sort order: {plan.sort_order ?? 0}
+                        </p>
                       </div>
-                      <Badge variant={plan.is_active ? "secondary" : "outline"}>
-                        {plan.monthly_price ? `BDT ${plan.monthly_price}` : "Custom"}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Badge variant={plan.is_active ? "secondary" : "outline"}>
+                          {plan.monthly_price != null ? `BDT ${plan.monthly_price}` : "Custom"}
+                        </Badge>
+                        <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => openEditPlan(plan)}>
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -958,6 +1065,100 @@ export default function PlatformControlPlane() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{editingPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
+            <DialogDescription>
+              {editingPlan ? "Update the details of this existing plan." : "Define a new plan with custom properties and pricing."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={savePlan} className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="plan-id">Plan ID (Unique identifier)</Label>
+              <Input
+                id="plan-id"
+                disabled={!!editingPlan}
+                value={planForm.id}
+                onChange={(e) => setPlanForm((prev) => ({ ...prev, id: e.target.value }))}
+                placeholder="e.g. custom-tier"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="plan-name">Plan Name</Label>
+              <Input
+                id="plan-name"
+                value={planForm.name}
+                onChange={(e) => setPlanForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. Enterprise"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="plan-desc">Description</Label>
+              <Textarea
+                id="plan-desc"
+                value={planForm.description}
+                onChange={(e) => setPlanForm((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Brief summary of the plan benefits..."
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="plan-price">Monthly Price (BDT)</Label>
+                <Input
+                  id="plan-price"
+                  type="number"
+                  value={planForm.monthly_price}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, monthly_price: e.target.value }))}
+                  placeholder="e.g. 5000"
+                />
+              </div>
+              <div>
+                <Label htmlFor="plan-limit">Store Limit</Label>
+                <Input
+                  id="plan-limit"
+                  type="number"
+                  value={planForm.store_limit}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, store_limit: e.target.value }))}
+                  placeholder="e.g. 10"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="plan-sort">Sort Order</Label>
+                <Input
+                  id="plan-sort"
+                  type="number"
+                  value={planForm.sort_order}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, sort_order: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <Label htmlFor="plan-active">Is Plan Active</Label>
+                <Switch
+                  id="plan-active"
+                  checked={planForm.is_active}
+                  onCheckedChange={(checked) => setPlanForm((prev) => ({ ...prev, is_active: checked }))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsPlanDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingPlan ? "Save Changes" : "Create Plan"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

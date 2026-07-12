@@ -12,7 +12,7 @@ export function useStoreEntitlements(storeId?: string | null) {
     queryFn: async () => {
       if (!storeId) return { planId: null, effectivePlanId: null, subscriptionStatus: null, features: [], featureMap: {} as any };
       const normalizedEmail = normalizeEmail(user?.email);
-      const [{ data: subscription }, { data: features }, { data: storeOverrides }, { data: emailOverrides }] = await Promise.all([
+      const [{ data: subscription }, { data: features }, { data: storeOverrides }, { data: emailOverrides }, { data: allPlans }] = await Promise.all([
         (supabase as any).from("store_subscriptions").select("plan_id, status").eq("store_id", storeId).maybeSingle(),
         (supabase as any).from("cms_features").select("key, name, description, category, default_visible, is_active").order("category").order("name"),
         (supabase as any).from("store_feature_overrides").select("feature_key, enabled").eq("store_id", storeId),
@@ -23,12 +23,14 @@ export function useStoreEntitlements(storeId?: string | null) {
               .eq("normalized_email", normalizedEmail)
               .or(`store_id.is.null,store_id.eq.${storeId}`)
           : Promise.resolve({ data: [] }),
+        (supabase as any).from("cms_plans").select("id, monthly_price").order("sort_order"),
       ]);
 
       const planId = subscription?.plan_id as string | undefined;
       const subscriptionStatus = subscription?.status as string | undefined;
       const paidPlanReady = subscriptionStatus === "active" || subscriptionStatus === "trialing";
-      const effectivePlanId = planId && paidPlanReady ? planId : "starter";
+      const defaultPlan = (allPlans ?? []).find((p: any) => p.monthly_price === 0 || p.monthly_price === null) ?? (allPlans ?? [])[0] ?? { id: "starter" };
+      const effectivePlanId = planId && paidPlanReady ? planId : defaultPlan.id;
       const { data: planMappings } = effectivePlanId
         ? await (supabase as any).from("cms_plan_features").select("feature_key, enabled").eq("plan_id", effectivePlanId)
         : { data: [] };
