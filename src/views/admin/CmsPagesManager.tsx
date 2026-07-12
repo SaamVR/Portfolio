@@ -236,7 +236,7 @@ export default function CmsPagesManager() {
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
-  const launchTemplatesEnabled = getFeatureEnabled(entitlements?.featureMap, "launch_templates");
+  const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
   const activeBlueprint = useMemo(() => getStoreBlueprintById(storeBlueprintId), [storeBlueprintId]);
@@ -611,7 +611,7 @@ export default function CmsPagesManager() {
   const addPage = () => {
     setStore((current) => {
       if (!current) return current;
-      const page = launchTemplatesEnabled
+      const page = pageBlueprintsEnabled
         ? instantiatePageBlueprint(newPageTemplate, current.pages.length, availablePageBlueprints) ?? createDefaultCmsPage(current.pages.length)
         : createDefaultCmsPage(current.pages.length);
       setSelectedPageId(page.id);
@@ -645,8 +645,8 @@ export default function CmsPagesManager() {
   };
 
   const applyTemplate = (templateId: string) => {
-    if (!launchTemplatesEnabled) {
-      toast.error("Launch templates are not enabled for this store.");
+    if (!pageBlueprintsEnabled) {
+      toast.error("Page blueprints are not enabled for this store.");
       return;
     }
     updateSelectedPage((page) => applyPageBlueprint(page, templateId, availablePageBlueprints) ?? page);
@@ -1315,14 +1315,14 @@ export default function CmsPagesManager() {
 
             <div className="rounded-lg border border-border p-3">
               <div className="grid gap-3">
-                {!launchTemplatesEnabled ? (
+                {!pageBlueprintsEnabled ? (
                   <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                    Launch templates are disabled for this store. New pages will start blank and template replacement is locked.
+                    Page blueprints are disabled for this store. New pages will start blank and blueprint replacement is locked.
                   </div>
                 ) : null}
                 <div className="grid gap-2">
                   <Label>New Page Template</Label>
-                  <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!launchTemplatesEnabled}>
+                  <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled}>
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a template" />
                     </SelectTrigger>
@@ -1440,7 +1440,7 @@ export default function CmsPagesManager() {
                       <p className="text-xs text-muted-foreground">Replace the current block stack with a prebuilt page structure.</p>
                     </div>
                     <div className="flex flex-col gap-2 md:flex-row">
-                      <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!launchTemplatesEnabled}>
+                      <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageBlueprintsEnabled}>
                         <SelectTrigger className="md:max-w-[280px]">
                           <SelectValue placeholder="Choose a template" />
                         </SelectTrigger>
@@ -1452,7 +1452,7 @@ export default function CmsPagesManager() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!launchTemplatesEnabled}>
+                      <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!pageBlueprintsEnabled}>
                         <LayoutTemplate className="h-4 w-4" />
                         Apply Template
                       </Button>
@@ -1460,8 +1460,8 @@ export default function CmsPagesManager() {
                     <p className="text-xs text-muted-foreground">
                       {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
                     </p>
-                    {!launchTemplatesEnabled ? (
-                      <p className="text-xs text-muted-foreground">Enable the `launch_templates` feature to use prebuilt page structures here.</p>
+                    {!pageBlueprintsEnabled ? (
+                      <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use blueprint-backed page structures here.</p>
                     ) : null}
                   </div>
                   {selectedPage.isHomepage ? (

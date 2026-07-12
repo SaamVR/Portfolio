@@ -300,7 +300,7 @@ export default function OnboardingWizard() {
   const storeUrl = getStoreUrl(draft.slug);
   const canGoNext = activeIndex < steps.length - 1;
   const canGoBack = activeIndex > 0;
-  const launchTemplatesEnabled = getFeatureEnabled(entitlements?.featureMap, "launch_templates");
+  const blueprintEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
 
   useEffect(() => {
@@ -674,9 +674,9 @@ export default function OnboardingWizard() {
           <CardContent className="space-y-5">
             {activeStep.id === "blueprint" ? (
               <div className="grid gap-5">
-                {!launchTemplatesEnabled ? (
+                {!blueprintEditingEnabled ? (
                   <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                    Blueprint switching is disabled for this store package right now. The current storefront setup still works, but changing the launch model is locked.
+                    Blueprint switching is disabled for this store package right now. The current storefront setup still works, but changing blueprint-driven page defaults is locked.
                   </div>
                 ) : null}
                 {Object.entries(getStoreBlueprintGroups(blueprints)).map(([groupName, groupedBlueprints]) => (
@@ -691,13 +691,13 @@ export default function OnboardingWizard() {
                           key={item.id}
                           type="button"
                           onClick={() => {
-                            if (!launchTemplatesEnabled) return;
+                            if (!blueprintEditingEnabled) return;
                             applyBlueprint(item.id);
                           }}
-                          disabled={!launchTemplatesEnabled}
+                          disabled={!blueprintEditingEnabled}
                           className={`rounded-lg border p-4 text-left transition-colors ${
                             draft.blueprintId === item.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
-                          } ${!launchTemplatesEnabled ? "cursor-not-allowed opacity-60" : ""}`}
+                          } ${!blueprintEditingEnabled ? "cursor-not-allowed opacity-60" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="space-y-2">
