@@ -1,6 +1,8 @@
 import { describe, expect, it } from "@/test/test-utils";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
+import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
+import type { StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
 import assert from "node:assert/strict";
 
 describe("blueprint page instantiation", () => {
@@ -19,6 +21,70 @@ describe("blueprint page instantiation", () => {
 
     expect(pages.some((page) => page.slug === "/policy")).toBe(true);
     expect(pages.some((page) => page.slug === "/about-brand")).toBe(true);
+  });
+
+  it("instantiates custom recommended page blueprints from the provided collection", () => {
+    const blueprint = {
+      id: "custom-blueprint",
+      name: "Custom blueprint",
+      shortName: "Custom",
+      description: "Custom blueprint description",
+      businessFamily: "commerce",
+      catalogMode: "multi_product",
+      group: "Custom",
+      capabilities: [],
+      recommendedPageSet: ["custom-lookbook"],
+      recommendedBlockSet: ["hero", "rich-text"],
+      defaultTheme: {
+        presetId: "minimal",
+        mode: "light",
+        headingFont: "'Inter', sans-serif",
+        bodyFont: "'Inter', sans-serif",
+        borderRadius: "0.75rem",
+        customCssVars: {},
+      },
+      hero: {
+        tagline: "Custom tagline",
+        title: "Custom",
+        highlight: "Lookbook",
+        subtitle: "Custom subtitle",
+      },
+      storeDescription: "Custom store description",
+      onboarding: {
+        steps: [],
+      },
+      defaultSiteSettings: {},
+    } satisfies StoreBlueprintDefinition;
+
+    const pageBlueprints: CmsPageBlueprint[] = [{
+      id: "custom-lookbook",
+      name: "Custom lookbook",
+      description: "Custom lookbook page",
+      businessFamily: "commerce",
+      catalogModes: ["multi_product"],
+      page: {
+        slug: "/lookbook",
+        title: "Lookbook",
+        seoTitle: "Lookbook",
+        seoDescription: "Custom lookbook page",
+        isHomepage: false,
+        blocks: [{
+          id: "lookbook-rich-text",
+          type: "rich-text",
+          isVisible: true,
+          sortOrder: 0,
+          props: {
+            title: "Lookbook",
+            body: "Curated styles",
+            align: "left",
+          },
+        }],
+      },
+    }];
+
+    const pages = instantiateStorePagesFromBlueprint(blueprint, pageBlueprints);
+
+    expect(pages.some((page) => page.slug === "/lookbook")).toBe(true);
   });
 
   it("normalizes valid page blueprint payloads and drops invalid blocks", () => {

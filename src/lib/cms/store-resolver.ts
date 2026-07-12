@@ -1,11 +1,12 @@
 import { defaultStore } from "@/lib/cms/default-store";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
+import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { getStoreBlueprintById, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
-import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
+import { fallbackThemePackages, getThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 const DEFAULT_STORE_CURRENCY_CODE = "BDT";
 const DEFAULT_STORE_LOCALE = "en-BD";
@@ -125,13 +126,15 @@ export function buildResolvedStoreFromRecords(
   blocks: StoreBlockRow[],
   siteSettings: SiteSettingRecord[],
   blueprintOverride?: StoreBlueprintDefinition | null,
+  themePackages: ThemePackageDefinition[] = fallbackThemePackages,
+  pageBlueprints: CmsPageBlueprint[] = [],
 ): Store {
   const blueprint = blueprintOverride ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(
     theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
-    fallbackThemePackages,
+    themePackages,
   );
-  const fallbackPages = instantiateStorePagesFromBlueprint(blueprint.id);
+  const fallbackPages = instantiateStorePagesFromBlueprint(blueprint, pageBlueprints);
   const mappedPages = applyLegacyHomepageSettingsToPages(
     pages
       .map((page) =>
@@ -233,7 +236,16 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     return null;
   }
 
-  const [{ data: store, error: storeError }, { data: businessProfile }, { data: theme }, { data: pages }, { data: blocks }, { data: siteSettings }] = await Promise.all([
+  const [
+    { data: store, error: storeError },
+    { data: businessProfile },
+    { data: theme },
+    { data: pages },
+    { data: blocks },
+    { data: siteSettings },
+    themePackages,
+    pageBlueprints,
+  ] = await Promise.all([
     supabase
       .from("stores")
       .select("id, name, slug, description, currency_code, locale, is_published, store_type")
@@ -262,6 +274,8 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .select("key, value")
       .eq("store_id", storeId)
       .in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
+    loadThemePackages(supabase, storeId),
+    loadPageBlueprints(supabase),
   ]);
 
   if (storeError || !store) {
@@ -279,6 +293,8 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     (blocks as StoreBlockRow[] | null) ?? [],
     (siteSettings as SiteSettingRecord[] | null) ?? [],
     blueprintDefinition,
+    themePackages,
+    pageBlueprints,
   );
 }
 

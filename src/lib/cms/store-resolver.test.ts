@@ -1,5 +1,7 @@
 import { describe, expect, it } from "@/test/test-utils";
 import { buildResolvedStoreFromRecords } from "@/lib/cms/store-resolver";
+import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
+import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 describe("store resolver mapping", () => {
   it("uses business profile blueprints and theme package defaults when records are sparse", () => {
@@ -98,5 +100,132 @@ describe("store resolver mapping", () => {
 
     expect(store.description).toBe("Boutique rooms, direct inquiries, and tailored guest experiences.");
     expect(store.pages[0]?.blocks[0]?.type).toBe("hero");
+  });
+
+  it("resolves custom theme packages and custom recommended page blueprints when provided", () => {
+    const themePackages: ThemePackageDefinition[] = [{
+      id: "merchant-noir",
+      slug: "merchant-noir",
+      name: "Merchant Noir",
+      description: "Custom private package",
+      preview: {
+        bg: "#111111",
+        primary: "#fafafa",
+        accent: "#22c55e",
+      },
+      sourceType: "merchant_private",
+      version: 1,
+      compatibilityVersion: 1,
+      presetId: "merchant-noir",
+      mode: "light",
+      tokens: {
+        light: {
+          "--background": "#111111",
+        },
+        dark: {
+          "--background": "#000000",
+        },
+        typography: {
+          headingFont: "'Manrope', sans-serif",
+          bodyFont: "'Inter', sans-serif",
+        },
+        components: {
+          borderRadius: "1.25rem",
+        },
+      },
+      recipes: {},
+      ownerStoreId: "store-3",
+    }];
+    const pageBlueprints: CmsPageBlueprint[] = [{
+      id: "custom-gallery",
+      name: "Custom Gallery",
+      description: "Custom gallery page",
+      businessFamily: "commerce",
+      catalogModes: ["multi_product"],
+      page: {
+        slug: "/gallery",
+        title: "Gallery",
+        seoTitle: "Gallery",
+        seoDescription: "A custom gallery page",
+        isHomepage: false,
+        blocks: [{
+          id: "gallery-rich-text",
+          type: "rich-text",
+          isVisible: true,
+          sortOrder: 0,
+          props: {
+            title: "Gallery",
+            body: "Custom gallery body",
+            align: "left",
+          },
+        }],
+      },
+    }];
+
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-3",
+        name: "Gallery Studio",
+        slug: "gallery-studio",
+        description: null,
+        currency_code: null,
+        locale: null,
+        is_published: true,
+        store_type: "gallery-studio",
+      },
+      {
+        blueprint_id: "gallery-studio",
+      },
+      {
+        preset_id: "merchant-noir",
+        theme_package_id: "merchant-noir",
+        mode: null,
+        typography: null,
+        components: null,
+        colors: null,
+        resolved_tokens: null,
+      },
+      [],
+      [],
+      [],
+      {
+        id: "gallery-studio",
+        legacyTemplateId: "general",
+        name: "Gallery Studio",
+        shortName: "Gallery",
+        description: "Custom gallery blueprint",
+        businessFamily: "commerce",
+        catalogMode: "multi_product",
+        group: "Custom",
+        recommendedPageSet: ["home", "custom-gallery"],
+        recommendedBlockSet: ["hero", "rich-text"],
+        defaultTheme: {
+          presetId: "merchant-noir",
+          mode: "light",
+          headingFont: "'Manrope', sans-serif",
+          bodyFont: "'Inter', sans-serif",
+          borderRadius: "1.25rem",
+          customCssVars: {},
+        },
+        storeDescription: "Custom gallery-first store.",
+        hero: {
+          tagline: "Curated",
+          title: "Build a",
+          highlight: "Gallery",
+          subtitle: "Custom pages and custom themes should resolve together.",
+        },
+        capabilities: ["catalog"],
+        onboarding: {
+          steps: [],
+        },
+        defaultSiteSettings: {},
+      },
+      themePackages,
+      pageBlueprints,
+    );
+
+    expect(store.theme.themePackageId).toBe("merchant-noir");
+    expect(store.theme.headingFont).toBe("'Manrope', sans-serif");
+    expect(store.pages.some((page) => page.slug === "/gallery")).toBe(true);
   });
 });

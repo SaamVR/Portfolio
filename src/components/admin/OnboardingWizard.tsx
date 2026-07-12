@@ -36,6 +36,7 @@ import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
+import { fallbackPageBlueprints, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import {
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
@@ -247,12 +248,13 @@ function buildPreviewStore(
   draft: DraftState,
   activeStoreId: string,
   themePackages: ThemePackageDefinition[],
+  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): Store {
   const blueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
   const themePackage = getThemePackageById(draft.themePackageId, themePackages);
   const templatePages = applyCatalogModeToPages(
-    applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint.id), draft),
+    applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint, pageBlueprints), draft),
     draft,
   );
 
@@ -302,14 +304,15 @@ export default function OnboardingWizard() {
   const [slugAvailable, setSlugAvailable] = useState(true);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
+  const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
   const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
 
   const blueprint = getStoreBlueprintById(draft.blueprintId);
   const steps = blueprint.onboarding.steps;
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
-    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages, blueprints),
-    [draft, activeStoreId, blueprints, themePackages],
+    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages, pageBlueprints, blueprints),
+    [draft, activeStoreId, blueprints, pageBlueprints, themePackages],
   );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
   const storeUrl = getStoreUrl(draft.slug);
@@ -324,12 +327,14 @@ export default function OnboardingWizard() {
     const loadDraft = async () => {
       setLoading(true);
 
-      const [loadedBlueprints, loadedThemePackages] = await Promise.all([
+      const [loadedBlueprints, loadedThemePackages, loadedPageBlueprints] = await Promise.all([
         loadStoreBlueprints(supabase),
         loadThemePackages(supabase, activeStoreId),
+        loadPageBlueprints(supabase),
       ]);
       setBlueprints(loadedBlueprints);
       setThemePackages(loadedThemePackages);
+      setPageBlueprints(loadedPageBlueprints);
 
       const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
         supabase
@@ -487,7 +492,13 @@ export default function OnboardingWizard() {
     setSaving(true);
     const selectedBlueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
     const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
-    const pages = buildPreviewStore({ ...draft, isPublished: publish }, activeStoreId, themePackages, blueprints).pages;
+    const pages = buildPreviewStore(
+      { ...draft, isPublished: publish },
+      activeStoreId,
+      themePackages,
+      pageBlueprints,
+      blueprints,
+    ).pages;
 
     const { error: storeError } = await supabase.from("stores").update(
       {

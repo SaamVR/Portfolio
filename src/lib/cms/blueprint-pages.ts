@@ -61,12 +61,15 @@ function buildHomepageFromBlueprint(blueprint: StoreBlueprintDefinition): StoreP
   };
 }
 
-function mapRecommendedPageToBlueprintId(pageId: string): string | null {
+function mapRecommendedPageToBlueprintId(
+  pageId: string,
+  pageBlueprints: CmsPageBlueprint[],
+): string | null {
   if (pageId in pageBlueprintAliasMap) {
     return pageBlueprintAliasMap[pageId] || null;
   }
 
-  return fallbackPageBlueprints.some((blueprint) => blueprint.id === pageId) ? pageId : null;
+  return pageBlueprints.some((blueprint) => blueprint.id === pageId) ? pageId : null;
 }
 
 export function instantiateStorePagesFromBlueprint(
@@ -81,7 +84,7 @@ export function instantiateStorePagesFromBlueprint(
   const recommendedPages = Array.from(new Set(blueprint.recommendedPageSet));
 
   for (const pageId of recommendedPages) {
-    const mappedBlueprintId = mapRecommendedPageToBlueprintId(pageId);
+    const mappedBlueprintId = mapRecommendedPageToBlueprintId(pageId, pageBlueprints);
     if (!mappedBlueprintId) {
       continue;
     }
