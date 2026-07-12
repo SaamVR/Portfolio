@@ -215,6 +215,25 @@ export default function CmsPagesManager() {
   const launchTemplatesEnabled = getFeatureEnabled(entitlements?.featureMap, "launch_templates");
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
+  const activeBlueprint = useMemo(() => getStoreBlueprintById(storeBlueprintId), [storeBlueprintId]);
+  const availablePageBlueprints = useMemo(
+    () =>
+      cmsPageBlueprints.filter(
+        (template) =>
+          template.businessFamily === activeBlueprint.businessFamily
+          && template.catalogModes.includes(activeBlueprint.catalogMode),
+      ),
+    [activeBlueprint],
+  );
+  const availableBlockRegistry = useMemo(
+    () =>
+      cmsBlockRegistry.filter(
+        (block) =>
+          block.compatibleBusinessFamilies.includes(activeBlueprint.businessFamily)
+          && block.requiredCapabilities.every((capability) => activeBlueprint.capabilities.includes(capability)),
+      ),
+    [activeBlueprint],
+  );
 
   const loadStore = useCallback(async () => {
     setLoading(true);
@@ -271,6 +290,24 @@ export default function CmsPagesManager() {
     if (role !== "admin") return;
     void loadStore();
   }, [loadStore, role]);
+
+  useEffect(() => {
+    if (!availablePageBlueprints.some((template) => template.id === newPageTemplate)) {
+      setNewPageTemplate(availablePageBlueprints[0]?.id ?? "landing");
+    }
+  }, [availablePageBlueprints, newPageTemplate]);
+
+  useEffect(() => {
+    if (!availablePageBlueprints.some((template) => template.id === activeTemplateId)) {
+      setActiveTemplateId(availablePageBlueprints[0]?.id ?? "landing");
+    }
+  }, [activeTemplateId, availablePageBlueprints]);
+
+  useEffect(() => {
+    if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
+      setNextBlockType(availableBlockRegistry[0]?.value ?? "rich-text");
+    }
+  }, [availableBlockRegistry, nextBlockType]);
 
   useEffect(() => {
     if (!draftStorageKey || !persistedSnapshot) {
@@ -1195,7 +1232,7 @@ export default function CmsPagesManager() {
                       <SelectValue placeholder="Choose a template" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cmsPageBlueprints.map((template) => (
+                      {availablePageBlueprints.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
                         </SelectItem>
@@ -1203,7 +1240,10 @@ export default function CmsPagesManager() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {cmsPageBlueprints.find((template) => template.id === newPageTemplate)?.description}
+                    {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Showing templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> blueprint.
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
@@ -1310,7 +1350,7 @@ export default function CmsPagesManager() {
                           <SelectValue placeholder="Choose a template" />
                         </SelectTrigger>
                         <SelectContent>
-                          {cmsPageBlueprints.map((template) => (
+                          {availablePageBlueprints.map((template) => (
                             <SelectItem key={template.id} value={template.id}>
                               {template.name}
                             </SelectItem>
@@ -1323,7 +1363,7 @@ export default function CmsPagesManager() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {cmsPageBlueprints.find((template) => template.id === activeTemplateId)?.description}
+                      {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
                     </p>
                     {!launchTemplatesEnabled ? (
                       <p className="text-xs text-muted-foreground">Enable the `launch_templates` feature to use prebuilt page structures here.</p>
@@ -1383,7 +1423,7 @@ export default function CmsPagesManager() {
                         <SelectValue placeholder="Choose block type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cmsBlockRegistry.map((option) => (
+                        {availableBlockRegistry.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -1399,7 +1439,7 @@ export default function CmsPagesManager() {
                 <CardContent className="space-y-4">
                   {selectedPage.blocks.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                      No blocks yet. Add one to start composing this page.
+                      No blocks yet. Add one to start composing this page for the current blueprint.
                     </div>
                   ) : null}
 
