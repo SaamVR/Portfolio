@@ -39,9 +39,50 @@ type StoreThemeSettingsRow = {
   preset_id: string;
   theme_package_id?: string | null;
   mode: string;
+  colors?: Record<string, string> | null;
+  resolved_tokens?: { light?: Record<string, string>; dark?: Record<string, string> } | null;
   typography: { headingFont?: string; bodyFont?: string };
   components: { borderRadius?: string };
+  custom_css?: string | null;
 };
+
+const headingFontOptions = {
+  inter: "Inter, sans-serif",
+  playfair: "'Playfair Display', serif",
+  roboto: "Roboto, sans-serif",
+  outfit: "Outfit, sans-serif",
+} as const;
+
+const bodyFontOptions = {
+  inter: "Inter, sans-serif",
+  roboto: "Roboto, sans-serif",
+  opensans: "'Open Sans', sans-serif",
+} as const;
+
+function resolveThemeFontValue(
+  value: unknown,
+  options: Record<string, string>,
+  fallback: string,
+) {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  return options[value as keyof typeof options] ?? value;
+}
+
+function resolveThemeFontControlValue(
+  value: unknown,
+  options: Record<string, string>,
+  fallbackKey: string,
+) {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallbackKey;
+  }
+
+  const matched = Object.entries(options).find(([, fontValue]) => fontValue === value);
+  return matched?.[0] ?? (value in options ? value : fallbackKey);
+}
 
 type HomepagePageRow = {
   id: string;
@@ -140,7 +181,7 @@ const SiteSettings = () => {
     queryFn: async (): Promise<StoreThemeSettingsRow> => {
       const { data } = await supabase
         .from("store_themes")
-        .select("preset_id, theme_package_id, mode, typography, components")
+        .select("preset_id, theme_package_id, mode, colors, resolved_tokens, typography, components, custom_css")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
@@ -148,8 +189,11 @@ const SiteSettings = () => {
         preset_id: data?.preset_id ?? "default",
         theme_package_id: data?.theme_package_id ?? null,
         mode: data?.mode ?? "dark",
+        colors: (typeof data?.colors === "object" && data?.colors ? data.colors : null) as StoreThemeSettingsRow["colors"],
+        resolved_tokens: (typeof data?.resolved_tokens === "object" && data?.resolved_tokens ? data.resolved_tokens : null) as StoreThemeSettingsRow["resolved_tokens"],
         typography: typeof data?.typography === "object" && data?.typography ? data.typography as StoreThemeSettingsRow["typography"] : {},
         components: typeof data?.components === "object" && data?.components ? data.components as StoreThemeSettingsRow["components"] : {},
+        custom_css: data?.custom_css ?? null,
       };
     },
     enabled: Boolean(activeStoreId),
@@ -182,6 +226,31 @@ const SiteSettings = () => {
     () => getThemePackageById(localThemeId, themePackages),
     [localThemeId, themePackages],
   );
+  const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
+  const resolvedHeadingFont = resolveThemeFontValue(
+    settings.theme_customization?.heading_font ?? themeData?.typography?.headingFont,
+    headingFontOptions,
+    activeThemePackage.tokens.typography.headingFont ?? "Inter, sans-serif",
+  );
+  const resolvedBodyFont = resolveThemeFontValue(
+    settings.theme_customization?.body_font ?? themeData?.typography?.bodyFont,
+    bodyFontOptions,
+    activeThemePackage.tokens.typography.bodyFont ?? "Inter, sans-serif",
+  );
+  const resolvedHeadingFontControl = resolveThemeFontControlValue(
+    settings.theme_customization?.heading_font ?? themeData?.typography?.headingFont,
+    headingFontOptions,
+    "inter",
+  );
+  const resolvedBodyFontControl = resolveThemeFontControlValue(
+    settings.theme_customization?.body_font ?? themeData?.typography?.bodyFont,
+    bodyFontOptions,
+    "inter",
+  );
+  const resolvedBorderRadius = settings.theme_customization?.border_radius
+    ?? themeData?.components?.borderRadius
+    ?? activeThemePackage.tokens.components.borderRadius
+    ?? "0.5rem";
 
   const syncHomepageSettingToBlocks = async (key: LegacyHomepageSettingKey, value: unknown) => {
     if (!activeStoreId) return;
@@ -303,15 +372,15 @@ const SiteSettings = () => {
         theme_package_version: activeThemePackage.version,
         colors: activeThemePackage.tokens[(themeData?.mode as "light" | "dark" | undefined) ?? "dark"] ?? {},
         typography: {
-          headingFont: settings.theme_customization?.heading_font ?? themeData?.typography?.headingFont ?? activeThemePackage.tokens.typography.headingFont ?? "",
-          bodyFont: settings.theme_customization?.body_font ?? themeData?.typography?.bodyFont ?? activeThemePackage.tokens.typography.bodyFont ?? "",
+          headingFont: resolvedHeadingFont,
+          bodyFont: resolvedBodyFont,
         },
         components: {
           borderRadius: settings.theme_customization?.border_radius ?? themeData?.components?.borderRadius ?? activeThemePackage.tokens.components.borderRadius ?? "0.5rem",
         },
         overrides: {
-          headingFont: settings.theme_customization?.heading_font ?? undefined,
-          bodyFont: settings.theme_customization?.body_font ?? undefined,
+          headingFont: settings.theme_customization?.heading_font ? resolvedHeadingFont : undefined,
+          bodyFont: settings.theme_customization?.body_font ? resolvedBodyFont : undefined,
           borderRadius: settings.theme_customization?.border_radius ?? undefined,
         },
         resolved_tokens: {
@@ -351,15 +420,15 @@ const SiteSettings = () => {
     const exportPayload = buildThemePackageExport({
       ...activeThemePackage,
       name: `${activeThemePackage.name} (${settings.brand_seo?.site_name || "Store"})`,
-      sourceType: "merchant_private",
-      tokens: {
-        ...activeThemePackage.tokens,
-        typography: {
-          headingFont: settings.theme_customization?.heading_font ?? activeThemePackage.tokens.typography.headingFont,
-          bodyFont: settings.theme_customization?.body_font ?? activeThemePackage.tokens.typography.bodyFont,
-        },
-        components: {
-          borderRadius: settings.theme_customization?.border_radius ?? activeThemePackage.tokens.components.borderRadius,
+        sourceType: "merchant_private",
+        tokens: {
+          ...activeThemePackage.tokens,
+          typography: {
+          headingFont: resolvedHeadingFont,
+          bodyFont: resolvedBodyFont,
+          },
+          components: {
+            borderRadius: settings.theme_customization?.border_radius ?? activeThemePackage.tokens.components.borderRadius,
         },
       },
     });
@@ -388,8 +457,8 @@ const SiteSettings = () => {
         tokens: {
           ...activeThemePackage.tokens,
           typography: {
-            headingFont: settings.theme_customization?.heading_font ?? activeThemePackage.tokens.typography.headingFont,
-            bodyFont: settings.theme_customization?.body_font ?? activeThemePackage.tokens.typography.bodyFont,
+            headingFont: resolvedHeadingFont,
+            bodyFont: resolvedBodyFont,
           },
           components: {
             borderRadius: settings.theme_customization?.border_radius ?? activeThemePackage.tokens.components.borderRadius,
@@ -820,15 +889,19 @@ const SiteSettings = () => {
         </TabsContent>
 
         {/* Storefront Builder (Themes & Layout) */}
-        <ThemesTab
-          settings={settings}
-          update={update}
-          SaveButton={SaveButton}
-          localThemeId={localThemeId}
-          handleThemeSelect={handleThemeSelect}
-          saveTheme={saveTheme}
-          saving={saving}
-          themePackages={themePackages}
+          <ThemesTab
+            settings={settings}
+            update={update}
+            SaveButton={SaveButton}
+            localThemeId={localThemeId}
+            activeThemeMode={resolvedThemeMode}
+            activeHeadingFont={resolvedHeadingFontControl}
+            activeBodyFont={resolvedBodyFontControl}
+            activeBorderRadius={resolvedBorderRadius}
+            handleThemeSelect={handleThemeSelect}
+            saveTheme={saveTheme}
+            saving={saving}
+            themePackages={themePackages}
           onExportCurrentTheme={exportCurrentTheme}
           onSavePrivateTheme={() => void savePrivateTheme()}
           onImportThemePackage={(raw) => void importThemePackage(raw)}

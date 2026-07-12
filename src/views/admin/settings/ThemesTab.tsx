@@ -12,6 +12,10 @@ export function ThemesTab({
   update,
   SaveButton,
   localThemeId,
+  activeThemeMode,
+  activeHeadingFont,
+  activeBodyFont,
+  activeBorderRadius,
   handleThemeSelect,
   saveTheme,
   saving,
@@ -24,6 +28,10 @@ export function ThemesTab({
   update: (category: string, key: string, value: any) => void;
   SaveButton: React.ComponentType<{ settingKey: string }>;
   localThemeId: string;
+  activeThemeMode: "light" | "dark";
+  activeHeadingFont: string;
+  activeBodyFont: string;
+  activeBorderRadius: string;
   handleThemeSelect: (themeId: string) => void;
   saveTheme: () => void;
   saving: string | null;
@@ -170,7 +178,7 @@ export function ThemesTab({
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-3">
                   <Label>Heading Font Family</Label>
-                  <Select value={settings.theme_customization?.heading_font ?? "inter"} onValueChange={(v) => update("theme_customization", "heading_font", v)}>
+                  <Select value={settings.theme_customization?.heading_font ?? activeHeadingFont} onValueChange={(v) => update("theme_customization", "heading_font", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="inter">Inter (Modern & Clean)</SelectItem>
@@ -182,7 +190,7 @@ export function ThemesTab({
                 </div>
                 <div className="space-y-3">
                   <Label>Body Font Family</Label>
-                  <Select value={settings.theme_customization?.body_font ?? "inter"} onValueChange={(v) => update("theme_customization", "body_font", v)}>
+                  <Select value={settings.theme_customization?.body_font ?? activeBodyFont} onValueChange={(v) => update("theme_customization", "body_font", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="inter">Inter</SelectItem>
@@ -204,7 +212,7 @@ export function ThemesTab({
                 </div>
                 <div className="space-y-3">
                   <Label>Global Border Radius (Buttons/Cards)</Label>
-                  <Select value={settings.theme_customization?.border_radius ?? "0.5rem"} onValueChange={(v) => update("theme_customization", "border_radius", v)}>
+                  <Select value={settings.theme_customization?.border_radius ?? activeBorderRadius} onValueChange={(v) => update("theme_customization", "border_radius", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0">Sharp (0px)</SelectItem>
@@ -216,6 +224,9 @@ export function ThemesTab({
                   </Select>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Current installed theme mode: {activeThemeMode}. Typography and radius controls start from the active store theme unless you explicitly override them.
+              </p>
               <SaveButton settingKey="theme_customization" />
             </TabsContent>
           </Tabs>
