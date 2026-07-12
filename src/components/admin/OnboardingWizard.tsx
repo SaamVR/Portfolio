@@ -35,9 +35,9 @@ import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import {
   createStoreSlug,
-  instantiateLaunchPages,
   launchTemplates,
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
@@ -204,7 +204,7 @@ function buildPreviewStore(draft: DraftState, activeStoreId: string, themePackag
   const blueprint = getStoreBlueprintById(draft.blueprintId);
   const themePackage = getThemePackageById(draft.themePackageId, themePackages);
   const templatePages = applyCatalogModeToPages(
-    applyHeroToPages(instantiateLaunchPages(blueprint.legacyTemplateId ?? "general"), draft),
+    applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint.id), draft),
     draft,
   );
 

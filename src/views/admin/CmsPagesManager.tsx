@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
+import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
@@ -50,7 +51,6 @@ import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } f
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { getStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { getThemePackageById, fallbackThemePackages } from "@/lib/theme-packages";
-import { instantiateLaunchPages } from "@/lib/cms/launch-templates";
 
 type StoreRecord = {
   id: string;
@@ -125,9 +125,11 @@ function readRecoverableDraft(key: string): RecoverableDraft | null {
   }
 }
 
-function cloneHomepageBlocksForBlueprint(blueprintId: string): StorePageBlock[] {
-  const blueprint = getStoreBlueprintById(blueprintId);
-  const seededPages = instantiateLaunchPages(blueprint.legacyTemplateId ?? "general");
+function cloneHomepageBlocksForBlueprint(
+  blueprintId: string,
+  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
+): StorePageBlock[] {
+  const seededPages = instantiateStorePagesFromBlueprint(blueprintId, pageBlueprints);
   const homepage = seededPages.find((page) => page.isHomepage) ?? defaultStore.pages[0];
 
   return homepage.blocks.map((block, index) => ({
@@ -471,7 +473,7 @@ export default function CmsPagesManager() {
     setBootstrapping(true);
 
     const blueprint = getStoreBlueprintById(storeBlueprintId);
-    const seedPages = instantiateLaunchPages(blueprint.legacyTemplateId ?? "general");
+    const seedPages = instantiateStorePagesFromBlueprint(blueprint.id, pageBlueprints);
     const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, fallbackThemePackages);
 
     const { error: storeError } = await supabase.from("stores").upsert(
@@ -627,7 +629,7 @@ export default function CmsPagesManager() {
       ...page,
       slug: "/",
       isHomepage: true,
-      blocks: cloneHomepageBlocksForBlueprint(storeBlueprintId),
+      blocks: cloneHomepageBlocksForBlueprint(storeBlueprintId, pageBlueprints),
     }));
     setSelectedBlockId("");
     toast.success("Recommended homepage layout applied. Save Page Builder changes to publish it.");
