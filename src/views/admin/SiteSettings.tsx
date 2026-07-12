@@ -496,7 +496,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Section Title</Label>
-                  <Input value={settings.home_featured?.title ?? ""} placeholder="Featured Drops" onChange={(e) => update("home_featured", "title", e.target.value)} />
+                  <Input value={settings.home_featured?.title ?? ""} placeholder="Featured Products" onChange={(e) => update("home_featured", "title", e.target.value)} />
                 </div>
                 <SaveButton settingKey="home_featured" />
               </CardContent>
@@ -511,7 +511,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Section Title</Label>
-                  <Input value={settings.home_categories?.title ?? ""} placeholder="Shop by Category" onChange={(e) => update("home_categories", "title", e.target.value)} />
+                  <Input value={settings.home_categories?.title ?? ""} placeholder="Browse by Collection" onChange={(e) => update("home_categories", "title", e.target.value)} />
                 </div>
                 <SaveButton settingKey="home_categories" />
               </CardContent>
@@ -627,16 +627,16 @@ const SiteSettings = () => {
             <CardContent className="space-y-5">
               <div className="grid gap-2">
                 <Label>Tagline (small text above title)</Label>
-                <Input value={settings.hero_section?.tagline ?? ""} placeholder="Premium Menswear from Dhaka" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
+                <Input value={settings.hero_section?.tagline ?? ""} placeholder="Built for your next launch" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Title</Label>
-                  <Input value={settings.hero_section?.title ?? ""} placeholder="Wear Your" onChange={(e) => update("hero_section", "title", e.target.value)} />
+                  <Input value={settings.hero_section?.title ?? ""} placeholder="Shape Your" onChange={(e) => update("hero_section", "title", e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Highlighted word (gradient)</Label>
-                  <Input value={settings.hero_section?.highlight ?? ""} placeholder="Identity" onChange={(e) => update("hero_section", "highlight", e.target.value)} />
+                  <Input value={settings.hero_section?.highlight ?? ""} placeholder="Storefront" onChange={(e) => update("hero_section", "highlight", e.target.value)} />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -1132,11 +1132,11 @@ const SiteSettings = () => {
                 <h3 className="text-sm font-semibold text-foreground">Brand</h3>
                 <div className="grid gap-2">
                   <Label>Brand Tagline (used in footer)</Label>
-                  <Textarea value={settings.footer?.about_text ?? ""} placeholder="Premium menswear crafted in Bangladesh." onChange={(e) => update("footer", "about_text", e.target.value)} rows={2} />
+                  <Textarea value={settings.footer?.about_text ?? ""} placeholder="A clear, trusted summary of what your store offers." onChange={(e) => update("footer", "about_text", e.target.value)} rows={2} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Tagline</Label>
-                  <Textarea value={settings.footer?.about_text ?? ""} placeholder="Premium menswear crafted in Bangladesh." onChange={(e) => update("footer", "about_text", e.target.value)} rows={2} />
+                  <Textarea value={settings.footer?.about_text ?? ""} placeholder="A clear, trusted summary of what your store offers." onChange={(e) => update("footer", "about_text", e.target.value)} rows={2} />
                 </div>
               </div>
 

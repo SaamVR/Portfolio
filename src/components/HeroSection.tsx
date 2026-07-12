@@ -53,13 +53,13 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
 
-  const tagline = overrides?.tagline ?? hero?.tagline ?? "Premium Menswear from Dhaka";
-  const title = overrides?.title ?? hero?.title ?? "Wear Your";
-  const highlight = overrides?.highlight ?? hero?.highlight ?? "Identity";
+  const tagline = overrides?.tagline ?? hero?.tagline ?? "Built for your next launch";
+  const title = overrides?.title ?? hero?.title ?? "Shape Your";
+  const highlight = overrides?.highlight ?? hero?.highlight ?? "Storefront";
   const subtitle =
     overrides?.subtitle ??
     hero?.subtitle ??
-    "Tees, polos, shirts & more - designed in Bangladesh. Premium fabrics, bold designs, bKash checkout.";
+    "Showcase products, offers, and brand trust in a storefront that fits your business instead of a fixed niche.";
   const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Shop Now";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? hero?.cta_link ?? "/shop", currentStore?.slug);
   const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "View Collection";
@@ -117,7 +117,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
         ) : (
           <img
             src={mediaUrl || heroBanner.src}
-            alt="Premium menswear"
+            alt="Storefront hero media"
             className="h-full w-full object-cover transition-transform duration-100"
             style={{ transform: `translateY(${scrollY}px) scale(1.1)` }}
           />

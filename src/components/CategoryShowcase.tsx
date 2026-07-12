@@ -3,17 +3,18 @@ import { Link } from "@/lib/react-router-dom-shim";
 import { Shirt, Blend, Scissors, ShieldCheck, Footprints, StretchHorizontal, FolderTree } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useProductCategories } from "@/hooks/useProductCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 
 const fallbackCategories = [
-  { label: "T-Shirts", type: "T-Shirt", tagline: "Everyday essentials", icon: Shirt },
-  { label: "Polos", type: "Polo", tagline: "Smart casual staples", icon: Blend },
-  { label: "Shirts", type: "Shirt", tagline: "Refined & versatile", icon: StretchHorizontal },
-  { label: "Drop Shoulders", type: "Drop Shoulder", tagline: "Bold streetwear", icon: Scissors },
-  { label: "Undergarments", type: "Undergarment", tagline: "Comfort first", icon: ShieldCheck },
-  { label: "Pants", type: "Pants", tagline: "Complete the look", icon: Footprints },
+  { label: "New Arrivals", type: "new-arrivals", tagline: "Fresh additions for shoppers", icon: Shirt, filterKey: "category" as const },
+  { label: "Best Sellers", type: "best-sellers", tagline: "What customers are choosing most", icon: Blend, filterKey: "category" as const },
+  { label: "Featured", type: "featured", tagline: "Highlighted offers and key products", icon: StretchHorizontal, filterKey: "category" as const },
+  { label: "Bundles", type: "bundles", tagline: "Grouped offers and curated sets", icon: Scissors, filterKey: "category" as const },
+  { label: "Essentials", type: "essentials", tagline: "Core products buyers return to", icon: ShieldCheck, filterKey: "category" as const },
+  { label: "Collections", type: "collections", tagline: "Browse by curated collection", icon: Footprints, filterKey: "category" as const },
 ];
 
 interface CategoryShowcaseProps {
@@ -69,7 +70,7 @@ const getTaglineForType = (typeName: string) => {
     case "pant":
       return "Complete the look";
     default:
-      return "Premium collection";
+      return "Browse the collection";
   }
 };
 
@@ -78,6 +79,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const storeId = currentStore?.id;
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories");
   const { data: customData } = useSiteSettings<any>("categories_custom_data");
+  const { data: dbCategories = [] } = useProductCategories(storeId);
   const [dbTypes, setDbTypes] = useState<any[]>([]);
 
   useEffect(() => {
@@ -100,7 +102,19 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   }, [storeId]);
 
   const categoriesToRender =
-    dbTypes.length > 0
+    dbCategories.length > 0
+      ? dbCategories.map((category) => {
+          const custom = customData?.types?.[category.name] ?? {};
+          return {
+            label: category.name,
+            type: category.name,
+            tagline: custom.tagline || "Browse this collection",
+            image_url: custom.image_url ?? null,
+            icon: FolderTree,
+            filterKey: "category" as const,
+          };
+        })
+      : dbTypes.length > 0
       ? dbTypes.map((t) => {
           const custom = customData?.types?.[t.name] ?? {};
           return {
@@ -109,6 +123,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             tagline: custom.tagline || getTaglineForType(t.name),
             image_url: custom.image_url ?? null,
             icon: getIconForType(t.name),
+            filterKey: "type" as const,
           };
         })
       : fallbackCategories.map((cat) => {
@@ -119,6 +134,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             tagline: custom.tagline || cat.tagline,
             image_url: custom.image_url ?? null,
             icon: cat.icon,
+            filterKey: cat.filterKey,
           };
         });
 
@@ -138,7 +154,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             return (
               <AnimatedSection key={cat.type} delay={i * 80} animation="blur">
                 <Link
-                  to={storefrontPath(`/shop?type=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
+                  to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
                   className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 text-center smooth-hover hover:border-primary/40 hover:-translate-y-1 hover:premium-shadow"
                 >
                   {cat.image_url ? (

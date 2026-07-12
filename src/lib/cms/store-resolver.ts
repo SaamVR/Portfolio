@@ -1,4 +1,5 @@
 import { defaultStore } from "@/lib/cms/default-store";
+import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
@@ -109,28 +110,32 @@ function mapStoreRecord(
   theme: StoreThemeRow | null,
   pages: StorePageRow[],
   blocks: StoreBlockRow[],
+  siteSettings: SiteSettingRecord[],
 ): Store {
-  const mappedPages = pages
-    .map((page) =>
-      sanitizeStorePage({
-        id: page.id,
-        slug: page.slug,
-        title: page.title,
-        seoTitle: page.seo_title ?? undefined,
-        seoDescription: page.seo_description ?? undefined,
-        isHomepage: page.is_homepage ?? false,
-        blocks: blocks
-          .filter((block) => block.page_id === page.id)
-          .map((block) => ({
-            id: block.id,
-            type: block.block_type,
-            props: block.props ?? {},
-            sortOrder: block.sort_order ?? 0,
-            isVisible: block.is_visible ?? true,
-          })),
-      }),
-    )
-    .filter((page): page is StorePage => Boolean(page));
+  const mappedPages = applyLegacyHomepageSettingsToPages(
+    pages
+      .map((page) =>
+        sanitizeStorePage({
+          id: page.id,
+          slug: page.slug,
+          title: page.title,
+          seoTitle: page.seo_title ?? undefined,
+          seoDescription: page.seo_description ?? undefined,
+          isHomepage: page.is_homepage ?? false,
+          blocks: blocks
+            .filter((block) => block.page_id === page.id)
+            .map((block) => ({
+              id: block.id,
+              type: block.block_type,
+              props: block.props ?? {},
+              sortOrder: block.sort_order ?? 0,
+              isVisible: block.is_visible ?? true,
+            })),
+        }),
+      )
+      .filter((page): page is StorePage => Boolean(page)),
+    siteSettings,
+  );
 
   return storeSchema.parse({
     id: store.id,
@@ -207,7 +212,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     return null;
   }
 
-  const [{ data: store, error: storeError }, { data: theme }, { data: pages }, { data: blocks }] = await Promise.all([
+  const [{ data: store, error: storeError }, { data: theme }, { data: pages }, { data: blocks }, { data: siteSettings }] = await Promise.all([
     supabase
       .from("stores")
       .select("id, name, slug, description, currency_code, locale, is_published")
@@ -226,6 +231,11 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .from("store_page_blocks")
       .select("id, page_id, block_type, props, sort_order, is_visible")
       .eq("store_id", storeId),
+    supabase
+      .from("site_settings")
+      .select("key, value")
+      .eq("store_id", storeId)
+      .in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
   ]);
 
   if (storeError || !store) {
@@ -237,6 +247,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     (theme as StoreThemeRow | null) ?? null,
     (pages as StorePageRow[] | null) ?? [],
     (blocks as StoreBlockRow[] | null) ?? [],
+    (siteSettings as SiteSettingRecord[] | null) ?? [],
   );
 }
 

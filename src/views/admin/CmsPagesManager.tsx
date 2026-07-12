@@ -38,6 +38,7 @@ import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
 import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { cn } from "@/lib/utils";
@@ -141,6 +142,7 @@ function mapRecordsToStore(
   theme: ThemeRecord | null,
   pages: PageRecord[],
   blocks: BlockRecord[],
+  siteSettings: SiteSettingRecord[],
 ): Store {
   const blueprint = getStoreBlueprintById(store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId, fallbackThemePackages);
@@ -163,27 +165,30 @@ function mapRecordsToStore(
     },
     pages:
       pages.length > 0
-        ? pages
-            .map((page) =>
-              sanitizeStorePage({
-                id: page.id,
-                slug: page.slug,
-                title: page.title,
-                seoTitle: page.seo_title ?? "",
-                seoDescription: page.seo_description ?? "",
-                isHomepage: page.is_homepage ?? false,
-                blocks: blocks
-                  .filter((block) => block.page_id === page.id)
-                  .map((block) => ({
-                    id: block.id,
-                    type: block.block_type,
-                    sortOrder: block.sort_order ?? 0,
-                    isVisible: block.is_visible ?? true,
-                    props: block.props ?? {},
-                  })),
-              }),
-            )
-            .filter((page): page is StorePage => Boolean(page))
+        ? applyLegacyHomepageSettingsToPages(
+            pages
+              .map((page) =>
+                sanitizeStorePage({
+                  id: page.id,
+                  slug: page.slug,
+                  title: page.title,
+                  seoTitle: page.seo_title ?? "",
+                  seoDescription: page.seo_description ?? "",
+                  isHomepage: page.is_homepage ?? false,
+                  blocks: blocks
+                    .filter((block) => block.page_id === page.id)
+                    .map((block) => ({
+                      id: block.id,
+                      type: block.block_type,
+                      sortOrder: block.sort_order ?? 0,
+                      isVisible: block.is_visible ?? true,
+                      props: block.props ?? {},
+                    })),
+                }),
+              )
+              .filter((page): page is StorePage => Boolean(page)),
+            siteSettings,
+          )
         : defaultStore.pages,
   });
 }
@@ -258,10 +263,11 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const [themeResponse, pagesResponse, blocksResponse] = await Promise.all([
+    const [themeResponse, pagesResponse, blocksResponse, siteSettingsResponse] = await Promise.all([
       supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
       supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
       supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
+      supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
     ]);
 
     const parsedStore = mapRecordsToStore(
@@ -269,6 +275,7 @@ export default function CmsPagesManager() {
       (themeResponse.data as ThemeRecord | null) ?? null,
       (pagesResponse.data as PageRecord[] | null) ?? [],
       (blocksResponse.data as BlockRecord[] | null) ?? [],
+      (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
     );
 
     setStoreBlueprintId(storeRecord.store_type ?? "general-catalog");
@@ -1355,7 +1362,7 @@ export default function CmsPagesManager() {
                   </div>
                   <div className="grid gap-2 md:col-span-2">
                     <Label>Revision Label For Next Save</Label>
-                    <Input value={revisionLabel} placeholder="Homepage cleanup, Eid promo, July refresh..." onChange={(e) => setRevisionLabel(e.target.value)} />
+                    <Input value={revisionLabel} placeholder="Homepage cleanup, seasonal refresh, trust update..." onChange={(e) => setRevisionLabel(e.target.value)} />
                   </div>
                   <div className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4">
                     <div>

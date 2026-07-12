@@ -134,13 +134,13 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const orbCls = getOrbColors(bg);
   const borderGrad = getBorderGradient(bg);
 
-  const badgeText = overrides?.badgeText ?? settings?.badge_text ?? "EXCLUSIVE DEALS";
-  const title = overrides?.title ?? settings?.title ?? "Eid-ul-Adha Special Drop";
+  const badgeText = overrides?.badgeText ?? settings?.badge_text ?? "FEATURED OFFER";
+  const title = overrides?.title ?? settings?.title ?? "Launch a timely offer";
   const subtitle =
     overrides?.subtitle ??
     settings?.subtitle ??
-    "Premium dropshoulder tees & summer polos designed in Dhaka. Grab yours before stocks run out. 20% flat discount on pre-orders!";
-  const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore The Collection";
+    "Highlight a campaign, bundle, seasonal push, or limited-time incentive without inheriting category-specific placeholder copy.";
+  const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore the Offer";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? settings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
 
   const align = overrides?.textAlignment ?? settings?.text_alignment ?? "center";
