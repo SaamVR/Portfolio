@@ -4,9 +4,10 @@ import {
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
 import { reservedCmsSlugs } from "@/lib/cms/block-library";
-import { getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { getCmsBlockRegistryItem, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
 import {
+  type BlockRow,
   type DialogState,
   type FormState,
   type ThemeRow,
@@ -66,7 +67,34 @@ export function getActiveDialogTitle(dialogState: DialogState) {
   return `${dialogState.mode === "create" ? "Create" : "Edit"} ${itemLabel}`;
 }
 
-export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, form: FormState): SaveDialogRequest {
+type SaveDialogRequestOptions = {
+  blockRegistry?: BlockRow[];
+};
+
+function normalizeBlockRegistryForValidation(blockRegistry?: BlockRow[]): CmsBlockRegistryItem[] | undefined {
+  if (!blockRegistry?.length) {
+    return undefined;
+  }
+
+  return blockRegistry.map((item) => ({
+    value: item.block_type as CmsBlockRegistryItem["value"],
+    label: item.label,
+    description: item.description,
+    layer: item.layer === "core" || item.layer === "commerce" || item.layer === "extension" ? item.layer : "core",
+    compatibleBusinessFamilies: Array.isArray(item.compatible_business_families)
+      ? item.compatible_business_families.filter((value): value is CmsBlockRegistryItem["compatibleBusinessFamilies"][number] => typeof value === "string")
+      : [],
+    requiredCapabilities: Array.isArray(item.required_capabilities)
+      ? item.required_capabilities.filter((value): value is string => typeof value === "string")
+      : [],
+  }));
+}
+
+export function buildSaveDialogRequest(
+  dialogState: Exclude<DialogState, null>,
+  form: FormState,
+  options?: SaveDialogRequestOptions,
+): SaveDialogRequest {
   if (dialogState.type === "blueprint") {
     const id = slugify(String(form.id || form.short_name || form.name || ""));
     if (!id || !String(form.name || "").trim() || !String(form.short_name || "").trim()) {
@@ -116,7 +144,7 @@ export function buildSaveDialogRequest(dialogState: Exclude<DialogState, null>, 
     }
 
     for (const block of normalizedPagePayload.blocks) {
-      const registryItem = getCmsBlockRegistryItem(block.type);
+      const registryItem = getCmsBlockRegistryItem(block.type, normalizeBlockRegistryForValidation(options?.blockRegistry));
       if (!registryItem.compatibleBusinessFamilies.includes(businessFamily as typeof registryItem.compatibleBusinessFamilies[number])) {
         throw new Error(`Block "${block.type}" is not compatible with the ${businessFamily} business family.`);
       }

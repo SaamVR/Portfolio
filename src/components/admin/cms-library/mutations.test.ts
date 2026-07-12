@@ -195,4 +195,49 @@ describe("cms library mutation builders", () => {
       },
     ), /not compatible/i);
   });
+
+  it("validates page blueprint blocks against the provided live block registry", () => {
+    const request = buildSaveDialogRequest(
+      { mode: "create", type: "page" },
+      {
+        id: "hotel-booking",
+        name: "Hotel Booking",
+        description: "Booking page",
+        business_family: "service",
+        catalog_modes: JSON.stringify(["inquiry_only"]),
+        page_payload: JSON.stringify({
+          slug: "/booking",
+          title: "Booking",
+          blocks: [
+            {
+              id: "featured-booking-1",
+              type: "featured-products",
+              isVisible: true,
+              sortOrder: 0,
+              props: {
+                title: "Reserve",
+                tagline: "Stay dates",
+                limit: 4,
+              },
+            },
+          ],
+        }),
+        is_active: true,
+      },
+      {
+        blockRegistry: [{
+          block_type: "featured-products",
+          label: "Featured Booking",
+          description: "Booking block",
+          layer: "extension",
+          compatible_business_families: ["service"],
+          required_capabilities: ["bookings"],
+          is_active: true,
+        }],
+      },
+    );
+
+    expect(request.table).toBe("page_blueprints");
+    expect((request.payload.page_payload as { blocks: Array<{ type: string }> }).blocks[0]?.type).toBe("featured-products");
+  });
 });

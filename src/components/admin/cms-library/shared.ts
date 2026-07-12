@@ -119,18 +119,77 @@ export const checkoutModeOptions = ["standard", "whatsapp", "inquiry"] as const;
 export const prepaymentDiscountTypeOptions = ["none", "free_delivery", "percentage", "fixed"] as const;
 export const themeSourceTypeOptions = ["system", "admin_shared", "merchant_private", "merchant_submitted"] as const;
 export const themeModeOptions = ["light", "dark"] as const;
-export const knownPageBlueprintIds = Array.from(new Set(fallbackPageBlueprints.map((item) => item.id)));
-export const knownBlockTypes = Array.from(new Set(fallbackBlockRegistry.map((item) => item.value)));
-export const knownBlockOptions = fallbackBlockRegistry.map((item) => ({
-  value: item.value,
-  label: item.label,
-  description: item.description,
-  layer: item.layer,
-}));
-export const knownCapabilities = Array.from(new Set([
-  ...fallbackStoreBlueprints.flatMap((item) => item.capabilities),
-  ...fallbackBlockRegistry.flatMap((item) => item.requiredCapabilities),
-])).sort();
+export function buildKnownPageBlueprintIds(pages: PageRow[] = []) {
+  return Array.from(new Set([
+    ...fallbackPageBlueprints.map((item) => item.id),
+    ...pages.map((item) => item.id),
+  ])).sort();
+}
+
+export function buildKnownBlockTypes(blocks: BlockRow[] = []) {
+  return Array.from(new Set([
+    ...fallbackBlockRegistry.map((item) => item.value),
+    ...blocks.map((item) => item.block_type),
+  ])).sort();
+}
+
+export function buildKnownBlockOptions(blocks: BlockRow[] = []) {
+  const byType = new Map<string, { value: string; label: string; description: string; layer: string }>();
+
+  for (const item of fallbackBlockRegistry) {
+    byType.set(item.value, {
+      value: item.value,
+      label: item.label,
+      description: item.description,
+      layer: item.layer,
+    });
+  }
+
+  for (const item of blocks) {
+    byType.set(item.block_type, {
+      value: item.block_type,
+      label: item.label,
+      description: item.description,
+      layer: item.layer,
+    });
+  }
+
+  return Array.from(byType.values()).sort((left, right) => left.label.localeCompare(right.label));
+}
+
+export function buildKnownCapabilities(data?: Partial<LibraryData>) {
+  const blueprintCapabilities = (data?.blueprints ?? [])
+    .flatMap((item) => {
+      if (Array.isArray(item.required_capabilities)) {
+        return item.required_capabilities.filter((value): value is string => typeof value === "string");
+      }
+
+      if (typeof item.required_capabilities === "string") {
+        return readStringArray(item.required_capabilities);
+      }
+
+      return [];
+    });
+  const blockCapabilities = (data?.blocks ?? [])
+    .flatMap((item) => {
+      if (Array.isArray(item.required_capabilities)) {
+        return item.required_capabilities.filter((value): value is string => typeof value === "string");
+      }
+
+      if (typeof item.required_capabilities === "string") {
+        return readStringArray(item.required_capabilities);
+      }
+
+      return [];
+    });
+
+  return Array.from(new Set([
+    ...fallbackStoreBlueprints.flatMap((item) => item.capabilities),
+    ...fallbackBlockRegistry.flatMap((item) => item.requiredCapabilities),
+    ...blueprintCapabilities,
+    ...blockCapabilities,
+  ])).sort();
+}
 
 export const jsonStringify = (value: unknown, fallback: unknown) => JSON.stringify(value ?? fallback, null, 2);
 export const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");

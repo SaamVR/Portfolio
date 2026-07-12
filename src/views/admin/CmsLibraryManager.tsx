@@ -31,12 +31,12 @@ import { buildSaveDialogRequest, getActiveDialogTitle } from "@/components/admin
 import {
   blockLayerOptions,
   businessFamilyOptions,
+  buildKnownBlockOptions,
+  buildKnownBlockTypes,
+  buildKnownCapabilities,
+  buildKnownPageBlueprintIds,
   catalogModeOptions,
   checkoutModeOptions,
-  knownBlockTypes,
-  knownBlockOptions,
-  knownCapabilities,
-  knownPageBlueprintIds,
   legacyTemplateOptions,
   onboardingStepOptions,
   prepaymentDiscountTypeOptions,
@@ -89,6 +89,7 @@ export default function CmsLibraryManager() {
     savingId,
     search,
     setSearch,
+    data,
     filteredData,
     isLoading,
     updateRow,
@@ -104,7 +105,9 @@ export default function CmsLibraryManager() {
     if (!dialogState) return;
 
     try {
-      const request = buildSaveDialogRequest(dialogState, form);
+      const request = buildSaveDialogRequest(dialogState, form, {
+        blockRegistry: data?.blocks ?? [],
+      });
 
       if (request.isCreate) {
         const created = await insertRow(request.table, request.payload, request.idValue);
@@ -125,6 +128,10 @@ export default function CmsLibraryManager() {
   const blockCards = filteredData?.blocks ?? [];
   const activeDialogTitle = getActiveDialogTitle(dialogState);
   const slugIsReserved = pagePayload.slug !== "/" && reservedCmsSlugs.has(pagePayload.slug);
+  const livePageBlueprintIds = buildKnownPageBlueprintIds(data?.pages ?? []);
+  const liveBlockTypes = buildKnownBlockTypes(data?.blocks ?? []);
+  const liveBlockOptions = buildKnownBlockOptions(data?.blocks ?? []);
+  const liveCapabilities = buildKnownCapabilities(data);
 
   return (
     <div className="space-y-6">
@@ -349,9 +356,9 @@ export default function CmsLibraryManager() {
               catalogModeOptions={catalogModeOptions}
               legacyTemplateOptions={legacyTemplateOptions}
               onboardingStepOptions={onboardingStepOptions}
-              knownPageBlueprintIds={knownPageBlueprintIds}
-              knownBlockTypes={knownBlockTypes}
-              knownCapabilities={knownCapabilities}
+              knownPageBlueprintIds={livePageBlueprintIds}
+              knownBlockTypes={liveBlockTypes}
+              knownCapabilities={liveCapabilities}
               selectedRecommendedPages={selectedRecommendedPages}
               selectedRecommendedBlocks={selectedRecommendedBlocks}
               selectedCapabilities={selectedCapabilities}
@@ -380,8 +387,8 @@ export default function CmsLibraryManager() {
               isEditing={dialogState.mode === "edit"}
               businessFamilyOptions={businessFamilyOptions}
               catalogModeOptions={catalogModeOptions}
-              knownBlockTypes={knownBlockTypes}
-              knownBlockOptions={knownBlockOptions}
+              knownBlockTypes={liveBlockTypes}
+              knownBlockOptions={liveBlockOptions}
               selectedCatalogModes={selectedCatalogModes}
               pagePayload={pagePayload}
               slugIsReserved={slugIsReserved}
@@ -418,7 +425,7 @@ export default function CmsLibraryManager() {
               isEditing={dialogState.mode === "edit"}
               blockLayerOptions={blockLayerOptions}
               businessFamilyOptions={businessFamilyOptions}
-              knownCapabilities={knownCapabilities}
+              knownCapabilities={liveCapabilities}
               selectedCompatibleBusinessFamilies={selectedCompatibleBusinessFamilies}
               selectedCapabilities={selectedCapabilities}
               onUpdateField={updateField}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "@/test/test-utils";
 import {
+  buildKnownBlockOptions,
+  buildKnownCapabilities,
+  buildKnownPageBlueprintIds,
   readDefaultSiteSettings,
   readThemeEditorPayload,
   updateDefaultSiteSettingsField,
@@ -83,5 +86,64 @@ describe("cms library shared helpers", () => {
     expect(parsed.bg).toBe("#000000");
     expect(parsed.primary).toBe("#ffffff");
     expect(parsed.accent).toBe("#38bdf8");
+  });
+
+  it("builds live known library options from custom rows", () => {
+    const pageIds = buildKnownPageBlueprintIds([
+      {
+        id: "custom-gallery",
+        name: "Custom Gallery",
+        description: "Custom",
+        business_family: "commerce",
+        catalog_modes: ["multi_product"],
+        page_payload: {},
+        is_active: true,
+      },
+    ]);
+    const blockOptions = buildKnownBlockOptions([
+      {
+        block_type: "booking-widget",
+        label: "Booking Widget",
+        description: "Booking block",
+        layer: "extension",
+        compatible_business_families: ["service"],
+        required_capabilities: ["bookings"],
+        is_active: true,
+      },
+    ]);
+    const capabilities = buildKnownCapabilities({
+      blueprints: [{
+        id: "hotel",
+        name: "Hotel",
+        short_name: "Hotel",
+        description: "Hotel",
+        business_family: "service",
+        catalog_mode: "inquiry_only",
+        group_name: "Hotels",
+        store_description: "Hotel profile",
+        legacy_template_id: "general",
+        recommended_page_set: [],
+        recommended_block_set: [],
+        required_capabilities: ["bookings"],
+        default_theme: {},
+        hero_payload: {},
+        onboarding_schema: {},
+        default_site_settings: {},
+        is_active: true,
+      }],
+      blocks: [{
+        block_type: "booking-widget",
+        label: "Booking Widget",
+        description: "Booking block",
+        layer: "extension",
+        compatible_business_families: ["service"],
+        required_capabilities: ["bookings"],
+        is_active: true,
+      }],
+    });
+
+    expect(pageIds.some((item) => item === "custom-gallery")).toBe(true);
+    expect(blockOptions.some((item) => item.value === "booking-widget")).toBe(true);
+    expect(capabilities.some((item) => item === "bookings")).toBe(true);
   });
 });
