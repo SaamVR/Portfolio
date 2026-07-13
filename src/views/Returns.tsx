@@ -61,7 +61,7 @@ const Returns = () => {
                 <div className="flex-shrink-0 h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">1</div>
                 <div>
                   <h4 className="font-bold text-foreground">Message Us</h4>
-                  <p className="text-muted-foreground">Send us a message on our Facebook Page or WhatsApp with your Order ID and photos of the product.</p>
+                  <p className="text-muted-foreground">Send us a message through the store's support channel with your Order ID and photos of the product.</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -75,7 +75,7 @@ const Returns = () => {
                 <div className="flex-shrink-0 h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">3</div>
                 <div>
                   <h4 className="font-bold text-foreground">Doorstep Swap</h4>
-                  <p className="text-muted-foreground">Our delivery rider will bring your new item and collect the old one at the same time. Inside Dhaka delivery fee applies for size exchanges.</p>
+                  <p className="text-muted-foreground">We can coordinate an exchange handoff or return shipment based on the fulfillment options available for your order.</p>
                 </div>
               </div>
             </div>

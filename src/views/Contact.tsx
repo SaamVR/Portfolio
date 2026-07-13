@@ -89,8 +89,8 @@ const Contact = () => {
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const address = contact?.address || "Dhaka, Bangladesh";
-  const phone = contact?.phone || "+880 1XXX-XXXXXX";
+  const address = contact?.address || "Add your business address";
+  const phone = contact?.phone || "+1 000-000-0000";
   const emailAddr = contact?.email || "hello@example.com";
   const whatsapp = contact?.whatsapp || phone;
 

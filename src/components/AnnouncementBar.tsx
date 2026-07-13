@@ -11,9 +11,9 @@ interface AnnouncementSettings {
 }
 
 const DEFAULT_MESSAGES = [
-  "Enjoy 5% Off with bKash",
-  "Free Delivery on Orders Over ৳2000",
-  "New Drop Shoulders Just Landed 🔥",
+  "New arrivals and featured offers are live",
+  "Free delivery available on qualifying orders",
+  "Shop the latest collection and limited-time highlights",
 ];
 
 const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {

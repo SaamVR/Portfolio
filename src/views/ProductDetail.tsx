@@ -150,7 +150,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
     },
   };
 
-  // Color dot mapping ΓÇö common colors to tailwind-safe bg classes
+  // Color dot mapping for common colors to Tailwind-safe bg classes
   const colorDotMap: Record<string, string> = {
     black: "bg-black",
     white: "bg-white border-2",
@@ -231,9 +231,9 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
             </div>
 
             <div className="mb-6 flex items-center gap-3">
-              <p className="font-heading text-3xl font-bold text-primary">αº│{product.price}</p>
+              <p className="font-heading text-3xl font-bold text-primary">BDT {product.price}</p>
               {product.originalPrice && (
-                <p className="font-heading text-lg text-muted-foreground line-through">αº│{product.originalPrice}</p>
+                <p className="font-heading text-lg text-muted-foreground line-through">BDT {product.originalPrice}</p>
               )}
               {product.badge && (
                 <Badge variant={product.badge === "Sale" ? "destructive" : "default"}>
@@ -245,7 +245,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
             <p className="mb-8 leading-relaxed text-muted-foreground">{product.description}</p>
 
             {lowStock && (
-              <p className="mb-4 text-sm font-medium text-destructive">≡ƒöÑ Only {product.stock} left in stock!</p>
+              <p className="mb-4 text-sm font-medium text-destructive">Only {product.stock} left in stock!</p>
             )}
 
             {/* Color swatches */}
@@ -358,8 +358,8 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
                 title={product.name}
               />
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Free delivery in Dhaka</p>
-                <p className="text-xs text-muted-foreground">Pay with bKash or Cash on Delivery</p>
+                <p className="text-xs text-muted-foreground">Delivery options are shown at checkout</p>
+                <p className="text-xs text-muted-foreground">Checkout methods depend on this store's configuration</p>
                 <p className="text-xs text-muted-foreground">7-day easy returns</p>
               </div>
             </div>
@@ -371,7 +371,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
       <RelatedProducts currentProduct={product} />
       <SizeGuide open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
 
-      {/* ΓöÇΓöÇ Sticky mobile Add-to-Cart bar ΓöÇΓöÇ */}
+      {/* Sticky mobile add-to-cart bar */}
       <div
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 md:hidden",
@@ -386,7 +386,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{product.name}</p>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-primary">αº│{product.price}</p>
+              <p className="text-sm font-bold text-primary">BDT {product.price}</p>
               {selectedSize && (
                 <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
                   Size: {selectedSize}

@@ -109,16 +109,16 @@ export const launchTemplates: LaunchTemplate[] = [
           }),
           block("rich-text", 4, {
             eyebrow: "Why Shop Here",
-            title: "Built for fast drops and loyal customers",
-            body: "Turn first-time visitors into confident buyers with a clearer promise.\n\n- Premium fabrics and dependable sizing guidance\n- Fast order confirmation with local payment options\n- Straightforward exchange support if the fit is not right",
+            title: "Built for confident first purchases and repeat customers",
+            body: "Turn first-time visitors into confident buyers with a clearer promise.\n\n- Clear product quality and selection guidance\n- Checkout options customers understand quickly\n- Straightforward exchange or support steps if something is not right",
             align: "left",
           }),
           block("faq-accordion", 5, {
             title: "Questions customers ask before they buy",
             subtitle: "Use these answers to remove hesitation around sizing, delivery, and payment.",
             faqs: [
-              { q: "How long does delivery take?", a: "Inside Dhaka orders usually arrive within 24-48 hours. Outside Dhaka orders typically take 2-5 business days depending on courier coverage." },
-              { q: "Can customers pay with bKash or cash on delivery?", a: "Yes. Enable bKash, Nagad, and cash on delivery so buyers can choose the option they already trust." },
+              { q: "How long does delivery take?", a: "Explain your fulfillment timing by region, shipping method, or pickup flow so customers know what to expect." },
+              { q: "How can customers pay?", a: "Describe the payment, inquiry, or booking options available for this store so buyers can choose the flow they trust." },
               { q: "What if the size does not fit?", a: "Add your exchange window and clear size-change steps here so customers feel safe ordering their first item." },
             ],
           }),
@@ -139,7 +139,7 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 0, {
             eyebrow: "Store Policy",
             title: "Clear delivery and exchange rules",
-            body: "Customers are more likely to place an order when your rules feel clear and fair.\n\n- Delivery timelines by region\n- Exchange window and condition rules\n- Payment confirmation and support hours",
+            body: "Customers are more likely to place an order when your rules feel clear and fair.\n\n- Fulfillment timelines by region or service area\n- Exchange window and condition rules\n- Confirmation and support hours",
             align: "left",
           }),
           block("faq-accordion", 1, {
@@ -147,8 +147,8 @@ export const launchTemplates: LaunchTemplate[] = [
             subtitle: "Answer the important details in plain language.",
             faqs: [
               { q: "How do exchanges work?", a: "Explain your exchange window, item condition rules, and how customers should contact support to start the process." },
-              { q: "Do delivery charges vary by location?", a: "Clarify Dhaka vs outside Dhaka delivery charges and when free delivery applies." },
-              { q: "How are prepaid orders confirmed?", a: "Let buyers know how bKash or Nagad payment confirmations are verified and when they receive an update." },
+              { q: "Do delivery charges vary by location?", a: "Clarify delivery charges by zone, region, or service type and explain when free fulfillment applies." },
+              { q: "How are prepaid orders confirmed?", a: "Let buyers know how prepaid or manually verified orders are confirmed and when they receive an update." },
             ],
           }),
         ],
@@ -231,7 +231,7 @@ export const launchTemplates: LaunchTemplate[] = [
             faqs: [
               { q: "When should customers place an order?", a: "Use this answer to explain your same-day order cut-off time, pre-order rules, or seasonal availability." },
               { q: "How is the food delivered?", a: "Describe your packaging, delivery zones, and how long items usually take to reach the customer." },
-              { q: "Can customers pay online or on delivery?", a: "Mention whether you accept bKash, Nagad, bank transfer, or cash on delivery depending on your setup." },
+              { q: "Can customers pay online or on delivery?", a: "Mention whether customers can pay in advance, on delivery, or through any other flow you support." },
             ],
           }),
         ],
@@ -329,15 +329,15 @@ export const launchTemplates: LaunchTemplate[] = [
           block("rich-text", 4, {
             eyebrow: "Why customers choose us",
             title: "Make the store feel trustworthy before the first order",
-            body: "A general store converts better when people quickly understand what you sell and how the service works.\n\n- Clear product presentation and honest pricing\n- Trusted local payment options\n- Delivery support and responsive customer care",
+            body: "A general store converts better when people quickly understand what you sell and how the service works.\n\n- Clear product presentation and honest pricing\n- Checkout options explained without friction\n- Delivery support and responsive customer care",
             align: "left",
           }),
           block("faq-accordion", 5, {
             title: "Need-to-know questions",
             subtitle: "Use this section to remove doubt around delivery, support, and payment.",
             faqs: [
-              { q: "How long does delivery take?", a: "Set clear delivery expectations for Dhaka and outside Dhaka orders so customers know what to expect before checkout." },
-              { q: "Which payment methods are available?", a: "Tell customers whether they can use bKash, Nagad, cards, or cash on delivery." },
+              { q: "How long does delivery take?", a: "Set clear delivery expectations by region or service level so customers know what to expect before checkout." },
+              { q: "Which payment methods are available?", a: "Tell customers whether they can pay online, on delivery, or through any other checkout flow you support." },
               { q: "How do customers get support after ordering?", a: "Add your preferred support channel and response hours so buyers know they can reach you." },
             ],
           }),

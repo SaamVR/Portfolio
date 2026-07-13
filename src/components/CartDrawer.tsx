@@ -90,8 +90,8 @@ const CartDrawer = () => {
               <div className="mt-4 rounded-md bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center justify-center gap-2">
                 <Tag className="h-4 w-4" />
                 {prepaymentDiscountType === "free_delivery" 
-                  ? "Pay with bKash/Nagad for Free Delivery!" 
-                  : `Pay with bKash/Nagad to get ${prepaymentDiscountType === "percentage" ? prepaymentDiscountValue + "%" : "BDT " + prepaymentDiscountValue} OFF!`}
+                  ? "Choose prepaid checkout for free delivery!" 
+                  : `Choose prepaid checkout to get ${prepaymentDiscountType === "percentage" ? prepaymentDiscountValue + "%" : "a store-currency discount"} off!`}
               </div>
             )}
 

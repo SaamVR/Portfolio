@@ -100,8 +100,8 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Announcement Rotating Messages Bar", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=announcement") },
     { label: "Theme Preset Palettes, Fonts & Border Style", icon: Palette, action: () => navigate("/admin/site-settings?tab=themes") },
     { label: "Exit-Intent Popups & Upsells Builder", icon: MousePointerClick, action: () => navigate("/admin/site-settings?tab=upsells") },
-    { label: "bKash & Nagad Merchant Numbers Setup", icon: CreditCard, action: () => navigate("/admin/site-settings?tab=payment") },
-    { label: "Inside/Outside Dhaka Delivery Fee Rates", icon: Truck, action: () => navigate("/admin/site-settings?tab=delivery") },
+    { label: "Payment Methods Setup", icon: CreditCard, action: () => navigate("/admin/site-settings?tab=payment") },
+    { label: "Delivery Fee Settings", icon: Truck, action: () => navigate("/admin/site-settings?tab=delivery") },
     { label: "WhatsApp Support Helpline Number", icon: HelpCircle, action: () => navigate("/admin/site-settings?tab=support") },
     { label: "About Page Content & Custom Text", icon: Info, action: () => navigate("/admin/site-settings?tab=about") },
     { label: "FAQ & Refund Policy Editor", icon: HelpCircle, action: () => navigate("/admin/site-settings?tab=faq") },
@@ -122,7 +122,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search dashboard sectors, pages, actions... (e.g. bKash, Hero, Orders)" />
+      <CommandInput placeholder="Search dashboard sectors, pages, actions... (e.g. payments, hero, orders)" />
       <CommandList className="max-h-[360px]">
         <CommandEmpty>No matching dashboard sectors or actions found.</CommandEmpty>
         
