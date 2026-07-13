@@ -36,33 +36,56 @@ const InviteCodes = () => {
 
   const fetchCodes = useCallback(async () => {
     if (!activeStoreId) {
-      setCodes([]);
-      setLoading(false);
-      return;
+      return [] as StaffInvite[];
     }
 
-    setLoading(true);
-    try {
-      const { data, error } = await (supabase as any)
-        .from("store_staff_invites")
-        .select("id, code, role, used_by, created_at, email")
-        .eq("store_id", activeStoreId as string)
-        .order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any)
+      .from("store_staff_invites")
+      .select("id, code, role, used_by, created_at, email")
+      .eq("store_id", activeStoreId as string)
+      .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setCodes((data ?? []) as StaffInvite[]);
-    } catch (error) {
-      console.error("Failed to load invite codes:", error);
-      toast.error("Failed to refresh invite codes. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    if (error) throw error;
+    return (data ?? []) as StaffInvite[];
   }, [activeStoreId]);
 
   useEffect(() => {
-    if (role !== "admin") return;
-    fetchCodes();
-  }, [fetchCodes, role]);
+    let active = true;
+
+    const load = async () => {
+      if (role !== "admin") {
+        setLoading(false);
+        return;
+      }
+
+      if (!activeStoreId) {
+        setCodes([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const nextCodes = await fetchCodes();
+        if (!active) return;
+        setCodes(nextCodes);
+      } catch (error) {
+        if (!active) return;
+        console.error("Failed to load invite codes:", error);
+        toast.error("Failed to refresh invite codes. Please try again.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [activeStoreId, fetchCodes, role]);
 
   useEffect(() => {
     setNewRole("editor");
@@ -94,7 +117,14 @@ const InviteCodes = () => {
       navigator.clipboard.writeText(code);
       toast.info("Code copied to clipboard");
       setInviteEmail("");
-      fetchCodes();
+      void fetchCodes()
+        .then((nextCodes) => {
+          setCodes(nextCodes);
+        })
+        .catch((fetchError) => {
+          console.error("Failed to reload invite codes:", fetchError);
+          toast.error("Failed to refresh invite codes. Please try again.");
+        });
     }
     setCreating(false);
   };

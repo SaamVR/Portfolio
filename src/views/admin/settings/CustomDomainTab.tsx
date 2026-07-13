@@ -14,12 +14,17 @@ export const CustomDomainTab = () => {
   const [savedDomain, setSavedDomain] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [checkingVerification, setCheckingVerification] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<"pending" | "active" | "error" | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     const fetchDomain = async () => {
       if (!activeStoreId) {
+        if (!active) return;
         setInitialLoading(false);
+        setCheckingVerification(false);
         setDomain("");
         setSavedDomain("");
         setVerificationStatus(null);
@@ -37,30 +42,43 @@ export const CustomDomainTab = () => {
         if (error) throw error;
 
         if (data?.custom_domain) {
+          if (!active) return;
           setDomain(data.custom_domain);
           setSavedDomain(data.custom_domain);
-          await checkVerification(data.custom_domain);
+          await checkVerification(data.custom_domain, () => active);
           return;
         }
 
+        if (!active) return;
         setDomain("");
         setSavedDomain("");
         setVerificationStatus(null);
       } catch (error) {
+        if (!active) return;
         console.error("Failed to load custom domain:", error);
         toast.error("Failed to refresh custom domain settings. Please try again.");
       } finally {
-        setInitialLoading(false);
+        if (active) {
+          setInitialLoading(false);
+        }
       }
     };
     void fetchDomain();
+
+    return () => {
+      active = false;
+    };
   }, [activeStoreId]);
 
-  const checkVerification = async (domainToCheck: string) => {
+  const checkVerification = async (domainToCheck: string, shouldApply: boolean | (() => boolean) = true) => {
+    setCheckingVerification(true);
     try {
       const res = await fetch(`/api/domains?domain=${domainToCheck}`);
       const data = await res.json();
-      
+      const canApply = typeof shouldApply === "function" ? shouldApply() : shouldApply;
+
+      if (!canApply) return;
+
       if (data.configured === false) {
         setVerificationStatus("error");
       } else if (data.verified) {
@@ -69,7 +87,15 @@ export const CustomDomainTab = () => {
         setVerificationStatus("pending");
       }
     } catch (err) {
-      setVerificationStatus("error");
+      const canApply = typeof shouldApply === "function" ? shouldApply() : shouldApply;
+      if (canApply) {
+        setVerificationStatus("error");
+      }
+    } finally {
+      const canApply = typeof shouldApply === "function" ? shouldApply() : shouldApply;
+      if (canApply) {
+        setCheckingVerification(false);
+      }
     }
   };
 
@@ -189,8 +215,8 @@ export const CustomDomainTab = () => {
               <p className="text-xs text-muted-foreground mt-2">
                 DNS can still take time to propagate globally, but once verification turns active the storefront routing should refresh quickly without waiting on a long platform cache window.
               </p>
-              <Button variant="outline" size="sm" className="w-fit mt-2" onClick={() => checkVerification(savedDomain)} disabled={initialLoading}>
-                <Loader2 className={`h-3 w-3 mr-2 ${initialLoading ? 'animate-spin' : 'hidden'}`} />
+              <Button variant="outline" size="sm" className="w-fit mt-2" onClick={() => checkVerification(savedDomain)} disabled={checkingVerification}>
+                <Loader2 className={`h-3 w-3 mr-2 ${checkingVerification ? "animate-spin" : "hidden"}`} />
                 Check Status Again
               </Button>
             </div>
@@ -217,7 +243,7 @@ export const CustomDomainTab = () => {
               <p className="text-xs text-destructive/80 mt-1">
                 We could not verify your domain status. Please check your DNS settings.
               </p>
-              <Button variant="outline" size="sm" className="w-fit mt-3 border-destructive/30 hover:bg-destructive/10" onClick={() => checkVerification(savedDomain)}>
+              <Button variant="outline" size="sm" className="w-fit mt-3 border-destructive/30 hover:bg-destructive/10" onClick={() => checkVerification(savedDomain)} disabled={checkingVerification}>
                 Retry Verification
               </Button>
             </div>

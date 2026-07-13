@@ -14,8 +14,17 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (platformRole !== "admin") return;
+    let active = true;
+
     const fetch = async () => {
+      if (platformRole !== "admin") {
+        if (active) {
+          setUsers([]);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       try {
         const [{ data: roles, error: rolesError }, { data: profiles, error: profilesError }] = await Promise.all([
@@ -33,15 +42,23 @@ const Users = () => {
           .filter((p) => roleMap[p.user_id])
           .map((p) => ({ ...p, role: roleMap[p.user_id] }));
 
+        if (!active) return;
         setUsers(combined);
       } catch (error) {
+        if (!active) return;
         console.error("Failed to load dashboard users:", error);
         toast.error("Failed to refresh dashboard users. Please try again.");
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
     void fetch();
+
+    return () => {
+      active = false;
+    };
   }, [platformRole]);
 
   if (platformRole !== "admin") return <Navigate to="/admin" replace />;

@@ -6,6 +6,14 @@ import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, typ
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
 const ROLE_FETCH_TIMEOUT_MS = 10_000;
 
+type ResolvedAccessState = {
+  memberships: StoreMembership[];
+  resolvedStoreId: string | null;
+  nextStoreRole: StoreRole;
+  nextPlatformRole: PlatformRole;
+  nextRole: AppRole;
+};
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -42,7 +50,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const fetchRole = useCallback(async (userId: string) => {
+  const applyResolvedAccessState = useCallback((resolved: ResolvedAccessState) => {
+    setActiveStoreId(resolved.resolvedStoreId);
+    setStoreMemberships(resolved.memberships);
+    setStoreRole(resolved.nextStoreRole);
+    setPlatformRole(resolved.nextPlatformRole);
+    setRole(resolved.nextRole);
+  }, [setActiveStoreId]);
+
+  const fetchRole = useCallback(async (userId: string): Promise<ResolvedAccessState> => {
     const [{ data: platformRole, error: platformRoleError }, { data: memberships, error: membershipsError }] =
       await withTimeout(
         Promise.all([
@@ -80,32 +96,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       : null;
     const membership = preferredMembership ?? membershipRows[0] ?? null;
     const resolvedStoreId = membership?.store_id ?? null;
-    setActiveStoreId(resolvedStoreId);
-    setStoreMemberships(mappedMemberships);
-
     const nextStoreRole = (membership?.role as StoreRole) ?? null;
-    const nextPlatformRole = (platformRole?.role as AppRole) ?? null;
-
-    setStoreRole(nextStoreRole);
-    setPlatformRole(nextPlatformRole);
+    const nextPlatformRole = (platformRole?.role as PlatformRole) ?? null;
+    let nextRole: AppRole = null;
 
     if (nextPlatformRole) {
-      setRole(nextPlatformRole);
-      return;
+      nextRole = nextPlatformRole;
+    } else if (nextStoreRole === "owner" || nextStoreRole === "admin") {
+      nextRole = "admin";
+    } else if (nextStoreRole === "editor" || nextStoreRole === "viewer") {
+      nextRole = "co_admin";
     }
 
-    if (nextStoreRole === "owner" || nextStoreRole === "admin") {
-      setRole("admin");
-      return;
-    }
-
-    if (nextStoreRole === "editor" || nextStoreRole === "viewer") {
-      setRole("co_admin");
-      return;
-    }
-
-    setRole(null);
-  }, [setActiveStoreId]);
+    return {
+      memberships: mappedMemberships,
+      resolvedStoreId,
+      nextStoreRole,
+      nextPlatformRole,
+      nextRole,
+    };
+  }, []);
 
   const clearAccessState = useCallback(() => {
     setRole(null);
@@ -134,13 +144,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         if (!nextUserId) {
-          clearAccessState();
+          if (mountedRef.current && requestId === permissionRequestIdRef.current) {
+            clearAccessState();
+          }
           return;
         }
 
-        await fetchRole(nextUserId);
+        const resolved = await fetchRole(nextUserId);
+        if (!mountedRef.current || requestId !== permissionRequestIdRef.current) {
+          return;
+        }
+
+        applyResolvedAccessState(resolved);
       } catch (error) {
         console.error("Auth permission refresh error:", error);
+        if (!mountedRef.current || requestId !== permissionRequestIdRef.current) {
+          return;
+        }
+
         if (!preserveExistingOnError || !nextUserId) {
           clearAccessState();
         }
@@ -151,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     },
-    [clearAccessState, fetchRole],
+    [applyResolvedAccessState, clearAccessState, fetchRole],
   );
 
   const refreshRole = useCallback(async () => {
@@ -215,8 +236,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
     };
 
+    const handleWindowFocus = () => {
+      const visibleUserId = userIdRef.current;
+      if (!visibleUserId) return;
+
+      void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
+    };
+
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleWindowFocus);
     }
 
     return () => {
@@ -224,6 +255,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleWindowFocus);
       }
     };
   }, [clearAccessState, resolvePermissions]);

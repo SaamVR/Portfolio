@@ -50,51 +50,71 @@ const AdminProducts = () => {
   const [dbTypes, setDbTypes] = useState<string[]>([]);
 
   const fetchProducts = useCallback(async () => {
+    let nextProducts: Product[] = [];
+
     if (!activeStoreId) {
-      setProducts([]);
-      setLoading(false);
-      return;
+      return nextProducts;
     }
 
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("store_id", activeStoreId as string)
-        .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("store_id", activeStoreId as string)
+      .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setProducts(data ?? []);
-    } catch (error) {
-      console.error("Failed to load products:", error);
-      toast.error("Failed to refresh products. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    if (error) throw error;
+    nextProducts = data ?? [];
+    return nextProducts;
   }, [activeStoreId]);
 
   useEffect(() => {
-    void fetchProducts();
+    let active = true;
 
-    if (!activeStoreId) {
-      setDbCategories([]);
-      setDbTypes([]);
-      return;
-    }
-
-    void Promise.all([
-      supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
-      supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
-    ]).then(([categoriesRes, typesRes]) => {
-      if (categoriesRes.error || typesRes.error) {
-        console.error("Failed to load product taxonomy:", categoriesRes.error || typesRes.error);
+    const load = async () => {
+      if (!activeStoreId) {
+        setProducts([]);
+        setDbCategories([]);
+        setDbTypes([]);
+        setLoading(false);
         return;
       }
 
-      setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
-      setDbTypes((typesRes.data ?? []).map((r: any) => r.name));
-    });
+      setLoading(true);
+      try {
+        const [productRows, categoriesRes, typesRes] = await Promise.all([
+          fetchProducts(),
+          supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
+          supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
+        ]);
+
+        if (!active) return;
+        setProducts(productRows);
+
+        if (categoriesRes.error || typesRes.error) {
+          console.error("Failed to load product taxonomy:", categoriesRes.error || typesRes.error);
+          setDbCategories([]);
+          setDbTypes([]);
+          return;
+        }
+
+        setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
+        setDbTypes((typesRes.data ?? []).map((r: any) => r.name));
+      } catch (error) {
+        if (!active) return;
+        console.error("Failed to load products:", error);
+        toast.error("Failed to refresh products. Please try again.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+    };
   }, [activeStoreId, fetchProducts]);
 
   useEffect(() => {
@@ -167,7 +187,14 @@ const AdminProducts = () => {
     }
     setSaving(false);
     setDialogOpen(false);
-    fetchProducts();
+    void fetchProducts()
+      .then((productRows) => {
+        setProducts(productRows);
+      })
+      .catch((error) => {
+        console.error("Failed to reload products:", error);
+        toast.error("Failed to refresh products. Please try again.");
+      });
   };
 
   const handleDelete = async (id: string) => {
