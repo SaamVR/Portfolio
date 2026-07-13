@@ -74,7 +74,7 @@ export function buildStoreReadinessScore({
       label: "Payment method configured",
       done: paymentConfigured,
       points: 10,
-      action: "Set up bKash, Nagad, or COD so buyers can complete checkout.",
+      action: "Set up the checkout methods this store wants to offer so buyers can complete orders.",
       href: "/admin/site-settings?tab=payment",
     },
     {

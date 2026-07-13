@@ -69,13 +69,13 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const overlayOpacity = overrides?.overlayOpacity ?? hero?.overlay_opacity ?? 50;
   const trustHighlights = [
     paymentSettings?.cod_enabled !== false
-      ? { icon: Truck, label: "Cash on delivery available" }
+      ? { icon: Truck, label: "Flexible checkout options available" }
       : null,
     paymentSettings?.bkash_enabled || paymentSettings?.nagad_enabled
-      ? { icon: CreditCard, label: "bKash and mobile payments" }
+      ? { icon: CreditCard, label: "Digital and manual payment methods supported" }
       : null,
     deliverySettings?.enabled !== false
-      ? { icon: BadgeCheck, label: `Fast delivery${deliverySettings?.free_threshold ? ` from BDT ${deliverySettings.free_threshold}` : ""}` }
+      ? { icon: BadgeCheck, label: deliverySettings?.free_threshold ? `Delivery incentives from BDT ${deliverySettings.free_threshold}` : "Delivery and fulfillment options available" }
       : null,
     { icon: ShieldCheck, label: "Trusted support after purchase" },
   ].filter(Boolean) as Array<{ icon: typeof Truck; label: string }>;

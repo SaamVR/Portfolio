@@ -53,22 +53,22 @@ const getTaglineForType = (typeName: string) => {
   switch (typeName.toLowerCase()) {
     case "t-shirt":
     case "t-shirts":
-      return "Everyday essentials";
+      return "Popular core products";
     case "polo":
     case "polos":
-      return "Smart casual staples";
+      return "Refined featured picks";
     case "shirt":
     case "shirts":
-      return "Refined & versatile";
+      return "Versatile catalog staples";
     case "drop shoulder":
     case "drop shoulders":
-      return "Bold streetwear";
+      return "Distinctive customer favorites";
     case "undergarment":
     case "undergarments":
-      return "Comfort first";
+      return "Reliable everyday basics";
     case "pants":
     case "pant":
-      return "Complete the look";
+      return "Browse complementary options";
     default:
       return "Explore this category";
   }

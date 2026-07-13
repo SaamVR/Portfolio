@@ -13,7 +13,7 @@ export const viewport = {
 export const metadata = {
   metadataBase: new URL("https://commerce-engine.local"),
   title: "Commerce Engine - Ecommerce CMS for Launching Stores",
-  description: "A mobile-first ecommerce CMS for launch templates, storefront pages, products, local payments, and store operations.",
+  description: "A mobile-first ecommerce CMS for launch templates, storefront pages, products, checkout flows, and store operations.",
   authors: [{ name: "Commerce Engine" }],
   openGraph: {
     title: "Commerce Engine - Ecommerce CMS for Launching Stores",

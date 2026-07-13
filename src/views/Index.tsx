@@ -13,7 +13,7 @@ const jsonLd = {
   "@type": "WebSite",
   name: "ThreadBD",
   url: siteUrl,
-  description: "Premium streetwear t-shirts from Bangladesh. bKash & COD accepted.",
+  description: "A configurable storefront for products, collections, and merchant-managed checkout experiences.",
   potentialAction: {
     "@type": "SearchAction",
     target: absoluteUrl("/shop?q={search_term_string}"),
