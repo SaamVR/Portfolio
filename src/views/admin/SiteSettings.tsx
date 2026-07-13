@@ -39,6 +39,7 @@ import type { Json } from "@/integrations/supabase/types";
 type StoreThemeSettingsRow = {
   preset_id: string;
   theme_package_id?: string | null;
+  theme_package_version?: number | null;
   mode: string;
   colors?: Record<string, string> | null;
   resolved_tokens?: { light?: Record<string, string>; dark?: Record<string, string> } | null;
@@ -201,13 +202,14 @@ const SiteSettings = () => {
     queryFn: async (): Promise<StoreThemeSettingsRow> => {
       const { data } = await supabase
         .from("store_themes")
-        .select("preset_id, theme_package_id, mode, colors, resolved_tokens, typography, components, custom_css")
+        .select("preset_id, theme_package_id, theme_package_version, mode, colors, resolved_tokens, typography, components, custom_css")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
       return {
         preset_id: data?.preset_id ?? "default",
         theme_package_id: data?.theme_package_id ?? null,
+        theme_package_version: typeof data?.theme_package_version === "number" ? data.theme_package_version : null,
         mode: data?.mode ?? "dark",
         colors: (typeof data?.colors === "object" && data?.colors ? data.colors : null) as StoreThemeSettingsRow["colors"],
         resolved_tokens: (typeof data?.resolved_tokens === "object" && data?.resolved_tokens ? data.resolved_tokens : null) as StoreThemeSettingsRow["resolved_tokens"],
@@ -249,6 +251,13 @@ const SiteSettings = () => {
   const isMissingActiveThemeReference = useMemo(
     () => isThemePackageReferenceMissing(themeData?.theme_package_id ?? null, themePackages),
     [themeData?.theme_package_id, themePackages],
+  );
+  const hasThemeVersionUpdate = useMemo(
+    () =>
+      typeof themeData?.theme_package_version === "number"
+      && typeof activeThemePackage.version === "number"
+      && themeData.theme_package_version < activeThemePackage.version,
+    [activeThemePackage.version, themeData?.theme_package_version],
   );
   const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
   const resolvedHeadingFont = resolveThemeFontValue(
@@ -580,6 +589,11 @@ const SiteSettings = () => {
           {isMissingActiveThemeReference ? (
             <p className="mt-2 text-sm text-amber-600">
               This store references a theme package that is no longer available. The editor is showing the nearest compatible fallback until you save a new package choice.
+            </p>
+          ) : null}
+          {hasThemeVersionUpdate ? (
+            <p className="mt-2 text-sm text-sky-600">
+              This store is using theme snapshot v{themeData?.theme_package_version} while the current shared package is v{activeThemePackage.version}. Saving theme settings will install the latest snapshot for this store.
             </p>
           ) : null}
         </div>

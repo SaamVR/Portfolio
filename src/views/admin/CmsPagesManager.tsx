@@ -66,6 +66,7 @@ type StoreRecord = {
 type ThemeRecord = {
   preset_id: string | null;
   theme_package_id?: string | null;
+  theme_package_version?: number | null;
   mode: "light" | "dark" | null;
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
@@ -246,6 +247,7 @@ export default function CmsPagesManager() {
   const [recoverableDraft, setRecoverableDraft] = useState<RecoverableDraft | null>(null);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
+  const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -278,11 +280,24 @@ export default function CmsPagesManager() {
     () => Boolean(store?.theme.themePackageId) && isThemePackageReferenceMissing(store?.theme.themePackageId ?? null, themePackages),
     [store?.theme.themePackageId, themePackages],
   );
+  const resolvedEditorThemePackage = useMemo(
+    () => (store ? resolveThemePackageById(store.theme.themePackageId, themePackages, store.theme.presetId) : null),
+    [store, themePackages],
+  );
+  const hasThemeVersionUpdate = useMemo(
+    () =>
+      Boolean(resolvedEditorThemePackage)
+      && typeof installedThemePackageVersion === "number"
+      && typeof resolvedEditorThemePackage?.version === "number"
+      && installedThemePackageVersion < resolvedEditorThemePackage.version,
+    [installedThemePackageVersion, resolvedEditorThemePackage],
+  );
 
   const loadStore = useCallback(async () => {
     setLoading(true);
     if (!activeStoreId) {
       setStore(null);
+      setInstalledThemePackageVersion(null);
       setSelectedPageId("");
       setPersistedSnapshot("");
       setRecoverableDraft(null);
@@ -302,6 +317,7 @@ export default function CmsPagesManager() {
 
       if (!storeRecord) {
         setStore(null);
+        setInstalledThemePackageVersion(null);
         setSelectedPageId("");
         setPersistedSnapshot("");
         setRecoverableDraft(null);
@@ -324,7 +340,7 @@ export default function CmsPagesManager() {
           .select("blueprint_id, business_family, catalog_mode")
           .eq("store_id", storeRecord.id)
           .maybeSingle(),
-        supabase.from("store_themes").select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
+        supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
         supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
         supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
         supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
@@ -352,6 +368,9 @@ export default function CmsPagesManager() {
       setThemePackages(loadedThemePackages);
       setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
       setStore(parsedStore);
+      setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
+        ? (themeResponse.data as ThemeRecord).theme_package_version ?? null
+        : null);
       setPersistedSnapshot(serializeStoreDraft(parsedStore));
       setLastDraftSavedAt(null);
       setSelectedPageId((current) => {
@@ -366,6 +385,7 @@ export default function CmsPagesManager() {
       console.error("Failed to load CMS store workspace:", error);
       toast.error("Failed to refresh the page builder workspace. Please try again.");
       setStore(null);
+      setInstalledThemePackageVersion(null);
     } finally {
       setLoading(false);
     }
@@ -387,6 +407,7 @@ export default function CmsPagesManager() {
     setRevisionLabel("");
     setIsMobileSettingsOpen(false);
     setPreviewViewport("desktop");
+    setInstalledThemePackageVersion(null);
     setPersistedSnapshot("");
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
@@ -1334,6 +1355,11 @@ export default function CmsPagesManager() {
                 {isMissingThemeReference ? (
                   <p className="mt-2 text-xs text-amber-600">
                     The saved theme package reference for this store is missing. Page Builder is previewing the nearest compatible fallback until you save a new package choice.
+                  </p>
+                ) : null}
+                {hasThemeVersionUpdate ? (
+                  <p className="mt-2 text-xs text-sky-600">
+                    This store is using theme snapshot v{installedThemePackageVersion} while the current package is v{resolvedEditorThemePackage?.version}. Saving Page Builder changes will install the latest snapshot for this store.
                   </p>
                 ) : null}
               </div>
