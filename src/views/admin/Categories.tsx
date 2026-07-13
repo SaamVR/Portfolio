@@ -326,7 +326,7 @@ const AdminCategories = () => {
     return categories.find((c) => c.id === parentId)?.name ?? "-";
   };
 
-  if (loading) {
+  if (loading && categories.length === 0 && types.length === 0) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

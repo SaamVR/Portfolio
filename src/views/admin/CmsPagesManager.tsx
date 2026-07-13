@@ -1178,7 +1178,7 @@ export default function CmsPagesManager() {
     return null;
   }
 
-  if (loading) {
+  if (loading && !store) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

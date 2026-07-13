@@ -607,7 +607,13 @@ const SiteSettings = () => {
 
   if (role !== "admin") return <Navigate to="/admin" replace />;
 
-  if (loading) {
+  const showBlockingLoader =
+    loading
+    && Object.keys(settings).length === 0
+    && dbCategories.length === 0
+    && dbTypes.length === 0;
+
+  if (showBlockingLoader) {
     return (
       <div className="flex h-screen flex-col gap-6 p-6">
         <Skeleton className="h-10 w-[200px]" />
