@@ -29,7 +29,13 @@ const Wishlist = () => {
               </div>
             </AnimatedSection>
 
-            {isLoading ? (
+            {!currentStore ? (
+              <AnimatedSection animation="blur">
+                <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+                  Wishlist is available only from a specific storefront.
+                </div>
+              </AnimatedSection>
+            ) : isLoading ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>

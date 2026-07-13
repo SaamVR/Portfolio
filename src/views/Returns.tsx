@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import SEOHead from "@/components/SEOHead";
 import { RefreshCcw, ShieldCheck, Clock, CheckCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 const Returns = () => {
   const currentStore = useOptionalStore();
@@ -11,6 +12,7 @@ const Returns = () => {
       <SEOHead 
         title="Returns & Exchanges" 
         description={`${storeName}'s 7-day return and exchange policy.`} 
+        canonical={absoluteStoreUrl(currentStore, "/returns")}
       />
       
       <div className="container mx-auto max-w-4xl px-4 py-16">

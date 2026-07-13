@@ -558,6 +558,26 @@ const Account = () => {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
+  if (!storeId) {
+    return (
+      <Layout>
+        <SEOHead title="My Account" description="Manage your account, orders, and addresses." noindex />
+        <PageTransition>
+          <div className="container mx-auto max-w-3xl px-4 py-12">
+            <Card className="border-border">
+              <CardContent className="p-8 text-center">
+                <User className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+                <h1 className="mb-2 font-heading text-2xl font-bold text-foreground">Open a storefront account page</h1>
+                <p className="text-sm text-muted-foreground">
+                  Orders, addresses, wishlist items, and reviews are stored per storefront. Open your account from a specific store to manage them.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </PageTransition>
+      </Layout>
+    );
+  }
 
   const authorName =
     profile?.display_name || profile?.email?.split("@")[0] || user.email?.split("@")[0] || "Customer";

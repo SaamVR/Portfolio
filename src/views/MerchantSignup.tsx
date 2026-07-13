@@ -270,15 +270,16 @@ export default function MerchantSignup() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(String(data.error));
+      if (!data?.store_id) {
+        throw new Error("Workspace was created without a store id. Please try again.");
+      }
 
       await refreshRole();
-      if (data?.store_id) {
-        setActiveStoreId(data.store_id);
-      }
+      setActiveStoreId(data.store_id);
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
       
       // Force full reload or hard navigation if they are already logged in to reset contexts
-      window.location.href = `/admin/onboarding?storeId=${data.store_id}`;
+      window.location.href = data.dashboard_path || `/admin/onboarding?storeId=${data.store_id}`;
     } catch (error: any) {
       toast.error(error.message || "Failed to create workspace");
     } finally {
