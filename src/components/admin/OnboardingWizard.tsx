@@ -47,9 +47,9 @@ import {
   buildBlueprintSiteSettingsEntries,
   fallbackStoreBlueprints,
   findStoreBlueprintById,
-  getStoreBlueprintById,
   getStoreBlueprintGroups,
   loadStoreBlueprints,
+  resolveStoreBlueprint,
   type StoreBlueprintDefinition,
 } from "@/lib/cms/store-blueprints";
 import {
@@ -93,7 +93,7 @@ function getBlueprintPaymentDefaultsFromCollection(
   blueprintId: string,
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): LaunchTemplatePaymentDefaults {
-  const blueprint = findStoreBlueprintById(blueprintId, blueprints) ?? getStoreBlueprintById(blueprintId);
+  const blueprint = resolveStoreBlueprint(blueprintId, blueprints);
   const blueprintPaymentSettings = blueprint.defaultSiteSettings.payment_settings;
   if (typeof blueprintPaymentSettings === "object" && blueprintPaymentSettings) {
     const paymentSettings = blueprintPaymentSettings as Record<string, unknown>;
@@ -142,7 +142,7 @@ function draftFromBlueprint(
   previous?: Partial<DraftState>,
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): DraftState {
-  const blueprint = findStoreBlueprintById(blueprintId, blueprints) ?? getStoreBlueprintById(blueprintId);
+  const blueprint = resolveStoreBlueprint(blueprintId, blueprints);
   const themePackage = getThemePackageById(previous?.themePackageId ?? blueprint.defaultTheme.presetId, themePackages);
   const storeName = previous?.storeName || getBlueprintDraftStoreName(blueprint);
 
@@ -251,7 +251,7 @@ function buildPreviewStore(
   pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): Store {
-  const blueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
+  const blueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
   const themePackage = getThemePackageById(draft.themePackageId, themePackages);
   const templatePages = applyCatalogModeToPages(
     applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint, pageBlueprints), draft),
@@ -309,7 +309,7 @@ export default function OnboardingWizard() {
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
   const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
 
-  const blueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
+  const blueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
   const steps = blueprint.onboarding.steps;
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
@@ -393,7 +393,7 @@ export default function OnboardingWizard() {
             ?? getDefaultBlueprintId(loadedBlueprints),
           loadedBlueprints,
         );
-        const safeBlueprint = resolvedBlueprint ?? getStoreBlueprintById(getDefaultBlueprintId(loadedBlueprints));
+        const safeBlueprint = resolvedBlueprint ?? resolveStoreBlueprint(getDefaultBlueprintId(loadedBlueprints), loadedBlueprints);
 
         setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
           storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
@@ -512,7 +512,7 @@ export default function OnboardingWizard() {
 
     setSaving(true);
     try {
-      const selectedBlueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
+      const selectedBlueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
       const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
       const pages = buildPreviewStore(
         { ...draft, isPublished: publish },

@@ -313,6 +313,16 @@ export function getStoreBlueprintById(id: string | null | undefined): StoreBluep
     ?? fallbackStoreBlueprints[0];
 }
 
+export function resolveStoreBlueprint(
+  id: string | null | undefined,
+  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+): StoreBlueprintDefinition {
+  return findStoreBlueprintById(id, blueprints)
+    ?? findStoreBlueprintById("general-catalog", blueprints)
+    ?? getStoreBlueprintById(id)
+    ?? fallbackStoreBlueprints[0];
+}
+
 export function getStoreBlueprintGroups(blueprints: StoreBlueprintDefinition[]) {
   return blueprints.reduce<Record<string, StoreBlueprintDefinition[]>>((accumulator, blueprint) => {
     if (!accumulator[blueprint.group]) {

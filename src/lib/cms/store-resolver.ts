@@ -5,7 +5,7 @@ import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-bluepr
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
-import { getStoreBlueprintById, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, getThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 const DEFAULT_STORE_CURRENCY_CODE = "BDT";
@@ -130,7 +130,7 @@ export function buildResolvedStoreFromRecords(
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
   pageBlueprints: CmsPageBlueprint[] = [],
 ): Store {
-  const blueprint = blueprintOverride ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const blueprint = blueprintOverride ?? resolveStoreBlueprint(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
   const fallbackTheme = getThemePackageById(
     theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
     themePackages,

@@ -49,7 +49,7 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, findStoreBlueprintById, getStoreBlueprintById, loadStoreBlueprints, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
 import { getThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
@@ -157,8 +157,10 @@ function mapRecordsToStore(
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
   pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): Store {
-  const blueprint = findStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog", blueprints)
-    ?? getStoreBlueprintById(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const blueprint = resolveStoreBlueprint(
+    businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog",
+    blueprints,
+  );
   const fallbackTheme = getThemePackageById(
     theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
     themePackages,
@@ -213,7 +215,7 @@ function mapRecordsToStore(
 }
 
 function getBlueprintBootstrapStoreName(blueprintId: string) {
-  const blueprint = getStoreBlueprintById(blueprintId);
+  const blueprint = resolveStoreBlueprint(blueprintId);
   return `${blueprint.shortName} Store`;
 }
 
@@ -250,7 +252,7 @@ export default function CmsPagesManager() {
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
   const activeBlueprint = useMemo(
-    () => findStoreBlueprintById(storeBlueprintId, storeBlueprints) ?? getStoreBlueprintById(storeBlueprintId),
+    () => resolveStoreBlueprint(storeBlueprintId, storeBlueprints),
     [storeBlueprintId, storeBlueprints],
   );
   const availablePageBlueprints = useMemo(
@@ -561,7 +563,7 @@ export default function CmsPagesManager() {
 
     setBootstrapping(true);
 
-    const blueprint = getStoreBlueprintById(storeBlueprintId);
+    const blueprint = resolveStoreBlueprint(storeBlueprintId, storeBlueprints);
     const seedPages = instantiateStorePagesFromBlueprint(blueprint.id, pageBlueprints);
     const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, themePackages);
 
