@@ -1,4 +1,9 @@
-import { defaultStore } from "@/lib/cms/default-store";
+import {
+  DEFAULT_STORE_CURRENCY_CODE,
+  DEFAULT_STORE_DESCRIPTION,
+  DEFAULT_STORE_LOCALE,
+  defaultStore,
+} from "@/lib/cms/default-store";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
@@ -7,9 +12,6 @@ import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
-
-const DEFAULT_STORE_CURRENCY_CODE = "BDT";
-const DEFAULT_STORE_LOCALE = "en-BD";
 
 interface StoreRow {
   id: string;
@@ -176,7 +178,7 @@ export function buildResolvedStoreFromRecords(
     id: store.id,
     name: store.name,
     slug: store.slug,
-    description: store.description ?? blueprint.storeDescription ?? defaultStore.description,
+    description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
     locale: store.locale ?? DEFAULT_STORE_LOCALE,
     isPublished: store.is_published ?? false,

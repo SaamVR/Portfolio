@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { defaultStore } from "@/lib/cms/default-store";
+import { DEFAULT_STORE_ID } from "@/lib/cms/default-store";
 import { getStoreBySlug, isLocalStorefrontHostname, resolveStoreByHostname } from "@/lib/cms/store-resolver";
 
 function normalizeRequestHost(hostname?: string | null) {
@@ -14,7 +14,7 @@ function normalizeRequestHost(hostname?: string | null) {
 
 export function shouldTryLocalStoreSlugFallback(hostname?: string | null, resolvedStoreId?: string | null) {
   const normalizedHost = normalizeRequestHost(hostname);
-  return (resolvedStoreId === defaultStore.id || !resolvedStoreId)
+  return (resolvedStoreId === DEFAULT_STORE_ID || !resolvedStoreId)
     && (normalizedHost === "localhost" || normalizedHost === "127.0.0.1");
 }
 

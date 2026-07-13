@@ -30,7 +30,6 @@ import { useAuth } from "@/hooks/auth-context";
 import { useSeedData } from "@/hooks/useSeedData";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
-import { defaultStore } from "@/lib/cms/default-store";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";

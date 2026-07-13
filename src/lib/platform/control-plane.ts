@@ -1,4 +1,4 @@
-import { defaultStore } from "@/lib/cms/default-store";
+import { DEFAULT_STORE_ID } from "@/lib/cms/default-store";
 
 export const PLATFORM_FEATURE_ORDER = [
   "cms_pages",
@@ -77,7 +77,7 @@ export function normalizeEmail(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase();
 }
 
-export function getDefaultLifecycleState(storeId: string = defaultStore.id): StoreLifecycleStateRecord {
+export function getDefaultLifecycleState(storeId: string = DEFAULT_STORE_ID): StoreLifecycleStateRecord {
   return {
     store_id: storeId,
     lifecycle_status: "active",

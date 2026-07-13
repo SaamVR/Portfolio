@@ -35,7 +35,11 @@ import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
-import { defaultStore } from "@/lib/cms/default-store";
+import {
+  DEFAULT_STORE_CURRENCY_CODE,
+  DEFAULT_STORE_DESCRIPTION,
+  DEFAULT_STORE_LOCALE,
+} from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
@@ -173,9 +177,9 @@ function mapRecordsToStore(
     id: store.id,
     name: store.name,
     slug: store.slug,
-    description: store.description ?? blueprint.storeDescription ?? defaultStore.description,
-    currencyCode: store.currency_code ?? defaultStore.currencyCode,
-    locale: store.locale ?? defaultStore.locale,
+    description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
+    currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
+    locale: store.locale ?? DEFAULT_STORE_LOCALE,
     isPublished: store.is_published ?? false,
     theme: {
       presetId: theme?.preset_id ?? fallbackTheme.presetId,
