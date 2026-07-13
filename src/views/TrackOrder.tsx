@@ -18,6 +18,7 @@ const STATUS_STEPS = [
 
 const TrackOrder = () => {
   const currentStore = useOptionalStore();
+  const storeId = currentStore?.id;
   const storeName = currentStore?.name ?? "your store";
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,7 +31,7 @@ const TrackOrder = () => {
     const trimmed = query.trim().toUpperCase();
     const trimmedPhone = phone.trim();
 
-    if (!trimmed || !trimmedPhone) return;
+    if (!trimmed || !trimmedPhone || !storeId) return;
 
     setLoading(true);
     setOrder(null);
@@ -39,6 +40,7 @@ const TrackOrder = () => {
     const { data, error } = await supabase
       .from("orders")
       .select("id, order_number, status, items, subtotal, delivery_fee, total, payment_method, created_at")
+      .eq("store_id", storeId)
       .eq("order_number", trimmed)
       .eq("customer_phone", trimmedPhone)
       .maybeSingle();
@@ -100,11 +102,17 @@ const TrackOrder = () => {
                 className="h-11"
               />
             </div>
-            <Button type="submit" disabled={loading} className="h-11 gap-2 px-6">
+            <Button type="submit" disabled={loading || !storeId} className="h-11 gap-2 px-6">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Track
             </Button>
           </form>
+
+          {!storeId ? (
+            <div className="rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground">
+              Order tracking is available only from a specific storefront.
+            </div>
+          ) : null}
 
           {notFound && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
