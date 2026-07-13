@@ -386,7 +386,18 @@ export default function StoreBackupManager() {
       await upsertRows("customer_addresses", rewrittenData.customer_addresses ?? []);
       await upsertRows("store_pages", rewrittenData.store_pages ?? []);
       await upsertRows("store_page_blocks", rewrittenData.store_page_blocks ?? []);
-      await upsertRows("store_page_revisions", rewrittenData.store_page_revisions ?? []);
+      const importedRevisions = (rewrittenData.store_page_revisions ?? []).map((row: any) => ({
+        id: crypto.randomUUID(),
+        page_id: row?.page_id,
+        store_id: targetStore.id,
+        revision_label: typeof row?.revision_label === "string" && row.revision_label.trim().length > 0
+          ? row.revision_label.trim()
+          : "Imported revision",
+        blocks_snapshot: row?.blocks_snapshot ?? [],
+        changed_by: null,
+        created_at: new Date().toISOString(),
+      }));
+      await upsertRows("store_page_revisions", importedRevisions);
 
       const siteSettingsRows = (rewrittenData.site_settings ?? []).map((row: any) => ({
         ...row,
@@ -428,9 +439,15 @@ export default function StoreBackupManager() {
         const importedMemberships = (rewrittenData.store_memberships ?? [])
           .filter((row: any) => row.user_id)
           .map((row: any) => ({
-            ...row,
             id: crypto.randomUUID(),
             store_id: targetStore.id,
+            user_id: row.user_id,
+            role: row?.role === "owner" || row?.role === "admin" || row?.role === "editor" || row?.role === "viewer"
+              ? row.role
+              : "viewer",
+            invited_by: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }));
 
         if (importedMemberships.length > 0) {
