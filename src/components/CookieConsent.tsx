@@ -1,28 +1,32 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const COOKIE_CONSENT_KEY = "threadbd-cookie-consent";
 
 const CookieConsent = () => {
+  const currentStore = useOptionalStore();
+  const storageKey = getScopedStorefrontStorageKey(COOKIE_CONSENT_KEY, currentStore?.id);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
+    const consent = localStorage.getItem(storageKey);
     if (!consent) {
       // Small delay to not overwhelm the user immediately
       const timer = setTimeout(() => setIsVisible(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [storageKey]);
 
   const handleAccept = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    localStorage.setItem(storageKey, "accepted");
     setIsVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "declined");
+    localStorage.setItem(storageKey, "declined");
     setIsVisible(false);
   };
 
