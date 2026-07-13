@@ -140,7 +140,7 @@ const SiteSettings = () => {
     { value: "themes", label: "Themes Customizer", category: "Design System", keywords: "theme colors palette presets font layout border radius container width preset preset presets typography style styles" },
     { value: "upsells", label: "Upsells & Popups", category: "Checkout & Log", keywords: "popup count-down upsells discount coupon exit-intent popups modal drawer card" },
     { value: "payment", label: "Payment Config", category: "Checkout & Log", keywords: "payment bkash nagad api cash on delivery prepayment incentive method credentials gateway credentials" },
-    { value: "delivery", label: "Delivery Options", category: "Checkout & Log", keywords: "delivery fee shipping rate inside outside dhaka threshold free shipping weight" },
+    { value: "delivery", label: "Delivery Options", category: "Checkout & Log", keywords: "delivery fee shipping rate primary secondary zone threshold free shipping weight" },
     { value: "loyalty", label: "Loyalty & Rewards", category: "Checkout & Log", keywords: "loyalty rewards point balance rate cashback checkout signup bonus points reward rewards" },
     { value: "support", label: "Support & WhatsApp", category: "Information", keywords: "support whatsapp help phone message number contact support support number helpline" },
     { value: "about", label: "About Page", category: "Information", keywords: "about us page text details description history values story team" },
@@ -1090,6 +1090,18 @@ const SiteSettings = () => {
               </div>
               {settings.delivery_settings?.enabled && (
                 <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>Primary Zone Label</Label>
+                      <Input value={settings.delivery_settings?.primary_zone_label ?? ""} onChange={(e) => update("delivery_settings", "primary_zone_label", e.target.value)} placeholder="Primary delivery zone" />
+                      <p className="text-xs text-muted-foreground">Shown in guest checkout for the default delivery area.</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Extended Zone Label</Label>
+                      <Input value={settings.delivery_settings?.secondary_zone_label ?? ""} onChange={(e) => update("delivery_settings", "secondary_zone_label", e.target.value)} placeholder="Extended delivery zone" />
+                      <p className="text-xs text-muted-foreground">Shown for the second delivery area with a different fee.</p>
+                    </div>
+                  </div>
                   <div className="grid gap-2">
                     <Label>Primary Delivery Fee</Label>
                     <Input type="number" value={settings.delivery_settings?.delivery_fee ?? 80} onChange={(e) => update("delivery_settings", "delivery_fee", Number(e.target.value))} placeholder="80" min={0} />

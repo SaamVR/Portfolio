@@ -307,7 +307,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                 { key: "name", label: "Full Name", placeholder: "e.g. Hasan Mahmud" },
                 { key: "phone", label: "Phone Number", placeholder: "01XXXXXXXXX" },
                 { key: "address", label: "Delivery Address", placeholder: "House, Road, Area" },
-                { key: "city", label: "City", placeholder: "Dhaka" },
+                { key: "city", label: "City", placeholder: "City or delivery area" },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label className="mb-1 block text-sm font-medium text-foreground">{label}</label>

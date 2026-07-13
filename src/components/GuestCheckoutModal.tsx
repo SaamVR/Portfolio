@@ -64,6 +64,12 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountLoading, setDiscountLoading] = useState(false);
   const [discountApplied, setDiscountApplied] = useState(false);
+  const primaryZoneLabel = typeof deliverySettings?.primary_zone_label === "string" && deliverySettings.primary_zone_label.trim()
+    ? deliverySettings.primary_zone_label.trim()
+    : "Primary delivery zone";
+  const secondaryZoneLabel = typeof deliverySettings?.secondary_zone_label === "string" && deliverySettings.secondary_zone_label.trim()
+    ? deliverySettings.secondary_zone_label.trim()
+    : "Extended delivery zone";
 
   const baseDeliveryFee = location === "dhaka" ? (deliverySettings?.delivery_fee || 80) : (deliverySettings?.delivery_fee_outside || 150);
   const deliveryFee = deliverySettings?.enabled && checkoutSubtotal < (deliverySettings?.free_threshold || 2000) ? baseDeliveryFee : 0;
@@ -142,13 +148,22 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
             address: prev.address || data.address,
           }));
           if (data.city) {
-            setLocation(data.city.toLowerCase() === "dhaka" ? "dhaka" : "outside");
+            const normalizedCity = data.city.toLowerCase();
+            const normalizedPrimary = primaryZoneLabel.toLowerCase();
+            const normalizedSecondary = secondaryZoneLabel.toLowerCase();
+            setLocation(
+              normalizedCity === "dhaka" || normalizedCity === normalizedPrimary
+                ? "dhaka"
+                : normalizedCity === "outside dhaka" || normalizedCity === normalizedSecondary
+                  ? "outside"
+                  : "dhaka",
+            );
           }
         }
       };
       fetchAddress();
     }
-  }, [checkoutStoreId, formData.name, open, user]);
+  }, [checkoutStoreId, formData.name, open, primaryZoneLabel, secondaryZoneLabel, user]);
 
   if (!open || !checkoutStoreId) return null;
 
@@ -220,7 +235,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
         customer_name: formData.name,
         customer_phone: formData.phone,
         shipping_address: formData.address,
-        shipping_city: location === "dhaka" ? "Dhaka" : "Outside Dhaka",
+        shipping_city: location === "dhaka" ? primaryZoneLabel : secondaryZoneLabel,
         payment_method: paymentMethod === "prepaid" ? paymentGateway : "cod",
         notes: formData.note + 
               (isBkashGateway ? " | Payment: bKash PGW (Automated)" : (paymentMethod === "prepaid" ? ` | TrxID: ${trxId}` : "")) + 
@@ -360,7 +375,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                         location === "dhaka" ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm" : "border-border bg-background hover:border-primary/50"
                       )}
                     >
-                      <span className="font-semibold text-sm">Inside Dhaka</span>
+                      <span className="font-semibold text-sm">{primaryZoneLabel}</span>
                       <p className="text-xs text-muted-foreground mt-1">
                         {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee || 80}`}
                       </p>
@@ -372,7 +387,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                         location === "outside" ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm" : "border-border bg-background hover:border-primary/50"
                       )}
                     >
-                      <span className="font-semibold text-sm">Outside Dhaka</span>
+                      <span className="font-semibold text-sm">{secondaryZoneLabel}</span>
                       <p className="text-xs text-muted-foreground mt-1">
                         {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee_outside || 150}`}
                       </p>
