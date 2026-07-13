@@ -5,6 +5,7 @@ import {
   buildThemePackageExport,
   fallbackThemePackages,
   parseThemePackageImport,
+  resolveThemePackageById,
 } from "@/lib/theme-packages";
 
 describe("theme package import/export", () => {
@@ -44,5 +45,10 @@ describe("theme package import/export", () => {
     });
 
     assert.throws(() => parseThemePackageImport(raw), /unsafe/i);
+  });
+
+  it("uses the explicit fallback package id before falling back to the first package", () => {
+    const resolved = resolveThemePackageById("missing-private-theme", fallbackThemePackages, "warm-earth");
+    expect(resolved.id).toBe("warm-earth");
   });
 });

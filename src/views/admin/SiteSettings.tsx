@@ -28,7 +28,7 @@ import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from
 import {
   buildThemePackageExport,
   fallbackThemePackages,
-  getThemePackageById,
+  resolveThemePackageById,
   loadThemePackages,
   parseThemePackageImport,
   type ThemePackageDefinition,
@@ -242,8 +242,8 @@ const SiteSettings = () => {
   }, [activeThemeId]);
 
   const activeThemePackage = useMemo(
-    () => getThemePackageById(localThemeId, themePackages),
-    [localThemeId, themePackages],
+    () => resolveThemePackageById(localThemeId, themePackages, themeData?.preset_id ?? "default"),
+    [localThemeId, themeData?.preset_id, themePackages],
   );
   const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
   const resolvedHeadingFont = resolveThemeFontValue(

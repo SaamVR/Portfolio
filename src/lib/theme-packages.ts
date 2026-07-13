@@ -189,14 +189,34 @@ export async function loadThemePackages(
   return Array.from(byId.values());
 }
 
+export function findThemePackageById(
+  packageId: string | null | undefined,
+  packages: ThemePackageDefinition[] = fallbackThemePackages,
+) {
+  if (!packageId) {
+    return undefined;
+  }
+
+  return packages.find((item) => item.id === packageId || item.slug === packageId || item.presetId === packageId)
+    ?? fallbackThemePackages.find((item) => item.id === packageId || item.slug === packageId || item.presetId === packageId);
+}
+
+export function resolveThemePackageById(
+  packageId: string | null | undefined,
+  packages: ThemePackageDefinition[] = fallbackThemePackages,
+  fallbackPackageId?: string | null,
+): ThemePackageDefinition {
+  return findThemePackageById(packageId, packages)
+    ?? findThemePackageById(fallbackPackageId, packages)
+    ?? packages[0]
+    ?? fallbackThemePackages[0];
+}
+
 export function getThemePackageById(
   packageId: string | null | undefined,
   packages: ThemePackageDefinition[] = fallbackThemePackages,
 ): ThemePackageDefinition {
-  return packages.find((item) => item.id === packageId || item.slug === packageId || item.presetId === packageId)
-    ?? fallbackThemePackages.find((item) => item.id === packageId || item.presetId === packageId)
-    ?? packages[0]
-    ?? fallbackThemePackages[0];
+  return resolveThemePackageById(packageId, packages);
 }
 
 export function buildThemePackageExport(themePackage: ThemePackageDefinition) {

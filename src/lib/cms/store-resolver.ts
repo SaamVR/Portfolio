@@ -6,7 +6,7 @@ import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
-import { fallbackThemePackages, getThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 const DEFAULT_STORE_CURRENCY_CODE = "BDT";
 const DEFAULT_STORE_LOCALE = "en-BD";
@@ -131,9 +131,10 @@ export function buildResolvedStoreFromRecords(
   pageBlueprints: CmsPageBlueprint[] = [],
 ): Store {
   const blueprint = blueprintOverride ?? resolveStoreBlueprint(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
-  const fallbackTheme = getThemePackageById(
-    theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
+  const fallbackTheme = resolveThemePackageById(
+    theme?.theme_package_id,
     themePackages,
+    theme?.preset_id ?? blueprint.defaultTheme.presetId,
   );
   const fallbackPages = instantiateStorePagesFromBlueprint(blueprint, pageBlueprints);
   const mappedPages = applyLegacyHomepageSettingsToPages(

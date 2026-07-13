@@ -50,7 +50,7 @@ import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
-import { getThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
   id: string;
@@ -161,9 +161,10 @@ function mapRecordsToStore(
     businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog",
     blueprints,
   );
-  const fallbackTheme = getThemePackageById(
-    theme?.theme_package_id ?? theme?.preset_id ?? blueprint.defaultTheme.presetId,
+  const fallbackTheme = resolveThemePackageById(
+    theme?.theme_package_id,
     themePackages,
+    theme?.preset_id ?? blueprint.defaultTheme.presetId,
   );
 
   return storeSchema.parse({
@@ -565,7 +566,7 @@ export default function CmsPagesManager() {
 
     const blueprint = resolveStoreBlueprint(storeBlueprintId, storeBlueprints);
     const seedPages = instantiateStorePagesFromBlueprint(blueprint.id, pageBlueprints);
-    const themePackage = getThemePackageById(blueprint.defaultTheme.presetId, themePackages);
+    const themePackage = resolveThemePackageById(blueprint.defaultTheme.presetId, themePackages, blueprint.defaultTheme.presetId);
 
     const { error: storeError } = await supabase.from("stores").upsert(
       {
@@ -957,7 +958,7 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const selectedThemePackage = getThemePackageById(safeStore.theme.themePackageId ?? safeStore.theme.presetId, themePackages);
+    const selectedThemePackage = resolveThemePackageById(safeStore.theme.themePackageId, themePackages, safeStore.theme.presetId);
 
     const { error: themeError } = await supabase.from("store_themes").upsert(
       {
@@ -1342,7 +1343,7 @@ export default function CmsPagesManager() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {getThemePackageById(store.theme.themePackageId ?? store.theme.presetId, themePackages).description}
+                  {resolveThemePackageById(store.theme.themePackageId, themePackages, store.theme.presetId).description}
                 </p>
                 {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
               </div>

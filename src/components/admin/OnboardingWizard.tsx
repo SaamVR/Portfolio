@@ -54,7 +54,7 @@ import {
 } from "@/lib/cms/store-blueprints";
 import {
   fallbackThemePackages,
-  getThemePackageById,
+  resolveThemePackageById,
   loadThemePackages,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
@@ -143,7 +143,7 @@ function draftFromBlueprint(
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): DraftState {
   const blueprint = resolveStoreBlueprint(blueprintId, blueprints);
-  const themePackage = getThemePackageById(previous?.themePackageId ?? blueprint.defaultTheme.presetId, themePackages);
+  const themePackage = resolveThemePackageById(previous?.themePackageId, themePackages, blueprint.defaultTheme.presetId);
   const storeName = previous?.storeName || getBlueprintDraftStoreName(blueprint);
 
   return {
@@ -252,7 +252,7 @@ function buildPreviewStore(
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): Store {
   const blueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
-  const themePackage = getThemePackageById(draft.themePackageId, themePackages);
+  const themePackage = resolveThemePackageById(draft.themePackageId, themePackages, blueprint.defaultTheme.presetId);
   const templatePages = applyCatalogModeToPages(
     applyHeroToPages(instantiateStorePagesFromBlueprint(blueprint, pageBlueprints), draft),
     draft,
@@ -513,7 +513,7 @@ export default function OnboardingWizard() {
     setSaving(true);
     try {
       const selectedBlueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
-      const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
+      const selectedThemePackage = resolveThemePackageById(draft.themePackageId, themePackages, selectedBlueprint.defaultTheme.presetId);
       const pages = buildPreviewStore(
         { ...draft, isPublished: publish },
         activeStoreId,

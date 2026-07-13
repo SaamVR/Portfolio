@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import type { StoreTheme } from "@/lib/cms/schema";
-import { fallbackThemePackages, getThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { fallbackThemePackages, resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 export function getStoreThemeStyle(
   theme: StoreTheme,
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
 ): CSSProperties {
-  const themePackage = getThemePackageById(theme.themePackageId ?? theme.presetId, themePackages);
+  const themePackage = resolveThemePackageById(theme.themePackageId, themePackages, theme.presetId);
   const vars = Object.keys(theme.customCssVars).length > 0
     ? theme.customCssVars
     : (theme.mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark);
@@ -62,7 +62,7 @@ export function getStoreThemeStyleFromRecordWithPackages(
   theme: StoredThemeRecord,
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
 ): CSSProperties {
-  const themePackage = getThemePackageById(theme.theme_package_id ?? theme.preset_id, themePackages);
+  const themePackage = resolveThemePackageById(theme.theme_package_id, themePackages, theme.preset_id);
   const mode = theme.mode === "light" ? "light" : "dark";
   const resolvedVars = theme.colors ?? theme.resolved_tokens?.[mode] ?? (mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark);
   const style: CSSProperties & Record<string, string> = {};
