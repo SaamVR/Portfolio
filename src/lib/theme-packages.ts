@@ -174,18 +174,48 @@ export async function loadThemePackages(
     .order("name");
 
   const { data, error } = storeId
-    ? await query.or(`and(source_type.in.(system,admin_shared),is_active.eq.true),owner_store_id.eq.${storeId}`)
-    : await query.eq("is_active", true).in("source_type", ["system", "admin_shared"]);
+    ? await query.or(`source_type.in.(system,admin_shared),owner_store_id.eq.${storeId}`)
+    : await query.in("source_type", ["system", "admin_shared"]);
 
   if (error || !Array.isArray(data) || data.length === 0) {
     return fallbackThemePackages;
   }
 
-  const merged = data.map((row: ThemePackageRow) => mergeThemePackage(row));
+  const visibleRows = data.filter((row: ThemePackageRow) => {
+    const isShared = row.source_type === "system" || row.source_type === "admin_shared";
+    return !isShared || row.is_active !== false;
+  });
+  const merged = visibleRows.map((row: ThemePackageRow) => mergeThemePackage(row));
+  const inactiveIdentifiers = new Set(
+    data
+      .filter((row: ThemePackageRow) => row.is_active === false)
+      .flatMap((row: ThemePackageRow) =>
+        [row.id, row.slug, row.preset_id].filter((value): value is string => typeof value === "string" && value.length > 0),
+      ),
+  );
   const byId = new Map<string, ThemePackageDefinition>();
-  for (const item of [...fallbackThemePackages, ...merged]) {
+
+  for (const item of merged) {
     byId.set(item.id, item);
   }
+
+  for (const item of fallbackThemePackages) {
+    if (
+      inactiveIdentifiers.has(item.id)
+      || inactiveIdentifiers.has(item.slug)
+      || inactiveIdentifiers.has(item.presetId)
+      || Array.from(byId.values()).some((existing) =>
+        existing.id === item.id
+        || existing.slug === item.slug
+        || existing.presetId === item.presetId,
+      )
+    ) {
+      continue;
+    }
+
+    byId.set(item.id, item);
+  }
+
   return Array.from(byId.values());
 }
 

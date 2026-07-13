@@ -4,6 +4,7 @@ import {
   THEME_PACKAGE_COMPATIBILITY_VERSION,
   buildThemePackageExport,
   fallbackThemePackages,
+  loadThemePackages,
   parseThemePackageImport,
   resolveThemePackageById,
 } from "@/lib/theme-packages";
@@ -50,5 +51,76 @@ describe("theme package import/export", () => {
   it("uses the explicit fallback package id before falling back to the first package", () => {
     const resolved = resolveThemePackageById("missing-private-theme", fallbackThemePackages, "warm-earth");
     expect(resolved.id).toBe("warm-earth");
+  });
+
+  it("does not resurrect inactive theme packages from fallback presets", async () => {
+    const packages = await loadThemePackages({
+      from() {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  eq() {
+                    return {
+                      in() {
+                        return Promise.resolve({
+                          data: [
+                            {
+                              id: "default",
+                              slug: "default",
+                              name: "Emerald Dark",
+                              description: "Inactive shared theme",
+                              preview_metadata: { bg: "#101418", primary: "#2ea96b", accent: "#d4a534" },
+                              source_type: "system",
+                              version: 1,
+                              compatibility_version: 1,
+                              preset_id: "default",
+                              mode: "dark",
+                              tokens: fallbackThemePackages[0]?.tokens ?? {},
+                              component_recipes: {},
+                              custom_css: null,
+                              owner_store_id: null,
+                              is_active: false,
+                            },
+                          ],
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                  in() {
+                    return Promise.resolve({
+                      data: [
+                        {
+                          id: "default",
+                          slug: "default",
+                          name: "Emerald Dark",
+                          description: "Inactive shared theme",
+                          preview_metadata: { bg: "#101418", primary: "#2ea96b", accent: "#d4a534" },
+                          source_type: "system",
+                          version: 1,
+                          compatibility_version: 1,
+                          preset_id: "default",
+                          mode: "dark",
+                          tokens: fallbackThemePackages[0]?.tokens ?? {},
+                          component_recipes: {},
+                          custom_css: null,
+                          owner_store_id: null,
+                          is_active: false,
+                        },
+                      ],
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    } as any);
+
+    expect(packages.some((item) => item.slug === "default")).toBe(false);
   });
 });
