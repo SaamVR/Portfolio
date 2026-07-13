@@ -274,6 +274,7 @@ Deno.serve(async (req) => {
       supabaseAdmin.from("store_business_profiles").upsert({
         store_id: store.id,
         blueprint_id: resolvedBusinessType,
+        blueprint_version: 1,
         business_family: blueprint?.business_family ?? "commerce",
         catalog_mode: blueprint?.catalog_mode ?? "multi_product",
       }, { onConflict: "store_id" }),

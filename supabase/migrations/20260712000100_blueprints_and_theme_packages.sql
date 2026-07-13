@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS public.theme_packages (
 CREATE TABLE IF NOT EXISTS public.store_business_profiles (
   store_id uuid PRIMARY KEY REFERENCES public.stores(id) ON DELETE CASCADE,
   blueprint_id text,
+  blueprint_version integer,
   business_family text NOT NULL DEFAULT 'commerce',
   catalog_mode text NOT NULL DEFAULT 'multi_product',
   enabled_modules jsonb NOT NULL DEFAULT '[]'::jsonb,

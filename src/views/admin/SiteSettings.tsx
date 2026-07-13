@@ -48,6 +48,11 @@ type StoreThemeSettingsRow = {
   custom_css?: string | null;
 };
 
+type StoreBusinessProfileSettingsRow = {
+  blueprint_id?: string | null;
+  blueprint_version?: number | null;
+};
+
 const headingFontOptions = {
   inter: "Inter, sans-serif",
   playfair: "'Playfair Display', serif",
@@ -220,6 +225,24 @@ const SiteSettings = () => {
     },
     enabled: Boolean(activeStoreId),
   });
+  const { data: businessProfileData } = useQuery({
+    queryKey: ["store_business_profiles", activeStoreId, "site_settings"],
+    queryFn: async (): Promise<StoreBusinessProfileSettingsRow | null> => {
+      const { data } = await supabase
+        .from("store_business_profiles")
+        .select("blueprint_id, blueprint_version")
+        .eq("store_id", activeStoreId as string)
+        .maybeSingle();
+
+      return data
+        ? {
+            blueprint_id: data.blueprint_id ?? null,
+            blueprint_version: typeof data.blueprint_version === "number" ? data.blueprint_version : null,
+          }
+        : null;
+    },
+    enabled: Boolean(activeStoreId),
+  });
 
   const { data: notificationEvents, isLoading: notificationEventsLoading } = useQuery({
     queryKey: ["email-events", activeStoreId],
@@ -258,6 +281,12 @@ const SiteSettings = () => {
       && typeof activeThemePackage.version === "number"
       && themeData.theme_package_version < activeThemePackage.version,
     [activeThemePackage.version, themeData?.theme_package_version],
+  );
+  const hasBlueprintVersionUpdate = useMemo(
+    () =>
+      typeof businessProfileData?.blueprint_version === "number"
+      && businessProfileData.blueprint_version < 1,
+    [businessProfileData?.blueprint_version],
   );
   const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
   const resolvedHeadingFont = resolveThemeFontValue(
@@ -594,6 +623,11 @@ const SiteSettings = () => {
           {hasThemeVersionUpdate ? (
             <p className="mt-2 text-sm text-sky-600">
               This store is using theme snapshot v{themeData?.theme_package_version} while the current shared package is v{activeThemePackage.version}. Saving theme settings will install the latest snapshot for this store.
+            </p>
+          ) : null}
+          {hasBlueprintVersionUpdate ? (
+            <p className="mt-2 text-sm text-sky-600">
+              This store was created from an older blueprint snapshot. Updating store configuration will refresh blueprint-owned profile metadata for the current blueprint generation.
             </p>
           ) : null}
         </div>

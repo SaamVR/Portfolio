@@ -361,7 +361,7 @@ export default function OnboardingWizard() {
           supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
           supabase
             .from("store_business_profiles")
-            .select("blueprint_id, business_family, catalog_mode")
+            .select("blueprint_id, blueprint_version, business_family, catalog_mode")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
         ]);
@@ -384,6 +384,7 @@ export default function OnboardingWizard() {
         const payment = (siteSettings?.value ?? {}) as Partial<DraftState["payment"]>;
         const businessProfile = businessProfileResult?.data as {
           blueprint_id?: string;
+          blueprint_version?: number | null;
           business_family?: DraftState["businessFamily"];
           catalog_mode?: DraftState["catalogMode"];
         } | null;
@@ -647,6 +648,7 @@ export default function OnboardingWizard() {
           {
             store_id: activeStoreId,
             blueprint_id: draft.blueprintId,
+            blueprint_version: 1,
             business_family: draft.businessFamily,
             catalog_mode: draft.catalogMode,
             enabled_modules: selectedBlueprint.capabilities,

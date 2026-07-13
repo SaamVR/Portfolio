@@ -95,6 +95,7 @@ type BlockRecord = {
 
 type BusinessProfileRecord = {
   blueprint_id: string | null;
+  blueprint_version?: number | null;
   business_family: string | null;
   catalog_mode: string | null;
 };
@@ -248,6 +249,7 @@ export default function CmsPagesManager() {
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
+  const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -292,12 +294,19 @@ export default function CmsPagesManager() {
       && installedThemePackageVersion < resolvedEditorThemePackage.version,
     [installedThemePackageVersion, resolvedEditorThemePackage],
   );
+  const hasBlueprintVersionUpdate = useMemo(
+    () =>
+      typeof installedBlueprintVersion === "number"
+      && installedBlueprintVersion < 1,
+    [installedBlueprintVersion],
+  );
 
   const loadStore = useCallback(async () => {
     setLoading(true);
     if (!activeStoreId) {
       setStore(null);
       setInstalledThemePackageVersion(null);
+      setInstalledBlueprintVersion(null);
       setSelectedPageId("");
       setPersistedSnapshot("");
       setRecoverableDraft(null);
@@ -318,6 +327,7 @@ export default function CmsPagesManager() {
       if (!storeRecord) {
         setStore(null);
         setInstalledThemePackageVersion(null);
+        setInstalledBlueprintVersion(null);
         setSelectedPageId("");
         setPersistedSnapshot("");
         setRecoverableDraft(null);
@@ -337,7 +347,7 @@ export default function CmsPagesManager() {
       ] = await Promise.all([
         supabase
           .from("store_business_profiles")
-          .select("blueprint_id, business_family, catalog_mode")
+          .select("blueprint_id, blueprint_version, business_family, catalog_mode")
           .eq("store_id", storeRecord.id)
           .maybeSingle(),
         supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
@@ -367,6 +377,7 @@ export default function CmsPagesManager() {
       setPageBlueprints(loadedPageBlueprints);
       setThemePackages(loadedThemePackages);
       setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
+      setInstalledBlueprintVersion(typeof businessProfile?.blueprint_version === "number" ? businessProfile.blueprint_version : null);
       setStore(parsedStore);
       setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
         ? (themeResponse.data as ThemeRecord).theme_package_version ?? null
@@ -386,6 +397,7 @@ export default function CmsPagesManager() {
       toast.error("Failed to refresh the page builder workspace. Please try again.");
       setStore(null);
       setInstalledThemePackageVersion(null);
+      setInstalledBlueprintVersion(null);
     } finally {
       setLoading(false);
     }
@@ -408,6 +420,7 @@ export default function CmsPagesManager() {
     setIsMobileSettingsOpen(false);
     setPreviewViewport("desktop");
     setInstalledThemePackageVersion(null);
+    setInstalledBlueprintVersion(null);
     setPersistedSnapshot("");
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
@@ -672,6 +685,7 @@ export default function CmsPagesManager() {
       {
         store_id: activeStoreId as string,
         blueprint_id: blueprint.id,
+        blueprint_version: 1,
         business_family: blueprint.businessFamily,
         catalog_mode: blueprint.catalogMode,
         enabled_modules: blueprint.capabilities,
@@ -1077,6 +1091,7 @@ export default function CmsPagesManager() {
       {
         store_id: safeStore.id,
         blueprint_id: activeBlueprint.id,
+        blueprint_version: 1,
         business_family: activeBlueprint.businessFamily,
         catalog_mode: activeBlueprint.catalogMode,
         enabled_modules: activeBlueprint.capabilities,
@@ -1360,6 +1375,11 @@ export default function CmsPagesManager() {
                 {hasThemeVersionUpdate ? (
                   <p className="mt-2 text-xs text-sky-600">
                     This store is using theme snapshot v{installedThemePackageVersion} while the current package is v{resolvedEditorThemePackage?.version}. Saving Page Builder changes will install the latest snapshot for this store.
+                  </p>
+                ) : null}
+                {hasBlueprintVersionUpdate ? (
+                  <p className="mt-2 text-xs text-sky-600">
+                    This store was created from an older blueprint snapshot. Saving Page Builder changes will refresh blueprint-owned store profile metadata for the current blueprint.
                   </p>
                 ) : null}
               </div>

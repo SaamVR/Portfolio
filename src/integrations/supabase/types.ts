@@ -1477,6 +1477,7 @@ export type Database = {
       store_business_profiles: {
         Row: {
           blueprint_id: string | null
+          blueprint_version: number | null
           business_family: string
           catalog_mode: string
           created_at: string
@@ -1486,6 +1487,7 @@ export type Database = {
         }
         Insert: {
           blueprint_id?: string | null
+          blueprint_version?: number | null
           business_family?: string
           catalog_mode?: string
           created_at?: string
@@ -1495,6 +1497,7 @@ export type Database = {
         }
         Update: {
           blueprint_id?: string | null
+          blueprint_version?: number | null
           business_family?: string
           catalog_mode?: string
           created_at?: string
