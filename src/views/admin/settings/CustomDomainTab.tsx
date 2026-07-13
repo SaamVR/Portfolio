@@ -152,7 +152,7 @@ export const CustomDomainTab = () => {
     }
   };
 
-  if (initialLoading) {
+  if (initialLoading && !domain && !savedDomain && verificationStatus === null) {
     return <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
