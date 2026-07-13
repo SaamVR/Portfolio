@@ -352,7 +352,19 @@ export default function StoreBackupManager() {
         if (error) throw error;
       };
 
-      await upsertRows("store_subscriptions", rewrittenData.store_subscriptions ?? [], "store_id");
+      const importedSubscriptions = (rewrittenData.store_subscriptions ?? []).map((row: any) => ({
+        id: crypto.randomUUID(),
+        store_id: targetStore.id,
+        plan_id: typeof row?.plan_id === "string" && row.plan_id.trim().length > 0 ? row.plan_id : "starter",
+        status: "trialing",
+        trial_ends_at: null,
+        current_period_ends_at: null,
+        provider: null,
+        provider_subscription_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      await upsertRows("store_subscriptions", importedSubscriptions, "store_id");
       await upsertRows("store_business_profiles", rewrittenData.store_business_profiles ?? [], "store_id");
       await upsertRows(
         "store_themes",
