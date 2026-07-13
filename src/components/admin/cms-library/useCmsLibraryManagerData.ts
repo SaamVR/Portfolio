@@ -107,8 +107,7 @@ export function useCmsLibraryManagerData(userId?: string | null) {
       const payload = buildThemePromotionPayload(item, userId);
       const { error } = await (supabase as any)
         .from("theme_packages")
-        .update(payload)
-        .eq("id", item.id);
+        .insert(payload);
 
       if (error) {
         toast.error(error.message || "Failed to promote theme.");

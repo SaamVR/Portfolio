@@ -243,7 +243,19 @@ export function buildThemePromotionPayload(item: ThemeRow, userId?: string | nul
   }
 
   return {
+    id: `${item.id}-shared-${Date.now()}`,
+    slug: `${item.slug}-shared-${Date.now()}`,
+    name: `${item.name} Shared`,
+    description: item.description,
     source_type: "admin_shared",
+    version: Number(item.version ?? 1),
+    compatibility_version: Number(item.compatibility_version ?? 1),
+    preset_id: item.preset_id,
+    mode: item.mode,
+    preview_metadata: item.preview_metadata,
+    tokens: item.tokens,
+    component_recipes: item.component_recipes,
+    custom_css: item.custom_css,
     owner_store_id: null,
     created_by: userId ?? null,
   };

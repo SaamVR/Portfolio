@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@/test/test-utils";
 import assert from "node:assert/strict";
-import { buildSaveDialogRequest } from "@/components/admin/cms-library/mutations";
+import { buildSaveDialogRequest, buildThemePromotionPayload } from "@/components/admin/cms-library/mutations";
 
 describe("cms library mutation builders", () => {
   it("builds a theme package save payload", () => {
@@ -51,6 +51,32 @@ describe("cms library mutation builders", () => {
         owner_store_id: "",
       },
     ), /unsafe/i);
+  });
+
+  it("builds a cloned admin-shared theme payload for promotion", () => {
+    const payload = buildThemePromotionPayload({
+      id: "merchant-theme",
+      slug: "merchant-theme",
+      name: "Merchant Theme",
+      description: "Private source",
+      source_type: "merchant_private",
+      version: 2,
+      compatibility_version: 1,
+      preset_id: "midnight-blue",
+      mode: "dark",
+      preview_metadata: { bg: "#000", primary: "#fff", accent: "#0ea5e9" },
+      tokens: { light: {}, dark: {}, typography: {}, components: {} },
+      component_recipes: { button: { radius: "pill" } },
+      custom_css: ".hero { color: white; }",
+      owner_store_id: "store-1",
+    } as any, "user-1");
+
+    expect(payload.source_type).toBe("admin_shared");
+    expect(payload.owner_store_id).toBeNull();
+    expect(payload.created_by).toBe("user-1");
+    assert.notEqual(String(payload.id), "merchant-theme");
+    assert.match(String(payload.slug), /merchant-theme-shared-/);
+    expect(payload.name).toBe("Merchant Theme Shared");
   });
 
   it("sanitizes page blueprint payloads before saving", () => {
