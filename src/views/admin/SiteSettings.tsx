@@ -921,7 +921,7 @@ const SiteSettings = () => {
                     label="Upload hero media"
                     resourceType="auto"
                   />
-                  <p className="text-xs text-muted-foreground">Recommended: 1920×1080 for images, MP4 under 10MB for videos</p>
+                  <p className="text-xs text-muted-foreground">Recommended: 1920x1080 for images, MP4 under 10MB for videos</p>
                 </div>
                 <div className="grid gap-2">
                   <Label>Media Type</Label>
@@ -1040,14 +1040,14 @@ const SiteSettings = () => {
                       <SelectItem value="none">None</SelectItem>
                       <SelectItem value="free_delivery">Free Delivery</SelectItem>
                       <SelectItem value="percentage">Percentage Discount (%)</SelectItem>
-                      <SelectItem value="fixed">Fixed Amount Discount (৳)</SelectItem>
+                      <SelectItem value="fixed">Fixed Amount Discount (store currency)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Offer an incentive when customers choose bKash or Nagad instead of Cash on Delivery.</p>
                 </div>
                 {(settings.payment_settings?.prepayment_discount_type === "percentage" || settings.payment_settings?.prepayment_discount_type === "fixed") && (
                   <div className="grid gap-2">
-                    <Label>Discount Value {settings.payment_settings?.prepayment_discount_type === "percentage" ? "(%)" : "(৳)"}</Label>
+                    <Label>Discount Value {settings.payment_settings?.prepayment_discount_type === "percentage" ? "(%)" : "(store currency)"}</Label>
                     <Input type="number" value={settings.payment_settings?.prepayment_discount_value ?? 0} onChange={(e) => update("payment_settings", "prepayment_discount_value", Number(e.target.value))} min={0} />
                   </div>
                 )}
@@ -1091,17 +1091,17 @@ const SiteSettings = () => {
               {settings.delivery_settings?.enabled && (
                 <>
                   <div className="grid gap-2">
-                    <Label>Inside Dhaka Delivery Fee (৳)</Label>
+                    <Label>Primary Delivery Fee</Label>
                     <Input type="number" value={settings.delivery_settings?.delivery_fee ?? 80} onChange={(e) => update("delivery_settings", "delivery_fee", Number(e.target.value))} placeholder="80" min={0} />
-                    <p className="text-xs text-muted-foreground">Charged for inside Dhaka deliveries.</p>
+                    <p className="text-xs text-muted-foreground">Charged for your default local delivery zone.</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Outside Dhaka Delivery Fee (৳)</Label>
+                    <Label>Extended Area Delivery Fee</Label>
                     <Input type="number" value={settings.delivery_settings?.delivery_fee_outside ?? 150} onChange={(e) => update("delivery_settings", "delivery_fee_outside", Number(e.target.value))} placeholder="150" min={0} />
-                    <p className="text-xs text-muted-foreground">Charged for outside Dhaka deliveries.</p>
+                    <p className="text-xs text-muted-foreground">Charged for orders outside your default delivery zone.</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Free Delivery Threshold (৳)</Label>
+                    <Label>Free Delivery Threshold</Label>
                     <Input type="number" value={settings.delivery_settings?.free_threshold ?? 2000} onChange={(e) => update("delivery_settings", "free_threshold", Number(e.target.value))} placeholder="2000" min={0} />
                     <p className="text-xs text-muted-foreground">Orders at or above this amount get free delivery.</p>
                   </div>
@@ -1116,20 +1116,20 @@ const SiteSettings = () => {
         <TabsContent value="upsells">
           <div className="space-y-6">
             <Card className="border-border">
-              <CardHeader><CardTitle>Complete The Look (Upsell)</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Product Upsell</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Switch checked={settings.upsells?.complete_look_enabled ?? true} onCheckedChange={(v) => update("upsells", "complete_look_enabled", v)} />
-                  <Label>Enable "Complete the Look" on product pages</Label>
+                  <Switch checked={settings.upsells?.complete_look_enabled ?? false} onCheckedChange={(v) => update("upsells", "complete_look_enabled", v)} />
+                  <Label>Show a default upsell block on product pages</Label>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Bundle Product ID</Label>
-                  <Input value={settings.upsells?.complete_look_product_id ?? "bundle-item-socks"} onChange={(e) => update("upsells", "complete_look_product_id", e.target.value)} placeholder="Product ID to upsell" />
-                  <p className="text-xs text-muted-foreground">Enter the ID of the product you want to pair as a default upsell (e.g., Socks, Cap).</p>
+                  <Label>Related Product ID</Label>
+                  <Input value={settings.upsells?.complete_look_product_id ?? ""} onChange={(e) => update("upsells", "complete_look_product_id", e.target.value)} placeholder="Product ID to feature as an upsell" />
+                  <p className="text-xs text-muted-foreground">Enter the product ID you want to suggest alongside another item.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label>Upsell Title</Label>
-                  <Input value={settings.upsells?.complete_look_title ?? "Complete the Look"} onChange={(e) => update("upsells", "complete_look_title", e.target.value)} />
+                  <Input value={settings.upsells?.complete_look_title ?? ""} onChange={(e) => update("upsells", "complete_look_title", e.target.value)} placeholder="You may also like" />
                 </div>
                 <SaveButton settingKey="upsells" />
               </CardContent>
@@ -1153,7 +1153,7 @@ const SiteSettings = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Discount Amount / Text</Label>
-                      <Input value={settings.exit_intent?.discount_amount ?? ""} onChange={(e) => update("exit_intent", "discount_amount", e.target.value)} placeholder="e.g. 10% OFF or ৳200" />
+                      <Input value={settings.exit_intent?.discount_amount ?? ""} onChange={(e) => update("exit_intent", "discount_amount", e.target.value)} placeholder="e.g. 10% OFF or 200 off" />
                   </div>
                   <div className="grid gap-2">
                     <Label>Discount Code</Label>
@@ -1217,8 +1217,8 @@ const SiteSettings = () => {
               </div>
               <div className="grid gap-2">
                 <Label>WhatsApp Number</Label>
-                <Input value={settings.whatsapp_support?.number ?? ""} onChange={(e) => update("whatsapp_support", "number", e.target.value)} placeholder="8801XXXXXXXXX (include country code, no +)" />
-                <p className="text-xs text-muted-foreground">Include the country code without + (e.g. <span className="font-mono">8801712345678</span>).</p>
+                <Input value={settings.whatsapp_support?.number ?? ""} onChange={(e) => update("whatsapp_support", "number", e.target.value)} placeholder="Include country code, digits only" />
+                <p className="text-xs text-muted-foreground">Use the full number with country code and digits only.</p>
               </div>
               <div className="grid gap-2">
                 <Label>Pre-filled message</Label>
@@ -1301,18 +1301,18 @@ const SiteSettings = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Point Currency Name</Label>
-                <Input value={settings.loyalty_settings?.name ?? "Reward Points"} onChange={(e) => update("loyalty_settings", "name", e.target.value)} placeholder="e.g. Reward Points, Style Points" />
+                <Input value={settings.loyalty_settings?.name ?? "Reward Points"} onChange={(e) => update("loyalty_settings", "name", e.target.value)} placeholder="e.g. Reward Points, Credits, Stars" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Earn Rate (Points per Taka spent)</Label>
+                  <Label>Earn Rate (Points per currency unit spent)</Label>
                   <Input type="number" step="0.01" value={settings.loyalty_settings?.earn_rate ?? 0.05} onChange={(e) => update("loyalty_settings", "earn_rate", parseFloat(e.target.value))} placeholder="0.05" />
-                  <p className="text-xs text-muted-foreground">Example: 0.05 means they earn 5 points for every 100 Taka spent.</p>
+                  <p className="text-xs text-muted-foreground">Example: 0.05 means customers earn 5 points for every 100 units of your store currency spent.</p>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Redemption Value (Taka per Point)</Label>
+                  <Label>Redemption Value (currency discount per point)</Label>
                   <Input type="number" step="0.01" value={settings.loyalty_settings?.redemption_value ?? 1} onChange={(e) => update("loyalty_settings", "redemption_value", parseFloat(e.target.value))} placeholder="1" />
-                  <p className="text-xs text-muted-foreground">Example: 1 means 1 Point gives 1 Taka discount.</p>
+                  <p className="text-xs text-muted-foreground">Example: 1 means 1 point gives a 1-unit discount in your store currency.</p>
                 </div>
               </div>
               <SaveButton settingKey="loyalty_settings" />
@@ -1346,7 +1346,7 @@ const SiteSettings = () => {
                   <div className="grid gap-2">
                     <Label>Google Maps Embed URL</Label>
                     <Input value={settings.contact_page?.map_embed_url ?? ""} onChange={(e) => update("contact_page", "map_embed_url", e.target.value)} placeholder="https://www.google.com/maps/embed?pb=..." />
-                    <p className="text-xs text-muted-foreground">Go to Google Maps → share → Embed a map → copy the <code className="bg-secondary px-1 rounded">src</code> URL.</p>
+                    <p className="text-xs text-muted-foreground">Go to Google Maps, choose Share, then Embed a map, and copy the <code className="bg-secondary px-1 rounded">src</code> URL.</p>
                     {settings.contact_page?.map_embed_url && (
                       <div className="mt-2 overflow-hidden rounded-lg border border-border">
                         <iframe src={settings.contact_page.map_embed_url} width="100%" height="200" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Map preview" />
