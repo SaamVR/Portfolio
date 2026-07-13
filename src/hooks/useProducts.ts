@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveImageUrl } from "@/lib/imageMap";
-import { launchProducts, type Product } from "@/data/products";
+import type { Product } from "@/data/products";
 import { isUuid } from "@/lib/slug";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface DBProduct {
@@ -50,12 +49,6 @@ function mapDBProduct(p: DBProduct): Product {
     isAvailable: p.is_available,
   };
 }
-
-const fallbackProducts = launchProducts.map((product) => ({
-  ...product,
-  image: resolveImageUrl(product.image),
-  images: product.images.map(resolveImageUrl),
-}));
 
 export function useProducts(explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();

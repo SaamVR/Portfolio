@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
-import { defaultStore } from "@/lib/cms/default-store";
 import { normalizeEmail, resolveEffectiveFeatures } from "@/lib/platform/control-plane";
 
 export function useStoreEntitlements(storeId?: string | null) {

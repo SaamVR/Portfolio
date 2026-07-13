@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { defaultStore } from "@/lib/cms/default-store";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
 export function useSiteSettings<T = any>(key: string, explicitStoreId?: string | null) {

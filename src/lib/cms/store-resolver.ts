@@ -63,6 +63,16 @@ export async function getDefaultStore(): Promise<Store> {
   return defaultStore;
 }
 
+export function isLocalStorefrontHostname(hostname?: string | null) {
+  const normalized = hostname
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase()
+    .split(":")[0] ?? null;
+
+  return normalized === "localhost" || normalized === "127.0.0.1";
+}
+
 function normalizeHostname(hostname?: string | null) {
   if (!hostname) return null;
 
@@ -184,12 +194,12 @@ export function buildResolvedStoreFromRecords(
   });
 }
 
-export async function resolveStoreByHostname(hostname?: string): Promise<Store> {
+export async function resolveStoreByHostname(hostname?: string): Promise<Store | null> {
   const normalizedHostname = normalizeHostname(hostname);
   const supabase = getCmsSupabaseServerClient();
 
   if (!normalizedHostname || !supabase) {
-    return defaultStore;
+    return isLocalStorefrontHostname(hostname) ? defaultStore : null;
   }
 
   const subdomainSlug = getStoreSlugFromHostname(normalizedHostname);
@@ -205,11 +215,11 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store> 
 
   const matchedStore = stores?.[0] as Pick<StoreRow, "id"> | undefined;
   if (error || !matchedStore) {
-    return defaultStore;
+    return null;
   }
 
   const store = await getStoreById(matchedStore.id);
-  return store ?? defaultStore;
+  return store;
 }
 
 export async function getStoreBySlug(slug: string): Promise<Store | null> {

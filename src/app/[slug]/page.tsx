@@ -12,6 +12,9 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   const store = await getRequestStore();
+  if (!store) {
+    return {};
+  }
   const page = getPageBySlug(store, `/${slug}`);
 
   if (!page) {
@@ -28,6 +31,9 @@ export default async function Page({
 }) {
   const { slug } = await params;
   const store = await getRequestStore();
+  if (!store) {
+    notFound();
+  }
   const page = getPageBySlug(store, `/${slug}`);
 
   if (!page) {

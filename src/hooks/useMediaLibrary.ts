@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { defaultStore } from "@/lib/cms/default-store";
 import { fetchMediaLibrary } from "@/lib/media-library";
 
 export function useMediaLibrary(storeId?: string | null) {

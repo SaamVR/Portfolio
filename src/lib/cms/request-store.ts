@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { defaultStore } from "@/lib/cms/default-store";
-import { getStoreBySlug, resolveStoreByHostname } from "@/lib/cms/store-resolver";
+import { getStoreBySlug, isLocalStorefrontHostname, resolveStoreByHostname } from "@/lib/cms/store-resolver";
 
 function normalizeRequestHost(hostname?: string | null) {
   if (!hostname) return null;
@@ -14,7 +14,7 @@ function normalizeRequestHost(hostname?: string | null) {
 
 export function shouldTryLocalStoreSlugFallback(hostname?: string | null, resolvedStoreId?: string | null) {
   const normalizedHost = normalizeRequestHost(hostname);
-  return resolvedStoreId === defaultStore.id
+  return (resolvedStoreId === defaultStore.id || !resolvedStoreId)
     && (normalizedHost === "localhost" || normalizedHost === "127.0.0.1");
 }
 
@@ -34,14 +34,16 @@ export async function getRequestStore() {
   const requestHost = forwardedHost ?? host ?? undefined;
   const resolved = await resolveStoreByHostname(requestHost);
 
-  if (!shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
+  if (resolved && !shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
     return resolved;
   }
 
-  for (const slug of getLocalStoreSlugCandidates()) {
-    const localStore = await getStoreBySlug(slug);
-    if (localStore) {
-      return localStore;
+  if (isLocalStorefrontHostname(requestHost)) {
+    for (const slug of getLocalStoreSlugCandidates()) {
+      const localStore = await getStoreBySlug(slug);
+      if (localStore) {
+        return localStore;
+      }
     }
   }
 
