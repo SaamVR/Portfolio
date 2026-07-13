@@ -21,10 +21,10 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
-  const { data: brand } = useSiteSettings("brand_settings");
-  const { data: dynamicProductTypes = [] } = useProductTypes();
-  const { data: dynamicProductCategories = [] } = useProductCategories();
   const currentStore = useOptionalStore();
+  const { data: brand } = useSiteSettings("brand_settings");
+  const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
+  const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
 
   const [mounted, setMounted] = useState(false);
 

@@ -3,13 +3,16 @@ import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import type { Product } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
+import { useOptionalStore } from "@/components/storefront/store-context";
+import { storefrontPath } from "@/lib/slug";
 
 interface RelatedProductsProps {
   currentProduct: Product;
 }
 
 const RelatedProducts = ({ currentProduct }: RelatedProductsProps) => {
-  const { data: products = [] } = useProducts();
+  const currentStore = useOptionalStore();
+  const { data: products = [] } = useProducts(currentStore?.id);
 
   const related = products
     .filter(
@@ -34,7 +37,7 @@ const RelatedProducts = ({ currentProduct }: RelatedProductsProps) => {
               <h2 className="font-heading text-2xl font-bold text-foreground">Frequently Bought Together</h2>
             </div>
             <Link
-              href={`/shop?type=${currentProduct.type}`}
+              href={storefrontPath(`/shop?type=${encodeURIComponent(currentProduct.type)}`, currentStore?.slug)}
               className="text-sm font-medium text-muted-foreground smooth-hover hover:text-foreground"
             >
               View all →

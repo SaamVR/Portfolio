@@ -30,8 +30,8 @@ const MobileMenu = () => {
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
   const currentStore = useOptionalStore();
-  const { data: dynamicProductTypes = [] } = useProductTypes();
-  const { data: dynamicProductCategories = [] } = useProductCategories();
+  const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
+  const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
   const fallbackShopLinks = [
     { label: "Browse Catalog", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },

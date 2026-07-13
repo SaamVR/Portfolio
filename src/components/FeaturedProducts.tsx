@@ -3,6 +3,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
 import { Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 const FeaturedProducts = ({
   limit = 6,
@@ -13,8 +14,9 @@ const FeaturedProducts = ({
   title?: string;
   tagline?: string;
 }) => {
-  const { data: featured = [], isLoading } = useFeaturedProducts();
-  const { data: allProducts = [] } = useProducts();
+  const currentStore = useOptionalStore();
+  const { data: featured = [], isLoading } = useFeaturedProducts(currentStore?.id);
+  const { data: allProducts = [] } = useProducts(currentStore?.id);
   const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured");
   const productsToRender = featured.length > 0 ? featured : allProducts.filter((product) => product.isAvailable !== false);
 

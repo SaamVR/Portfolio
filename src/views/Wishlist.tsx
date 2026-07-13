@@ -12,8 +12,8 @@ import { storefrontPath } from "@/lib/slug";
 
 const Wishlist = () => {
   const { items } = useWishlist();
-  const { data: products = [], isLoading } = useProducts();
   const currentStore = useOptionalStore();
+  const { data: products = [], isLoading } = useProducts(currentStore?.id);
   const wishlistProducts = products.filter((p) => items.includes(p.id));
 
   return (
