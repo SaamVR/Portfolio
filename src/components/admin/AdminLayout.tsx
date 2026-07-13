@@ -20,7 +20,7 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
 ];
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, role, loading } = useAuth();
+  const { user, session, role, loading } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const currentWorkspace =
@@ -34,7 +34,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
 
-  const showBlockingLoader = loading && (!user || !role);
+  const showBlockingLoader = loading || (!!session && (!user || !role));
 
   if (showBlockingLoader) {
     return (
@@ -44,7 +44,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     );
   }
 
-  if (!loading && (!user || !role)) {
+  if (!loading && !session) {
     return <Navigate to="/admin/login" replace />;
   }
 

@@ -15,11 +15,11 @@ const cmsAdminLinks = [
 ];
 
 export default function CmsAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, role, platformRole, loading, signOut } = useAuth();
+  const { user, session, role, platformRole, loading, signOut } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  const showBlockingLoader = loading && (!user || !role || !platformRole);
+  const showBlockingLoader = loading || (!!session && (!user || !role || !platformRole));
 
   if (showBlockingLoader) {
     return (
@@ -29,11 +29,11 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
     );
   }
 
-  if (!loading && (!user || !role)) {
+  if (!loading && !session) {
     return <Navigate to="/admin/login?next=/cms-admin" replace />;
   }
 
-  if (!loading && platformRole !== "admin") {
+  if (!loading && session && platformRole !== "admin") {
     return <Navigate to="/admin" replace />;
   }
 

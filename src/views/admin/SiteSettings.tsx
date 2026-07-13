@@ -111,7 +111,7 @@ const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
 ]);
 
 const SiteSettings = () => {
-  const { role, activeStoreId, loading: authLoading } = useAuth();
+  const { role, session, activeStoreId, loading: authLoading } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -605,7 +605,7 @@ const SiteSettings = () => {
     }
   };
 
-  if (authLoading && role !== "admin") {
+  if ((authLoading || (session && role !== "admin")) && role !== "admin") {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />

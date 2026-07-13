@@ -9,7 +9,7 @@ import { Loader2, Users as UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
 const Users = () => {
-  const { platformRole, loading: authLoading } = useAuth();
+  const { session, platformRole, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +61,7 @@ const Users = () => {
     };
   }, [platformRole]);
 
-  if (authLoading && platformRole !== "admin") {
+  if ((authLoading || (session && platformRole !== "admin")) && platformRole !== "admin") {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

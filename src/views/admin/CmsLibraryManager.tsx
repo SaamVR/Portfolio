@@ -46,7 +46,7 @@ import {
 } from "@/components/admin/cms-library/shared";
 
 export default function CmsLibraryManager() {
-  const { platformRole, user, loading: authLoading } = useAuth();
+  const { session, platformRole, user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("blueprints");
   const {
     dialogState,
@@ -97,7 +97,7 @@ export default function CmsLibraryManager() {
     promoteTheme,
   } = useCmsLibraryManagerData(user?.id);
 
-  if (authLoading && platformRole !== "admin") {
+  if ((authLoading || (session && platformRole !== "admin")) && platformRole !== "admin") {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

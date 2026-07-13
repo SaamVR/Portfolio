@@ -27,7 +27,7 @@ const generateCode = () => {
 };
 
 const InviteCodes = () => {
-  const { role, user, activeStoreId, loading: authLoading } = useAuth();
+  const { role, session, user, activeStoreId, loading: authLoading } = useAuth();
   const [codes, setCodes] = useState<StaffInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -93,7 +93,7 @@ const InviteCodes = () => {
     setCreating(false);
   }, [activeStoreId]);
 
-  if (authLoading && role !== "admin") {
+  if ((authLoading || (session && role !== "admin")) && role !== "admin") {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
