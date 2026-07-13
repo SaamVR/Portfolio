@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { useTheme as useNextTheme } from "next-themes";
-import { getStoreThemeStyleFromRecord } from "@/lib/cms/store-theme-style";
+import { getStoreThemeStyleFromRecordWithPackages } from "@/lib/cms/store-theme-style";
+import { loadThemePackages } from "@/lib/theme-packages";
 
 export function useApplyTheme() {
   const { activeStoreId } = useAuth();
@@ -28,10 +29,23 @@ export function useApplyTheme() {
     enabled: Boolean(storeId),
   });
 
+  const { data: themePackages = [] } = useQuery({
+    queryKey: ["theme_packages", storeId, "apply_theme"],
+    queryFn: async () => {
+      if (!storeId) {
+        return [];
+      }
+
+      return await loadThemePackages(supabase, storeId);
+    },
+    enabled: Boolean(storeId),
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
     if (!themeConfig) return;
 
-    const style = getStoreThemeStyleFromRecord({
+    const style = getStoreThemeStyleFromRecordWithPackages({
       preset_id: themeConfig.preset_id ?? "default",
       theme_package_id: themeConfig.theme_package_id ?? null,
       mode: resolvedTheme === "light" ? "light" : (themeConfig.mode ?? "dark"),
@@ -39,7 +53,7 @@ export function useApplyTheme() {
       resolved_tokens: themeConfig.resolved_tokens ?? null,
       typography: themeConfig.typography ?? null,
       components: themeConfig.components ?? null,
-    });
+    }, themePackages);
     const root = document.documentElement;
     const appliedKeys: string[] = [];
 
@@ -55,5 +69,5 @@ export function useApplyTheme() {
         root.style.removeProperty(key);
       });
     };
-  }, [resolvedTheme, themeConfig]);
+  }, [resolvedTheme, themeConfig, themePackages]);
 }

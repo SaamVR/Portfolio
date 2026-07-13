@@ -1,9 +1,12 @@
 import type { CSSProperties } from "react";
 import type { StoreTheme } from "@/lib/cms/schema";
-import { fallbackThemePackages, getThemePackageById } from "@/lib/theme-packages";
+import { fallbackThemePackages, getThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 
-export function getStoreThemeStyle(theme: StoreTheme): CSSProperties {
-  const themePackage = getThemePackageById(theme.themePackageId ?? theme.presetId, fallbackThemePackages);
+export function getStoreThemeStyle(
+  theme: StoreTheme,
+  themePackages: ThemePackageDefinition[] = fallbackThemePackages,
+): CSSProperties {
+  const themePackage = getThemePackageById(theme.themePackageId ?? theme.presetId, themePackages);
   const vars = Object.keys(theme.customCssVars).length > 0
     ? theme.customCssVars
     : (theme.mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark);
@@ -52,7 +55,14 @@ type StoredThemeRecord = {
 };
 
 export function getStoreThemeStyleFromRecord(theme: StoredThemeRecord): CSSProperties {
-  const themePackage = getThemePackageById(theme.theme_package_id ?? theme.preset_id, fallbackThemePackages);
+  return getStoreThemeStyleFromRecordWithPackages(theme, fallbackThemePackages);
+}
+
+export function getStoreThemeStyleFromRecordWithPackages(
+  theme: StoredThemeRecord,
+  themePackages: ThemePackageDefinition[] = fallbackThemePackages,
+): CSSProperties {
+  const themePackage = getThemePackageById(theme.theme_package_id ?? theme.preset_id, themePackages);
   const mode = theme.mode === "light" ? "light" : "dark";
   const resolvedVars = theme.colors ?? theme.resolved_tokens?.[mode] ?? (mode === "light" ? themePackage.tokens.light : themePackage.tokens.dark);
   const style: CSSProperties & Record<string, string> = {};
