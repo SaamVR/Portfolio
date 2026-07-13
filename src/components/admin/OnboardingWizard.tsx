@@ -323,25 +323,43 @@ export default function OnboardingWizard() {
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
 
   useEffect(() => {
+    setActiveIndex(0);
+    setSlugAvailable(true);
+    setSlugChecking(false);
+    setSaving(false);
+    setBlueprints(fallbackStoreBlueprints);
+    setThemePackages(fallbackThemePackages);
+    setPageBlueprints(fallbackPageBlueprints);
+    setDraft(draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
+    setLoading(role === "admin" && Boolean(activeStoreId));
+  }, [activeStoreId, role]);
+
+  useEffect(() => {
     if (role !== "admin") return;
+    let active = true;
 
     const loadDraft = async () => {
       if (!activeStoreId) {
-        setActiveIndex(0);
-        setSlugAvailable(true);
-        setSlugChecking(false);
-        setDraft(draftFromBlueprint(getDefaultBlueprintId(blueprints), themePackages, undefined, blueprints));
-        setLoading(false);
+        if (active) {
+          setActiveIndex(0);
+          setSlugAvailable(true);
+          setSlugChecking(false);
+          setDraft(draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
+          setLoading(false);
+        }
         return;
       }
 
-      setLoading(true);
+      if (active) {
+        setLoading(true);
+      }
       try {
         const [loadedBlueprints, loadedThemePackages, loadedPageBlueprints] = await Promise.all([
           loadStoreBlueprints(supabase),
           loadThemePackages(supabase, activeStoreId),
           loadPageBlueprints(supabase),
         ]);
+        if (!active) return;
         setBlueprints(loadedBlueprints);
         setThemePackages(loadedThemePackages);
         setPageBlueprints(loadedPageBlueprints);
@@ -395,6 +413,7 @@ export default function OnboardingWizard() {
         );
         const safeBlueprint = resolvedBlueprint ?? resolveStoreBlueprint(getDefaultBlueprintId(loadedBlueprints), loadedBlueprints);
 
+        if (!active) return;
         setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
           storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
           slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
@@ -417,14 +436,21 @@ export default function OnboardingWizard() {
         }, loadedBlueprints));
         setActiveIndex(0);
       } catch (error) {
-        console.error("Failed to load onboarding draft:", error);
-        toast.error("Failed to refresh onboarding data. Please try again.");
+        if (active) {
+          console.error("Failed to load onboarding draft:", error);
+          toast.error("Failed to refresh onboarding data. Please try again.");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     void loadDraft();
+    return () => {
+      active = false;
+    };
   }, [activeStoreId, role]);
 
   useEffect(() => {
