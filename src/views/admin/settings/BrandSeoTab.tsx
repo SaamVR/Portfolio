@@ -46,7 +46,7 @@ export function BrandSeoTab({
             <Label>Global SEO Description Default</Label>
             <Textarea 
               value={settings.brand_settings?.seo_description ?? ""} 
-              placeholder="Launch a mobile-first storefront with local payments and CMS-managed pages." 
+              placeholder="Launch a configurable storefront with merchant-managed pages, products, and checkout flows." 
               onChange={(e) => update("brand_settings", "seo_description", e.target.value)} 
               rows={3} 
             />

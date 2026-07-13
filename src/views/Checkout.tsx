@@ -143,10 +143,8 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       setCouponError("Please checkout one store at a time.");
       return;
     }
-    // Use the atomic DB function that validates + increments uses_count in one transaction
     setCouponError("");
 
-    // Use the atomic DB function ÃŽâ€œÃƒâ€¡ÃƒÂ¶ validates + increments uses_count in one transaction
     const { data, error } = await supabase.rpc("validate_coupon" as any, {
       _code: couponInput.trim(),
       _order_total: checkoutSubtotal,

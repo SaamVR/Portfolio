@@ -285,7 +285,7 @@ const Dashboard = () => {
 
   const statCards = [
     { title: "Total Orders", value: orderStats.total, icon: ShoppingCart, color: "text-primary" },
-    { title: "Revenue", value: `৳${orderStats.revenue.toLocaleString()}`, icon: DollarSign, color: "text-green-500" },
+    { title: "Revenue", value: `BDT ${orderStats.revenue.toLocaleString()}`, icon: DollarSign, color: "text-green-500" },
     { title: "Pending", value: orderStats.pending, icon: Clock, color: "text-yellow-500" },
     { title: "Products", value: productStats.total, icon: Package, color: "text-accent" },
     { title: "Out of Stock", value: productStats.outOfStock, icon: AlertTriangle, color: "text-destructive" },
@@ -461,7 +461,7 @@ const Dashboard = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `৳${value}`} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `BDT ${value}`} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
                     itemStyle={{ color: 'hsl(var(--foreground))' }}
@@ -580,11 +580,11 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                       <p className="mt-1 truncate text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{order.customer_name}</span> · {formatDate(order.created_at)}
+                        <span className="font-medium text-foreground">{order.customer_name}</span> - {formatDate(order.created_at)}
                       </p>
                     </div>
                     <span className="ml-4 whitespace-nowrap font-heading text-lg font-bold text-primary">
-                      ৳{order.total}
+                      BDT {order.total}
                     </span>
                   </div>
                 ))}
@@ -598,5 +598,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-
