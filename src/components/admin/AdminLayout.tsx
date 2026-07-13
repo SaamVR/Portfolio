@@ -34,7 +34,9 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
 
-  if (loading) {
+  const showBlockingLoader = loading && !user && !role;
+
+  if (showBlockingLoader) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -42,7 +44,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     );
   }
 
-  if (!user || !role) {
+  if (!loading && (!user || !role)) {
     return <Navigate to="/admin/login" replace />;
   }
 

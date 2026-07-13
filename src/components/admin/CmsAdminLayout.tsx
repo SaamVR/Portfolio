@@ -19,7 +19,9 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  if (loading) {
+  const showBlockingLoader = loading && !user && !role && !platformRole;
+
+  if (showBlockingLoader) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -27,11 +29,11 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
     );
   }
 
-  if (!user || !role) {
+  if (!loading && (!user || !role)) {
     return <Navigate to="/admin/login?next=/cms-admin" replace />;
   }
 
-  if (platformRole !== "admin") {
+  if (!loading && platformRole !== "admin") {
     return <Navigate to="/admin" replace />;
   }
 
@@ -67,7 +69,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
         </nav>
 
         <div className="space-y-2 border-t border-border p-4">
-          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          <p className="truncate text-xs text-muted-foreground">{user?.email ?? ""}</p>
           <ChangePasswordDialog />
           <Button variant="ghost" size="sm" asChild className="w-full justify-start gap-2 text-muted-foreground">
             <Link to="/admin">
