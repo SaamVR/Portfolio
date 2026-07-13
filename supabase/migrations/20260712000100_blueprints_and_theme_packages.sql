@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.theme_packages (
   component_recipes jsonb NOT NULL DEFAULT '{}'::jsonb,
   custom_css text,
   owner_store_id uuid REFERENCES public.stores(id) ON DELETE CASCADE,
+  is_active boolean NOT NULL DEFAULT true,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -99,7 +100,10 @@ DROP POLICY IF EXISTS "Shared or owned theme packages are readable" ON public.th
 CREATE POLICY "Shared or owned theme packages are readable"
   ON public.theme_packages FOR SELECT
   USING (
-    source_type IN ('system', 'admin_shared')
+    (
+      source_type IN ('system', 'admin_shared')
+      AND is_active = true
+    )
     OR public.has_role(auth.uid(), 'admin')
     OR public.can_manage_store(owner_store_id, auth.uid())
   );

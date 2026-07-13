@@ -37,6 +37,7 @@ export type ThemeRow = {
   component_recipes: unknown;
   custom_css: string | null;
   owner_store_id: string | null;
+  is_active: boolean;
 };
 
 export type PageRow = {
@@ -462,6 +463,7 @@ export function buildThemeForm(item?: ThemeRow): FormState {
     component_recipes: jsonStringify(item?.component_recipes, {}),
     custom_css: item?.custom_css ?? "",
     owner_store_id: item?.owner_store_id ?? "",
+    is_active: item?.is_active ?? true,
   };
 }
 

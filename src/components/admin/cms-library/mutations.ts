@@ -211,6 +211,7 @@ export function buildSaveDialogRequest(
         component_recipes: validatedTheme.recipes,
         custom_css: validatedTheme.customCss ?? null,
         owner_store_id: validatedTheme.ownerStoreId ?? null,
+        is_active: Boolean(form.is_active),
       },
     };
   }
@@ -257,6 +258,7 @@ export function buildThemePromotionPayload(item: ThemeRow, userId?: string | nul
     component_recipes: item.component_recipes,
     custom_css: item.custom_css,
     owner_store_id: null,
+    is_active: true,
     created_by: userId ?? null,
   };
 }

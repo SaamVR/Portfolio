@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 type ThemeEditorFormProps = {
@@ -96,6 +97,14 @@ export function ThemeEditorForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-md border border-border px-4 py-3">
+        <div className="grid gap-1">
+          <Label>Active</Label>
+          <p className="text-sm text-muted-foreground">Inactive shared themes stay installed on stores but disappear from shared pickers.</p>
+        </div>
+        <Switch checked={Boolean(form.is_active ?? true)} onCheckedChange={(checked) => onUpdateField("is_active", checked)} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -1710,6 +1710,7 @@ export type Database = {
           custom_css: string | null
           description: string
           id: string
+          is_active: boolean
           mode: string
           name: string
           owner_store_id: string | null
@@ -1729,6 +1730,7 @@ export type Database = {
           custom_css?: string | null
           description?: string
           id?: string
+          is_active?: boolean
           mode?: string
           name: string
           owner_store_id?: string | null
@@ -1748,6 +1750,7 @@ export type Database = {
           custom_css?: string | null
           description?: string
           id?: string
+          is_active?: boolean
           mode?: string
           name?: string
           owner_store_id?: string | null

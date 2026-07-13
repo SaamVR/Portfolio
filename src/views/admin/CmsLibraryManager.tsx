@@ -266,6 +266,12 @@ export default function CmsLibraryManager() {
                     {savingId === `theme_packages:${item.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                     Promote to Shared
                   </Button>
+                  <Switch
+                    checked={item.is_active}
+                    onCheckedChange={(checked) => void updateRow("theme_packages", "id", item.id, { is_active: checked })}
+                    disabled={savingId === `theme_packages:${item.id}` || item.source_type === "merchant_private"}
+                    className="ml-3"
+                  />
                 </div>
               </CardContent>
             </Card>

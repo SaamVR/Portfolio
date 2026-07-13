@@ -41,6 +41,7 @@ export const themePackageSchema = z.object({
   recipes: z.record(z.string(), z.unknown()).default({}),
   customCss: z.string().optional(),
   ownerStoreId: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
 });
 
 export type ThemePackageDefinition = z.infer<typeof themePackageSchema>;
@@ -107,6 +108,7 @@ type ThemePackageRow = {
   component_recipes: Json | null;
   custom_css: string | null;
   owner_store_id: string | null;
+  is_active: boolean | null;
 };
 
 function mergeThemePackage(row: ThemePackageRow): ThemePackageDefinition {
@@ -142,6 +144,7 @@ function mergeThemePackage(row: ThemePackageRow): ThemePackageDefinition {
     recipes: (row.component_recipes as Record<string, unknown> | null) ?? fallback.recipes,
     customCss: row.custom_css ?? fallback.customCss,
     ownerStoreId: row.owner_store_id,
+    isActive: row.is_active ?? true,
   });
 }
 
@@ -166,12 +169,13 @@ export async function loadThemePackages(
       "component_recipes",
       "custom_css",
       "owner_store_id",
+      "is_active",
     ].join(","))
     .order("name");
 
   const { data, error } = storeId
-    ? await query.or(`source_type.in.(system,admin_shared),owner_store_id.eq.${storeId}`)
-    : await query.in("source_type", ["system", "admin_shared"]);
+    ? await query.or(`and(source_type.in.(system,admin_shared),is_active.eq.true),owner_store_id.eq.${storeId}`)
+    : await query.eq("is_active", true).in("source_type", ["system", "admin_shared"]);
 
   if (error || !Array.isArray(data) || data.length === 0) {
     return fallbackThemePackages;
@@ -218,5 +222,6 @@ export function parseThemePackageImport(raw: string) {
     ...imported,
     sourceType: "merchant_private",
     ownerStoreId: null,
+    isActive: true,
   });
 }

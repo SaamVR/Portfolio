@@ -25,7 +25,7 @@ export function useCmsLibraryManagerData(userId?: string | null) {
           .order("name"),
         supabase
           .from("theme_packages")
-          .select("id, slug, name, description, source_type, version, compatibility_version, preset_id, mode, preview_metadata, tokens, component_recipes, custom_css, owner_store_id")
+          .select("id, slug, name, description, source_type, version, compatibility_version, preset_id, mode, preview_metadata, tokens, component_recipes, custom_css, owner_store_id, is_active")
           .order("name"),
         supabase
           .from("page_blueprints")

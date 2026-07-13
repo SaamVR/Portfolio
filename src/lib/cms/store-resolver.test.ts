@@ -135,6 +135,7 @@ describe("store resolver mapping", () => {
       },
       recipes: {},
       ownerStoreId: "store-3",
+      isActive: true,
     }];
     const pageBlueprints: CmsPageBlueprint[] = [{
       id: "custom-gallery",

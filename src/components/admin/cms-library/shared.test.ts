@@ -206,6 +206,7 @@ describe("cms library shared helpers", () => {
           component_recipes: {},
           custom_css: null,
           owner_store_id: null,
+          is_active: true,
         },
       ],
       pages: [],
