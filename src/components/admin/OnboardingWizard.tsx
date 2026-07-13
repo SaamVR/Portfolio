@@ -693,7 +693,7 @@ export default function OnboardingWizard() {
     toast.success("Store URL copied.");
   };
 
-  if (loading) {
+  if (loading && !activeStoreId) {
     return (
       <div className="flex min-h-[360px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
