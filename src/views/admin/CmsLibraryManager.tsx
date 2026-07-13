@@ -174,7 +174,7 @@ export default function CmsLibraryManager() {
               New Blueprint
             </Button>
           </div>
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : blueprintCards.map((item) => (
+          {isLoading && blueprintCards.length === 0 ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : blueprintCards.map((item) => (
             <Card key={item.id} className="border-border">
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
@@ -216,7 +216,7 @@ export default function CmsLibraryManager() {
               New Theme Package
             </Button>
           </div>
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : themeCards.map((item) => (
+          {isLoading && themeCards.length === 0 ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : themeCards.map((item) => (
             <Card key={item.id} className="border-border">
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
@@ -285,7 +285,7 @@ export default function CmsLibraryManager() {
               New Page Blueprint
             </Button>
           </div>
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : pageCards.map((item) => (
+          {isLoading && pageCards.length === 0 ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : pageCards.map((item) => (
             <Card key={item.id} className="border-border">
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
@@ -318,7 +318,7 @@ export default function CmsLibraryManager() {
               New Block Entry
             </Button>
           </div>
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : blockCards.map((item) => (
+          {isLoading && blockCards.length === 0 ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : blockCards.map((item) => (
             <Card key={item.block_type} className="border-border">
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
