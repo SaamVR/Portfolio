@@ -99,7 +99,7 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     recommendedPageSet: ["home", "policy"],
     recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "faq-accordion", "social-feed"],
     defaultTheme: themeFromTemplate("clothing"),
-    storeDescription: "Premium clothing, curated drops, and everyday essentials with fast local delivery.",
+    storeDescription: "Premium clothing, curated drops, and everyday essentials with flexible fulfillment options.",
     hero: {
       tagline: "New Season",
       title: "Wear Your",
@@ -191,12 +191,12 @@ export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
     recommendedPageSet: ["home", "about-kitchen"],
     recommendedBlockSet: ["hero", "promo-banner", "featured-products", "rich-text", "faq-accordion"],
     defaultTheme: themeFromTemplate("food"),
-    storeDescription: "Fresh food, meal boxes, bakery items, and local delivery made simple.",
+    storeDescription: "Fresh food, meal boxes, bakery items, and convenient ordering made simple.",
     hero: {
       tagline: "Fresh Today",
       title: "Homemade",
       highlight: "Goodness",
-      subtitle: "Sell meals, bakery items, and daily specials with a simple storefront built for local orders.",
+      subtitle: "Sell meals, bakery items, and daily specials with a simple storefront built for fast ordering.",
     },
     capabilities: ["catalog", "cart", "local_delivery"],
     onboarding: { steps: defaultOnboardingSteps },
