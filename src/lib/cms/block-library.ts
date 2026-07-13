@@ -105,8 +105,8 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
           title: "Frequently Asked Questions",
           faqs: [
             { q: "What is your return policy?", a: "We offer 7-day returns on unworn items." },
-            { q: "How long does delivery take?", a: "Inside Dhaka orders usually arrive faster, while outside Dhaka deliveries may take a few extra days." },
-            { q: "Which payment methods are available?", a: "Customers can usually pay with bKash, Nagad, cards, or cash on delivery depending on your setup." },
+            { q: "How long does delivery take?", a: "Delivery times depend on your location, shipping method, and the merchant's fulfillment schedule." },
+            { q: "Which payment methods are available?", a: "Available payment methods depend on how the merchant has configured checkout for this store." },
           ],
         },
       };
@@ -119,9 +119,9 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         props: {
           title: "Shop with confidence",
           badges: [
-            { icon: "truck", label: "Fast Delivery", description: "Inside Dhaka and nationwide courier support." },
-            { icon: "payment", label: "bKash Accepted", description: "Mobile payments, cards, and COD options." },
-            { icon: "returns", label: "Easy Returns", description: "Clear exchange support for eligible items." },
+            { icon: "truck", label: "Flexible Fulfillment", description: "Local delivery, shipping, pickup, or other merchant-defined fulfillment options." },
+            { icon: "payment", label: "Secure Checkout", description: "Payment methods are configured by the merchant for this store." },
+            { icon: "returns", label: "Clear Support", description: "Customers can review the store's return, exchange, and support terms before ordering." },
           ],
         },
       };
@@ -135,9 +135,9 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
           title: "Customers are talking",
           subtitle: "Real review snippets help first-time buyers feel safer before checkout.",
           reviews: [
-            { name: "Nusrat A.", rating: 5, comment: "The fabric felt premium and delivery inside Dhaka was very quick." },
-            { name: "Rafi H.", rating: 5, comment: "Loved that I could pay with bKash and confirm sizing before ordering." },
-            { name: "Sadia M.", rating: 4, comment: "Support replied fast and helped me exchange for the right fit." },
+            { name: "Jordan P.", rating: 5, comment: "The product quality matched the photos and the ordering experience felt smooth." },
+            { name: "Avery L.", rating: 5, comment: "Support answered quickly and helped me pick the right option before checkout." },
+            { name: "Taylor M.", rating: 4, comment: "Shipping updates were clear and the store handled my follow-up questions well." },
           ],
         },
       };

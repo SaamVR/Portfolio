@@ -40,11 +40,11 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
       isHomepage: false,
       blocks: [
         createTemplateBlock("hero", 0, {
-          tagline: "New Collection",
+          tagline: "Featured Launch",
           title: "Launch Your Next",
-          highlight: "Drop",
-          subtitle: "Use this landing template for new product lines, campaign pages, or seasonal offers.",
-          ctaText: "Browse the collection",
+          highlight: "Offer",
+          subtitle: "Use this landing template for product releases, campaigns, service promos, or seasonal offers.",
+          ctaText: "Explore the offer",
           ctaLink: "/shop",
           secondaryCtaText: "See the story",
           secondaryCtaLink: "/about",
@@ -61,7 +61,7 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
         createDefaultBlock("category-showcase", 2),
         createTemplateBlock("featured-products", 3, {
           limit: 6,
-          title: "Featured Picks",
+          title: "Featured Highlights",
           tagline: "Curated",
         }),
         createTemplateBlock("rich-text", 4, {
@@ -76,7 +76,7 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
           faqs: [
             { q: "What makes this offer worth buying now?", a: "Use this answer to explain your limited drop, bundle value, early access, or any concrete reason for urgency." },
             { q: "How long does delivery take?", a: "Set clear delivery timing so customers can decide with confidence." },
-            { q: "Which payment options are available?", a: "Mention whether customers can use bKash, Nagad, card, or cash on delivery." },
+            { q: "Which payment options are available?", a: "Explain which payment methods, inquiry flows, or booking steps apply to this offer." },
           ],
         }),
       ],
@@ -88,21 +88,21 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
     description: "Story-driven page with brand intro, mission, and trust-building sections.",
     page: {
       slug: "/about-brand",
-      title: "About Brand",
-      seoTitle: "About Our Brand",
-      seoDescription: "Share your story, values, and what makes the brand worth following.",
+      title: "About",
+      seoTitle: "About This Business",
+      seoDescription: "Share your story, values, and what makes the business worth choosing.",
       isHomepage: false,
       blocks: [
         createTemplateBlock("rich-text", 0, {
           eyebrow: "Our Story",
-          title: "Tell customers where the brand comes from",
-          body: "Use this page to explain your origin, the people behind the store, and why your products matter.",
+          title: "Tell customers what this business is about",
+          body: "Use this page to explain your origin, the people behind the business, and why your offer matters.",
           align: "left",
         }),
         createTemplateBlock("rich-text", 1, {
-          eyebrow: "Craft",
-          title: "What you care about in product quality",
-          body: "Explain fabrics, fit, sourcing, finishing, or anything that helps customers trust the product.\n\n- Materials and quality standards\n- Fit philosophy or sizing help\n- Service approach after the sale",
+          eyebrow: "Approach",
+          title: "What customers can count on",
+          body: "Explain your standards, process, sourcing, service model, or anything that helps customers trust the business.\n\n- Quality or delivery standards\n- How selection, customization, or fulfillment works\n- What support looks like after the sale",
           align: "left",
         }),
         createTemplateBlock("featured-products", 2, {
@@ -111,8 +111,8 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
           tagline: "Recommended",
         }),
         createTemplateBlock("social-feed", 3, {
-          title: "How the brand shows up",
-          subtitle: "Use real product, lifestyle, or behind-the-scenes images to make the story believable.",
+          title: "How the business shows up",
+          subtitle: "Use real product, venue, service, or behind-the-scenes images to make the story believable.",
           images: [],
         }),
       ],
@@ -124,7 +124,7 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
     description: "Refund, delivery, and service information in a simple content-first layout.",
     page: {
       slug: "/policy",
-      title: "Policy",
+      title: "Policies",
       seoTitle: "Store Policy",
       seoDescription: "Refunds, shipping, exchange policy, and customer support notes.",
       isHomepage: false,
@@ -132,7 +132,7 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
         createTemplateBlock("rich-text", 0, {
           eyebrow: "Store Policy",
           title: "Set clear expectations before purchase",
-          body: "Summarize delivery times, return windows, payment terms, exchange rules, and support availability.",
+          body: "Summarize delivery times, return windows, payment terms, exchange rules, booking terms, or support availability.",
           align: "left",
         }),
         createTemplateBlock("rich-text", 1, {
@@ -165,23 +165,23 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
       isHomepage: false,
       blocks: [
         createTemplateBlock("hero", 0, {
-          tagline: "Just Dropped",
+          tagline: "Recently Added",
           title: "New",
           highlight: "Arrivals",
-          subtitle: "Fresh products, limited quantities, and the latest styles from the store.",
-          ctaText: "Shop new arrivals",
+          subtitle: "Fresh additions, limited stock, and the latest items or offers from the store.",
+          ctaText: "Browse new arrivals",
           ctaLink: "/shop?tag=new",
         }),
         createTemplateBlock("countdown", 1, {
           title: "Launch week offer",
-          subtitle: "Early buyers get first access before sizes sell out.",
+          subtitle: "Early buyers get first access before availability changes.",
           endDate: "2026-12-31T23:59:59+06:00",
           ctaText: "Browse the drop",
           ctaLink: "/shop?tag=new",
         }),
         createTemplateBlock("featured-products", 2, {
           limit: 8,
-          title: "Just Dropped",
+          title: "New Arrivals",
           tagline: "New",
         }),
         createDefaultBlock("social-feed", 3),
@@ -201,7 +201,7 @@ export const cmsPageTemplates: CmsPageTemplate[] = [
       blocks: [
         createTemplateBlock("countdown", 0, {
           title: "Sale ends soon",
-          subtitle: "Popular items can sell out before the timer ends.",
+          subtitle: "Popular items can change availability before the timer ends.",
           endDate: "2026-12-31T23:59:59+06:00",
           ctaText: "Shop sale",
           ctaLink: "/shop?sale=1",
