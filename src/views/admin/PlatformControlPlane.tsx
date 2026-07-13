@@ -107,7 +107,7 @@ type PlatformData = {
 };
 
 export default function PlatformControlPlane() {
-  const { platformRole, user, activeStoreId } = useAuth();
+  const { platformRole, user, activeStoreId, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [selectedStoreId, setSelectedStoreId] = useState(activeStoreId ?? "");
   const [storeSearch, setStoreSearch] = useState("");
@@ -274,6 +274,14 @@ export default function PlatformControlPlane() {
       isPlatformAdmin: false,
     });
   }, [data, exceptionEmail, selectedPlanId, selectedStore?.id]);
+
+  if (authLoading && platformRole !== "admin") {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (platformRole !== "admin") {
     return <Navigate to="/admin" replace />;

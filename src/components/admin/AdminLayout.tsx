@@ -34,7 +34,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
 
-  const showBlockingLoader = loading && !user && !role;
+  const showBlockingLoader = loading && (!user || !role);
 
   if (showBlockingLoader) {
     return (

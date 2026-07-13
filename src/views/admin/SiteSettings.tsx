@@ -111,7 +111,7 @@ const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
 ]);
 
 const SiteSettings = () => {
-  const { role , activeStoreId} = useAuth();
+  const { role, activeStoreId, loading: authLoading } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -604,6 +604,14 @@ const SiteSettings = () => {
       setSaving(null);
     }
   };
+
+  if (authLoading && role !== "admin") {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (role !== "admin") return <Navigate to="/admin" replace />;
 

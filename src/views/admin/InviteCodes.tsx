@@ -27,7 +27,7 @@ const generateCode = () => {
 };
 
 const InviteCodes = () => {
-  const { role, user , activeStoreId} = useAuth();
+  const { role, user, activeStoreId, loading: authLoading } = useAuth();
   const [codes, setCodes] = useState<StaffInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -92,6 +92,14 @@ const InviteCodes = () => {
     setInviteEmail("");
     setCreating(false);
   }, [activeStoreId]);
+
+  if (authLoading && role !== "admin") {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (role !== "admin") return <Navigate to="/admin" replace />;
 

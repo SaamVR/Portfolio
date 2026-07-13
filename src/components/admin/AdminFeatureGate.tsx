@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
@@ -20,15 +20,21 @@ export function AdminFeatureGate({
   description: string;
   children: ReactNode;
 }) {
-  const { platformRole , activeStoreId} = useAuth();
+  const { platformRole, activeStoreId, loading } = useAuth();
   const { data, isLoading } = useStoreEntitlements(activeStoreId);
 
   if (platformRole === "admin") {
     return <>{children}</>;
   }
 
-  if (isLoading) {
-    return null;
+  if (loading || isLoading) {
+    return (
+      <Card className="border-border">
+        <CardContent className="flex min-h-40 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
   }
 
   const enabled = getFeatureEnabled(data?.featureMap, featureKey, false);

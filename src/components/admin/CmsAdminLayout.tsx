@@ -19,7 +19,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  const showBlockingLoader = loading && !user && !role && !platformRole;
+  const showBlockingLoader = loading && (!user || !role || !platformRole);
 
   if (showBlockingLoader) {
     return (
