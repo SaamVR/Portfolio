@@ -387,13 +387,23 @@ export default function StoreBackupManager() {
 
       if (accessImportMode !== "none") {
         const importedInvites = (rewrittenData.store_staff_invites ?? []).map((row: any) => ({
-          ...row,
           id: crypto.randomUUID(),
           store_id: targetStore.id,
-          invite_code: createInviteCode(),
+          invite_code: typeof row?.invite_code === "string" && row.invite_code.trim().length > 0
+            ? `${row.invite_code.trim()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+            : createInviteCode(),
+          email: typeof row?.email === "string" && row.email.trim().length > 0 ? row.email.trim() : null,
+          role: row?.role === "owner" || row?.role === "admin" || row?.role === "editor" || row?.role === "viewer"
+            ? row.role
+            : "viewer",
           claimed_by: null,
           claimed_at: null,
           status: "pending",
+          expires_at: null,
+          metadata: typeof row?.metadata === "object" && row.metadata !== null ? row.metadata : {},
+          created_by: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }));
 
         if (importedInvites.length > 0) {
