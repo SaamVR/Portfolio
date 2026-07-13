@@ -208,8 +208,8 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
             props: {
               ...block.props,
               limit: 1,
-              title: block.props.title || "The Product",
-              tagline: block.props.tagline || "Flagship",
+              title: block.props.title || "Featured Item",
+              tagline: block.props.tagline || "Primary Offer",
             },
           };
         }
@@ -219,7 +219,7 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
             ...block,
             props: {
               ...block.props,
-              title: block.props.title || "Browse the Collection",
+              title: block.props.title || "Browse the Offerings",
               tagline: block.props.tagline || "Inquiry",
             },
           };
@@ -231,9 +231,9 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
           ...block,
           props: {
             ...block.props,
-            title: "Discuss your order before checkout",
-            subtitle: "Use WhatsApp, phone, or form-based inquiry for custom pricing and assisted selling.",
-            ctaText: "Start an Inquiry",
+            title: "Talk with the seller before checkout",
+            subtitle: "Use WhatsApp, phone, or a contact form when pricing, availability, or fulfillment needs a conversation first.",
+            ctaText: "Start a Conversation",
           },
         };
       }
