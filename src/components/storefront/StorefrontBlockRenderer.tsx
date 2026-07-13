@@ -44,7 +44,7 @@ function RichTextBlock({
   const { bullets, paragraphs } = parseRichTextBody(body);
   const reassuranceItems = [
     { icon: ShieldCheck, title: "Clear policies", description: "Customers buy faster when delivery, support, and exchange information is easy to understand." },
-    { icon: CreditCard, title: "Familiar payments", description: "Show that bKash, Nagad, or cash on delivery are available without making people hunt for it." },
+    { icon: CreditCard, title: "Checkout clarity", description: "Show which payment, inquiry, or booking steps apply without making people hunt for them." },
     { icon: Headset, title: "Real support", description: "Give buyers confidence that someone will respond if they need help after ordering." },
   ];
 
@@ -193,9 +193,9 @@ function TrustBadgesBlock({
   badges?: { label: string; description?: string; icon?: "truck" | "payment" | "returns" | "support" | "shield" }[];
 }) {
   const displayBadges = badges?.length ? badges : [
-    { icon: "truck" as const, label: "Fast Delivery", description: "Dhaka and nationwide courier support." },
-    { icon: "payment" as const, label: "bKash Accepted", description: "Mobile payments, cards, and COD options." },
-    { icon: "returns" as const, label: "Easy Returns", description: "Clear exchange support for eligible items." },
+    { icon: "truck" as const, label: "Flexible Fulfillment", description: "Local delivery, shipping, pickup, or other merchant-defined fulfillment options." },
+    { icon: "payment" as const, label: "Secure Checkout", description: "Payment methods are configured by the merchant for this store." },
+    { icon: "returns" as const, label: "Clear Support", description: "Customers can review the store's return, exchange, and support terms before ordering." },
   ];
   const iconMap = {
     truck: Truck,
@@ -246,9 +246,9 @@ function TestimonialsBlock({
   reviews?: { name: string; rating?: number; comment: string }[];
 }) {
   const displayReviews = reviews?.length ? reviews : [
-    { name: "Nusrat A.", rating: 5, comment: "The fabric felt premium and delivery inside Dhaka was very quick." },
-    { name: "Rafi H.", rating: 5, comment: "Loved that I could pay with bKash and confirm sizing before ordering." },
-    { name: "Sadia M.", rating: 4, comment: "Support replied fast and helped me exchange for the right fit." },
+    { name: "Jordan P.", rating: 5, comment: "The product quality matched the photos and the ordering experience felt smooth." },
+    { name: "Avery L.", rating: 5, comment: "Support answered quickly and helped me pick the right option before checkout." },
+    { name: "Taylor M.", rating: 4, comment: "Shipping updates were clear and the store handled my follow-up questions well." },
   ];
 
   return (
@@ -284,8 +284,8 @@ function TestimonialsBlock({
 function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle?: string; faqs?: {q: string, a: string}[] }) {
   const displayFaqs = faqs?.length ? faqs : [
     { q: "What is your return policy?", a: "We offer 7-day returns on all unworn items." },
-    { q: "How long does shipping take?", a: "Inside Dhaka: 24-48 hours. Outside Dhaka: 3-5 days." },
-    { q: "Do you offer cash on delivery?", a: "Yes, we offer Cash on Delivery (COD) across Bangladesh." }
+    { q: "How long does shipping take?", a: "Shipping times depend on the merchant's fulfillment process, destination, and selected delivery method." },
+    { q: "How does checkout work?", a: "Checkout options depend on how the merchant has configured payment, inquiry, or booking for this store." }
   ];
 
   return (
