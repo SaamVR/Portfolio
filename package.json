@@ -12,6 +12,7 @@
     "test": "tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "test:watch": "tsx --test --watch \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "test:preview": "npx playwright@1.51.1 test -c playwright.preview.config.ts",
+    "sync:cms-library": "tsx scripts/sync-cms-library.ts",
     "test:db": "npm run test:db:rls && npm run test:db:billing",
     "test:db:rls": "node scripts/run-rls-smoke.mjs",
     "test:db:billing": "tsx scripts/run-billing-route-smoke.ts"
