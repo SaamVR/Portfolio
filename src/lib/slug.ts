@@ -16,19 +16,69 @@ export function createStoreSlug(name: string) {
   return slugify(name || "my-store") || "my-store";
 }
 
+function getEncodedStoreSlug(storeSlug?: string | null) {
+  return storeSlug ? encodeURIComponent(storeSlug) : null;
+}
+
+function isPlatformAppPath(pathname: string) {
+  return pathname === "/"
+    || pathname.startsWith("/admin")
+    || pathname.startsWith("/cms-admin")
+    || pathname.startsWith("/signup")
+    || pathname.startsWith("/auth")
+    || pathname.startsWith("/merchant-signup");
+}
+
+export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
+  const encodedStoreSlug = getEncodedStoreSlug(storeSlug);
+  if (!encodedStoreSlug || typeof window === "undefined") {
+    return false;
+  }
+
+  const pathname = window.location.pathname || "/";
+  if (pathname === `/stores/${encodedStoreSlug}` || pathname.startsWith(`/stores/${encodedStoreSlug}/`)) {
+    return false;
+  }
+
+  return !isPlatformAppPath(pathname);
+}
+
+function buildStorefrontScopedPath(path: string, storeSlug?: string | null) {
+  const encodedStoreSlug = getEncodedStoreSlug(storeSlug);
+  if (!encodedStoreSlug) {
+    return path;
+  }
+
+  const [pathnamePart, queryPart] = path.split("?");
+  const pathname = pathnamePart.startsWith("/") ? pathnamePart : `/${pathnamePart}`;
+  const query = queryPart ? `?${queryPart}` : "";
+
+  if (shouldUseDedicatedStorefrontPaths(storeSlug)) {
+    return pathname === "/" ? "/" : `${pathname}${query}`;
+  }
+
+  if (pathname === "/") {
+    return `/stores/${encodedStoreSlug}`;
+  }
+
+  return `/stores/${encodedStoreSlug}${pathname}${query}`;
+}
+
 /**
  * Build a product URL with slug: /product/premium-cotton-t-shirt-<id>
  * The id is appended after a double-hyphen delimiter for unambiguous extraction.
  */
 export function productUrl(id: string, name: string, storeSlug?: string | null): string {
   const slug = slugify(name);
-  const basePath = storeSlug ? `/stores/${encodeURIComponent(storeSlug)}/product` : "/product";
+  const basePath = storeSlug
+    ? buildStorefrontScopedPath("/product", storeSlug)
+    : "/product";
   return `${basePath}/${slug}--${encodeURIComponent(id)}`;
 }
 
 export function storePageUrl(storeSlug: string, pageSlug: string): string {
   const normalizedSlug = pageSlug.replace(/^\/+/, "");
-  return normalizedSlug ? `/stores/${encodeURIComponent(storeSlug)}/${normalizedSlug}` : `/stores/${encodeURIComponent(storeSlug)}`;
+  return normalizedSlug ? buildStorefrontScopedPath(`/${normalizedSlug}`, storeSlug) : buildStorefrontScopedPath("/", storeSlug);
 }
 
 export function storefrontPath(path: string, storeSlug?: string | null): string {
@@ -39,46 +89,19 @@ export function storefrontPath(path: string, storeSlug?: string | null): string 
   const [pathnamePart, queryPart] = path.split("?");
   const pathname = pathnamePart.startsWith("/") ? pathnamePart : `/${pathnamePart}`;
   const query = queryPart ? `?${queryPart}` : "";
-  const encodedStoreSlug = encodeURIComponent(storeSlug);
-
-  if (pathname === "/") {
-    return `/stores/${encodedStoreSlug}`;
-  }
-
-  if (pathname === "/shop") {
-    return `/stores/${encodedStoreSlug}/shop${query}`;
-  }
-
-  if (pathname.startsWith("/product/")) {
-    return `/stores/${encodedStoreSlug}${pathname}${query}`;
-  }
-
-  if (pathname === "/checkout") {
-    return `/stores/${encodedStoreSlug}/checkout${query}`;
-  }
-
-  if (pathname === "/order-success") {
-    return `/stores/${encodedStoreSlug}/order-success${query}`;
-  }
-
-  if (pathname === "/contact") {
-    return `/stores/${encodedStoreSlug}/contact${query}`;
-  }
-
-  if (pathname === "/cart") {
-    return `/stores/${encodedStoreSlug}/cart${query}`;
-  }
-
-  if (pathname === "/wishlist") {
-    return `/stores/${encodedStoreSlug}/wishlist${query}`;
-  }
-
-  if (pathname === "/account") {
-    return `/stores/${encodedStoreSlug}/account${query}`;
-  }
-
-  if (pathname === "/track-order") {
-    return `/stores/${encodedStoreSlug}/track-order${query}`;
+  if (
+    pathname === "/"
+    || pathname === "/shop"
+    || pathname.startsWith("/product/")
+    || pathname === "/checkout"
+    || pathname === "/order-success"
+    || pathname === "/contact"
+    || pathname === "/cart"
+    || pathname === "/wishlist"
+    || pathname === "/account"
+    || pathname === "/track-order"
+  ) {
+    return buildStorefrontScopedPath(`${pathname}${query}`, storeSlug);
   }
 
   return path;

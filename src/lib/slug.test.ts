@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { createStoreSlug, extractIdFromSlug, productUrl } from "./slug";
+import { createStoreSlug, extractIdFromSlug, productUrl, storePageUrl, storefrontPath } from "./slug";
 
 describe("product slugs", () => {
   it("round-trips non-UUID product ids with hyphens", () => {
@@ -22,5 +22,48 @@ describe("product slugs", () => {
   it("creates slug-safe store urls with the shared slug style", () => {
     expect(createStoreSlug("My Fancy Store!")).toBe("my-fancy-store");
     expect(createStoreSlug("")).toBe("my-store");
+  });
+
+  it("keeps storefront links root-relative on dedicated store domains", () => {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: {
+        location: {
+          pathname: "/shop",
+        },
+      },
+      configurable: true,
+    });
+
+    expect(storefrontPath("/cart", "merchant-noir")).toBe("/cart");
+    expect(productUrl("launch-tshirt-black", "Premium Cotton T-Shirt - Black", "merchant-noir")).toBe(
+      "/product/premium-cotton-t-shirt-black--launch-tshirt-black",
+    );
+    expect(storePageUrl("merchant-noir", "/about")).toBe("/about");
+
+    Object.defineProperty(globalThis, "window", {
+      value: originalWindow,
+      configurable: true,
+    });
+  });
+
+  it("uses /stores fallback paths on the platform host", () => {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: {
+        location: {
+          pathname: "/admin",
+        },
+      },
+      configurable: true,
+    });
+
+    expect(storefrontPath("/cart", "merchant-noir")).toBe("/stores/merchant-noir/cart");
+    expect(storePageUrl("merchant-noir", "/about")).toBe("/stores/merchant-noir/about");
+
+    Object.defineProperty(globalThis, "window", {
+      value: originalWindow,
+      configurable: true,
+    });
   });
 });
