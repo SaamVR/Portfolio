@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -248,6 +248,17 @@ export default function PlatformControlPlane() {
     () => buildPlatformOverviewStats(summaries, data ?? { orders: [], products: [], plans: [] }),
     [data, summaries],
   );
+
+  useEffect(() => {
+    if (activeStoreId && summaries.some((store) => store.id === activeStoreId)) {
+      setSelectedStoreId(activeStoreId);
+      return;
+    }
+
+    if (!selectedStoreId && summaries[0]?.id) {
+      setSelectedStoreId(summaries[0].id);
+    }
+  }, [activeStoreId, selectedStoreId, summaries]);
 
   const effectiveFeatureMap = useMemo(() => {
     if (!data || !selectedPlanId) return new Map();

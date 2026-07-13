@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileArchive, Loader2, RefreshCcw, Upload, DatabaseBackup, ShieldAlert, Users } from "lucide-react";
@@ -151,6 +151,22 @@ export default function StoreBackupManager() {
 
   const sourceStore = useMemo(() => stores.find((store) => store.id === sourceStoreId) ?? null, [sourceStoreId, stores]);
   const targetStore = useMemo(() => stores.find((store) => store.id === targetStoreId) ?? null, [stores, targetStoreId]);
+
+  useEffect(() => {
+    if (activeStoreId && stores.some((store) => store.id === activeStoreId)) {
+      setSourceStoreId(activeStoreId);
+      setTargetStoreId(activeStoreId);
+      return;
+    }
+
+    if (!sourceStoreId && stores[0]?.id) {
+      setSourceStoreId(stores[0].id);
+    }
+
+    if (!targetStoreId && stores[0]?.id) {
+      setTargetStoreId(stores[0].id);
+    }
+  }, [activeStoreId, sourceStoreId, stores, targetStoreId]);
 
   const buildBackupPackage = async () => {
     if (!sourceStore) {

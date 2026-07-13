@@ -55,6 +55,15 @@ export default function Billing() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setActionPlanId(null);
+    setPaymentDialogOpen(false);
+    setSelectedPlanForPayment(null);
+    setPaymentMode("choose");
+    setTrxId("");
+    setSubmittingManualPayment(false);
+  }, [activeStoreId]);
+
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ["admin-billing-subscription", activeStoreId],
     queryFn: async () => {

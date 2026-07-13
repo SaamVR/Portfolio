@@ -29,6 +29,7 @@ import {
 } from "recharts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { toast } from "sonner";
 
 interface OrderRow {
   id: string;
@@ -89,154 +90,185 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    if (!activeStoreId) return;
+    if (!activeStoreId) {
+      setProductStats({ total: 0, outOfStock: 0, featured: 0 });
+      setOrderStats({ total: 0, revenue: 0, pending: 0 });
+      setEngagementStats({ unreadMessages: 0, pendingReviews: 0 });
+      setPageStats({ totalPages: 0, customPages: 0, visibleHomepageBlocks: 0 });
+      setRecentOrders([]);
+      setChartData([]);
+      setStatusData([]);
+      setPlanNotice(null);
+      setStoreHealth({ score: 0, items: [] });
+      return;
+    }
+
+    let cancelled = false;
 
     const fetchAll = async () => {
-      const [
-        { data: products },
-        { data: orders },
-        { data: storeRecord },
-        { data: pages },
-        { data: blocks },
-        { data: siteSettingsRows },
-        { data: subscription },
-        { data: plans },
-        { count: unreadMessages },
-        { count: pendingReviews },
-      ] = await Promise.all([
-        supabase.from("products").select("id, stock, featured").eq("store_id", activeStoreId as string),
-        supabase.from("orders").select("id, order_number, status, total, customer_name, created_at").eq("store_id", activeStoreId as string).order("created_at", { ascending: false }).limit(100),
-        supabase.from("stores").select("id, description, logo_url, is_published").eq("id", activeStoreId as string).maybeSingle(),
-        supabase.from("store_pages").select("id, slug, is_homepage").eq("store_id", activeStoreId as string),
-        supabase.from("store_page_blocks").select("page_id, is_visible").eq("store_id", activeStoreId as string),
-        supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
-        supabase.from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
-        supabase.from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
-        supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
-        supabase.from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
-      ]);
+      try {
+        const [
+          { data: products },
+          { data: orders },
+          { data: storeRecord },
+          { data: pages },
+          { data: blocks },
+          { data: siteSettingsRows },
+          { data: subscription },
+          { data: plans },
+          { count: unreadMessages },
+          { count: pendingReviews },
+        ] = await Promise.all([
+          supabase.from("products").select("id, stock, featured").eq("store_id", activeStoreId as string),
+          supabase.from("orders").select("id, order_number, status, total, customer_name, created_at").eq("store_id", activeStoreId as string).order("created_at", { ascending: false }).limit(100),
+          supabase.from("stores").select("id, description, logo_url, is_published").eq("id", activeStoreId as string).maybeSingle(),
+          supabase.from("store_pages").select("id, slug, is_homepage").eq("store_id", activeStoreId as string),
+          supabase.from("store_page_blocks").select("page_id, is_visible").eq("store_id", activeStoreId as string),
+          supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
+          supabase.from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
+          supabase.from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
+          supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
+          supabase.from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
+        ]);
 
-      if (products) {
-        setProductStats({
-          total: products.length,
-          outOfStock: products.filter((p) => p.stock <= 0).length,
-          featured: products.filter((p) => p.featured).length,
-        });
-      }
+        if (cancelled) return;
 
-      if (orders && orders.length > 0) {
-        const typedOrders = orders as unknown as OrderRow[];
-        setRecentOrders(typedOrders.slice(0, 5));
-        setOrderStats({
-          total: typedOrders.length,
-          revenue: typedOrders
-            .filter((o) => o.status !== "cancelled")
-            .reduce((sum, o) => sum + (o.total || 0), 0),
-          pending: typedOrders.filter((o) => o.status === "pending" || o.status === "pending_payment").length,
-        });
+        if (products) {
+          setProductStats({
+            total: products.length,
+            outOfStock: products.filter((p) => p.stock <= 0).length,
+            featured: products.filter((p) => p.featured).length,
+          });
+        }
 
-        // Analytics Processing (If enough real data exists, replace mock data)
-        if (typedOrders.length > 0) {
-          const revMap: Record<string, number> = {};
-          const statusCounts: Record<string, number> = {};
-          
-          typedOrders.forEach(o => {
-            if (o.status !== "cancelled") {
-              const d = new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-              revMap[d] = (revMap[d] || 0) + o.total;
-            }
-            statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+        if (orders && orders.length > 0) {
+          const typedOrders = orders as unknown as OrderRow[];
+          setRecentOrders(typedOrders.slice(0, 5));
+          setOrderStats({
+            total: typedOrders.length,
+            revenue: typedOrders
+              .filter((o) => o.status !== "cancelled")
+              .reduce((sum, o) => sum + (o.total || 0), 0),
+            pending: typedOrders.filter((o) => o.status === "pending" || o.status === "pending_payment").length,
           });
 
-          // Generate last 7 days chart data if available
-          const realChartData = Object.keys(revMap).slice(0, 7).reverse().map(date => ({
-            date,
-            revenue: revMap[date],
-            orders: typedOrders.filter((o) => {
-              const d = new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-              return d === date && o.status !== "cancelled";
-            }).length,
-          }));
-          setChartData(realChartData);
+        // Analytics Processing (If enough real data exists, replace mock data)
+          if (typedOrders.length > 0) {
+            const revMap: Record<string, number> = {};
+            const statusCounts: Record<string, number> = {};
+          
+            typedOrders.forEach(o => {
+              if (o.status !== "cancelled") {
+                const d = new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                revMap[d] = (revMap[d] || 0) + o.total;
+              }
+              statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+            });
 
-          const realStatusData = Object.keys(statusCounts).map(status => ({
-            name: status.charAt(0).toUpperCase() + status.slice(1).replace("_", " "),
-            value: statusCounts[status]
-          }));
-          setStatusData(realStatusData);
+          // Generate last 7 days chart data if available
+            const realChartData = Object.keys(revMap).slice(0, 7).reverse().map(date => ({
+              date,
+              revenue: revMap[date],
+              orders: typedOrders.filter((o) => {
+                const d = new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                return d === date && o.status !== "cancelled";
+              }).length,
+            }));
+            setChartData(realChartData);
+
+            const realStatusData = Object.keys(statusCounts).map(status => ({
+              name: status.charAt(0).toUpperCase() + status.slice(1).replace("_", " "),
+              value: statusCounts[status]
+            }));
+            setStatusData(realStatusData);
+          }
+        } else {
+          setRecentOrders([]);
+          setOrderStats({ total: 0, revenue: 0, pending: 0 });
+          setChartData([]);
+          setStatusData([]);
+        }
+
+        const paymentSettingsMap = Object.fromEntries(
+          ((siteSettingsRows as Array<{ key: string; value: any }> | null) ?? []).map((row) => [row.key, row.value]),
+        );
+        const paymentSettings = paymentSettingsMap.payment_settings ?? {};
+        const whatsappSettings = paymentSettingsMap.whatsapp_support ?? {};
+        const contactSettings = paymentSettingsMap.contact_page ?? {};
+        const typedStoreRecord = (storeRecord as { id: string; description: string | null; logo_url: string | null; is_published: boolean | null } | null) ?? null;
+        const homepage = ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).find((page) => page.is_homepage || page.slug === "/");
+        const visibleHomepageBlocks = ((blocks as Array<{ page_id: string; is_visible: boolean | null }> | null) ?? []).filter(
+          (block) => block.page_id === homepage?.id && block.is_visible !== false,
+        ).length;
+        const customPageTotal = ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).filter(
+          (page) => !page.is_homepage && page.slug !== "/",
+        ).length;
+        setPageStats({
+          totalPages: ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).length,
+          customPages: customPageTotal,
+          visibleHomepageBlocks,
+        });
+        setEngagementStats({
+          unreadMessages: unreadMessages ?? 0,
+          pendingReviews: pendingReviews ?? 0,
+        });
+        const paymentConfigured = Boolean(
+          paymentSettings?.cod_enabled ||
+          paymentSettings?.bkash_enabled ||
+          paymentSettings?.nagad_enabled ||
+          paymentSettings?.bkash_number ||
+          paymentSettings?.nagad_number,
+        );
+        const whatsappConfigured = Boolean(
+          whatsappSettings?.enabled && whatsappSettings?.number,
+        );
+        const contactConfigured = Boolean(
+          whatsappConfigured ||
+          contactSettings?.phone ||
+          contactSettings?.email ||
+          contactSettings?.address,
+        );
+
+        setStoreHealth(
+          buildStoreReadinessScore({
+            storePublished: Boolean(typedStoreRecord?.is_published),
+            storeDescription: String(typedStoreRecord?.description ?? ""),
+            logoConfigured: Boolean(typedStoreRecord?.logo_url),
+            productTotal: products?.length ?? 0,
+            featuredTotal: products?.filter((product) => product.featured).length ?? 0,
+            paymentConfigured,
+            contactConfigured,
+            customPageTotal,
+            visibleHomepageBlocks,
+          }),
+        );
+
+        const typedPlans = ((plans as PlanRecord[] | null) ?? []);
+        const typedSubscription = (subscription as SubscriptionRecord | null) ?? null;
+        const starterPlan = typedPlans.find((plan) => plan.id === "starter") ?? typedPlans[0] ?? null;
+        const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? starterPlan;
+        const monthlyPrice = currentPlan?.monthly_price;
+        const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;
+        const subscriptionReady = typedSubscription?.status === "active" || typedSubscription?.status === "trialing";
+        setPlanNotice({
+          currentPlan,
+          subscription: typedSubscription,
+          paymentRequired: paidOrCustomPlan && !subscriptionReady,
+          isFreePlan: Boolean(currentPlan && monthlyPrice === 0 && subscriptionReady),
+          upgradePlanNames: typedPlans.filter((plan) => plan.id !== currentPlan?.id && plan.monthly_price !== 0).map((plan) => plan.name).slice(0, 2),
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error);
+          toast.error("Failed to load dashboard data.");
         }
       }
-
-      const paymentSettingsMap = Object.fromEntries(
-        ((siteSettingsRows as Array<{ key: string; value: any }> | null) ?? []).map((row) => [row.key, row.value]),
-      );
-      const paymentSettings = paymentSettingsMap.payment_settings ?? {};
-      const whatsappSettings = paymentSettingsMap.whatsapp_support ?? {};
-      const contactSettings = paymentSettingsMap.contact_page ?? {};
-      const typedStoreRecord = (storeRecord as { id: string; description: string | null; logo_url: string | null; is_published: boolean | null } | null) ?? null;
-      const homepage = ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).find((page) => page.is_homepage || page.slug === "/");
-      const visibleHomepageBlocks = ((blocks as Array<{ page_id: string; is_visible: boolean | null }> | null) ?? []).filter(
-        (block) => block.page_id === homepage?.id && block.is_visible !== false,
-      ).length;
-      const customPageTotal = ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).filter(
-        (page) => !page.is_homepage && page.slug !== "/",
-      ).length;
-      setPageStats({
-        totalPages: ((pages as Array<{ id: string; slug: string; is_homepage: boolean | null }> | null) ?? []).length,
-        customPages: customPageTotal,
-        visibleHomepageBlocks,
-      });
-      setEngagementStats({
-        unreadMessages: unreadMessages ?? 0,
-        pendingReviews: pendingReviews ?? 0,
-      });
-      const paymentConfigured = Boolean(
-        paymentSettings?.cod_enabled ||
-        paymentSettings?.bkash_enabled ||
-        paymentSettings?.nagad_enabled ||
-        paymentSettings?.bkash_number ||
-        paymentSettings?.nagad_number,
-      );
-      const whatsappConfigured = Boolean(
-        whatsappSettings?.enabled && whatsappSettings?.number,
-      );
-      const contactConfigured = Boolean(
-        whatsappConfigured ||
-        contactSettings?.phone ||
-        contactSettings?.email ||
-        contactSettings?.address,
-      );
-
-      setStoreHealth(
-        buildStoreReadinessScore({
-          storePublished: Boolean(typedStoreRecord?.is_published),
-          storeDescription: String(typedStoreRecord?.description ?? ""),
-          logoConfigured: Boolean(typedStoreRecord?.logo_url),
-          productTotal: products?.length ?? 0,
-          featuredTotal: products?.filter((product) => product.featured).length ?? 0,
-          paymentConfigured,
-          contactConfigured,
-          customPageTotal,
-          visibleHomepageBlocks,
-        }),
-      );
-
-      const typedPlans = ((plans as PlanRecord[] | null) ?? []);
-      const typedSubscription = (subscription as SubscriptionRecord | null) ?? null;
-      const starterPlan = typedPlans.find((plan) => plan.id === "starter") ?? typedPlans[0] ?? null;
-      const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? starterPlan;
-      const monthlyPrice = currentPlan?.monthly_price;
-      const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;
-      const subscriptionReady = typedSubscription?.status === "active" || typedSubscription?.status === "trialing";
-      setPlanNotice({
-        currentPlan,
-        subscription: typedSubscription,
-        paymentRequired: paidOrCustomPlan && !subscriptionReady,
-        isFreePlan: Boolean(currentPlan && monthlyPrice === 0 && subscriptionReady),
-        upgradePlanNames: typedPlans.filter((plan) => plan.id !== currentPlan?.id && plan.monthly_price !== 0).map((plan) => plan.name).slice(0, 2),
-      });
     };
     fetchAll();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeStoreId]);
 
   useEffect(() => {
