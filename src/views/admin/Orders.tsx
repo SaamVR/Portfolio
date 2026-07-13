@@ -61,6 +61,7 @@ const AdminOrders = () => {
     const matchesStatus = filterStatus === "all" || o.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+  const orderCount = orders?.length ?? 0;
 
   const handleStatusChange = (orderId: string, status: string) => {
     updateStatus.mutate(
@@ -173,7 +174,7 @@ const AdminOrders = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-3xl font-bold text-foreground">Orders</h1>
-        <p className="text-sm text-muted-foreground">{orders?.length ?? 0} total orders</p>
+        <p className="text-sm text-muted-foreground">{orderCount} total orders</p>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -198,7 +199,7 @@ const AdminOrders = () => {
         </Select>
       </div>
 
-      {isLoading ? (
+      {isLoading && orderCount === 0 ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i} className="border-border">
@@ -240,10 +241,10 @@ const AdminOrders = () => {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {order.customer_name} · {order.customer_phone}
+                      {order.customer_name} - {order.customer_phone}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(order.created_at).toLocaleDateString()} · {order.items.length} item(s) · {formatCurrency(order.total)}
+                      {new Date(order.created_at).toLocaleDateString()} - {order.items.length} item(s) - {formatCurrency(order.total)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

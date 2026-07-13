@@ -184,7 +184,7 @@ const Coupons = () => {
                         : "border-border text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    {type === "percentage" ? "% Off" : "৳ Fixed"}
+                    {type === "percentage" ? "% Off" : "BDT Fixed"}
                   </button>
                 ))}
               </div>
@@ -193,7 +193,7 @@ const Coupons = () => {
               <Label>Discount Value *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  {form.discount_type === "percentage" ? "%" : "৳"}
+                  {form.discount_type === "percentage" ? "%" : "BDT"}
                 </span>
                 <Input
                   type="number"
@@ -206,7 +206,7 @@ const Coupons = () => {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Minimum Order (৳)</Label>
+              <Label>Minimum Order (BDT)</Label>
               <Input
                 type="number"
                 value={form.min_order}
@@ -247,7 +247,7 @@ const Coupons = () => {
       )}
 
       {/* Responsive list/table container */}
-      {isLoading ? (
+      {isLoading && coupons.length === 0 ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -268,14 +268,14 @@ const Coupons = () => {
                     {c.code}
                   </span>
                   <span className="text-primary font-bold text-sm">
-                    {c.discount_type === "percentage" ? `${c.discount_value}% off` : `৳${c.discount_value} off`}
+                    {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs border-y border-border/50 py-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Min. Order</p>
-                    <p className="font-medium text-foreground mt-0.5">{c.min_order > 0 ? `৳${c.min_order}` : "None"}</p>
+                    <p className="font-medium text-foreground mt-0.5">{c.min_order > 0 ? `BDT ${c.min_order}` : "None"}</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Uses</p>
@@ -349,10 +349,10 @@ const Coupons = () => {
                       <span className="font-mono font-semibold text-foreground">{c.code}</span>
                     </td>
                     <td className="px-4 py-3 text-primary font-semibold">
-                      {c.discount_type === "percentage" ? `${c.discount_value}% off` : `৳${c.discount_value} off`}
+                      {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {c.min_order > 0 ? `৳${c.min_order}` : "None"}
+                      {c.min_order > 0 ? `BDT ${c.min_order}` : "None"}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}
@@ -408,4 +408,3 @@ const Coupons = () => {
 };
 
 export default Coupons;
-

@@ -91,7 +91,7 @@ const Messages = () => {
         </Button>
       </div>
 
-      {isLoading ? (
+      {isLoading && messages.length === 0 ? (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm">
@@ -193,6 +193,3 @@ const Messages = () => {
 };
 
 export default Messages;
-
-
-

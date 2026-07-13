@@ -112,7 +112,7 @@ const Reviews = () => {
   const handleApprove = (id: string) => {
     updateReview.mutate(
       { id, updates: { status: "approved" } },
-      { onSuccess: () => toast.success("Review approved — now visible on product page") }
+      { onSuccess: () => toast.success("Review approved and now visible on the product page") }
     );
   };
 
@@ -193,7 +193,7 @@ const Reviews = () => {
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {isLoading && reviews.length === 0 ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
@@ -238,7 +238,7 @@ const Reviews = () => {
                             <span className="text-xs text-muted-foreground">Size: {review.size_purchased}</span>
                           )}
                           <span className="text-xs text-muted-foreground">
-                            Order: {review.orders?.order_number ?? "—"}
+                            Order: {review.orders?.order_number ?? "-"}
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -372,4 +372,3 @@ const Reviews = () => {
 };
 
 export default Reviews;
-
