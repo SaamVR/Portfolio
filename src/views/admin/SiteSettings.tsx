@@ -167,6 +167,7 @@ const SiteSettings = () => {
         setSettings({});
         setDbCategories([]);
         setDbTypes([]);
+        setThemePackages(fallbackThemePackages);
         setLoading(false);
         return;
       }
@@ -201,6 +202,15 @@ const SiteSettings = () => {
     };
     fetch();
   }, [activeStoreId, role]);
+
+  useEffect(() => {
+    setSettings({});
+    setDbCategories([]);
+    setDbTypes([]);
+    setThemePackages(fallbackThemePackages);
+    setLoading(Boolean(activeStoreId));
+    setSaving(null);
+  }, [activeStoreId]);
 
   const { data: themeData } = useQuery({
     queryKey: ["store_themes", activeStoreId],
@@ -366,6 +376,8 @@ const SiteSettings = () => {
   };
 
   const saveSetting = async (key: string) => {
+    if (!activeStoreId) return;
+
     setSaving(key);
     const { error } = await supabase
       .from("site_settings")
@@ -548,6 +560,7 @@ const SiteSettings = () => {
 
       const refreshed = await loadThemePackages(supabase, activeStoreId);
       setThemePackages(refreshed);
+      setLocalThemeId(exportPayload.id);
       toast.success("Private theme saved.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save private theme.");
