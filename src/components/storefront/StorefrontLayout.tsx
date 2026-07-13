@@ -8,7 +8,7 @@ import { useCart } from "@/context/useCart";
 import { Button } from "@/components/ui/button";
 import CartDrawer from "@/components/CartDrawer";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import { storePageUrl } from "@/lib/slug";
+import { storefrontPath, storePageUrl } from "@/lib/slug";
 
 export function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const store = useStore();
@@ -18,7 +18,7 @@ export function StorefrontLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href={`/stores/${store.slug}`} className="font-heading font-bold text-xl tracking-tight">
+          <Link href={storefrontPath("/", store.slug)} className="font-heading font-bold text-xl tracking-tight">
             {store.name}
           </Link>
 
@@ -26,7 +26,7 @@ export function StorefrontLayout({ children }: { children: React.ReactNode }) {
             {store.pages.map((page) => (
               <Link
                 key={page.slug}
-                href={page.isHomepage ? `/stores/${store.slug}` : storePageUrl(store.slug, page.slug)}
+                href={page.isHomepage ? storefrontPath("/", store.slug) : storePageUrl(store.slug, page.slug)}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {page.title}
