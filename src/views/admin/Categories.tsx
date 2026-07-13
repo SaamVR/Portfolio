@@ -76,6 +76,11 @@ const AdminCategories = () => {
   }, [activeStoreId]);
 
   const saveCustomData = async (updatedData: any) => {
+    if (!activeStoreId) {
+      toast.error("Select a store before saving category settings.");
+      return;
+    }
+
     setCustomData(updatedData);
     await supabase.from("site_settings").upsert({
       store_id: activeStoreId,

@@ -61,6 +61,10 @@ const Coupons = () => {
 
   const createCoupon = useMutation({
     mutationFn: async () => {
+      if (!activeStoreId) {
+        throw new Error("Select a store before saving coupons.");
+      }
+
       const payload: any = {
         code: form.code.trim().toUpperCase(),
         discount_type: form.discount_type,
@@ -92,6 +96,10 @@ const Coupons = () => {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      if (!activeStoreId) {
+        throw new Error("Select a store before updating coupons.");
+      }
+
       const { error } = await supabase.from("coupon_codes" as any).update({ is_active }).eq("id", id).eq("store_id", activeStoreId as string);
       if (error) throw error;
     },
@@ -100,6 +108,10 @@ const Coupons = () => {
 
   const deleteCoupon = useMutation({
     mutationFn: async (id: string) => {
+      if (!activeStoreId) {
+        throw new Error("Select a store before deleting coupons.");
+      }
+
       const { error } = await supabase.from("coupon_codes" as any).delete().eq("id", id).eq("store_id", activeStoreId as string);
       if (error) throw error;
     },
