@@ -16,8 +16,8 @@ interface DeliverySettings {
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
-  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings");
   const currentStore = useOptionalStore();
+  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
 
   const deliveryFee = (() => {
     if (!deliveryData) return 80;

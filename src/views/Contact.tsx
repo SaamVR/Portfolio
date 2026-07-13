@@ -9,7 +9,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 interface ContactSettings {
   address?: string;
@@ -35,7 +35,7 @@ const Contact = () => {
   const storeId = currentStore?.id;
   const storeName = currentStore?.name ?? "the store";
 
-  const { data: contact, isLoading } = useSiteSettings<ContactSettings>("contact_page");
+  const { data: contact, isLoading } = useSiteSettings<ContactSettings>("contact_page", storeId);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +99,7 @@ const Contact = () => {
       <SEOHead
         title="Contact Us"
         description={`Get in touch with ${storeName}. Reach us by email, phone, or visit our location.`}
-        canonical={absoluteUrl("/contact")}
+        canonical={absoluteStoreUrl(currentStore, "/contact")}
       />
       <PageTransition>
         <section className="py-20">

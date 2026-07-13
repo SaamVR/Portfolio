@@ -4,7 +4,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import {
   Accordion,
@@ -32,7 +32,7 @@ const defaultFaqs: FAQEntry[] = [
 const FAQ = () => {
   const currentStore = useOptionalStore();
   const storeName = currentStore?.name ?? "the store";
-  const { data: faqs, isLoading } = useSiteSettings<FAQEntry[]>("faq_entries");
+  const { data: faqs, isLoading } = useSiteSettings<FAQEntry[]>("faq_entries", currentStore?.id);
 
   const entries = faqs && faqs.length > 0 ? faqs : defaultFaqs;
 
@@ -41,7 +41,7 @@ const FAQ = () => {
       <SEOHead
         title="FAQ"
         description={`Frequently asked questions about ${storeName} orders, delivery, payments, and returns.`}
-        canonical={absoluteUrl("/faq")}
+        canonical={absoluteStoreUrl(currentStore, "/faq")}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "FAQPage",

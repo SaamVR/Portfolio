@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { createStoreSlug } from "@/lib/slug";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import {
   ArrowRight,
   BadgeCheck,
@@ -29,7 +31,6 @@ import {
   Layout,
   Sliders,
 } from "lucide-react";
-import { CmsPricing } from "@/components/marketing/CmsPricing";
 
 const faqs = [
   {
@@ -95,7 +96,7 @@ const fontThemes = {
   outfit: "font-mono",
 };
 
-export function CmsLandingPage() {
+export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const [activeTheme, setActiveTheme] = useState<keyof typeof colorThemes>("emerald");
   const [activeFont, setActiveFont] = useState<keyof typeof fontThemes>("inter");
   
@@ -125,6 +126,7 @@ export function CmsLandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const theme = colorThemes[activeTheme];
+  const previewStoreUrl = absoluteStoreUrl({ slug: createStoreSlug(storeName || "my-store") });
 
   const handleAddProduct = () => {
     if (!newProductName.trim() || !newProductPrice) return;
@@ -391,7 +393,7 @@ export function CmsLandingPage() {
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
                 </div>
                 <div className="bg-slate-950/80 border border-white/5 rounded-md px-3 py-0.5 text-[10px] text-zinc-500 font-mono w-1/2 text-center truncate">
-                  https://trendy-closet.ecomcms.com
+                  {previewStoreUrl}
                 </div>
                 <div className="w-10" />
               </div>
@@ -960,7 +962,7 @@ export function CmsLandingPage() {
       </section>
 
       {/* Dynamic pricing plans (Server component logic included) */}
-      <CmsPricing />
+      {children}
 
       {/* OBJECTION FAQs ACCORDION */}
       <section className="py-24 max-w-4xl mx-auto px-4 z-10 relative">

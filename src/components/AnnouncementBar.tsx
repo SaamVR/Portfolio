@@ -19,7 +19,7 @@ const DEFAULT_MESSAGES = [
 const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible: boolean) => void }) => {
   const currentStore = useOptionalStore();
   const dismissedStorageKey = getScopedStorefrontStorageKey("announcement-dismissed", currentStore?.id);
-  const { data: settings } = useSiteSettings<AnnouncementSettings>("announcement_bar");
+  const { data: settings } = useSiteSettings<AnnouncementSettings>("announcement_bar", currentStore?.id);
 
   const enabled = settings?.enabled ?? true;
   const messages = settings?.messages?.filter(Boolean).length

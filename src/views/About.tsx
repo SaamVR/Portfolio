@@ -4,7 +4,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
 import { Heart, Globe, Leaf, Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface AboutSettings {
@@ -24,7 +24,7 @@ const defaultValues = [
 const About = () => {
   const currentStore = useOptionalStore();
   const storeName = currentStore?.name ?? "Our Brand";
-  const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page");
+  const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page", currentStore?.id);
 
   const title = about?.title || `About ${storeName}`;
   const defaultContent = `${storeName} is built to offer a clearer, more trustworthy buying experience for customers discovering the brand online.
@@ -42,7 +42,7 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
       <SEOHead
         title="About Us"
         description={`Learn about ${storeName} and what the brand stands for.`}
-        canonical={absoluteUrl("/about")}
+        canonical={absoluteStoreUrl(currentStore, "/about")}
       />
       <PageTransition>
         <section className="py-20">

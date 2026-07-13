@@ -47,10 +47,10 @@ interface HeroSectionProps {
 const HeroSection = ({ overrides }: HeroSectionProps) => {
   const sectionRef = useRef<HTMLElement>(null);
   const [scrollY, setScrollY] = useState(0);
-  const { data: hero } = useSiteSettings<HeroSettings>("hero_section");
   const currentStore = useOptionalStore();
+  const { data: hero } = useSiteSettings<HeroSettings>("hero_section", currentStore?.id);
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
-  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings");
+  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
 
   const tagline = overrides?.tagline ?? hero?.tagline ?? "Welcome";
   const title = overrides?.title ?? hero?.title ?? "Create Your";

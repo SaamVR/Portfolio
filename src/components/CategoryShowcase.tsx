@@ -77,8 +77,8 @@ const getTaglineForType = (typeName: string) => {
 const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
-  const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories");
-  const { data: customData } = useSiteSettings<any>("categories_custom_data");
+  const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories", storeId);
+  const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
   const { data: dbCategories = [] } = useProductCategories(storeId);
   const [dbTypes, setDbTypes] = useState<any[]>([]);
 

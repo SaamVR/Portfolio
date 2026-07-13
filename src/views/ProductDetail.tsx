@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const MAX_RECENT = 8;
@@ -185,7 +185,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
       <SEOHead
         title={product.name}
         description={product.description}
-        canonical={storeSlug ? undefined : absoluteUrl(productUrl(product.id, product.name))}
+        canonical={absoluteStoreUrl(currentStore ?? (storeSlug ? { slug: storeSlug } : undefined), productUrl(product.id, product.name))}
         ogType="product"
         ogImage={product.images?.[0] || product.image}
         jsonLd={productJsonLd}
@@ -354,7 +354,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
 
             <div className="mt-8 space-y-4 border-t border-border pt-6">
               <SocialShare
-                url={absoluteUrl(productUrl(product.id, product.name))}
+                url={absoluteStoreUrl(currentStore ?? (storeSlug ? { slug: storeSlug } : undefined), productUrl(product.id, product.name))}
                 title={product.name}
               />
               <div className="space-y-2">

@@ -69,7 +69,7 @@ const Footer = () => {
     return false;
   });
   const [error, setError] = useState("");
-  const { data: footer } = useSiteSettings<FooterSettings>("footer");
+  const { data: footer } = useSiteSettings<FooterSettings>("footer", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
 

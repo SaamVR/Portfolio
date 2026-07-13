@@ -13,7 +13,7 @@ import type { Product } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { buildShopOptions, filterAndSortProducts, type ShopSortOption } from "@/lib/shop-filters";
 import { X, ArrowUpDown, Ruler, Loader2, SlidersHorizontal, ChevronDown, ChevronUp, Tag, Search } from "lucide-react";
 
@@ -200,7 +200,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
         <SEOHead
           title={pageTitle}
           description={`Browse the full ${storeName} collection.`}
-          canonical={absoluteUrl("/shop")}
+          canonical={absoluteStoreUrl(currentStore, "/shop")}
         />
       ) : null}
       <PageTransition>

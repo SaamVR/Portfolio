@@ -123,8 +123,8 @@ const SparkleSVG = ({ className }: { className: string }) => (
 );
 
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
-  const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner");
   const currentStore = useOptionalStore();
+  const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
 
   if (settings?.enabled === false) return null;
 

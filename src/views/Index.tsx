@@ -6,26 +6,28 @@ import PromoBanner from "@/components/PromoBanner";
 import CategoryShowcase from "@/components/CategoryShowcase";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import RecentlyViewed from "@/components/RecentlyViewed";
-import { absoluteUrl, siteUrl } from "@/lib/siteUrl";
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "ThreadBD",
-  url: siteUrl,
-  description: "A configurable storefront for products, collections, and merchant-managed checkout experiences.",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: absoluteUrl("/shop?q={search_term_string}"),
-    "query-input": "required name=search_term_string",
-  },
-};
+import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 const Index = () => {
+  const currentStore = useOptionalStore();
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: currentStore?.name ?? "Commerce Engine Storefront",
+    url: absoluteStoreUrl(currentStore),
+    description: "A configurable storefront for products, collections, and merchant-managed checkout experiences.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: absoluteStoreUrl(currentStore, "/shop?q={search_term_string}"),
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <Layout>
       <SEOHead
-        canonical={absoluteUrl("/")}
+        canonical={absoluteStoreUrl(currentStore)}
         jsonLd={jsonLd}
       />
       <CountdownTimer />

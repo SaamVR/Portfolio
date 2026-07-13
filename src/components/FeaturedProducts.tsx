@@ -17,7 +17,7 @@ const FeaturedProducts = ({
   const currentStore = useOptionalStore();
   const { data: featured = [], isLoading } = useFeaturedProducts(currentStore?.id);
   const { data: allProducts = [] } = useProducts(currentStore?.id);
-  const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured");
+  const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured", currentStore?.id);
   const productsToRender = featured.length > 0 ? featured : allProducts.filter((product) => product.isAvailable !== false);
 
   if (isLoading) {

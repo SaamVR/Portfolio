@@ -1,4 +1,5 @@
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface WhatsAppSettings {
   enabled: boolean;
@@ -7,7 +8,8 @@ interface WhatsAppSettings {
 }
 
 const WhatsAppButton = () => {
-  const { data: ws } = useSiteSettings<WhatsAppSettings>("whatsapp_support");
+  const currentStore = useOptionalStore();
+  const { data: ws } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
 
   if (!ws?.enabled || !ws?.number) return null;
 

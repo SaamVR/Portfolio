@@ -26,8 +26,8 @@ interface CountdownTimerProps {
 }
 
 export const CountdownTimer = ({ overrides }: CountdownTimerProps) => {
-  const { data: settings } = useSiteSettings<CountdownSettings>("countdown_timer");
   const currentStore = useOptionalStore();
+  const { data: settings } = useSiteSettings<CountdownSettings>("countdown_timer", currentStore?.id);
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
