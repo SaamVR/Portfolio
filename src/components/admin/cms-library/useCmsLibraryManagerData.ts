@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { buildThemePromotionPayload } from "@/components/admin/cms-library/mutations";
-import { type LibraryData, type ThemeRow } from "@/components/admin/cms-library/shared";
+import { readPagePayload, readStringArray, type LibraryData, type ThemeRow } from "@/components/admin/cms-library/shared";
 
 const LIBRARY_QUERY_KEY = ["cms-library-manager"] as const;
 
@@ -65,6 +65,70 @@ export function useCmsLibraryManagerData(userId?: string | null) {
     await queryClient.invalidateQueries({ queryKey: LIBRARY_QUERY_KEY });
   };
 
+  const ensureCanDeactivate = async (
+    table: "store_blueprints" | "page_blueprints" | "block_registry_entries" | "theme_packages",
+    idValue: string,
+    patch: Record<string, unknown>,
+  ) => {
+    if (patch.is_active !== false || !data) {
+      return;
+    }
+
+    if (table === "store_blueprints") {
+      const { count, error } = await (supabase as any)
+        .from("store_business_profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("blueprint_id", idValue);
+
+      if (error) {
+        throw new Error(error.message || "Failed to verify blueprint dependencies.");
+      }
+
+      if ((count ?? 0) > 0) {
+        throw new Error("This blueprint is still assigned to one or more stores. Reassign those stores before deactivating it.");
+      }
+    }
+
+    if (table === "page_blueprints") {
+      const dependentBlueprints = data.blueprints.filter((item) =>
+        readStringArray(JSON.stringify(item.recommended_page_set ?? [])).includes(idValue),
+      );
+
+      if (dependentBlueprints.length > 0) {
+        throw new Error(`This page blueprint is still recommended by store blueprints: ${dependentBlueprints.slice(0, 3).map((item) => item.name).join(", ")}.`);
+      }
+    }
+
+    if (table === "block_registry_entries") {
+      const dependentBlueprints = data.blueprints.filter((item) =>
+        readStringArray(JSON.stringify(item.recommended_block_set ?? [])).includes(idValue),
+      );
+      if (dependentBlueprints.length > 0) {
+        throw new Error(`This block type is still recommended by store blueprints: ${dependentBlueprints.slice(0, 3).map((item) => item.name).join(", ")}.`);
+      }
+
+      const dependentPages = data.pages.filter((item) =>
+        readPagePayload(JSON.stringify(item.page_payload ?? {})).blocks.some((block) => String(block.type ?? "") === idValue),
+      );
+      if (dependentPages.length > 0) {
+        throw new Error(`This block type is still used by page blueprints: ${dependentPages.slice(0, 3).map((item) => item.name).join(", ")}.`);
+      }
+
+      const { count, error } = await (supabase as any)
+        .from("store_page_blocks")
+        .select("*", { count: "exact", head: true })
+        .eq("block_type", idValue);
+
+      if (error) {
+        throw new Error(error.message || "Failed to verify live block dependencies.");
+      }
+
+      if ((count ?? 0) > 0) {
+        throw new Error("This block type is still installed in live store pages. Remove or migrate those blocks before deactivating it.");
+      }
+    }
+  };
+
   const updateRow = async (
     table: "store_blueprints" | "page_blueprints" | "block_registry_entries" | "theme_packages",
     idColumn: string,
@@ -72,12 +136,18 @@ export function useCmsLibraryManagerData(userId?: string | null) {
     patch: Record<string, unknown>,
   ) => {
     setSavingId(`${table}:${idValue}`);
-    const { error } = await (supabase as any).from(table).update(patch).eq(idColumn, idValue);
-    if (error) {
-      toast.error(error.message || "Failed to update library item.");
-    } else {
-      toast.success("Library item updated.");
-      await refresh();
+    try {
+      await ensureCanDeactivate(table, idValue, patch);
+
+      const { error } = await (supabase as any).from(table).update(patch).eq(idColumn, idValue);
+      if (error) {
+        toast.error(error.message || "Failed to update library item.");
+      } else {
+        toast.success("Library item updated.");
+        await refresh();
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update library item.");
     }
     setSavingId(null);
   };
