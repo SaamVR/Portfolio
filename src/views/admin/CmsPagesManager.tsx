@@ -46,6 +46,7 @@ import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryI
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
@@ -60,6 +61,7 @@ type StoreRecord = {
   id: string;
   name: string;
   slug: string;
+  custom_domain?: string | null;
   description: string | null;
   currency_code: string | null;
   locale: string | null;
@@ -177,6 +179,7 @@ function mapRecordsToStore(
     id: store.id,
     name: store.name,
     slug: store.slug,
+    customDomain: store.custom_domain ?? undefined,
     description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
     locale: store.locale ?? DEFAULT_STORE_LOCALE,
@@ -322,7 +325,7 @@ export default function CmsPagesManager() {
     try {
       const storeResponse = await supabase
         .from("stores")
-        .select("id, name, slug, description, currency_code, locale, is_published, store_type")
+        .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
         .eq("id", activeStoreId as string)
         .maybeSingle();
 
@@ -1203,10 +1206,8 @@ export default function CmsPagesManager() {
     );
   }
 
-  const baseDomain = process.env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN || "localhost:3000";
-  const protocol = typeof window !== "undefined" && window.location.protocol === "https:" ? "https:" : "http:";
   const previewPath = selectedPage?.slug === "/" ? "" : selectedPage?.slug ?? "";
-  const previewHref = `${protocol}//${store.slug}.${baseDomain}${previewPath}`;
+  const previewHref = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain }, previewPath || "/");
   
   const previewBlocks = selectedPage ? [...selectedPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const previewFrameClassName = previewViewport === "mobile" ? "mx-auto w-full max-w-[420px]" : "w-full";

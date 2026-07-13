@@ -223,6 +223,7 @@ export const storeSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
   slug: z.string().min(1),
+  customDomain: z.string().optional(),
   description: z.string().min(1),
   currencyCode: z.string().default("BDT"),
   locale: z.string().default("en-BD"),

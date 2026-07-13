@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
-import { absoluteUrl } from "@/lib/siteUrl";
+import { absoluteStoreUrl, absoluteUrl } from "@/lib/siteUrl";
 import { extractIdFromSlug, isUuid } from "@/lib/slug";
 
 export interface ProductMetadataRecord {
@@ -85,7 +85,7 @@ export function buildStorePageMetadata(store: Store, page: StorePage, path: stri
       ? store.name
       : `${page.title} | ${store.name}`;
   const description = truncate(compact(page.seoDescription) || compact(store.description));
-  const canonical = absoluteUrl(path);
+  const canonical = absoluteStoreUrl(store, path);
   const image = metadataImage(getPageShareImage(page));
 
   return {
@@ -122,7 +122,7 @@ export function buildStorePageMetadata(store: Store, page: StorePage, path: stri
 export function buildStoreShopMetadata(store: Store): Metadata {
   const title = `Shop | ${store.name}`;
   const description = truncate(`Browse products from ${store.name}. ${compact(store.description)}`);
-  const canonical = absoluteUrl(`/stores/${encodeURIComponent(store.slug)}/shop`);
+  const canonical = absoluteStoreUrl(store, "/shop");
   const image = metadataImage(DEFAULT_OG_IMAGE);
 
   return {
@@ -152,7 +152,7 @@ export function buildStoreShopMetadata(store: Store): Metadata {
 export function buildStoreProductMetadata(store: Store, product: ProductMetadataRecord, slugId: string): Metadata {
   const title = `${product.name} | ${store.name}`;
   const description = truncate(compact(product.description) || `Buy ${product.name} from ${store.name}.`);
-  const canonical = absoluteUrl(`/stores/${encodeURIComponent(store.slug)}/product/${encodeURIComponent(slugId)}`);
+  const canonical = absoluteStoreUrl(store, `/product/${encodeURIComponent(slugId)}`);
   const image = metadataImage(product.images?.[0] || product.image_url);
 
   return {

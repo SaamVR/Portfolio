@@ -178,6 +178,7 @@ export function buildResolvedStoreFromRecords(
     id: store.id,
     name: store.name,
     slug: store.slug,
+    customDomain: store.custom_domain ?? undefined,
     description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
     locale: store.locale ?? DEFAULT_STORE_LOCALE,
