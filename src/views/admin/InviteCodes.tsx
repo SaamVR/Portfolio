@@ -12,11 +12,12 @@ import { Plus, Copy, Loader2, KeyRound } from "lucide-react";
 
 type StaffInvite = {
   id: string;
-  code: string;
-  role: "admin" | "editor" | "viewer";
-  used_by: string | null;
+  invite_code: string;
+  role: "owner" | "admin" | "editor" | "viewer";
+  claimed_by: string | null;
   created_at: string;
   email: string | null;
+  status: "pending" | "claimed" | "revoked" | "expired";
 };
 
 const generateCode = () => {
@@ -41,7 +42,7 @@ const InviteCodes = () => {
 
     const { data, error } = await (supabase as any)
       .from("store_staff_invites")
-      .select("id, code, role, used_by, created_at, email")
+      .select("id, invite_code, role, claimed_by, created_at, email, status")
       .eq("store_id", activeStoreId as string)
       .order("created_at", { ascending: false });
 
@@ -112,11 +113,12 @@ const InviteCodes = () => {
     setCreating(true);
     const code = generateCode();
     const { error } = await (supabase as any).from("store_staff_invites").insert({
-      code,
+      invite_code: code,
       role: newRole,
       store_id: activeStoreId,
-      invited_by: user?.id,
+      created_by: user?.id,
       email: inviteEmail.trim() || null,
+      status: "pending",
     });
     if (error) {
       toast.error("Failed to create invite code");
@@ -194,19 +196,23 @@ const InviteCodes = () => {
             <Card key={c.id} className="border-border">
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
-                  <code className="rounded bg-secondary px-3 py-1.5 font-mono text-sm text-foreground">{c.code}</code>
-                  <Badge variant={c.role === "admin" ? "default" : "secondary"}>
-                    {c.role === "admin" ? "Store Owner" : c.role === "editor" ? "Editor" : "Viewer"}
+                  <code className="rounded bg-secondary px-3 py-1.5 font-mono text-sm text-foreground">{c.invite_code}</code>
+                  <Badge variant={c.role === "owner" || c.role === "admin" ? "default" : "secondary"}>
+                    {c.role === "owner" ? "Owner" : c.role === "admin" ? "Admin" : c.role === "editor" ? "Editor" : "Viewer"}
                   </Badge>
                   {c.email ? <span className="text-xs text-muted-foreground">{c.email}</span> : null}
-                  {c.used_by ? (
-                    <Badge variant="outline" className="text-muted-foreground">Used</Badge>
+                  {c.claimed_by || c.status === "claimed" ? (
+                    <Badge variant="outline" className="text-muted-foreground">Claimed</Badge>
+                  ) : c.status === "revoked" ? (
+                    <Badge variant="outline" className="text-muted-foreground">Revoked</Badge>
+                  ) : c.status === "expired" ? (
+                    <Badge variant="outline" className="text-muted-foreground">Expired</Badge>
                   ) : (
                     <Badge variant="outline" className="border-primary/30 text-primary">Available</Badge>
                   )}
                 </div>
-                {!c.used_by && (
-                  <Button variant="ghost" size="icon" onClick={() => copyCode(c.code)}>
+                {!c.claimed_by && c.status === "pending" && (
+                  <Button variant="ghost" size="icon" onClick={() => copyCode(c.invite_code)}>
                     <Copy className="h-4 w-4" />
                   </Button>
                 )}
