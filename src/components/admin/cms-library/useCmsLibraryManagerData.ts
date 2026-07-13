@@ -157,6 +157,13 @@ export function useCmsLibraryManagerData(userId?: string | null) {
   ) => {
     setSavingId(`${table}:${idValue}`);
     try {
+      if (table === "theme_packages") {
+        const themeItem = data?.themes.find((item) => item.id === idValue);
+        if (themeItem?.source_type === "merchant_private") {
+          throw new Error("Merchant-private themes are store-owned snapshots. Promote them to a shared theme instead of editing the original package here.");
+        }
+      }
+
       await ensureCanDeactivate(table, idValue, patch);
 
       const { error } = await (supabase as any).from(table).update(patch).eq(idColumn, idValue);

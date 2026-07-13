@@ -246,7 +246,13 @@ export default function CmsLibraryManager() {
                   </div>
                 </div>
                 <div className="flex items-center justify-end">
-                  <Button variant="outline" size="sm" className="mr-2 gap-2" onClick={() => openEditDialog({ mode: "edit", type: "theme", item })}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mr-2 gap-2"
+                    onClick={() => openEditDialog({ mode: "edit", type: "theme", item })}
+                    disabled={item.source_type === "merchant_private"}
+                  >
                     <Edit3 className="h-4 w-4" />
                     Edit
                   </Button>
