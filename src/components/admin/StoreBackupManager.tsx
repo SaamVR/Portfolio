@@ -30,6 +30,7 @@ type StoreOption = {
 };
 
 const EXPORT_TABLES = {
+  store_business_profiles: "store_id",
   store_themes: "store_id",
   store_pages: "store_id",
   store_page_blocks: "store_id",
@@ -52,6 +53,7 @@ const DELETE_ORDER = [
   "store_page_revisions",
   "store_page_blocks",
   "store_pages",
+  "store_business_profiles",
   "product_reviews",
   "orders",
   "coupon_codes",
@@ -317,6 +319,29 @@ export default function StoreBackupManager() {
       const { error: storeError } = await (supabase as any).from("stores").upsert(nextStoreRow, { onConflict: "id" });
       if (storeError) throw storeError;
 
+      const importedThemeRows = Array.isArray(rewrittenData.store_themes) ? rewrittenData.store_themes : [];
+      const importedThemePackageIds = Array.from(new Set(
+        importedThemeRows
+          .map((row: any) => (typeof row?.theme_package_id === "string" ? row.theme_package_id : null))
+          .filter((value: string | null): value is string => Boolean(value)),
+      ));
+      let validThemePackageIds = new Set<string>();
+
+      if (importedThemePackageIds.length > 0) {
+        const { data: existingThemePackages, error: themePackageLookupError } = await (supabase as any)
+          .from("theme_packages")
+          .select("id")
+          .in("id", importedThemePackageIds);
+
+        if (themePackageLookupError) {
+          throw themePackageLookupError;
+        }
+
+        validThemePackageIds = new Set(
+          ((existingThemePackages ?? []) as Array<{ id: string }>).map((row) => row.id),
+        );
+      }
+
       const upsertRows = async (tableName: string, rows: any[], onConflict = "id") => {
         if (!rows || rows.length === 0) return;
         const nextRows = rows.map((row) => ({
@@ -328,7 +353,17 @@ export default function StoreBackupManager() {
       };
 
       await upsertRows("store_subscriptions", rewrittenData.store_subscriptions ?? [], "store_id");
-      await upsertRows("store_themes", rewrittenData.store_themes ?? [], "store_id");
+      await upsertRows("store_business_profiles", rewrittenData.store_business_profiles ?? [], "store_id");
+      await upsertRows(
+        "store_themes",
+        importedThemeRows.map((row: any) => ({
+          ...row,
+          theme_package_id: validThemePackageIds.has(String(row?.theme_package_id ?? ""))
+            ? row.theme_package_id
+            : null,
+        })),
+        "store_id",
+      );
       await upsertRows("product_categories", rewrittenData.product_categories ?? []);
       await upsertRows("product_types", rewrittenData.product_types ?? []);
       await upsertRows("products", rewrittenData.products ?? []);
