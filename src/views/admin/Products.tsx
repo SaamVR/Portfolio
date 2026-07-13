@@ -236,7 +236,7 @@ const AdminProducts = () => {
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-sm"
       />
-                      {loading ? (
+                      {loading && products.length === 0 ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -274,9 +274,9 @@ const AdminProducts = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-heading text-sm font-semibold text-foreground">{p.name}</h3>
-                    <p className="text-xs text-muted-foreground">{p.type} · {p.category}</p>
+                    <p className="text-xs text-muted-foreground">{p.type} - {p.category}</p>
                   </div>
-                  <p className="font-heading text-sm font-bold text-primary">৳{p.price}</p>
+                  <p className="font-heading text-sm font-bold text-primary">BDT {p.price}</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
@@ -315,7 +315,7 @@ const AdminProducts = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Price (৳) *</Label>
+                <Label>Price (BDT) *</Label>
                 <Input data-testid="products-form-price" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
               </div>
               <div className="grid gap-2">
@@ -412,4 +412,3 @@ const AdminProducts = () => {
 };
 
 export default AdminProducts;
-

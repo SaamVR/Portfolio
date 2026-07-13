@@ -63,7 +63,7 @@ const Users = () => {
 
   if (platformRole !== "admin") return <Navigate to="/admin" replace />;
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -111,4 +111,3 @@ const Users = () => {
 };
 
 export default Users;
-

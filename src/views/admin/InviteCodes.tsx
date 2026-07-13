@@ -171,7 +171,7 @@ const InviteCodes = () => {
         </CardContent>
       </Card>
 
-      {loading ? (
+      {loading && codes.length === 0 ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -212,4 +212,3 @@ const InviteCodes = () => {
 };
 
 export default InviteCodes;
-
