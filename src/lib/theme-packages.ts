@@ -212,6 +212,17 @@ export function resolveThemePackageById(
     ?? fallbackThemePackages[0];
 }
 
+export function isThemePackageReferenceMissing(
+  packageId: string | null | undefined,
+  packages: ThemePackageDefinition[] = fallbackThemePackages,
+) {
+  if (!packageId) {
+    return false;
+  }
+
+  return !findThemePackageById(packageId, packages);
+}
+
 export function getThemePackageById(
   packageId: string | null | undefined,
   packages: ThemePackageDefinition[] = fallbackThemePackages,

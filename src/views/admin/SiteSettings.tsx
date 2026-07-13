@@ -28,6 +28,7 @@ import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from
 import {
   buildThemePackageExport,
   fallbackThemePackages,
+  isThemePackageReferenceMissing,
   resolveThemePackageById,
   loadThemePackages,
   parseThemePackageImport,
@@ -245,6 +246,10 @@ const SiteSettings = () => {
     () => resolveThemePackageById(localThemeId, themePackages, themeData?.preset_id ?? "default"),
     [localThemeId, themeData?.preset_id, themePackages],
   );
+  const isMissingActiveThemeReference = useMemo(
+    () => isThemePackageReferenceMissing(themeData?.theme_package_id ?? null, themePackages),
+    [themeData?.theme_package_id, themePackages],
+  );
   const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
   const resolvedHeadingFont = resolveThemeFontValue(
     settings.theme_customization?.heading_font ?? themeData?.typography?.headingFont,
@@ -427,7 +432,7 @@ const SiteSettings = () => {
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["store_themes", activeStoreId] });
-      toast.success("Theme settings saved.");
+      toast.success(isMissingActiveThemeReference ? "Theme settings saved and missing package reference repaired." : "Theme settings saved.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save theme settings.");
     } finally {
@@ -572,6 +577,11 @@ const SiteSettings = () => {
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Site Settings</h1>
           <p className="text-sm text-muted-foreground">Edit your store's content and appearance</p>
+          {isMissingActiveThemeReference ? (
+            <p className="mt-2 text-sm text-amber-600">
+              This store references a theme package that is no longer available. The editor is showing the nearest compatible fallback until you save a new package choice.
+            </p>
+          ) : null}
         </div>
         <Button variant="outline" onClick={seedDemoProducts} className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary">
           <Database className="h-4 w-4" /> Seed Demo Products

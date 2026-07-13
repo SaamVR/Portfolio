@@ -50,7 +50,7 @@ import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
-import { resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 type StoreRecord = {
   id: string;
@@ -273,6 +273,10 @@ export default function CmsPagesManager() {
           && block.requiredCapabilities.every((capability) => activeBlueprint.capabilities.includes(capability)),
       ),
     [activeBlueprint, blockRegistry],
+  );
+  const isMissingThemeReference = useMemo(
+    () => Boolean(store?.theme.themePackageId) && isThemePackageReferenceMissing(store?.theme.themePackageId ?? null, themePackages),
+    [store?.theme.themePackageId, themePackages],
   );
 
   const loadStore = useCallback(async () => {
@@ -1327,6 +1331,11 @@ export default function CmsPagesManager() {
               <div>
                 <p className="text-sm font-medium text-foreground">Store Theme</p>
                 <p className="text-xs text-muted-foreground">These settings are saved to `store_themes` and power the live storefront preview.</p>
+                {isMissingThemeReference ? (
+                  <p className="mt-2 text-xs text-amber-600">
+                    The saved theme package reference for this store is missing. Page Builder is previewing the nearest compatible fallback until you save a new package choice.
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-2">
                 <Label>Theme Package</Label>
