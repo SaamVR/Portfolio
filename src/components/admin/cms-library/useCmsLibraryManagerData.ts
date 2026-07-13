@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { buildThemePromotionPayload } from "@/components/admin/cms-library/mutations";
-import { readPagePayload, readStringArray, type LibraryData, type ThemeRow } from "@/components/admin/cms-library/shared";
+import { findBlueprintRowsUsingThemePackage, readPagePayload, readStringArray, type LibraryData, type ThemeRow } from "@/components/admin/cms-library/shared";
 
 const LIBRARY_QUERY_KEY = ["cms-library-manager"] as const;
 
@@ -125,6 +125,26 @@ export function useCmsLibraryManagerData(userId?: string | null) {
 
       if ((count ?? 0) > 0) {
         throw new Error("This block type is still installed in live store pages. Remove or migrate those blocks before deactivating it.");
+      }
+    }
+
+    if (table === "theme_packages") {
+      const dependentBlueprints = findBlueprintRowsUsingThemePackage(data, idValue);
+      if (dependentBlueprints.length > 0) {
+        throw new Error(`This theme package is still assigned as the default for store blueprints: ${dependentBlueprints.slice(0, 3).map((item) => item.name).join(", ")}.`);
+      }
+
+      const { count, error } = await (supabase as any)
+        .from("store_themes")
+        .select("*", { count: "exact", head: true })
+        .eq("theme_package_id", idValue);
+
+      if (error) {
+        throw new Error(error.message || "Failed to verify live theme dependencies.");
+      }
+
+      if ((count ?? 0) > 0) {
+        throw new Error("This theme package is still installed on one or more stores. Reassign those stores before deactivating it.");
       }
     }
   };

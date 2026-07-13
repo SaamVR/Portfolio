@@ -109,6 +109,22 @@ export type ThemeEditorPayload = {
   };
 };
 
+export function findBlueprintRowsUsingThemePackage(data: LibraryData, themeId: string) {
+  const themeItem = data.themes.find((item) => item.id === themeId);
+  const themeIdentifiers = new Set(
+    [themeItem?.id, themeItem?.slug]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+  );
+
+  return data.blueprints.filter((item) => {
+    const defaultTheme = item.default_theme && typeof item.default_theme === "object" && !Array.isArray(item.default_theme)
+      ? item.default_theme as Record<string, unknown>
+      : readJsonObject(JSON.stringify(item.default_theme ?? {}));
+    const presetId = typeof defaultTheme?.presetId === "string" ? defaultTheme.presetId : null;
+    return Boolean(presetId && themeIdentifiers.has(presetId));
+  });
+}
+
 export const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as const;
 export const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
 export const legacyTemplateOptions = ["clothing", "food", "general"] as const;

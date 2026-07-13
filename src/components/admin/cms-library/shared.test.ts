@@ -3,6 +3,7 @@ import {
   buildKnownBlockOptions,
   buildKnownCapabilities,
   buildKnownPageBlueprintIds,
+  findBlueprintRowsUsingThemePackage,
   readDefaultSiteSettings,
   readThemeEditorPayload,
   updateDefaultSiteSettingsField,
@@ -145,5 +146,72 @@ describe("cms library shared helpers", () => {
     expect(pageIds.some((item) => item === "custom-gallery")).toBe(true);
     expect(blockOptions.some((item) => item.value === "booking-widget")).toBe(true);
     expect(capabilities.some((item) => item === "bookings")).toBe(true);
+  });
+
+  it("finds blueprints that reference a theme package by exact id or slug", () => {
+    const dependents = findBlueprintRowsUsingThemePackage({
+      blueprints: [
+        {
+          id: "gadgets",
+          name: "Gadgets",
+          short_name: "Gadgets",
+          description: "Gadgets",
+          business_family: "commerce",
+          catalog_mode: "multi_product",
+          group_name: "Commerce",
+          store_description: "Gadgets store",
+          legacy_template_id: "general",
+          recommended_page_set: [],
+          recommended_block_set: [],
+          required_capabilities: [],
+          default_theme: { presetId: "merchant-noir" },
+          hero_payload: {},
+          onboarding_schema: {},
+          default_site_settings: {},
+          is_active: true,
+        },
+        {
+          id: "food",
+          name: "Food",
+          short_name: "Food",
+          description: "Food",
+          business_family: "commerce",
+          catalog_mode: "menu",
+          group_name: "Commerce",
+          store_description: "Food store",
+          legacy_template_id: "food",
+          recommended_page_set: [],
+          recommended_block_set: [],
+          required_capabilities: [],
+          default_theme: { presetId: "food" },
+          hero_payload: {},
+          onboarding_schema: {},
+          default_site_settings: {},
+          is_active: true,
+        },
+      ],
+      themes: [
+        {
+          id: "theme-1",
+          slug: "merchant-noir",
+          name: "Merchant Noir",
+          description: "Private theme",
+          source_type: "admin_shared",
+          version: 1,
+          compatibility_version: 1,
+          preset_id: "default",
+          mode: "dark",
+          preview_metadata: {},
+          tokens: {},
+          component_recipes: {},
+          custom_css: null,
+          owner_store_id: null,
+        },
+      ],
+      pages: [],
+      blocks: [],
+    }, "theme-1");
+
+    expect(dependents.map((item) => item.id)).toEqual(["gadgets"]);
   });
 });
