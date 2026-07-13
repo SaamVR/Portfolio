@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Phone, Store, User } from "lucide-react";
 import { slugify } from "@/lib/slug";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
@@ -97,14 +98,10 @@ export default function MerchantSignup() {
     return Array.from(groups.entries());
   }, [blueprints]);
 
-  const siteUrl = useMemo(() => {
-    const slug = form.storeSlug || "your-store";
-    const rootDomain = getSignupRootDomain();
-    const protocol = rootDomain === "localhost" ? "http" : "https";
-    return rootDomain === "localhost"
-      ? `${protocol}://${slug}.localhost:3000`
-      : `${protocol}://${slug}.${rootDomain}`;
-  }, [form.storeSlug]);
+  const siteUrl = useMemo(
+    () => absoluteStoreUrl({ slug: form.storeSlug || "your-store" }, "/"),
+    [form.storeSlug],
+  );
 
   useEffect(() => {
     supabase

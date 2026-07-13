@@ -40,6 +40,7 @@ import {
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
 import { createStoreSlug } from "@/lib/slug";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import {
@@ -281,15 +282,8 @@ function buildPreviewStore(
   };
 }
 
-function getStoreUrl(slug: string) {
-  if (typeof window === "undefined") {
-    return `/stores/${slug}`;
-  }
-
-  const host = window.location.host;
-  const protocol = window.location.protocol;
-  const rootHost = host.replace(/^www\./, "");
-  return `${protocol}//${slug}.${rootHost}`;
+function getStoreUrl(slug: string, customDomain?: string | null) {
+  return absoluteStoreUrl({ slug, customDomain }, "/");
 }
 
 export default function OnboardingWizard() {
@@ -316,7 +310,7 @@ export default function OnboardingWizard() {
     [draft, activeStoreId, blueprints, pageBlueprints, themePackages],
   );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
-  const storeUrl = getStoreUrl(draft.slug);
+  const storeUrl = getStoreUrl(draft.slug, null);
   const canGoNext = activeIndex < steps.length - 1;
   const canGoBack = activeIndex > 0;
   const blueprintEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);

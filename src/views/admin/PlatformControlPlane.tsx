@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -775,7 +776,7 @@ export default function PlatformControlPlane() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button asChild variant="outline" size="sm">
-                        <Link to={`/stores/${selectedStore.slug}`}>View Storefront</Link>
+                        <Link to={absoluteStoreUrl({ slug: selectedStore.slug, customDomain: selectedStore.custom_domain }, "/")}>View Storefront</Link>
                       </Button>
                     </div>
                     <div className="space-y-3">
