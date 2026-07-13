@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.stores (
   currency_code text NOT NULL DEFAULT 'BDT',
   locale text NOT NULL DEFAULT 'en-BD',
   plan text NOT NULL DEFAULT 'free',
-  store_type text NOT NULL DEFAULT 'clothing',
+  store_type text NOT NULL DEFAULT 'general-catalog',
   logo_url text,
   favicon_url text,
   is_published boolean NOT NULL DEFAULT false,
