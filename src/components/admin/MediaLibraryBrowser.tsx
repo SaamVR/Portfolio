@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Film, FolderOpen, Image as ImageIcon, Loader2, Search, Trash2, Upload } from "lucide-react";
@@ -61,6 +61,12 @@ export function MediaLibraryBrowser({
   const folderOptions = useMemo(() => {
     return Array.from(new Set(assets.map((asset) => asset.folder))).sort();
   }, [assets]);
+
+  useEffect(() => {
+    setSearch("");
+    setTypeFilter("all");
+    setFolderFilter("all");
+  }, [effectiveStoreId, folder, resourceType]);
 
   const persistAssets = async (nextAssets: MediaLibraryAsset[]) => {
     if (!effectiveStoreId) {

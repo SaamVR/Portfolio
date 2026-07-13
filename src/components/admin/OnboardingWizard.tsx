@@ -309,7 +309,7 @@ export default function OnboardingWizard() {
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
   const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
 
-  const blueprint = getStoreBlueprintById(draft.blueprintId);
+  const blueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
   const steps = blueprint.onboarding.steps;
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
@@ -328,6 +328,10 @@ export default function OnboardingWizard() {
 
     const loadDraft = async () => {
       if (!activeStoreId) {
+        setActiveIndex(0);
+        setSlugAvailable(true);
+        setSlugChecking(false);
+        setDraft(draftFromBlueprint(getDefaultBlueprintId(blueprints), themePackages, undefined, blueprints));
         setLoading(false);
         return;
       }
@@ -411,6 +415,7 @@ export default function OnboardingWizard() {
           },
           isPublished: store?.is_published ?? false,
         }, loadedBlueprints));
+        setActiveIndex(0);
       } catch (error) {
         console.error("Failed to load onboarding draft:", error);
         toast.error("Failed to refresh onboarding data. Please try again.");
@@ -421,6 +426,10 @@ export default function OnboardingWizard() {
 
     void loadDraft();
   }, [activeStoreId, role]);
+
+  useEffect(() => {
+    setSaving(false);
+  }, [activeStoreId]);
 
   useEffect(() => {
     const checkSlug = async () => {
@@ -502,156 +511,154 @@ export default function OnboardingWizard() {
     }
 
     setSaving(true);
-    const selectedBlueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
-    const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
-    const pages = buildPreviewStore(
-      { ...draft, isPublished: publish },
-      activeStoreId,
-      themePackages,
-      pageBlueprints,
-      blueprints,
-    ).pages;
+    try {
+      const selectedBlueprint = findStoreBlueprintById(draft.blueprintId, blueprints) ?? getStoreBlueprintById(draft.blueprintId);
+      const selectedThemePackage = getThemePackageById(draft.themePackageId, themePackages);
+      const pages = buildPreviewStore(
+        { ...draft, isPublished: publish },
+        activeStoreId,
+        themePackages,
+        pageBlueprints,
+        blueprints,
+      ).pages;
 
-    const { error: storeError } = await supabase.from("stores").update(
-      {
-        name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
-        slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
-        description: draft.description.trim() || selectedBlueprint.storeDescription,
-        store_type: draft.blueprintId,
-        logo_url: draft.logoUrl.trim() || null,
-        currency_code: "BDT",
-        locale: "en-BD",
-        is_published: publish,
-      },
-    ).eq("id", activeStoreId);
-
-    if (storeError) {
-      toast.error(`Failed to save store setup: ${storeError.message || storeError.details || storeError.hint || JSON.stringify(storeError)}`);
-      setSaving(false);
-      return;
-    }
-
-    const fullThemePayload = {
-      store_id: activeStoreId,
-      preset_id: selectedThemePackage.presetId,
-      mode: draft.themeMode,
-      theme_package_id: selectedThemePackage.id,
-      theme_package_version: selectedThemePackage.version,
-      colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
-      typography: {
-        headingFont: draft.headingFont,
-        bodyFont: draft.bodyFont,
-      },
-      components: {
-        borderRadius: draft.borderRadius,
-      },
-      overrides: {
-        themeMode: draft.themeMode,
-        headingFont: draft.headingFont,
-        bodyFont: draft.bodyFont,
-        borderRadius: draft.borderRadius,
-      },
-      resolved_tokens: {
-        light: selectedThemePackage.tokens.light,
-        dark: selectedThemePackage.tokens.dark,
-      },
-      custom_css: selectedThemePackage.customCss ?? null,
-    };
-
-    let themeError = (await supabase.from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
-    if (themeError) {
-      themeError = (await supabase.from("store_themes").upsert(
+      const { error: storeError } = await supabase.from("stores").update(
         {
-          store_id: activeStoreId,
-          preset_id: selectedThemePackage.presetId,
-          mode: draft.themeMode,
-          colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
-          typography: fullThemePayload.typography,
-          components: fullThemePayload.components,
-          custom_css: fullThemePayload.custom_css,
+          name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
+          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
+          description: draft.description.trim() || selectedBlueprint.storeDescription,
+          store_type: draft.blueprintId,
+          logo_url: draft.logoUrl.trim() || null,
+          currency_code: "BDT",
+          locale: "en-BD",
+          is_published: publish,
         },
-        { onConflict: "store_id" },
-      )).error;
-    }
+      ).eq("id", activeStoreId);
 
-    if (themeError) {
-      toast.error("Failed to save theme setup.");
-      setSaving(false);
-      return;
-    }
+      if (storeError) {
+        toast.error(`Failed to save store setup: ${storeError.message || storeError.details || storeError.hint || JSON.stringify(storeError)}`);
+        return;
+      }
 
-    const pageRows = pages.map((page) => ({
-      id: page.id,
-      store_id: activeStoreId,
-      slug: page.slug,
-      title: page.title,
-      seo_title: page.seoTitle ?? null,
-      seo_description: page.seoDescription ?? null,
-      is_homepage: page.isHomepage,
-    }));
-    await supabase.from("store_page_blocks").delete().eq("store_id", activeStoreId as string);
-    await supabase.from("store_pages").delete().eq("store_id", activeStoreId as string);
-
-    const { error: pagesError } = await supabase.from("store_pages").insert(pageRows);
-    if (pagesError) {
-      toast.error("Failed to save storefront pages.");
-      setSaving(false);
-      return;
-    }
-
-    const blockRows = pages.flatMap((page) =>
-      page.blocks.map((pageBlock, index) => ({
-        id: pageBlock.id,
-        page_id: page.id,
+      const fullThemePayload = {
         store_id: activeStoreId,
-        block_type: pageBlock.type,
-        props: pageBlock.props,
-        sort_order: index,
-        is_visible: pageBlock.isVisible,
-      })),
-    );
-
-    const { error: blocksError } = await supabase.from("store_page_blocks").insert(blockRows);
-    if (blocksError) {
-      toast.error("Failed to save storefront blocks.");
-      setSaving(false);
-      return;
-    }
-
-    const siteSettingsRows = buildBlueprintSiteSettingsEntries(selectedBlueprint, {
-      payment_settings: draft.payment as unknown as Json,
-    }).map((entry) => ({
-      store_id: activeStoreId,
-      key: entry.key,
-      value: entry.value,
-    }));
-
-    const { error: siteSettingsError } = await supabase
-      .from("site_settings")
-      .upsert(siteSettingsRows, { onConflict: "store_id,key" });
-
-    if (siteSettingsError) {
-      toast.error("Failed to save blueprint defaults.");
-      setSaving(false);
-      return;
-    }
-
-    await supabase
-      .from("store_business_profiles")
-      .upsert(
-        {
-          store_id: activeStoreId,
-          blueprint_id: draft.blueprintId,
-          business_family: draft.businessFamily,
-          catalog_mode: draft.catalogMode,
-          enabled_modules: selectedBlueprint.capabilities,
+        preset_id: selectedThemePackage.presetId,
+        mode: draft.themeMode,
+        theme_package_id: selectedThemePackage.id,
+        theme_package_version: selectedThemePackage.version,
+        colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
+        typography: {
+          headingFont: draft.headingFont,
+          bodyFont: draft.bodyFont,
         },
-        { onConflict: "store_id" },
+        components: {
+          borderRadius: draft.borderRadius,
+        },
+        overrides: {
+          themeMode: draft.themeMode,
+          headingFont: draft.headingFont,
+          bodyFont: draft.bodyFont,
+          borderRadius: draft.borderRadius,
+        },
+        resolved_tokens: {
+          light: selectedThemePackage.tokens.light,
+          dark: selectedThemePackage.tokens.dark,
+        },
+        custom_css: selectedThemePackage.customCss ?? null,
+      };
+
+      let themeError = (await supabase.from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
+      if (themeError) {
+        themeError = (await supabase.from("store_themes").upsert(
+          {
+            store_id: activeStoreId,
+            preset_id: selectedThemePackage.presetId,
+            mode: draft.themeMode,
+            colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
+            typography: fullThemePayload.typography,
+            components: fullThemePayload.components,
+            custom_css: fullThemePayload.custom_css,
+          },
+          { onConflict: "store_id" },
+        )).error;
+      }
+
+      if (themeError) {
+        toast.error("Failed to save theme setup.");
+        return;
+      }
+
+      const pageRows = pages.map((page) => ({
+        id: page.id,
+        store_id: activeStoreId,
+        slug: page.slug,
+        title: page.title,
+        seo_title: page.seoTitle ?? null,
+        seo_description: page.seoDescription ?? null,
+        is_homepage: page.isHomepage,
+      }));
+      await supabase.from("store_page_blocks").delete().eq("store_id", activeStoreId as string);
+      await supabase.from("store_pages").delete().eq("store_id", activeStoreId as string);
+
+      const { error: pagesError } = await supabase.from("store_pages").insert(pageRows);
+      if (pagesError) {
+        toast.error("Failed to save storefront pages.");
+        return;
+      }
+
+      const blockRows = pages.flatMap((page) =>
+        page.blocks.map((pageBlock, index) => ({
+          id: pageBlock.id,
+          page_id: page.id,
+          store_id: activeStoreId,
+          block_type: pageBlock.type,
+          props: pageBlock.props,
+          sort_order: index,
+          is_visible: pageBlock.isVisible,
+        })),
       );
 
-    setDraft((current) => ({ ...current, isPublished: publish }));
-    setSaving(false);
-    toast.success(publish ? "Store is live." : "Store setup saved.");
+      const { error: blocksError } = await supabase.from("store_page_blocks").insert(blockRows);
+      if (blocksError) {
+        toast.error("Failed to save storefront blocks.");
+        return;
+      }
+
+      const siteSettingsRows = buildBlueprintSiteSettingsEntries(selectedBlueprint, {
+        payment_settings: draft.payment as unknown as Json,
+      }).map((entry) => ({
+        store_id: activeStoreId,
+        key: entry.key,
+        value: entry.value,
+      }));
+
+      const { error: siteSettingsError } = await supabase
+        .from("site_settings")
+        .upsert(siteSettingsRows, { onConflict: "store_id,key" });
+
+      if (siteSettingsError) {
+        toast.error("Failed to save blueprint defaults.");
+        return;
+      }
+
+      await supabase
+        .from("store_business_profiles")
+        .upsert(
+          {
+            store_id: activeStoreId,
+            blueprint_id: draft.blueprintId,
+            business_family: draft.businessFamily,
+            catalog_mode: draft.catalogMode,
+            enabled_modules: selectedBlueprint.capabilities,
+          },
+          { onConflict: "store_id" },
+        );
+
+      setDraft((current) => ({ ...current, isPublished: publish }));
+      toast.success(publish ? "Store is live." : "Store setup saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyStoreUrl = async () => {

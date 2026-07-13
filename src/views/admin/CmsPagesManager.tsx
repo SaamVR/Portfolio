@@ -373,6 +373,19 @@ export default function CmsPagesManager() {
   }, [loadStore, role]);
 
   useEffect(() => {
+    setSelectedPageId("");
+    setSelectedBlockId("");
+    setRevisions([]);
+    setLoadingRevisions(false);
+    setRevisionLabel("");
+    setIsMobileSettingsOpen(false);
+    setPreviewViewport("desktop");
+    setPersistedSnapshot("");
+    setRecoverableDraft(null);
+    setLastDraftSavedAt(null);
+  }, [activeStoreId]);
+
+  useEffect(() => {
     if (role !== "admin") return;
 
     const loadSharedLibraries = async () => {
@@ -538,6 +551,11 @@ export default function CmsPagesManager() {
   const bootstrapDefaultStore = async () => {
     if (!user) {
       toast.error("You need to be signed in as admin.");
+      return;
+    }
+
+    if (!activeStoreId) {
+      toast.error("Select a store before initializing the storefront workspace.");
       return;
     }
 
