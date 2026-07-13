@@ -64,9 +64,20 @@ const InviteCodes = () => {
     fetchCodes();
   }, [fetchCodes, role]);
 
+  useEffect(() => {
+    setNewRole("editor");
+    setInviteEmail("");
+    setCreating(false);
+  }, [activeStoreId]);
+
   if (role !== "admin") return <Navigate to="/admin" replace />;
 
   const handleCreate = async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before creating invite codes.");
+      return;
+    }
+
     setCreating(true);
     const code = generateCode();
     const { error } = await (supabase as any).from("store_staff_invites").insert({

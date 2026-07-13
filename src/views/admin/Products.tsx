@@ -97,6 +97,14 @@ const AdminProducts = () => {
     });
   }, [activeStoreId, fetchProducts]);
 
+  useEffect(() => {
+    setDialogOpen(false);
+    setEditing(null);
+    setForm(emptyProduct);
+    setSaving(false);
+    setSearch("");
+  }, [activeStoreId]);
+
   const openNew = () => {
     setEditing(null);
     setForm(emptyProduct);
@@ -124,6 +132,11 @@ const AdminProducts = () => {
   };
 
   const handleSave = async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before saving products.");
+      return;
+    }
+
     if (!form.name || !form.image_url || form.price <= 0) {
       toast.error("Name, image URL, and price are required");
       return;
@@ -158,6 +171,11 @@ const AdminProducts = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!activeStoreId) {
+      toast.error("Select a store before deleting products.");
+      return;
+    }
+
     if (!confirm("Delete this product?")) return;
     const { error } = await supabase.from("products").delete().eq("id", id).eq("store_id", activeStoreId as string);
     if (error) {

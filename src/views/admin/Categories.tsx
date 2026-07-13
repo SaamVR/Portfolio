@@ -90,6 +90,17 @@ const AdminCategories = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    setCatDialogOpen(false);
+    setEditingCat(null);
+    setCatForm({ name: "", parent_id: "none", sort_order: 0, image_url: "", tagline: "" });
+    setSavingCat(false);
+    setTypeDialogOpen(false);
+    setEditingType(null);
+    setTypeForm({ name: "", sort_order: 0, image_url: "", tagline: "" });
+    setSavingType(false);
+  }, [activeStoreId]);
+
   // --- Category CRUD ---
   const openNewCat = () => {
     setEditingCat(null);
@@ -111,6 +122,11 @@ const AdminCategories = () => {
   };
 
   const saveCat = async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before saving categories.");
+      return;
+    }
+
     if (!catForm.name.trim()) { toast.error("Name is required"); return; }
     setSavingCat(true);
     const payload = {
@@ -163,6 +179,11 @@ const AdminCategories = () => {
   };
 
   const deleteCat = async (id: string) => {
+    if (!activeStoreId) {
+      toast.error("Select a store before deleting categories.");
+      return;
+    }
+
     if (!confirm("Delete this category?")) return;
     const { error } = await supabase.from("product_categories").delete().eq("id", id).eq("store_id", activeStoreId as string);
     if (error) {
@@ -193,6 +214,11 @@ const AdminCategories = () => {
   };
 
   const saveType = async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before saving product types.");
+      return;
+    }
+
     if (!typeForm.name.trim()) { toast.error("Name is required"); return; }
     setSavingType(true);
     const payload = { name: typeForm.name.trim(), sort_order: typeForm.sort_order };
@@ -241,6 +267,11 @@ const AdminCategories = () => {
   };
 
   const deleteType = async (id: string) => {
+    if (!activeStoreId) {
+      toast.error("Select a store before deleting product types.");
+      return;
+    }
+
     if (!confirm("Delete this type?")) return;
     const { error } = await supabase.from("product_types").delete().eq("id", id).eq("store_id", activeStoreId as string);
     if (error) {
