@@ -22,7 +22,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const currentStore = useOptionalStore();
-  const { data: brand } = useSiteSettings("brand_settings");
+  const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
 

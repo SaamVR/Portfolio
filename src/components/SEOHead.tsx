@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteUrl } from "@/lib/siteUrl";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 interface SEOHeadProps {
   title?: string;
@@ -23,7 +24,8 @@ const SEOHead = ({
   noindex = false,
   jsonLd,
 }: SEOHeadProps) => {
-  const { data: brand } = useSiteSettings("brand_settings");
+  const currentStore = useOptionalStore();
+  const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
 
   const SITE_NAME = brand?.name ? `${brand.name}${brand.highlight || ""}` : "Commerce Engine";
   const DEFAULT_DESC = brand?.seo_description || "Launch and manage online stores with CMS pages, products, payments, and templates.";
