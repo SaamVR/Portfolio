@@ -95,6 +95,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const blockingPermissionRequestIdRef = useRef<number | null>(null);
   const lastPassiveRefreshAtRef = useRef(0);
   const passivePermissionRefreshRef = useRef<Promise<void> | null>(null);
+  const initializingAuthRef = useRef(false);
+  const resolvedAccessStateRef = useRef<ResolvedAccessState | null>(null);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -108,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const applyResolvedAccessState = useCallback((resolved: ResolvedAccessState) => {
+    resolvedAccessStateRef.current = resolved;
     setActiveStoreId(resolved.resolvedStoreId);
     setStoreMemberships(resolved.memberships);
     setStoreRole(resolved.nextStoreRole);
@@ -175,6 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clearAccessState = useCallback(() => {
+    resolvedAccessStateRef.current = null;
     setRole(null);
     setPlatformRole(null);
     setStoreRole(null);
@@ -247,6 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     mountedRef.current = true;
 
     const initializeAuth = async () => {
+      initializingAuthRef.current = true;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const nextUserId = session?.user?.id ?? null;
@@ -261,14 +266,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
           }
         }
-        await resolvePermissions(nextUserId, {
-          blockUi: !cachedAccess,
-          preserveExistingOnError: false,
-        });
+        if (cachedAccess) {
+          void resolvePermissions(nextUserId, {
+            blockUi: false,
+            preserveExistingOnError: true,
+          });
+        } else {
+          await resolvePermissions(nextUserId, {
+            blockUi: true,
+            preserveExistingOnError: false,
+          });
+        }
       } catch (error) {
         console.error("Auth initialization error:", error);
         clearAccessState();
       } finally {
+        initializingAuthRef.current = false;
         if (mountedRef.current && blockingPermissionRequestIdRef.current === null) setLoading(false);
       }
     };
@@ -276,8 +289,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mountedRef.current) return;
+        if (event === "INITIAL_SESSION" && initializingAuthRef.current) return;
         
         const nextUserId = session?.user?.id ?? null;
         const isSameUser = Boolean(nextUserId && userIdRef.current === nextUserId);
@@ -288,6 +302,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (session?.user) {
           const cachedAccess = readCachedAccessState(session.user.id);
+          if (event === "TOKEN_REFRESHED" && isSameUser) {
+            if (!resolvedAccessStateRef.current && cachedAccess) {
+              applyResolvedAccessState(cachedAccess);
+              if (mountedRef.current) setLoading(false);
+            }
+            return;
+          }
+
           if (!isSameUser) {
             clearAccessState();
             if (cachedAccess) {
@@ -295,10 +317,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (mountedRef.current) setLoading(false);
             }
           }
-          await resolvePermissions(session.user.id, {
-            blockUi: !isSameUser && !cachedAccess,
+
+          const shouldBlockForAccess = !isSameUser && !cachedAccess && !resolvedAccessStateRef.current;
+          const refreshPromise = resolvePermissions(session.user.id, {
+            blockUi: shouldBlockForAccess,
             preserveExistingOnError: isSameUser,
           });
+          if (shouldBlockForAccess) {
+            await refreshPromise;
+          } else {
+            void refreshPromise;
+          }
         } else {
           clearAccessState();
           userIdRef.current = null;

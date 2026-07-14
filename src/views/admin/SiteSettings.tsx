@@ -152,9 +152,9 @@ const SiteSettings = () => {
 
   const tabOptions = [
     { value: "brand_seo", label: "Brand & SEO", category: "Store Identity", keywords: "brand title description seo logo highlight name" },
-    { value: "home_sections", label: "Home Sections (Legacy)", category: "Legacy Homepage", keywords: "legacy featured category tagline catalog title homepage migration" },
-    { value: "hero", label: "Hero Section (Legacy)", category: "Legacy Homepage", keywords: "legacy hero background image video media title tagline overlay button cta homepage migration" },
-    { value: "promo", label: "Promo Banner (Legacy)", category: "Legacy Homepage", keywords: "legacy promo discount summer sale button text color glow card opacity homepage migration" },
+    { value: "home_sections", label: "Fallback Home Sections", category: "Legacy Fallbacks", keywords: "legacy fallback featured category tagline catalog title homepage migration" },
+    { value: "hero", label: "Fallback Hero Fields", category: "Legacy Fallbacks", keywords: "legacy fallback hero background image video media title tagline overlay button cta homepage migration" },
+    { value: "promo", label: "Fallback Promo Fields", category: "Legacy Fallbacks", keywords: "legacy fallback promo discount sale button text color card opacity homepage migration" },
     { value: "announcement", label: "Announcement Bar", category: "Store Identity", keywords: "announcement rotation text bar color bg message" },
     { value: "themes", label: "Themes Customizer", category: "Design System", keywords: "theme colors palette presets font layout border radius container width preset preset presets typography style styles" },
     { value: "upsells", label: "Upsells & Popups", category: "Checkout & Log", keywords: "popup count-down upsells discount coupon exit-intent popups modal drawer card" },
@@ -204,8 +204,8 @@ const SiteSettings = () => {
       t.category.toLowerCase().includes(tabQuery.toLowerCase())
   );
   const mobileQuickTabs = tabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
-  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && tab.category !== "Legacy Homepage");
-  const mobileLegacyTabs = filteredTabs.filter((tab) => tab.category === "Legacy Homepage");
+  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && tab.category !== "Legacy Fallbacks");
+  const mobileLegacyTabs = filteredTabs.filter((tab) => tab.category === "Legacy Fallbacks");
 
   useEffect(() => {
     if (role !== "admin") return;

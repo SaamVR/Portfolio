@@ -55,7 +55,7 @@ export default function AdminRecoveryPanel({
             <div className="flex flex-col gap-3 sm:flex-row">
               {onRetry ? (
                 <Button type="button" onClick={onRetry} className="gap-2">
-                  Retry
+                  {retryLabel}
                 </Button>
               ) : null}
               {onSecondary && secondaryLabel ? (
