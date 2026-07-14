@@ -148,7 +148,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
           {children}
         </div>
       </main>
-      <AdminMobileNav />
+      <AdminMobileNav onOpenCommand={() => setCommandOpen(true)} />
       <AdminCommandMenu open={commandOpen} setOpen={setCommandOpen} />
     </div>
   );

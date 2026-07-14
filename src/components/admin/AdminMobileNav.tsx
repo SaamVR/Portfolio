@@ -42,8 +42,13 @@ import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
+import StoreSwitcher from "./StoreSwitcher";
 
-const AdminMobileNav = () => {
+type AdminMobileNavProps = {
+  onOpenCommand: () => void;
+};
+
+const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
@@ -92,21 +97,72 @@ const AdminMobileNav = () => {
     { to: "/admin/messages", icon: Mail, label: "Messages", badge: unreadCount },
   ];
 
-  const drawerLinks = [
+  const quickLinks = [
+    { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
+    { to: withStoreId("/admin/onboarding", activeStoreId), icon: Rocket, label: "Setup", show: isAdmin },
+    { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+  ];
+
+  const commerceLinks = [
     { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
     { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
     { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
+    { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
+  ];
+
+  const storefrontLinks = [
     { to: withStoreId("/admin/onboarding", activeStoreId), icon: Rocket, label: "Store Setup", show: isAdmin },
     { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
+  ];
+
+  const adminLinks = [
     { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
-    { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
     { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
     { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
   ];
+
+  const renderLinkCard = (link: { to: string; icon: any; label: string; external?: boolean; badge?: number }) => {
+    const active = !link.external && location.pathname === link.to;
+    const Icon = link.icon;
+    return link.external ? (
+      <a
+        href={link.to}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-3 rounded-2xl border border-transparent bg-secondary/40 px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{link.label}</span>
+        {link.badge !== undefined && link.badge > 0 ? (
+          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            {link.badge > 99 ? "99+" : link.badge}
+          </span>
+        ) : null}
+      </a>
+    ) : (
+      <Link
+        to={link.to}
+        className={cn(
+          "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-200",
+          active
+            ? "border-primary/20 bg-primary/10 text-primary"
+            : "border-transparent bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{link.label}</span>
+        {link.badge !== undefined && link.badge > 0 ? (
+          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            {link.badge > 99 ? "99+" : link.badge}
+          </span>
+        ) : null}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -164,55 +220,64 @@ const AdminMobileNav = () => {
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="grid grid-cols-2 gap-3 py-6">
-                {drawerLinks
-                  .filter((l) => l.show)
-                  .map((link) => {
-                    const active = !link.external && location.pathname === link.to;
-                    const Icon = link.icon;
-                    const badge = "badge" in link ? link.badge : undefined;
-                    return (
+              <div className="space-y-5 py-6">
+                <StoreSwitcher mobile />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenCommand();
+                    }}
+                    className="flex items-center gap-3 rounded-2xl border border-transparent bg-secondary/40 px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
+                  >
+                    <Menu className="h-4 w-4 shrink-0" />
+                    <span>Search</span>
+                  </button>
+                  {quickLinks.filter((link) => link.show).slice(0, 1).map((link) => (
+                    <SheetClose asChild key={link.to}>
+                      {renderLinkCard(link)}
+                    </SheetClose>
+                  ))}
+                  {quickLinks.filter((link) => link.show).slice(1).map((link) => (
+                    <SheetClose asChild key={link.to}>
+                      {renderLinkCard(link)}
+                    </SheetClose>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Commerce</p>
+                  <div className="space-y-2">
+                    {commerceLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>
-                        {link.external ? (
-                          <a
-                            href={link.to}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={cn(
-                              "flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-200 border border-transparent",
-                              "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            )}
-                          >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{link.label}</span>
-                            {badge !== undefined && badge > 0 && (
-                              <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                                {badge > 99 ? "99+" : badge}
-                              </span>
-                            )}
-                          </a>
-                        ) : (
-                          <Link
-                            to={link.to}
-                            className={cn(
-                              "flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-200 border border-transparent",
-                              active
-                                ? "bg-primary/10 text-primary border-primary/20"
-                                : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            )}
-                          >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{link.label}</span>
-                            {badge !== undefined && badge > 0 && (
-                              <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                                {badge > 99 ? "99+" : badge}
-                              </span>
-                            )}
-                          </Link>
-                        )}
+                        {renderLinkCard(link)}
                       </SheetClose>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Storefront</p>
+                  <div className="space-y-2">
+                    {storefrontLinks.filter((link) => link.show).map((link) => (
+                      <SheetClose asChild key={link.to}>
+                        {renderLinkCard(link)}
+                      </SheetClose>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
+                  <div className="space-y-2">
+                    {adminLinks.filter((link) => link.show).map((link) => (
+                      <SheetClose asChild key={link.to}>
+                        {renderLinkCard(link)}
+                      </SheetClose>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="border-t border-border/50 pt-4 space-y-4">

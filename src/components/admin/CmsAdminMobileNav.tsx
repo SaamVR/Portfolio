@@ -27,6 +27,11 @@ const primaryLinks = [
   { to: "/admin", icon: LayoutDashboard, label: "Store Admin" },
 ];
 
+const secondaryLinks = [
+  { to: "/cms-admin", icon: Shield, label: "Platform Overview", description: "Stores, plans, lifecycle, and billing health" },
+  { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library", description: "Blueprints, themes, page blueprints, and blocks" },
+];
+
 export default function CmsAdminMobileNav({ userEmail, onOpenCommand, onSignOut }: CmsAdminMobileNavProps) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +106,60 @@ export default function CmsAdminMobileNav({ userEmail, onOpenCommand, onSignOut 
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="grid grid-cols-2 gap-3 py-6">
+              <div className="space-y-5 py-6">
+                <div className="grid grid-cols-2 gap-3">
+                  {primaryLinks.map((link) => {
+                    const Icon = link.icon;
+                    const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
+                    return (
+                      <SheetClose asChild key={link.to}>
+                        <Link
+                          to={link.to}
+                          className={cn(
+                            "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-200",
+                            active
+                              ? "border-primary/20 bg-primary/10 text-primary"
+                              : "border-transparent bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{link.label}</span>
+                        </Link>
+                      </SheetClose>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Platform Areas</p>
+                  <div className="space-y-2">
+                    {secondaryLinks.map((link) => {
+                      const Icon = link.icon;
+                      const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
+                      return (
+                        <SheetClose asChild key={link.to}>
+                          <Link
+                            to={link.to}
+                            className={cn(
+                              "flex items-start gap-3 rounded-2xl border px-4 py-3 transition-all duration-200",
+                              active
+                                ? "border-primary/20 bg-primary/10 text-primary"
+                                : "border-transparent bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground",
+                            )}
+                          >
+                            <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">{link.label}</p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">{link.description}</p>
+                            </div>
+                          </Link>
+                        </SheetClose>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => {
                     setIsOpen(false);
@@ -121,6 +179,7 @@ export default function CmsAdminMobileNav({ userEmail, onOpenCommand, onSignOut 
                     <span>Storefront</span>
                   </Link>
                 </SheetClose>
+                </div>
               </div>
 
               <div className="space-y-4 border-t border-border/50 pt-4">
