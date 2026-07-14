@@ -120,8 +120,9 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/50 px-4 backdrop-blur-xl md:px-8">
           <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-primary md:hidden" />
-            <span className="font-heading text-lg font-bold text-foreground md:hidden">CMS Admin</span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary md:hidden">
+              {location.pathname.startsWith("/cms-admin/libraries") ? "Shared Library" : "CMS Control"}
+            </span>
             <span className="hidden rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary md:inline-flex">
               CMS Admin Workspace
             </span>

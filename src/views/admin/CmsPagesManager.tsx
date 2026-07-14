@@ -1269,24 +1269,24 @@ export default function CmsPagesManager() {
                 </Link>
               </Button>
             ) : null}
-            <Button variant="outline" onClick={() => void loadStore()} className="gap-2">
+            <Button variant="outline" onClick={() => void loadStore()} className="gap-2 px-3">
               <RefreshCcw className="h-4 w-4" />
               <span className="hidden sm:inline">Reload</span>
             </Button>
-            <Button variant="outline" asChild className="gap-2">
+            <Button variant="outline" asChild className="gap-2 px-3">
               <a href={previewHref} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Preview Page</span>
               </a>
             </Button>
-            <Button onClick={() => void saveAll()} disabled={saving} className="gap-2">
+            <Button onClick={() => void saveAll()} disabled={saving} className="gap-2 px-3">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span className="hidden sm:inline">Save Pages</span>
             </Button>
           </div>
         </div>
       </div>
-      <div className="sticky top-16 z-20 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="sticky top-16 z-20 -mx-4 border-y border-border/60 bg-background/95 px-4 py-2.5 backdrop-blur-xl lg:hidden">
         <div className="overflow-x-auto">
           <div className="flex min-w-max items-center gap-2">
             {[
@@ -1328,6 +1328,15 @@ export default function CmsPagesManager() {
             ))}
           </div>
         </div>
+        {selectedPage ? (
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-border bg-card/60 px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{selectedPage.title}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{selectedPage.slug}</p>
+            </div>
+            <Badge variant="outline">{selectedPage.blocks.length} block{selectedPage.blocks.length === 1 ? "" : "s"}</Badge>
+          </div>
+        ) : null}
       </div>
         
       <div className="relative grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">

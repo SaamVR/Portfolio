@@ -1245,31 +1245,44 @@ const SiteSettings = () => {
                 { id: "payment-incentives", label: "Incentives" },
                 { id: "payment-gateway", label: "Gateway" },
               ]} />
-              <div id="payment-methods" className="space-y-4 scroll-mt-36">
-                <h3 className="text-sm font-semibold text-foreground">bKash</h3>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.payment_settings?.bkash_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)} />
-                  <Label>Enable bKash</Label>
+              <div id="payment-methods" className="space-y-3 scroll-mt-36">
+                <div className="rounded-xl border border-border p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">bKash</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">Manual or assisted checkout via the merchant number shown at checkout.</p>
+                      </div>
+                      <Switch checked={settings.payment_settings?.bkash_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>bKash Merchant Number</Label>
+                      <Input value={settings.payment_settings?.bkash_number ?? ""} onChange={(e) => update("payment_settings", "bkash_number", e.target.value)} placeholder="01XXXXXXXXX" />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>bKash Merchant Number</Label>
-                  <Input value={settings.payment_settings?.bkash_number ?? ""} onChange={(e) => update("payment_settings", "bkash_number", e.target.value)} placeholder="01XXXXXXXXX" />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Nagad</h3>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.payment_settings?.nagad_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "nagad_enabled", v)} />
-                  <Label>Enable Nagad</Label>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Nagad Merchant Number</Label>
-                  <Input value={settings.payment_settings?.nagad_number ?? ""} onChange={(e) => update("payment_settings", "nagad_number", e.target.value)} placeholder="01XXXXXXXXX" />
+                <div className="rounded-xl border border-border p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Nagad</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">Offer Nagad alongside bKash without expanding the checkout flow too much.</p>
+                      </div>
+                      <Switch checked={settings.payment_settings?.nagad_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "nagad_enabled", v)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Nagad Merchant Number</Label>
+                      <Input value={settings.payment_settings?.nagad_number ?? ""} onChange={(e) => update("payment_settings", "nagad_number", e.target.value)} placeholder="01XXXXXXXXX" />
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div id="payment-incentives" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
-                <h3 className="text-sm font-semibold text-foreground">Checkout Persuasion</h3>
+              <div id="payment-incentives" className="space-y-4 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Checkout Persuasion</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Use one badge and one incentive to encourage prepaid checkout without overloading the form.</p>
+                </div>
                 <div className="grid gap-2">
                   <Label>Prepaid Badge Text</Label>
                   <Input value={settings.payment_settings?.prepaid_badge_text ?? ""} onChange={(e) => update("payment_settings", "prepaid_badge_text", e.target.value)} placeholder="Optional badge text for prepaid checkout" />
@@ -1296,9 +1309,11 @@ const SiteSettings = () => {
                 )}
               </div>
 
-              <div id="payment-gateway" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
-                <h3 className="text-sm font-semibold text-foreground">Automated Payment Gateway (bKash API)</h3>
-                <p className="text-xs text-muted-foreground">Enter your bKash PGW credentials here. Leave blank to use manual Send Money verification.</p>
+              <div id="payment-gateway" className="space-y-4 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Automated Payment Gateway (bKash API)</h3>
+                  <p className="text-xs text-muted-foreground">Enter your bKash PGW credentials here. Leave blank to use manual Send Money verification.</p>
+                </div>
                 <div className="grid gap-2">
                   <Label>App Key</Label>
                   <Input type="password" value={settings.payment_settings?.bkash_app_key ?? ""} onChange={(e) => update("payment_settings", "bkash_app_key", e.target.value)} placeholder="Enter App Key" />
@@ -1620,7 +1635,7 @@ const SiteSettings = () => {
                 { id: "footer-bottom", label: "Bottom" },
               ]} />
               {/* Brand */}
-              <div id="footer-brand" className="space-y-3 scroll-mt-36">
+              <div id="footer-brand" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Brand</h3>
                 <div className="grid gap-2">
                   <Label>Brand Tagline (used in footer)</Label>
@@ -1633,7 +1648,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Newsletter */}
-              <div id="footer-newsletter" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
+              <div id="footer-newsletter" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
                 <div className="grid gap-2">
                   <Label>Heading</Label>
@@ -1650,7 +1665,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Company Links */}
-              <div id="footer-company-links" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
+              <div id="footer-company-links" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">Company Links</h3>
                   <Button variant="outline" size="sm" className="gap-1" onClick={() => {
@@ -1687,7 +1702,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Custom Links Column */}
-              <div id="footer-extra-links" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
+              <div id="footer-extra-links" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Extra Links Column</h3>
@@ -1731,7 +1746,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Section Order */}
-              <div id="footer-order" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
+              <div id="footer-order" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Section Order</h3>
                 <p className="text-xs text-muted-foreground">Drag to reorder footer columns. Use arrows to rearrange.</p>
                 {(() => {
@@ -1761,7 +1776,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Bottom Bar */}
-              <div id="footer-bottom" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
+              <div id="footer-bottom" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Bottom Bar</h3>
                 <div className="grid gap-2">
                   <Label>Payment Methods Text</Label>
@@ -1774,7 +1789,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Show/hide Shop Links */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div className="rounded-xl border border-border p-3 space-y-3">
                 <div className="flex items-center gap-2">
                   <Switch checked={settings.footer?.show_shop_links ?? true} onCheckedChange={(v) => update("footer", "show_shop_links", v)} />
                   <Label>Show Shop Category Links</Label>
