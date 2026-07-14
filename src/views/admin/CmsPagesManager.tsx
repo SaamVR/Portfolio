@@ -1215,6 +1215,10 @@ export default function CmsPagesManager() {
   const previewFrameClassName = previewViewport === "mobile" ? "mx-auto w-full max-w-[420px]" : "w-full";
   const visibleBlockCount = selectedPage?.blocks.filter((block) => block.isVisible).length ?? 0;
   const selectedPageNumber = selectedPage ? store.pages.findIndex((page) => page.id === selectedPage.id) + 1 : 0;
+  const scrollToBuilderSection = (sectionId: string) => {
+    if (typeof document === "undefined") return;
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="space-y-6">
@@ -1282,6 +1286,49 @@ export default function CmsPagesManager() {
           </div>
         </div>
       </div>
+      <div className="sticky top-16 z-20 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max items-center gap-2">
+            {[
+              { value: "store", label: "Store" },
+              { value: "theme", label: "Theme" },
+              { value: "pages", label: "Pages" },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setWorkspaceTab(tab.value as "store" | "theme" | "pages");
+                  setIsMobileSettingsOpen(true);
+                  scrollToBuilderSection("page-builder-workspace");
+                }}
+                className={cn(
+                  "inline-flex h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                  workspaceTab === tab.value
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-card text-muted-foreground",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+            {[
+              { id: "page-builder-details", label: "Details" },
+              { id: "page-builder-blocks", label: "Blocks" },
+              { id: "page-builder-preview", label: "Preview" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => scrollToBuilderSection(item.id)}
+                className="inline-flex h-9 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
         
       <div className="relative grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <div className="lg:col-span-2 space-y-3">
@@ -1333,6 +1380,7 @@ export default function CmsPagesManager() {
             "fixed inset-x-0 bottom-0 z-50 bg-background/95 backdrop-blur-xl border-t shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-4 pb-24 max-h-[75vh] overflow-y-auto rounded-t-3xl",
             isMobileSettingsOpen ? "translate-y-0" : "translate-y-full lg:translate-y-0"
           )}>
+            <div id="page-builder-workspace" />
             <div className="hidden items-start justify-between gap-3 lg:mb-4 lg:flex">
               <div>
                 <p className="text-sm font-semibold text-foreground">Store Workspace</p>
@@ -1552,6 +1600,7 @@ export default function CmsPagesManager() {
           {selectedPage ? (
             <div className="space-y-6">
               <Card className="border-border">
+                <div id="page-builder-details" />
                 <CardHeader>
                   <CardTitle className="text-lg">Page Details</CardTitle>
                 </CardHeader>
@@ -1662,6 +1711,7 @@ export default function CmsPagesManager() {
               </Card>
 
               <Card className="border-border">
+                <div id="page-builder-blocks" />
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <CardTitle className="text-lg">Blocks</CardTitle>
@@ -2158,6 +2208,7 @@ export default function CmsPagesManager() {
               </Card>
 
               <Card className="border-border overflow-hidden">
+                <div id="page-builder-preview" />
                 <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-lg">Live Preview</CardTitle>

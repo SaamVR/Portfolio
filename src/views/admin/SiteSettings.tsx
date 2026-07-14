@@ -24,6 +24,7 @@ import { Database } from "lucide-react";
 import { seedDemoProducts } from "@/data/seedDemoProducts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { cn } from "@/lib/utils";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import {
   buildThemePackageExport,
@@ -65,6 +66,16 @@ const bodyFontOptions = {
   roboto: "Roboto, sans-serif",
   opensans: "'Open Sans', sans-serif",
 } as const;
+
+const mobilePinnedSettingTabs = [
+  "brand_seo",
+  "themes",
+  "payment",
+  "delivery",
+  "support",
+  "contact",
+  "page_builder",
+] as const;
 
 function resolveThemeFontValue(
   value: unknown,
@@ -184,6 +195,7 @@ const SiteSettings = () => {
       t.keywords.toLowerCase().includes(tabQuery.toLowerCase()) ||
       t.category.toLowerCase().includes(tabQuery.toLowerCase())
   );
+  const mobileQuickTabs = tabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -718,27 +730,47 @@ const SiteSettings = () => {
             />
           </div>
 
-          {/* Mobile Select dropdown for settings sectors */}
-          <div className="block md:hidden">
-            <Select value={activeTab} onValueChange={handleTabChange}>
-              <SelectTrigger className="w-full bg-card">
-                <SelectValue placeholder="Select Settings Sector" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from(new Set(tabOptions.map((t) => t.category))).map((cat) => (
-                  <SelectGroup key={cat}>
-                    <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 px-2 py-1.5">{cat}</SelectLabel>
-                    {tabOptions
-                      .filter((t) => t.category === cat)
-                      .map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
+          {/* Mobile sticky jumpers */}
+          <div className="md:hidden">
+            <div className="sticky top-16 z-20 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl">
+              <div className="overflow-x-auto">
+                <div className="flex min-w-max items-center gap-2">
+                  {mobileQuickTabs.map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => handleTabChange(tab.value)}
+                      className={cn(
+                        "inline-flex h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                        activeTab === tab.value
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground",
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {filteredTabs.slice(0, 6).map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => handleTabChange(tab.value)}
+                    className={cn(
+                      "rounded-2xl border px-3 py-2 text-left transition-colors",
+                      activeTab === tab.value
+                        ? "border-primary/20 bg-primary/10 text-primary"
+                        : "border-border bg-card/70 text-foreground",
+                    )}
+                  >
+                    <p className="text-sm font-medium">{tab.label}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{tab.category}</p>
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            </div>
           </div>
 
           {/* Desktop Sidebar TabsList */}
