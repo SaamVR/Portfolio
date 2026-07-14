@@ -15,13 +15,11 @@ const cmsAdminLinks = [
 ];
 
 export default function CmsAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, session, role, platformRole, loading, signOut } = useAuth();
+  const { user, session, role, platformRole, loading, signOut, refreshRole } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  const showBlockingLoader = loading || (!!session && (!user || !role || !platformRole));
-
-  if (showBlockingLoader) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -31,6 +29,33 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
 
   if (!loading && !session) {
     return <Navigate to="/admin/login?next=/cms-admin" replace />;
+  }
+
+  if (!user || !role || !platformRole) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <h1 className="font-heading text-xl font-semibold text-foreground">Refreshing CMS access</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The platform session is active, but CMS permissions have not been restored yet.
+          </p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={() => void refreshRole()}
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              Retry access
+            </button>
+            <button
+              onClick={() => void signOut()}
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-secondary"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!loading && session && platformRole !== "admin") {

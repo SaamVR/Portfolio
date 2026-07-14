@@ -20,7 +20,7 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
 ];
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, session, role, loading } = useAuth();
+  const { user, session, role, loading, refreshRole, signOut } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const currentWorkspace =
@@ -34,9 +34,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
 
-  const showBlockingLoader = loading || (!!session && (!user || !role));
-
-  if (showBlockingLoader) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -46,6 +44,33 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
 
   if (!loading && !session) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!role || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <h1 className="font-heading text-xl font-semibold text-foreground">Refreshing dashboard access</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Your session is still here, but the dashboard permissions did not restore cleanly.
+          </p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={() => void refreshRole()}
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              Retry access
+            </button>
+            <button
+              onClick={() => void signOut()}
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-secondary"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -3,7 +3,14 @@ function normalizeSupportUrl(value?: string) {
   return trimmed ? trimmed : null;
 }
 
+const PUBLIC_SUPPORT_URL = normalizeSupportUrl(process.env.NEXT_PUBLIC_SUPPORT_URL);
+const SERVER_SUPPORT_URL = normalizeSupportUrl(process.env.SUPPORT_URL);
+
 export function getSupportUrl(env: Record<string, string | undefined> = process.env) {
+  if (env === process.env) {
+    return PUBLIC_SUPPORT_URL ?? SERVER_SUPPORT_URL ?? "/contact";
+  }
+
   return normalizeSupportUrl(env.NEXT_PUBLIC_SUPPORT_URL)
     ?? normalizeSupportUrl(env.SUPPORT_URL)
     ?? "/contact";

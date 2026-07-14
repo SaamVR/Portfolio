@@ -4,7 +4,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
-const ROLE_FETCH_TIMEOUT_MS = 10_000;
+const ROLE_FETCH_TIMEOUT_MS = 20_000;
 const VISIBILITY_REFRESH_COOLDOWN_MS = 5_000;
 
 type ResolvedAccessState = {
@@ -26,6 +26,12 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   });
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "";
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -40,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const permissionRequestIdRef = useRef(0);
   const blockingPermissionRequestIdRef = useRef<number | null>(null);
   const lastPassiveRefreshAtRef = useRef(0);
+  const passivePermissionRefreshRef = useRef<Promise<void> | null>(null);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -159,9 +166,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         applyResolvedAccessState(resolved);
       } catch (error) {
-        console.error("Auth permission refresh error:", error);
+        const message = getErrorMessage(error);
+        const isTimeout = message.includes("Timed out while refreshing account permissions");
         if (!mountedRef.current || requestId !== permissionRequestIdRef.current) {
           return;
+        }
+
+        if (!isTimeout) {
+          console.error("Auth permission refresh error:", error);
         }
 
         if (!preserveExistingOnError || !nextUserId) {
@@ -230,25 +242,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") return;
+    const refreshVisiblePermissions = () => {
       const visibleUserId = userIdRef.current;
       if (!visibleUserId) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       const now = Date.now();
       if (now - lastPassiveRefreshAtRef.current < VISIBILITY_REFRESH_COOLDOWN_MS) return;
-      lastPassiveRefreshAtRef.current = now;
+      if (passivePermissionRefreshRef.current) return;
 
-      void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
+      const refreshPromise = resolvePermissions(visibleUserId, {
+        blockUi: false,
+        preserveExistingOnError: true,
+      }).finally(() => {
+        lastPassiveRefreshAtRef.current = Date.now();
+        if (passivePermissionRefreshRef.current === refreshPromise) {
+          passivePermissionRefreshRef.current = null;
+        }
+      });
+
+      passivePermissionRefreshRef.current = refreshPromise;
+      void refreshPromise;
+    };
+
+    const handleVisibilityChange = () => {
+      refreshVisiblePermissions();
     };
 
     const handleWindowFocus = () => {
-      const visibleUserId = userIdRef.current;
-      if (!visibleUserId) return;
-      const now = Date.now();
-      if (now - lastPassiveRefreshAtRef.current < VISIBILITY_REFRESH_COOLDOWN_MS) return;
-      lastPassiveRefreshAtRef.current = now;
-
-      void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
+      refreshVisiblePermissions();
     };
 
     if (typeof document !== "undefined") {
