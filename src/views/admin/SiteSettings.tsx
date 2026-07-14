@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
@@ -480,6 +480,46 @@ const SiteSettings = () => {
       {saving === settingKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
       Save
     </Button>
+  );
+
+  const StickySectionSaveBar = ({
+    settingKey,
+    title,
+    hint,
+  }: {
+    settingKey: string;
+    title: string;
+    hint: string;
+  }) => (
+    <div className="sticky bottom-0 z-20 -mx-4 mt-4 border-t border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl md:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{title}</p>
+          <p className="truncate text-xs text-muted-foreground">{hint}</p>
+        </div>
+        <SaveButton settingKey={settingKey} />
+      </div>
+    </div>
+  );
+
+  const MobileSectionShell = ({
+    title,
+    description,
+    children,
+    className,
+  }: {
+    title: string;
+    description: string;
+    children: ReactNode;
+    className?: string;
+  }) => (
+    <Card className={cn("border-border shadow-sm md:shadow-none", className)}>
+      <CardHeader className="space-y-1 px-4 py-4 md:px-6">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent className="space-y-4 px-4 pb-4 md:px-6">{children}</CardContent>
+    </Card>
   );
 
   const handleThemeSelect = (themeId: string) => {
@@ -1091,11 +1131,9 @@ const SiteSettings = () => {
           onImportThemePackage={(raw) => void importThemePackage(raw)}
         />
 
-          {/* Payment */}
+        {/* Payment */}
         <TabsContent value="payment">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Payment Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+          <MobileSectionShell title="Payment Settings" description="Payment methods, persuasion copy, and credentials stay grouped into denser mobile sections.">
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">bKash</h3>
                 <div className="flex items-center gap-2">
@@ -1169,15 +1207,13 @@ const SiteSettings = () => {
               </div>
 
               <SaveButton settingKey="payment_settings" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="payment_settings" title="Payment settings" hint="Save methods, incentives, and gateway credentials." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Delivery Settings */}
         <TabsContent value="delivery">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Delivery Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-5">
+          <MobileSectionShell title="Delivery Settings" description="Shipping labels and fee rules are condensed for faster phone editing.">
               <div className="flex items-center gap-2">
                 <Switch checked={settings.delivery_settings?.enabled ?? false} onCheckedChange={(v) => update("delivery_settings", "enabled", v)} />
                 <Label>Enable delivery fee</Label>
@@ -1214,8 +1250,8 @@ const SiteSettings = () => {
                 </>
               )}
               <SaveButton settingKey="delivery_settings" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="delivery_settings" title="Delivery settings" hint="Save delivery zones, fees, and thresholds." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Upsells & Popups */}
@@ -1309,14 +1345,11 @@ const SiteSettings = () => {
 
         {/* WhatsApp Support */}
         <TabsContent value="support">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <MobileSectionShell title="WhatsApp Live Support" description="Support controls keep the storefront toggle, number, and default message easier to manage from a phone.">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <MessageCircle className="h-5 w-5 text-[#25D366]" />
-                WhatsApp Live Support
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
+                WhatsApp channel
+              </div>
               <div className="flex items-center gap-2">
                 <Switch checked={settings.whatsapp_support?.enabled ?? false} onCheckedChange={(v) => update("whatsapp_support", "enabled", v)} />
                 <Label>Show WhatsApp button on storefront</Label>
@@ -1342,8 +1375,8 @@ const SiteSettings = () => {
                 </div>
               )}
               <SaveButton settingKey="whatsapp_support" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="whatsapp_support" title="WhatsApp support" hint="Save storefront support visibility and contact details." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* About Page */}
@@ -1428,9 +1461,7 @@ const SiteSettings = () => {
 
         {/* Contact Page */}
         <TabsContent value="contact">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Contact Page</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <MobileSectionShell title="Contact Page" description="Contact details and map controls are sectioned for simpler mobile editing.">
               <div className="grid gap-2">
                 <Label>Address</Label>
                 <Input value={settings.contact_page?.address ?? ""} onChange={(e) => update("contact_page", "address", e.target.value)} />
@@ -1462,15 +1493,13 @@ const SiteSettings = () => {
                 )}
               </div>
               <SaveButton settingKey="contact_page" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="contact_page" title="Contact page" hint="Save inquiry details and map visibility." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Footer */}
         <TabsContent value="footer">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Footer Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+          <MobileSectionShell title="Footer Settings" description="Footer sections are denser on mobile and keep save affordances within reach.">
               {/* Brand */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-foreground">Brand</h3>
@@ -1638,8 +1667,8 @@ const SiteSettings = () => {
               </div>
 
               <SaveButton settingKey="footer" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="footer" title="Footer settings" hint="Save footer copy, columns, and visibility toggles." />
+          </MobileSectionShell>
         </TabsContent>
 
         <TabsContent value="page_builder">
@@ -1675,9 +1704,7 @@ const SiteSettings = () => {
           <CustomDomainTab />
         </TabsContent>
         <TabsContent value="notifications">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Transactional Notifications</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+          <MobileSectionShell title="Transactional Notifications" description="Notification credentials and recent delivery events stay easier to scan and save on long mobile forms.">
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Email Notifications</h3>
                 <p className="text-xs text-muted-foreground">Automatically send emails to your customers and yourself.</p>
@@ -1763,8 +1790,8 @@ const SiteSettings = () => {
               </div>
 
               <SaveButton settingKey="notification_settings" />
-            </CardContent>
-          </Card>
+              <StickySectionSaveBar settingKey="notification_settings" title="Notification settings" hint="Save receipt, alert, and SMS delivery configuration." />
+          </MobileSectionShell>
         </TabsContent>
       </div>
       </Tabs>
