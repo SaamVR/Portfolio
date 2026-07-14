@@ -108,7 +108,7 @@ type PlatformData = {
 };
 
 export default function PlatformControlPlane() {
-  const { session, platformRole, user, activeStoreId, loading: authLoading } = useAuth();
+  const { session, platformRole, user, activeStoreId, loading: authLoading, refreshRole, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [selectedStoreId, setSelectedStoreId] = useState(activeStoreId ?? "");
   const [storeSearch, setStoreSearch] = useState("");
@@ -276,11 +276,33 @@ export default function PlatformControlPlane() {
     });
   }, [data, exceptionEmail, selectedPlanId, selectedStore?.id]);
 
-  if ((authLoading || (session && platformRole !== "admin")) && platformRole !== "admin") {
+  if (authLoading) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (!session || !user || !platformRole) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>Refreshing CMS access</CardTitle>
+          <CardDescription>
+            The platform session is active, but the CMS control plane permissions have not fully restored yet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row">
+          <Button type="button" onClick={() => void refreshRole()} className="gap-2">
+            <Shield className="h-4 w-4" />
+            Retry access
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 

@@ -111,17 +111,17 @@ export async function CmsPricing() {
   const plans = await loadPlanCards();
 
   return (
-    <section id="plans" className="border-t border-border bg-background py-20">
+    <section id="plans" className="border-t border-white/8 bg-slate-950 py-20 text-white">
       <div className="mx-auto max-w-6xl px-4">
         <div className="max-w-2xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
             <Sparkles className="h-4 w-4" />
             Packages
           </div>
-          <h2 className="font-heading text-3xl font-bold text-foreground sm:text-4xl">
+          <h2 className="font-heading text-3xl font-bold text-white sm:text-4xl">
             Choose the package that matches how serious the store needs to feel.
           </h2>
-          <p className="mt-3 text-muted-foreground">
+          <p className="mt-3 text-zinc-400">
             These plans are shaped around launch quality, operational control, and how much persuasive storefront structure a merchant needs to convert buyers.
           </p>
         </div>
@@ -132,19 +132,19 @@ export async function CmsPricing() {
               key={plan.name}
               className={`group rounded-[1.75rem] border p-6 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 ${
                 plan.featured
-                  ? "border-primary bg-primary text-primary-foreground shadow-[0_25px_80px_rgba(16,185,129,0.22)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.3)]"
-                  : "border-white/10 bg-white/5 text-card-foreground shadow-[0_18px_60px_rgba(0,0,0,0.06)] hover:border-primary/20 hover:bg-white/8 hover:shadow-[0_28px_80px_rgba(0,0,0,0.1)]"
+                  ? "border-emerald-500/35 bg-emerald-500/14 text-white shadow-[0_25px_80px_rgba(16,185,129,0.2)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.28)]"
+                  : "border-white/8 bg-slate-900/55 text-white shadow-[0_18px_60px_rgba(0,0,0,0.16)] hover:border-white/14 hover:bg-slate-900/70 hover:shadow-[0_28px_80px_rgba(0,0,0,0.24)]"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-semibold">{plan.name}</h3>
-                  <p className={`mt-2 text-sm ${plan.featured ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  <p className={`mt-2 text-sm ${plan.featured ? "text-emerald-50/85" : "text-zinc-400"}`}>
                     {plan.description}
                   </p>
                 </div>
                 {plan.featured ? (
-                  <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-foreground">Best balance</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">Best balance</span>
                 ) : null}
               </div>
               <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>

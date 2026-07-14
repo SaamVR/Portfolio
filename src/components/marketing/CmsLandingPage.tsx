@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useTheme } from "next-themes";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import {
@@ -19,6 +20,7 @@ import {
   Layout,
   MessageSquareQuote,
   Monitor,
+  Moon,
   PackageCheck,
   Palette,
   Rocket,
@@ -29,6 +31,7 @@ import {
   Smartphone,
   Star,
   Store,
+  Sun,
   Type,
   WandSparkles,
 } from "lucide-react";
@@ -397,6 +400,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
 }
 
 export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
+  const { resolvedTheme, setTheme } = useTheme();
   const [activeTheme, setActiveTheme] = useState<ThemeKey>("emerald");
   const [activeFont, setActiveFont] = useState<FontKey>("modern");
   const [siteType, setSiteType] = useState<SiteKey>("fashion");
@@ -414,6 +418,21 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const siteProfile = siteProfiles[siteType];
   const previewSlug = createStoreSlug(storeName || siteProfile.storeName);
   const previewStoreUrl = getMarketingPreviewStoreUrl(previewSlug);
+  const isLightTheme = resolvedTheme === "light";
+  const pageShell = isLightTheme
+    ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
+    : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
+  const headerShell = isLightTheme
+    ? "border-slate-300/70 bg-stone-100/85"
+    : "border-white/10 bg-slate-950/80";
+  const panelShell = isLightTheme
+    ? "border-slate-300/70 bg-white/88 text-slate-950"
+    : "border-white/8 bg-slate-900/45 text-white";
+  const mutedText = isLightTheme ? "text-slate-600" : "text-zinc-400";
+  const subtleText = isLightTheme ? "text-slate-500" : "text-zinc-500";
+  const previewShell = isLightTheme
+    ? "bg-white border-slate-300/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)]"
+    : "bg-[#030610] border-white/8 shadow-[0_24px_70px_rgba(0,0,0,0.45)]";
 
   const setupProgress = useMemo(() => {
     let score = 25;
@@ -436,34 +455,48 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   };
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950">
-      <div className={`pointer-events-none absolute left-[-8%] top-[4%] h-[480px] w-[480px] rounded-full ${theme.glow} blur-[110px] opacity-40 transition-all duration-700 animate-float-orb-1`} />
-      <div className="pointer-events-none absolute right-[-10%] top-[18%] h-[560px] w-[560px] rounded-full bg-indigo-500/12 blur-[130px] opacity-30 animate-float-orb-2" />
-      <div className="pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full bg-white/5 blur-[120px] opacity-20" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30 [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]" />
+    <main className={`relative min-h-screen overflow-x-hidden ${pageShell}`}>
+      <div className={`pointer-events-none absolute left-[-8%] top-[4%] h-[480px] w-[480px] rounded-full ${theme.glow} blur-[110px] ${isLightTheme ? "opacity-25" : "opacity-40"} transition-all duration-700 animate-float-orb-1`} />
+      <div className={`pointer-events-none absolute right-[-10%] top-[18%] h-[560px] w-[560px] rounded-full blur-[130px] animate-float-orb-2 ${isLightTheme ? "bg-indigo-500/8 opacity-20" : "bg-indigo-500/12 opacity-30"}`} />
+      <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
+      <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
+      <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${headerShell}`}>
         <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-3 text-white">
+          <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
               C
             </div>
             <div>
               <p className="font-heading text-lg font-extrabold tracking-[0.18em]">COMMERCE ENGINE</p>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-400">CMS launch studio</p>
+              <p className={`text-[11px] uppercase tracking-[0.28em] ${subtleText}`}>CMS launch studio</p>
             </div>
           </Link>
 
-          <div className="hidden items-center gap-8 text-sm font-medium text-zinc-300 md:flex">
-            <a href="#builder" className="nav-link-anim pb-1 hover:text-white">Guided Demo</a>
-            <a href="#templates" className="nav-link-anim pb-1 hover:text-white">Use Cases</a>
-            <a href="#why" className="nav-link-anim pb-1 hover:text-white">Why it converts</a>
-            <Link href="/stories" className="nav-link-anim pb-1 hover:text-white">Stories</Link>
-            <a href="#plans" className="nav-link-anim pb-1 hover:text-white">Pricing</a>
+          <div className={`hidden items-center gap-8 text-sm font-medium md:flex ${isLightTheme ? "text-slate-600" : "text-zinc-300"}`}>
+            <a href="#builder" className="nav-link-anim pb-1 hover:text-current">Guided Demo</a>
+            <a href="#templates" className="nav-link-anim pb-1 hover:text-current">Use Cases</a>
+            <a href="#why" className="nav-link-anim pb-1 hover:text-current">Why it converts</a>
+            <Link href="/stories" className="nav-link-anim pb-1 hover:text-current">Stories</Link>
+            <a href="#plans" className="nav-link-anim pb-1 hover:text-current">Pricing</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/admin/login" className="rounded-full px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-white/5 hover:text-white">
+            <button
+              type="button"
+              onClick={() => setTheme(isLightTheme ? "dark" : "light")}
+              aria-label="Toggle color mode"
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                isLightTheme
+                  ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                  : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {isLightTheme ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+            </button>
+            <Link href="/admin/login" className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              isLightTheme ? "text-slate-700 hover:bg-slate-200/70" : "text-zinc-300 hover:bg-white/5 hover:text-white"
+            }`}>
               Login
             </Link>
             <Link href="/signup" className={`rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
@@ -473,436 +506,289 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </nav>
       </header>
 
-      <section id="builder" className="relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-12">
-        <div className="grid items-start gap-12 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-6 lg:sticky lg:top-28">
+      <section id="builder" className="relative z-10 mx-auto max-w-6xl px-4 pb-14 pt-8 sm:pt-12">
+        <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
+          <div className="space-y-5 sm:space-y-6">
             <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold ${theme.border} ${theme.accent} ${theme.primaryText}`}>
               <Sparkles className="h-4 w-4" />
-              Guided CMS launch walkthrough
+              Interactive storefront preview
             </div>
 
-            <div className="space-y-4">
-              <h1 className="font-heading text-4xl font-extrabold leading-[1.05] text-white sm:text-5xl lg:text-6xl">
-                Show merchants how the site comes together
-                <span className="block bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
-                  in one clean interactive story.
+            <div className="space-y-3 sm:space-y-4">
+              <h1 className={`max-w-[12ch] font-heading text-[2.5rem] font-extrabold leading-[0.98] sm:max-w-none sm:text-5xl lg:text-6xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
+                Launch a storefront that
+                <span className={`block bg-clip-text text-transparent ${isLightTheme ? "bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500" : "bg-gradient-to-r from-white via-zinc-200 to-zinc-500"}`}>
+                  feels real before signup.
                 </span>
               </h1>
-              <p className="max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-                This landing page now walks through a single flow: choose a site type, add brand content, preview colors and typography, then publish with payments and a domain.
+              <p className={`max-w-xl text-[15px] leading-relaxed sm:text-lg ${mutedText}`}>
+                Keep the homepage fun: pick a business type, switch the look, and watch the storefront react instantly. The deeper setup lives in the walkthrough below.
               </p>
             </div>
 
-            <div className="grid gap-3">
-              {onboardingSteps.map((step) => {
-                const Icon = step.icon;
-                const active = currentStep === step.id;
-                return (
-                  <button
-                    key={step.id}
-                    type="button"
-                    onClick={() => setCurrentStep(step.id)}
-                    className={`rounded-2xl border p-4 text-left transition-all ${
-                      active
-                        ? `${theme.border} bg-white/8 shadow-[0_18px_45px_rgba(0,0,0,0.2)]`
-                        : "border-white/8 bg-slate-900/40 hover:border-white/15 hover:bg-slate-900/60"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl ${active ? theme.accent : "bg-white/5"} ${active ? theme.primaryText : "text-zinc-400"}`}>
-                        <Icon className="h-4.5 w-4.5" />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">Step {step.id}</span>
-                          {active ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${theme.chip}`}>Live</span> : null}
-                        </div>
-                        <h2 className="font-heading text-lg font-bold text-white">{step.title}</h2>
-                        <p className="text-sm leading-relaxed text-zinc-400">{step.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className={`rounded-2xl border p-4 ${panelShell}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Pick a style</p>
+                <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.name}</p>
+              </div>
+              <div className={`rounded-2xl border p-4 ${panelShell}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Preview mood</p>
+                <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{theme.name} + {fontTheme.name}</p>
+              </div>
+              <div className={`rounded-2xl border p-4 ${panelShell}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Ready state</p>
+                <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{setupProgress}% launch-ready</p>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-4 pt-2">
-              <Link href="/signup" className={`inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
-                Build this for a merchant
-              </Link>
-              <a href="#plans" className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-8 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10">
-                See packages
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className={`rounded-2xl border p-4 ${panelShell}`}>
+                <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Site type</label>
+                <div className="relative mt-2">
+                  <select
+                    value={siteType}
+                    onChange={(e) => applySiteProfile(e.target.value as SiteKey)}
+                    className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm font-semibold outline-none transition focus:ring-2 ${theme.ring} ${
+                      isLightTheme ? "border-slate-300 bg-white text-slate-900" : "border-white/10 bg-white/5 text-white"
+                    }`}
+                  >
+                    {Object.entries(siteProfiles).map(([key, profile]) => (
+                      <option key={key} value={key} className={isLightTheme ? "bg-white text-slate-900" : "bg-slate-950 text-white"}>
+                        {profile.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-zinc-500" />
+                </div>
+              </div>
+
+              <div className={`rounded-2xl border p-4 ${panelShell}`}>
+                <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Quick style</label>
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                  {Object.entries(colorThemes).map(([name, palette]) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setActiveTheme(name as ThemeKey)}
+                      className={`h-9 w-9 rounded-full border-2 transition ${palette.primary} ${activeTheme === name ? isLightTheme ? "border-slate-950 scale-105" : "border-white scale-105" : "border-transparent opacity-75"}`}
+                    />
+                  ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(fontThemes).map(([name, font]) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setActiveFont(name as FontKey)}
+                        className={`rounded-full border px-3 py-2 text-[11px] font-semibold ${
+                          activeFont === name
+                            ? `${theme.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
+                            : isLightTheme
+                              ? "border-slate-300 text-slate-600"
+                              : "border-white/10 text-zinc-400"
+                        }`}
+                      >
+                        {font.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap sm:gap-4 sm:pt-2">
+              <a href="#sandbox" className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 sm:w-auto ${theme.primary} ${theme.button}`}>
+                Try the walkthrough
+              </a>
+              <a
+                href="#plans"
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-full border px-8 py-3.5 text-sm font-bold transition-all duration-300 hover:-translate-y-0.5 sm:w-auto ${
+                  isLightTheme
+                    ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100"
+                    : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                }`}
+              >
+                See pricing
               </a>
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="rounded-[2rem] border border-white/10 bg-slate-900/55 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-              <div className="grid gap-5 lg:grid-cols-[1.02fr_1.18fr]">
-                <div className="space-y-5">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
-                    <Settings2 className="h-4 w-4" />
-                    Builder controls
+          <div className="space-y-4">
+            <div className={`flex flex-col gap-3 rounded-[1.5rem] border p-3 sm:flex-row sm:items-center sm:justify-between ${panelShell}`}>
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Live storefront preview</p>
+                <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.name}</p>
+              </div>
+              <div className={`grid w-full grid-cols-2 gap-1.5 self-start rounded-xl border p-1 sm:flex sm:w-auto sm:self-auto ${isLightTheme ? "border-slate-300 bg-slate-100" : "border-white/5 bg-black/20"}`}>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
+                    previewDevice === "desktop" ? `${theme.primary} text-white` : isLightTheme ? "text-slate-500 hover:text-slate-900" : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <Monitor className="h-3.5 w-3.5" />
+                  Desktop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
+                    previewDevice === "mobile" ? `${theme.primary} text-white` : isLightTheme ? "text-slate-500 hover:text-slate-900" : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Mobile
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`overflow-hidden rounded-[2rem] border transition-all duration-500 ${previewShell} ${
+                previewDevice === "mobile"
+                  ? "mx-auto w-full max-w-[320px] sm:max-w-[300px]"
+                  : "w-full"
+              }`}
+            >
+              <div className={`flex items-center justify-between border-b px-3 py-2.5 sm:px-4 sm:py-3 ${isLightTheme ? "border-slate-200 bg-slate-50" : "border-white/5 bg-slate-900/90"}`}>
+                <div className="flex gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                </div>
+                <div className={`truncate rounded-md border px-2 py-0.5 text-center font-mono text-[9px] sm:px-3 sm:text-[10px] ${previewDevice === "mobile" ? "w-[58%]" : "w-[45%] sm:w-1/2"} ${isLightTheme ? "border-slate-200 bg-white text-slate-500" : "border-white/5 bg-slate-950/80 text-zinc-500"}`}>
+                  {previewStoreUrl}
+                </div>
+                <div className="w-6 sm:w-10" />
+              </div>
+
+              {announcementText.trim() ? (
+                <div className={`px-3 py-2 text-center text-[10px] font-bold text-white sm:px-4 sm:text-xs ${theme.primary}`}>
+                  {announcementText}
+                </div>
+              ) : null}
+
+              <div className={`border-b px-3 py-3 sm:px-5 sm:py-4 ${isLightTheme ? "border-slate-200 bg-slate-50/90" : "border-white/5 bg-[#040915]/70"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`truncate text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.brand} ${fontTheme.accentClass}`}>
+                      {storeName || siteProfile.storeName}
+                    </p>
+                    <p className={`pt-1 text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>{siteProfile.sectionLabel}</p>
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Site type preview</label>
-                    <div className={`rounded-2xl border bg-slate-950/80 p-3 ${theme.border}`}>
-                      <div className="mb-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-bold text-white">Demo storefront pack</p>
-                          <p className="text-xs text-zinc-500">Switch the business type and preview a different structure instantly.</p>
-                        </div>
-                        <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${theme.chip}`}>
-                          {siteProfile.badge}
-                        </div>
-                      </div>
-                      <div className="relative">
-                        <select
-                          value={siteType}
-                          onChange={(e) => applySiteProfile(e.target.value as SiteKey)}
-                          className={`w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-10 text-sm font-semibold text-white outline-none ring-0 transition focus:border-white/20 focus:ring-2 ${theme.ring}`}
-                        >
-                          {Object.entries(siteProfiles).map(([key, profile]) => (
-                            <option key={key} value={key} className="bg-slate-950 text-white">
-                              {profile.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-zinc-500" />
-                      </div>
-                      <div className="mt-3 rounded-xl border border-white/5 bg-white/[0.04] p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{siteProfile.tagline}</p>
-                        <p className="mt-2 text-sm font-bold text-white">{siteProfile.name}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-zinc-400">{siteProfile.description}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Store name</label>
-                      <input
-                        type="text"
-                        value={storeName}
-                        onChange={(e) => setStoreName(e.target.value)}
-                        onFocus={() => setCurrentStep(2)}
-                        className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Hero message</label>
-                      <textarea
-                        value={heroHeading}
-                        onChange={(e) => setHeroHeading(e.target.value)}
-                        onFocus={() => setCurrentStep(2)}
-                        rows={3}
-                        className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
-                      />
-                    </div>
-
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Announcement bar</label>
-                      <input
-                        type="text"
-                        value={announcementText}
-                        onChange={(e) => setAnnouncementText(e.target.value)}
-                        onFocus={() => setCurrentStep(2)}
-                        className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        <Palette className="h-3.5 w-3.5" />
-                        Color system
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(colorThemes).map(([name, palette]) => (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => {
-                              setActiveTheme(name as ThemeKey);
-                              setCurrentStep(3);
-                            }}
-                            className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
-                              activeTheme === name ? `${palette.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400 hover:text-white"
-                            }`}
-                          >
-                            <span className={`h-3 w-3 rounded-full ${palette.primary}`} />
-                            {palette.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        <Type className="h-3.5 w-3.5" />
-                        Typography mood
-                      </label>
-                      <div className="grid gap-2">
-                        {Object.entries(fontThemes).map(([name, font]) => (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => {
-                              setActiveFont(name as FontKey);
-                              setCurrentStep(3);
-                            }}
-                            className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-all ${
-                              activeFont === name ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400 hover:text-white"
-                            }`}
-                          >
-                            <span className={`block text-sm font-bold text-white ${font.hero}`}>{font.name}</span>
-                            <span className="block pt-0.5 text-[11px] text-zinc-500">Preview the same page with a different brand voice.</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-white">Launch settings</p>
-                        <p className="text-xs text-zinc-500">Show the last part of the merchant story before publish.</p>
-                      </div>
-                      <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${setupProgress === 100 ? "bg-green-500/15 text-green-300" : theme.chip}`}>
-                        {setupProgress}% ready
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payments</label>
-                        <div className="mt-2 flex gap-2">
-                          {[
-                            { value: "manual", label: "Manual bKash" },
-                            { value: "hybrid", label: "COD + bKash" },
-                          ].map((option) => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => {
-                                setPaymentMode(option.value as "manual" | "hybrid");
-                                setCurrentStep(4);
-                              }}
-                              className={`rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
-                                paymentMode === option.value ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Custom domain</label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDomainConnected((value) => !value);
-                            setCurrentStep(4);
-                          }}
-                          className={`mt-2 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-sm transition-all ${
-                            domainConnected ? "border-green-500/30 bg-green-500/10 text-green-300" : "border-white/10 bg-white/5 text-zinc-300"
-                          }`}
-                        >
-                          <span>{domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} connected` : "Domain still in platform preview mode"}</span>
-                          <CheckCircle2 className={`h-4 w-4 ${domainConnected ? "text-green-300" : "text-zinc-500"}`} />
-                        </button>
-                      </div>
-                    </div>
+                  <div className={`hidden gap-3 text-[10px] font-medium sm:flex ${mutedText}`}>
+                    <span>Shop</span>
+                    <span>Story</span>
+                    <span>Support</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/70 p-2.5">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Live storefront preview</p>
-                      <p className="text-sm font-bold text-white">{siteProfile.name}</p>
-                    </div>
-                    <div className="flex gap-1.5 rounded-xl border border-white/5 bg-black/20 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDevice("desktop")}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
-                          previewDevice === "desktop" ? `${theme.primary} text-white` : "text-zinc-500 hover:text-white"
-                        }`}
-                      >
-                        <Monitor className="h-3.5 w-3.5" />
-                        Desktop
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDevice("mobile")}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
-                          previewDevice === "mobile" ? `${theme.primary} text-white` : "text-zinc-500 hover:text-white"
-                        }`}
-                      >
-                        <Smartphone className="h-3.5 w-3.5" />
-                        Mobile
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`overflow-hidden rounded-[2rem] border-2 bg-[#030610] shadow-[0_24px_70px_rgba(0,0,0,0.45)] transition-all duration-500 ${theme.border} ${
-                      previewDevice === "mobile" ? "mx-auto max-w-[355px]" : "w-full"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between border-b border-white/5 bg-slate-900/90 px-4 py-3">
-                      <div className="flex gap-1.5">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+              <div
+                className={`${
+                  previewDevice === "mobile"
+                    ? "h-[32rem] overflow-y-auto overscroll-contain"
+                    : ""
+                } ${isLightTheme ? "bg-white" : "bg-[#020611]"}`}
+              >
+                <div className={`space-y-4 p-3 sm:space-y-6 sm:p-5 ${previewDevice === "mobile" ? "pb-5" : ""}`}>
+                  <div className={`relative overflow-hidden rounded-[1.5rem] border ${isLightTheme ? "border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]" : "border-white/8 bg-gradient-to-br shadow-[0_24px_70px_rgba(2,6,23,0.45)]"} ${theme.heroSurface}`}>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_35%)]" />
+                    <div className={`absolute inset-x-0 top-0 h-24 ${isLightTheme ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.36),transparent)]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]"}`} />
+                    <div className={`relative grid gap-4 px-3 py-4 sm:px-6 sm:py-5 ${previewDevice === "mobile" ? "grid-cols-1" : "lg:grid-cols-[1.05fr_0.95fr]"}`}>
+                      <div className={`absolute right-3 top-3 flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold backdrop-blur sm:right-5 sm:top-5 ${isLightTheme ? "border-slate-200/80 bg-white/90 text-slate-600" : "border-white/10 bg-slate-950/40 text-zinc-300"}`}>
+                        <span className={`h-2 w-2 rounded-full ${theme.primary}`} />
+                        Live theme
                       </div>
-                      <div className="w-1/2 truncate rounded-md border border-white/5 bg-slate-950/80 px-3 py-0.5 text-center font-mono text-[10px] text-zinc-500">
-                        {previewStoreUrl}
-                      </div>
-                      <div className="w-10" />
-                    </div>
-
-                    {announcementText.trim() ? (
-                      <div className={`px-4 py-2 text-center text-xs font-bold text-white ${theme.primary}`}>
-                        {announcementText}
-                      </div>
-                    ) : null}
-
-                    <div className="border-b border-white/5 bg-[#040915]/70 px-5 py-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-sm font-bold text-white ${fontTheme.brand} ${fontTheme.accentClass}`}>
-                            {storeName || siteProfile.storeName}
+                      <div className="space-y-3">
+                        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${theme.chip}`}>
+                          <Sparkles className="h-3 w-3" />
+                          {siteProfile.badge}
+                        </div>
+                        <div className="space-y-2">
+                          <h3 className={`max-w-md text-xl font-bold leading-tight transition-all duration-500 sm:text-[2rem] ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.hero}`}>
+                            {heroHeading || siteProfile.hero}
+                          </h3>
+                          <p className={`max-w-md text-xs leading-relaxed sm:text-sm ${isLightTheme ? "text-slate-600" : "text-zinc-300"}`}>
+                            {siteProfile.description}
                           </p>
-                          <p className="pt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">{siteProfile.sectionLabel}</p>
                         </div>
-                        <div className="flex gap-4 text-[11px] font-medium text-zinc-400">
-                          <span>Shop</span>
-                          <span>Story</span>
-                          <span>Support</span>
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${theme.chip}`}>Theme: {theme.name}</span>
+                          <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-zinc-200"}`}>{fontTheme.name}</span>
+                          <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${isLightTheme ? "bg-white/80 text-slate-700 ring-1 ring-slate-200" : "bg-white/5 text-zinc-300 ring-1 ring-white/10"}`}>
+                            Ready in minutes
+                          </span>
+                        </div>
+                        <div className={`grid grid-cols-3 gap-2 pt-1 ${previewDevice === "mobile" ? "max-w-full" : "max-w-md"}`}>
+                          {[
+                            { label: "Products", value: `${siteProfile.products.length}+` },
+                            { label: "Checkout", value: paymentMode === "hybrid" ? "Hybrid" : "Manual" },
+                            { label: "Setup", value: `${setupProgress}%` },
+                          ].map((item) => (
+                            <div
+                              key={item.label}
+                              className={`rounded-2xl border px-3 py-2 ${isLightTheme ? "border-slate-200/90 bg-white/85" : "border-white/10 bg-black/20"}`}
+                            >
+                              <p className={`text-[9px] uppercase tracking-[0.18em] ${subtleText}`}>{item.label}</p>
+                              <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.value}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-6 p-5">
-                      <div className={`relative overflow-hidden rounded-[1.75rem] border border-white/8 bg-gradient-to-br ${theme.heroSurface}`}>
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_35%)]" />
-                        <div className="relative grid gap-6 px-5 py-6 sm:grid-cols-[1.05fr_0.95fr] sm:px-6">
-                          <div className="space-y-4">
-                            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${theme.chip}`}>
-                              <Sparkles className="h-3 w-3" />
-                              {siteProfile.badge}
+                      <div className={`grid gap-3 ${previewDevice === "mobile" ? "grid-cols-1" : ""}`}>
+                        <div className={`rounded-2xl border p-3 sm:p-4 ${isLightTheme ? "border-slate-200 bg-white/88 shadow-[0_14px_34px_rgba(15,23,42,0.06)]" : "border-white/10 bg-black/20"}`}>
+                          <p className={`text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>Section focus</p>
+                          <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.sectionLabel}</p>
+                          <p className={`mt-2 text-xs leading-relaxed ${mutedText}`}>{siteProfile.support}</p>
+                        </div>
+                        <div className={`rounded-2xl border p-3 sm:p-4 ${isLightTheme ? "border-slate-200 bg-white/88 shadow-[0_14px_34px_rgba(15,23,42,0.06)]" : "border-white/10 bg-black/20"}`}>
+                          <p className={`text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>Launch URL</p>
+                          <p className={`mt-2 break-all text-xs font-bold sm:text-sm ${isLightTheme ? "text-slate-950" : "text-white"}`}>{previewStoreUrl.replace(/^https?:\/\//, "")}</p>
+                          <p className={`mt-2 text-xs ${mutedText}`}>{paymentMode === "hybrid" ? "COD and manual payment enabled" : "Manual payment verification ready"}</p>
+                        </div>
+                        <div className={`rounded-2xl border p-3 ${isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/10 bg-slate-950/35"}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className={`text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>Featured drop</p>
+                              <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.products[0]?.name}</p>
                             </div>
-                            <div className="space-y-3">
-                              <h3 className={`text-2xl font-bold text-white transition-all duration-500 sm:text-[2rem] ${fontTheme.hero}`}>
-                                {heroHeading || siteProfile.hero}
-                              </h3>
-                              <p className="max-w-md text-sm leading-relaxed text-zinc-300">
-                                {siteProfile.description}
-                              </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${theme.chip}`}>Theme: {theme.name}</span>
-                              <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-zinc-200">{fontTheme.name}</span>
-                            </div>
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${theme.chip}`}>{siteProfile.products[0]?.price}</span>
                           </div>
-
-                          <div className="grid gap-3 sm:grid-cols-1">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Section focus</p>
-                              <p className="mt-2 text-sm font-bold text-white">{siteProfile.sectionLabel}</p>
-                              <p className="mt-2 text-xs leading-relaxed text-zinc-400">{siteProfile.support}</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Launch URL</p>
-                              <p className="mt-2 text-sm font-bold text-white">{previewStoreUrl.replace(/^https?:\/\//, "")}</p>
-                              <p className="mt-2 text-xs text-zinc-400">{paymentMode === "hybrid" ? "COD and manual payment enabled" : "Manual payment verification ready"}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        {siteProfile.products.map((product) => (
-                          <article key={product.name} className="rounded-2xl border border-white/8 bg-slate-900/60 p-3.5 transition hover:border-white/15">
-                            <div className={`mb-3 flex aspect-[4/5] items-end rounded-xl bg-gradient-to-br ${theme.heroSurface} p-3`}>
-                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${theme.chip}`}>{product.tag}</span>
-                            </div>
-                            <div className="space-y-1.5">
-                              <p className={`text-sm font-semibold text-white ${fontTheme.brand}`}>{product.name}</p>
-                              <p className={`text-xs font-bold ${theme.primaryText}`}>{product.price}</p>
-                              <button className={`mt-2 w-full rounded-lg px-3 py-2 text-[11px] font-bold text-white transition ${theme.primary}`}>
-                                Add to cart
-                              </button>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-4 text-center">
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3">
-                          <div className="text-[11px] font-bold text-white">Fast shipping</div>
-                          <div className="pt-1 text-[10px] text-zinc-500">Dhaka and nationwide</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3">
-                          <div className="text-[11px] font-bold text-white">Trusted checkout</div>
-                          <div className="pt-1 text-[10px] text-zinc-500">{paymentMode === "hybrid" ? "COD + bKash flow" : "Manual TrxID review"}</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3">
-                          <div className="text-[11px] font-bold text-white">Easy support</div>
-                          <div className="pt-1 text-[10px] text-zinc-500">Policy and WhatsApp prompts</div>
+                          <div className={`mt-3 h-20 rounded-[1.25rem] bg-gradient-to-br ${theme.heroSurface}`} />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-[1.75rem] border border-white/10 bg-[#060a12] p-5 shadow-2xl">
-                    <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Launch readiness</p>
-                        <h3 className="font-heading text-lg font-bold text-white">One story from setup to publish</h3>
-                      </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${setupProgress === 100 ? "bg-green-500/10 text-green-300" : theme.chip}`}>
-                        {setupProgress}% ready
-                      </span>
-                    </div>
-
-                    <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/5">
-                      <div className={`h-full rounded-full transition-all duration-500 ${theme.primary}`} style={{ width: `${setupProgress}%` }} />
-                    </div>
-
-                    <div className="mt-5 grid gap-3">
-                      {[
-                        { label: "Template selected", value: siteProfile.name, done: true },
-                        { label: "Brand content updated", value: storeName, done: storeName.trim().length > 0 && heroHeading.trim().length > 0 },
-                        { label: "Visual system chosen", value: `${theme.name} + ${fontTheme.name}`, done: true },
-                        { label: "Launch settings ready", value: domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} live` : "Waiting on custom domain", done: domainConnected },
-                      ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs">
-                          <span className="flex items-center gap-3">
-                            <span className={`flex h-6 w-6 items-center justify-center rounded-full ${item.done ? "bg-green-500/15 text-green-300" : "bg-white/5 text-zinc-500"}`}>
-                              {item.done ? <Check className="h-3.5 w-3.5" /> : "•"}
-                            </span>
-                            <span className="font-semibold text-white">{item.label}</span>
-                          </span>
-                          <span className="text-zinc-500">{item.value}</span>
+                  <div className={`grid gap-3 ${previewDevice === "mobile" ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+                    {siteProfile.products.map((product, index) => (
+                      <article
+                        key={product.name}
+                        className={`group rounded-2xl border p-3 transition ${isLightTheme ? "border-slate-200 bg-slate-50 hover:border-slate-300 hover:shadow-[0_18px_35px_rgba(15,23,42,0.07)]" : "border-white/6 bg-slate-900/60 hover:border-white/12 hover:bg-slate-900/80"}`}
+                      >
+                        <div className={`relative mb-3 flex aspect-[4/5] items-end overflow-hidden rounded-xl bg-gradient-to-br ${theme.heroSurface} p-3`}>
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_42%)]" />
+                          <div className="absolute right-3 top-3 h-12 w-12 rounded-full border border-white/20 bg-white/10 blur-[1px]" />
+                          <div className="relative flex w-full items-end justify-between gap-2">
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${theme.chip}`}>{product.tag}</span>
+                            <span className={`text-[10px] font-semibold ${isLightTheme ? "text-slate-700" : "text-zinc-200"}`}>0{index + 1}</span>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.04] p-4">
-                      <p className="text-sm font-bold text-white">What changed in this pass</p>
-                      <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                        The old split experience is now a single guided story, the preview URL looks like a real branded subdomain, and the landing page carries stronger sales sections around trust, use cases, and proof.
-                      </p>
-                    </div>
+                        <div className="space-y-1.5">
+                          <p className={`text-sm font-semibold ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.brand}`}>{product.name}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-xs font-bold ${theme.primaryText}`}>{product.price}</p>
+                            <span className={`text-[10px] ${mutedText}`}>Ready to ship</span>
+                          </div>
+                          <button className={`mt-1.5 w-full rounded-lg px-3 py-2 text-[11px] font-bold text-white transition ${theme.primary}`}>
+                            Add to cart
+                          </button>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -911,7 +797,236 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <section id="why" className="relative z-10 mx-auto max-w-6xl px-4 py-24">
+      <section id="sandbox" className="relative z-10 mx-auto max-w-6xl px-4 pb-24">
+        <div className="rounded-[2rem] border border-white/8 bg-slate-900/45 p-4 shadow-[0_28px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+                <Settings2 className="h-3.5 w-3.5" />
+                Launch setup planner
+              </div>
+              <h2 className="font-heading text-[1.9rem] font-extrabold leading-tight text-white sm:text-4xl">
+                Make the setup feel organized before the merchant ever signs up.
+              </h2>
+              <p className="max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+                This section explains the setup in simple steps and can later pass the chosen data directly into signup and onboarding.
+              </p>
+            </div>
+            <div className={`rounded-full px-3 py-1 text-xs font-extrabold ${setupProgress === 100 ? "bg-green-500/10 text-green-300" : theme.chip}`}>
+              {setupProgress}% ready
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="space-y-4">
+              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-4">
+                {onboardingSteps.map((step) => {
+                  const Icon = step.icon;
+                  const active = currentStep === step.id;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => setCurrentStep(step.id)}
+                      className={`min-w-[220px] rounded-2xl border p-4 text-left transition-all sm:min-w-0 ${
+                        active ? `${theme.border} bg-white/10` : "border-white/6 bg-slate-950/40 hover:border-white/12"
+                      }`}
+                    >
+                      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl ${active ? theme.accent : "bg-white/5"} ${active ? theme.primaryText : "text-zinc-400"}`}>
+                        <Icon className="h-4.5 w-4.5" />
+                      </div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">Step {step.id}</p>
+                      <p className="mt-2 text-sm font-bold text-white">{step.title}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Store name</label>
+                  <input
+                    type="text"
+                    value={storeName}
+                    onChange={(e) => {
+                      setStoreName(e.target.value);
+                      setCurrentStep(2);
+                    }}
+                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Announcement</label>
+                  <input
+                    type="text"
+                    value={announcementText}
+                    onChange={(e) => {
+                      setAnnouncementText(e.target.value);
+                      setCurrentStep(2);
+                    }}
+                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Hero message</label>
+                  <textarea
+                    rows={3}
+                    value={heroHeading}
+                    onChange={(e) => {
+                      setHeroHeading(e.target.value);
+                      setCurrentStep(2);
+                    }}
+                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    <Palette className="h-3.5 w-3.5" />
+                    Color system
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {Object.entries(colorThemes).map(([name, palette]) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          setActiveTheme(name as ThemeKey);
+                          setCurrentStep(3);
+                        }}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${activeTheme === name ? `${palette.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                      >
+                        <span className={`h-3 w-3 rounded-full ${palette.primary}`} />
+                        {palette.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    <Type className="h-3.5 w-3.5" />
+                    Typography mood
+                  </label>
+                  <div className="mt-3 grid gap-2">
+                    {Object.entries(fontThemes).map(([name, font]) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          setActiveFont(name as FontKey);
+                          setCurrentStep(3);
+                        }}
+                        className={`rounded-xl border px-3 py-2.5 text-left text-xs ${activeFont === name ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                      >
+                        <span className={`block text-sm font-bold text-white ${font.hero}`}>{font.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payments</p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    {[
+                      { value: "manual", label: "Manual bKash" },
+                      { value: "hybrid", label: "COD + bKash" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setPaymentMode(option.value as "manual" | "hybrid");
+                          setCurrentStep(4);
+                        }}
+                        className={`rounded-full border px-3 py-2 text-xs font-semibold ${paymentMode === option.value ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Custom domain</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDomainConnected((value) => !value);
+                      setCurrentStep(4);
+                    }}
+                    className={`mt-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-sm ${
+                      domainConnected ? "border-green-500/30 bg-green-500/10 text-green-300" : "border-white/10 bg-white/5 text-zinc-300"
+                    }`}
+                  >
+                    <span>{domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} connected` : "Preview domain only"}</span>
+                    <CheckCircle2 className={`h-4 w-4 ${domainConnected ? "text-green-300" : "text-zinc-500"}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[1.75rem] border border-white/8 bg-[#060a12] p-4 shadow-2xl sm:p-5">
+                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Launch readiness</p>
+                    <h3 className="font-heading text-lg font-bold text-white">Simple setup, clear finish line</h3>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${setupProgress === 100 ? "bg-green-500/10 text-green-300" : theme.chip}`}>
+                    {setupProgress}% ready
+                  </span>
+                </div>
+
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/5">
+                  <div className={`h-full rounded-full transition-all duration-500 ${theme.primary}`} style={{ width: `${setupProgress}%` }} />
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {[
+                    { label: "Template selected", value: siteProfile.name, done: true },
+                    { label: "Brand content updated", value: storeName, done: storeName.trim().length > 0 && heroHeading.trim().length > 0 },
+                    { label: "Visual system chosen", value: `${theme.name} + ${fontTheme.name}`, done: true },
+                    { label: "Launch settings ready", value: domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} live` : "Waiting on custom domain", done: domainConnected },
+                  ].map((item) => (
+                    <div key={item.label} className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                      <span className="flex items-center gap-3">
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full ${item.done ? "bg-green-500/15 text-green-300" : "bg-white/5 text-zinc-500"}`}>
+                          {item.done ? <Check className="h-3.5 w-3.5" /> : "•"}
+                        </span>
+                        <span className="font-semibold text-white">{item.label}</span>
+                      </span>
+                      <span className="break-words pl-9 text-zinc-500 sm:max-w-[48%] sm:pl-0">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                  <p className="text-sm font-bold text-white">What this section should do next</p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                    This is the right place to pass demo data into signup and onboarding. The hero stays light and visual. The walkthrough handles the practical handoff.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+                <Link href="/signup" className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 py-3 text-sm font-bold text-white shadow-xl transition-all hover:-translate-y-0.5 sm:w-auto ${theme.primary} ${theme.button}`}>
+                  Continue to signup
+                </Link>
+                <Link href="/admin/login" className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-white/10 sm:w-auto">
+                  Already have admin access?
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="why" className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:py-24">
         <div className="grid items-center gap-12 lg:grid-cols-[0.92fr_1.08fr]">
           <div className="space-y-6">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
@@ -983,7 +1098,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-[1.5rem] border border-white/8 bg-slate-900/35 p-6 transition-all hover:border-white/15 hover:bg-slate-900/55">
+                <div key={item.title} className="rounded-[1.5rem] border border-white/6 bg-slate-900/35 p-6 transition-all hover:border-white/12 hover:bg-slate-900/55">
                   <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                     <Icon className="h-5 w-5" />
                   </div>
@@ -1091,6 +1206,92 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       </section>
 
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="space-y-4">
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+              <Rocket className="h-3.5 w-3.5" />
+              Launch checklist
+            </span>
+            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+              Reduce friction by showing the exact path to launch.
+            </h2>
+            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+              A checklist turns the walkthrough into a promise: the merchant can see exactly what happens next and why the setup feels manageable.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {checklistItems.map((item, index) => (
+              <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
+                  <span className="text-xs font-bold">{index + 1}</span>
+                </div>
+                <p className="text-sm leading-relaxed text-white">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8">
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
+          <div className="border-b border-white/8 px-6 py-5">
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Comparison
+            </span>
+            <h2 className="mt-4 font-heading text-3xl font-extrabold text-white sm:text-4xl">
+              Help merchants understand why this beats inbox selling and generic builders.
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-white/[0.03] text-zinc-300">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">What merchants need</th>
+                  <th className="px-6 py-4 font-semibold">Inbox selling</th>
+                  <th className="px-6 py-4 font-semibold">Generic website builder</th>
+                  <th className="px-6 py-4 font-semibold text-white">Commerce Engine</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.label} className="border-t border-white/6 align-top">
+                    <td className="px-6 py-4 font-semibold text-white">{row.label}</td>
+                    <td className="px-6 py-4 text-zinc-400">{row.inbox}</td>
+                    <td className="px-6 py-4 text-zinc-400">{row.generic}</td>
+                    <td className="px-6 py-4 text-zinc-200">{row.commerce}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
+        <div className="mb-10 max-w-2xl space-y-3">
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Objection handling
+          </span>
+          <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            Answer the hesitation before the visitor reaches pricing.
+          </h2>
+          <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+            A high-converting homepage does not wait for the FAQ to do all the work. It surfaces the biggest concerns in plain language earlier in the flow.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {objectionItems.map((item) => (
+            <div key={item.title} className="rounded-[1.5rem] border border-white/8 bg-slate-900/35 p-6 transition hover:border-white/15 hover:bg-slate-900/55">
+              <h3 className="text-sm font-bold text-white">{item.title}</h3>
+              <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
         <div className="mb-10 max-w-2xl space-y-3">
           <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
             <MessageSquareQuote className="h-3.5 w-3.5" />
@@ -1102,6 +1303,12 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
             The interactive demo proves possibility. Testimonials prove trust. Together they make the offer feel safer to buy.
           </p>
+        </div>
+        <div className="mb-6 flex justify-end">
+          <Link href="/stories" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10">
+            Read more merchant stories
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
         <div className="grid gap-4 lg:grid-cols-[0.9fr_1.2fr_0.9fr]">
           {testimonials.map((testimonial, index) => (
@@ -1178,6 +1385,9 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               <Link href="/signup" className={`rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
                 Start Free Trial
               </Link>
+              <Link href="/templates" className="rounded-full border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10">
+                Explore templates
+              </Link>
             </div>
           </div>
         </div>
@@ -1189,8 +1399,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           <p className="mx-auto max-w-md text-zinc-500">
             A white-label ecommerce CMS built for launch-ready storefronts, operational clarity, and easier merchant onboarding.
           </p>
+          <div className="flex justify-center gap-4 text-[11px] text-zinc-400">
+            <Link href="/templates" className="hover:text-white">Templates</Link>
+            <Link href="/stories" className="hover:text-white">Stories</Link>
+            <Link href="/plans" className="hover:text-white">Pricing</Link>
+          </div>
           <p className="border-t border-white/5 pt-4 text-[10px]">
-            &copy; {new Date().getFullYear()} Storefront Platform. Built for modern digital commerce.
+            &copy; {new Date().getFullYear()} Commerce Engine. Built for modern digital commerce.
           </p>
         </div>
       </footer>

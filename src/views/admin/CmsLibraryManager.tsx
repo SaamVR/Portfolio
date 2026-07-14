@@ -46,7 +46,7 @@ import {
 } from "@/components/admin/cms-library/shared";
 
 export default function CmsLibraryManager() {
-  const { session, platformRole, user, loading: authLoading } = useAuth();
+  const { session, platformRole, user, loading: authLoading, refreshRole, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("blueprints");
   const {
     dialogState,
@@ -97,11 +97,33 @@ export default function CmsLibraryManager() {
     promoteTheme,
   } = useCmsLibraryManagerData(user?.id);
 
-  if ((authLoading || (session && platformRole !== "admin")) && platformRole !== "admin") {
+  if (authLoading) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (!session || !user || !platformRole) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>Refreshing CMS access</CardTitle>
+          <CardDescription>
+            The shared library is waiting for platform permissions to restore before it can load shared blueprint and theme data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row">
+          <Button type="button" onClick={() => void refreshRole()} className="gap-2">
+            <Layers3 className="h-4 w-4" />
+            Retry access
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
