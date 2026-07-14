@@ -12,6 +12,8 @@ import { useProductCategories } from "@/hooks/useProductCategories";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
+import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 
 const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean }) => {
   const { totalItems, setIsCartOpen } = useCart();
@@ -23,18 +25,40 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const currentStore = useOptionalStore();
   const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
+  const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
 
   const [mounted, setMounted] = useState(false);
+  const [hiddenOnScroll, setHiddenOnScroll] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (themeCustomization?.nav_style !== "hidden") {
+      setHiddenOnScroll(false);
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const shouldHide = currentScrollY > lastScrollY && currentScrollY > 120;
+      setHiddenOnScroll(shouldHide);
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [themeCustomization?.nav_style]);
+
   const fallbackBrandName = currentStore?.name?.trim() || "Store";
   const brandName = brand?.name || fallbackBrandName;
   const brandHighlight = brand?.highlight || "";
+  const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const fallbackCategoryLinks = [
     { label: "Browse Catalog", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
@@ -52,17 +76,26 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
   ];
 
+  const topClass = themeCustomization?.nav_style === "static"
+    ? "sticky top-0"
+    : announcementVisible
+      ? "top-9"
+      : "top-0";
+  const navModeClass = themeCustomization?.nav_style === "static"
+    ? ""
+    : "fixed left-0 right-0";
+
   return (
     <>
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
       <nav
-        className={`fixed left-0 right-0 z-50 border-b border-border glass-panel transition-all duration-500 ${announcementVisible ? "top-9" : "top-0"}`}
+        className={`${navModeClass} ${topClass} z-50 border-b border-border glass-panel transition-all duration-500 ${hiddenOnScroll ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className={`mx-auto flex h-16 items-center justify-between px-4 ${containerClass}`}>
           <div className="flex items-center gap-4">
             <MobileMenu />
             <Link to={storefrontPath("/", currentStore?.slug)} className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">

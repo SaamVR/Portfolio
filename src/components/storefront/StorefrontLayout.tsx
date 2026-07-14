@@ -9,15 +9,22 @@ import { Button } from "@/components/ui/button";
 import CartDrawer from "@/components/CartDrawer";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { storefrontPath, storePageUrl } from "@/lib/slug";
+import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
+import { getStorefrontBaseTextSize, getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 
 export function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const store = useStore();
   const { totalItems, setIsCartOpen } = useCart();
+  const { data: themeCustomization } = useStorefrontThemeCustomization(store.id);
+  const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div
+      className="min-h-screen bg-background flex flex-col"
+      style={{ fontSize: getStorefrontBaseTextSize(themeCustomization?.text_size) }}
+    >
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className={`mx-auto flex h-16 items-center justify-between px-4 ${containerClass}`}>
           <Link href={storefrontPath("/", store.slug)} className="font-heading font-bold text-xl tracking-tight">
             {store.name}
           </Link>
@@ -54,7 +61,7 @@ export function StorefrontLayout({ children }: { children: React.ReactNode }) {
       </main>
       
       <footer className="border-t border-border bg-card py-8 mt-auto">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+        <div className={`mx-auto px-4 text-center text-sm text-muted-foreground ${containerClass}`}>
           &copy; {new Date().getFullYear()} {store.name}. All rights reserved.
         </div>
       </footer>

@@ -15,6 +15,8 @@ import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { buildShopOptions, filterAndSortProducts, type ShopSortOption } from "@/lib/shop-filters";
+import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
+import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/lib/storefront-theme-customization";
 import { X, ArrowUpDown, Ruler, Loader2, SlidersHorizontal, ChevronDown, ChevronUp, Tag, Search } from "lucide-react";
 
 const sortLabels: Record<ShopSortOption, string> = {
@@ -44,6 +46,10 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
   const storeName = currentStore?.name ?? "the store";
+  const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
+  const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
+  const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
+  const sidebarOnRight = themeCustomization?.sidebar_position === "right";
 
   const { data: products = [], isLoading } = useProducts(storeId);
   const { data: productTypeRows = [] } = useProductTypes(storeId);
@@ -205,7 +211,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
       ) : null}
       <PageTransition>
         <section className="py-16">
-          <div className="container mx-auto px-4">
+          <div className={`mx-auto px-4 ${containerClass}`}>
             <AnimatedSection animation="blur">
               <div className="mb-8">
                 <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Collection</p>
@@ -394,9 +400,9 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="flex flex-col lg:flex-row gap-8">
+              <div className={`flex flex-col gap-8 lg:flex-row ${sidebarOnRight ? "lg:flex-row-reverse" : ""}`}>
                 {/* Faceted Filters Sidebar */}
-                <div className="w-full lg:w-64 flex-shrink-0 space-y-8 lg:sticky lg:top-24 h-max">
+                <div className="h-max w-full flex-shrink-0 space-y-8 lg:w-64 lg:sticky lg:top-24">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground mb-4">Categories</h3>
                     <div className="space-y-2">
@@ -529,7 +535,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
                     </AnimatedSection>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className={`grid gap-6 ${productGridClass}`}>
                         {filtered.slice(0, displayCount).map((product, i) => (
                           <AnimatedSection key={product.id} delay={(i % 12) * 80} animation="blur">
                             <ProductCard product={product} onQuickView={handleQuickView} />

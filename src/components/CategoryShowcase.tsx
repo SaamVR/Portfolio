@@ -7,6 +7,8 @@ import { useProductCategories } from "@/hooks/useProductCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
+import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 
 const fallbackCategories = [
   { label: "Popular", type: "popular", tagline: "Commonly explored items", icon: Shirt, filterKey: "category" as const },
@@ -78,9 +80,11 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories", storeId);
+  const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
   const { data: dbCategories = [] } = useProductCategories(storeId);
   const [dbTypes, setDbTypes] = useState<any[]>([]);
+  const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
 
   useEffect(() => {
     const loadTypes = async () => {
@@ -140,7 +144,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
 
   return (
     <section className="py-24">
-      <div className="container mx-auto px-4">
+      <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
             <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? settings?.tagline ?? "Explore"}</p>
