@@ -4,6 +4,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
+const ACCESS_CACHE_STORAGE_KEY = "commerce-engine-access-cache";
 const ROLE_FETCH_TIMEOUT_MS = 20_000;
 const VISIBILITY_REFRESH_COOLDOWN_MS = 5_000;
 
@@ -13,6 +14,11 @@ type ResolvedAccessState = {
   nextStoreRole: StoreRole;
   nextPlatformRole: PlatformRole;
   nextRole: AppRole;
+};
+
+type CachedAccessState = ResolvedAccessState & {
+  userId: string;
+  updatedAt: string;
 };
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
@@ -30,6 +36,48 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "";
+}
+
+function readCachedAccessState(userId: string): ResolvedAccessState | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ACCESS_CACHE_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<CachedAccessState>;
+    if (parsed.userId !== userId || !Array.isArray(parsed.memberships)) {
+      return null;
+    }
+
+    return {
+      memberships: parsed.memberships,
+      resolvedStoreId: typeof parsed.resolvedStoreId === "string" ? parsed.resolvedStoreId : null,
+      nextStoreRole: (parsed.nextStoreRole as StoreRole) ?? null,
+      nextPlatformRole: (parsed.nextPlatformRole as PlatformRole) ?? null,
+      nextRole: (parsed.nextRole as AppRole) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAccessState(userId: string, resolved: ResolvedAccessState) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    ACCESS_CACHE_STORAGE_KEY,
+    JSON.stringify({
+      userId,
+      updatedAt: new Date().toISOString(),
+      ...resolved,
+    } satisfies CachedAccessState),
+  );
+}
+
+function clearCachedAccessState() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(ACCESS_CACHE_STORAGE_KEY);
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -132,6 +180,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoreRole(null);
     setStoreMemberships([]);
     setActiveStoreId(null);
+    clearCachedAccessState();
   }, [setActiveStoreId]);
 
   const resolvePermissions = useCallback(
@@ -165,6 +214,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         applyResolvedAccessState(resolved);
+        writeCachedAccessState(nextUserId, resolved);
       } catch (error) {
         const message = getErrorMessage(error);
         const isTimeout = message.includes("Timed out while refreshing account permissions");
@@ -199,12 +249,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        const nextUserId = session?.user?.id ?? null;
+        const cachedAccess = nextUserId ? readCachedAccessState(nextUserId) : null;
+
         if (mountedRef.current) {
           setSession(session);
           setUser(session?.user ?? null);
-          userIdRef.current = session?.user?.id ?? null;
+          userIdRef.current = nextUserId;
+          if (cachedAccess) {
+            applyResolvedAccessState(cachedAccess);
+            setLoading(false);
+          }
         }
-        await resolvePermissions(session?.user?.id ?? null, { blockUi: true, preserveExistingOnError: false });
+        await resolvePermissions(nextUserId, {
+          blockUi: !cachedAccess,
+          preserveExistingOnError: false,
+        });
       } catch (error) {
         console.error("Auth initialization error:", error);
         clearAccessState();
@@ -227,11 +287,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userIdRef.current = nextUserId;
         
         if (session?.user) {
+          const cachedAccess = readCachedAccessState(session.user.id);
           if (!isSameUser) {
             clearAccessState();
+            if (cachedAccess) {
+              applyResolvedAccessState(cachedAccess);
+              if (mountedRef.current) setLoading(false);
+            }
           }
           await resolvePermissions(session.user.id, {
-            blockUi: !isSameUser,
+            blockUi: !isSameUser && !cachedAccess,
             preserveExistingOnError: isSameUser,
           });
         } else {
