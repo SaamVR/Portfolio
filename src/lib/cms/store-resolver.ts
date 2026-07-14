@@ -63,7 +63,7 @@ interface StoreBlockRow {
 }
 
 export async function getDefaultStore(): Promise<Store> {
-  return defaultStore;
+  return storeSchema.parse(structuredClone(defaultStore));
 }
 
 export function isLocalStorefrontHostname(hostname?: string | null) {
@@ -204,7 +204,7 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
   const supabase = getCmsSupabaseServerClient();
 
   if (!normalizedHostname || !supabase) {
-    return isLocalStorefrontHostname(hostname) ? defaultStore : null;
+    return isLocalStorefrontHostname(hostname) ? await getDefaultStore() : null;
   }
 
   const subdomainSlug = getStoreSlugFromHostname(normalizedHostname);

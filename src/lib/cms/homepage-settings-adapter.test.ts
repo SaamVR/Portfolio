@@ -64,11 +64,12 @@ describe("homepage settings adapter", () => {
     const [page] = applyLegacyHomepageSettingsToPages(
       [homepage],
       [
-        { key: "promo_banner", value: { title: "Legacy promo", subtitle: "Legacy subtitle" } },
+        { key: "promo_banner", value: { enabled: false, title: "Legacy promo", subtitle: "Legacy subtitle" } },
       ],
     );
 
     expect(page.blocks[2]?.type).toBe("promo-banner");
+    expect(page.blocks[2]?.isVisible).toBe(true);
     expect(page.blocks[2]?.props).toEqual({
       title: "Keep mine",
       subtitle: "Legacy subtitle",
