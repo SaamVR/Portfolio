@@ -438,9 +438,22 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
     : "border-white/8 bg-slate-900/45 text-white";
   const mutedText = isLightTheme ? "text-slate-600" : "text-zinc-400";
   const subtleText = isLightTheme ? "text-slate-500" : "text-zinc-500";
+  const sectionBadge = isLightTheme
+    ? "border border-slate-300 bg-white text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)]"
+    : "border border-white/10 bg-slate-900/75 text-white";
+  const fieldLabelText = isLightTheme ? "text-slate-700" : "text-zinc-500";
   const previewShell = isLightTheme
     ? "bg-white border-slate-300/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)]"
     : "bg-[#030610] border-white/8 shadow-[0_24px_70px_rgba(0,0,0,0.45)]";
+  const sandboxShell = isLightTheme
+    ? "border-slate-200 bg-white/92 shadow-[0_28px_80px_rgba(15,23,42,0.10)]"
+    : "border-white/8 bg-slate-900/45 shadow-[0_28px_80px_rgba(0,0,0,0.28)]";
+  const sandboxCard = isLightTheme
+    ? "border-slate-200 bg-slate-50/95 text-slate-950"
+    : "border-white/10 bg-slate-950/50 text-white";
+  const sandboxSoftCard = isLightTheme
+    ? "border-slate-200 bg-white text-slate-950"
+    : "border-white/8 bg-[#060a12] text-white";
 
   const setupProgress = useMemo(() => {
     let score = 25;
@@ -906,17 +919,17 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       </section>
 
       <section id="sandbox" className="relative z-10 mx-auto max-w-6xl px-4 pb-24">
-        <div className="rounded-[2rem] border border-white/8 bg-slate-900/45 p-4 shadow-[0_28px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
+        <div className={`rounded-[2rem] border p-4 shadow-[0_28px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 ${sandboxShell}`}>
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-2">
-              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
                 <Settings2 className="h-3.5 w-3.5" />
                 Launch setup planner
               </div>
-              <h2 className="font-heading text-[1.9rem] font-extrabold leading-tight text-white sm:text-4xl">
+              <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
                 Make the setup feel organized before the merchant ever signs up.
               </h2>
-              <p className="max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+              <p className={`max-w-2xl text-sm leading-relaxed sm:text-base ${mutedText}`}>
                 This section explains the setup in simple steps and can later pass the chosen data directly into signup and onboarding.
               </p>
             </div>
@@ -937,22 +950,33 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       type="button"
                       onClick={() => setCurrentStep(step.id)}
                       className={`min-w-[220px] rounded-2xl border p-4 text-left transition-all sm:min-w-0 ${
-                        active ? `${theme.border} bg-white/10` : "border-white/6 bg-slate-950/40 hover:border-white/12"
+                        active
+                          ? `${theme.border} ${isLightTheme ? "bg-white shadow-[0_18px_36px_rgba(15,23,42,0.08)]" : "bg-white/10"}`
+                          : isLightTheme
+                            ? "border-slate-200 bg-slate-50/80 hover:border-slate-300"
+                            : "border-white/6 bg-slate-950/40 hover:border-white/12"
                       }`}
                     >
-                      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl ${active ? theme.accent : "bg-white/5"} ${active ? theme.primaryText : "text-zinc-400"}`}>
+                      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl ${
+                        active
+                          ? `${theme.accent} ${theme.primaryText}`
+                          : isLightTheme
+                            ? "bg-slate-200 text-slate-500"
+                            : "bg-white/5 text-zinc-400"
+                      }`}>
                         <Icon className="h-4.5 w-4.5" />
                       </div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">Step {step.id}</p>
-                      <p className="mt-2 text-sm font-bold text-white">{step.title}</p>
+                      <p className={`text-xs font-bold uppercase tracking-[0.18em] ${fieldLabelText}`}>Step {step.id}</p>
+                      <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{step.title}</p>
                     </button>
                   );
                 })}
               </div>
 
+              {currentStep === 2 ? (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Store name</label>
+                  <label className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Store name</label>
                   <input
                     type="text"
                     value={storeName}
@@ -960,11 +984,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       setStoreName(e.target.value);
                       setCurrentStep(2);
                     }}
-                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${theme.ring} ${
+                      isLightTheme ? "border-slate-300 bg-white text-slate-950" : "border-white/10 bg-slate-950 text-white"
+                    }`}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Announcement</label>
+                  <label className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Announcement</label>
                   <input
                     type="text"
                     value={announcementText}
@@ -972,11 +998,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       setAnnouncementText(e.target.value);
                       setCurrentStep(2);
                     }}
-                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${theme.ring} ${
+                      isLightTheme ? "border-slate-300 bg-white text-slate-950" : "border-white/10 bg-slate-950 text-white"
+                    }`}
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Hero message</label>
+                  <label className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Hero message</label>
                   <textarea
                     rows={3}
                     value={heroHeading}
@@ -984,14 +1012,18 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       setHeroHeading(e.target.value);
                       setCurrentStep(2);
                     }}
-                    className={`w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:ring-2 ${theme.ring}`}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${theme.ring} ${
+                      isLightTheme ? "border-slate-300 bg-white text-slate-950" : "border-white/10 bg-slate-950 text-white"
+                    }`}
                   />
                 </div>
               </div>
+              ) : null}
 
+              {currentStep === 3 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                <div className={`rounded-2xl border p-4 ${sandboxCard}`}>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>
                     <Palette className="h-3.5 w-3.5" />
                     Color system
                   </label>
@@ -1004,7 +1036,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           setActiveTheme(name as ThemeKey);
                           setCurrentStep(3);
                         }}
-                        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${activeTheme === name ? `${palette.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
+                          activeTheme === name
+                            ? `${palette.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
+                            : isLightTheme
+                              ? "border-slate-300 bg-white text-slate-600"
+                              : "border-white/10 bg-white/5 text-zinc-400"
+                        }`}
                       >
                         <span className={`h-3 w-3 rounded-full ${palette.primary}`} />
                         {palette.name}
@@ -1013,8 +1051,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                <div className={`rounded-2xl border p-4 ${sandboxCard}`}>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>
                     <Type className="h-3.5 w-3.5" />
                     Typography mood
                   </label>
@@ -1027,18 +1065,26 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           setActiveFont(name as FontKey);
                           setCurrentStep(3);
                         }}
-                        className={`rounded-xl border px-3 py-2.5 text-left text-xs ${activeFont === name ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                        className={`rounded-xl border px-3 py-2.5 text-left text-xs ${
+                          activeFont === name
+                            ? `${theme.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
+                            : isLightTheme
+                              ? "border-slate-300 bg-white text-slate-600"
+                              : "border-white/10 bg-white/5 text-zinc-400"
+                        }`}
                       >
-                        <span className={`block text-sm font-bold text-white ${font.hero}`}>{font.name}</span>
+                        <span className={`block text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"} ${font.hero}`}>{font.name}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
+              ) : null}
 
+              {currentStep === 4 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payments</p>
+                <div className={`rounded-2xl border p-4 ${sandboxCard}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Payments</p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     {[
                       { value: "manual", label: "Manual bKash" },
@@ -1051,7 +1097,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           setPaymentMode(option.value as "manual" | "hybrid");
                           setCurrentStep(4);
                         }}
-                        className={`rounded-full border px-3 py-2 text-xs font-semibold ${paymentMode === option.value ? `${theme.border} bg-white/10 text-white` : "border-white/10 bg-white/5 text-zinc-400"}`}
+                        className={`rounded-full border px-3 py-2 text-xs font-semibold ${
+                          paymentMode === option.value
+                            ? `${theme.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
+                            : isLightTheme
+                              ? "border-slate-300 bg-white text-slate-600"
+                              : "border-white/10 bg-white/5 text-zinc-400"
+                        }`}
                       >
                         {option.label}
                       </button>
@@ -1059,8 +1111,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Custom domain</p>
+                <div className={`rounded-2xl border p-4 ${sandboxCard}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Custom domain</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -1068,7 +1120,11 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       setCurrentStep(4);
                     }}
                     className={`mt-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-sm ${
-                      domainConnected ? "border-green-500/30 bg-green-500/10 text-green-300" : "border-white/10 bg-white/5 text-zinc-300"
+                      domainConnected
+                        ? "border-green-500/30 bg-green-500/10 text-green-300"
+                        : isLightTheme
+                          ? "border-slate-300 bg-white text-slate-700"
+                          : "border-white/10 bg-white/5 text-zinc-300"
                     }`}
                   >
                     <span>{domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} connected` : "Preview domain only"}</span>
@@ -1076,14 +1132,32 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   </button>
                 </div>
               </div>
+              ) : null}
+
+              {currentStep === 1 ? (
+                <div className={`rounded-2xl border p-5 ${sandboxCard}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Selected template</p>
+                  <h3 className={`mt-2 text-lg font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.name}</h3>
+                  <p className={`mt-2 text-sm leading-relaxed ${mutedText}`}>{siteProfile.description}</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    {siteProfile.products.map((product) => (
+                      <div key={product.name} className={`rounded-2xl border p-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-white/[0.03]"}`}>
+                        <p className={`text-sm font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{product.name}</p>
+                        <p className={`mt-1 text-xs ${theme.primaryText}`}>{product.price}</p>
+                        <p className={`mt-2 text-[10px] ${subtleText}`}>{product.tag}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[1.75rem] border border-white/8 bg-[#060a12] p-4 shadow-2xl sm:p-5">
-                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
+              <div className={`rounded-[1.75rem] border p-4 shadow-2xl sm:p-5 ${sandboxSoftCard}`}>
+                <div className={`flex items-start justify-between gap-4 border-b pb-4 ${isLightTheme ? "border-slate-200" : "border-white/5"}`}>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Launch readiness</p>
-                    <h3 className="font-heading text-lg font-bold text-white">Simple setup, clear finish line</h3>
+                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Launch readiness</p>
+                    <h3 className={`font-heading text-lg font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Simple setup, clear finish line</h3>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${setupProgress === 100 ? "bg-green-500/10 text-green-300" : theme.chip}`}>
                     {setupProgress}% ready
@@ -1101,21 +1175,23 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                     { label: "Visual system chosen", value: `${theme.name} + ${fontTheme.name}`, done: true },
                     { label: "Launch settings ready", value: domainConnected ? `${previewStoreUrl.replace(/^https?:\/\//, "")} live` : "Waiting on custom domain", done: domainConnected },
                   ].map((item) => (
-                    <div key={item.label} className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                    <div key={item.label} className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between ${
+                      isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/5 bg-white/[0.03]"
+                    }`}>
                       <span className="flex items-center gap-3">
-                        <span className={`flex h-6 w-6 items-center justify-center rounded-full ${item.done ? "bg-green-500/15 text-green-300" : "bg-white/5 text-zinc-500"}`}>
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full ${item.done ? "bg-green-500/15 text-green-300" : isLightTheme ? "bg-slate-200 text-slate-500" : "bg-white/5 text-zinc-500"}`}>
                           {item.done ? <Check className="h-3.5 w-3.5" /> : "•"}
                         </span>
-                        <span className="font-semibold text-white">{item.label}</span>
+                        <span className={`font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.label}</span>
                       </span>
-                      <span className="break-words pl-9 text-zinc-500 sm:max-w-[48%] sm:pl-0">{item.value}</span>
+                      <span className={`break-words pl-9 sm:max-w-[48%] sm:pl-0 ${subtleText}`}>{item.value}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.04] p-4">
-                  <p className="text-sm font-bold text-white">What this section should do next</p>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                <div className={`mt-5 rounded-2xl border p-4 ${isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.04]"}`}>
+                  <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>What this section should do next</p>
+                  <p className={`mt-1 text-xs leading-relaxed ${mutedText}`}>
                     This is the right place to pass demo data into signup and onboarding. The hero stays light and visual. The walkthrough handles the practical handoff.
                   </p>
                 </div>
@@ -1138,7 +1214,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         <div className={`pointer-events-none absolute inset-x-8 top-10 h-40 rounded-full blur-3xl ${theme.glow} opacity-20`} />
         <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12">
           <div className="space-y-5 sm:space-y-6">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <BadgeCheck className="h-3.5 w-3.5" />
               Conversion-focused structure
             </span>
@@ -1230,7 +1306,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         }`}>
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-8">
             <div className="space-y-4">
-              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
                 <Clock3 className="h-3.5 w-3.5" />
                 Day-one outcome
               </span>
@@ -1299,7 +1375,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <section id="templates" className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
         <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
           <div className="max-w-2xl space-y-3">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <Layout className="h-3.5 w-3.5" />
               Built for different businesses
             </span>
@@ -1350,7 +1426,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           <div className="space-y-4">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <Rocket className="h-3.5 w-3.5" />
               Launch checklist
             </span>
@@ -1381,7 +1457,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           isLightTheme ? "border-slate-200 bg-white/92" : "border-white/10 bg-slate-900/40"
         }`}>
           <div className={`border-b px-6 py-5 ${isLightTheme ? "border-slate-200" : "border-white/8"}`}>
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Comparison
             </span>
@@ -1442,7 +1518,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
         <div className="mb-8 max-w-2xl space-y-3 sm:mb-10">
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
             <ShieldCheck className="h-3.5 w-3.5" />
             Objection handling
           </span>
@@ -1469,7 +1545,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
         <div className="mb-8 max-w-2xl space-y-3 sm:mb-10">
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
             <MessageSquareQuote className="h-3.5 w-3.5" />
             Social proof
           </span>
