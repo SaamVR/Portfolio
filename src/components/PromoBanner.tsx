@@ -143,7 +143,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
     legacySettings?.subtitle ??
     "Feature a promotion, announcement, launch, or conversion push without relying on category-specific placeholder copy.";
   const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "Explore";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/shop", currentStore?.slug);
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
 
   const align = overrides?.textAlignment ?? legacySettings?.text_alignment ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";

@@ -1029,11 +1029,11 @@ const SiteSettings = () => {
 
         {/* Home Sections */}
         <TabsContent value="home_sections">
-          <div className="space-y-6">
+          <MobileSectionShell title="Legacy Home Sections" description="These older homepage fields are still supported for existing stores, but Page Builder sections should lead new edits.">
             <LegacyHomepageNotice title="Legacy Homepage Section Settings" />
-            <Card className="border-border">
-              <CardHeader><CardTitle>Featured Products Section</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <Card className="rounded-xl border-border shadow-sm md:shadow-none">
+              <CardHeader className="px-4 py-3.5 md:px-6 md:py-4"><CardTitle className="text-base">Featured Products Section</CardTitle></CardHeader>
+              <CardContent className="space-y-3.5 px-4 pb-4 md:px-6">
                 <div className="grid gap-2">
                   <Label>Section Tagline</Label>
                   <Input value={settings.home_featured?.tagline ?? ""} placeholder="Highlights" onChange={(e) => update("home_featured", "tagline", e.target.value)} />
@@ -1046,9 +1046,9 @@ const SiteSettings = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-border">
-              <CardHeader><CardTitle>Category Showcase Section</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <Card className="rounded-xl border-border shadow-sm md:shadow-none">
+              <CardHeader className="px-4 py-3.5 md:px-6 md:py-4"><CardTitle className="text-base">Category Showcase Section</CardTitle></CardHeader>
+              <CardContent className="space-y-3.5 px-4 pb-4 md:px-6">
                 <div className="grid gap-2">
                   <Label>Section Tagline</Label>
                   <Input value={settings.home_categories?.tagline ?? ""} placeholder="Categories" onChange={(e) => update("home_categories", "tagline", e.target.value)} />
@@ -1060,7 +1060,8 @@ const SiteSettings = () => {
                 <SaveButton settingKey="home_categories" />
               </CardContent>
             </Card>
-          </div>
+            <StickySectionSaveBar settingKey="home_categories" title="Legacy home sections" hint="Save older featured and category homepage headings." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Announcement Bar */}
@@ -1068,11 +1069,11 @@ const SiteSettings = () => {
 
         {/* Promo Banner */}
         <TabsContent value="promo">
-          <div className="space-y-6">
+          <MobileSectionShell title="Legacy Promo Banner" description="Keep older promo banner content working while newer stores move toward Page Builder-owned blocks.">
             <LegacyHomepageNotice title="Legacy Promotional Banner Settings" />
-            <Card className="border-border">
-              <CardHeader><CardTitle>Promotional Banner</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <Card className="rounded-xl border-border shadow-sm md:shadow-none">
+              <CardHeader className="px-4 py-3.5 md:px-6 md:py-4"><CardTitle className="text-base">Promotional Banner</CardTitle></CardHeader>
+              <CardContent className="space-y-3.5 px-4 pb-4 md:px-6">
                 <div className="flex items-center gap-2">
                   <Switch checked={settings.promo_banner?.enabled ?? false} onCheckedChange={(v) => update("promo_banner", "enabled", v)} />
                   <Label>Show banner on homepage</Label>
@@ -1096,7 +1097,7 @@ const SiteSettings = () => {
                   </div>
                   <div className="grid gap-2">
                     <Label>Button link</Label>
-                    <Input value={settings.promo_banner?.cta_link ?? ""} placeholder="/shop" onChange={(e) => update("promo_banner", "cta_link", e.target.value)} />
+                    <Input value={settings.promo_banner?.cta_link ?? ""} placeholder="/" onChange={(e) => update("promo_banner", "cta_link", e.target.value)} />
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -1138,7 +1139,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="flex items-center gap-2 pt-2">
                   <Switch checked={settings.promo_banner?.enable_orbs ?? true} onCheckedChange={(v) => update("promo_banner", "enable_orbs", v)} />
-                  <Label>Show floating background gradient mesh orbs</Label>
+                  <Label>Show floating background accents</Label>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
                   <Switch checked={settings.promo_banner?.enable_particles ?? true} onCheckedChange={(v) => update("promo_banner", "enable_particles", v)} />
@@ -1164,16 +1165,17 @@ const SiteSettings = () => {
                 <SaveButton settingKey="promo_banner" />
               </CardContent>
             </Card>
-          </div>
+            <StickySectionSaveBar settingKey="promo_banner" title="Legacy promo banner" hint="Save banner copy, style, and legacy visual effects." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Hero Section - Enhanced */}
         <TabsContent value="hero">
-          <div className="space-y-6">
+          <MobileSectionShell title="Legacy Hero Section" description="These legacy hero controls still backfill older storefronts, but page blocks should become the main editing surface over time.">
             <LegacyHomepageNotice title="Legacy Hero Settings" />
-            <Card className="border-border">
-              <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
-              <CardContent className="space-y-5">
+            <Card className="rounded-xl border-border shadow-sm md:shadow-none">
+              <CardHeader className="px-4 py-3.5 md:px-6 md:py-4"><CardTitle className="text-base">Hero Section</CardTitle></CardHeader>
+              <CardContent className="space-y-4 px-4 pb-4 md:px-6">
               <div className="grid gap-2">
                 <Label>Tagline (small text above title)</Label>
                   <Input value={settings.hero_section?.tagline ?? ""} placeholder="Short supporting text above the main title" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
@@ -1199,7 +1201,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Primary CTA Link</Label>
-                  <Input value={settings.hero_section?.cta_link ?? ""} placeholder="/shop" onChange={(e) => update("hero_section", "cta_link", e.target.value)} />
+                  <Input value={settings.hero_section?.cta_link ?? ""} placeholder="/" onChange={(e) => update("hero_section", "cta_link", e.target.value)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1209,7 +1211,7 @@ const SiteSettings = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label>Secondary CTA Link</Label>
-                  <Input value={settings.hero_section?.secondary_cta_link ?? ""} placeholder="/shop" onChange={(e) => update("hero_section", "secondary_cta_link", e.target.value)} />
+                  <Input value={settings.hero_section?.secondary_cta_link ?? ""} placeholder="/contact" onChange={(e) => update("hero_section", "secondary_cta_link", e.target.value)} />
                 </div>
               </div>
 
@@ -1291,7 +1293,8 @@ const SiteSettings = () => {
                 <SaveButton settingKey="hero_section" />
               </CardContent>
             </Card>
-          </div>
+            <StickySectionSaveBar settingKey="hero_section" title="Legacy hero section" hint="Save hero copy, media, and overlay settings." />
+          </MobileSectionShell>
         </TabsContent>
 
         {/* Storefront Builder (Themes & Layout) */}

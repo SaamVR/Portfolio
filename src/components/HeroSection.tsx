@@ -62,9 +62,9 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     legacyHero?.subtitle ??
     "Share your products, services, and offers with a storefront shaped around your business.";
   const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Explore";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/shop", currentStore?.slug);
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/", currentStore?.slug);
   const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "View Details";
-  const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/shop", currentStore?.slug);
+  const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
