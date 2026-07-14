@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
@@ -16,6 +16,7 @@ import {
   Crown,
   CreditCard,
   Globe,
+  Home,
   HelpCircle,
   Layout,
   MessageSquareQuote,
@@ -32,6 +33,8 @@ import {
   Star,
   Store,
   Sun,
+  ShoppingBag,
+  Tag,
   Type,
   WandSparkles,
 } from "lucide-react";
@@ -401,6 +404,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
 
 export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>("emerald");
   const [activeFont, setActiveFont] = useState<FontKey>("modern");
   const [siteType, setSiteType] = useState<SiteKey>("fashion");
@@ -413,12 +417,16 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const [domainConnected, setDomainConnected] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  useEffect(() => {
+    setIsThemeMounted(true);
+  }, []);
+
   const theme = colorThemes[activeTheme];
   const fontTheme = fontThemes[activeFont];
   const siteProfile = siteProfiles[siteType];
   const previewSlug = createStoreSlug(storeName || siteProfile.storeName);
   const previewStoreUrl = getMarketingPreviewStoreUrl(previewSlug);
-  const isLightTheme = resolvedTheme === "light";
+  const isLightTheme = isThemeMounted ? resolvedTheme === "light" : false;
   const pageShell = isLightTheme
     ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
     : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
@@ -647,7 +655,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             <div
               className={`overflow-hidden rounded-[2rem] border transition-all duration-500 ${previewShell} ${
                 previewDevice === "mobile"
-                  ? "mx-auto w-full max-w-[320px] sm:max-w-[300px]"
+                  ? "mx-auto w-full max-w-[356px] sm:max-w-[320px]"
                   : "w-full"
               }`}
             >
@@ -670,25 +678,66 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               ) : null}
 
               <div className={`border-b px-3 py-3 sm:px-5 sm:py-4 ${isLightTheme ? "border-slate-200 bg-slate-50/90" : "border-white/5 bg-[#040915]/70"}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className={`truncate text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.brand} ${fontTheme.accentClass}`}>
-                      {storeName || siteProfile.storeName}
-                    </p>
-                    <p className={`pt-1 text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>{siteProfile.sectionLabel}</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={`truncate text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.brand} ${fontTheme.accentClass}`}>
+                        {storeName || siteProfile.storeName}
+                      </p>
+                      <p className={`pt-1 text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>{siteProfile.sectionLabel}</p>
+                    </div>
+                    <div className={`hidden gap-3 text-[10px] font-medium sm:flex ${mutedText}`}>
+                      <span>Shop</span>
+                      <span>Story</span>
+                      <span>Support</span>
+                    </div>
+                    {previewDevice === "mobile" ? (
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
+                        isLightTheme ? "border-slate-200 bg-white text-slate-700" : "border-white/10 bg-white/[0.05] text-zinc-200"
+                      }`}>
+                        <ShoppingBag className="h-4 w-4" />
+                      </div>
+                    ) : null}
                   </div>
-                  <div className={`hidden gap-3 text-[10px] font-medium sm:flex ${mutedText}`}>
-                    <span>Shop</span>
-                    <span>Story</span>
-                    <span>Support</span>
-                  </div>
+
+                  {previewDevice === "mobile" ? (
+                    <>
+                      <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${
+                        isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-white/[0.04]"
+                      }`}>
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${theme.accent} ${theme.primaryText}`}>
+                          <Sparkles className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate text-xs font-semibold ${isLightTheme ? "text-slate-900" : "text-white"}`}>Search drops, bundles, or gifts</p>
+                          <p className={`text-[10px] ${subtleText}`}>Curated for fast checkout</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {["New in", "Bundles", "Best sellers"].map((item, index) => (
+                          <span
+                            key={item}
+                            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-semibold ${
+                              index === 0
+                                ? `${theme.accent} ${theme.primaryText}`
+                                : isLightTheme
+                                  ? "bg-slate-100 text-slate-600"
+                                  : "bg-white/[0.05] text-zinc-300"
+                            }`}
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
               <div
                 className={`${
                   previewDevice === "mobile"
-                    ? "h-[32rem] overflow-y-auto overscroll-contain"
+                    ? "h-[34rem] overflow-y-auto overscroll-contain"
                     : ""
                 } ${isLightTheme ? "bg-white" : "bg-[#020611]"}`}
               >
@@ -707,7 +756,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           {siteProfile.badge}
                         </div>
                         <div className="space-y-2">
-                          <h3 className={`max-w-md text-xl font-bold leading-tight transition-all duration-500 sm:text-[2rem] ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.hero}`}>
+                          <h3 className={`max-w-md text-[1.45rem] font-bold leading-tight transition-all duration-500 sm:text-[2rem] ${isLightTheme ? "text-slate-950" : "text-white"} ${fontTheme.hero}`}>
                             {heroHeading || siteProfile.hero}
                           </h3>
                           <p className={`max-w-md text-xs leading-relaxed sm:text-sm ${isLightTheme ? "text-slate-600" : "text-zinc-300"}`}>
@@ -721,7 +770,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                             Ready in minutes
                           </span>
                         </div>
-                        <div className={`grid grid-cols-3 gap-2 pt-1 ${previewDevice === "mobile" ? "max-w-full" : "max-w-md"}`}>
+                        <div className={`grid gap-2 pt-1 ${previewDevice === "mobile" ? "grid-cols-1 max-w-full" : "grid-cols-3 max-w-md"}`}>
                           {[
                             { label: "Products", value: `${siteProfile.products.length}+` },
                             { label: "Checkout", value: paymentMode === "hybrid" ? "Hybrid" : "Manual" },
@@ -790,6 +839,65 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       </article>
                     ))}
                   </div>
+
+                  {previewDevice === "mobile" ? (
+                    <div className={`sticky bottom-0 z-20 -mx-3 mt-4 border-t px-3 pb-3 pt-2 backdrop-blur-xl sm:-mx-5 sm:px-5 ${
+                      isLightTheme ? "border-slate-200 bg-white/92" : "border-white/8 bg-slate-950/88"
+                    }`}>
+                      <div className={`mb-2 flex items-center justify-between rounded-2xl border px-3 py-2 ${
+                        isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.04]"
+                      }`}>
+                        <div className="min-w-0">
+                          <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Quick actions</p>
+                          <p className={`truncate text-xs font-semibold ${isLightTheme ? "text-slate-900" : "text-white"}`}>Browse products or jump to checkout</p>
+                        </div>
+                        <button className={`rounded-full px-3 py-1.5 text-[10px] font-bold text-white ${theme.primary}`}>
+                          View cart
+                        </button>
+                      </div>
+
+                      <div
+                        className={`grid grid-cols-4 gap-2 rounded-[1.65rem] border p-2 shadow-lg ${
+                          isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-[#0b1220]"
+                        }`}
+                      >
+                        {[
+                          { label: "Home", icon: Home, active: true },
+                          { label: "Shop", icon: ShoppingBag, active: false },
+                          { label: "Offers", icon: Tag, active: false },
+                          { label: "Account", icon: Store, active: false },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.label}
+                              type="button"
+                              className={`flex flex-col items-center gap-1 rounded-[1rem] px-2 py-2.5 text-[10px] font-semibold transition ${
+                                item.active
+                                  ? `${theme.accent} ${theme.primaryText} shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`
+                                  : isLightTheme
+                                    ? "text-slate-500 hover:bg-slate-50"
+                                    : "text-zinc-400 hover:bg-white/[0.03]"
+                              }`}
+                            >
+                              <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                item.active
+                                  ? isLightTheme
+                                    ? "bg-white shadow-sm"
+                                    : "bg-white/10"
+                                  : isLightTheme
+                                    ? "bg-slate-100"
+                                    : "bg-white/[0.04]"
+                              }`}>
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <span>{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -842,7 +950,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 })}
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Store name</label>
                   <input
@@ -881,7 +989,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     <Palette className="h-3.5 w-3.5" />
@@ -928,7 +1036,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payments</p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -1026,54 +1134,55 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <section id="why" className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:py-24">
-        <div className="grid items-center gap-12 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="space-y-6">
+      <section id="why" className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className={`pointer-events-none absolute inset-x-8 top-10 h-40 rounded-full blur-3xl ${theme.glow} opacity-20`} />
+        <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12">
+          <div className="space-y-5 sm:space-y-6">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
               <BadgeCheck className="h-3.5 w-3.5" />
               Conversion-focused structure
             </span>
-            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
               The homepage now explains both the CMS workflow and the visual outcome.
             </h2>
-            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+            <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
               Instead of showing disconnected demos, the landing page tells a merchant-friendly story: start with a business type, shape the brand, see the storefront react, and finish with launch readiness.
             </p>
 
             <div className="space-y-4">
-              <div className="flex gap-4">
+              <div className={`flex items-start gap-4 rounded-[1.35rem] border p-4 sm:border-0 sm:p-0 ${panelShell}`}>
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                   <Layout className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Site-type dropdown with demo data</h3>
-                  <p className="mt-0.5 text-xs text-zinc-500">Fashion, skincare, bakery, and electronics now preview different messaging, products, and support structure.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Site-type dropdown with demo data</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>Fashion, skincare, bakery, and electronics now preview different messaging, products, and support structure.</p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className={`flex items-start gap-4 rounded-[1.35rem] border p-4 sm:border-0 sm:p-0 ${panelShell}`}>
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                   <Sliders className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Realer visual customization</h3>
-                  <p className="mt-0.5 text-xs text-zinc-500">Color and typography shifts now change the preview in a way that feels brand-led instead of purely technical.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Realer visual customization</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>Color and typography shifts now change the preview in a way that feels brand-led instead of purely technical.</p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className={`flex items-start gap-4 rounded-[1.35rem] border p-4 sm:border-0 sm:p-0 ${panelShell}`}>
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Cleaner publish story</h3>
-                  <p className="mt-0.5 text-xs text-zinc-500">The readiness panel ties together domain setup, payment choice, and content completion in one visible finish line.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Cleaner publish story</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>The readiness panel ties together domain setup, payment choice, and content completion in one visible finish line.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2 sm:gap-4">
             {[
               {
                 icon: Palette,
@@ -1098,12 +1207,16 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-[1.5rem] border border-white/6 bg-slate-900/35 p-6 transition-all hover:border-white/12 hover:bg-slate-900/55">
+                <div key={item.title} className={`rounded-[1.5rem] border p-6 transition-all ${
+                  isLightTheme
+                    ? "border-slate-200 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)] hover:border-slate-300 hover:shadow-[0_22px_48px_rgba(15,23,42,0.08)]"
+                    : "border-white/6 bg-slate-900/35 hover:border-white/12 hover:bg-slate-900/55"
+                }`}>
                   <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-sm font-bold text-white">{item.title}</h3>
-                  <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">{item.body}</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.title}</h3>
+                  <p className={`mt-2 text-[11px] leading-relaxed ${subtleText}`}>{item.body}</p>
                 </div>
               );
             })}
@@ -1111,50 +1224,71 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-900/40 p-8 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:py-8">
+        <div className={`rounded-[2rem] border p-8 shadow-[0_24px_70px_rgba(0,0,0,0.12)] ${
+          isLightTheme ? "border-slate-200 bg-white/92" : "border-white/10 bg-slate-900/40"
+        }`}>
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-8">
             <div className="space-y-4">
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
                 <Clock3 className="h-3.5 w-3.5" />
                 Day-one outcome
               </span>
-              <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+              <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
                 The page should sell the business upgrade, not just the UI.
               </h2>
-              <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+              <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
                 Merchants need to understand what they actually get after signup. This section makes the outcome concrete before pricing ever appears.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-2">
               {dayOneItems.map((item) => (
-                <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                <div key={item} className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                  isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.03]"
+                }`}>
                   <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                     <Check className="h-4 w-4" />
                   </div>
-                  <p className="text-sm font-medium leading-relaxed text-white">{item}</p>
+                  <p className={`text-sm font-medium leading-relaxed ${isLightTheme ? "text-slate-900" : "text-white"}`}>{item}</p>
                 </div>
               ))}
+            </div>
+            <div className={`rounded-[1.6rem] border p-5 md:hidden ${
+              isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.03]"
+            }`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Why merchants switch</p>
+              <div className="mt-3 space-y-3">
+                {beforeAfterItems.map((item, index) => (
+                  <div key={index} className={`rounded-2xl p-3 ${isLightTheme ? "bg-white" : "bg-slate-950/40"}`}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-400">Before</p>
+                    <p className={`mt-1 text-xs leading-relaxed ${mutedText}`}>{item.before}</p>
+                    <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">After</p>
+                    <p className={`mt-1 text-xs leading-relaxed ${isLightTheme ? "text-slate-800" : "text-zinc-200"}`}>{item.after}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
+      <section className="relative z-10 mx-auto hidden max-w-6xl px-4 py-16 sm:py-24 md:block">
         <div className="grid gap-6 lg:grid-cols-2">
           {beforeAfterItems.map((item, index) => (
-            <div key={index} className="rounded-[1.8rem] border border-white/8 bg-slate-900/35 p-6">
+            <div key={index} className={`rounded-[1.8rem] border p-6 ${
+              isLightTheme ? "border-slate-200 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.05)]" : "border-white/8 bg-slate-900/35"
+            }`}>
               <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
                 <div className="rounded-2xl border border-rose-500/15 bg-rose-500/8 p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">Before</p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">{item.before}</p>
+                  <p className={`mt-2 text-sm leading-relaxed ${isLightTheme ? "text-slate-700" : "text-zinc-300"}`}>{item.before}</p>
                 </div>
                 <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full ${theme.accent} ${theme.primaryText}`}>
                   <ArrowRightLeft className="h-4.5 w-4.5" />
                 </div>
                 <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/8 p-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">After</p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-200">{item.after}</p>
+                  <p className={`mt-2 text-sm leading-relaxed ${isLightTheme ? "text-slate-800" : "text-zinc-200"}`}>{item.after}</p>
                 </div>
               </div>
             </div>
@@ -1162,104 +1296,142 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <section id="templates" className="relative z-10 mx-auto max-w-6xl px-4 py-24">
-        <div className="mb-10 flex items-end justify-between gap-6">
+      <section id="templates" className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
           <div className="max-w-2xl space-y-3">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
               <Layout className="h-3.5 w-3.5" />
               Built for different businesses
             </span>
-            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
               Show merchants that the CMS already speaks their category.
             </h2>
-            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+            <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
               A stronger landing page helps visitors recognize themselves quickly. These use cases turn the dropdown preview into a broader sales argument.
             </p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 lg:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {useCases.map((useCase) => (
-            <article key={useCase.title} className="rounded-[1.6rem] border border-white/8 bg-slate-900/35 p-6 transition hover:-translate-y-1 hover:border-white/15 hover:bg-slate-900/55">
-              <h3 className="font-heading text-lg font-bold text-white">{useCase.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{useCase.body}</p>
-              <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{useCase.fit}</p>
+            <article key={useCase.title} className={`rounded-[1.6rem] border p-6 transition hover:-translate-y-1 ${
+              isLightTheme
+                ? "border-slate-200 bg-white/90 hover:border-slate-300 hover:shadow-[0_20px_48px_rgba(15,23,42,0.07)]"
+                : "border-white/8 bg-slate-900/35 hover:border-white/15 hover:bg-slate-900/55"
+            }`}>
+              <h3 className={`font-heading text-lg font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{useCase.title}</h3>
+              <p className={`mt-3 text-sm leading-relaxed ${mutedText}`}>{useCase.body}</p>
+              <p className={`mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>{useCase.fit}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="relative z-10 mx-auto hidden max-w-6xl px-4 py-6 sm:py-8 md:block">
+        <div className="grid gap-3 lg:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {trustItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.title} className="rounded-[1.5rem] border border-white/8 bg-slate-900/35 p-6 transition hover:border-white/15 hover:bg-slate-900/50">
+              <div key={item.title} className={`rounded-[1.5rem] border p-6 transition ${
+                isLightTheme
+                  ? "border-slate-200 bg-white/88 hover:border-slate-300 hover:shadow-[0_18px_36px_rgba(15,23,42,0.06)]"
+                  : "border-white/8 bg-slate-900/35 hover:border-white/15 hover:bg-slate-900/50"
+              }`}>
                 <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-sm font-bold text-white">{item.title}</h3>
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">{item.body}</p>
+                <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.title}</h3>
+                <p className={`mt-2 text-[11px] leading-relaxed ${subtleText}`}>{item.body}</p>
               </div>
             );
           })}
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
-        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           <div className="space-y-4">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
               <Rocket className="h-3.5 w-3.5" />
               Launch checklist
             </span>
-            <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
               Reduce friction by showing the exact path to launch.
             </h2>
-            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+            <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
               A checklist turns the walkthrough into a promise: the merchant can see exactly what happens next and why the setup feels manageable.
             </p>
           </div>
           <div className="grid gap-3">
             {checklistItems.map((item, index) => (
-              <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div key={item} className={`flex items-start gap-4 rounded-2xl border p-4 ${
+                isLightTheme ? "border-slate-200 bg-white/90" : "border-white/8 bg-white/[0.03]"
+              }`}>
                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.accent} ${theme.primaryText}`}>
                   <span className="text-xs font-bold">{index + 1}</span>
                 </div>
-                <p className="text-sm leading-relaxed text-white">{item}</p>
+                <p className={`text-sm leading-relaxed ${isLightTheme ? "text-slate-900" : "text-white"}`}>{item}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8">
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
-          <div className="border-b border-white/8 px-6 py-5">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:py-8">
+        <div className={`overflow-hidden rounded-[2rem] border shadow-[0_24px_70px_rgba(0,0,0,0.14)] ${
+          isLightTheme ? "border-slate-200 bg-white/92" : "border-white/10 bg-slate-900/40"
+        }`}>
+          <div className={`border-b px-6 py-5 ${isLightTheme ? "border-slate-200" : "border-white/8"}`}>
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Comparison
             </span>
-            <h2 className="mt-4 font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h2 className={`mt-4 font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
               Help merchants understand why this beats inbox selling and generic builders.
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {comparisonRows.map((row) => (
+              <article
+                key={row.label}
+                className={`rounded-2xl border p-4 ${
+                  isLightTheme ? "border-slate-200 bg-slate-50/80" : "border-white/8 bg-white/[0.03]"
+                }`}
+              >
+                <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{row.label}</h3>
+                <div className="mt-3 space-y-2 text-xs">
+                  <div className={`rounded-xl px-3 py-2 ${isLightTheme ? "bg-white text-slate-600" : "bg-slate-950/50 text-zinc-400"}`}>
+                    <span className="block font-semibold">Inbox selling</span>
+                    <span className="mt-1 block">{row.inbox}</span>
+                  </div>
+                  <div className={`rounded-xl px-3 py-2 ${isLightTheme ? "bg-white text-slate-600" : "bg-slate-950/50 text-zinc-400"}`}>
+                    <span className="block font-semibold">Generic builder</span>
+                    <span className="mt-1 block">{row.generic}</span>
+                  </div>
+                  <div className={`rounded-xl px-3 py-2 ${theme.accent} ${isLightTheme ? "text-slate-900" : "text-white"}`}>
+                    <span className="block font-semibold">Commerce Engine</span>
+                    <span className="mt-1 block">{row.commerce}</span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-white/[0.03] text-zinc-300">
+              <thead className={isLightTheme ? "bg-slate-50 text-slate-600" : "bg-white/[0.03] text-zinc-300"}>
                 <tr>
                   <th className="px-6 py-4 font-semibold">What merchants need</th>
                   <th className="px-6 py-4 font-semibold">Inbox selling</th>
                   <th className="px-6 py-4 font-semibold">Generic website builder</th>
-                  <th className="px-6 py-4 font-semibold text-white">Commerce Engine</th>
+                  <th className={`px-6 py-4 font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Commerce Engine</th>
                 </tr>
               </thead>
               <tbody>
                 {comparisonRows.map((row) => (
-                  <tr key={row.label} className="border-t border-white/6 align-top">
-                    <td className="px-6 py-4 font-semibold text-white">{row.label}</td>
-                    <td className="px-6 py-4 text-zinc-400">{row.inbox}</td>
-                    <td className="px-6 py-4 text-zinc-400">{row.generic}</td>
-                    <td className="px-6 py-4 text-zinc-200">{row.commerce}</td>
+                  <tr key={row.label} className={`align-top ${isLightTheme ? "border-t border-slate-200" : "border-t border-white/6"}`}>
+                    <td className={`px-6 py-4 font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{row.label}</td>
+                    <td className={`px-6 py-4 ${mutedText}`}>{row.inbox}</td>
+                    <td className={`px-6 py-4 ${mutedText}`}>{row.generic}</td>
+                    <td className={`px-6 py-4 ${isLightTheme ? "text-slate-800" : "text-zinc-200"}`}>{row.commerce}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1268,72 +1440,80 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
-        <div className="mb-10 max-w-2xl space-y-3">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="mb-8 max-w-2xl space-y-3 sm:mb-10">
           <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
             <ShieldCheck className="h-3.5 w-3.5" />
             Objection handling
           </span>
-          <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+          <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             Answer the hesitation before the visitor reaches pricing.
           </h2>
-          <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+          <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
             A high-converting homepage does not wait for the FAQ to do all the work. It surfaces the biggest concerns in plain language earlier in the flow.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 lg:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {objectionItems.map((item) => (
-            <div key={item.title} className="rounded-[1.5rem] border border-white/8 bg-slate-900/35 p-6 transition hover:border-white/15 hover:bg-slate-900/55">
-              <h3 className="text-sm font-bold text-white">{item.title}</h3>
-              <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">{item.body}</p>
+            <div key={item.title} className={`rounded-[1.5rem] border p-6 transition ${
+              isLightTheme
+                ? "border-slate-200 bg-white/90 hover:border-slate-300 hover:shadow-[0_18px_36px_rgba(15,23,42,0.06)]"
+                : "border-white/8 bg-slate-900/35 hover:border-white/15 hover:bg-slate-900/55"
+            }`}>
+              <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.title}</h3>
+              <p className={`mt-3 text-[11px] leading-relaxed ${subtleText}`}>{item.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
-        <div className="mb-10 max-w-2xl space-y-3">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="mb-8 max-w-2xl space-y-3 sm:mb-10">
           <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
             <MessageSquareQuote className="h-3.5 w-3.5" />
             Social proof
           </span>
-          <h2 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+          <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             A testimonial section belongs on this page.
           </h2>
-          <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+          <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
             The interactive demo proves possibility. Testimonials prove trust. Together they make the offer feel safer to buy.
           </p>
         </div>
-        <div className="mb-6 flex justify-end">
-          <Link href="/stories" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10">
+        <div className="mb-6 flex justify-start sm:justify-end">
+          <Link href="/stories" className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+            isLightTheme ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100" : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+          }`}>
             Read more merchant stories
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.2fr_0.9fr]">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[0.9fr_1.2fr_0.9fr]">
           {testimonials.map((testimonial, index) => (
             <article
               key={testimonial.name}
               className={`rounded-[1.8rem] border p-6 transition ${
                 index === 1
-                  ? `${theme.border} bg-white/[0.08] shadow-[0_22px_70px_rgba(0,0,0,0.24)]`
-                  : "border-white/8 bg-slate-900/35 hover:border-white/15"
+                  ? `${theme.border} ${isLightTheme ? "bg-white shadow-[0_22px_60px_rgba(15,23,42,0.12)]" : "bg-white/[0.08] shadow-[0_22px_70px_rgba(0,0,0,0.24)]"}`
+                  : isLightTheme
+                    ? "border-slate-200 bg-white/90 hover:border-slate-300"
+                    : "border-white/8 bg-slate-900/35 hover:border-white/15"
               }`}
             >
               <div className="flex items-center gap-2">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${index === 1 ? theme.primary : "bg-white/10"} text-white`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${index === 1 ? theme.primary : isLightTheme ? "bg-slate-200" : "bg-white/10"} ${index === 1 ? "text-white" : isLightTheme ? "text-slate-700" : "text-white"}`}>
                   <Crown className="h-4.5 w-4.5" />
                 </div>
-                <p className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${index === 1 ? theme.chip : "bg-white/8 text-zinc-300"}`}>
+                <p className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${index === 1 ? theme.chip : isLightTheme ? "bg-slate-100 text-slate-700" : "bg-white/8 text-zinc-300"}`}>
                   {testimonial.result}
                 </p>
               </div>
-              <p className="mt-5 text-base leading-relaxed text-white">
+              <p className={`mt-5 text-base leading-relaxed ${isLightTheme ? "text-slate-900" : "text-white"}`}>
                 "{testimonial.quote}"
               </p>
               <div className="mt-6">
-                <p className="text-sm font-bold text-white">{testimonial.name}</p>
-                <p className="text-xs text-zinc-500">{testimonial.role}</p>
+                <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{testimonial.name}</p>
+                <p className={`text-xs ${subtleText}`}>{testimonial.role}</p>
               </div>
             </article>
           ))}
@@ -1342,50 +1522,63 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
       {children}
 
-      <section className="relative z-10 mx-auto max-w-4xl px-4 py-24">
-        <div className="mb-12 space-y-3 text-center">
-          <h2 className="font-heading text-3xl font-extrabold text-white">Frequently Asked Questions</h2>
-          <p className="text-sm text-zinc-400">Clear answers about setup, domains, and how the CMS experience is presented.</p>
+      <section className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:py-24">
+        <div className="mb-8 space-y-3 text-center sm:mb-12">
+          <h2 className={`font-heading text-3xl font-extrabold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Frequently Asked Questions</h2>
+          <p className={`text-sm ${mutedText}`}>Clear answers about setup, domains, and how the CMS experience is presented.</p>
         </div>
 
         <div className="space-y-3">
           {faqs.map((faq, idx) => (
-            <div key={faq.q} className="overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40 transition-all duration-300">
+            <div key={faq.q} className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+              isLightTheme ? "border-slate-200 bg-white/92" : "border-white/5 bg-slate-900/40"
+            }`}>
               <button
                 type="button"
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                className="flex w-full items-center justify-between p-5 text-left text-sm font-bold text-white transition-all hover:bg-white/[0.02]"
+                className={`flex w-full items-center justify-between p-5 text-left text-sm font-bold transition-all ${
+                  isLightTheme ? "text-slate-950 hover:bg-slate-50" : "text-white hover:bg-white/[0.02]"
+                }`}
               >
                 <span className="flex items-center gap-3">
                   <HelpCircle className={`h-4.5 w-4.5 shrink-0 ${theme.primaryText}`} />
                   {faq.q}
                 </span>
-                <ChevronDown className={`h-4 w-4 text-zinc-500 transition-transform duration-300 ${openFaq === idx ? "rotate-180 text-white" : ""}`} />
+                <ChevronDown className={`h-4 w-4 ${subtleText} transition-transform duration-300 ${openFaq === idx ? `rotate-180 ${isLightTheme ? "text-slate-900" : "text-white"}` : ""}`} />
               </button>
 
-              <div className={`overflow-hidden transition-all duration-500 ${openFaq === idx ? "max-h-40 border-t border-white/5 bg-slate-950/40" : "max-h-0"}`}>
-                <p className="p-5 text-xs leading-relaxed text-zinc-400 sm:text-sm">{faq.a}</p>
+              <div className={`overflow-hidden transition-all duration-500 ${openFaq === idx ? `max-h-40 border-t ${isLightTheme ? "border-slate-200 bg-slate-50/70" : "border-white/5 bg-slate-950/40"}` : "max-h-0"}`}>
+                <p className={`p-5 text-xs leading-relaxed sm:text-sm ${mutedText}`}>{faq.a}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-20">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#050810] p-12 text-center shadow-[0_28px_90px_rgba(0,0,0,0.4)]">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-20">
+        <div className={`relative overflow-hidden rounded-[2rem] border p-8 text-center shadow-[0_28px_90px_rgba(0,0,0,0.18)] sm:p-12 ${
+          isLightTheme ? "border-slate-200 bg-white" : "border-white/10 bg-[#050810]"
+        }`}>
           <div className={`absolute -inset-8 rounded-[2rem] ${theme.glow} blur-3xl opacity-35`} />
+          <div className={`absolute inset-0 ${
+            isLightTheme
+              ? "bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.72),transparent_45%)]"
+              : "bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%)]"
+          }`} />
           <div className="relative z-10 space-y-6">
-            <h2 className="font-heading text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+            <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
               Ready to turn this landing page into a stronger sales demo?
             </h2>
-            <p className="mx-auto max-w-xl text-sm leading-relaxed text-zinc-400">
+            <p className={`mx-auto max-w-xl text-sm leading-relaxed ${mutedText}`}>
               Merchants should be able to understand the setup, feel the design flexibility, and trust the launch workflow within the first scroll. This version gets much closer.
             </p>
-            <div className="flex justify-center gap-4 pt-2">
+            <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row sm:gap-4">
               <Link href="/signup" className={`rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
                 Start Free Trial
               </Link>
-              <Link href="/templates" className="rounded-full border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/10">
+              <Link href="/templates" className={`rounded-full border px-8 py-3.5 text-sm font-bold transition-all duration-300 hover:-translate-y-0.5 ${
+                isLightTheme ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100" : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+              }`}>
                 Explore templates
               </Link>
             </div>
@@ -1393,18 +1586,20 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-white/5 bg-slate-950 py-12 text-center text-xs text-zinc-500">
+      <footer className={`relative z-10 border-t py-12 text-center text-xs ${
+        isLightTheme ? "border-slate-200 bg-stone-100 text-slate-500" : "border-white/5 bg-slate-950 text-zinc-500"
+      }`}>
         <div className="mx-auto max-w-6xl space-y-6 px-4">
-          <p className="font-heading text-sm font-extrabold tracking-[0.22em] text-white">COMMERCE ENGINE</p>
-          <p className="mx-auto max-w-md text-zinc-500">
+          <p className={`font-heading text-sm font-extrabold tracking-[0.22em] ${isLightTheme ? "text-slate-950" : "text-white"}`}>COMMERCE ENGINE</p>
+          <p className={`mx-auto max-w-md ${subtleText}`}>
             A white-label ecommerce CMS built for launch-ready storefronts, operational clarity, and easier merchant onboarding.
           </p>
-          <div className="flex justify-center gap-4 text-[11px] text-zinc-400">
-            <Link href="/templates" className="hover:text-white">Templates</Link>
-            <Link href="/stories" className="hover:text-white">Stories</Link>
-            <Link href="/plans" className="hover:text-white">Pricing</Link>
+          <div className={`flex justify-center gap-4 text-[11px] ${mutedText}`}>
+            <Link href="/templates" className={isLightTheme ? "hover:text-slate-950" : "hover:text-white"}>Templates</Link>
+            <Link href="/stories" className={isLightTheme ? "hover:text-slate-950" : "hover:text-white"}>Stories</Link>
+            <Link href="/plans" className={isLightTheme ? "hover:text-slate-950" : "hover:text-white"}>Pricing</Link>
           </div>
-          <p className="border-t border-white/5 pt-4 text-[10px]">
+          <p className={`border-t pt-4 text-[10px] ${isLightTheme ? "border-slate-200" : "border-white/5"}`}>
             &copy; {new Date().getFullYear()} Commerce Engine. Built for modern digital commerce.
           </p>
         </div>
