@@ -43,6 +43,7 @@ import {
   type PlatformAnalyticsInput,
   type StorePlatformSummary,
 } from "@/lib/platform/admin-analytics";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 
 type PlanRow = {
   id: string;
@@ -278,9 +279,15 @@ export default function PlatformControlPlane() {
 
   if (authLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Restoring CMS access"
+        description="Platform access is still being restored before the control plane can finish loading."
+        loadingLabel="Reconnecting the CMS control plane."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+      />
     );
   }
 
@@ -625,9 +632,15 @@ export default function PlatformControlPlane() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Loading CMS control plane"
+        description="Platform analytics, plans, and store activity are still being gathered."
+        loadingLabel="Refreshing shared CMS data and store summaries."
+        retryLabel="Reload CMS data"
+        onRetry={() => {
+          void refreshAll();
+        }}
+      />
     );
   }
 

@@ -9,6 +9,7 @@ import { ChangePasswordDialog } from "@/components/admin/ChangePasswordDialog";
 import { ArrowLeft, Building2, LayoutDashboard, Layers3, Loader2, LogOut, Search, Shield } from "lucide-react";
 import AdminCommandMenu from "@/components/admin/AdminCommandMenu";
 import CmsAdminMobileNav from "@/components/admin/CmsAdminMobileNav";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 
 const cmsAdminLinks = [
   { to: "/cms-admin", icon: Shield, label: "CMS Control" },
@@ -22,9 +23,16 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Restoring CMS access"
+        description="The CMS admin workspace is reconnecting while platform permissions refresh."
+        loadingLabel="Reconnecting the CMS control plane."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+        fullHeight
+      />
     );
   }
 

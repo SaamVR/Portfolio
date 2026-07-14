@@ -8,6 +8,7 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/react-router-dom-shim";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 
 export function AdminFeatureGate({
   featureKey,
@@ -29,11 +30,13 @@ export function AdminFeatureGate({
 
   if (loading || isLoading) {
     return (
-      <Card className="border-border">
-        <CardContent className="flex min-h-40 items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <AdminRecoveryPanel
+        title={title}
+        description="The store package permissions are still being restored."
+        loadingLabel="Checking feature access for the active store."
+        retryLabel="Refresh dashboard"
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 

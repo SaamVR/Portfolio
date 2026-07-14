@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Navigate } from "@/lib/react-router-dom-shim";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { useAuth } from "@/hooks/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,9 +100,15 @@ export default function CmsLibraryManager() {
 
   if (authLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Restoring shared library access"
+        description="Shared library permissions are loading before blueprint and theme data can be edited."
+        loadingLabel="Reconnecting the CMS library."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+      />
     );
   }
 

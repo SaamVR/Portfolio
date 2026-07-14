@@ -57,6 +57,7 @@ import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } f
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 
 type StoreRecord = {
   id: string;
@@ -1185,9 +1186,13 @@ export default function CmsPagesManager() {
 
   if (loading && !store) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Loading Page Builder"
+        description="The storefront workspace is being restored for the active store."
+        loadingLabel="Rebuilding page, block, and theme state."
+        retryLabel="Reload Page Builder"
+        onRetry={() => void loadStore()}
+      />
     );
   }
 

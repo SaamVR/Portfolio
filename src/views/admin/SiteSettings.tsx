@@ -25,6 +25,7 @@ import { seedDemoProducts } from "@/data/seedDemoProducts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { cn } from "@/lib/utils";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import {
   buildThemePackageExport,
@@ -127,7 +128,7 @@ const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
 ]);
 
 const SiteSettings = () => {
-  const { role, session, activeStoreId, loading: authLoading } = useAuth();
+  const { role, session, activeStoreId, loading: authLoading, refreshRole, signOut } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -732,9 +733,16 @@ const SiteSettings = () => {
 
   if ((authLoading || (session && role !== "admin")) && role !== "admin") {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Restoring Site Settings"
+        description="Store permissions are still reconnecting before settings can be edited."
+        loadingLabel="Reconnecting the settings workspace."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+        fullHeight
+      />
     );
   }
 

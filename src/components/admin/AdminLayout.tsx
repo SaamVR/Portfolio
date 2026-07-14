@@ -7,6 +7,7 @@ import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
 import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AdminRecoveryPanel from "./AdminRecoveryPanel";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
   { path: "/admin/page-builder", label: "Page Builder", description: "Storefront pages, blocks, and live preview" },
@@ -36,9 +37,16 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AdminRecoveryPanel
+        title="Restoring dashboard access"
+        description="Your session is loading while store permissions and workspace state come back."
+        loadingLabel="Reconnecting the admin dashboard."
+        retryLabel="Refresh dashboard"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+        fullHeight
+      />
     );
   }
 
