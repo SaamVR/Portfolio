@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { withStoreId } from "@/lib/admin-paths";
 
 const AdminSidebar = () => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
@@ -76,7 +77,7 @@ const AdminSidebar = () => {
     { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
     { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
     { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
-    { to: "/admin/onboarding", icon: Rocket, label: "Store Setup", show: isAdmin },
+    { to: withStoreId("/admin/onboarding", activeStoreId), icon: Rocket, label: "Store Setup", show: isAdmin },
     { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },

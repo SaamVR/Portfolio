@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { withStoreId } from "@/lib/admin-paths";
 import {
   CommandDialog,
   CommandInput,
@@ -80,7 +81,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Reviews Validation", icon: MessageSquare, category: "Pages", action: () => navigate("/admin/reviews") },
     { label: "Discount Coupons", icon: Tag, category: "Pages", action: () => navigate("/admin/coupons") },
     { label: "Categories & Types Manager", icon: FolderTree, category: "Pages", action: () => navigate("/admin/categories"), show: isAdmin },
-    { label: "Store Setup Onboarding", icon: Rocket, category: "Pages", action: () => navigate("/admin/onboarding"), show: isAdmin },
+    { label: "Store Setup Onboarding", icon: Rocket, category: "Pages", action: () => navigate(withStoreId("/admin/onboarding", activeStoreId)), show: isAdmin },
     { label: "Page Builder Workspace", icon: PanelsTopLeft, category: "Pages", action: () => navigate("/admin/page-builder"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { label: "Media Library Workspace", icon: Images, category: "Pages", action: () => navigate("/admin/media"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { label: "Store Backup & Import Workspace", icon: HardDriveDownload, category: "Pages", action: () => navigate("/admin/backup"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
@@ -117,7 +118,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "View Unread Inquiries", icon: Eye, action: () => navigate("/admin/messages?filter=unread") },
     { label: "Review Pending Product Ratings", icon: Eye, action: () => navigate("/admin/reviews?filter=pending") },
     { label: "Open Page Builder", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
-    { label: "Continue Store Setup", icon: Rocket, action: () => navigate("/admin/onboarding") },
+    { label: "Continue Store Setup", icon: Rocket, action: () => navigate(withStoreId("/admin/onboarding", activeStoreId)) },
   ];
 
   return (

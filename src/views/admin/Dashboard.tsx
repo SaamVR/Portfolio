@@ -3,6 +3,7 @@ import { Link } from "@/lib/react-router-dom-shim";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { buildStoreReadinessScore, type StoreReadinessState } from "@/lib/platform/store-readiness";
+import { withStoreId } from "@/lib/admin-paths";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -335,7 +336,7 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/admin/onboarding">Continue store setup</Link>
+              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>Continue store setup</Link>
             </Button>
           </CardContent>
         </Card>
@@ -400,7 +401,7 @@ const Dashboard = () => {
         <CardContent className="space-y-5">
           {storeHealth.items.some((item) => !item.done) ? (
             <Button asChild className="w-full gap-2 sm:w-auto">
-              <Link to="/admin/onboarding">
+              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>
                 Continue setup <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -429,7 +430,7 @@ const Dashboard = () => {
                       {item.done ? "Done" : item.action}
                     </p>
                     {!item.done ? (
-                      <Link to={item.href} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                      <Link to={withStoreId(item.href, activeStoreId)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                         Fix this <ArrowRight className="h-3 w-3" />
                       </Link>
                     ) : null}

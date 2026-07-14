@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown, Store, PlusCircle } from "lucide-react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
+import { withStoreId } from "@/lib/admin-paths";
 
 export default function StoreSwitcher() {
   const { storeMemberships, activeStoreId, setActiveStoreId } = useAuth();
@@ -71,7 +72,7 @@ export default function StoreSwitcher() {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate("/admin/onboarding")} className="cursor-pointer text-primary">
+        <DropdownMenuItem onClick={() => navigate(withStoreId("/admin/onboarding", activeStoreId))} className="cursor-pointer text-primary">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create New Store
         </DropdownMenuItem>
