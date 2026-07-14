@@ -29,6 +29,7 @@ import {
   FileText,
   Layers3,
   Monitor,
+  PanelsTopLeft,
   Smartphone,
   Store as StoreIcon,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
+import { withStoreId } from "@/lib/admin-paths";
 import {
   DEFAULT_STORE_CURRENCY_CODE,
   DEFAULT_STORE_DESCRIPTION,
@@ -1196,20 +1198,101 @@ export default function CmsPagesManager() {
     );
   }
 
+  if (!activeStoreId) {
+    return (
+      <Card className="border-border bg-card/80 shadow-sm">
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <StoreIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle>Choose a Store to Open Page Builder</CardTitle>
+              <CardDescription>
+                Pick a store from the switcher first, then initialize its storefront workspace when you are ready to build pages.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">1. Select a store</p>
+              <p className="mt-1 text-xs text-muted-foreground">Use the store switcher in the dashboard header to choose the storefront you want to edit.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">2. Initialize workspace</p>
+              <p className="mt-1 text-xs text-muted-foreground">The first visit seeds starter pages, blocks, and theme wiring for that store only.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">3. Start editing</p>
+              <p className="mt-1 text-xs text-muted-foreground">After initialization, mobile and desktop editing surfaces stay scoped to the active store.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild className="gap-2">
+              <Link to="/admin">
+                <StoreIcon className="h-4 w-4" />
+                Go To Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/admin/onboarding">
+                <RefreshCcw className="h-4 w-4" />
+                Create or Finish a Store
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!store) {
     return (
-      <Card className="border-border">
-          <CardHeader>
-            <CardTitle>Page Builder</CardTitle>
-            <CardDescription>Initialize the multi-page storefront workspace for the active store using the selected blueprint.</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card className="border-border bg-card/80 shadow-sm">
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <PanelsTopLeft className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle>Initialize Storefront Workspace</CardTitle>
+              <CardDescription>
+                Generate the first page builder snapshot for this store using its blueprint, theme, and page defaults.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">Scoped to this store</p>
+              <p className="mt-1 text-xs text-muted-foreground">Pages, blocks, and theme references are seeded for the active store only.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">Blueprint-aware</p>
+              <p className="mt-1 text-xs text-muted-foreground">The starter workspace pulls from the current business blueprint and page templates.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/40 p-4">
+              <p className="text-sm font-medium text-foreground">Safe to customize</p>
+              <p className="mt-1 text-xs text-muted-foreground">Once initialized, edits stay local to this store and won’t mutate shared source packages.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button onClick={bootstrapDefaultStore} disabled={bootstrapping} className="gap-2">
               {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               Initialize Storefront Workspace
             </Button>
-          </CardContent>
-        </Card>
+            <Button variant="outline" asChild className="gap-2">
+              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>
+                <StoreIcon className="h-4 w-4" />
+                Review Store Setup
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle, Store } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrandSeoTab } from "./settings/BrandSeoTab";
@@ -765,6 +765,58 @@ const SiteSettings = () => {
             <Skeleton className="h-[300px] w-full rounded-xl" />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!activeStoreId) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-border bg-card/80 shadow-sm">
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Palette className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>Choose a Store to Edit Site Settings</CardTitle>
+                <CardDescription>
+                  Brand, SEO, payment, support, and theme settings all stay scoped to the active store, so pick that context first.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Select the right store</p>
+                <p className="mt-1 text-xs text-muted-foreground">Use the store switcher in the admin header to load the storefront you want to configure.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Edit with confidence</p>
+                <p className="mt-1 text-xs text-muted-foreground">Theme, contact, and payment settings save to the active store only.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Finish setup faster</p>
+                <p className="mt-1 text-xs text-muted-foreground">Onboarding is still the quickest place to create a store or complete first-run setup.</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="gap-2">
+                <Link to="/admin">
+                  <Store className="h-4 w-4" />
+                  Go To Dashboard
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <Link to="/admin/onboarding">
+                  <ArrowRightCircle className="h-4 w-4" />
+                  Create or Finish a Store
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

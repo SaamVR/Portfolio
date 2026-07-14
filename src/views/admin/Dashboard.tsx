@@ -304,6 +304,57 @@ const Dashboard = () => {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   };
 
+  if (!activeStoreId) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Choose a storefront context before reviewing business data or setup progress.</p>
+        </div>
+
+        <Card className="border-border bg-card/70 backdrop-blur-sm">
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <PanelsTopLeft className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>Select or Create a Store</CardTitle>
+                <CardDescription>
+                  The dashboard, Page Builder, and Site Settings all respond to the active store in the header switcher.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Pick a store</p>
+                <p className="mt-1 text-xs text-muted-foreground">If you already own one, use the store switcher in the top bar to load its admin state.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Create a new store</p>
+                <p className="mt-1 text-xs text-muted-foreground">Onboarding seeds the store profile, blueprint, starter pages, and plan-aware defaults.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-medium text-foreground">Return here for operations</p>
+                <p className="mt-1 text-xs text-muted-foreground">Once a store is active, analytics, setup health, and order summaries fill in automatically.</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="gap-2">
+                <Link to="/admin/onboarding">
+                  <Sparkles className="h-4 w-4" />
+                  Create or Finish a Store
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
