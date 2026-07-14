@@ -167,7 +167,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   return (
     <>
       {/* Sticky Bottom Dock */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/80 px-4 py-2 backdrop-blur-xl md:hidden pb-safe">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/92 px-3 py-2 backdrop-blur-xl md:hidden pb-safe">
         <div className="flex items-center justify-around">
           {dockLinks.map((link) => {
             const active = location.pathname === link.to;
@@ -177,12 +177,12 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 key={link.to}
                 to={link.to}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 rounded-xl p-2 text-xs font-medium transition-all duration-300",
+                  "relative flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-all duration-300",
                   active ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span>{link.label}</span>
+                <Icon className="h-4.5 w-4.5" />
+                <span>{link.label === "Dashboard" ? "Home" : link.label === "Products" ? "Catalog" : link.label === "Messages" ? "Inbox" : link.label}</span>
                 {link.badge !== undefined && link.badge > 0 && (
                   <span className="absolute -top-0.5 right-2.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                     {link.badge > 99 ? "99+" : link.badge}
@@ -197,11 +197,11 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
             <SheetTrigger asChild>
               <button
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl p-2 text-xs font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
+                  "flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
                   isOpen && "text-primary scale-110"
                 )}
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4.5 w-4.5" />
                 <span>Menu</span>
                 {(pendingReviewsCount > 0) && (
                   <span className="absolute top-1.5 right-6 flex h-2 w-2 rounded-full bg-primary animate-pulse" />

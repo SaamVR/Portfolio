@@ -522,12 +522,12 @@ const SiteSettings = () => {
     children: ReactNode;
     className?: string;
   }) => (
-    <Card className={cn("border-border shadow-sm md:shadow-none", className)}>
-      <CardHeader className="space-y-1 px-4 py-4 md:px-6">
+    <Card className={cn("border-border shadow-sm md:shadow-none rounded-xl", className)}>
+      <CardHeader className="space-y-1 px-4 py-3.5 md:px-6 md:py-4">
         <CardTitle className="text-base">{title}</CardTitle>
         <p className="text-xs text-muted-foreground">{description}</p>
       </CardHeader>
-      <CardContent className="space-y-4 px-4 pb-4 md:px-6">{children}</CardContent>
+      <CardContent className="space-y-3.5 px-4 pb-4 md:px-6">{children}</CardContent>
     </Card>
   );
 
@@ -763,9 +763,14 @@ const SiteSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Site Settings</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-heading text-2xl font-bold text-foreground md:text-3xl">Site Settings</h1>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary md:hidden">
+              {tabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"}
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground">Edit your store's content and appearance</p>
           {isMissingActiveThemeReference ? (
             <p className="mt-2 text-sm text-amber-600">
@@ -783,7 +788,7 @@ const SiteSettings = () => {
             </p>
           ) : null}
         </div>
-        <Button variant="outline" onClick={seedDemoProducts} className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary">
+        <Button variant="outline" onClick={seedDemoProducts} className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary w-full sm:w-auto">
           <Database className="h-4 w-4" /> Seed Demo Products
         </Button>
       </div>
@@ -792,7 +797,7 @@ const SiteSettings = () => {
         {/* Sidebar Navigation & Search & Select */}
         <div className="w-full md:w-64 flex-shrink-0 space-y-4">
           {/* Quick Search settings */}
-          <div className="relative">
+          <div className="relative md:sticky md:top-20">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search settings..."

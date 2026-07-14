@@ -78,10 +78,10 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
         {/* Workspace Search Header */}
-        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-xl md:px-8">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="md:hidden font-heading text-lg font-bold text-foreground">
-              Store<span className="text-primary">Admin</span>
+            <span className="md:hidden rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              {currentWorkspace.label}
             </span>
             <div className="hidden min-w-0 md:block">
               <div className="flex items-center gap-2">
@@ -120,20 +120,10 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             </button>
           </div>
         </header>
-        <div className="border-b border-border/60 bg-card/40 px-4 py-3 md:hidden">
-          <div className="space-y-3">
+        <div className="border-b border-border/60 bg-card/40 px-4 py-2.5 md:hidden">
+          <div className="space-y-2.5">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                  {currentWorkspace.label}
-                </span>
-                {isCmsWorkspace ? (
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Wide workspace
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{currentWorkspace.description}</p>
+              <p className="text-xs text-muted-foreground">{currentWorkspace.description}</p>
             </div>
             <StoreSwitcher mobile />
           </div>

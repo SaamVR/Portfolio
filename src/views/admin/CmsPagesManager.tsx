@@ -1236,7 +1236,7 @@ export default function CmsPagesManager() {
                 Shape storefront pages, theme settings, and live sections for {store.name}.
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="h-3.5 w-3.5" />
@@ -1251,7 +1251,7 @@ export default function CmsPagesManager() {
                 </div>
                 <p className="mt-1 text-lg font-semibold text-foreground">{visibleBlockCount}</p>
               </div>
-              <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
+              <div className="col-span-2 rounded-lg border border-border bg-background/40 px-3 py-2 sm:col-span-1">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <StoreIcon className="h-3.5 w-3.5" />
                   Store Slug
@@ -1271,17 +1271,17 @@ export default function CmsPagesManager() {
             ) : null}
             <Button variant="outline" onClick={() => void loadStore()} className="gap-2">
               <RefreshCcw className="h-4 w-4" />
-              Reload
+              <span className="hidden sm:inline">Reload</span>
             </Button>
             <Button variant="outline" asChild className="gap-2">
               <a href={previewHref} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
-                Preview Page
+                <span className="hidden sm:inline">Preview Page</span>
               </a>
             </Button>
             <Button onClick={() => void saveAll()} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Pages
+              <span className="hidden sm:inline">Save Pages</span>
             </Button>
           </div>
         </div>
@@ -2594,9 +2594,43 @@ export default function CmsPagesManager() {
                 </div>
             </div>
           ) : (
-            <Card className="border-border">
-              <CardContent className="flex min-h-[240px] items-center justify-center text-sm text-muted-foreground">
-                Select a page to edit its details and blocks.
+            <Card className="border-border rounded-xl">
+              <CardContent className="flex min-h-[280px] flex-col justify-center gap-5 p-5">
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">Choose a page to start editing</p>
+                  <p className="text-sm text-muted-foreground">
+                    Open the Pages workspace, select an existing page, or create a new one from a blueprint to unlock the full editor.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceTab("pages");
+                      setIsMobileSettingsOpen(true);
+                      scrollToBuilderSection("pages-list");
+                    }}
+                    className="rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                  >
+                    <p className="text-sm font-medium text-foreground">Browse pages</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Pick a page and focus one section at a time.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceTab("pages");
+                      setIsMobileSettingsOpen(true);
+                      scrollToBuilderSection("pages-library");
+                    }}
+                    className="rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                  >
+                    <p className="text-sm font-medium text-foreground">Create from blueprint</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Start with a recommended structure, then customize blocks.</p>
+                  </button>
+                </div>
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+                  Stores without initialized pages should create or restore one first. After that, page details, blocks, preview, and revisions appear here.
+                </div>
               </CardContent>
             </Card>
           )}
