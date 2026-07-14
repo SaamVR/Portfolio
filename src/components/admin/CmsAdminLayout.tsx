@@ -74,7 +74,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
           <Button variant="ghost" size="sm" asChild className="w-full justify-start gap-2 text-muted-foreground">
             <Link to="/admin">
               <LayoutDashboard className="h-3.5 w-3.5" />
-              Merchant Admin
+              Store Admin
             </Link>
           </Button>
           <div className="flex gap-2">
@@ -104,7 +104,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
             <Button variant="outline" size="sm" asChild className="gap-2">
               <Link to="/admin">
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Merchant Admin
+                Store Admin
               </Link>
             </Button>
             <button

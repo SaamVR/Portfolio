@@ -27,11 +27,11 @@ const SEOHead = ({
   const currentStore = useOptionalStore();
   const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
 
-  const SITE_NAME = brand?.name ? `${brand.name}${brand.highlight || ""}` : "Commerce Engine";
-  const DEFAULT_DESC = brand?.seo_description || "Launch and manage online stores with CMS pages, products, payments, and templates.";
+  const SITE_NAME = brand?.name ? `${brand.name}${brand.highlight || ""}` : "Online Store";
+  const DEFAULT_DESC = brand?.seo_description || "Browse products, content, offers, and store information in one storefront.";
   
   const finalDescription = description || DEFAULT_DESC;
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : (brand?.seo_title || `${SITE_NAME} - Ecommerce CMS`);
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : (brand?.seo_title || SITE_NAME);
 
   useEffect(() => {
     document.title = fullTitle;

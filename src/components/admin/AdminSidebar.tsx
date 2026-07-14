@@ -96,7 +96,7 @@ const AdminSidebar = () => {
     <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
       <div className="flex h-16 items-center border-b border-border px-6">
         <Link to="/" className="font-heading text-lg font-bold text-foreground">
-          Merchant<span className="text-primary">Admin</span>
+          Store<span className="text-primary">Admin</span>
         </Link>
         <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
           {isAdmin ? "Owner" : "Staff"}

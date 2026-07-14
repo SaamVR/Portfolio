@@ -14,7 +14,7 @@ const Index = () => {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: currentStore?.name ?? "Commerce Engine Storefront",
+    name: currentStore?.name ?? "Online Store",
     url: absoluteStoreUrl(currentStore),
     description: "A configurable storefront for products, collections, and merchant-managed checkout experiences.",
     potentialAction: {
