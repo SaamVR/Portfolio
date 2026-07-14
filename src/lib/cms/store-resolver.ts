@@ -17,6 +17,7 @@ interface StoreRow {
   id: string;
   name: string;
   slug: string;
+  logo_url?: string | null;
   custom_domain?: string | null;
   store_type?: string | null;
   description: string | null;
@@ -178,6 +179,7 @@ export function buildResolvedStoreFromRecords(
     id: store.id,
     name: store.name,
     slug: store.slug,
+    logoUrl: store.logo_url ?? undefined,
     customDomain: store.custom_domain ?? undefined,
     description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
@@ -234,7 +236,7 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
 
   const { data: store, error } = await supabase
     .from("stores")
-    .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
+    .select("id, name, slug, logo_url, custom_domain, description, currency_code, locale, is_published, store_type")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -264,7 +266,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
   ] = await Promise.all([
     supabase
       .from("stores")
-      .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
+      .select("id, name, slug, logo_url, custom_domain, description, currency_code, locale, is_published, store_type")
       .eq("id", storeId)
       .maybeSingle(),
     supabase

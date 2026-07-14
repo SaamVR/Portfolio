@@ -26,7 +26,16 @@ export function StorefrontLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
         <div className={`mx-auto flex h-16 items-center justify-between px-4 ${containerClass}`}>
           <Link href={storefrontPath("/", store.slug)} className="font-heading font-bold text-xl tracking-tight">
-            {store.name}
+            <span className="flex items-center gap-3">
+              {store.logoUrl ? (
+                <img
+                  src={store.logoUrl}
+                  alt={`${store.name} logo`}
+                  className="h-9 w-9 rounded-lg object-cover"
+                />
+              ) : null}
+              <span>{store.name}</span>
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">

@@ -99,7 +99,18 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
           <div className="flex items-center gap-4">
             <MobileMenu />
             <Link to={storefrontPath("/", currentStore?.slug)} className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
-              {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
+              <span className="flex items-center gap-3">
+                {currentStore?.logoUrl ? (
+                  <img
+                    src={currentStore.logoUrl}
+                    alt={`${brandName} logo`}
+                    className="h-9 w-9 rounded-lg object-cover"
+                  />
+                ) : null}
+                <span>
+                  {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
+                </span>
+              </span>
             </Link>
           </div>
 

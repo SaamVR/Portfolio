@@ -264,6 +264,7 @@ function buildPreviewStore(
     id: activeStoreId,
     name: draft.storeName,
     slug: draft.slug,
+    logoUrl: draft.logoUrl || undefined,
     description: draft.description,
     currencyCode: "BDT",
     locale: "en-BD",
