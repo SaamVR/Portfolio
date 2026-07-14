@@ -325,7 +325,7 @@ const SiteSettings = () => {
     ?? "0.5rem";
 
   const syncHomepageSettingToBlocks = async (key: LegacyHomepageSettingKey, value: unknown) => {
-    if (!activeStoreId) return;
+    if (!activeStoreId) return false;
 
     const { data: homepage } = await supabase
       .from("store_pages")
@@ -335,7 +335,7 @@ const SiteSettings = () => {
       .maybeSingle();
 
     const homepageRow = homepage as HomepagePageRow | null;
-    if (!homepageRow?.id) return;
+    if (!homepageRow?.id) return false;
 
     const { data: blocks, error: blocksError } = await supabase
       .from("store_page_blocks")
@@ -345,7 +345,10 @@ const SiteSettings = () => {
       .in("block_type", ["hero", "promo-banner", "featured-products", "category-showcase"]);
 
     if (blocksError || !Array.isArray(blocks) || blocks.length === 0) {
-      return;
+      if (blocksError) {
+        throw blocksError;
+      }
+      return false;
     }
 
     const updatedBlocks = (blocks as HomepageBlockRow[]).map((block) => {
@@ -372,23 +375,36 @@ const SiteSettings = () => {
       };
     });
 
-    await supabase.from("store_page_blocks").upsert(updatedBlocks, { onConflict: "id" });
+    const { error: syncError } = await supabase.from("store_page_blocks").upsert(updatedBlocks, { onConflict: "id" });
+    if (syncError) {
+      throw syncError;
+    }
+
+    return true;
   };
 
   const saveSetting = async (key: string) => {
     if (!activeStoreId) return;
 
     setSaving(key);
-    const { error } = await supabase
-      .from("site_settings")
-      .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} }, { onConflict: "store_id,key" });
-    if (error) toast.error("Failed to save");
-    else {
+    try {
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} }, { onConflict: "store_id,key" });
+      if (error) throw error;
+
       if (homepageSyncKeys.has(key as LegacyHomepageSettingKey)) {
-        await syncHomepageSettingToBlocks(key as LegacyHomepageSettingKey, settings[key] ?? {});
+        const synced = await syncHomepageSettingToBlocks(key as LegacyHomepageSettingKey, settings[key] ?? {});
+        if (synced) {
+          queryClient.invalidateQueries({ queryKey: ["store_page_blocks"] });
+          queryClient.invalidateQueries({ queryKey: ["store_pages"] });
+        }
       }
+
       toast.success(`${key.replace(/_/g, " ")} updated`);
       queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId, key] });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to save");
     }
     setSaving(null);
   };
