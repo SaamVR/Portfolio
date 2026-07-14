@@ -98,7 +98,16 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            <StoreSwitcher />
+            <div className="hidden md:block">
+              <StoreSwitcher />
+            </div>
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
+              aria-label="Search dashboard actions"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setCommandOpen(true)}
               className="hidden w-44 items-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-left text-xs text-muted-foreground transition-all hover:bg-secondary hover:text-foreground sm:flex sm:w-60 lg:w-72"

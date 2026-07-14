@@ -127,12 +127,19 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" asChild className="gap-2">
+            <Button variant="outline" size="sm" asChild className="hidden gap-2 md:inline-flex">
               <Link to="/admin">
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Store Admin
               </Link>
             </Button>
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
+              aria-label="Search CMS admin"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setCommandOpen(true)}
               className="hidden w-44 items-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-left text-xs text-muted-foreground transition-all hover:bg-secondary hover:text-foreground sm:flex sm:w-56"
