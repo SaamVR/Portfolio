@@ -146,6 +146,8 @@ const SiteSettings = () => {
   };
 
   const [tabQuery, setTabQuery] = useState("");
+  const [showMobileAllTabs, setShowMobileAllTabs] = useState(false);
+  const [showMobileLegacyTabs, setShowMobileLegacyTabs] = useState(false);
 
   const tabOptions = [
     { value: "brand_seo", label: "Brand & SEO", category: "Store Identity", keywords: "brand title description seo logo highlight name" },
@@ -201,6 +203,8 @@ const SiteSettings = () => {
       t.category.toLowerCase().includes(tabQuery.toLowerCase())
   );
   const mobileQuickTabs = tabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
+  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && tab.category !== "Legacy Homepage");
+  const mobileLegacyTabs = filteredTabs.filter((tab) => tab.category === "Legacy Homepage");
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -801,8 +805,23 @@ const SiteSettings = () => {
           {/* Mobile sticky jumpers */}
           <div className="md:hidden">
             <div className="sticky top-16 z-20 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Jump to section</p>
+                  <p className="text-[11px] text-muted-foreground">Keep the main areas close and hide older sections unless you need them.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setShowMobileAllTabs((current) => !current)}
+                >
+                  {showMobileAllTabs ? "Compact" : "Browse"}
+                </Button>
+              </div>
               <div className="overflow-x-auto">
-                <div className="flex min-w-max items-center gap-2">
+                <div className="flex min-w-max items-center gap-2 pb-1">
                   {mobileQuickTabs.map((tab) => (
                     <button
                       key={tab.value}
@@ -820,23 +839,77 @@ const SiteSettings = () => {
                   ))}
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {filteredTabs.slice(0, 6).map((tab) => (
+              <div className="mt-3 space-y-2">
+                {(showMobileAllTabs ? mobileVisibleTabs : mobileVisibleTabs.slice(0, 4)).map((tab) => (
                   <button
                     key={tab.value}
                     type="button"
                     onClick={() => handleTabChange(tab.value)}
                     className={cn(
-                      "rounded-2xl border px-3 py-2 text-left transition-colors",
+                      "flex w-full items-start justify-between rounded-xl border px-3 py-2.5 text-left transition-colors",
                       activeTab === tab.value
                         ? "border-primary/20 bg-primary/10 text-primary"
                         : "border-border bg-card/70 text-foreground",
                     )}
                   >
-                    <p className="text-sm font-medium">{tab.label}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{tab.category}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{tab.label}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{tab.category}</p>
+                    </div>
+                    <ArrowRightCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   </button>
                 ))}
+                {mobileVisibleTabs.length > 4 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-full text-xs"
+                    onClick={() => setShowMobileAllTabs((current) => !current)}
+                  >
+                    {showMobileAllTabs ? "Show fewer sections" : `Show ${mobileVisibleTabs.length - 4} more sections`}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="mt-3 rounded-xl border border-dashed border-border/70 bg-card/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Legacy homepage tools</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Only older stores usually need these fields now.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => setShowMobileLegacyTabs((current) => !current)}
+                  >
+                    {showMobileLegacyTabs ? "Hide" : "Show"}
+                  </Button>
+                </div>
+                {showMobileLegacyTabs ? (
+                  <div className="mt-3 space-y-2">
+                    {mobileLegacyTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => handleTabChange(tab.value)}
+                        className={cn(
+                          "flex w-full items-start justify-between rounded-xl border px-3 py-2.5 text-left transition-colors",
+                          activeTab === tab.value
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                            : "border-border bg-background text-foreground",
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{tab.label}</p>
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{tab.category}</p>
+                        </div>
+                        <ArrowRightCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

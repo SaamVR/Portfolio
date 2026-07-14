@@ -258,7 +258,7 @@ export default function CmsPagesManager() {
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
-  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages">("store");
+  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages">("pages");
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -1395,7 +1395,7 @@ export default function CmsPagesManager() {
             "transition-transform duration-300",
             "lg:static lg:block lg:h-auto lg:w-auto lg:transform-none lg:rounded-lg lg:border lg:border-border lg:bg-card/70 lg:p-4 lg:shadow-sm",
             "lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto",
-            "fixed inset-x-0 bottom-0 z-50 bg-background/95 backdrop-blur-xl border-t shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-4 pb-24 max-h-[75vh] overflow-y-auto rounded-t-3xl",
+            "fixed inset-0 top-14 z-50 bg-background/98 backdrop-blur-xl border-t shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-4 pb-24 overflow-y-auto",
             isMobileSettingsOpen ? "translate-y-0" : "translate-y-full lg:translate-y-0"
           )}>
             <div id="page-builder-workspace" />
@@ -1407,11 +1407,22 @@ export default function CmsPagesManager() {
               <Badge variant="outline">{selectedPageNumber || 0}/{store.pages.length}</Badge>
             </div>
             <div className="space-y-4">
-            <div className="flex items-center justify-between lg:hidden mb-4 pb-2 border-b">
-              <h3 className="font-semibold">Edit Section</h3>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileSettingsOpen(false)}>
-                <ArrowDown className="h-4 w-4" />
-              </Button>
+            <div className="sticky top-0 z-20 -mx-4 mb-4 border-b bg-background/95 px-4 pb-3 pt-1 backdrop-blur-xl lg:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Editor workspace</p>
+                  <p className="text-xs text-muted-foreground">
+                    {workspaceTab === "pages"
+                      ? "Pick a page first, then focus one block at a time."
+                      : workspaceTab === "theme"
+                        ? "Adjust store-wide visual settings."
+                        : "Store setup and publishing details."}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileSettingsOpen(false)}>
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <Tabs value={workspaceTab} onValueChange={(value) => setWorkspaceTab(value as "store" | "theme" | "pages")} className="space-y-4">
