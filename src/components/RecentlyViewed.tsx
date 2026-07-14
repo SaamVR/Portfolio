@@ -7,7 +7,7 @@ import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const RecentlyViewed = ({ title = "Recently Viewed" }: { title?: string }) => {
   const currentStore = useOptionalStore();
-  const recentlyViewedKey = getScopedStorefrontStorageKey("threadbd-recently-viewed", currentStore?.id);
+  const recentlyViewedKey = getScopedStorefrontStorageKey("recently-viewed", currentStore?.id);
   const { data: products = [] } = useProducts(currentStore?.id);
 
   let recentIds: string[] = [];

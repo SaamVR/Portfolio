@@ -4,7 +4,7 @@ import { Link } from "@/lib/react-router-dom-shim";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
-const COOKIE_CONSENT_KEY = "threadbd-cookie-consent";
+const COOKIE_CONSENT_KEY = "cookie-consent";
 
 const CookieConsent = () => {
   const currentStore = useOptionalStore();

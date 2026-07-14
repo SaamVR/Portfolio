@@ -54,16 +54,16 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
   const legacyHero = overrides?.disableLegacyFallback ? null : hero;
 
-  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Welcome";
-  const title = overrides?.title ?? legacyHero?.title ?? "Create Your";
-  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? "Storefront";
+  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Discover";
+  const title = overrides?.title ?? legacyHero?.title ?? "Built For";
+  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? "Your Business";
   const subtitle =
     overrides?.subtitle ??
     legacyHero?.subtitle ??
     "Share your products, services, and offers with a storefront shaped around your business.";
   const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Explore";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/shop", currentStore?.slug);
-  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "Learn More";
+  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "View Details";
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/shop", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";

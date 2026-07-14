@@ -30,7 +30,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
   const storeSlug = explicitStoreSlug ?? currentStore?.slug;
-  const recentlyViewedKey = getScopedStorefrontStorageKey("threadbd-recently-viewed", storeId);
+  const recentlyViewedKey = getScopedStorefrontStorageKey("recently-viewed", storeId);
   const { data: product, isLoading } = useProduct(id, storeId);
 
   const [selectedSize, setSelectedSize] = useState("");

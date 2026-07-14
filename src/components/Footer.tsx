@@ -55,7 +55,7 @@ const defaultSectionOrder: FooterSection[] = [
 
 const Footer = () => {
   const currentStore = useOptionalStore();
-  const subscribedStorageKey = getScopedStorefrontStorageKey("threadbd-subscribed", currentStore?.id);
+  const subscribedStorageKey = getScopedStorefrontStorageKey("newsletter-subscribed", currentStore?.id);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(() => {
     if (typeof window !== "undefined") {

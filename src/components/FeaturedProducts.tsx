@@ -45,8 +45,8 @@ const FeaturedProducts = ({
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? legacySettings?.tagline ?? "Highlights"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? legacySettings?.title ?? "Explore the Collection"}</h2>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? legacySettings?.tagline ?? "Featured"}</p>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? legacySettings?.title ?? "Explore What’s Available"}</h2>
           </div>
         </AnimatedSection>
         <div className={`grid gap-6 ${productGridClass}`}>

@@ -126,7 +126,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
             <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse the Catalog"}</h2>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
           </div>
         </AnimatedSection>
 

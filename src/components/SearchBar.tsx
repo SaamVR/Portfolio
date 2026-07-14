@@ -44,7 +44,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const [open, setOpen] = useState(false);
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
-  const historyKey = getScopedStorefrontStorageKey("threadbd-search-history", storeId);
+  const historyKey = getScopedStorefrontStorageKey("search-history", storeId);
   const [history, setHistory] = useState<string[]>(() => getSearchHistory(historyKey));
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const navigate = useNavigate();

@@ -137,13 +137,13 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const borderGrad = getBorderGradient(bg);
 
   const badgeText = overrides?.badgeText ?? legacySettings?.badge_text ?? "";
-  const title = overrides?.title ?? legacySettings?.title ?? "Highlight What Matters";
+  const title = overrides?.title ?? legacySettings?.title ?? "Spotlight What Matters Most";
   const subtitle =
     overrides?.subtitle ??
     legacySettings?.subtitle ??
     "Feature a promotion, announcement, launch, or conversion push without relying on category-specific placeholder copy.";
   const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "Explore";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/shop", currentStore?.slug);
 
   const align = overrides?.textAlignment ?? legacySettings?.text_alignment ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
