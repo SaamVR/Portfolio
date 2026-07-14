@@ -93,11 +93,11 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
 
   const sectorItems = [
     { label: "Brand & SEO (Global Store Settings)", icon: Compass, action: () => navigate("/admin/site-settings?tab=brand_seo") },
-    { label: "Home Page Sections Content Setup", icon: LayoutDashboard, action: () => navigate("/admin/site-settings?tab=home_sections") },
-    { label: "Hero Banner, Video & Overlay Editor", icon: Flame, action: () => navigate("/admin/site-settings?tab=hero") },
+    { label: "Homepage Blocks & Layouts", icon: LayoutDashboard, action: () => navigate("/admin/page-builder") },
+    { label: "Hero Banner, Media & Overlay Blocks", icon: Flame, action: () => navigate("/admin/page-builder") },
     { label: "Media Library Assets Browser", icon: Images, action: () => navigate("/admin/media") },
     { label: "Store Backup Export & Import Tools", icon: HardDriveDownload, action: () => navigate("/admin/backup") },
-    { label: "Promo Banner Text & Glow Customizer", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=promo") },
+    { label: "Promo Banner & Conversion Blocks", icon: Megaphone, action: () => navigate("/admin/page-builder") },
     { label: "Announcement Rotating Messages Bar", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=announcement") },
     { label: "Theme Preset Palettes, Fonts & Border Style", icon: Palette, action: () => navigate("/admin/site-settings?tab=themes") },
     { label: "Exit-Intent Popups & Upsells Builder", icon: MousePointerClick, action: () => navigate("/admin/site-settings?tab=upsells") },
@@ -110,6 +110,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Contact Form Email Setup", icon: Mail, action: () => navigate("/admin/site-settings?tab=contact") },
     { label: "Footer Links, Copywrite & Brand Text", icon: Settings, action: () => navigate("/admin/site-settings?tab=footer") },
     { label: "Page Builder: Pages, Blocks & Revisions", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
+    { label: "Legacy Homepage Fallback Fields", icon: PanelsTopLeft, action: () => navigate("/admin/site-settings?tab=home_sections") },
   ];
 
   const quickActions = [
