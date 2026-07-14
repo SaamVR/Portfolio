@@ -37,6 +37,7 @@ const MobileMenu = () => {
     { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
+  const authPath = `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`;
   const shopLinks = dynamicProductCategories.length > 0
     ? dynamicProductCategories.slice(0, 6).map((category: any) => ({
         label: category.name,
@@ -126,7 +127,7 @@ const MobileMenu = () => {
 
         <div className="mt-auto border-t border-white/10 pt-6 flex flex-col gap-2">
           <Link
-            to={user ? storefrontPath("/account", currentStore?.slug) : "/auth"}
+            to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
             className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
           >
             <User className="h-5 w-5 text-primary/80" />

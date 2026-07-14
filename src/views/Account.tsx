@@ -557,7 +557,7 @@ const Account = () => {
     );
   }
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to={`/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`} replace />;
   if (!storeId) {
     return (
       <Layout>

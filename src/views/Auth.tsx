@@ -40,6 +40,7 @@ const Auth = () => {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const accountPath = storefrontPath("/account", currentStore?.slug);
+  const nextPath = searchParams.get("next") || accountPath;
 
   useEffect(() => {
     if (searchParams.get("mode") === "signup") {
@@ -50,9 +51,9 @@ const Auth = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      navigate(accountPath, { replace: true });
+      navigate(nextPath, { replace: true });
     }
-  }, [accountPath, loading, navigate, user]);
+  }, [loading, navigate, nextPath, user]);
 
   const update = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -73,7 +74,7 @@ const Auth = () => {
       });
       if (error) throw error;
       toast.success("Logged in successfully");
-      navigate(accountPath, { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -85,7 +86,7 @@ const Auth = () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      navigate(accountPath, { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Google authentication failed");
       setGoogleLoading(false);
@@ -143,7 +144,7 @@ const Auth = () => {
       if (sessionError) throw sessionError;
 
       toast.success(phoneIntent === "signup" ? "Account created." : "Logged in successfully.");
-      navigate(accountPath, { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Phone verification failed");
     } finally {

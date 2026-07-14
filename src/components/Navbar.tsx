@@ -40,6 +40,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
+  const authPath = `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`;
 
   const isDark = mounted ? theme === "dark" : false;
   const displayWishlistCount = mounted ? wishlistCount : 0;
@@ -185,7 +186,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             </div>
 
             <Link
-              to={user ? storefrontPath("/account", currentStore?.slug) : "/auth"}
+              to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
               className="text-muted-foreground transition-colors hover:text-foreground"
               aria-label={user ? "My account" : "Sign in"}
             >
