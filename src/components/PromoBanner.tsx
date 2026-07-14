@@ -22,6 +22,7 @@ interface PromoBannerSettings {
 
 interface PromoBannerProps {
   overrides?: {
+    disableLegacyFallback?: boolean;
     title?: string;
     subtitle?: string;
     ctaText?: string;
@@ -125,43 +126,44 @@ const SparkleSVG = ({ className }: { className: string }) => (
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const currentStore = useOptionalStore();
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
+  const legacySettings = overrides?.disableLegacyFallback ? null : settings;
 
-  if (settings?.enabled === false) return null;
+  if (legacySettings?.enabled === false) return null;
 
-  const bg = overrides?.bgStyle ?? settings?.bg_style ?? "gradient";
+  const bg = overrides?.bgStyle ?? legacySettings?.bg_style ?? "gradient";
   const isDarkBg = ["gradient", "luxury-gold", "indigo", "rose", "dark", "aurora", "luxury-dark", "confetti", "mesh-gradient"].includes(bg);
   const style = getBannerStyle(bg);
   const orbCls = getOrbColors(bg);
   const borderGrad = getBorderGradient(bg);
 
-  const badgeText = overrides?.badgeText ?? settings?.badge_text ?? "";
-  const title = overrides?.title ?? settings?.title ?? "Highlight What Matters";
+  const badgeText = overrides?.badgeText ?? legacySettings?.badge_text ?? "";
+  const title = overrides?.title ?? legacySettings?.title ?? "Highlight What Matters";
   const subtitle =
     overrides?.subtitle ??
-    settings?.subtitle ??
+    legacySettings?.subtitle ??
     "Feature a promotion, announcement, launch, or conversion push without relying on category-specific placeholder copy.";
-  const ctaText = overrides?.ctaText ?? settings?.cta_text ?? "Explore";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? settings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
+  const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "Explore";
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/shop?sale=1", currentStore?.slug);
 
-  const align = overrides?.textAlignment ?? settings?.text_alignment ?? "center";
+  const align = overrides?.textAlignment ?? legacySettings?.text_alignment ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
   const containerAlignCls = align === "left" ? "items-start" : align === "right" ? "items-end" : "items-center";
   const textMaxCls = align === "left" ? "mr-auto" : align === "right" ? "ml-auto" : "mx-auto";
 
-  const padding = overrides?.paddingSize ?? settings?.padding_size ?? "cozy";
+  const padding = overrides?.paddingSize ?? legacySettings?.padding_size ?? "cozy";
   const paddingCls = padding === "compact" ? "py-8" : padding === "large" ? "py-24" : "py-14";
 
   const buttonGlowCls =
-    (overrides?.enableGlow ?? settings?.enable_glow)
+    (overrides?.enableGlow ?? legacySettings?.enable_glow)
       ? bg === "accent"
         ? "animate-pulse-glow-primary"
         : "animate-pulse-glow"
       : "";
 
-  const showParticles = overrides?.enableParticles ?? settings?.enable_particles ?? true;
-  const showOrbs = overrides?.enableOrbs ?? settings?.enable_orbs ?? true;
+  const showParticles = overrides?.enableParticles ?? legacySettings?.enable_particles ?? true;
+  const showOrbs = overrides?.enableOrbs ?? legacySettings?.enable_orbs ?? true;
 
-  const customOpacitySource = overrides?.cardOpacity ?? settings?.card_opacity;
+  const customOpacitySource = overrides?.cardOpacity ?? legacySettings?.card_opacity;
   const customOpacity = customOpacitySource !== undefined ? customOpacitySource / 100 : null;
 
   const cardBgCls = isDarkBg

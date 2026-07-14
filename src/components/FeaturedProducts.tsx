@@ -11,16 +11,19 @@ const FeaturedProducts = ({
   limit = 6,
   title,
   tagline,
+  disableLegacyFallback = false,
 }: {
   limit?: number;
   title?: string;
   tagline?: string;
+  disableLegacyFallback?: boolean;
 }) => {
   const currentStore = useOptionalStore();
   const { data: featured = [], isLoading } = useFeaturedProducts(currentStore?.id);
   const { data: allProducts = [] } = useProducts(currentStore?.id);
   const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured", currentStore?.id);
   const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
+  const legacySettings = disableLegacyFallback ? null : settings;
   const productsToRender = featured.length > 0 ? featured : allProducts.filter((product) => product.isAvailable !== false);
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
@@ -42,8 +45,8 @@ const FeaturedProducts = ({
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? settings?.tagline ?? "Highlights"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? settings?.title ?? "Explore the Collection"}</h2>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? legacySettings?.tagline ?? "Highlights"}</p>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? legacySettings?.title ?? "Explore the Collection"}</h2>
           </div>
         </AnimatedSection>
         <div className={`grid gap-6 ${productGridClass}`}>

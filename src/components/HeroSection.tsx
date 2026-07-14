@@ -29,6 +29,7 @@ interface DeliverySettings {
 interface HeroSectionProps {
   overrides?: {
     anchorId?: string;
+    disableLegacyFallback?: boolean;
     tagline?: string;
     title?: string;
     highlight?: string;
@@ -51,22 +52,23 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: hero } = useSiteSettings<HeroSettings>("hero_section", currentStore?.id);
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
+  const legacyHero = overrides?.disableLegacyFallback ? null : hero;
 
-  const tagline = overrides?.tagline ?? hero?.tagline ?? "Welcome";
-  const title = overrides?.title ?? hero?.title ?? "Create Your";
-  const highlight = overrides?.highlight ?? hero?.highlight ?? "Storefront";
+  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Welcome";
+  const title = overrides?.title ?? legacyHero?.title ?? "Create Your";
+  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? "Storefront";
   const subtitle =
     overrides?.subtitle ??
-    hero?.subtitle ??
+    legacyHero?.subtitle ??
     "Share your products, services, and offers with a storefront shaped around your business.";
-  const ctaText = overrides?.ctaText ?? hero?.cta_text ?? "Explore";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? hero?.cta_link ?? "/shop", currentStore?.slug);
-  const secondaryCtaText = overrides?.secondaryCtaText ?? hero?.secondary_cta_text ?? "Learn More";
-  const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? hero?.secondary_cta_link ?? "/shop", currentStore?.slug);
-  const mediaUrl = overrides?.mediaUrl ?? hero?.media_url ?? "";
-  const mediaType = overrides?.mediaType ?? hero?.media_type ?? "image";
-  const overlayColor = overrides?.overlayColor ?? hero?.overlay_color ?? "";
-  const overlayOpacity = overrides?.overlayOpacity ?? hero?.overlay_opacity ?? 50;
+  const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Explore";
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/shop", currentStore?.slug);
+  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "Learn More";
+  const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/shop", currentStore?.slug);
+  const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
+  const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
+  const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
+  const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
   const trustHighlights = [
     paymentSettings?.cod_enabled !== false
       ? { icon: Truck, label: "Flexible checkout options available" }

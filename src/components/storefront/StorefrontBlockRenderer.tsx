@@ -352,13 +352,13 @@ export function StorefrontBlockRenderer({ block }: { block: StorePageBlock }) {
       case "countdown":
         return <CountdownTimer overrides={block.props} />;
       case "hero":
-        return <HeroSection overrides={block.props} />;
+        return <HeroSection overrides={{ ...block.props, disableLegacyFallback: true }} />;
       case "promo-banner":
-        return <PromoBanner overrides={block.props} />;
+        return <PromoBanner overrides={{ ...block.props, disableLegacyFallback: true }} />;
       case "category-showcase":
-        return <CategoryShowcase overrides={block.props} />;
+        return <CategoryShowcase overrides={{ ...block.props, disableLegacyFallback: true }} />;
       case "featured-products":
-        return <FeaturedProducts limit={block.props.limit} title={block.props.title} tagline={block.props.tagline} />;
+        return <FeaturedProducts limit={block.props.limit} title={block.props.title} tagline={block.props.tagline} disableLegacyFallback />;
       case "recently-viewed":
         return <RecentlyViewed title={block.props.title} />;
       case "rich-text":

@@ -21,6 +21,7 @@ const fallbackCategories = [
 
 interface CategoryShowcaseProps {
   overrides?: {
+    disableLegacyFallback?: boolean;
     tagline?: string;
     title?: string;
   };
@@ -82,6 +83,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories", storeId);
   const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
+  const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const { data: dbCategories = [] } = useProductCategories(storeId);
   const [dbTypes, setDbTypes] = useState<any[]>([]);
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
@@ -147,8 +149,8 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
           <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? settings?.tagline ?? "Explore"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? settings?.title ?? "Browse the Catalog"}</h2>
+            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
+            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse the Catalog"}</h2>
           </div>
         </AnimatedSection>
 
