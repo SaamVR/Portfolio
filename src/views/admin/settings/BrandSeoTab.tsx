@@ -38,7 +38,7 @@ export function BrandSeoTab({
             <Label>Global SEO Title Default</Label>
             <Input 
               value={settings.brand_settings?.seo_title ?? ""} 
-              placeholder="Commerce Engine Demo Store" 
+              placeholder="Your Store Name" 
               onChange={(e) => update("brand_settings", "seo_title", e.target.value)} 
             />
           </div>

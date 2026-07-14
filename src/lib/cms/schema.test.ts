@@ -5,6 +5,8 @@ import { storePageBlockSchema } from "@/lib/cms/schema";
 describe("cms schema", () => {
   it("parses the seeded default store", () => {
     expect(defaultStore.id).toBe("00000000-0000-4000-8000-000000000001");
+    expect(defaultStore.slug).toBe("local-preview-store");
+    expect(defaultStore.name).toBe("Local Preview Store");
     expect(defaultStore.pages[0]?.blocks.length).toBeGreaterThan(0);
   });
 

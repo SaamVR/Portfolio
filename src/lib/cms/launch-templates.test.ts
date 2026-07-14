@@ -32,4 +32,9 @@ describe("launch templates", () => {
     expect(homepage?.blocks.some((block) => block.type === "hero")).toBe(true);
     expect(ids.size).toBe(pages.length + pages.reduce((sum, page) => sum + page.blocks.length, 0));
   });
+
+  it("keeps launch template CTAs free of hardcoded sale routes", () => {
+    const serialized = JSON.stringify(launchTemplates);
+    expect(serialized.includes("/shop?sale=1")).toBe(false);
+  });
 });

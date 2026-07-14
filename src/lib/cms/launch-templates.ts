@@ -185,7 +185,7 @@ export const launchTemplates: LaunchTemplate[] = [
       ctaText: "Order Now",
       ctaLink: "/shop",
       secondaryCtaText: "See Specials",
-      secondaryCtaLink: "/shop?sale=1",
+      secondaryCtaLink: "/shop",
     },
     pages: [
       {
@@ -203,7 +203,7 @@ export const launchTemplates: LaunchTemplate[] = [
             ctaText: "Order Now",
             ctaLink: "/shop",
             secondaryCtaText: "Today's Specials",
-            secondaryCtaLink: "/shop?sale=1",
+            secondaryCtaLink: "/shop",
           }),
           block("promo-banner", 1, {
             title: "Today's Special Menu",
@@ -312,7 +312,7 @@ export const launchTemplates: LaunchTemplate[] = [
             title: "Featured Offers",
             subtitle: "Highlight new stock, bundles, seasonal campaigns, or special delivery offers.",
             ctaText: "Shop Offers",
-            ctaLink: "/shop?sale=1",
+            ctaLink: "/shop",
             badgeText: "Limited Offer",
             bgStyle: "indigo",
             textAlignment: "center",
