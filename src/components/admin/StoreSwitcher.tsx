@@ -14,8 +14,9 @@ import { Button } from "@/components/ui/button";
 import { ChevronsUpDown, Store, PlusCircle } from "lucide-react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { withStoreId } from "@/lib/admin-paths";
+import { cn } from "@/lib/utils";
 
-export default function StoreSwitcher() {
+export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) {
   const { storeMemberships, activeStoreId, setActiveStoreId } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,6 +45,48 @@ export default function StoreSwitcher() {
     queryClient.invalidateQueries();
     navigate("/admin");
   };
+
+  if (mobile) {
+    return (
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border bg-background/80 px-3 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Store className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Store</p>
+            <p className="truncate text-sm font-semibold text-foreground">{activeStore?.name ?? "Select Store"}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 overflow-x-auto">
+          {stores?.map((store) => {
+            const active = store.id === activeStoreId;
+            return (
+              <button
+                key={store.id}
+                onClick={() => handleSwitch(store.id)}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center rounded-full border px-3 text-sm font-medium transition-colors",
+                  active
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground",
+                )}
+              >
+                <span className="max-w-[7rem] truncate">{store.name}</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => navigate(withStoreId("/admin/onboarding", activeStoreId))}
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-dashed border-primary/40 bg-primary/5 px-3 text-sm font-medium text-primary"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>New</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>

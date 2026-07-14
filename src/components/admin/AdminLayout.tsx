@@ -111,6 +111,24 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             </button>
           </div>
         </header>
+        <div className="border-b border-border/60 bg-card/40 px-4 py-3 md:hidden">
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                  {currentWorkspace.label}
+                </span>
+                {isCmsWorkspace ? (
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    Wide workspace
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{currentWorkspace.description}</p>
+            </div>
+            <StoreSwitcher mobile />
+          </div>
+        </div>
 
         <div
           className={cn(

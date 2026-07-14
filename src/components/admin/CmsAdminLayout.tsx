@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/components/admin/ChangePasswordDialog";
 import { ArrowLeft, Building2, LayoutDashboard, Layers3, Loader2, LogOut, Search, Shield } from "lucide-react";
 import AdminCommandMenu from "@/components/admin/AdminCommandMenu";
+import CmsAdminMobileNav from "@/components/admin/CmsAdminMobileNav";
 
 const cmsAdminLinks = [
   { to: "/cms-admin", icon: Shield, label: "CMS Control" },
@@ -116,7 +117,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/50 px-4 backdrop-blur-xl md:px-8">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-primary md:hidden" />
@@ -141,6 +142,13 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
             </button>
           </div>
         </header>
+        <CmsAdminMobileNav
+          userEmail={user?.email}
+          onOpenCommand={() => setCommandOpen(true)}
+          onSignOut={() => {
+            void signOut();
+          }}
+        />
 
         <div className="container mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
           {children}
