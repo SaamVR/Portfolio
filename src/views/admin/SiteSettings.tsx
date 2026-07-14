@@ -77,6 +77,11 @@ const mobilePinnedSettingTabs = [
   "page_builder",
 ] as const;
 
+const scrollToAdminSection = (sectionId: string) => {
+  if (typeof document === "undefined") return;
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
 function resolveThemeFontValue(
   value: unknown,
   options: Record<string, string>,
@@ -520,6 +525,29 @@ const SiteSettings = () => {
       </CardHeader>
       <CardContent className="space-y-4 px-4 pb-4 md:px-6">{children}</CardContent>
     </Card>
+  );
+
+  const MobileSectionJumper = ({
+    items,
+  }: {
+    items: Array<{ id: string; label: string }>;
+  }) => (
+    <div className="sticky top-[7.25rem] z-10 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl md:hidden">
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-center gap-2">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => scrollToAdminSection(item.id)}
+              className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 
   const handleThemeSelect = (themeId: string) => {
@@ -1134,7 +1162,12 @@ const SiteSettings = () => {
         {/* Payment */}
         <TabsContent value="payment">
           <MobileSectionShell title="Payment Settings" description="Payment methods, persuasion copy, and credentials stay grouped into denser mobile sections.">
-              <div className="space-y-4">
+              <MobileSectionJumper items={[
+                { id: "payment-methods", label: "Methods" },
+                { id: "payment-incentives", label: "Incentives" },
+                { id: "payment-gateway", label: "Gateway" },
+              ]} />
+              <div id="payment-methods" className="space-y-4 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">bKash</h3>
                 <div className="flex items-center gap-2">
                   <Switch checked={settings.payment_settings?.bkash_enabled ?? false} onCheckedChange={(v) => update("payment_settings", "bkash_enabled", v)} />
@@ -1157,7 +1190,7 @@ const SiteSettings = () => {
                 </div>
               </div>
               
-              <div className="border-t border-border pt-4 mt-2 space-y-4">
+              <div id="payment-incentives" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Checkout Persuasion</h3>
                 <div className="grid gap-2">
                   <Label>Prepaid Badge Text</Label>
@@ -1185,7 +1218,7 @@ const SiteSettings = () => {
                 )}
               </div>
 
-              <div className="border-t border-border pt-4 mt-2 space-y-4">
+              <div id="payment-gateway" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Automated Payment Gateway (bKash API)</h3>
                 <p className="text-xs text-muted-foreground">Enter your bKash PGW credentials here. Leave blank to use manual Send Money verification.</p>
                 <div className="grid gap-2">
@@ -1500,8 +1533,16 @@ const SiteSettings = () => {
         {/* Footer */}
         <TabsContent value="footer">
           <MobileSectionShell title="Footer Settings" description="Footer sections are denser on mobile and keep save affordances within reach.">
+              <MobileSectionJumper items={[
+                { id: "footer-brand", label: "Brand" },
+                { id: "footer-newsletter", label: "Newsletter" },
+                { id: "footer-company-links", label: "Company" },
+                { id: "footer-extra-links", label: "Extra Links" },
+                { id: "footer-order", label: "Order" },
+                { id: "footer-bottom", label: "Bottom" },
+              ]} />
               {/* Brand */}
-              <div className="space-y-3">
+              <div id="footer-brand" className="space-y-3 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Brand</h3>
                 <div className="grid gap-2">
                   <Label>Brand Tagline (used in footer)</Label>
@@ -1514,7 +1555,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Newsletter */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div id="footer-newsletter" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
                 <div className="grid gap-2">
                   <Label>Heading</Label>
@@ -1531,7 +1572,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Company Links */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div id="footer-company-links" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">Company Links</h3>
                   <Button variant="outline" size="sm" className="gap-1" onClick={() => {
@@ -1568,7 +1609,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Custom Links Column */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div id="footer-extra-links" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Extra Links Column</h3>
@@ -1612,7 +1653,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Section Order */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div id="footer-order" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Section Order</h3>
                 <p className="text-xs text-muted-foreground">Drag to reorder footer columns. Use arrows to rearrange.</p>
                 {(() => {
@@ -1642,7 +1683,7 @@ const SiteSettings = () => {
               </div>
 
               {/* Bottom Bar */}
-              <div className="border-t border-border pt-4 space-y-3">
+              <div id="footer-bottom" className="border-t border-border pt-4 space-y-3 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Bottom Bar</h3>
                 <div className="grid gap-2">
                   <Label>Payment Methods Text</Label>
@@ -1705,7 +1746,12 @@ const SiteSettings = () => {
         </TabsContent>
         <TabsContent value="notifications">
           <MobileSectionShell title="Transactional Notifications" description="Notification credentials and recent delivery events stay easier to scan and save on long mobile forms.">
-              <div className="space-y-4">
+              <MobileSectionJumper items={[
+                { id: "notifications-email", label: "Email" },
+                { id: "notifications-sms", label: "SMS" },
+                { id: "notifications-events", label: "Events" },
+              ]} />
+              <div id="notifications-email" className="space-y-4 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">Email Notifications</h3>
                 <p className="text-xs text-muted-foreground">Automatically send emails to your customers and yourself.</p>
                 <div className="flex items-center gap-2">
@@ -1718,7 +1764,7 @@ const SiteSettings = () => {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4 mt-2 space-y-4">
+              <div id="notifications-sms" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
                 <h3 className="text-sm font-semibold text-foreground">SMS Notifications (GreenWeb)</h3>
                 <p className="text-xs text-muted-foreground">Send SMS to customers. Provide your GreenWeb SMS API key.</p>
                 <div className="flex items-center gap-2">
@@ -1743,7 +1789,7 @@ const SiteSettings = () => {
                 )}
               </div>
 
-              <div className="border-t border-border pt-4 mt-2 space-y-4">
+              <div id="notifications-events" className="border-t border-border pt-4 mt-2 space-y-4 scroll-mt-36">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Recent Delivery Events</h3>
                   <p className="text-xs text-muted-foreground">Latest email and SMS delivery attempts for this store.</p>

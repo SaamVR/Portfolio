@@ -1422,11 +1422,30 @@ export default function CmsPagesManager() {
               </TabsList>
 
               <TabsContent value="store" className="space-y-4">
+                <div className="sticky top-0 z-10 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+                  <div className="overflow-x-auto">
+                    <div className="flex min-w-max items-center gap-2">
+                      {[
+                        { id: "store-basics", label: "Basics" },
+                        { id: "store-publishing", label: "Publishing" },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => scrollToBuilderSection(item.id)}
+                          className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <p className="text-sm font-medium text-foreground">Store Basics</p>
                   <p className="mt-1 text-xs text-muted-foreground">Name, routing slug, publishing state, and the brand summary used across the storefront.</p>
                 </div>
-                <div className="grid gap-2">
+                <div id="store-basics" className="grid gap-2 scroll-mt-36">
                   <Label>Store Name</Label>
                   <Input value={store.name} onChange={(e) => setStore({ ...store, name: e.target.value })} />
                 </div>
@@ -1438,7 +1457,7 @@ export default function CmsPagesManager() {
                   <Label>Store Description</Label>
                   <Textarea rows={4} value={store.description} onChange={(e) => setStore({ ...store, description: e.target.value })} />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div id="store-publishing" className="flex items-center justify-between rounded-lg border border-border p-3 scroll-mt-36">
                   <div>
                     <p className="text-sm font-medium text-foreground">Store Published</p>
                     <p className="text-xs text-muted-foreground">Turn this off to keep the CMS store in draft mode.</p>
@@ -1448,6 +1467,25 @@ export default function CmsPagesManager() {
               </TabsContent>
 
               <TabsContent value="theme" className="space-y-4">
+                <div className="sticky top-0 z-10 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+                  <div className="overflow-x-auto">
+                    <div className="flex min-w-max items-center gap-2">
+                      {[
+                        { id: "theme-package", label: "Package" },
+                        { id: "theme-tokens", label: "Tokens" },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => scrollToBuilderSection(item.id)}
+                          className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-3 rounded-lg border border-border p-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Store Theme</p>
@@ -1468,7 +1506,7 @@ export default function CmsPagesManager() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="grid gap-2">
+                  <div id="theme-package" className="grid gap-2 scroll-mt-36">
                     <Label>Theme Package</Label>
                     <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={(value) => updateStoreTheme({ themePackageId: value })} disabled={!themePresetsEnabled}>
                       <SelectTrigger>
@@ -1487,7 +1525,7 @@ export default function CmsPagesManager() {
                     </p>
                     {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
                   </div>
-                  <div className="grid gap-2">
+                  <div id="theme-tokens" className="grid gap-2 scroll-mt-36">
                     <Label>Color Mode</Label>
                     <Select value={store.theme.mode} onValueChange={(value) => updateStoreTheme({ mode: value as Store["theme"]["mode"] })}>
                       <SelectTrigger>
@@ -1515,11 +1553,30 @@ export default function CmsPagesManager() {
               </TabsContent>
 
               <TabsContent value="pages" className="space-y-4">
+                <div className="sticky top-0 z-10 -mx-4 border-y border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+                  <div className="overflow-x-auto">
+                    <div className="flex min-w-max items-center gap-2">
+                      {[
+                        { id: "pages-library", label: "Templates" },
+                        { id: "pages-list", label: "Pages" },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => scrollToBuilderSection(item.id)}
+                          className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <p className="text-sm font-medium text-foreground">Pages & Navigation</p>
                   <p className="mt-1 text-xs text-muted-foreground">Select the page you want to edit, duplicate it, or create a new one from a compatible blueprint.</p>
                 </div>
-                <div className="rounded-lg border border-border p-3">
+                <div id="pages-library" className="rounded-lg border border-border p-3 scroll-mt-36">
                   <div className="grid gap-3">
                     {!pageBlueprintsEnabled ? (
                       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
@@ -1554,7 +1611,7 @@ export default function CmsPagesManager() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div id="pages-list" className="space-y-2 scroll-mt-36">
                   {store.pages.map((page) => (
                     <div
                       key={page.id}
@@ -1623,7 +1680,27 @@ export default function CmsPagesManager() {
                   <CardTitle className="text-lg">Page Details</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2">
-                  <div className="grid gap-2">
+                  <div className="sticky top-16 z-10 -mx-6 border-y border-border/60 bg-background/95 px-6 py-3 backdrop-blur-xl md:hidden md:col-span-2">
+                    <div className="overflow-x-auto">
+                      <div className="flex min-w-max items-center gap-2">
+                        {[
+                          { id: "page-meta", label: "Meta" },
+                          { id: "page-template", label: "Template" },
+                          { id: "page-home", label: "Homepage" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => scrollToBuilderSection(item.id)}
+                            className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div id="page-meta" className="grid gap-2 scroll-mt-36">
                     <Label>Page Title</Label>
                     <Input value={selectedPage.title} onChange={(e) => updateSelectedPage((page) => ({ ...page, title: e.target.value }))} />
                   </div>
@@ -1659,7 +1736,7 @@ export default function CmsPagesManager() {
                       </div>
                     </div>
                   ) : null}
-                  <div className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4">
+                  <div id="page-template" className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4 scroll-mt-36">
                     <div>
                       <p className="text-sm font-medium text-foreground">Apply Page Template</p>
                       <p className="text-xs text-muted-foreground">Replace the current block stack with a prebuilt page structure.</p>
@@ -1701,7 +1778,7 @@ export default function CmsPagesManager() {
                       </Button>
                     </div>
                   ) : null}
-                  <div className="flex items-center justify-between rounded-lg border border-border p-3 md:col-span-2">
+                  <div id="page-home" className="flex items-center justify-between rounded-lg border border-border p-3 md:col-span-2 scroll-mt-36">
                     <div>
                       <p className="text-sm font-medium text-foreground">Homepage</p>
                       <p className="text-xs text-muted-foreground">Only one page should own the root storefront route.</p>
@@ -1758,6 +1835,26 @@ export default function CmsPagesManager() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="sticky top-16 z-10 -mx-6 border-y border-border/60 bg-background/95 px-6 py-3 backdrop-blur-xl md:hidden">
+                    <div className="overflow-x-auto">
+                      <div className="flex min-w-max items-center gap-2">
+                        {[
+                          { id: "block-library", label: "Add" },
+                          { id: "block-list", label: "List" },
+                          selectedBlock ? { id: `cms-block-${selectedBlock.id}`, label: "Focused" } : null,
+                        ].filter(Boolean).map((item) => (
+                          <button
+                            key={(item as { id: string; label: string }).id}
+                            type="button"
+                            onClick={() => scrollToBuilderSection((item as { id: string; label: string }).id)}
+                            className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
+                          >
+                            {(item as { id: string; label: string }).label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   {selectedPage.blocks.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                       No blocks yet. Add one to start composing this page for the current blueprint.
@@ -1765,7 +1862,7 @@ export default function CmsPagesManager() {
                   ) : null}
 
                   {selectedPage.blocks.length > 0 ? (
-                    <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <div id="block-library" className="rounded-xl border border-border bg-muted/20 p-3 scroll-mt-36">
                       <div className="flex flex-wrap items-center gap-2">
                         {selectedPage.blocks.map((block, index) => {
                           const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
@@ -1791,6 +1888,7 @@ export default function CmsPagesManager() {
                     </div>
                   ) : null}
 
+                  <div id="block-list" className="space-y-4 scroll-mt-36">
                   {selectedPage.blocks.map((block, index) => {
                     const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
                     const isFocused = selectedBlockId === block.id;
@@ -2242,6 +2340,7 @@ export default function CmsPagesManager() {
                       </div>
                     );
                   })}
+                  </div>
                 </CardContent>
               </Card>
 
