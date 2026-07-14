@@ -63,6 +63,7 @@ import type { Json } from "@/integrations/supabase/types";
 interface DraftState {
   storeName: string;
   slug: string;
+  customDomain?: string;
   description: string;
   logoUrl: string;
   blueprintId: string;
@@ -149,6 +150,7 @@ function draftFromBlueprint(
   return {
     storeName,
     slug: previous?.slug || createStoreSlug(storeName),
+    customDomain: previous?.customDomain || "",
     description: previous?.description || blueprint.storeDescription,
     logoUrl: previous?.logoUrl || "",
     blueprintId: blueprint.id,
@@ -310,7 +312,7 @@ export default function OnboardingWizard() {
     [draft, activeStoreId, blueprints, pageBlueprints, themePackages],
   );
   const previewBlocks = previewStore.pages.find((page) => page.isHomepage)?.blocks ?? [];
-  const storeUrl = getStoreUrl(draft.slug, null);
+  const storeUrl = getStoreUrl(draft.slug, draft.customDomain);
   const canGoNext = activeIndex < steps.length - 1;
   const canGoBack = activeIndex > 0;
   const blueprintEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
@@ -361,7 +363,7 @@ export default function OnboardingWizard() {
         const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
           supabase
             .from("stores")
-            .select("name, slug, description, logo_url, store_type, is_published")
+            .select("name, slug, custom_domain, description, logo_url, store_type, is_published")
             .eq("id", activeStoreId as string)
             .maybeSingle(),
           supabase
@@ -380,6 +382,7 @@ export default function OnboardingWizard() {
         const store = storeRecord as {
           name?: string;
           slug?: string;
+          custom_domain?: string | null;
           description?: string;
           logo_url?: string;
           store_type?: string;
@@ -411,6 +414,7 @@ export default function OnboardingWizard() {
         setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
           storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
           slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
+          customDomain: store?.custom_domain || "",
           description: store?.description || undefined,
           logoUrl: store?.logo_url || "",
           businessFamily: businessProfile?.business_family || safeBlueprint.businessFamily,
@@ -496,6 +500,7 @@ export default function OnboardingWizard() {
       draftFromBlueprint(blueprintId, themePackages, {
         storeName: current.storeName,
         slug: current.slug,
+        customDomain: current.customDomain,
         description: current.description,
         logoUrl: current.logoUrl,
         themePackageId: current.themePackageId,
