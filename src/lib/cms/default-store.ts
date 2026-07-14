@@ -224,4 +224,8 @@ const defaultStoreData = {
   ],
 } satisfies Store;
 
-export const defaultStore = storeSchema.parse(defaultStoreData);
+export function createDefaultStore(): Store {
+  return storeSchema.parse(structuredClone(defaultStoreData));
+}
+
+export const defaultStore = createDefaultStore();

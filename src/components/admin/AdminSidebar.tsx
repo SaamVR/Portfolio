@@ -29,6 +29,7 @@ import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { withStoreId } from "@/lib/admin-paths";
+import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 
 const AdminSidebar = () => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
@@ -36,6 +37,8 @@ const AdminSidebar = () => {
   const isAdmin = role === "admin";
   const isPlatformAdmin = platformRole === "admin";
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
+  const supportUrl = getSupportUrl();
+  const supportIsExternal = isExternalSupportUrl(supportUrl);
 
   // Fetch unread message count
   const { data: unreadCount = 0 } = useQuery({
@@ -86,7 +89,7 @@ const AdminSidebar = () => {
     { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
     { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
-    { to: "https://help.threadbd.com", icon: HelpCircle, label: "Help & Support", show: true, external: true },
+    { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
   ];
 
   return (

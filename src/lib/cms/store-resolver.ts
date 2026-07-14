@@ -2,7 +2,7 @@ import {
   DEFAULT_STORE_CURRENCY_CODE,
   DEFAULT_STORE_DESCRIPTION,
   DEFAULT_STORE_LOCALE,
-  defaultStore,
+  createDefaultStore,
 } from "@/lib/cms/default-store";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
@@ -63,7 +63,7 @@ interface StoreBlockRow {
 }
 
 export async function getDefaultStore(): Promise<Store> {
-  return storeSchema.parse(structuredClone(defaultStore));
+  return createDefaultStore();
 }
 
 export function isLocalStorefrontHostname(hostname?: string | null) {

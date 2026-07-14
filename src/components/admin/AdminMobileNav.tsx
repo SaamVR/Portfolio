@@ -41,6 +41,7 @@ import {
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { withStoreId } from "@/lib/admin-paths";
+import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 
 const AdminMobileNav = () => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
@@ -49,6 +50,8 @@ const AdminMobileNav = () => {
   const isPlatformAdmin = platformRole === "admin";
   const [isOpen, setIsOpen] = useState(false);
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
+  const supportUrl = getSupportUrl();
+  const supportIsExternal = isExternalSupportUrl(supportUrl);
 
   // Fetch unread message count
   const { data: unreadCount = 0 } = useQuery({
@@ -102,7 +105,7 @@ const AdminMobileNav = () => {
     { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
     { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
     { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
-    { to: "https://help.threadbd.com", icon: HelpCircle, label: "Help & Support", show: true, external: true },
+    { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
   ];
 
   return (
@@ -165,27 +168,48 @@ const AdminMobileNav = () => {
                 {drawerLinks
                   .filter((l) => l.show)
                   .map((link) => {
-                    const active = location.pathname === link.to;
+                    const active = !link.external && location.pathname === link.to;
                     const Icon = link.icon;
+                    const badge = "badge" in link ? link.badge : undefined;
                     return (
                       <SheetClose asChild key={link.to}>
-                        <Link
-                          to={link.to}
-                          className={cn(
-                            "flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-200 border border-transparent",
-                            active
-                              ? "bg-primary/10 text-primary border-primary/20"
-                              : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          )}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{link.label}</span>
-                          {link.badge !== undefined && link.badge > 0 && (
-                            <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                              {link.badge > 99 ? "99+" : link.badge}
-                            </span>
-                          )}
-                        </Link>
+                        {link.external ? (
+                          <a
+                            href={link.to}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-200 border border-transparent",
+                              "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{link.label}</span>
+                            {badge !== undefined && badge > 0 && (
+                              <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                                {badge > 99 ? "99+" : badge}
+                              </span>
+                            )}
+                          </a>
+                        ) : (
+                          <Link
+                            to={link.to}
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-200 border border-transparent",
+                              active
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{link.label}</span>
+                            {badge !== undefined && badge > 0 && (
+                              <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                                {badge > 99 ? "99+" : badge}
+                              </span>
+                            )}
+                          </Link>
+                        )}
                       </SheetClose>
                     );
                   })}
