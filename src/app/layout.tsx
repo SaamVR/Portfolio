@@ -12,11 +12,11 @@ export const viewport = {
 
 export const metadata = {
   metadataBase: new URL("https://commerce-engine.local"),
-  title: "Commerce Engine - Ecommerce CMS for Launching Stores",
-  description: "A mobile-first ecommerce CMS for launch templates, storefront pages, products, checkout flows, and store operations.",
-  authors: [{ name: "Commerce Engine" }],
+  title: "Storefront CMS Platform",
+  description: "A mobile-first storefront CMS for launch templates, pages, products, checkout flows, and store operations.",
+  authors: [{ name: "Storefront Platform" }],
   openGraph: {
-    title: "Commerce Engine - Ecommerce CMS for Launching Stores",
+    title: "Storefront CMS Platform",
     description: "Launch and manage online stores with templates, CMS pages, products, payments, and admin workflows.",
     type: "website",
     images: [
@@ -29,8 +29,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@CommerceEngine",
-    title: "Commerce Engine - Ecommerce CMS for Launching Stores",
+    site: "@storefrontplatform",
+    title: "Storefront CMS Platform",
     description: "Launch and manage online stores with templates, CMS pages, products, payments, and admin workflows.",
     images: ["/og-image.png"],
   },

@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import {
+  ArrowRight,
+  ArrowRightLeft,
   BadgeCheck,
   Check,
   CheckCircle2,
@@ -38,7 +40,7 @@ const faqs = [
   },
   {
     q: "Can I connect my own custom domain?",
-    a: "Yes. You can map your own domain from store settings, and Commerce Engine handles SSL provisioning and storefront routing for you.",
+    a: "Yes. You can map your own domain from store settings, and the platform handles SSL provisioning and storefront routing for you.",
   },
   {
     q: "Do I need coding skills to design pages?",
@@ -124,6 +126,72 @@ const dayOneItems = [
   "Store slug and shareable preview URL",
   "Editable onboarding after signup",
   "Admin workspace ready for publishing",
+] as const;
+
+const beforeAfterItems = [
+  {
+    before: "Selling from inbox threads, posting product drops manually, and answering the same payment questions all day.",
+    after: "A real storefront with product pages, branded sections, clear payment instructions, and a cleaner path to checkout.",
+  },
+  {
+    before: "Launching each campaign from scratch with new posts, new captions, and no reusable page structure.",
+    after: "One CMS setup where new campaigns reuse the same launch flow, visual system, and sales-focused page sections.",
+  },
+] as const;
+
+const comparisonRows = [
+  {
+    label: "Looks like a real brand",
+    inbox: "Depends on posts and chat screenshots",
+    generic: "Possible, but setup is broad and slower",
+    commerce: "Designed for launch-ready storefront presentation",
+  },
+  {
+    label: "Local payment communication",
+    inbox: "Manual replies every time",
+    generic: "Usually needs custom setup",
+    commerce: "Visible in the sales flow from day one",
+  },
+  {
+    label: "Campaign page updates",
+    inbox: "Repost and explain again",
+    generic: "Flexible, but not merchant-guided",
+    commerce: "Switch content and themes in a guided flow",
+  },
+  {
+    label: "Order and store operations",
+    inbox: "Scattered across chat and notes",
+    generic: "Requires more assembly",
+    commerce: "Connected to the admin workspace and onboarding",
+  },
+] as const;
+
+const checklistItems = [
+  "Choose the business type that matches the merchant",
+  "Import a launch-ready visual direction",
+  "Add store name, hero copy, and announcement text",
+  "Show local payment and support details clearly",
+  "Preview the branded URL and launch state",
+  "Continue into signup with editable prefilled data",
+] as const;
+
+const objectionItems = [
+  {
+    title: "Not technical?",
+    body: "The landing page now makes the builder feel guided and editable instead of exposing raw setup complexity.",
+  },
+  {
+    title: "Already selling on Facebook?",
+    body: "The comparison framing helps merchants see this as a business upgrade, not a total workflow reset.",
+  },
+  {
+    title: "Need manual payments?",
+    body: "bKash, Nagad, and COD are part of the story early, so the product feels locally practical.",
+  },
+  {
+    title: "Need a custom domain later?",
+    body: "The preview URL and launch section make the domain handoff feel real before the merchant signs up.",
+  },
 ] as const;
 
 const colorThemes = {
@@ -388,7 +456,9 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
           <div className="hidden items-center gap-8 text-sm font-medium text-zinc-300 md:flex">
             <a href="#builder" className="nav-link-anim pb-1 hover:text-white">Guided Demo</a>
+            <a href="#templates" className="nav-link-anim pb-1 hover:text-white">Use Cases</a>
             <a href="#why" className="nav-link-anim pb-1 hover:text-white">Why it converts</a>
+            <Link href="/stories" className="nav-link-anim pb-1 hover:text-white">Stories</Link>
             <a href="#plans" className="nav-link-anim pb-1 hover:text-white">Pricing</a>
           </div>
 
@@ -956,6 +1026,28 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       </section>
 
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-24">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {beforeAfterItems.map((item, index) => (
+            <div key={index} className="rounded-[1.8rem] border border-white/8 bg-slate-900/35 p-6">
+              <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                <div className="rounded-2xl border border-rose-500/15 bg-rose-500/8 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">Before</p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">{item.before}</p>
+                </div>
+                <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full ${theme.accent} ${theme.primaryText}`}>
+                  <ArrowRightLeft className="h-4.5 w-4.5" />
+                </div>
+                <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/8 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">After</p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-200">{item.after}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="templates" className="relative z-10 mx-auto max-w-6xl px-4 py-24">
         <div className="mb-10 flex items-end justify-between gap-6">
           <div className="max-w-2xl space-y-3">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${theme.chip}`}>
@@ -1098,7 +1190,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             A white-label ecommerce CMS built for launch-ready storefronts, operational clarity, and easier merchant onboarding.
           </p>
           <p className="border-t border-white/5 pt-4 text-[10px]">
-            &copy; {new Date().getFullYear()} Commerce Engine. Built for modern digital commerce.
+            &copy; {new Date().getFullYear()} Storefront Platform. Built for modern digital commerce.
           </p>
         </div>
       </footer>

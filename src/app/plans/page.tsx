@@ -11,7 +11,7 @@ export default function Page() {
           <Button asChild variant="ghost" className="gap-2">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
-              Commerce Engine
+              Storefront Platform
             </Link>
           </Button>
           <Button asChild>

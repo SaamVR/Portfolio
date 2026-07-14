@@ -303,7 +303,7 @@ export default function MerchantSignup() {
           <Button asChild variant="ghost" className="mb-10 gap-2">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
-              Commerce Engine
+              Storefront Platform
             </Link>
           </Button>
           <h1 className="font-heading text-4xl font-bold leading-tight sm:text-5xl">
