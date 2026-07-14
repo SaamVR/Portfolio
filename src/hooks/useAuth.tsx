@@ -5,6 +5,7 @@ import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, typ
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
 const ROLE_FETCH_TIMEOUT_MS = 10_000;
+const VISIBILITY_REFRESH_COOLDOWN_MS = 5_000;
 
 type ResolvedAccessState = {
   memberships: StoreMembership[];
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const userIdRef = useRef<string | null>(null);
   const permissionRequestIdRef = useRef(0);
   const blockingPermissionRequestIdRef = useRef<number | null>(null);
+  const lastPassiveRefreshAtRef = useRef(0);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -232,6 +234,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (document.visibilityState !== "visible") return;
       const visibleUserId = userIdRef.current;
       if (!visibleUserId) return;
+      const now = Date.now();
+      if (now - lastPassiveRefreshAtRef.current < VISIBILITY_REFRESH_COOLDOWN_MS) return;
+      lastPassiveRefreshAtRef.current = now;
 
       void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
     };
@@ -239,6 +244,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const handleWindowFocus = () => {
       const visibleUserId = userIdRef.current;
       if (!visibleUserId) return;
+      const now = Date.now();
+      if (now - lastPassiveRefreshAtRef.current < VISIBILITY_REFRESH_COOLDOWN_MS) return;
+      lastPassiveRefreshAtRef.current = now;
 
       void resolvePermissions(visibleUserId, { blockUi: false, preserveExistingOnError: true });
     };

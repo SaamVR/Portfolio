@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { uploadMediaAsset } from "@/lib/cloudinary-upload";
+import { formatMediaUploadError, uploadMediaAsset } from "@/lib/cloudinary-upload";
 import { useMediaLibrary } from "@/hooks/useMediaLibrary";
 import { type MediaLibraryAsset } from "@/lib/media-library";
 import { useAuth } from "@/hooks/auth-context";
@@ -116,12 +116,7 @@ export function MediaLibraryBrowser({
       }
     } catch (error: any) {
       console.error("Media library upload error:", error);
-      const message = String(error?.message || "Upload failed");
-      toast.error(
-        message.includes("Failed to fetch")
-          ? "Upload service is unreachable. Redeploy the latest build and check Vercel/Supabase environment variables."
-          : message,
-      );
+      toast.error(formatMediaUploadError(error));
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

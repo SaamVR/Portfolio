@@ -14,6 +14,28 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error || "Unknown error");
 }
 
+export function formatMediaUploadError(error: unknown) {
+  const message = getErrorMessage(error);
+
+  if (
+    message.includes("Upload API is unreachable")
+    || message.includes("Storage upload is unreachable")
+    || message.includes("Failed to fetch")
+  ) {
+    return "Upload service is unreachable. Redeploy the latest build and check Vercel/Supabase environment variables.";
+  }
+
+  if (message.includes("You must be signed in to upload media")) {
+    return "Your session has expired. Sign in again, then retry the upload.";
+  }
+
+  if (message.includes("No store workspace found for upload") || message.includes("Select a store before uploading media")) {
+    return "Choose an active store before uploading media.";
+  }
+
+  return message;
+}
+
 async function postJson<T>(url: string, token: string, body: unknown): Promise<T> {
   let response: Response;
   try {

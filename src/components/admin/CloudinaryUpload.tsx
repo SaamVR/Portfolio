@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, X, Film } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { MediaLibraryPicker } from "@/components/admin/MediaLibraryPicker";
-import { uploadMediaAsset } from "@/lib/cloudinary-upload";
+import { formatMediaUploadError, uploadMediaAsset } from "@/lib/cloudinary-upload";
 import type { MediaLibraryAsset } from "@/lib/media-library";
 
 interface CloudinaryUploadProps {
@@ -54,6 +54,7 @@ const CloudinaryUpload = ({
     const maxSize = resourceType === "video" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error(`File too large. Max ${resourceType === "video" ? "50MB" : "10MB"}`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -84,12 +85,7 @@ const CloudinaryUpload = ({
       toast.success("Uploaded successfully!");
     } catch (err: any) {
       console.error("Cloudinary upload error:", err);
-      const message = String(err?.message || "Upload failed");
-      toast.error(
-        message.includes("Failed to fetch")
-          ? "Upload service is unreachable. Redeploy the latest build and check Vercel/Supabase environment variables."
-          : message,
-      );
+      toast.error(formatMediaUploadError(err));
     } finally {
       setUploading(false);
       // Reset input so same file can be re-selected
