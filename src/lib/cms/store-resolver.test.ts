@@ -263,4 +263,29 @@ describe("store resolver mapping", () => {
 
     expect(store.theme.customCss).toBe(".hero { border: 3px solid red; }");
   });
+
+  it("preserves a store custom domain on the resolved storefront model", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-5",
+        name: "Domain Store",
+        slug: "domain-store",
+        custom_domain: "shop.domain-store.com",
+        description: null,
+        currency_code: null,
+        locale: null,
+        is_published: true,
+        store_type: "general-catalog",
+      },
+      {
+        blueprint_id: "general-catalog",
+      },
+      null,
+      [],
+      [],
+      [],
+    );
+
+    expect(store.customDomain).toBe("shop.domain-store.com");
+  });
 });

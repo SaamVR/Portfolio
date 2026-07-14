@@ -234,7 +234,7 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
 
   const { data: store, error } = await supabase
     .from("stores")
-    .select("id, name, slug, description, currency_code, locale, is_published, store_type")
+    .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -264,7 +264,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
   ] = await Promise.all([
     supabase
       .from("stores")
-      .select("id, name, slug, description, currency_code, locale, is_published, store_type")
+      .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
       .eq("id", storeId)
       .maybeSingle(),
     supabase
