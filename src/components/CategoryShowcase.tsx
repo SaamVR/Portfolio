@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/lib/react-router-dom-shim";
-import { Shirt, Blend, Scissors, ShieldCheck, Footprints, StretchHorizontal, FolderTree } from "lucide-react";
+import { FolderTree, Grid2x2, Layers3, Package, Sparkles, Store, Tags } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
@@ -11,12 +11,12 @@ import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCusto
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 
 const fallbackCategories = [
-  { label: "Popular", type: "popular", tagline: "Commonly explored items", icon: Shirt, filterKey: "category" as const },
-  { label: "Featured", type: "featured", tagline: "Highlighted items and offers", icon: Blend, filterKey: "category" as const },
-  { label: "New", type: "new", tagline: "Recently added options", icon: StretchHorizontal, filterKey: "category" as const },
-  { label: "Bundles", type: "bundles", tagline: "Grouped packages and sets", icon: Scissors, filterKey: "category" as const },
-  { label: "Essentials", type: "essentials", tagline: "Core items customers revisit", icon: ShieldCheck, filterKey: "category" as const },
-  { label: "Browse", type: "browse", tagline: "Explore more of the catalog", icon: Footprints, filterKey: "category" as const },
+  { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
+  { label: "New Arrivals", type: "new-arrivals", tagline: "Recently added products or listings", icon: Package, filterKey: "category" as const },
+  { label: "Collections", type: "collections", tagline: "Curated groups for faster browsing", icon: Layers3, filterKey: "category" as const },
+  { label: "Best Sellers", type: "best-sellers", tagline: "Popular picks customers revisit most", icon: Tags, filterKey: "category" as const },
+  { label: "Browse All", type: "browse-all", tagline: "Explore the full storefront catalog", icon: Grid2x2, filterKey: "category" as const },
+  { label: "Store Highlights", type: "store-highlights", tagline: "What this business wants customers to notice first", icon: Store, filterKey: "category" as const },
 ];
 
 interface CategoryShowcaseProps {
@@ -28,53 +28,29 @@ interface CategoryShowcaseProps {
 }
 
 const getIconForType = (typeName: string) => {
-  switch (typeName.toLowerCase()) {
-    case "t-shirt":
-    case "t-shirts":
-      return Shirt;
-    case "polo":
-    case "polos":
-      return Blend;
-    case "shirt":
-    case "shirts":
-      return StretchHorizontal;
-    case "drop shoulder":
-    case "drop shoulders":
-      return Scissors;
-    case "undergarment":
-    case "undergarments":
-      return ShieldCheck;
-    case "pants":
-    case "pant":
-      return Footprints;
-    default:
-      return FolderTree;
-  }
+  const normalized = typeName.toLowerCase();
+
+  if (/(new|latest|recent)/.test(normalized)) return Sparkles;
+  if (/(bundle|set|kit|pack|collection)/.test(normalized)) return Layers3;
+  if (/(feature|highlight|signature|hero)/.test(normalized)) return Store;
+  if (/(sale|deal|offer|promo|discount|best)/.test(normalized)) return Tags;
+  if (/(catalog|browse|all)/.test(normalized)) return Grid2x2;
+  if (/(product|item|menu|service|listing)/.test(normalized)) return Package;
+
+  return FolderTree;
 };
 
 const getTaglineForType = (typeName: string) => {
-  switch (typeName.toLowerCase()) {
-    case "t-shirt":
-    case "t-shirts":
-      return "Popular core products";
-    case "polo":
-    case "polos":
-      return "Refined featured picks";
-    case "shirt":
-    case "shirts":
-      return "Versatile catalog staples";
-    case "drop shoulder":
-    case "drop shoulders":
-      return "Distinctive customer favorites";
-    case "undergarment":
-    case "undergarments":
-      return "Reliable everyday basics";
-    case "pants":
-    case "pant":
-      return "Browse complementary options";
-    default:
-      return "Explore this category";
-  }
+  const normalized = typeName.toLowerCase();
+
+  if (/(new|latest|recent)/.test(normalized)) return "Freshly added options";
+  if (/(bundle|set|kit|pack|collection)/.test(normalized)) return "Grouped offers and curated sets";
+  if (/(feature|highlight|signature|hero)/.test(normalized)) return "What this storefront wants to spotlight";
+  if (/(sale|deal|offer|promo|discount|best)/.test(normalized)) return "Popular and conversion-focused picks";
+  if (/(catalog|browse|all)/.test(normalized)) return "Open up the wider catalog";
+  if (/(product|item|menu|service|listing)/.test(normalized)) return "Explore this part of the storefront";
+
+  return "Explore this category";
 };
 
 const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {

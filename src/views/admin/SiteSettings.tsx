@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrandSeoTab } from "./settings/BrandSeoTab";
@@ -133,9 +133,9 @@ const SiteSettings = () => {
 
   const tabOptions = [
     { value: "brand_seo", label: "Brand & SEO", category: "Store Identity", keywords: "brand title description seo logo highlight name" },
-    { value: "home_sections", label: "Home Sections", category: "Store Identity", keywords: "featured category tagline catalog title" },
-    { value: "hero", label: "Hero Section", category: "Store Identity", keywords: "hero background image video media title tagline overlay button cta" },
-    { value: "promo", label: "Promo Banner", category: "Store Identity", keywords: "promo discount summer sale button text color glow card opacity" },
+    { value: "home_sections", label: "Home Sections (Legacy)", category: "Legacy Homepage", keywords: "legacy featured category tagline catalog title homepage migration" },
+    { value: "hero", label: "Hero Section (Legacy)", category: "Legacy Homepage", keywords: "legacy hero background image video media title tagline overlay button cta homepage migration" },
+    { value: "promo", label: "Promo Banner (Legacy)", category: "Legacy Homepage", keywords: "legacy promo discount summer sale button text color glow card opacity homepage migration" },
     { value: "announcement", label: "Announcement Bar", category: "Store Identity", keywords: "announcement rotation text bar color bg message" },
     { value: "themes", label: "Themes Customizer", category: "Design System", keywords: "theme colors palette presets font layout border radius container width preset preset presets typography style styles" },
     { value: "upsells", label: "Upsells & Popups", category: "Checkout & Log", keywords: "popup count-down upsells discount coupon exit-intent popups modal drawer card" },
@@ -152,6 +152,31 @@ const SiteSettings = () => {
     { value: "page_builder", label: "Page Builder", category: "Storefront", keywords: "page builder pages blocks homepage custom page revisions seo slug layout rich text storefront sections" },
   ];
   const pageBuilderEnabled = getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
+  const LegacyHomepageNotice = ({ title }: { title: string }) => (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">{title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This editor is kept for backward compatibility. Homepage sections now render from Page Builder blocks first, and these fields are being gradually demoted.
+          </p>
+        </div>
+        {pageBuilderEnabled ? (
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/admin/page-builder">
+              <PanelsTopLeft className="h-4 w-4" />
+              Open Page Builder
+            </Link>
+          </Button>
+        ) : (
+          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <ArrowRightCircle className="h-4 w-4" />
+            Enable Page Builder for block-first editing
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   const filteredTabs = tabOptions.filter(
     (t) =>
@@ -751,6 +776,7 @@ const SiteSettings = () => {
         {/* Home Sections */}
         <TabsContent value="home_sections">
           <div className="space-y-6">
+            <LegacyHomepageNotice title="Legacy Homepage Section Settings" />
             <Card className="border-border">
               <CardHeader><CardTitle>Featured Products Section</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -788,107 +814,112 @@ const SiteSettings = () => {
 
         {/* Promo Banner */}
         <TabsContent value="promo">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Promotional Banner</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={settings.promo_banner?.enabled ?? false} onCheckedChange={(v) => update("promo_banner", "enabled", v)} />
-                <Label>Show banner on homepage</Label>
-              </div>
-              <div className="grid gap-2">
-                <Label>Badge text</Label>
-                <Input value={settings.promo_banner?.badge_text ?? ""} placeholder="Limited offer" onChange={(e) => update("promo_banner", "badge_text", e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Title</Label>
-                <Input value={settings.promo_banner?.title ?? ""} placeholder="Offer headline" onChange={(e) => update("promo_banner", "title", e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Subtitle</Label>
-                <Input value={settings.promo_banner?.subtitle ?? ""} placeholder="Offer details or supporting message" onChange={(e) => update("promo_banner", "subtitle", e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Button text</Label>
-                  <Input value={settings.promo_banner?.cta_text ?? ""} placeholder="Learn more" onChange={(e) => update("promo_banner", "cta_text", e.target.value)} />
+          <div className="space-y-6">
+            <LegacyHomepageNotice title="Legacy Promotional Banner Settings" />
+            <Card className="border-border">
+              <CardHeader><CardTitle>Promotional Banner</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.promo_banner?.enabled ?? false} onCheckedChange={(v) => update("promo_banner", "enabled", v)} />
+                  <Label>Show banner on homepage</Label>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Button link</Label>
-                  <Input value={settings.promo_banner?.cta_link ?? ""} placeholder="/shop" onChange={(e) => update("promo_banner", "cta_link", e.target.value)} />
+                  <Label>Badge text</Label>
+                  <Input value={settings.promo_banner?.badge_text ?? ""} placeholder="Limited offer" onChange={(e) => update("promo_banner", "badge_text", e.target.value)} />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Colour style</Label>
-                <div className="flex flex-wrap gap-3">
-                  {(["gradient", "luxury-gold", "indigo", "rose", "dark", "accent"] as const).map((style) => (
-                    <button key={style} type="button" onClick={() => update("promo_banner", "bg_style", style)}
-                      className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.bg_style ?? "gradient") === style ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                      {style === "gradient" ? "Green Gradient" : style === "luxury-gold" ? "Luxury Gold" : style === "indigo" ? "Royal Indigo" : style === "rose" ? "Velvet Rose" : style === "dark" ? "Dark" : "Light"}
-                    </button>
-                  ))}
+                <div className="grid gap-2">
+                  <Label>Title</Label>
+                  <Input value={settings.promo_banner?.title ?? ""} placeholder="Offer headline" onChange={(e) => update("promo_banner", "title", e.target.value)} />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Text Alignment</Label>
-                <div className="flex gap-3">
-                  {(["left", "center", "right"] as const).map((align) => (
-                    <button key={align} type="button" onClick={() => update("promo_banner", "text_alignment", align)}
-                      className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.text_alignment ?? "center") === align ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                      {align}
-                    </button>
-                  ))}
+                <div className="grid gap-2">
+                  <Label>Subtitle</Label>
+                  <Input value={settings.promo_banner?.subtitle ?? ""} placeholder="Offer details or supporting message" onChange={(e) => update("promo_banner", "subtitle", e.target.value)} />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Banner Height / Spacing</Label>
-                <div className="flex gap-3">
-                  {(["compact", "cozy", "large"] as const).map((pad) => (
-                    <button key={pad} type="button" onClick={() => update("promo_banner", "padding_size", pad)}
-                      className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.padding_size ?? "cozy") === pad ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                      {pad}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Button text</Label>
+                    <Input value={settings.promo_banner?.cta_text ?? ""} placeholder="Learn more" onChange={(e) => update("promo_banner", "cta_text", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Button link</Label>
+                    <Input value={settings.promo_banner?.cta_link ?? ""} placeholder="/shop" onChange={(e) => update("promo_banner", "cta_link", e.target.value)} />
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Switch checked={settings.promo_banner?.enable_glow ?? false} onCheckedChange={(v) => update("promo_banner", "enable_glow", v)} />
-                <Label>Enable pulsing glow effect on CTA button</Label>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Switch checked={settings.promo_banner?.enable_orbs ?? true} onCheckedChange={(v) => update("promo_banner", "enable_orbs", v)} />
-                <Label>Show floating background gradient mesh orbs</Label>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Switch checked={settings.promo_banner?.enable_particles ?? true} onCheckedChange={(v) => update("promo_banner", "enable_particles", v)} />
-                <Label>Show floating sparkle particles</Label>
-              </div>
-              <div className="grid gap-3 pt-4 border-t border-border mt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="font-semibold">Glass Card Opacity</Label>
-                  <span className="font-mono text-xs font-bold bg-secondary px-2.5 py-1 rounded text-secondary-foreground">{settings.promo_banner?.card_opacity ?? 3}%</span>
+                <div className="grid gap-2">
+                  <Label>Colour style</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {(["gradient", "luxury-gold", "indigo", "rose", "dark", "accent"] as const).map((style) => (
+                      <button key={style} type="button" onClick={() => update("promo_banner", "bg_style", style)}
+                        className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.bg_style ?? "gradient") === style ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                        {style === "gradient" ? "Green Gradient" : style === "luxury-gold" ? "Luxury Gold" : style === "indigo" ? "Royal Indigo" : style === "rose" ? "Velvet Rose" : style === "dark" ? "Dark" : "Light"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="40"
-                    value={settings.promo_banner?.card_opacity ?? 3}
-                    onChange={(e) => update("promo_banner", "card_opacity", Number(e.target.value))}
-                    className="w-full accent-primary h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
-                  />
+                <div className="grid gap-2">
+                  <Label>Text Alignment</Label>
+                  <div className="flex gap-3">
+                    {(["left", "center", "right"] as const).map((align) => (
+                      <button key={align} type="button" onClick={() => update("promo_banner", "text_alignment", align)}
+                        className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.text_alignment ?? "center") === align ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                        {align}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">Adjust the transparency of the glassmorphic card (0% is completely clear water-glass, higher is more frosted/milky).</p>
-              </div>
-              <SaveButton settingKey="promo_banner" />
-            </CardContent>
-          </Card>
+                <div className="grid gap-2">
+                  <Label>Banner Height / Spacing</Label>
+                  <div className="flex gap-3">
+                    {(["compact", "cozy", "large"] as const).map((pad) => (
+                      <button key={pad} type="button" onClick={() => update("promo_banner", "padding_size", pad)}
+                        className={`rounded-lg border-2 px-4 py-2 text-xs font-semibold capitalize transition-colors ${(settings.promo_banner?.padding_size ?? "cozy") === pad ? "border-primary text-foreground bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                        {pad}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch checked={settings.promo_banner?.enable_glow ?? false} onCheckedChange={(v) => update("promo_banner", "enable_glow", v)} />
+                  <Label>Enable pulsing glow effect on CTA button</Label>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch checked={settings.promo_banner?.enable_orbs ?? true} onCheckedChange={(v) => update("promo_banner", "enable_orbs", v)} />
+                  <Label>Show floating background gradient mesh orbs</Label>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch checked={settings.promo_banner?.enable_particles ?? true} onCheckedChange={(v) => update("promo_banner", "enable_particles", v)} />
+                  <Label>Show floating sparkle particles</Label>
+                </div>
+                <div className="grid gap-3 pt-4 border-t border-border mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold">Glass Card Opacity</Label>
+                    <span className="font-mono text-xs font-bold bg-secondary px-2.5 py-1 rounded text-secondary-foreground">{settings.promo_banner?.card_opacity ?? 3}%</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="40"
+                      value={settings.promo_banner?.card_opacity ?? 3}
+                      onChange={(e) => update("promo_banner", "card_opacity", Number(e.target.value))}
+                      className="w-full accent-primary h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Adjust the transparency of the glassmorphic card (0% is completely clear water-glass, higher is more frosted/milky).</p>
+                </div>
+                <SaveButton settingKey="promo_banner" />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Hero Section - Enhanced */}
         <TabsContent value="hero">
-          <Card className="border-border">
-            <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
-            <CardContent className="space-y-5">
+          <div className="space-y-6">
+            <LegacyHomepageNotice title="Legacy Hero Settings" />
+            <Card className="border-border">
+              <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
+              <CardContent className="space-y-5">
               <div className="grid gap-2">
                 <Label>Tagline (small text above title)</Label>
                   <Input value={settings.hero_section?.tagline ?? ""} placeholder="Short supporting text above the main title" onChange={(e) => update("hero_section", "tagline", e.target.value)} />
@@ -1003,9 +1034,10 @@ const SiteSettings = () => {
                 </div>
               </div>
 
-              <SaveButton settingKey="hero_section" />
-            </CardContent>
-          </Card>
+                <SaveButton settingKey="hero_section" />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Storefront Builder (Themes & Layout) */}
@@ -1706,6 +1738,7 @@ const SiteSettings = () => {
       </Tabs>
     </div>
   );
+
 };
 
 export default SiteSettings;

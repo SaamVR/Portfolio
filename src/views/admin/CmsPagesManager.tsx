@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
   Plus,
@@ -257,6 +258,7 @@ export default function CmsPagesManager() {
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
+  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages">("store");
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -1334,7 +1336,7 @@ export default function CmsPagesManager() {
             <div className="hidden items-start justify-between gap-3 lg:mb-4 lg:flex">
               <div>
                 <p className="text-sm font-semibold text-foreground">Store Workspace</p>
-                <p className="text-xs text-muted-foreground">Settings, theme, and page list</p>
+                <p className="text-xs text-muted-foreground">Use smaller panels for store setup, theme control, and page navigation.</p>
               </div>
               <Badge variant="outline">{selectedPageNumber || 0}/{store.pages.length}</Badge>
             </div>
@@ -1346,193 +1348,204 @@ export default function CmsPagesManager() {
               </Button>
             </div>
 
-            <div className="grid gap-2">
-              <Label>Store Name</Label>
-              <Input value={store.name} onChange={(e) => setStore({ ...store, name: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Store Slug</Label>
-              <Input value={store.slug} onChange={(e) => setStore({ ...store, slug: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Store Description</Label>
-              <Textarea rows={4} value={store.description} onChange={(e) => setStore({ ...store, description: e.target.value })} />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Store Published</p>
-                <p className="text-xs text-muted-foreground">Turn this off to keep the CMS store in draft mode.</p>
-              </div>
-              <Switch checked={store.isPublished} onCheckedChange={(checked) => setStore({ ...store, isPublished: checked })} />
-            </div>
+            <Tabs value={workspaceTab} onValueChange={(value) => setWorkspaceTab(value as "store" | "theme" | "pages")} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="store">Store</TabsTrigger>
+                <TabsTrigger value="theme">Theme</TabsTrigger>
+                <TabsTrigger value="pages">Pages</TabsTrigger>
+              </TabsList>
 
-            <Separator />
-
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Store Theme</p>
-                <p className="text-xs text-muted-foreground">These settings are saved to `store_themes` and power the live storefront preview.</p>
-                {isMissingThemeReference ? (
-                  <p className="mt-2 text-xs text-amber-600">
-                    The saved theme package reference for this store is missing. Page Builder is previewing the nearest compatible fallback until you save a new package choice.
-                  </p>
-                ) : null}
-                {hasThemeVersionUpdate ? (
-                  <p className="mt-2 text-xs text-sky-600">
-                    This store is using theme snapshot v{installedThemePackageVersion} while the current package is v{resolvedEditorThemePackage?.version}. Saving Page Builder changes will install the latest snapshot for this store.
-                  </p>
-                ) : null}
-                {hasBlueprintVersionUpdate ? (
-                  <p className="mt-2 text-xs text-sky-600">
-                    This store was created from an older blueprint snapshot. Saving Page Builder changes will refresh blueprint-owned store profile metadata for the current blueprint.
-                  </p>
-                ) : null}
-              </div>
-              <div className="grid gap-2">
-                <Label>Theme Package</Label>
-                <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={(value) => updateStoreTheme({ themePackageId: value })} disabled={!themePresetsEnabled}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a theme package" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themePackages.map((themePackage) => (
-                      <SelectItem key={themePackage.id} value={themePackage.id}>
-                        {themePackage.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {resolveThemePackageById(store.theme.themePackageId, themePackages, store.theme.presetId).description}
-                </p>
-                {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
-              </div>
-              <div className="grid gap-2">
-                <Label>Color Mode</Label>
-                <Select value={store.theme.mode} onValueChange={(value) => updateStoreTheme({ mode: value as Store["theme"]["mode"] })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Heading Font</Label>
-                <Input value={store.theme.headingFont ?? ""} placeholder="'Outfit', sans-serif" onChange={(e) => updateStoreTheme({ headingFont: e.target.value })} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Body Font</Label>
-                <Input value={store.theme.bodyFont ?? ""} placeholder="'Plus Jakarta Sans', sans-serif" onChange={(e) => updateStoreTheme({ bodyFont: e.target.value })} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Border Radius</Label>
-                <Input value={store.theme.borderRadius ?? ""} placeholder="0.5rem" onChange={(e) => updateStoreTheme({ borderRadius: e.target.value })} />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Pages</p>
-                <p className="text-xs text-muted-foreground">Homepage plus custom storefront pages.</p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border p-3">
-              <div className="grid gap-3">
-                {!pageBlueprintsEnabled ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                    Page blueprints are disabled for this store. New pages will start blank and blueprint replacement is locked.
-                  </div>
-                ) : null}
+              <TabsContent value="store" className="space-y-4">
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <p className="text-sm font-medium text-foreground">Store Basics</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Name, routing slug, publishing state, and the brand summary used across the storefront.</p>
+                </div>
                 <div className="grid gap-2">
-                  <Label>New Page Template</Label>
-                  <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availablePageBlueprints.map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Showing templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> blueprint.
-                  </p>
+                  <Label>Store Name</Label>
+                  <Input value={store.name} onChange={(e) => setStore({ ...store, name: e.target.value })} />
                 </div>
-                <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Page
-                </Button>
-              </div>
-            </div>
+                <div className="grid gap-2">
+                  <Label>Store Slug</Label>
+                  <Input value={store.slug} onChange={(e) => setStore({ ...store, slug: e.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Store Description</Label>
+                  <Textarea rows={4} value={store.description} onChange={(e) => setStore({ ...store, description: e.target.value })} />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Store Published</p>
+                    <p className="text-xs text-muted-foreground">Turn this off to keep the CMS store in draft mode.</p>
+                  </div>
+                  <Switch checked={store.isPublished} onCheckedChange={(checked) => setStore({ ...store, isPublished: checked })} />
+                </div>
+              </TabsContent>
 
-            <div className="space-y-2">
-              {store.pages.map((page) => (
-                <div
-                  key={page.id}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      setSelectedPageId(page.id);
-                      setSelectedBlockId("");
-                    }
-                  }}
-                  onClick={() => {
-                    setSelectedPageId(page.id);
-                    setSelectedBlockId("");
-                  }}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors cursor-pointer ${
-                    selectedPageId === page.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{page.slug}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {page.isHomepage ? <Badge variant="secondary">Home</Badge> : null}
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          duplicatePage(page.id);
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removePage(page.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              <TabsContent value="theme" className="space-y-4">
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Store Theme</p>
+                    <p className="text-xs text-muted-foreground">These settings are saved to `store_themes` and power the live storefront preview.</p>
+                    {isMissingThemeReference ? (
+                      <p className="mt-2 text-xs text-amber-600">
+                        The saved theme package reference for this store is missing. Page Builder is previewing the nearest compatible fallback until you save a new package choice.
+                      </p>
+                    ) : null}
+                    {hasThemeVersionUpdate ? (
+                      <p className="mt-2 text-xs text-sky-600">
+                        This store is using theme snapshot v{installedThemePackageVersion} while the current package is v{resolvedEditorThemePackage?.version}. Saving Page Builder changes will install the latest snapshot for this store.
+                      </p>
+                    ) : null}
+                    {hasBlueprintVersionUpdate ? (
+                      <p className="mt-2 text-xs text-sky-600">
+                        This store was created from an older blueprint snapshot. Saving Page Builder changes will refresh blueprint-owned store profile metadata for the current blueprint.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Theme Package</Label>
+                    <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={(value) => updateStoreTheme({ themePackageId: value })} disabled={!themePresetsEnabled}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a theme package" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {themePackages.map((themePackage) => (
+                          <SelectItem key={themePackage.id} value={themePackage.id}>
+                            {themePackage.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {resolveThemePackageById(store.theme.themePackageId, themePackages, store.theme.presetId).description}
+                    </p>
+                    {!themePresetsEnabled ? <p className="text-xs text-muted-foreground">Theme package changes are disabled for this store package.</p> : null}
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Color Mode</Label>
+                    <Select value={store.theme.mode} onValueChange={(value) => updateStoreTheme({ mode: value as Store["theme"]["mode"] })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dark">Dark</SelectItem>
+                        <SelectItem value="light">Light</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Heading Font</Label>
+                    <Input value={store.theme.headingFont ?? ""} placeholder="'Outfit', sans-serif" onChange={(e) => updateStoreTheme({ headingFont: e.target.value })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Body Font</Label>
+                    <Input value={store.theme.bodyFont ?? ""} placeholder="'Plus Jakarta Sans', sans-serif" onChange={(e) => updateStoreTheme({ bodyFont: e.target.value })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Border Radius</Label>
+                    <Input value={store.theme.borderRadius ?? ""} placeholder="0.5rem" onChange={(e) => updateStoreTheme({ borderRadius: e.target.value })} />
                   </div>
                 </div>
-              ))}
-            </div>
+              </TabsContent>
+
+              <TabsContent value="pages" className="space-y-4">
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <p className="text-sm font-medium text-foreground">Pages & Navigation</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Select the page you want to edit, duplicate it, or create a new one from a compatible blueprint.</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="grid gap-3">
+                    {!pageBlueprintsEnabled ? (
+                      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                        Page blueprints are disabled for this store. New pages will start blank and blueprint replacement is locked.
+                      </div>
+                    ) : null}
+                    <div className="grid gap-2">
+                      <Label>New Page Template</Label>
+                      <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availablePageBlueprints.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Showing templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> blueprint.
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Page
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {store.pages.map((page) => (
+                    <div
+                      key={page.id}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          setSelectedPageId(page.id);
+                          setSelectedBlockId("");
+                        }
+                      }}
+                      onClick={() => {
+                        setSelectedPageId(page.id);
+                        setSelectedBlockId("");
+                      }}
+                      className={`w-full rounded-lg border p-3 text-left transition-colors cursor-pointer ${
+                        selectedPageId === page.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
+                          <p className="truncate text-xs text-muted-foreground">{page.slug}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {page.isHomepage ? <Badge variant="secondary">Home</Badge> : null}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              duplicatePage(page.id);
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removePage(page.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
             </div>
           </div>
 
@@ -1563,6 +1576,22 @@ export default function CmsPagesManager() {
                     <Label>Revision Label For Next Save</Label>
                     <Input value={revisionLabel} placeholder="Homepage cleanup, seasonal refresh, trust update..." onChange={(e) => setRevisionLabel(e.target.value)} />
                   </div>
+                  {selectedPage.isHomepage ? (
+                    <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                      <p className="text-sm font-medium text-foreground">Homepage blocks are now the primary editing surface</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Legacy homepage entries in <code>site_settings</code> are still supported for backward compatibility, but Page Builder blocks lead the storefront and legacy values only backfill older setups.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setWorkspaceTab("pages")}>
+                          Review homepage blocks
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" asChild>
+                          <Link to="/admin/settings?tab=page_builder">Open Page Builder Settings</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4">
                     <div>
                       <p className="text-sm font-medium text-foreground">Apply Page Template</p>
