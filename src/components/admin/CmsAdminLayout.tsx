@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/components/admin/ChangePasswordDialog";
-import { ArrowLeft, Building2, LayoutDashboard, Layers3, Loader2, LogOut, Search, Shield } from "lucide-react";
+import { ArrowLeft, Building2, LayoutDashboard, Layers3, LogOut, Search, Shield } from "lucide-react";
 import AdminCommandMenu from "@/components/admin/AdminCommandMenu";
 import CmsAdminMobileNav from "@/components/admin/CmsAdminMobileNav";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
@@ -15,6 +15,15 @@ const cmsAdminLinks = [
   { to: "/cms-admin", icon: Shield, label: "CMS Control" },
   { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library" },
 ];
+
+const mobileCmsRoutes = [
+  { to: "/cms-admin", icon: Shield, label: "Overview", description: "Platform health and store ops" },
+  { to: "/cms-admin/libraries", icon: Layers3, label: "Library", description: "Blueprints, themes, and blocks" },
+  { to: "/admin", icon: LayoutDashboard, label: "Store Admin", description: "Jump back into a merchant workspace" },
+];
+
+const isActiveCmsRoute = (pathname: string, target: string) =>
+  target === "/cms-admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 export default function CmsAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, session, role, platformRole, loading, signOut, refreshRole } = useAuth();
@@ -158,6 +167,45 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
             </button>
           </div>
         </header>
+        <div className="border-b border-border/60 bg-card/40 px-4 py-3 md:hidden">
+          <div className="space-y-3">
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max items-center gap-2 pb-1">
+                {mobileCmsRoutes.map((route) => {
+                  const active = route.to.startsWith("/cms-admin")
+                    ? isActiveCmsRoute(location.pathname, route.to)
+                    : location.pathname === route.to || location.pathname.startsWith(`${route.to}/`);
+                  const Icon = route.icon;
+                  return (
+                    <Link
+                      key={route.to}
+                      to={route.to}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors",
+                        active
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-border bg-background/90 text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{route.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border bg-background/90 px-3.5 py-3 shadow-sm">
+              <p className="text-sm font-semibold text-foreground">
+                {location.pathname.startsWith("/cms-admin/libraries") ? "Shared Library" : "CMS Control"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {location.pathname.startsWith("/cms-admin/libraries")
+                  ? "Manage shared blueprint, theme, page, and block packages without dropping into low-signal screens."
+                  : "Keep platform-level controls, merchant system packages, and recovery actions close on mobile."}
+              </p>
+            </div>
+          </div>
+        </div>
         <CmsAdminMobileNav
           userEmail={user?.email}
           onOpenCommand={() => setCommandOpen(true)}

@@ -26,6 +26,7 @@ import {
   Shield,
   CreditCard,
   HelpCircle,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -231,7 +232,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                     }}
                     className="flex items-center gap-3 rounded-2xl border border-transparent bg-secondary/40 px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
                   >
-                    <Menu className="h-4 w-4 shrink-0" />
+                    <Search className="h-4 w-4 shrink-0" />
                     <span>Search</span>
                   </button>
                   {quickLinks.filter((link) => link.show).slice(0, 1).map((link) => (
@@ -246,8 +247,19 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                   ))}
                 </div>
 
+                <div className="rounded-2xl border border-border/70 bg-background/80 p-3.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Current workspace</p>
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    {dockLinks.map((link) => (
+                      <SheetClose asChild key={link.to}>
+                        {renderLinkCard(link)}
+                      </SheetClose>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Commerce</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Commerce Tools</p>
                   <div className="space-y-2">
                     {commerceLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>
@@ -258,7 +270,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Storefront</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Storefront Setup</p>
                   <div className="space-y-2">
                     {storefrontLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>
@@ -269,7 +281,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">People And Access</p>
                   <div className="space-y-2">
                     {adminLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>

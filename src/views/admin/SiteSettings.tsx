@@ -853,6 +853,22 @@ const SiteSettings = () => {
         </Button>
       </div>
 
+      <div className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {tabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"} workspace
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Use the section rail to jump quickly, then save from the sticky action bar as you work through longer forms.
+            </p>
+          </div>
+          <span className="rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            Mobile edit mode
+          </span>
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation & Search & Select */}
         <div className="w-full md:w-64 flex-shrink-0 space-y-4">

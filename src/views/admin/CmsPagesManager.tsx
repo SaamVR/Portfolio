@@ -1215,6 +1215,10 @@ export default function CmsPagesManager() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:hidden">
+            <p className="text-sm font-semibold text-foreground">Page Builder needs an active store first</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose the store you want to work on, then come back here to seed or edit its storefront workspace.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-border bg-background/40 p-4">
               <p className="text-sm font-medium text-foreground">1. Select a store</p>
@@ -1265,6 +1269,10 @@ export default function CmsPagesManager() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:hidden">
+            <p className="text-sm font-semibold text-foreground">This store is ready for its first builder snapshot</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Initialization creates store-owned pages, blocks, and theme wiring so later edits stay isolated from shared packages.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-border bg-background/40 p-4">
               <p className="text-sm font-medium text-foreground">Scoped to this store</p>

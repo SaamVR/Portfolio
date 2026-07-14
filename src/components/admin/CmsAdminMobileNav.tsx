@@ -38,30 +38,6 @@ export default function CmsAdminMobileNav({ userEmail, onOpenCommand, onSignOut 
 
   return (
     <>
-      <div className="border-b border-border/60 bg-card/40 px-4 py-2.5 md:hidden">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {primaryLinks.map((link) => {
-            const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
-            const Icon = link.icon;
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={cn(
-                  "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors",
-                  active
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-background/80 text-muted-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{link.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/92 px-3 py-2 backdrop-blur-xl md:hidden pb-safe">
         <div className="grid grid-cols-4 gap-2">
           {primaryLinks.map((link) => {

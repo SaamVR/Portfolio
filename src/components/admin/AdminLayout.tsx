@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Navigate, useLocation } from "@/lib/react-router-dom-shim";
+import { Link, Navigate, useLocation } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import AdminSidebar from "./AdminSidebar";
 import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
-import { Loader2, Search } from "lucide-react";
+import { LayoutDashboard, PanelsTopLeft, Search, Settings, ShoppingCart, SquareStack } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 
@@ -19,6 +19,17 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
   { path: "/admin/media", label: "Media Library", description: "Images and reusable storefront assets" },
   { path: "/admin/site-settings", label: "Site Settings", description: "Brand, SEO, announcements, and domain" },
 ];
+
+const mobileAdminRoutes = [
+  { to: "/admin", label: "Overview", icon: LayoutDashboard },
+  { to: "/admin/site-settings", label: "Settings", icon: Settings },
+  { to: "/admin/page-builder", label: "Builder", icon: PanelsTopLeft },
+  { to: "/admin/products", label: "Catalog", icon: SquareStack },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+];
+
+const isActiveAdminRoute = (pathname: string, target: string) =>
+  target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const { user, session, role, loading, refreshRole, signOut } = useAuth();
@@ -129,9 +140,33 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
           </div>
         </header>
         <div className="border-b border-border/60 bg-card/40 px-4 py-2.5 md:hidden">
-          <div className="space-y-2.5">
-            <div>
-              <p className="text-xs text-muted-foreground">{currentWorkspace.description}</p>
+          <div className="space-y-3">
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max items-center gap-2 pb-1">
+                {mobileAdminRoutes.map((route) => {
+                  const active = isActiveAdminRoute(location.pathname, route.to);
+                  const Icon = route.icon;
+                  return (
+                    <Link
+                      key={route.to}
+                      to={route.to}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors",
+                        active
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-border bg-background/90 text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{route.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border bg-background/90 px-3.5 py-3 shadow-sm">
+              <p className="text-sm font-semibold text-foreground">{currentWorkspace.label}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{currentWorkspace.description}</p>
             </div>
             <StoreSwitcher mobile />
           </div>
