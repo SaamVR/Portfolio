@@ -1668,6 +1668,18 @@ const SiteSettings = () => {
         <TabsContent value="contact">
           <MobileSectionShell title="Contact Page" description="Contact details and map controls are sectioned for simpler mobile editing.">
               <div className="grid gap-2">
+                <Label>Badge</Label>
+                <Input value={settings.contact_page?.badge ?? ""} onChange={(e) => update("contact_page", "badge", e.target.value)} placeholder="Get in Touch" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Title</Label>
+                <Input value={settings.contact_page?.title ?? ""} onChange={(e) => update("contact_page", "title", e.target.value)} placeholder="Contact Us" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Intro text</Label>
+                <Textarea value={settings.contact_page?.description ?? ""} onChange={(e) => update("contact_page", "description", e.target.value)} placeholder="Tell customers how to reach you." />
+              </div>
+              <div className="grid gap-2">
                 <Label>Address</Label>
                 <Input value={settings.contact_page?.address ?? ""} onChange={(e) => update("contact_page", "address", e.target.value)} />
               </div>
@@ -1678,6 +1690,22 @@ const SiteSettings = () => {
               <div className="grid gap-2">
                 <Label>Email</Label>
                 <Input value={settings.contact_page?.email ?? ""} onChange={(e) => update("contact_page", "email", e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>WhatsApp</Label>
+                <Input value={settings.contact_page?.whatsapp ?? ""} onChange={(e) => update("contact_page", "whatsapp", e.target.value)} placeholder="+8801..." />
+              </div>
+              <div className="grid gap-2">
+                <Label>Form button label</Label>
+                <Input value={settings.contact_page?.form_button_label ?? ""} onChange={(e) => update("contact_page", "form_button_label", e.target.value)} placeholder="Send Message" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Response time heading</Label>
+                <Input value={settings.contact_page?.response_time_label ?? ""} onChange={(e) => update("contact_page", "response_time_label", e.target.value)} placeholder="Response Time" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Response time text</Label>
+                <Textarea value={settings.contact_page?.response_time_text ?? ""} onChange={(e) => update("contact_page", "response_time_text", e.target.value)} placeholder="Usually within 1 business day." />
               </div>
               <div className="border-t border-border pt-4 space-y-4">
                 <div className="flex items-center gap-2">

@@ -12,6 +12,12 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 interface ContactSettings {
+  badge?: string;
+  title?: string;
+  description?: string;
+  form_button_label?: string;
+  response_time_label?: string;
+  response_time_text?: string;
   address?: string;
   phone?: string;
   email?: string;
@@ -93,20 +99,27 @@ const Contact = () => {
   const phone = contact?.phone || "+1 000-000-0000";
   const emailAddr = contact?.email || "hello@example.com";
   const whatsapp = contact?.whatsapp || phone;
+  const badge = contact?.badge || "Get in Touch";
+  const title = contact?.title || "Contact Us";
+  const description = contact?.description || `Reach ${storeName} by email, phone, or WhatsApp.`;
+  const formButtonLabel = contact?.form_button_label || "Send Message";
+  const responseTimeLabel = contact?.response_time_label || "Response Time";
+  const responseTimeText = contact?.response_time_text || "Usually within 1 business day. For urgent order changes, call or message us right after placing the order.";
 
   return (
     <Layout>
       <SEOHead
-        title="Contact Us"
-        description={`Get in touch with ${storeName}. Reach us by email, phone, or visit our location.`}
+        title={title}
+        description={description}
         canonical={absoluteStoreUrl(currentStore, "/contact")}
       />
       <PageTransition>
         <section className="py-20">
           <div className="container mx-auto max-w-4xl px-4">
             <AnimatedSection>
-              <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Get in Touch</p>
-              <h1 className="mb-12 font-heading text-4xl font-bold text-foreground">Contact Us</h1>
+              <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{badge}</p>
+              <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">{title}</h1>
+              <p className="mb-12 max-w-2xl text-sm text-muted-foreground">{description}</p>
             </AnimatedSection>
 
             <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
@@ -153,7 +166,7 @@ const Contact = () => {
                     disabled={submitting}
                     className="w-full rounded-md bg-primary py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 glow-shadow transition-all active:animate-scale-pop disabled:opacity-50"
                   >
-                    {submitting ? "Sending..." : "Send Message"}
+                    {submitting ? "Sending..." : formButtonLabel}
                   </button>
                 </form>
               </AnimatedSection>
@@ -201,8 +214,8 @@ const Contact = () => {
                     <div className="flex items-start gap-4">
                       <Clock className="mt-1 h-5 w-5 shrink-0 text-primary" />
                       <div>
-                        <p className="font-heading text-sm font-semibold text-foreground">Response Time</p>
-                        <p className="text-sm text-muted-foreground">Usually within 1 business day. For urgent order changes, call or message us right after placing the order.</p>
+                        <p className="font-heading text-sm font-semibold text-foreground">{responseTimeLabel}</p>
+                        <p className="text-sm text-muted-foreground">{responseTimeText}</p>
                       </div>
                     </div>
                     {contact?.map_enabled && contact?.map_embed_url ? (

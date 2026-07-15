@@ -30,11 +30,17 @@ export function PlanCtaButton({ planId, cta, featured }: PlanCtaButtonProps) {
     };
   }, []);
 
-  const href = (isMounted && isLoggedIn)
-    ? "/admin/billing"
-    : `/signup?planId=${encodeURIComponent(planId)}`;
+  const isContactSalesPlan = planId === "pro";
 
-  const text = (isMounted && isLoggedIn)
+  const href = isContactSalesPlan
+    ? "/contact"
+    : (isMounted && isLoggedIn)
+      ? "/admin/billing"
+      : `/signup?planId=${encodeURIComponent(planId)}`;
+
+  const text = isContactSalesPlan
+    ? cta
+    : (isMounted && isLoggedIn)
     ? "Upgrade current store"
     : cta;
 
