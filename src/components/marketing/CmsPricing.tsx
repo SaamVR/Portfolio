@@ -1,114 +1,52 @@
 import { Check, Sparkles } from "lucide-react";
-import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { PlanCtaButton } from "@/components/marketing/PlanCtaButton";
 
 type PlanCard = {
   id: string;
   name: string;
   price: string;
+  trial: string;
   description: string;
   features: string[];
   cta: string;
   featured: boolean;
 };
 
-const fallbackPlans: PlanCard[] = [
+const marketingPlans: PlanCard[] = [
   {
-    id: "starter",
-    name: "Starter",
-    price: "Free",
-    description: "For new merchants who need a cleaner way to launch one convincing storefront.",
-    features: ["1 storefront", "Mobile onboarding", "CMS page builder", "Cash on delivery and manual payments"],
-    cta: "Start Free",
+    id: "basic",
+    name: "Basic",
+    price: "BDT 990/mo",
+    trial: "14-day free trial",
+    description: "A simple start for new stores that want to launch fast.",
+    features: ["1 storefront", "Mobile onboarding", "Page builder", "COD and manual payments"],
+    cta: "Start Basic",
     featured: false,
   },
   {
-    id: "growth",
-    name: "Growth",
+    id: "advanced",
+    name: "Advanced",
     price: "BDT 1,490/mo",
-    description: "For brands that want stronger campaigns, more polished storefront sections, and better store control.",
-    features: ["3 storefronts", "Launch templates", "Staff roles", "Coupons, reviews, and analytics"],
-    cta: "Choose Growth",
+    trial: "14-day free trial",
+    description: "Best for growing brands that want stronger campaigns and more control.",
+    features: ["3 storefronts", "Launch templates", "Staff roles", "Coupons, reviews, analytics"],
+    cta: "Start Advanced",
     featured: true,
   },
   {
-    id: "scale",
-    name: "Scale",
-    price: "Custom",
-    description: "For agencies and larger operators managing multiple brands, teams, and high-touch launch needs.",
-    features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration and setup help"],
-    cta: "Talk to Sales",
+    id: "pro",
+    name: "Pro",
+    price: "BDT 2,990/mo",
+    trial: "14-day free trial",
+    description: "For teams that need more stores, more support, and more flexibility.",
+    features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration help"],
+    cta: "Start Pro",
     featured: false,
   },
 ];
 
-function formatPlanPrice(monthlyPrice: number | null | undefined) {
-  if (monthlyPrice == null) return "Custom";
-  if (monthlyPrice <= 0) return "Free";
-  return `BDT ${monthlyPrice.toLocaleString("en-BD")}/mo`;
-}
-
-async function loadPlanCards(): Promise<PlanCard[]> {
-  const supabase = getCmsSupabaseServerClient();
-  if (!supabase) {
-    return fallbackPlans;
-  }
-
-  const [{ data: plans }, { data: features }, { data: mappings }] = await Promise.all([
-    supabase
-      .from("cms_plans")
-      .select("id, name, description, monthly_price, store_limit, is_active, sort_order")
-      .eq("is_active", true)
-      .order("sort_order"),
-    supabase
-      .from("cms_features")
-      .select("key, name, default_visible, is_active, category")
-      .eq("is_active", true)
-      .eq("default_visible", true)
-      .order("category")
-      .order("name"),
-    supabase.from("cms_plan_features").select("plan_id, feature_key, enabled"),
-  ]);
-
-  if (!plans?.length || !features?.length) {
-    return fallbackPlans;
-  }
-
-  const visibleFeatureMap = new Map(features.map((feature) => [feature.key, feature.name]));
-
-  const cards = plans.map((plan, index) => {
-    const enabledFeatureNames =
-      mappings
-        ?.filter((mapping) => mapping.plan_id === plan.id && mapping.enabled)
-        .map((mapping) => visibleFeatureMap.get(mapping.feature_key))
-        .filter((value): value is string => Boolean(value)) ?? [];
-
-    const limitLabel =
-      plan.store_limit == null
-        ? "Unlimited storefronts"
-        : plan.store_limit === 1
-          ? "1 storefront"
-          : `${plan.store_limit} storefronts`;
-
-    const isFree = plan.monthly_price === 0 || plan.id === "starter";
-    const isCustom = plan.monthly_price === null || plan.id === "scale";
-
-    return {
-      name: plan.name,
-      id: plan.id,
-      price: formatPlanPrice(plan.monthly_price),
-      description: plan.description,
-      features: [limitLabel, ...enabledFeatureNames].slice(0, 6),
-      cta: isFree ? "Start Free" : isCustom ? "Talk to Sales" : `Choose ${plan.name}`,
-      featured: plan.id === "growth" || index === 1,
-    } satisfies PlanCard;
-  });
-
-  return cards.length > 0 ? cards : fallbackPlans;
-}
-
 export async function CmsPricing() {
-  const plans = await loadPlanCards();
+  const plans = marketingPlans;
 
   return (
     <section id="plans" className="border-t border-slate-200 bg-stone-100 py-20 text-slate-950 dark:border-white/8 dark:bg-slate-950 dark:text-white">
@@ -119,10 +57,10 @@ export async function CmsPricing() {
             Packages
           </div>
           <h2 className="font-heading text-3xl font-bold text-slate-950 dark:text-white sm:text-4xl">
-            Choose the package that matches how serious the store needs to feel.
+            Pick the plan that fits your store.
           </h2>
           <p className="mt-3 text-slate-600 dark:text-zinc-400">
-            These plans are shaped around launch quality, operational control, and how much persuasive storefront structure a merchant needs to convert buyers.
+            Every plan starts with a 14-day trial, so merchants can explore before they commit.
           </p>
         </div>
 
@@ -132,7 +70,7 @@ export async function CmsPricing() {
               key={plan.name}
               className={`group rounded-[1.75rem] border p-6 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 ${
                 plan.featured
-                  ? "border-emerald-500/35 bg-white text-slate-950 shadow-[0_25px_80px_rgba(16,185,129,0.12)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.18)] dark:bg-emerald-500/14 dark:text-white dark:shadow-[0_25px_80px_rgba(16,185,129,0.2)] dark:hover:shadow-[0_32px_90px_rgba(16,185,129,0.28)]"
+                  ? "border-emerald-500/35 bg-emerald-50/90 text-slate-950 shadow-[0_25px_80px_rgba(16,185,129,0.12)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.18)] dark:border-emerald-400/25 dark:bg-[linear-gradient(180deg,rgba(16,24,39,0.96),rgba(6,78,59,0.35))] dark:text-white dark:shadow-[0_25px_80px_rgba(16,185,129,0.2)] dark:hover:shadow-[0_32px_90px_rgba(16,185,129,0.28)]"
                   : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.06)] hover:border-slate-300 hover:shadow-[0_24px_70px_rgba(15,23,42,0.1)] dark:border-white/8 dark:bg-slate-900/55 dark:text-white dark:shadow-[0_18px_60px_rgba(0,0,0,0.16)] dark:hover:border-white/14 dark:hover:bg-slate-900/70 dark:hover:shadow-[0_28px_80px_rgba(0,0,0,0.24)]"
               }`}
             >
@@ -148,6 +86,9 @@ export async function CmsPricing() {
                 ) : null}
               </div>
               <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>
+              <p className={`mt-2 text-sm font-medium ${plan.featured ? "text-emerald-700 dark:text-emerald-100" : "text-slate-600 dark:text-zinc-300"}`}>
+                {plan.trial}
+              </p>
               <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-zinc-200">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
