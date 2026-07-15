@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 export function normalizeHost(host?: string | null) {
   if (!host) return null;
@@ -12,13 +13,9 @@ type RoutingEnv = Record<string, string | undefined>;
 
 export function getBaseDomains(env: RoutingEnv = process.env) {
   const configured = [
-    // Server-only vars (accessible in middleware/edge)
-    env.CMS_ROOT_DOMAIN,
-    env.STORE_SUBDOMAIN_BASE_DOMAIN,
+    getCmsRootDomain(env),
+    getStoreSubdomainBaseDomain(env),
     env.SITE_URL,
-    // NEXT_PUBLIC_ vars — available at build time even on edge
-    env.NEXT_PUBLIC_CMS_ROOT_DOMAIN,
-    env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN,
     env.NEXT_PUBLIC_SITE_URL,
   ]
     .map(normalizeHost)

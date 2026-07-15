@@ -9,6 +9,7 @@ import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/li
 import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
+import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
@@ -100,10 +101,8 @@ function normalizeDomainValue(value?: string | null) {
 
 function getStoreSubdomainBaseDomains() {
   const configured = [
-    process.env.CMS_ROOT_DOMAIN,
-    process.env.STORE_SUBDOMAIN_BASE_DOMAIN,
-    process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN,
-    process.env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN,
+    getCmsRootDomain(),
+    getStoreSubdomainBaseDomain(),
   ]
     .map(normalizeDomainValue)
     .filter((value): value is string => Boolean(value));

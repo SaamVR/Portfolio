@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCmsRootDomain, getPlatformSiteUrl, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import {
   canManageStore,
   getAuthenticatedUser,
@@ -31,12 +32,9 @@ function isValidDomain(domain: string) {
 
 function configuredPlatformDomains() {
   return [
-    process.env.CMS_ROOT_DOMAIN,
-    process.env.STORE_SUBDOMAIN_BASE_DOMAIN,
-    process.env.SITE_URL,
-    process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN,
-    process.env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN,
-    process.env.NEXT_PUBLIC_SITE_URL,
+    getCmsRootDomain(),
+    getStoreSubdomainBaseDomain(),
+    getPlatformSiteUrl(),
   ]
     .filter((value): value is string => Boolean(value))
     .map(normalizeDomain);
