@@ -1,7 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const seedDemoProducts = async () => {
+export const seedDemoProducts = async (storeId: string | null | undefined) => {
+  if (!storeId) {
+    toast.error("Select a store before seeding demo products.");
+    return;
+  }
+
   const demoProducts = [
     {
       name: "Premium Urban Drop Shoulder",
@@ -116,7 +121,7 @@ export const seedDemoProducts = async () => {
     },
     {
       name: "Vintage Wash Graphic Tee",
-      description: "Acid washed for a retro look. Features an exclusive ThreadBD graphic print on the back.",
+      description: "Acid washed for a retro look. Features an exclusive signature graphic print on the back.",
       price: 990,
       original_price: 1200,
       image_url: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&q=80&w=800",
@@ -154,7 +159,10 @@ export const seedDemoProducts = async () => {
 
   try {
     for (const product of demoProducts) {
-      const { error } = await supabase.from('products').insert(product);
+      const { error } = await supabase.from("products").insert({
+        ...product,
+        store_id: storeId,
+      });
       if (error) {
         console.error("Error inserting product", product.name, error);
       }

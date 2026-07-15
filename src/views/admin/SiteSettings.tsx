@@ -78,6 +78,27 @@ const mobilePinnedSettingTabs = [
   "page_builder",
 ] as const;
 
+const validSettingTabs = new Set([
+  "brand_seo",
+  "home_sections",
+  "hero",
+  "promo",
+  "announcement",
+  "themes",
+  "upsells",
+  "payment",
+  "delivery",
+  "loyalty",
+  "support",
+  "about",
+  "faq",
+  "contact",
+  "footer",
+  "domain",
+  "notifications",
+  "page_builder",
+]);
+
 const scrollToAdminSection = (sectionId: string) => {
   if (typeof document === "undefined") return;
   document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -140,10 +161,15 @@ const SiteSettings = () => {
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
 
   const rawActiveTab = searchParams.get("tab") || "brand_seo";
-  const activeTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
+  const normalizedActiveTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
+  const activeTab = validSettingTabs.has(normalizedActiveTab) ? normalizedActiveTab : "brand_seo";
 
   const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value });
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set("tab", value);
+    setSearchParams(nextSearchParams);
+    setShowMobileAllTabs(false);
+    setShowMobileLegacyTabs(false);
   };
 
   const [tabQuery, setTabQuery] = useState("");
@@ -848,7 +874,12 @@ const SiteSettings = () => {
             </p>
           ) : null}
         </div>
-        <Button variant="outline" onClick={seedDemoProducts} className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary w-full sm:w-auto">
+        <Button
+          variant="outline"
+          onClick={() => void seedDemoProducts(activeStoreId)}
+          disabled={!activeStoreId}
+          className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary w-full sm:w-auto"
+        >
           <Database className="h-4 w-4" /> Seed Demo Products
         </Button>
       </div>
