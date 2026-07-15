@@ -23,7 +23,7 @@ const defaultValues = [
 
 const About = () => {
   const currentStore = useOptionalStore();
-  const storeName = currentStore?.name ?? "Our Brand";
+  const storeName = currentStore?.name ?? "This Brand";
   const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page", currentStore?.id);
 
   const title = about?.title || `About ${storeName}`;
@@ -40,7 +40,7 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
   return (
     <Layout>
       <SEOHead
-        title="About Us"
+        title={title}
         description={`Learn about ${storeName} and what the brand stands for.`}
         canonical={absoluteStoreUrl(currentStore, "/about")}
       />
@@ -64,7 +64,7 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
         <section className="border-t border-border py-20">
           <div className="container mx-auto px-4">
             <AnimatedSection>
-              <h2 className="mb-12 text-center font-heading text-3xl font-bold text-foreground">Our Values</h2>
+              <h2 className="mb-12 text-center font-heading text-3xl font-bold text-foreground">Why Customers Choose {storeName}</h2>
             </AnimatedSection>
             <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
               {values.map((v, i) => {

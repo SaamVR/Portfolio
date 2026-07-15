@@ -45,7 +45,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
 
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
-  const storeName = currentStore?.name ?? "the store";
+  const storeName = currentStore?.name ?? "this store";
   const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
@@ -524,12 +524,12 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
                     <AnimatedSection animation="blur">
                       <div className="flex flex-col items-center justify-center py-20 text-center rounded-lg border border-dashed border-border bg-card">
                         <p className="mb-4 font-heading text-xl font-semibold text-foreground">No products found</p>
-                        <p className="mb-6 text-muted-foreground">Try adjusting your filters or search query.</p>
+                        <p className="mb-6 text-muted-foreground">Try adjusting your filters or search query to explore more from {storeName}.</p>
                         <button
                           onClick={clearFilters}
                           className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 smooth-hover"
                         >
-                          Reset Everything
+                          Reset Filters
                         </button>
                       </div>
                     </AnimatedSection>
@@ -552,7 +552,7 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
                       
                       {displayCount >= filtered.length && filtered.length > 0 && (
                         <div className="mt-12 text-center text-sm text-muted-foreground py-8">
-                          You've reached the end of the collection.
+                          You have reached the end of the {storeName} collection.
                         </div>
                       )}
                     </>

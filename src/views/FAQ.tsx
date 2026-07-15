@@ -31,7 +31,7 @@ const defaultFaqs: FAQEntry[] = [
 
 const FAQ = () => {
   const currentStore = useOptionalStore();
-  const storeName = currentStore?.name ?? "the store";
+  const storeName = currentStore?.name ?? "this store";
   const { data: faqs, isLoading } = useSiteSettings<FAQEntry[]>("faq_entries", currentStore?.id);
 
   const entries = faqs && faqs.length > 0 ? faqs : defaultFaqs;
@@ -39,7 +39,7 @@ const FAQ = () => {
   return (
     <Layout>
       <SEOHead
-        title="FAQ"
+        title={`FAQ | ${storeName}`}
         description={`Frequently asked questions about ${storeName} orders, delivery, payments, and returns.`}
         canonical={absoluteStoreUrl(currentStore, "/faq")}
         jsonLd={{
@@ -58,7 +58,7 @@ const FAQ = () => {
             <AnimatedSection>
               <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">Information</p>
               <h1 className="mb-4 font-heading text-4xl font-bold text-foreground">Frequently Asked Questions</h1>
-              <p className="mb-12 text-muted-foreground">Everything you need to know about ordering from {storeName}.</p>
+              <p className="mb-12 text-muted-foreground">Helpful answers about ordering, delivery, payments, and support for {storeName}.</p>
             </AnimatedSection>
 
             {isLoading ? (
