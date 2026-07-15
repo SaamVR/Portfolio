@@ -290,9 +290,10 @@ function getStoreUrl(slug: string, customDomain?: string | null) {
 }
 
 export default function OnboardingWizard() {
-  const { user, role, activeStoreId: contextStoreId } = useAuth();
+  const { user, role, activeStoreId: contextStoreId, setActiveStoreId } = useAuth();
   const searchParams = useSearchParams();
-  const activeStoreId = searchParams?.get("storeId") || contextStoreId;
+  const requestedStoreId = searchParams?.get("storeId");
+  const activeStoreId = requestedStoreId || contextStoreId;
   const { seedData, isSeeding } = useSeedData(activeStoreId ?? null);
   const { data: entitlements } = useStoreEntitlements(activeStoreId);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -317,7 +318,13 @@ export default function OnboardingWizard() {
   const canGoNext = activeIndex < steps.length - 1;
   const canGoBack = activeIndex > 0;
   const blueprintEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
-  const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
+  const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
+
+  useEffect(() => {
+    if (requestedStoreId && requestedStoreId !== contextStoreId) {
+      setActiveStoreId(requestedStoreId);
+    }
+  }, [contextStoreId, requestedStoreId, setActiveStoreId]);
 
   useEffect(() => {
     setActiveIndex(0);

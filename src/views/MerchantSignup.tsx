@@ -277,9 +277,9 @@ export default function MerchantSignup() {
       await refreshRole();
       setActiveStoreId(data.store_id);
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
-      
-      // Force full reload or hard navigation if they are already logged in to reset contexts
-      window.location.href = data.dashboard_path || `/admin/onboarding?storeId=${data.store_id}`;
+
+      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}`;
+      window.location.href = onboardingPath;
     } catch (error: any) {
       toast.error(error.message || "Failed to create workspace");
     } finally {

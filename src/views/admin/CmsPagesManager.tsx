@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,8 +25,10 @@ import {
   EyeOff,
   History,
   Copy,
+  Download,
   ExternalLink,
   FileText,
+  Import,
   Layers3,
   Monitor,
   PanelsTopLeft,
@@ -113,6 +115,23 @@ type BusinessProfileRecord = {
 type RecoverableDraft = {
   snapshot: string;
   updatedAt: string;
+};
+
+const STORE_LAYOUT_PACKAGE_SCHEMA = "ecomcms.storefront-layout.v1";
+
+type StoreLayoutPackage = {
+  schema: typeof STORE_LAYOUT_PACKAGE_SCHEMA;
+  exportedAt: string;
+  source: {
+    storeName: string;
+    storeSlug: string;
+    blueprintId: string;
+  };
+  layout: {
+    description: string;
+    theme: Store["theme"];
+    pages: StorePage[];
+  };
 };
 
 function serializeStoreDraft(store: Store): string {
@@ -262,11 +281,12 @@ export default function CmsPagesManager() {
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages">("pages");
+  const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
   const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
-  const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets");
+  const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
   const activeBlueprint = useMemo(
     () => resolveStoreBlueprint(storeBlueprintId, storeBlueprints),
@@ -953,6 +973,93 @@ export default function CmsPagesManager() {
     });
   };
 
+  const exportStoreLayout = () => {
+    if (!store) return;
+
+    const payload: StoreLayoutPackage = {
+      schema: STORE_LAYOUT_PACKAGE_SCHEMA,
+      exportedAt: new Date().toISOString(),
+      source: {
+        storeName: store.name,
+        storeSlug: store.slug,
+        blueprintId: storeBlueprintId,
+      },
+      layout: {
+        description: store.description,
+        theme: store.theme,
+        pages: store.pages,
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${store.slug || "storefront"}-layout.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Storefront layout exported.");
+  };
+
+  const importStoreLayout = async (raw: string) => {
+    if (!store) return;
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<StoreLayoutPackage>;
+      if (parsed.schema !== STORE_LAYOUT_PACKAGE_SCHEMA || !parsed.layout || !Array.isArray(parsed.layout.pages)) {
+        throw new Error("This is not a valid storefront layout package.");
+      }
+
+      if (hasUnsavedChanges && !window.confirm("Importing a layout will replace your unsaved Page Builder draft. Continue?")) {
+        return;
+      }
+
+      const importedPages = parsed.layout.pages.flatMap((page, pageIndex) => {
+        const pageId = crypto.randomUUID();
+        const sanitizedPage = sanitizeStorePage({
+          ...page,
+          id: pageId,
+          isHomepage: Boolean(page.isHomepage),
+          blocks: sanitizeStoreBlocks(page.blocks ?? []).map((block, blockIndex) => ({
+            ...block,
+            id: crypto.randomUUID(),
+            sortOrder: blockIndex,
+          })),
+        });
+
+        return sanitizedPage ? [sanitizedPage] : [];
+      });
+
+      if (importedPages.length === 0) {
+        throw new Error("This layout package does not contain any valid pages.");
+      }
+
+      const homepageIndex = Math.max(0, importedPages.findIndex((page) => page.isHomepage));
+      const normalizedPages = importedPages.map((page, index) => ({
+        ...page,
+        isHomepage: index === homepageIndex,
+        slug: index === homepageIndex ? "/" : page.slug === "/" ? `/page-${index + 1}` : page.slug,
+      }));
+
+      const candidate = storeSchema.parse({
+        ...store,
+        description: parsed.layout.description || store.description,
+        theme: parsed.layout.theme || store.theme,
+        pages: normalizedPages,
+      });
+
+      setStore(candidate);
+      setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
+      setSelectedBlockId("");
+      setWorkspaceTab("pages");
+      toast.success("Layout imported. Review it, then save Page Builder changes.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to import storefront layout.");
+    }
+  };
+
   const saveAll = async () => {
     if (!store || !user) return;
 
@@ -1357,6 +1464,18 @@ export default function CmsPagesManager() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <input
+              ref={layoutImportInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                await importStoreLayout(await file.text());
+                event.currentTarget.value = "";
+              }}
+            />
             {returnTo ? (
               <Button variant="outline" asChild className="gap-2">
                 <Link to={returnTo}>
@@ -1374,6 +1493,14 @@ export default function CmsPagesManager() {
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Preview Page</span>
               </a>
+            </Button>
+            <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export Layout</span>
+            </Button>
+            <Button variant="outline" onClick={() => layoutImportInputRef.current?.click()} className="gap-2 px-3">
+              <Import className="h-4 w-4" />
+              <span className="hidden sm:inline">Import Layout</span>
             </Button>
             <Button onClick={() => void saveAll()} disabled={saving} className="gap-2 px-3">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
