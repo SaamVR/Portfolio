@@ -7,6 +7,7 @@ const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
 const ACCESS_CACHE_STORAGE_KEY = "commerce-engine-access-cache";
 const ROLE_FETCH_TIMEOUT_MS = 20_000;
 const VISIBILITY_REFRESH_COOLDOWN_MS = 5_000;
+const SESSION_CLEAR_GRACE_MS = 1_500;
 
 type ResolvedAccessState = {
   memberships: StoreMembership[];
@@ -97,6 +98,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const passivePermissionRefreshRef = useRef<Promise<void> | null>(null);
   const initializingAuthRef = useRef(false);
   const resolvedAccessStateRef = useRef<ResolvedAccessState | null>(null);
+  const sessionClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelPendingSessionClear = useCallback(() => {
+    if (sessionClearTimeoutRef.current) {
+      clearTimeout(sessionClearTimeoutRef.current);
+      sessionClearTimeoutRef.current = null;
+    }
+  }, []);
 
   const setActiveStoreId = useCallback((storeId: string | null) => {
     setActiveStoreIdState(storeId);
@@ -178,6 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clearAccessState = useCallback(() => {
+    cancelPendingSessionClear();
     resolvedAccessStateRef.current = null;
     setRole(null);
     setPlatformRole(null);
@@ -185,7 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoreMemberships([]);
     setActiveStoreId(null);
     clearCachedAccessState();
-  }, [setActiveStoreId]);
+  }, [cancelPendingSessionClear, setActiveStoreId]);
 
   const resolvePermissions = useCallback(
     async (
@@ -301,6 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userIdRef.current = nextUserId;
         
         if (session?.user) {
+          cancelPendingSessionClear();
           const cachedAccess = readCachedAccessState(session.user.id);
           if (event === "TOKEN_REFRESHED" && isSameUser) {
             if (!resolvedAccessStateRef.current && cachedAccess) {
@@ -311,10 +322,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
 
           if (!isSameUser) {
-            clearAccessState();
             if (cachedAccess) {
               applyResolvedAccessState(cachedAccess);
               if (mountedRef.current) setLoading(false);
+            } else {
+              clearAccessState();
             }
           }
 
@@ -329,9 +341,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             void refreshPromise;
           }
         } else {
-          clearAccessState();
-          userIdRef.current = null;
-          if (mountedRef.current) setLoading(false);
+          cancelPendingSessionClear();
+          sessionClearTimeoutRef.current = setTimeout(() => {
+            if (!mountedRef.current) return;
+            clearAccessState();
+            userIdRef.current = null;
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+          }, SESSION_CLEAR_GRACE_MS);
         }
       }
     );
@@ -375,6 +393,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mountedRef.current = false;
+      cancelPendingSessionClear();
       subscription.unsubscribe();
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -383,9 +402,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         window.removeEventListener("focus", handleWindowFocus);
       }
     };
-  }, [clearAccessState, resolvePermissions]);
+  }, [applyResolvedAccessState, cancelPendingSessionClear, clearAccessState, resolvePermissions]);
 
   const signOut = async () => {
+    cancelPendingSessionClear();
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
