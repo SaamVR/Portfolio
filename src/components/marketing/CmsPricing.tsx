@@ -4,8 +4,9 @@ import { PlanCtaButton } from "@/components/marketing/PlanCtaButton";
 type PlanCard = {
   id: string;
   name: string;
-  price: string;
+  price?: string;
   trial: string;
+  eyebrow?: string;
   description: string;
   features: string[];
   cta: string;
@@ -36,11 +37,11 @@ const marketingPlans: PlanCard[] = [
   {
     id: "pro",
     name: "Pro",
-    price: "BDT 2,990/mo",
-    trial: "14-day free trial",
-    description: "For teams that need more stores, more support, and more flexibility.",
+    trial: "Talk to sales for custom rollout",
+    eyebrow: "Custom setup",
+    description: "For teams that need more stores, deeper support, and a custom launch plan.",
     features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration help"],
-    cta: "Start Pro",
+    cta: "Contact Sales",
     featured: false,
   },
 ];
@@ -83,9 +84,19 @@ export async function CmsPricing() {
                 </div>
                 {plan.featured ? (
                   <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-white/10 dark:text-white">Best balance</span>
+                ) : plan.eyebrow ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
+                    {plan.eyebrow}
+                  </span>
                 ) : null}
               </div>
-              <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>
+              {plan.price ? (
+                <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>
+              ) : (
+                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 dark:border-white/10 dark:bg-white/[0.03]">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-zinc-100">Custom pricing</p>
+                </div>
+              )}
               <p className={`mt-2 text-sm font-medium ${plan.featured ? "text-emerald-700 dark:text-emerald-100" : "text-slate-600 dark:text-zinc-300"}`}>
                 {plan.trial}
               </p>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { PLATFORM_BRAND_NAME, PLATFORM_PRIMARY_DOMAIN } from "@/lib/platform/site-config";
 import {
   ArrowRight,
   ArrowRightLeft,
@@ -24,6 +25,7 @@ import {
   Moon,
   PackageCheck,
   Palette,
+  PanelTop,
   Rocket,
   Settings2,
   ShieldCheck,
@@ -42,37 +44,37 @@ import {
 const faqs = [
   {
     q: "How do manual bKash payments work?",
-    a: "When customers choose manual payment at checkout, they see your bKash or Nagad number and instructions. They submit a TrxID, the order enters review, and you verify it from the admin dashboard.",
+    a: "Customers see your payment number and instructions at checkout. They submit a TrxID, and you confirm the order from the dashboard.",
   },
   {
     q: "Can I connect my own custom domain?",
-    a: "Yes. You can map your own domain from store settings, and the platform handles SSL provisioning and storefront routing for you.",
+    a: "Yes. Add your domain in store settings and the platform handles SSL and routing.",
   },
   {
     q: "Do I need coding skills to design pages?",
-    a: "No. The builder is designed for merchants. You can swap layouts, update sections, change colors, and adjust typography without touching code.",
+    a: "No. You can update sections, colors, and fonts without writing code.",
   },
   {
     q: "How fast can a store go live?",
-    a: "A merchant can start from a template, customize the brand, connect payments, and publish in a short guided flow. The landing page demo mirrors that setup story.",
+    a: "Pick a template, add your brand, connect payments, and publish in a simple guided flow.",
   },
 ];
 
 const testimonials = [
   {
-    quote: "We went from taking orders in Messenger to having a storefront that customers trusted before they even asked a question.",
+    quote: "We moved from inbox orders to a store that people trusted right away.",
     name: "Nadia Rahman",
     role: "Founder, Luna Skin Lab",
     result: "Launched in one evening",
   },
   {
-    quote: "The biggest win was how quickly we could change the homepage for campaigns. New drop, new colors, new hero, done.",
+    quote: "We can update a campaign page in minutes. New drop, new look, done.",
     name: "Mahin Islam",
     role: "Operator, Trendy Closet",
     result: "Campaign pages update in minutes",
   },
   {
-    quote: "The payment instructions and order flow made us look much more professional than selling from inbox threads.",
+    quote: "The payment flow made our business feel much more professional.",
     name: "Tanzim Hasan",
     role: "Owner, Volt Cart",
     result: "Clearer checkout, fewer support messages",
@@ -82,22 +84,22 @@ const testimonials = [
 const useCases = [
   {
     title: "Fashion drops",
-    body: "Launch lookbooks, spotlight best sellers, and rotate campaign banners for new arrivals and seasonal drops.",
+    body: "Show new arrivals, best sellers, and campaign banners in one clean storefront.",
     fit: "Ideal for apparel, accessories, and lifestyle labels",
   },
   {
     title: "Skincare routines",
-    body: "Guide buyers from concern to bundle with ingredient-led sections, trust copy, and routine recommendations.",
+    body: "Guide shoppers from skin concern to product bundle with clear trust-first content.",
     fit: "Ideal for skincare, beauty, and wellness brands",
   },
   {
     title: "Bakery menus",
-    body: "Highlight daily availability, pre-order windows, and celebration bundles with a warm, giftable storefront.",
+    body: "Highlight daily items, pre-orders, and gift boxes with a warm storefront.",
     fit: "Ideal for bakeries, gift shops, and food brands",
   },
   {
     title: "Electronics stores",
-    body: "Pair specs, warranty reassurance, and support details so technical shoppers feel confident before checkout.",
+    body: "Show specs, warranty, and support details so buyers feel safe before checkout.",
     fit: "Ideal for gadgets, accessories, and home tech",
   },
 ] as const;
@@ -106,22 +108,22 @@ const trustItems = [
   {
     icon: ShieldCheck,
     title: "Trust-ready storefronts",
-    body: "Policy, support, and payment clarity are built into the launch story so the site feels safer from day one.",
+    body: "Support, policy, and payment details are visible from day one.",
   },
   {
     icon: CreditCard,
     title: "Local payment fit",
-    body: "bKash, Nagad, and cash on delivery can all be represented in the setup instead of bolted on later.",
+    body: "Show bKash, Nagad, and cash on delivery early in the setup.",
   },
   {
     icon: Globe,
     title: "Real domain presence",
-    body: "Merchants can see how their store name turns into a branded subdomain before they commit to the full setup.",
+    body: "Show the branded store URL before the merchant signs up.",
   },
   {
     icon: PackageCheck,
     title: "Operational confidence",
-    body: "The landing flow hints at the real admin outcome: products, orders, launch status, and editable store setup.",
+    body: "The flow previews the real result: products, orders, and launch controls.",
   },
 ] as const;
 
@@ -136,12 +138,12 @@ const dayOneItems = [
 
 const beforeAfterItems = [
   {
-    before: "Selling from inbox threads, posting product drops manually, and answering the same payment questions all day.",
-    after: "A real storefront with product pages, branded sections, clear payment instructions, and a cleaner path to checkout.",
+    before: "Inbox orders, manual replies, and repeated payment questions.",
+    after: "A real store with clear pages, payment steps, and easier checkout.",
   },
   {
-    before: "Launching each campaign from scratch with new posts, new captions, and no reusable page structure.",
-    after: "One CMS setup where new campaigns reuse the same launch flow, visual system, and sales-focused page sections.",
+    before: "Every campaign starts from scratch.",
+    after: "One CMS setup makes every new campaign faster to launch.",
   },
 ] as const;
 
@@ -173,30 +175,30 @@ const comparisonRows = [
 ] as const;
 
 const checklistItems = [
-  "Choose the business type that matches the merchant",
-  "Import a launch-ready visual direction",
-  "Add store name, hero copy, and announcement text",
-  "Show local payment and support details clearly",
-  "Preview the branded URL and launch state",
-  "Continue into signup with editable prefilled data",
+  "Choose your business type",
+  "Pick a ready-made style",
+  "Add your store name and hero text",
+  "Show payment and support details",
+  "Preview your branded URL",
+  "Continue with editable setup data",
 ] as const;
 
 const objectionItems = [
   {
     title: "Not technical?",
-    body: "The landing page now makes the builder feel guided and editable instead of exposing raw setup complexity.",
+    body: "The setup is guided, so merchants can move fast without feeling lost.",
   },
   {
     title: "Already selling on Facebook?",
-    body: "The comparison framing helps merchants see this as a business upgrade, not a total workflow reset.",
+    body: "This feels like an upgrade, not a full reset of how you sell.",
   },
   {
     title: "Need manual payments?",
-    body: "bKash, Nagad, and COD are part of the story early, so the product feels locally practical.",
+    body: "Manual payments and COD are part of the flow from the start.",
   },
   {
     title: "Need a custom domain later?",
-    body: "The preview URL and launch section make the domain handoff feel real before the merchant signs up.",
+    body: "You can start with a preview URL and connect your own domain later.",
   },
 ] as const;
 
@@ -277,8 +279,8 @@ const siteProfiles = {
     name: "Fashion Boutique",
     badge: "Seasonal drop",
     tagline: "Premium streetwear collection",
-    hero: "Dress the launch like it already belongs on a billboard.",
-    description: "Showcase hero imagery, featured drops, social proof, and a cleaner apparel product grid.",
+    hero: "Launch a fashion store that already feels ready to shop.",
+    description: "Show new drops, featured pieces, and a cleaner product grid.",
     storeName: "Trendy Closet",
     announcement: "20% off launch week with code NEWDROP",
     sectionLabel: "Lookbook launch",
@@ -293,8 +295,8 @@ const siteProfiles = {
     name: "Skincare Brand",
     badge: "Routine builder",
     tagline: "Clinical but soft",
-    hero: "Guide shoppers from skin concern to trusted routine in one page.",
-    description: "Use ingredient highlights, before-after storytelling, and bundle sections that feel reassuring.",
+    hero: "Turn product trust into a simple skincare buying flow.",
+    description: "Show ingredients, routines, and bundles in a clear way.",
     storeName: "Luna Skin Lab",
     announcement: "Free cleanser mini on every routine bundle this week",
     sectionLabel: "Ingredient-led homepage",
@@ -309,8 +311,8 @@ const siteProfiles = {
     name: "Bakery & Gifts",
     badge: "Pre-order flow",
     tagline: "Warm and celebratory",
-    hero: "Turn daily menus and gifting boxes into a storefront that feels fresh each morning.",
-    description: "Feature delivery windows, quick order highlights, occasion bundles, and social proof for custom orders.",
+    hero: "Turn daily menus and gift boxes into a store people can order from fast.",
+    description: "Show delivery windows, popular picks, and celebration bundles.",
     storeName: "Oven Theory",
     announcement: "Same-day delivery inside Dhaka for orders before 4pm",
     sectionLabel: "Daily menu board",
@@ -325,8 +327,8 @@ const siteProfiles = {
     name: "Gadget Store",
     badge: "Spec-first",
     tagline: "Trust-driven conversion",
-    hero: "Pair product specs, warranty messaging, and local support in one high-converting setup.",
-    description: "Use comparison rows, trust badges, and support messaging for fast-moving gadgets and accessories.",
+    hero: "Sell gadgets with clearer specs, support, and trust.",
+    description: "Show warranty, support, and key product details in one place.",
     storeName: "Volt Cart",
     announcement: "Launch bundle: free cable organizer with every smart device order",
     sectionLabel: "Specs and support",
@@ -343,27 +345,39 @@ const onboardingSteps = [
   {
     id: 1,
     title: "Choose a site type",
-    description: "Pick a launch style with demo products and sections that match the business.",
+    description: "Pick a layout that matches the business.",
     icon: Store,
   },
   {
     id: 2,
     title: "Add your brand",
-    description: "Update the store name, hero message, and announcement bar to match the merchant.",
+    description: "Add the store name, hero text, and announcement.",
     icon: WandSparkles,
   },
   {
     id: 3,
     title: "Tune colors and fonts",
-    description: "Preview how the same storefront changes with a different palette and typography direction.",
+    description: "Try a different palette and font style.",
     icon: Palette,
   },
   {
     id: 4,
     title: "Connect and publish",
-    description: "Show launch readiness, payment setup, and the custom domain before going live.",
+    description: "Check payments, domain, and launch status.",
     icon: Rocket,
   },
+] as const;
+
+const refinementHighlights = [
+  "Pick a business with ready demo content",
+  "Change the look in one tap",
+  "Preview desktop and mobile before signup",
+] as const;
+
+const mobileExperiencePoints = [
+  "Thumb-friendly controls",
+  "Readable stacked preview",
+  "Always-visible CTA",
 ] as const;
 
 type ThemeKey = keyof typeof colorThemes;
@@ -393,7 +407,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
       ? configuredRootDomain
       : siteHost && siteHost !== "localhost" && siteHost !== "127.0.0.1"
         ? siteHost
-        : "commerce-engine.local";
+        : PLATFORM_PRIMARY_DOMAIN;
 
   if (directUrl.includes("localhost") || directUrl.includes("127.0.0.1") || directUrl.includes("/stores/")) {
     return `https://${encodeURIComponent(slug)}.${previewBaseDomain}`;
@@ -483,14 +497,14 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
       <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${headerShell}`}>
-        <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between px-4">
+        <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-3 px-4">
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
-              C
+              EZ
             </div>
             <div>
-              <p className="font-heading text-lg font-extrabold tracking-[0.18em]">COMMERCE ENGINE</p>
-              <p className={`text-[11px] uppercase tracking-[0.28em] ${subtleText}`}>CMS launch studio</p>
+              <p className="font-heading text-lg font-extrabold tracking-[0.18em]">{PLATFORM_BRAND_NAME.toUpperCase()}</p>
+              <p className={`text-[11px] uppercase tracking-[0.28em] ${subtleText}`}>{PLATFORM_PRIMARY_DOMAIN}</p>
             </div>
           </Link>
 
@@ -515,13 +529,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             >
               {isLightTheme ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
             </button>
-            <Link href="/admin/login" className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+            <Link href="/admin/login" className={`hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:inline-flex ${
               isLightTheme ? "text-slate-700 hover:bg-slate-200/70" : "text-zinc-300 hover:bg-white/5 hover:text-white"
             }`}>
               Login
             </Link>
-            <Link href="/signup" className={`rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
-              Start Building
+            <Link href="/signup" className={`inline-flex min-h-11 items-center rounded-full px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 sm:px-5 ${theme.primary} ${theme.button}`}>
+              Start building
             </Link>
           </div>
         </nav>
@@ -529,21 +543,21 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
       <section id="builder" className="relative z-10 mx-auto max-w-6xl px-4 pb-14 pt-8 sm:pt-12">
         <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
-          <div className="space-y-5 sm:space-y-6">
+          <div className="order-2 space-y-5 sm:space-y-6 lg:order-1">
             <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold ${theme.border} ${theme.accent} ${theme.primaryText}`}>
               <Sparkles className="h-4 w-4" />
-              Interactive storefront preview
+              Interactive preview
             </div>
 
             <div className="space-y-3 sm:space-y-4">
               <h1 className={`max-w-[12ch] font-heading text-[2.5rem] font-extrabold leading-[0.98] sm:max-w-none sm:text-5xl lg:text-6xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-                Launch a storefront that
+                Build a storefront that
                 <span className={`block bg-clip-text text-transparent ${isLightTheme ? "bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500" : "bg-gradient-to-r from-white via-zinc-200 to-zinc-500"}`}>
-                  feels real before signup.
+                  feels easy to launch.
                 </span>
               </h1>
               <p className={`max-w-xl text-[15px] leading-relaxed sm:text-lg ${mutedText}`}>
-                Keep the homepage fun: pick a business type, switch the look, and watch the storefront react instantly. The deeper setup lives in the walkthrough below.
+                Pick a business type, try the style, and see how your store can look before you sign up.
               </p>
             </div>
 
@@ -562,57 +576,94 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className={`rounded-2xl border p-4 ${panelShell}`}>
-                <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Site type</label>
-                <div className="relative mt-2">
-                  <select
-                    value={siteType}
-                    onChange={(e) => applySiteProfile(e.target.value as SiteKey)}
-                    className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm font-semibold outline-none transition focus:ring-2 ${theme.ring} ${
-                      isLightTheme ? "border-slate-300 bg-white text-slate-900" : "border-white/10 bg-white/5 text-white"
-                    }`}
-                  >
-                    {Object.entries(siteProfiles).map(([key, profile]) => (
-                      <option key={key} value={key} className={isLightTheme ? "bg-white text-slate-900" : "bg-slate-950 text-white"}>
-                        {profile.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-zinc-500" />
+            <div className={`overflow-hidden rounded-[1.75rem] border ${panelShell}`}>
+              <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${isLightTheme ? "border-slate-200/80" : "border-white/8"}`}>
+                <div>
+                  <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Studio controls</p>
+                  <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Quick ways to shape the page</p>
+                </div>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${theme.accent} ${theme.primaryText}`}>
+                  <PanelTop className="h-4.5 w-4.5" />
                 </div>
               </div>
-
-              <div className={`rounded-2xl border p-4 ${panelShell}`}>
-                <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Quick style</label>
-                <div className="mt-3 space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                  {Object.entries(colorThemes).map(([name, palette]) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setActiveTheme(name as ThemeKey)}
-                      className={`h-9 w-9 rounded-full border-2 transition ${palette.primary} ${activeTheme === name ? isLightTheme ? "border-slate-950 scale-105" : "border-white scale-105" : "border-transparent opacity-75"}`}
-                    />
-                  ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(fontThemes).map(([name, font]) => (
-                      <button
-                        key={name}
-                        type="button"
-                        onClick={() => setActiveFont(name as FontKey)}
-                        className={`rounded-full border px-3 py-2 text-[11px] font-semibold ${
-                          activeFont === name
-                            ? `${theme.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
-                            : isLightTheme
-                              ? "border-slate-300 text-slate-600"
-                              : "border-white/10 text-zinc-400"
+              <div className="grid gap-4 p-4 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className="space-y-4">
+                  <div>
+                    <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Site type</label>
+                    <div className="relative mt-2">
+                      <select
+                        value={siteType}
+                        onChange={(e) => applySiteProfile(e.target.value as SiteKey)}
+                        className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm font-semibold outline-none transition focus:ring-2 ${theme.ring} ${
+                          isLightTheme ? "border-slate-300 bg-white text-slate-900" : "border-white/10 bg-white/5 text-white"
                         }`}
                       >
-                        {font.name}
-                      </button>
+                        {Object.entries(siteProfiles).map(([key, profile]) => (
+                          <option key={key} value={key} className={isLightTheme ? "bg-white text-slate-900" : "bg-slate-950 text-white"}>
+                            {profile.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-zinc-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Quick style</label>
+                    <div className="mt-3 space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(colorThemes).map(([name, palette]) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => setActiveTheme(name as ThemeKey)}
+                            className={`h-9 w-9 rounded-full border-2 transition ${palette.primary} ${activeTheme === name ? isLightTheme ? "border-slate-950 scale-105" : "border-white scale-105" : "border-transparent opacity-75"}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(fontThemes).map(([name, font]) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => setActiveFont(name as FontKey)}
+                            className={`rounded-full border px-3 py-2 text-[11px] font-semibold ${
+                              activeFont === name
+                                ? `${theme.border} ${isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"}`
+                                : isLightTheme
+                                  ? "border-slate-300 text-slate-600"
+                                  : "border-white/10 text-zinc-400"
+                            }`}
+                          >
+                            {font.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`rounded-[1.4rem] border p-4 ${isLightTheme ? "border-slate-200 bg-slate-50/90" : "border-white/8 bg-white/[0.03]"}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>What changes instantly</p>
+                  <div className="mt-3 space-y-3">
+                    {refinementHighlights.map((item) => (
+                      <div key={item} className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${theme.accent} ${theme.primaryText}`}>
+                          <Check className="h-3.5 w-3.5" />
+                        </div>
+                        <p className={`text-sm leading-relaxed ${isLightTheme ? "text-slate-800" : "text-zinc-200"}`}>{item}</p>
+                      </div>
                     ))}
+                  </div>
+                  <div className={`mt-4 rounded-2xl border px-3 py-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-slate-950/40"}`}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Mobile experience</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {mobileExperiencePoints.map((item) => (
+                        <span key={item} className={`rounded-full px-3 py-1 text-[10px] font-semibold ${theme.chip}`}>
+                          {item}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -635,7 +686,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="order-1 space-y-4 lg:order-2">
             <div className={`flex flex-col gap-3 rounded-[1.5rem] border p-3 sm:flex-row sm:items-center sm:justify-between ${panelShell}`}>
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Live storefront preview</p>
@@ -927,10 +978,10 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 Launch setup planner
               </div>
               <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-                Make the setup feel organized before the merchant ever signs up.
+                Show the setup in simple steps.
               </h2>
               <p className={`max-w-2xl text-sm leading-relaxed sm:text-base ${mutedText}`}>
-                This section explains the setup in simple steps and can later pass the chosen data directly into signup and onboarding.
+                Help merchants see what happens next before they create an account.
               </p>
             </div>
             <div className={`rounded-full px-3 py-1 text-xs font-extrabold ${setupProgress === 100 ? "bg-green-500/10 text-green-300" : theme.chip}`}>
@@ -1190,9 +1241,9 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 </div>
 
                 <div className={`mt-5 rounded-2xl border p-4 ${isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.04]"}`}>
-                  <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>What this section should do next</p>
+                  <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>What happens next</p>
                   <p className={`mt-1 text-xs leading-relaxed ${mutedText}`}>
-                    This is the right place to pass demo data into signup and onboarding. The hero stays light and visual. The walkthrough handles the practical handoff.
+                    This is where the selected demo data can move into signup and onboarding.
                   </p>
                 </div>
               </div>
@@ -1216,13 +1267,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           <div className="space-y-5 sm:space-y-6">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <BadgeCheck className="h-3.5 w-3.5" />
-              Conversion-focused structure
+              Why it works
             </span>
             <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-              The homepage now explains both the CMS workflow and the visual outcome.
+              Show the workflow and the result on one page.
             </h2>
             <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-              Instead of showing disconnected demos, the landing page tells a merchant-friendly story: start with a business type, shape the brand, see the storefront react, and finish with launch readiness.
+              Visitors can see the business fit, style options, and launch path without reading too much.
             </p>
 
             <div className="space-y-4">
@@ -1231,8 +1282,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   <Layout className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Site-type dropdown with demo data</h3>
-                  <p className={`mt-0.5 text-xs ${subtleText}`}>Fashion, skincare, bakery, and electronics now preview different messaging, products, and support structure.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Demo sites by category</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>Different business types show different products, copy, and support details.</p>
                 </div>
               </div>
 
@@ -1241,8 +1292,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   <Sliders className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Realer visual customization</h3>
-                  <p className={`mt-0.5 text-xs ${subtleText}`}>Color and typography shifts now change the preview in a way that feels brand-led instead of purely technical.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Simple style changes</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>Color and font changes update the preview right away.</p>
                 </div>
               </div>
 
@@ -1251,8 +1302,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Cleaner publish story</h3>
-                  <p className={`mt-0.5 text-xs ${subtleText}`}>The readiness panel ties together domain setup, payment choice, and content completion in one visible finish line.</p>
+                  <h3 className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Clear launch path</h3>
+                  <p className={`mt-0.5 text-xs ${subtleText}`}>The readiness panel shows domain, payment, and content status in one place.</p>
                 </div>
               </div>
             </div>
@@ -1263,22 +1314,22 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               {
                 icon: Palette,
                 title: "Theme packs",
-                body: "Swap palettes quickly and let the preview carry the change through hero surfaces, badges, buttons, and accents.",
+                body: "Change the palette and see it flow through the full page.",
               },
               {
                 icon: Type,
                 title: "Typography moods",
-                body: "Preview modern, editorial, and campaign-driven looks to show how a merchant can change personality fast.",
+                body: "Try different font moods to match the brand faster.",
               },
               {
                 icon: CreditCard,
                 title: "Local payment setup",
-                body: "Keep bKash and COD visible in the onboarding story so setup feels practical, not just cosmetic.",
+                body: "Keep bKash and COD visible so setup feels practical.",
               },
               {
                 icon: Star,
                 title: "Trust-first layout",
-                body: "Sections emphasize support, policy clarity, and social proof so the storefront story ends in conversion confidence.",
+                body: "Support, trust, and proof help the page feel safer to buy from.",
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -1308,14 +1359,14 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             <div className="space-y-4">
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
                 <Clock3 className="h-3.5 w-3.5" />
-                Day-one outcome
-              </span>
-              <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-                The page should sell the business upgrade, not just the UI.
-              </h2>
-              <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-                Merchants need to understand what they actually get after signup. This section makes the outcome concrete before pricing ever appears.
-              </p>
+              Day-one outcome
+            </span>
+            <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
+              Show what merchants get on day one.
+            </h2>
+            <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
+              Make the result clear before the visitor reaches pricing.
+            </p>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {dayOneItems.map((item) => (
@@ -1380,10 +1431,10 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               Built for different businesses
             </span>
             <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-              Show merchants that the CMS already speaks their category.
+              Show that the CMS fits their business.
             </h2>
             <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-              A stronger landing page helps visitors recognize themselves quickly. These use cases turn the dropdown preview into a broader sales argument.
+              Help visitors recognize themselves quickly with category-based examples.
             </p>
           </div>
         </div>
@@ -1431,10 +1482,10 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               Launch checklist
             </span>
             <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-              Reduce friction by showing the exact path to launch.
+              Make the launch path feel easy.
             </h2>
             <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-              A checklist turns the walkthrough into a promise: the merchant can see exactly what happens next and why the setup feels manageable.
+              A short checklist helps merchants see what happens next.
             </p>
           </div>
           <div className="grid gap-3">
@@ -1462,7 +1513,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               Comparison
             </span>
             <h2 className={`mt-4 font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-              Help merchants understand why this beats inbox selling and generic builders.
+              Show why this is better than selling by inbox.
             </h2>
           </div>
           <div className="space-y-3 md:hidden">
@@ -1484,7 +1535,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                     <span className="mt-1 block">{row.generic}</span>
                   </div>
                   <div className={`rounded-xl px-3 py-2 ${theme.accent} ${isLightTheme ? "text-slate-900" : "text-white"}`}>
-                    <span className="block font-semibold">Commerce Engine</span>
+                    <span className="block font-semibold">{PLATFORM_BRAND_NAME}</span>
                     <span className="mt-1 block">{row.commerce}</span>
                   </div>
                 </div>
@@ -1498,7 +1549,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   <th className="px-6 py-4 font-semibold">What merchants need</th>
                   <th className="px-6 py-4 font-semibold">Inbox selling</th>
                   <th className="px-6 py-4 font-semibold">Generic website builder</th>
-                  <th className={`px-6 py-4 font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Commerce Engine</th>
+                  <th className={`px-6 py-4 font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{PLATFORM_BRAND_NAME}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1520,13 +1571,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         <div className="mb-8 max-w-2xl space-y-3 sm:mb-10">
           <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
             <ShieldCheck className="h-3.5 w-3.5" />
-            Objection handling
+            Common concerns
           </span>
           <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-            Answer the hesitation before the visitor reaches pricing.
+            Answer the big questions early.
           </h2>
           <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-            A high-converting homepage does not wait for the FAQ to do all the work. It surfaces the biggest concerns in plain language earlier in the flow.
+            Clear answers reduce doubt before the visitor reaches pricing.
           </p>
         </div>
         <div className="grid gap-3 lg:grid-cols-2 sm:gap-4 xl:grid-cols-4">
@@ -1550,17 +1601,17 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             Social proof
           </span>
           <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-            A testimonial section belongs on this page.
+            Show proof that the flow works.
           </h2>
           <p className={`text-sm leading-relaxed sm:text-base ${mutedText}`}>
-            The interactive demo proves possibility. Testimonials prove trust. Together they make the offer feel safer to buy.
+            The demo shows what is possible. Testimonials add trust.
           </p>
         </div>
         <div className="mb-6 flex justify-start sm:justify-end">
           <Link href="/stories" className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
             isLightTheme ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100" : "border-white/10 bg-white/5 text-white hover:bg-white/10"
           }`}>
-            Read more merchant stories
+            More stories
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -1601,7 +1652,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <section className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:py-24">
         <div className="mb-8 space-y-3 text-center sm:mb-12">
           <h2 className={`font-heading text-3xl font-extrabold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Frequently Asked Questions</h2>
-          <p className={`text-sm ${mutedText}`}>Clear answers about setup, domains, and how the CMS experience is presented.</p>
+          <p className={`text-sm ${mutedText}`}>Quick answers about setup, domains, and launch.</p>
         </div>
 
         <div className="space-y-3">
@@ -1643,19 +1694,19 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           }`} />
           <div className="relative z-10 space-y-6">
             <h2 className={`font-heading text-[1.9rem] font-extrabold leading-tight sm:text-4xl ${isLightTheme ? "text-slate-950" : "text-white"}`}>
-              Ready to turn this landing page into a stronger sales demo?
+              Ready to launch your store faster?
             </h2>
             <p className={`mx-auto max-w-xl text-sm leading-relaxed ${mutedText}`}>
-              Merchants should be able to understand the setup, feel the design flexibility, and trust the launch workflow within the first scroll. This version gets much closer.
+              Show the setup, show the style, and help visitors feel ready to start.
             </p>
             <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row sm:gap-4">
               <Link href="/signup" className={`rounded-full px-8 py-3.5 text-sm font-bold text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 ${theme.primary} ${theme.button}`}>
-                Start Free Trial
+                Start free
               </Link>
               <Link href="/templates" className={`rounded-full border px-8 py-3.5 text-sm font-bold transition-all duration-300 hover:-translate-y-0.5 ${
                 isLightTheme ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100" : "border-white/10 bg-white/5 text-white hover:bg-white/10"
               }`}>
-                Explore templates
+                View templates
               </Link>
             </div>
           </div>
@@ -1666,9 +1717,9 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         isLightTheme ? "border-slate-200 bg-stone-100 text-slate-500" : "border-white/5 bg-slate-950 text-zinc-500"
       }`}>
         <div className="mx-auto max-w-6xl space-y-6 px-4">
-          <p className={`font-heading text-sm font-extrabold tracking-[0.22em] ${isLightTheme ? "text-slate-950" : "text-white"}`}>COMMERCE ENGINE</p>
+          <p className={`font-heading text-sm font-extrabold tracking-[0.22em] ${isLightTheme ? "text-slate-950" : "text-white"}`}>{PLATFORM_BRAND_NAME.toUpperCase()}</p>
           <p className={`mx-auto max-w-md ${subtleText}`}>
-            A white-label ecommerce CMS built for launch-ready storefronts, operational clarity, and easier merchant onboarding.
+            A white-label ecommerce CMS for stores that want to launch fast and look professional.
           </p>
           <div className={`flex justify-center gap-4 text-[11px] ${mutedText}`}>
             <Link href="/templates" className={isLightTheme ? "hover:text-slate-950" : "hover:text-white"}>Templates</Link>
@@ -1676,10 +1727,31 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             <Link href="/plans" className={isLightTheme ? "hover:text-slate-950" : "hover:text-white"}>Pricing</Link>
           </div>
           <p className={`border-t pt-4 text-[10px] ${isLightTheme ? "border-slate-200" : "border-white/5"}`}>
-            &copy; {new Date().getFullYear()} Commerce Engine. Built for modern digital commerce.
+            &copy; {new Date().getFullYear()} {PLATFORM_BRAND_NAME}. Built for modern digital commerce.
           </p>
         </div>
       </footer>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 pt-2 sm:hidden">
+        <div className={`mx-auto flex max-w-md items-center gap-2 rounded-[1.35rem] border p-2 shadow-[0_20px_50px_rgba(15,23,42,0.22)] backdrop-blur-xl ${
+          isLightTheme ? "border-slate-200 bg-white/95" : "border-white/10 bg-slate-950/92"
+        }`}>
+          <a
+            href="#builder"
+            className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-[1rem] px-3 text-[11px] font-bold ${
+              isLightTheme ? "bg-slate-100 text-slate-700" : "bg-white/[0.05] text-zinc-200"
+            }`}
+          >
+            Preview
+          </a>
+          <Link
+            href="/signup"
+            className={`inline-flex min-h-11 flex-[1.25] items-center justify-center rounded-[1rem] px-3 text-[11px] font-bold text-white ${theme.primary}`}
+          >
+            Start building
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
