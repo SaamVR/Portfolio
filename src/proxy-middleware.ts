@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getPreferredRequestHost } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 export function normalizeHost(host?: string | null) {
@@ -125,7 +126,10 @@ export function getTenantRewritePath(storeSlug: string, pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  const hostname = normalizeHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
+  const hostname = getPreferredRequestHost({
+    host: request.headers.get("host"),
+    forwardedHost: request.headers.get("x-forwarded-host"),
+  });
   if (!hostname) {
     return NextResponse.next();
   }

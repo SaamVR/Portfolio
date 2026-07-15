@@ -1,16 +1,7 @@
 import { headers } from "next/headers";
 import { DEFAULT_STORE_ID } from "@/lib/cms/default-store";
 import { getStoreBySlug, isLocalStorefrontHostname, resolveStoreByHostname } from "@/lib/cms/store-resolver";
-
-function normalizeRequestHost(hostname?: string | null) {
-  if (!hostname) return null;
-
-  return hostname
-    .split(",")[0]
-    ?.trim()
-    .toLowerCase()
-    .split(":")[0] || null;
-}
+import { getPreferredRequestHost, normalizeRequestHost } from "@/lib/platform/request-host";
 
 export function shouldTryLocalStoreSlugFallback(hostname?: string | null, resolvedStoreId?: string | null) {
   const normalizedHost = normalizeRequestHost(hostname);
@@ -29,9 +20,10 @@ export function getLocalStoreSlugCandidates(env: Record<string, string | undefin
 
 export async function getRequestStore() {
   const requestHeaders = await headers();
-  const forwardedHost = requestHeaders.get("x-forwarded-host");
-  const host = requestHeaders.get("host");
-  const requestHost = forwardedHost ?? host ?? undefined;
+  const requestHost = getPreferredRequestHost({
+    host: requestHeaders.get("host"),
+    forwardedHost: requestHeaders.get("x-forwarded-host"),
+  }) ?? undefined;
   const resolved = await resolveStoreByHostname(requestHost);
 
   if (resolved && !shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
