@@ -139,6 +139,12 @@ export function MediaLibraryBrowser({
     toast.success("Asset URL copied.");
   };
 
+  const handleSelectAsset = (asset: MediaLibraryAsset) => {
+    if (!onSelect) return;
+    onSelect(asset);
+    toast.success("Media selected.");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -213,12 +219,23 @@ export function MediaLibraryBrowser({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {visibleAssets.map((asset) => {
           const isSelected = selectedUrl === asset.url;
+          const isSelectable = showSelectionActions && Boolean(onSelect);
 
           return (
             <div
               key={asset.id}
+              role={isSelectable ? "button" : undefined}
+              tabIndex={isSelectable ? 0 : undefined}
+              onClick={isSelectable ? () => handleSelectAsset(asset) : undefined}
+              onKeyDown={isSelectable ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleSelectAsset(asset);
+                }
+              } : undefined}
               className={cn(
                 "overflow-hidden rounded-lg border bg-card",
+                isSelectable && "cursor-pointer transition hover:border-primary/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 isSelected ? "border-primary shadow-sm" : "border-border",
               )}
             >
@@ -240,20 +257,61 @@ export function MediaLibraryBrowser({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {showSelectionActions && onSelect ? (
-                    <Button type="button" size="sm" variant={isSelected ? "secondary" : "outline"} onClick={() => onSelect(asset)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={isSelected ? "secondary" : "outline"}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleSelectAsset(asset);
+                      }}
+                    >
                       {isSelected ? "Selected" : "Use Asset"}
                     </Button>
                   ) : null}
-                  <Button type="button" size="sm" variant="outline" onClick={() => void handleCopy(asset.url)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleCopy(asset.url);
+                    }}
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => window.open(asset.url, "_blank", "noopener,noreferrer")}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      window.open(asset.url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
                     {asset.resourceType === "video" ? <Film className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setFolderFilter(asset.folder)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setFolderFilter(asset.folder);
+                    }}
+                  >
                     <FolderOpen className="h-4 w-4" />
                   </Button>
-                  <Button type="button" size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => void handleDelete(asset.id)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleDelete(asset.id);
+                    }}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

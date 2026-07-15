@@ -425,7 +425,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const [storeName, setStoreName] = useState("Trendy Closet");
   const [announcementText, setAnnouncementText] = useState("20% off launch week with code NEWDROP");
   const [heroHeading, setHeroHeading] = useState("Dress the launch like it already belongs on a billboard.");
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("mobile");
   const [currentStep, setCurrentStep] = useState<(typeof onboardingSteps)[number]["id"]>(1);
   const [paymentMode, setPaymentMode] = useState<"manual" | "hybrid">("manual");
   const [domainConnected, setDomainConnected] = useState(true);
