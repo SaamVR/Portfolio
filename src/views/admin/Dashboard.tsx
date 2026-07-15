@@ -57,7 +57,7 @@ interface DashboardPlanNotice {
   currentPlan: PlanRecord | null;
   subscription: SubscriptionRecord | null;
   paymentRequired: boolean;
-  isFreePlan: boolean;
+  isTrialPlan: boolean;
   upgradePlanNames: string[];
 }
 
@@ -84,7 +84,7 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [planNotice, setPlanNotice] = useState<DashboardPlanNotice | null>(null);
-  const [freePlanDismissed, setFreePlanDismissed] = useState(false);
+  const [trialPlanDismissed, setTrialPlanDismissed] = useState(false);
   const [storeHealth, setStoreHealth] = useState<StoreReadinessState>({
     score: 0,
     items: [],
@@ -246,8 +246,8 @@ const Dashboard = () => {
 
         const typedPlans = ((plans as PlanRecord[] | null) ?? []);
         const typedSubscription = (subscription as SubscriptionRecord | null) ?? null;
-        const starterPlan = typedPlans.find((plan) => plan.id === "starter") ?? typedPlans[0] ?? null;
-        const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? starterPlan;
+        const defaultPlan = typedPlans.find((plan) => plan.id === "basic") ?? typedPlans[0] ?? null;
+        const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? defaultPlan;
         const monthlyPrice = currentPlan?.monthly_price;
         const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;
         const subscriptionReady = typedSubscription?.status === "active" || typedSubscription?.status === "trialing";
@@ -255,7 +255,7 @@ const Dashboard = () => {
           currentPlan,
           subscription: typedSubscription,
           paymentRequired: paidOrCustomPlan && !subscriptionReady,
-          isFreePlan: Boolean(currentPlan && monthlyPrice === 0 && subscriptionReady),
+          isTrialPlan: typedSubscription?.status === "trialing",
           upgradePlanNames: typedPlans.filter((plan) => plan.id !== currentPlan?.id && plan.monthly_price !== 0).map((plan) => plan.name).slice(0, 2),
         });
       } catch (error) {
@@ -274,13 +274,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!activeStoreId || typeof window === "undefined") return;
-    setFreePlanDismissed(window.localStorage.getItem(`dashboard-free-plan-dismissed:${activeStoreId}`) === "true");
+    setTrialPlanDismissed(window.localStorage.getItem(`dashboard-trial-plan-dismissed:${activeStoreId}`) === "true");
   }, [activeStoreId]);
 
-  const dismissFreePlanNotice = () => {
-    setFreePlanDismissed(true);
+  const dismissTrialPlanNotice = () => {
+    setTrialPlanDismissed(true);
     if (activeStoreId && typeof window !== "undefined") {
-      window.localStorage.setItem(`dashboard-free-plan-dismissed:${activeStoreId}`, "true");
+      window.localStorage.setItem(`dashboard-trial-plan-dismissed:${activeStoreId}`, "true");
     }
   };
 
@@ -393,26 +393,26 @@ const Dashboard = () => {
         </Card>
       ) : null}
 
-      {planNotice?.isFreePlan && !freePlanDismissed ? (
+      {planNotice?.isTrialPlan && !trialPlanDismissed ? (
         <Card className="border-primary/25 bg-primary/5">
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Sparkles className="h-5 w-5 text-primary" />
-                You are on the free Starter plan
+                Your {planNotice.currentPlan?.name ?? "current"} trial is active
               </CardTitle>
               <CardDescription>
-                Upgrade for stronger growth tools{planNotice.upgradePlanNames.length ? ` like ${planNotice.upgradePlanNames.join(" and ")}` : ""}, team access, richer storefront controls, and advanced features.
+                Every package now starts with a 14-day trial. Use this time to finish setup, test payments, and decide whether you want to move to{planNotice.upgradePlanNames.length ? ` ${planNotice.upgradePlanNames.join(" or ")}` : " another package"} later.
               </CardDescription>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={dismissFreePlanNotice} aria-label="Dismiss free plan notice">
+            <Button type="button" variant="ghost" size="icon" onClick={dismissTrialPlanNotice} aria-label="Dismiss trial plan notice">
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="gap-2">
               <Link to="/admin/billing">
-                Upgrade <ArrowRight className="h-4 w-4" />
+                Review Plans <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardContent>

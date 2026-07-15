@@ -74,9 +74,9 @@ export default function MerchantSignup() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
   const [plans, setPlans] = useState<Array<{ id: string; name: string }>>([
-    { id: "starter", name: "Starter" },
-    { id: "growth", name: "Growth" },
-    { id: "scale", name: "Scale" },
+    { id: "basic", name: "Basic" },
+    { id: "advanced", name: "Advanced" },
+    { id: "pro", name: "Pro" },
   ]);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [form, setForm] = useState({
@@ -85,7 +85,7 @@ export default function MerchantSignup() {
     storeName: "",
     storeSlug: "",
     businessType: "general-catalog",
-    planId: searchParams.get("planId") || "starter",
+    planId: searchParams.get("planId") || "basic",
     otpCode: "",
   });
 
@@ -116,7 +116,7 @@ export default function MerchantSignup() {
           const requestedPlanId = searchParams.get("planId");
           const hasRequestedPlan = data.some((p) => p.id === requestedPlanId);
           if (hasRequestedPlan) {
-            setForm((prev) => ({ ...prev, planId: requestedPlanId || "starter" }));
+            setForm((prev) => ({ ...prev, planId: requestedPlanId || "basic" }));
           } else {
             setForm((prev) => ({ ...prev, planId: data[0].id }));
           }

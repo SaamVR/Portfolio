@@ -25,6 +25,8 @@ type BlueprintRecord = {
   default_site_settings: Record<string, unknown> | null;
 };
 
+const TRIAL_LENGTH_DAYS = 14;
+
 type ThemePackageRecord = {
   id: string;
   version?: number | null;
@@ -140,7 +142,7 @@ Deno.serve(async (req) => {
     const storeName = String(payload.store_name ?? "").trim();
     const requestedSlug = String(payload.store_slug ?? "").trim();
     const businessType = String(payload.business_type ?? "general-catalog").trim() || "general-catalog";
-    const planId = String(payload.plan_id ?? "starter").trim() || "starter";
+    const planId = String(payload.plan_id ?? "basic").trim() || "basic";
 
     if (!storeName) {
       return new Response(JSON.stringify({ error: "Store name is required" }), {
@@ -216,9 +218,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const finalPlanId = existingPlan?.id ?? "starter";
-    const planRequiresPayment = finalPlanId !== "starter" && existingPlan?.monthly_price !== 0;
-    const subscriptionStatus = planRequiresPayment ? "past_due" : "active";
+    const finalPlanId = existingPlan?.id ?? "basic";
+    const trialEndsAt = new Date(Date.now() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const planRequiresPayment = false;
+    const subscriptionStatus = "trialing";
 
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")
@@ -226,7 +229,7 @@ Deno.serve(async (req) => {
         owner_id: user.id,
         name: storeName,
         slug: storeSlug,
-        description: blueprint?.store_description ?? `${storeName} storefront powered by Commerce Engine.`,
+        description: blueprint?.store_description ?? `${storeName} storefront powered by EZComo.`,
         currency_code: "BDT",
         locale: "en-BD",
         plan: finalPlanId,
@@ -261,7 +264,7 @@ Deno.serve(async (req) => {
         store_id: store.id,
         plan_id: finalPlanId,
         status: subscriptionStatus,
-        trial_ends_at: null,
+        trial_ends_at: trialEndsAt,
       }, { onConflict: "store_id" }),
       supabaseAdmin.from("cms_signup_leads").insert({
         email: user.email,

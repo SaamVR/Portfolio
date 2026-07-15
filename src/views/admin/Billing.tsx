@@ -20,9 +20,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 export default function Billing() {
   const { activeStoreId, role } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [actionPlanId, setActionPlanId] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export default function Billing() {
         throw new Error("No active store selected");
       }
 
-      const planId = targetPlanId || subscription?.cms_plans?.id || "growth";
+      const planId = targetPlanId || subscription?.cms_plans?.id || "advanced";
       setActionPlanId(planId);
       const token = await getAccessToken();
 
@@ -258,9 +260,9 @@ export default function Billing() {
     }
   };
 
-  const planName = subscription?.cms_plans?.name || "Starter Plan";
+  const planName = subscription?.cms_plans?.name || "Basic";
   const planPrice = subscription?.cms_plans?.monthly_price || 0;
-  const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "starter";
+  const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "basic";
   const status = subscription?.status || "trialing";
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
@@ -306,7 +308,7 @@ export default function Billing() {
                 {planName}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                {planPrice === 0 ? "Free forever" : `BDT ${planPrice} / month`}
+                {`BDT ${planPrice} / month`}
               </div>
             </div>
 
@@ -393,8 +395,9 @@ export default function Billing() {
               {(plans || []).map((plan: any) => {
                 const monthlyPrice = Number(plan.monthly_price ?? 0);
                 const isCurrent = plan.id === currentPlanId;
-                const isCustom = plan.monthly_price === null;
+                const isContactPlan = plan.id === "pro";
                 const isBusy = actionPlanId === plan.id;
+                const planTrial = "14-day trial";
 
                 return (
                   <div key={plan.id} className={`rounded-lg border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-background"}`}>
@@ -407,21 +410,28 @@ export default function Billing() {
                     </div>
                     <div className="mt-5">
                       <p className="text-2xl font-bold text-foreground">
-                        {isCustom ? "Custom" : monthlyPrice === 0 ? "Free" : `BDT ${monthlyPrice}`}
+                        {`BDT ${monthlyPrice}`}
                       </p>
-                      {!isCustom && monthlyPrice > 0 ? <p className="text-xs text-muted-foreground">per month</p> : null}
+                      <p className="text-xs text-muted-foreground">per month</p>
                     </div>
+                    <p className="mt-2 text-xs font-medium text-primary">{planTrial}</p>
                     <div className="mt-4 text-xs text-muted-foreground">
                       {plan.store_limit ? `${plan.store_limit} store${plan.store_limit === 1 ? "" : "s"}` : "Unlimited stores"}
                     </div>
                     <Button
                       className="mt-5 w-full"
-                      variant={isCurrent ? "secondary" : monthlyPrice > 0 ? "default" : "outline"}
-                      disabled={isCurrent || isCustom || Boolean(actionPlanId)}
-                      onClick={() => handleSelectPlan(plan)}
+                      variant={isCurrent ? "secondary" : isContactPlan ? "outline" : "default"}
+                      disabled={isCurrent || Boolean(actionPlanId)}
+                      onClick={() => {
+                        if (isContactPlan) {
+                          router.push("/contact");
+                          return;
+                        }
+                        void handleSelectPlan(plan);
+                      }}
                     >
                       {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {isCurrent ? "Current Plan" : isCustom ? "Contact Sales" : monthlyPrice > 0 ? "Upgrade & Pay" : "Switch to Free"}
+                      {isCurrent ? "Current Plan" : isContactPlan ? "Contact Us" : "Start Trial"}
                     </Button>
                   </div>
                 );
@@ -439,7 +449,7 @@ export default function Billing() {
             </DialogTitle>
             <DialogDescription>
               {paymentMode === "choose" 
-                ? `Upgrade your store to the ${selectedPlanForPayment?.name} plan for BDT ${selectedPlanForPayment?.monthly_price}/month.`
+                ? `Start the ${selectedPlanForPayment?.name} plan for BDT ${selectedPlanForPayment?.monthly_price}/month after a 14-day trial.`
                 : `Please follow instructions below to pay BDT ${selectedPlanForPayment?.monthly_price} using manual bKash.`
               }
             </DialogDescription>

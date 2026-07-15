@@ -37,11 +37,12 @@ const marketingPlans: PlanCard[] = [
   {
     id: "pro",
     name: "Pro",
-    trial: "Talk to sales for custom rollout",
-    eyebrow: "Custom setup",
-    description: "For teams that need more stores, deeper support, and a custom launch plan.",
+    price: "BDT 3,990/mo",
+    trial: "14-day free trial",
+    eyebrow: "Guided rollout",
+    description: "For teams that need more stores, deeper support, and a guided launch plan.",
     features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration help"],
-    cta: "Contact Sales",
+    cta: "Contact Us",
     featured: false,
   },
 ];

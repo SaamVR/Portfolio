@@ -28,7 +28,7 @@ export function useStoreEntitlements(storeId?: string | null) {
       const planId = subscription?.plan_id as string | undefined;
       const subscriptionStatus = subscription?.status as string | undefined;
       const paidPlanReady = subscriptionStatus === "active" || subscriptionStatus === "trialing";
-      const defaultPlan = (allPlans ?? []).find((p: any) => p.monthly_price === 0 || p.monthly_price === null) ?? (allPlans ?? [])[0] ?? { id: "starter" };
+      const defaultPlan = (allPlans ?? []).find((p: any) => p.id === "basic") ?? (allPlans ?? [])[0] ?? { id: "basic" };
       const effectivePlanId = planId && paidPlanReady ? planId : defaultPlan.id;
       const { data: planMappings } = effectivePlanId
         ? await (supabase as any).from("cms_plan_features").select("feature_key, enabled").eq("plan_id", effectivePlanId)
