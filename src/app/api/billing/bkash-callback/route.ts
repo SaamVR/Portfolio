@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { addMonths, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 export const billingBkashCallbackRouteDeps = {
   getSupabaseAdminClient,
+  upsertStoreSubscription,
   now: () => new Date(),
   fetch: (...args: Parameters<typeof fetch>) => fetch(...args),
 };
@@ -143,16 +144,14 @@ export async function GET(req: Request) {
       })
       .eq("id", invoice.id);
 
-    await supabaseAdmin
-      .from("store_subscriptions")
-      .update({
-        plan_id: invoice.plan_id,
-        status: "active",
-        provider: "bkash",
-        provider_subscription_id: paymentID,
-        current_period_ends_at: periodEnd.toISOString(),
-      })
-      .eq("store_id", invoice.store_id);
+    await billingBkashCallbackRouteDeps.upsertStoreSubscription(supabaseAdmin, {
+      storeId: invoice.store_id,
+      planId: invoice.plan_id,
+      status: "active",
+      provider: "bkash",
+      providerSubscriptionId: paymentID,
+      currentPeriodEndsAt: periodEnd.toISOString(),
+    });
 
     return NextResponse.redirect(getBillingRedirectUrl("success"));
   } catch (error) {

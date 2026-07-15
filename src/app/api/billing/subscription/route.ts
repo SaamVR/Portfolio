@@ -3,12 +3,14 @@ import {
   canManageStore,
   getAuthenticatedUser,
   getSupabaseAdminClient,
+  upsertStoreSubscription,
 } from "@/lib/api/supabase-route";
 
 export const billingSubscriptionRouteDeps = {
   getAuthenticatedUser,
   getSupabaseAdminClient,
   canManageStore,
+  upsertStoreSubscription,
 };
 
 export async function PATCH(req: Request) {
@@ -55,19 +57,15 @@ export async function PATCH(req: Request) {
 
     const nextStatus = action === "cancel" ? "cancelled" : "active";
 
-    const { error } = await supabaseAdmin
-      .from("store_subscriptions")
-      .upsert(
-        {
-          store_id: storeId,
-          plan_id: plan.id,
-          status: nextStatus,
-          provider: null,
-          provider_subscription_id: null,
-          current_period_ends_at: null,
-        },
-        { onConflict: "store_id" },
-      );
+    const { error } = await billingSubscriptionRouteDeps.upsertStoreSubscription(supabaseAdmin, {
+      storeId,
+      planId: plan.id,
+      status: nextStatus,
+      provider: null,
+      providerSubscriptionId: null,
+      currentPeriodEndsAt: null,
+      trialEndsAt: null,
+    });
 
     if (error) throw error;
 

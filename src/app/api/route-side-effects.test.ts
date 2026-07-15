@@ -227,11 +227,11 @@ function createBkashCallbackAdminMock(invoice: {
   provider_invoice_id?: string | null;
 } | null) {
   const invoiceUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
-  const subscriptionUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const subscriptionUpserts: Array<{ payload: Record<string, unknown>; options: Record<string, unknown> }> = [];
 
   return {
     invoiceUpdates,
-    subscriptionUpdates,
+    subscriptionUpserts,
     client: {
       from(table: string) {
         if (table === "store_invoices") {
@@ -273,15 +273,9 @@ function createBkashCallbackAdminMock(invoice: {
 
         if (table === "store_subscriptions") {
           return {
-            update(payload: Record<string, unknown>) {
-              const filters: Array<[string, string]> = [];
-              return {
-                eq(column: string, value: string) {
-                  filters.push([column, value]);
-                  subscriptionUpdates.push({ payload, filters: [...filters] });
-                  return Promise.resolve({ error: null });
-                },
-              };
+            upsert(payload: Record<string, unknown>, options: Record<string, unknown>) {
+              subscriptionUpserts.push({ payload, options });
+              return Promise.resolve({ error: null });
             },
           };
         }
@@ -415,6 +409,7 @@ describe("billing subscription side effects", () => {
           provider: null,
           provider_subscription_id: null,
           current_period_ends_at: null,
+          trial_ends_at: null,
         },
         options: { onConflict: "store_id" },
       },
@@ -447,6 +442,7 @@ describe("billing subscription side effects", () => {
           provider: null,
           provider_subscription_id: null,
           current_period_ends_at: null,
+          trial_ends_at: null,
         },
         options: { onConflict: "store_id" },
       },
@@ -584,7 +580,7 @@ describe("bKash callback context integrity", () => {
     );
     assert.equal(fetchMock.mock.callCount(), 0);
     assert.equal(admin.invoiceUpdates.length, 0);
-    assert.equal(admin.subscriptionUpdates.length, 0);
+    assert.equal(admin.subscriptionUpserts.length, 0);
   });
 
   test("marks the invoice failed and redirects on provider payment id mismatch", async () => {
@@ -621,7 +617,7 @@ describe("bKash callback context integrity", () => {
         filters: [["id", "invoice_1"]],
       },
     ]);
-    assert.equal(admin.subscriptionUpdates.length, 0);
+    assert.equal(admin.subscriptionUpserts.length, 0);
   });
 
   test("marks the invoice failed when executed amount does not match the invoice", async () => {
@@ -674,7 +670,7 @@ describe("bKash callback context integrity", () => {
         filters: [["id", "invoice_1"]],
       },
     ]);
-    assert.equal(admin.subscriptionUpdates.length, 0);
+    assert.equal(admin.subscriptionUpserts.length, 0);
   });
 
   test("writes the exact paid invoice and active subscription payload on successful execution", async () => {
@@ -735,16 +731,18 @@ describe("bKash callback context integrity", () => {
         filters: [["id", "invoice_1"]],
       },
     ]);
-    assert.deepEqual(admin.subscriptionUpdates, [
+    assert.deepEqual(admin.subscriptionUpserts, [
       {
         payload: {
+          store_id: "store_1",
           plan_id: "growth",
           status: "active",
           provider: "bkash",
           provider_subscription_id: "pay_1",
           current_period_ends_at: expectedPeriodEnd,
+          trial_ends_at: null,
         },
-        filters: [["store_id", "store_1"]],
+        options: { onConflict: "store_id" },
       },
     ]);
   });

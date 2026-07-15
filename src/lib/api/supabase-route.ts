@@ -93,6 +93,44 @@ export async function canManageStore(
   return Boolean(membership?.role && allowedStoreRoles.includes(String(membership.role)));
 }
 
+interface StoreSubscriptionWriteInput {
+  storeId: string;
+  planId: string;
+  status: "trialing" | "active" | "past_due" | "cancelled";
+  provider?: string | null;
+  providerSubscriptionId?: string | null;
+  currentPeriodEndsAt?: string | null;
+  trialEndsAt?: string | null;
+}
+
+export async function upsertStoreSubscription(
+  supabaseAdmin: SupabaseClient,
+  input: StoreSubscriptionWriteInput,
+) {
+  const {
+    storeId,
+    planId,
+    status,
+    provider = null,
+    providerSubscriptionId = null,
+    currentPeriodEndsAt = null,
+    trialEndsAt = null,
+  } = input;
+
+  return supabaseAdmin.from("store_subscriptions").upsert(
+    {
+      store_id: storeId,
+      plan_id: planId,
+      status,
+      provider,
+      provider_subscription_id: providerSubscriptionId,
+      current_period_ends_at: currentPeriodEndsAt,
+      trial_ends_at: trialEndsAt,
+    },
+    { onConflict: "store_id" },
+  );
+}
+
 export function addMonths(date: Date, months: number) {
   const next = new Date(date);
   next.setMonth(next.getMonth() + months);

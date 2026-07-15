@@ -15,9 +15,17 @@ interface DeliverySettings {
 }
 
 const Cart = () => {
-  const { items, removeItem, updateQuantity, totalPrice } = useCart();
+  const { items, removeItem, updateQuantity } = useCart();
   const currentStore = useOptionalStore();
-  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
+  const currentStoreId = currentStore?.id;
+  const currentStoreSlug = currentStore?.slug;
+  const currentStoreName = currentStore?.name ?? "this store";
+  const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
+  const cartStoreId = cartStoreIds.length === 1 ? (cartStoreIds[0] as string) : currentStoreId;
+  const hasMixedStoreItems = cartStoreIds.length > 1;
+  const cartItems = items.filter((item) => (item.storeId ?? cartStoreId) === cartStoreId);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings", cartStoreId);
 
   const deliveryFee = (() => {
     if (!deliveryData) return 80;
@@ -29,16 +37,38 @@ const Cart = () => {
   const isFreeDelivery = deliveryData?.enabled && totalPrice >= (deliveryData?.free_threshold ?? 2000);
   const amountToFreeDelivery = deliveryData ? Math.max(0, deliveryData.free_threshold - totalPrice) : 0;
 
-  if (items.length === 0) {
+  if (!cartStoreId && items.length > 0) {
+    return (
+      <Layout>
+        <SEOHead title="Cart" description="Review your shopping cart." noindex />
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="max-w-md text-center">
+            <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Open this cart from a storefront</h1>
+            <p className="mb-8 text-muted-foreground">
+              We could not determine which store these items belong to yet. Return to the storefront where you added them and try checkout again.
+            </p>
+            <Link
+              to={storefrontPath("/shop", currentStoreSlug)}
+              className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
+              Browse Shop
+            </Link>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (cartItems.length === 0) {
     return (
       <Layout>
         <SEOHead title="Cart" description="Review your shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="text-center">
             <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Your cart is empty</h1>
-            <p className="mb-8 text-muted-foreground">Add some premium tees to get started.</p>
+            <p className="mb-8 text-muted-foreground">Browse {currentStoreName} and save a few items to get started.</p>
             <Link
-              to={storefrontPath("/shop", currentStore?.slug)}
+              to={storefrontPath("/shop", currentStoreSlug)}
               className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               Browse Shop
@@ -54,9 +84,14 @@ const Cart = () => {
       <SEOHead title="Cart" description="Review your shopping cart." noindex />
       <div className="container mx-auto px-4 py-12">
         <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">Your Cart</h1>
+        {hasMixedStoreItems ? (
+          <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+            Your browser currently has items from more than one store. This page is showing only the active storefront items for a safe checkout.
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
-            {items.map((item) => (
+            {cartItems.map((item) => (
               <div key={`${item.storeId ?? "default"}-${item.productId}-${item.size}`} className="flex gap-4 rounded-lg border border-border bg-card p-4">
                 <img src={item.image} alt={item.name} className="h-24 w-24 rounded-md object-cover" />
                 <div className="flex flex-1 flex-col justify-between">
@@ -136,13 +171,13 @@ const Cart = () => {
               </div>
             </div>
             <Link
-              to={storefrontPath("/checkout", currentStore?.slug)}
+              to={storefrontPath("/checkout", currentStoreSlug)}
               className="mt-6 block w-full rounded-md bg-primary py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
             >
               Proceed to Checkout
             </Link>
             <Link
-              to={storefrontPath("/shop", currentStore?.slug)}
+              to={storefrontPath("/shop", currentStoreSlug)}
               className="mt-3 block w-full rounded-md border border-border py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
             >
               Continue Shopping

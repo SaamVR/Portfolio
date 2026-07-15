@@ -64,7 +64,7 @@ const TrackOrder = () => {
   return (
     <Layout>
       <SEOHead
-        title={`Track Your Order - ${storeName}`}
+        title={`Track Your Order | ${storeName}`}
         description={`Enter your order number to see real-time status updates for your ${storeName} order.`}
         noindex
       />
@@ -77,7 +77,7 @@ const TrackOrder = () => {
             </div>
             <h1 className="font-heading text-3xl font-bold text-foreground">Track Your Order</h1>
             <p className="mt-2 text-muted-foreground">
-              Enter your order number and phone number to see its current status.
+              Enter the order number and phone number used at checkout to see the latest status from {storeName}.
             </p>
           </div>
 
@@ -88,7 +88,7 @@ const TrackOrder = () => {
                 id="order-number"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="TBD-YYYYMMDD-XXXXXX"
+                placeholder="Enter your order number"
                 className="h-11 font-mono uppercase"
               />
             </div>
@@ -110,7 +110,7 @@ const TrackOrder = () => {
 
           {!storeId ? (
             <div className="rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground">
-              Order tracking is available only from a specific storefront.
+              Order tracking is available from a specific storefront. Open the merchant store where you placed the order to continue.
             </div>
           ) : null}
 
@@ -148,7 +148,7 @@ const TrackOrder = () => {
                   <XCircle className="mx-auto mb-1 h-7 w-7 text-destructive" />
                   <p className="font-semibold text-destructive">Order Cancelled</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Please contact us if you have any questions.
+                    Contact {storeName} if you need clarification or support for this order.
                   </p>
                 </div>
               ) : (

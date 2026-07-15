@@ -13,12 +13,13 @@ import { storefrontPath } from "@/lib/slug";
 const Wishlist = () => {
   const { items } = useWishlist();
   const currentStore = useOptionalStore();
+  const storeName = currentStore?.name ?? "this store";
   const { data: products = [], isLoading } = useProducts(currentStore?.id);
   const wishlistProducts = products.filter((p) => items.includes(p.id));
 
   return (
     <Layout>
-      <SEOHead title="Wishlist" description="Your saved products." noindex />
+      <SEOHead title="Wishlist" description={`Saved products from ${storeName}.`} noindex />
       <PageTransition>
         <section className="py-16">
           <div className="container mx-auto px-4">
@@ -32,7 +33,7 @@ const Wishlist = () => {
             {!currentStore ? (
               <AnimatedSection animation="blur">
                 <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-                  Wishlist is available only from a specific storefront.
+                  Wishlist items are stored per storefront. Open this page from a specific store to see your saved products.
                 </div>
               </AnimatedSection>
             ) : isLoading ? (
@@ -44,7 +45,7 @@ const Wishlist = () => {
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Heart className="mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="mb-4 font-heading text-xl font-semibold text-foreground">Your wishlist is empty</p>
-                  <p className="mb-6 text-muted-foreground">Save items you love by tapping the heart icon.</p>
+                  <p className="mb-6 text-muted-foreground">Save products from {storeName} by tapping the heart icon while you browse.</p>
                   <Link
                     to={storefrontPath("/shop", currentStore?.slug)}
                     className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 smooth-hover"

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { addMonths, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 
 export const billingWebhookRouteDeps = {
   getSupabaseAdminClient,
+  upsertStoreSubscription,
 };
 
 function isAuthorizedWebhook(req: Request) {
@@ -50,16 +51,14 @@ export async function POST(req: Request) {
         })
         .eq("id", invoice.id);
 
-      await supabaseAdmin
-        .from("store_subscriptions")
-        .update({
-          plan_id: invoice.plan_id,
-          status: "active",
-          current_period_ends_at: periodEnd.toISOString(),
-          provider: data.provider || "manual-webhook",
-          provider_subscription_id: data.provider_subscription_id || null,
-        })
-        .eq("store_id", invoice.store_id);
+      await billingWebhookRouteDeps.upsertStoreSubscription(supabaseAdmin, {
+        storeId: invoice.store_id,
+        planId: invoice.plan_id,
+        status: "active",
+        currentPeriodEndsAt: periodEnd.toISOString(),
+        provider: data.provider || "manual-webhook",
+        providerSubscriptionId: data.provider_subscription_id || null,
+      });
 
       return NextResponse.json({ success: true, message: "Subscription activated" });
     }
@@ -70,10 +69,11 @@ export async function POST(req: Request) {
         .update({ status: "failed" })
         .eq("id", invoice.id);
 
-      await supabaseAdmin
-        .from("store_subscriptions")
-        .update({ status: "past_due" })
-        .eq("store_id", invoice.store_id);
+      await billingWebhookRouteDeps.upsertStoreSubscription(supabaseAdmin, {
+        storeId: invoice.store_id,
+        planId: invoice.plan_id,
+        status: "past_due",
+      });
 
       return NextResponse.json({ success: true, message: "Subscription marked as past due" });
     }

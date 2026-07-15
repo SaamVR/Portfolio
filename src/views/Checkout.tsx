@@ -97,7 +97,25 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   }, [checkoutItems.length, navigate, storeSlug]);
 
   if (!checkoutStoreId) {
-    return null;
+    return (
+      <Layout>
+        <SEOHead title="Checkout" description="Complete your order." noindex />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="max-w-lg rounded-lg border border-border bg-card p-8 text-center">
+            <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Store checkout is unavailable</h1>
+            <p className="mb-6 text-muted-foreground">
+              We could not confirm which storefront this cart belongs to. Please return to the store and reopen checkout from there.
+            </p>
+            <button
+              onClick={() => navigate(storefrontPath("/cart", storeSlug))}
+              className="rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
+              Back to Cart
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   if (checkoutItems.length === 0) {

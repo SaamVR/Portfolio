@@ -398,6 +398,7 @@ const OrderTimeline = ({ status }: { status: string }) => {
 const Account = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
+  const storeName = currentStore?.name ?? "this store";
   const { user, loading, signOut } = useAuth();
   const { data: orders, isLoading: ordersLoading } = useMyOrders(storeId);
   const { items: wishlistIds } = useWishlist();
@@ -678,7 +679,7 @@ const Account = () => {
                 <div className="py-12 text-center">
                   <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="font-heading text-lg font-semibold text-foreground">No orders yet</p>
-                  <p className="text-sm text-muted-foreground mb-4">Your order history will appear here.</p>
+                  <p className="text-sm text-muted-foreground mb-4">Orders you place with {storeName} will appear here.</p>
                   <Button asChild variant="outline">
                     <Link to={storefrontPath("/shop", currentStore?.slug)}>Start Shopping</Link>
                   </Button>
@@ -714,7 +715,7 @@ const Account = () => {
                                     {item.name} × {item.quantity}{" "}
                                     <span className="text-muted-foreground">({item.size})</span>
                                   </span>
-                                  <span className="text-muted-foreground">৳{item.price * item.quantity}</span>
+                                  <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
                                 </div>
 
                                 {isDelivered && (
@@ -727,7 +728,7 @@ const Account = () => {
                                     {alreadyReviewed ? (
                                       <div className="flex items-center gap-2 text-primary">
                                         <CheckCircle2 className="h-4 w-4" />
-                                        <span className="text-xs font-medium">Review submitted — thank you!</span>
+                                        <span className="text-xs font-medium">Review submitted, thank you.</span>
                                       </div>
                                     ) : (
                                       <>
@@ -770,7 +771,7 @@ const Account = () => {
                             );
                           })}
                           <div className="border-t border-border pt-3 flex items-center justify-between font-heading font-bold text-foreground">
-                            <span>Total: ৳{order.total}</span>
+                            <span>Total: BDT {order.total}</span>
                             {isDelivered && (
                               <Button
                                 size="sm"
@@ -802,7 +803,7 @@ const Account = () => {
                 <div className="py-12 text-center">
                   <Heart className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="font-heading text-lg font-semibold text-foreground">Your wishlist is empty</p>
-                  <p className="text-sm text-muted-foreground mb-4">Save items you love and shop later.</p>
+                  <p className="text-sm text-muted-foreground mb-4">Save products from {storeName} to revisit them later.</p>
                   <Button asChild variant="outline">
                     <Link to={storefrontPath("/shop", currentStore?.slug)}>Browse Products</Link>
                   </Button>
@@ -824,7 +825,7 @@ const Account = () => {
                 <div className="py-12 text-center">
                   <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
                   <p className="font-heading text-lg font-semibold text-foreground">No reviews yet</p>
-                  <p className="text-sm text-muted-foreground">Your product reviews will appear here after you write them.</p>
+                  <p className="text-sm text-muted-foreground">Reviews you leave for {storeName} products will appear here.</p>
                 </div>
               ) : (
                 submittedReviews

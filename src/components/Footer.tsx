@@ -91,8 +91,8 @@ const Footer = () => {
   const extraLinks = footer?.extra_links ?? [];
   const extraLinksTitle = footer?.extra_links_title || "Quick Links";
   const sectionOrder = footer?.section_order?.length ? footer.section_order : defaultSectionOrder;
-  const paymentText = footer?.payment_text || "Add a short note here about accepted payment methods or checkout policies.";
-  const copyrightText = footer?.copyright || "Copyright 2026. All rights reserved.";
+  const paymentText = footer?.payment_text || "Accepted payment methods, delivery terms, and checkout options are shown during the order flow.";
+  const copyrightText = footer?.copyright || `Copyright ${new Date().getFullYear()}. All rights reserved.`;
   const showShopLinks = footer?.show_shop_links ?? true;
   const showNewsletter = footer?.show_newsletter ?? true;
   const shopLinks = dynamicProductCategories.length > 0
