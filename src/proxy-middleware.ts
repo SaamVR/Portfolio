@@ -126,26 +126,15 @@ export function getTenantRewritePath(storeSlug: string, pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  const host = request.headers.get("host");
-  const forwardedHost = request.headers.get("x-forwarded-host");
   const hostname = getPreferredRequestHost({
-    host,
-    forwardedHost,
+    host: request.headers.get("host"),
+    forwardedHost: request.headers.get("x-forwarded-host"),
   });
   if (!hostname) {
     return NextResponse.next();
   }
 
   const storeSlug = await resolveStoreSlug(hostname);
-  if (process.env.NODE_ENV === "production" && hostname.endsWith(".ezcomo.shop")) {
-    console.info("[store-proxy] hostname resolution", {
-      host,
-      forwardedHost,
-      hostname,
-      storeSlug,
-      pathname: request.nextUrl.pathname,
-    });
-  }
   if (!storeSlug) {
     return NextResponse.next();
   }

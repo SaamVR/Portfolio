@@ -20,25 +20,11 @@ export function getLocalStoreSlugCandidates(env: Record<string, string | undefin
 
 export async function getRequestStore() {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("host");
-  const forwardedHost = requestHeaders.get("x-forwarded-host");
   const requestHost = getPreferredRequestHost({
-    host,
-    forwardedHost,
+    host: requestHeaders.get("host"),
+    forwardedHost: requestHeaders.get("x-forwarded-host"),
   }) ?? undefined;
   const resolved = await resolveStoreByHostname(requestHost);
-
-  if (
-    process.env.NODE_ENV === "production"
-    && requestHost?.endsWith(".ezcomo.shop")
-    && !resolved
-  ) {
-    console.warn("[store-resolution] unresolved request host", {
-      host,
-      forwardedHost,
-      requestHost,
-    });
-  }
 
   if (resolved && !shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
     return resolved;
