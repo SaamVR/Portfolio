@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
+import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 
 export default function Page() {
   return (
@@ -11,7 +12,7 @@ export default function Page() {
           <Button asChild variant="ghost" className="gap-2">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
-              Commerce Engine
+              {PLATFORM_BRAND_NAME}
             </Link>
           </Button>
           <Button asChild>

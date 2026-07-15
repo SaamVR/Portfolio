@@ -1,3 +1,5 @@
+import { getPlatformSiteUrl, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+
 function normalizeHost(value?: string | null) {
   if (!value) return "";
   return value
@@ -18,23 +20,14 @@ function getRuntimeOrigin() {
   return window.location.origin.replace(/\/$/, "");
 }
 
-const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-const configuredStoreSubdomainBaseDomain = (
-  process.env.NEXT_PUBLIC_STORE_SUBDOMAIN_BASE_DOMAIN
-  || process.env.STORE_SUBDOMAIN_BASE_DOMAIN
-  || process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN
-  || process.env.CMS_ROOT_DOMAIN
-  || ""
-)
-  .replace(/^https?:\/\//, "")
-  .replace(/\/.*$/, "")
-  .replace(/\/$/, "");
+const configuredSiteUrl = getPlatformSiteUrl().replace(/\/$/, "");
+const configuredStoreSubdomainBaseDomain = getStoreSubdomainBaseDomain().replace(/\/$/, "");
 
 export const siteUrl =
   configuredSiteUrl && !(isLocalHost(configuredSiteUrl) && !isLocalHost(getRuntimeOrigin()))
     ? configuredSiteUrl
     : getRuntimeOrigin() ||
-  (typeof window !== "undefined" ? window.location.origin : "https://commerce-engine.local");
+  (typeof window !== "undefined" ? window.location.origin : configuredSiteUrl);
 
 export function absoluteUrl(path = "/") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

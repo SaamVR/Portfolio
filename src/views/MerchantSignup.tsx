@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Phone, Store, User } from "lucide-react";
 import { slugify } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
@@ -303,7 +304,7 @@ export default function MerchantSignup() {
           <Button asChild variant="ghost" className="mb-10 gap-2">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
-              Storefront Platform
+              {PLATFORM_BRAND_NAME}
             </Link>
           </Button>
           <h1 className="font-heading text-4xl font-bold leading-tight sm:text-5xl">

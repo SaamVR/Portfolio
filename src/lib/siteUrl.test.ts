@@ -16,7 +16,7 @@ describe("site url helpers", () => {
       absoluteStoreUrl(
         { slug: "merchant-noir" },
         "/product/launch-hoodie--00000000-0000-4000-8000-000000000001",
-      ).includes("/stores/merchant-noir/product/launch-hoodie--00000000-0000-4000-8000-000000000001"),
-    ).toBe(true);
+      ),
+    ).toBe("https://merchant-noir.ezcomo.shop/product/launch-hoodie--00000000-0000-4000-8000-000000000001");
   });
 });

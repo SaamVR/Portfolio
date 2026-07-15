@@ -1,6 +1,7 @@
 import React from "react";
 import "@/index.css";
 import { Providers } from "./providers";
+import { PLATFORM_BRAND_NAME, getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 export const viewport = {
   width: "device-width",
@@ -11,13 +12,13 @@ export const viewport = {
 };
 
 export const metadata = {
-  metadataBase: new URL("https://commerce-engine.local"),
-  title: "Storefront CMS Platform",
-  description: "A mobile-first storefront CMS for launch templates, pages, products, checkout flows, and store operations.",
-  authors: [{ name: "Storefront Platform" }],
+  metadataBase: new URL(getPlatformSiteUrl()),
+  title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
+  description: `${PLATFORM_BRAND_NAME} is a mobile-first storefront CMS for launch templates, pages, products, checkout flows, and store operations.`,
+  authors: [{ name: PLATFORM_BRAND_NAME }],
   openGraph: {
-    title: "Storefront CMS Platform",
-    description: "Launch and manage online stores with templates, CMS pages, products, payments, and admin workflows.",
+    title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
+    description: `Launch and manage online stores with ${PLATFORM_BRAND_NAME} templates, CMS pages, products, payments, and admin workflows.`,
     type: "website",
     images: [
       {
@@ -29,9 +30,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@storefrontplatform",
-    title: "Storefront CMS Platform",
-    description: "Launch and manage online stores with templates, CMS pages, products, payments, and admin workflows.",
+    site: "@ezcomo",
+    title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
+    description: `Launch and manage online stores with ${PLATFORM_BRAND_NAME} templates, CMS pages, products, payments, and admin workflows.`,
     images: ["/og-image.png"],
   },
 };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addMonths, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 export const billingBkashCallbackRouteDeps = {
   getSupabaseAdminClient,
@@ -8,11 +9,7 @@ export const billingBkashCallbackRouteDeps = {
 };
 
 function getAppBaseUrl() {
-  if (process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN) {
-    return `https://${process.env.NEXT_PUBLIC_CMS_ROOT_DOMAIN}`;
-  }
-
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:8080";
+  return getPlatformSiteUrl();
 }
 
 function getBillingRedirectUrl(payment: "success" | "cancelled" | "error", message?: string) {
