@@ -13,7 +13,7 @@ function ensureHttps(hostOrUrl?: string | null) {
   return host ? `https://${host}` : null;
 }
 
-export const PLATFORM_BRAND_NAME = "EZCome";
+export const PLATFORM_BRAND_NAME = "EZComo";
 export const PLATFORM_PRIMARY_DOMAIN = "ezcomo.shop";
 
 export function getCmsRootDomain(env: Record<string, string | undefined> = process.env) {
