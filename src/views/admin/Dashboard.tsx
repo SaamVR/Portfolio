@@ -354,9 +354,9 @@ const Dashboard = () => {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild className="gap-2">
-                <Link to="/admin/onboarding">
+                <Link to="/signup">
                   <Sparkles className="h-4 w-4" />
-                  Create or Finish a Store
+                  Create Store
                 </Link>
               </Button>
             </div>
@@ -398,7 +398,7 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>Continue store setup</Link>
+              <Link to={withStoreId("/admin/site-settings", activeStoreId)}>Open store settings</Link>
             </Button>
           </CardContent>
         </Card>
@@ -463,8 +463,8 @@ const Dashboard = () => {
         <CardContent className="space-y-5">
           {storeHealth.items.some((item) => !item.done) ? (
             <Button asChild className="w-full gap-2 sm:w-auto">
-              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>
-                Continue setup <ArrowRight className="h-4 w-4" />
+              <Link to={withStoreId("/admin/site-settings", activeStoreId)}>
+                Open store settings <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           ) : null}

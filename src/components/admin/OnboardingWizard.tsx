@@ -302,6 +302,7 @@ export default function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(true);
+  const [setupLocked, setSetupLocked] = useState(false);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
@@ -332,6 +333,7 @@ export default function OnboardingWizard() {
     setSlugAvailable(true);
     setSlugChecking(false);
     setSaving(false);
+    setSetupLocked(false);
     setBlueprints(fallbackStoreBlueprints);
     setThemePackages(fallbackThemePackages);
     setPageBlueprints(fallbackPageBlueprints);
@@ -369,7 +371,7 @@ export default function OnboardingWizard() {
         setThemePackages(loadedThemePackages);
         setPageBlueprints(loadedPageBlueprints);
 
-        const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult] = await Promise.all([
+        const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult, pageCountResult] = await Promise.all([
           supabase
             .from("stores")
             .select("name, slug, custom_domain, description, logo_url, store_type, is_published")
@@ -386,6 +388,10 @@ export default function OnboardingWizard() {
             .select("blueprint_id, blueprint_version, business_family, catalog_mode")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
+          supabase
+            .from("store_pages")
+            .select("id", { count: "exact", head: true })
+            .eq("store_id", activeStoreId as string),
         ]);
 
         const store = storeRecord as {
@@ -418,8 +424,14 @@ export default function OnboardingWizard() {
           loadedBlueprints,
         );
         const safeBlueprint = resolvedBlueprint ?? resolveStoreBlueprint(getDefaultBlueprintId(loadedBlueprints), loadedBlueprints);
+        const hasCompletedInitialSetup = Boolean(
+          store?.is_published
+          || themeRecord
+          || (pageCountResult.count ?? 0) > 0,
+        );
 
         if (!active) return;
+        setSetupLocked(hasCompletedInitialSetup);
         setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
           storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
           slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
@@ -465,6 +477,12 @@ export default function OnboardingWizard() {
   }, [activeStoreId]);
 
   useEffect(() => {
+    if (setupLocked) {
+      setSlugChecking(false);
+      setSlugAvailable(true);
+      return;
+    }
+
     const checkSlug = async () => {
       if (!draft.slug.trim()) {
         setSlugAvailable(false);
@@ -484,7 +502,7 @@ export default function OnboardingWizard() {
 
     const timer = window.setTimeout(() => void checkSlug(), 300);
     return () => window.clearTimeout(timer);
-  }, [activeStoreId, draft.slug]);
+  }, [activeStoreId, draft.slug, setupLocked]);
 
   if (role !== "admin") {
     return null;
@@ -713,6 +731,68 @@ export default function OnboardingWizard() {
     await navigator.clipboard.writeText(storeUrl);
     toast.success("Store URL copied.");
   };
+
+  if (setupLocked && activeStoreId) {
+    const siteSettingsHref = `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}`;
+    const pageBuilderHref = `/admin/page-builder?storeId=${encodeURIComponent(activeStoreId)}`;
+    const dashboardHref = `/admin?storeId=${encodeURIComponent(activeStoreId)}`;
+
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Card className="border-border">
+          <CardHeader className="space-y-3">
+            <Badge variant="secondary" className="w-fit gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Setup locked
+            </Badge>
+            <CardTitle className="text-2xl">This store has already completed first-time setup</CardTitle>
+            <CardDescription className="max-w-2xl">
+              The storefront URL and initial launch wiring are locked after the first setup so live routing stays stable. Keep editing the store from the normal admin workspace instead of reopening onboarding.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-xl border border-border bg-secondary/20 p-4">
+              <p className="text-sm font-medium text-foreground">Current storefront URL</p>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input readOnly value={storeUrl} className="font-mono text-xs" />
+                <Button type="button" variant="outline" onClick={copyStoreUrl} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button asChild className="gap-2">
+                <a href={dashboardHref}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Dashboard
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={siteSettingsHref}>
+                  <Save className="h-4 w-4" />
+                  Open Site Settings
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={pageBuilderHref}>
+                  <Package className="h-4 w-4" />
+                  Open Page Builder
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={storeUrl} target="_blank" rel="noreferrer">
+                  <Eye className="h-4 w-4" />
+                  View Store
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading && !activeStoreId) {
     return (

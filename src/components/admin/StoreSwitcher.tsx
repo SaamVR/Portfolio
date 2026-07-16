@@ -93,7 +93,7 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
               </div>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate(withStoreId("/admin/onboarding", activeStoreId))} className="cursor-pointer text-primary">
+            <DropdownMenuItem onClick={() => navigate("/signup")} className="cursor-pointer text-primary">
               <PlusCircle className="mr-2 h-4 w-4" />
               {hasStores ? "Create New Store" : "Create First Store"}
             </DropdownMenuItem>
@@ -104,7 +104,7 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
           variant="outline"
           size="icon"
           className="h-11 w-11 shrink-0 rounded-2xl border-dashed border-primary/40 text-primary"
-          onClick={() => navigate(withStoreId("/admin/onboarding", activeStoreId))}
+          onClick={() => navigate("/signup")}
         >
           <PlusCircle className="h-4 w-4" />
         </Button>
@@ -143,7 +143,7 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
           </div>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate(withStoreId("/admin/onboarding", activeStoreId))} className="cursor-pointer text-primary">
+        <DropdownMenuItem onClick={() => navigate("/signup")} className="cursor-pointer text-primary">
           {hasStores ? <PlusCircle className="mr-2 h-4 w-4" /> : <ArrowRightCircle className="mr-2 h-4 w-4" />}
           {hasStores ? "Create New Store" : "Create First Store"}
         </DropdownMenuItem>

@@ -835,9 +835,9 @@ const SiteSettings = () => {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="gap-2">
-                <Link to="/admin/onboarding">
+                <Link to="/signup">
                   <ArrowRightCircle className="h-4 w-4" />
-                  Create or Finish a Store
+                  Create Store
                 </Link>
               </Button>
             </div>

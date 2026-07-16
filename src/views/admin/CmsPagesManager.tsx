@@ -1348,9 +1348,9 @@ export default function CmsPagesManager() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/admin/onboarding">
+              <Link to="/signup">
                 <RefreshCcw className="h-4 w-4" />
-                Create or Finish a Store
+                Create Store
               </Link>
             </Button>
           </div>
@@ -1400,9 +1400,9 @@ export default function CmsPagesManager() {
               Initialize Storefront Workspace
             </Button>
             <Button variant="outline" asChild className="gap-2">
-              <Link to={withStoreId("/admin/onboarding", activeStoreId)}>
+              <Link to={withStoreId("/admin/site-settings", activeStoreId)}>
                 <StoreIcon className="h-4 w-4" />
-                Review Store Setup
+                Open Site Settings
               </Link>
             </Button>
           </div>
@@ -1694,7 +1694,8 @@ export default function CmsPagesManager() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Store Slug</Label>
-                  <Input value={store.slug} onChange={(e) => setStore({ ...store, slug: e.target.value })} />
+                  <Input value={store.slug} readOnly />
+                  <p className="text-xs text-muted-foreground">The storefront URL slug is locked after first setup to keep the live domain stable.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label>Store Description</Label>

@@ -7,11 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Globe, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export const CustomDomainTab = () => {
   const { activeStoreId } = useAuth();
   const [domain, setDomain] = useState("");
   const [savedDomain, setSavedDomain] = useState("");
+  const [storeSlug, setStoreSlug] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [checkingVerification, setCheckingVerification] = useState(false);
@@ -35,11 +37,13 @@ export const CustomDomainTab = () => {
       try {
         const { data, error } = await (supabase as any)
           .from("stores")
-          .select("custom_domain")
+          .select("custom_domain, slug")
           .eq("id", activeStoreId)
           .single();
 
         if (error) throw error;
+
+        setStoreSlug(data?.slug ?? "");
 
         if (data?.custom_domain) {
           if (!active) return;
@@ -52,6 +56,7 @@ export const CustomDomainTab = () => {
         if (!active) return;
         setDomain("");
         setSavedDomain("");
+        setStoreSlug(data?.slug ?? "");
         setVerificationStatus(null);
       } catch (error) {
         if (!active) return;
@@ -156,6 +161,8 @@ export const CustomDomainTab = () => {
     return <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
+  const resolvedUrl = absoluteStoreUrl(storeSlug ? { slug: storeSlug, customDomain: savedDomain || undefined } : undefined, "/");
+
   return (
     <Card className="border-border bg-card">
       <CardHeader>
@@ -164,24 +171,28 @@ export const CustomDomainTab = () => {
           Custom Domain
         </CardTitle>
         <CardDescription>
-          Connect a custom domain (e.g. www.yourbrand.com) to your store.
+          Store URL identity is locked after first-time setup so routing stays stable.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>Domain Name</Label>
-          <div className="flex gap-3">
-            <Input 
-              placeholder="e.g. yourstore.com" 
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              className="max-w-md"
-            />
-            <Button onClick={handleSaveDomain} disabled={loading || domain === savedDomain}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {domain ? (savedDomain && domain !== savedDomain ? "Update Domain" : "Save Domain") : "Remove Domain"}
-            </Button>
+        <div className="rounded-xl border border-border bg-secondary/20 p-4 space-y-4">
+          <div className="space-y-2">
+            <Label>Storefront URL</Label>
+            <Input readOnly value={resolvedUrl} className="font-mono text-xs" />
           </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Subdomain slug</p>
+              <p className="text-sm font-medium text-foreground">{storeSlug || "Not assigned yet"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Custom domain</p>
+              <p className="text-sm font-medium text-foreground">{savedDomain || "Using platform-managed store URL"}</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This store's domain setup is now read-only in admin. If the live URL ever needs to change, handle it as a controlled migration instead of editing the active store identity in place.
+          </p>
         </div>
 
         {savedDomain && verificationStatus === "pending" && (
