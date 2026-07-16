@@ -29,6 +29,10 @@ type OwnerMembershipRecord = {
   store_id: string;
 };
 
+type OwnedStoreRecord = {
+  id: string;
+};
+
 type StoreSubscriptionRecord = {
   store_id: string;
   plan_id: string | null;
@@ -177,11 +181,13 @@ Deno.serve(async (req) => {
 
     const [
       { data: existingStoreBySlug },
+      { data: ownedStores },
       { data: ownerMemberships },
       { data: existingPlan },
       { data: blueprintRecord },
     ] = await Promise.all([
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
+      supabaseAdmin.from("stores").select("id").eq("owner_id", user.id),
       supabaseAdmin.from("store_memberships").select("store_id").eq("user_id", user.id).eq("role", "owner"),
       supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit, trial_days, contact_only").eq("id", planId).eq("is_active", true).maybeSingle(),
       supabaseAdmin
@@ -221,9 +227,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ownedStoreIds = Array.from(
-      new Set(((ownerMemberships as OwnerMembershipRecord[] | null) ?? []).map((row) => row.store_id).filter(Boolean)),
-    );
+    const ownedStoreIds = Array.from(new Set([
+      ...(((ownedStores as OwnedStoreRecord[] | null) ?? []).map((row) => row.id).filter(Boolean)),
+      ...(((ownerMemberships as OwnerMembershipRecord[] | null) ?? []).map((row) => row.store_id).filter(Boolean)),
+    ]));
 
     if (ownedStoreIds.length > 0) {
       const { data: ownedSubscriptions } = await supabaseAdmin
