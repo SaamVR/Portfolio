@@ -13,6 +13,7 @@ import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/si
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { isSubscriptionLive } from "@/lib/billing/plans";
 
 interface StoreRow {
   id: string;
@@ -43,6 +44,11 @@ interface StoreThemeRow {
 
 interface StoreBusinessProfileRow {
   blueprint_id: string | null;
+}
+
+interface StoreSubscriptionRow {
+  status: string | null;
+  trial_ends_at?: string | null;
 }
 
 interface StorePageRow {
@@ -222,6 +228,15 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
     return null;
   }
 
+  const { data: subscription } = await supabase
+    .from("store_subscriptions")
+    .select("status, trial_ends_at")
+    .eq("store_id", matchedStore.id)
+    .maybeSingle();
+  if (!isSubscriptionLive((subscription as StoreSubscriptionRow | null) ?? null)) {
+    return null;
+  }
+
   const store = await getStoreById(matchedStore.id);
   return store;
 }
@@ -240,6 +255,15 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
     .maybeSingle();
 
   if (error || !store) {
+    return null;
+  }
+
+  const { data: subscription } = await supabase
+    .from("store_subscriptions")
+    .select("status, trial_ends_at")
+    .eq("store_id", store.id)
+    .maybeSingle();
+  if (!Boolean(store.is_published) || !isSubscriptionLive((subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 

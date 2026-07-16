@@ -74,6 +74,7 @@ export async function POST(req: Request) {
         planId: invoice.plan_id,
         status: "past_due",
       });
+      await supabaseAdmin.from("stores").update({ is_published: false }).eq("id", invoice.store_id);
 
       return NextResponse.json({ success: true, message: "Subscription marked as past due" });
     }

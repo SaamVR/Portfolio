@@ -25,8 +25,6 @@ type BlueprintRecord = {
   default_site_settings: Record<string, unknown> | null;
 };
 
-const TRIAL_LENGTH_DAYS = 14;
-
 type ThemePackageRecord = {
   id: string;
   version?: number | null;
@@ -168,7 +166,7 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
       supabaseAdmin.from("store_memberships").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "owner"),
-      supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit").eq("id", planId).eq("is_active", true).maybeSingle(),
+      supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit, trial_days, contact_only").eq("id", planId).eq("is_active", true).maybeSingle(),
       supabaseAdmin.from("stores").select("created_at").eq("owner_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin
         .from("store_blueprints")
@@ -218,8 +216,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (existingPlan?.contact_only) {
+      return new Response(JSON.stringify({ error: "This plan is activated through support. Please contact support to continue." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const finalPlanId = existingPlan?.id ?? "basic";
-    const trialEndsAt = new Date(Date.now() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const trialLengthDays = Math.max(0, Number(existingPlan?.trial_days ?? 14) || 14);
+    const trialEndsAt = new Date(Date.now() + trialLengthDays * 24 * 60 * 60 * 1000).toISOString();
     const planRequiresPayment = false;
     const subscriptionStatus = "trialing";
 

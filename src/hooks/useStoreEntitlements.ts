@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { normalizeEmail, resolveEffectiveFeatures } from "@/lib/platform/control-plane";
+import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
 
 export function useStoreEntitlements(storeId?: string | null) {
   const { platformRole, user } = useAuth();
@@ -12,7 +13,7 @@ export function useStoreEntitlements(storeId?: string | null) {
       if (!storeId) return { planId: null, effectivePlanId: null, subscriptionStatus: null, features: [], featureMap: {} as any };
       const normalizedEmail = normalizeEmail(user?.email);
       const [{ data: subscription }, { data: features }, { data: storeOverrides }, { data: emailOverrides }, { data: allPlans }] = await Promise.all([
-        (supabase as any).from("store_subscriptions").select("plan_id, status").eq("store_id", storeId).maybeSingle(),
+        (supabase as any).from("store_subscriptions").select("plan_id, status, trial_ends_at").eq("store_id", storeId).maybeSingle(),
         (supabase as any).from("cms_features").select("key, name, description, category, default_visible, is_active").order("category").order("name"),
         (supabase as any).from("store_feature_overrides").select("feature_key, enabled").eq("store_id", storeId),
         normalizedEmail
@@ -26,7 +27,7 @@ export function useStoreEntitlements(storeId?: string | null) {
       ]);
 
       const planId = subscription?.plan_id as string | undefined;
-      const subscriptionStatus = subscription?.status as string | undefined;
+      const subscriptionStatus = getEffectiveSubscriptionStatus(subscription as any) ?? undefined;
       const paidPlanReady = subscriptionStatus === "active" || subscriptionStatus === "trialing";
       const defaultPlan = (allPlans ?? []).find((p: any) => p.id === "basic") ?? (allPlans ?? [])[0] ?? { id: "basic" };
       const effectivePlanId = planId && paidPlanReady ? planId : defaultPlan.id;

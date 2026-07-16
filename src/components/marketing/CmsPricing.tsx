@@ -1,5 +1,6 @@
 import { Check, Sparkles } from "lucide-react";
 import { PlanCtaButton } from "@/components/marketing/PlanCtaButton";
+import { formatPlanPrice, getPlanTrialDays, isContactOnlyPlan, loadPublicPlanCatalog } from "@/lib/billing/plans";
 
 type PlanCard = {
   id: string;
@@ -11,6 +12,7 @@ type PlanCard = {
   features: string[];
   cta: string;
   featured: boolean;
+  contactOnly?: boolean;
 };
 
 const marketingPlans: PlanCard[] = [
@@ -48,7 +50,19 @@ const marketingPlans: PlanCard[] = [
 ];
 
 export async function CmsPricing() {
-  const plans = marketingPlans;
+  const planCatalog = await loadPublicPlanCatalog();
+  const plans = marketingPlans.map((plan) => {
+    const livePlan = planCatalog.find((item) => item.id === plan.id);
+    const trialDays = getPlanTrialDays(livePlan);
+    return {
+      ...plan,
+      price: isContactOnlyPlan(livePlan ?? { id: plan.id }) ? formatPlanPrice(livePlan) : formatPlanPrice(livePlan),
+      trial: `${trialDays}-day free trial`,
+      cta: isContactOnlyPlan(livePlan ?? { id: plan.id }) ? "Contact Support" : plan.cta,
+      description: livePlan?.description || plan.description,
+      contactOnly: isContactOnlyPlan(livePlan ?? { id: plan.id }),
+    };
+  });
 
   return (
     <section id="plans" className="border-t border-slate-200 bg-stone-100 py-20 text-slate-950 dark:border-white/8 dark:bg-slate-950 dark:text-white">
@@ -109,7 +123,7 @@ export async function CmsPricing() {
                   </li>
                 ))}
               </ul>
-              <PlanCtaButton planId={plan.id} cta={plan.cta} featured={plan.featured} />
+              <PlanCtaButton planId={plan.id} cta={plan.cta} featured={plan.featured} contactOnly={plan.contactOnly} />
             </article>
           ))}
         </div>

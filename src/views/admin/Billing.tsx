@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import {
+  formatPlanPrice,
+  getEffectiveSubscriptionStatus,
+  getPlanTrialDays,
+  getRemainingTrialDays,
+  isContactOnlyPlan,
+} from "@/lib/billing/plans";
 
 export default function Billing() {
   const { activeStoreId, role } = useAuth();
@@ -103,7 +110,7 @@ export default function Billing() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("cms_plans")
-        .select("id, name, description, monthly_price, store_limit, is_active, sort_order")
+        .select("id, name, description, monthly_price, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
         .eq("is_active", true)
         .order("sort_order");
 
@@ -190,6 +197,11 @@ export default function Billing() {
         return;
       }
 
+      if (isContactOnlyPlan(plan)) {
+        router.push("/contact");
+        return;
+      }
+
       const monthlyPrice = Number(plan.monthly_price ?? 0);
       if (monthlyPrice > 0) {
         handleInitiatePayment(plan);
@@ -263,9 +275,10 @@ export default function Billing() {
   const planName = subscription?.cms_plans?.name || "Basic";
   const planPrice = subscription?.cms_plans?.monthly_price || 0;
   const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "basic";
-  const status = subscription?.status || "trialing";
+  const status = getEffectiveSubscriptionStatus(subscription) || "trialing";
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
+  const remainingTrialDays = getRemainingTrialDays(trialEndsAt);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -316,7 +329,9 @@ export default function Billing() {
               {status === "trialing" && trialEndsAt && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Trial ends</span>
-                  <span className="font-medium text-foreground">{format(new Date(trialEndsAt), "PPP")}</span>
+                  <span className="font-medium text-foreground">
+                    {format(new Date(trialEndsAt), "PPP")} {remainingTrialDays != null ? `(${remainingTrialDays} day${remainingTrialDays === 1 ? "" : "s"} left)` : ""}
+                  </span>
                 </div>
               )}
               {currentPeriodEndsAt && (
@@ -331,7 +346,7 @@ export default function Billing() {
             {status === "past_due" || status === "trialing" ? (
               <Button onClick={() => handleInitiatePayment(subscription?.cms_plans)} className="w-full" disabled={Boolean(actionPlanId)}>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Pay Now (BDT {planPrice})
+                Pay Now ({formatPlanPrice(subscription?.cms_plans)})
               </Button>
             ) : null}
             <Button variant="outline" className="w-full" onClick={() => document.getElementById("available-plans")?.scrollIntoView({ behavior: "smooth" })}>
@@ -395,9 +410,9 @@ export default function Billing() {
               {(plans || []).map((plan: any) => {
                 const monthlyPrice = Number(plan.monthly_price ?? 0);
                 const isCurrent = plan.id === currentPlanId;
-                const isContactPlan = plan.id === "pro";
+                const isContactPlan = isContactOnlyPlan(plan);
                 const isBusy = actionPlanId === plan.id;
-                const planTrial = "14-day trial";
+                const planTrial = `${getPlanTrialDays(plan)}-day trial`;
 
                 return (
                   <div key={plan.id} className={`rounded-lg border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-background"}`}>
@@ -410,7 +425,7 @@ export default function Billing() {
                     </div>
                     <div className="mt-5">
                       <p className="text-2xl font-bold text-foreground">
-                        {`BDT ${monthlyPrice}`}
+                        {formatPlanPrice(plan)}
                       </p>
                       <p className="text-xs text-muted-foreground">per month</p>
                     </div>
@@ -431,7 +446,7 @@ export default function Billing() {
                       }}
                     >
                       {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {isCurrent ? "Current Plan" : isContactPlan ? "Contact Us" : "Start Trial"}
+                      {isCurrent ? "Current Plan" : isContactPlan ? "Contact Support" : "Start Trial"}
                     </Button>
                   </div>
                 );
@@ -449,7 +464,7 @@ export default function Billing() {
             </DialogTitle>
             <DialogDescription>
               {paymentMode === "choose" 
-                ? `Start the ${selectedPlanForPayment?.name} plan for BDT ${selectedPlanForPayment?.monthly_price}/month after a 14-day trial.`
+                ? `Start the ${selectedPlanForPayment?.name} plan for ${formatPlanPrice(selectedPlanForPayment)} per month after a ${getPlanTrialDays(selectedPlanForPayment)}-day trial.`
                 : `Please follow instructions below to pay BDT ${selectedPlanForPayment?.monthly_price} using manual bKash.`
               }
             </DialogDescription>

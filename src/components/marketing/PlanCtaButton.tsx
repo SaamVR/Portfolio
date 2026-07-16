@@ -9,9 +9,10 @@ interface PlanCtaButtonProps {
   planId: string;
   cta: string;
   featured: boolean;
+  contactOnly?: boolean;
 }
 
-export function PlanCtaButton({ planId, cta, featured }: PlanCtaButtonProps) {
+export function PlanCtaButton({ planId, cta, featured, contactOnly = false }: PlanCtaButtonProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -30,7 +31,7 @@ export function PlanCtaButton({ planId, cta, featured }: PlanCtaButtonProps) {
     };
   }, []);
 
-  const isContactSalesPlan = planId === "pro";
+  const isContactSalesPlan = contactOnly || planId === "pro";
 
   const href = isContactSalesPlan
     ? "/contact"

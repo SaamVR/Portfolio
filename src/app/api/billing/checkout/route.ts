@@ -54,13 +54,16 @@ export async function POST(req: Request) {
 
     const { data: plan, error: planError } = await supabaseAdmin
       .from("cms_plans")
-      .select("id, monthly_price, currency_code, is_active")
+      .select("id, monthly_price, currency_code, is_active, contact_only")
       .eq("id", planId)
       .maybeSingle();
 
     if (planError) throw planError;
     if (!plan || plan.is_active === false) {
       return NextResponse.json({ error: "Plan is not available" }, { status: 400 });
+    }
+    if (plan.contact_only) {
+      return NextResponse.json({ error: "This plan must be activated through support" }, { status: 400 });
     }
 
     const amount = Number(plan.monthly_price ?? 0);

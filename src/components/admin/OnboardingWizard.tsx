@@ -43,6 +43,7 @@ import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
+import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
 import {
   buildBlueprintSiteSettingsEntries,
   fallbackStoreBlueprints,
@@ -545,6 +546,19 @@ export default function OnboardingWizard() {
 
     setSaving(true);
     try {
+      if (publish) {
+        const { data: subscription } = await supabase
+          .from("store_subscriptions")
+          .select("status, trial_ends_at")
+          .eq("store_id", activeStoreId)
+          .maybeSingle();
+        const effectiveStatus = getEffectiveSubscriptionStatus(subscription as { status?: string | null; trial_ends_at?: string | null } | null);
+        if (effectiveStatus === "past_due" || effectiveStatus === "cancelled") {
+          toast.error("Your trial has ended for this store. Complete billing before publishing it live again.");
+          return;
+        }
+      }
+
       const selectedBlueprint = resolveStoreBlueprint(draft.blueprintId, blueprints);
       const selectedThemePackage = resolveThemePackageById(draft.themePackageId, themePackages, selectedBlueprint.defaultTheme.presetId);
       const pages = buildPreviewStore(
@@ -1085,10 +1099,10 @@ export default function OnboardingWizard() {
             </Button>
           ) : (
             <Button type="button" asChild variant="outline" className="gap-2">
-              <Link href="/">
+              <a href={storeUrl} target="_blank" rel="noreferrer">
                 <Eye className="h-4 w-4" />
                 View Store
-              </Link>
+              </a>
             </Button>
           )}
         </div>

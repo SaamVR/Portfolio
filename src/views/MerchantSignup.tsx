@@ -14,6 +14,7 @@ import { ArrowLeft, Loader2, Phone, Store, User } from "lucide-react";
 import { slugify } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
+import { isContactOnlyPlan, resolveSignupPlanId, type PlanCatalogRecord } from "@/lib/billing/plans";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
@@ -73,10 +74,10 @@ export default function MerchantSignup() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
-  const [plans, setPlans] = useState<Array<{ id: string; name: string }>>([
-    { id: "basic", name: "Basic" },
-    { id: "advanced", name: "Advanced" },
-    { id: "pro", name: "Pro" },
+  const [plans, setPlans] = useState<PlanCatalogRecord[]>([
+    { id: "basic", name: "Basic", description: null, monthly_price: 990, trial_days: 14, contact_only: false },
+    { id: "advanced", name: "Advanced", description: null, monthly_price: 1490, trial_days: 14, contact_only: false },
+    { id: "pro", name: "Pro", description: null, monthly_price: 3990, trial_days: 14, contact_only: true },
   ]);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [form, setForm] = useState({
@@ -107,19 +108,15 @@ export default function MerchantSignup() {
   useEffect(() => {
     supabase
       .from("cms_plans")
-      .select("id, name, is_active")
+      .select("id, name, description, monthly_price, trial_days, contact_only, is_active")
       .eq("is_active", true)
       .order("sort_order")
       .then(({ data }) => {
         if (data && data.length > 0) {
-          setPlans(data);
+          const nextPlans = data as unknown as PlanCatalogRecord[];
+          setPlans(nextPlans);
           const requestedPlanId = searchParams.get("planId");
-          const hasRequestedPlan = data.some((p) => p.id === requestedPlanId);
-          if (hasRequestedPlan) {
-            setForm((prev) => ({ ...prev, planId: requestedPlanId || "basic" }));
-          } else {
-            setForm((prev) => ({ ...prev, planId: data[0].id }));
-          }
+          setForm((prev) => ({ ...prev, planId: resolveSignupPlanId(nextPlans, requestedPlanId) }));
         }
       });
   }, [searchParams]);
@@ -426,11 +423,14 @@ export default function MerchantSignup() {
                   <Label htmlFor="plan-id">Plan</Label>
                   <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
                     {plans.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
+                      <option key={p.id} value={p.id} disabled={isContactOnlyPlan(p)}>
+                        {isContactOnlyPlan(p) ? `${p.name} - Contact support` : p.name}
                       </option>
                     ))}
                   </select>
+                  {plans.some((plan) => plan.id === "pro") ? (
+                    <p className="mt-1 text-xs text-muted-foreground">Pro is visible for comparison, but activation goes through support.</p>
+                  ) : null}
                 </div>
               </div>
               <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails} className="h-11 w-full">

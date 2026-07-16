@@ -52,6 +52,8 @@ type PlanRow = {
   monthly_price: number | null;
   currency_code?: string;
   store_limit?: number | null;
+  trial_days?: number | null;
+  contact_only?: boolean | null;
   sort_order?: number;
   is_active: boolean;
 };
@@ -130,6 +132,8 @@ export default function PlatformControlPlane() {
     monthly_price: "",
     currency_code: "BDT",
     store_limit: "",
+    trial_days: "14",
+    contact_only: false,
     is_active: true,
     sort_order: "0",
   });
@@ -143,6 +147,8 @@ export default function PlatformControlPlane() {
       monthly_price: "",
       currency_code: "BDT",
       store_limit: "",
+      trial_days: "14",
+      contact_only: false,
       is_active: true,
       sort_order: "0",
     });
@@ -158,6 +164,8 @@ export default function PlatformControlPlane() {
       monthly_price: plan.monthly_price != null ? String(plan.monthly_price) : "",
       currency_code: (plan as any).currency_code || "BDT",
       store_limit: (plan as any).store_limit != null ? String((plan as any).store_limit) : "",
+      trial_days: (plan as any).trial_days != null ? String((plan as any).trial_days) : "14",
+      contact_only: Boolean((plan as any).contact_only),
       is_active: plan.is_active,
       sort_order: String((plan as any).sort_order || 0),
     });
@@ -188,7 +196,7 @@ export default function PlatformControlPlane() {
         { data: invoices },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
-        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, currency_code, store_limit, sort_order, is_active").order("sort_order"),
+        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, currency_code, store_limit, trial_days, contact_only, sort_order, is_active").order("sort_order"),
         (supabase as any).from("cms_plan_features").select("plan_id, feature_key, enabled"),
         (supabase as any).from("stores").select("id, owner_id, name, slug, custom_domain, is_published, updated_at").order("name"),
         (supabase as any).from("store_subscriptions").select("store_id, plan_id, status"),
@@ -542,6 +550,8 @@ export default function PlatformControlPlane() {
       monthly_price: planForm.monthly_price.trim() !== "" ? parseInt(planForm.monthly_price.trim(), 10) : null,
       currency_code: planForm.currency_code.trim(),
       store_limit: planForm.store_limit.trim() !== "" ? parseInt(planForm.store_limit.trim(), 10) : null,
+      trial_days: Math.max(0, parseInt(planForm.trial_days.trim(), 10) || 0),
+      contact_only: planForm.contact_only,
       is_active: planForm.is_active,
       sort_order: parseInt(planForm.sort_order.trim(), 10) || 0,
       updated_at: new Date().toISOString(),
@@ -866,13 +876,14 @@ export default function PlatformControlPlane() {
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
                         <p className="mt-1 text-[11px] text-muted-foreground">
-                          Store limit: {plan.store_limit != null ? plan.store_limit : "Unlimited"} | Sort order: {plan.sort_order ?? 0}
+                          Store limit: {plan.store_limit != null ? plan.store_limit : "Unlimited"} | Trial: {plan.trial_days ?? 14} days | Sort order: {plan.sort_order ?? 0}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <Badge variant={plan.is_active ? "secondary" : "outline"}>
                           {plan.monthly_price != null ? `BDT ${plan.monthly_price}` : "Custom"}
                         </Badge>
+                        {plan.contact_only ? <Badge variant="outline">Contact support</Badge> : null}
                         <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => openEditPlan(plan)}>
                           Edit
                         </Button>
@@ -1319,12 +1330,33 @@ export default function PlatformControlPlane() {
                   placeholder="0"
                 />
               </div>
+              <div>
+                <Label htmlFor="plan-trial-days">Trial Days</Label>
+                <Input
+                  id="plan-trial-days"
+                  type="number"
+                  min="0"
+                  value={planForm.trial_days}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, trial_days: e.target.value }))}
+                  placeholder="14"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2 pt-6">
                 <Label htmlFor="plan-active">Is Plan Active</Label>
                 <Switch
                   id="plan-active"
                   checked={planForm.is_active}
                   onCheckedChange={(checked) => setPlanForm((prev) => ({ ...prev, is_active: checked }))}
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <Label htmlFor="plan-contact-only">Contact Support Only</Label>
+                <Switch
+                  id="plan-contact-only"
+                  checked={planForm.contact_only}
+                  onCheckedChange={(checked) => setPlanForm((prev) => ({ ...prev, contact_only: checked }))}
                 />
               </div>
             </div>

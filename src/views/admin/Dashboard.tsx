@@ -31,6 +31,7 @@ import {
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { toast } from "sonner";
+import { getEffectiveSubscriptionStatus, getPlanTrialDays, getRemainingTrialDays } from "@/lib/billing/plans";
 
 interface OrderRow {
   id: string;
@@ -51,6 +52,7 @@ interface PlanRecord {
 interface SubscriptionRecord {
   plan_id: string;
   status: string;
+  trial_ends_at?: string | null;
 }
 
 interface DashboardPlanNotice {
@@ -59,6 +61,9 @@ interface DashboardPlanNotice {
   paymentRequired: boolean;
   isTrialPlan: boolean;
   upgradePlanNames: string[];
+  trialEndsAt?: string | null;
+  trialDays?: number;
+  remainingTrialDays?: number | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -126,8 +131,8 @@ const Dashboard = () => {
           supabase.from("store_pages").select("id, slug, is_homepage").eq("store_id", activeStoreId as string),
           supabase.from("store_page_blocks").select("page_id, is_visible").eq("store_id", activeStoreId as string),
           supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
-          supabase.from("store_subscriptions").select("plan_id, status").eq("store_id", activeStoreId as string).maybeSingle(),
-          supabase.from("cms_plans").select("id, name, description, monthly_price").eq("is_active", true).order("sort_order"),
+          supabase.from("store_subscriptions").select("plan_id, status, trial_ends_at").eq("store_id", activeStoreId as string).maybeSingle(),
+          supabase.from("cms_plans").select("id, name, description, monthly_price, trial_days").eq("is_active", true).order("sort_order"),
           supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
           supabase.from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
         ]);
@@ -250,13 +255,19 @@ const Dashboard = () => {
         const currentPlan = typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? defaultPlan;
         const monthlyPrice = currentPlan?.monthly_price;
         const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;
-        const subscriptionReady = typedSubscription?.status === "active" || typedSubscription?.status === "trialing";
+        const effectiveStatus = getEffectiveSubscriptionStatus(typedSubscription);
+        const subscriptionReady = effectiveStatus === "active" || effectiveStatus === "trialing";
+        const trialDays = getPlanTrialDays(currentPlan as any);
+        const remainingTrialDays = getRemainingTrialDays(typedSubscription?.trial_ends_at);
         setPlanNotice({
           currentPlan,
           subscription: typedSubscription,
           paymentRequired: paidOrCustomPlan && !subscriptionReady,
-          isTrialPlan: typedSubscription?.status === "trialing",
+          isTrialPlan: effectiveStatus === "trialing",
           upgradePlanNames: typedPlans.filter((plan) => plan.id !== currentPlan?.id && plan.monthly_price !== 0).map((plan) => plan.name).slice(0, 2),
+          trialEndsAt: typedSubscription?.trial_ends_at ?? null,
+          trialDays,
+          remainingTrialDays,
         });
       } catch (error) {
         if (!cancelled) {
@@ -402,7 +413,7 @@ const Dashboard = () => {
                 Your {planNotice.currentPlan?.name ?? "current"} trial is active
               </CardTitle>
               <CardDescription>
-                Every package now starts with a 14-day trial. Use this time to finish setup, test payments, and decide whether you want to move to{planNotice.upgradePlanNames.length ? ` ${planNotice.upgradePlanNames.join(" or ")}` : " another package"} later.
+                You have {planNotice.remainingTrialDays ?? planNotice.trialDays ?? 0} day{(planNotice.remainingTrialDays ?? planNotice.trialDays ?? 0) === 1 ? "" : "s"} left in your {planNotice.trialDays ?? 14}-day trial. Finish setup, test payments, and choose whether you want to move to{planNotice.upgradePlanNames.length ? ` ${planNotice.upgradePlanNames.join(" or ")}` : " another package"} later.
               </CardDescription>
             </div>
             <Button type="button" variant="ghost" size="icon" onClick={dismissTrialPlanNotice} aria-label="Dismiss trial plan notice">
