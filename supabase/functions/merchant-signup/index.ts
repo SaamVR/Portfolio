@@ -25,6 +25,24 @@ type BlueprintRecord = {
   default_site_settings: Record<string, unknown> | null;
 };
 
+type OwnerMembershipRecord = {
+  store_id: string;
+};
+
+type StoreSubscriptionRecord = {
+  store_id: string;
+  plan_id: string | null;
+  status: string | null;
+};
+
+type StorePlanRecord = {
+  id: string;
+  monthly_price: number | null;
+  store_limit: number | null;
+  trial_days?: number | null;
+  contact_only?: boolean | null;
+};
+
 type ThemePackageRecord = {
   id: string;
   version?: number | null;
@@ -159,15 +177,13 @@ Deno.serve(async (req) => {
 
     const [
       { data: existingStoreBySlug },
-      { count: existingMembershipCount },
+      { data: ownerMemberships },
       { data: existingPlan },
-      { data: recentStore },
       { data: blueprintRecord },
     ] = await Promise.all([
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
-      supabaseAdmin.from("store_memberships").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("role", "owner"),
+      supabaseAdmin.from("store_memberships").select("store_id").eq("user_id", user.id).eq("role", "owner"),
       supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit, trial_days, contact_only").eq("id", planId).eq("is_active", true).maybeSingle(),
-      supabaseAdmin.from("stores").select("created_at").eq("owner_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin
         .from("store_blueprints")
         .select("id, business_family, catalog_mode, store_description, default_theme, default_site_settings")
@@ -175,16 +191,6 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .maybeSingle(),
     ]);
-
-    if (recentStore?.created_at) {
-      const hoursSinceLastStore = (new Date().getTime() - new Date(recentStore.created_at).getTime()) / (1000 * 60 * 60);
-      if (hoursSinceLastStore < 24) {
-        return new Response(JSON.stringify({ error: "You can only create one store every 24 hours." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
 
     if (existingStoreBySlug) {
       return new Response(JSON.stringify({ error: "That store slug is already taken" }), {
@@ -208,19 +214,57 @@ Deno.serve(async (req) => {
       : { data: null };
     const themeSeed = buildThemeSeed(defaultTheme, (themePackageRecord as ThemePackageRecord | null) ?? null);
 
-    const storeLimit = existingPlan?.store_limit === null ? Infinity : (existingPlan?.store_limit ?? 1);
-    if (existingMembershipCount !== null && existingMembershipCount >= storeLimit) {
-      return new Response(JSON.stringify({ error: `Your selected plan allows a maximum of ${storeLimit} store(s). Please select a higher tier to create more.` }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (existingPlan?.contact_only) {
       return new Response(JSON.stringify({ error: "This plan is activated through support. Please contact support to continue." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const ownedStoreIds = Array.from(
+      new Set(((ownerMemberships as OwnerMembershipRecord[] | null) ?? []).map((row) => row.store_id).filter(Boolean)),
+    );
+
+    if (ownedStoreIds.length > 0) {
+      const { data: ownedSubscriptions } = await supabaseAdmin
+        .from("store_subscriptions")
+        .select("store_id, plan_id, status")
+        .in("store_id", ownedStoreIds);
+
+      const activePaidSubscriptions = ((ownedSubscriptions as StoreSubscriptionRecord[] | null) ?? []).filter(
+        (row) => row.status === "active" && typeof row.plan_id === "string" && row.plan_id.length > 0,
+      );
+
+      if (activePaidSubscriptions.length === 0) {
+        return new Response(JSON.stringify({
+          error: "Trial accounts can create only one store. Complete payment on your first store to unlock the rest of your plan capacity.",
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const activePlanIds = Array.from(new Set(activePaidSubscriptions.map((row) => row.plan_id).filter(Boolean))) as string[];
+      const { data: activePlans } = activePlanIds.length > 0
+        ? await supabaseAdmin.from("cms_plans").select("id, store_limit, monthly_price").in("id", activePlanIds)
+        : { data: [] };
+
+      const maxAllowedStores = ((activePlans as StorePlanRecord[] | null) ?? []).reduce<number>((max, plan) => {
+        if (plan.store_limit === null) {
+          return Number.POSITIVE_INFINITY;
+        }
+        const limit = Math.max(0, Number(plan.store_limit ?? 0) || 0);
+        return Math.max(max, limit);
+      }, 0);
+
+      if (Number.isFinite(maxAllowedStores) && ownedStoreIds.length >= maxAllowedStores) {
+        return new Response(JSON.stringify({
+          error: `Your active package allows up to ${maxAllowedStores} store${maxAllowedStores === 1 ? "" : "s"}. Upgrade or contact support to unlock more.`,
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const finalPlanId = existingPlan?.id ?? "basic";

@@ -172,6 +172,7 @@ export type Database = {
       }
       cms_plans: {
         Row: {
+          contact_only: boolean
           created_at: string
           currency_code: string
           description: string
@@ -182,9 +183,11 @@ export type Database = {
           name: string
           sort_order: number
           store_limit: number | null
+          trial_days: number
           updated_at: string
         }
         Insert: {
+          contact_only?: boolean
           created_at?: string
           currency_code?: string
           description: string
@@ -195,9 +198,11 @@ export type Database = {
           name: string
           sort_order?: number
           store_limit?: number | null
+          trial_days?: number
           updated_at?: string
         }
         Update: {
+          contact_only?: boolean
           created_at?: string
           currency_code?: string
           description?: string
@@ -208,6 +213,7 @@ export type Database = {
           name?: string
           sort_order?: number
           store_limit?: number | null
+          trial_days?: number
           updated_at?: string
         }
         Relationships: []

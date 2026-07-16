@@ -429,7 +429,7 @@ export default function MerchantSignup() {
                     ))}
                   </select>
                   {plans.some((plan) => plan.id === "pro") ? (
-                    <p className="mt-1 text-xs text-muted-foreground">Pro is visible for comparison, but activation goes through support.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Trial accounts can create one store. Additional stores unlock after your first paid package is active. Pro is support-managed.</p>
                   ) : null}
                 </div>
               </div>
