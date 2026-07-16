@@ -100,7 +100,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
 
   const quickLinks = [
     { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
-    { to: withStoreId("/admin/onboarding", activeStoreId), icon: Rocket, label: "Setup", show: isAdmin },
+    { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Settings", show: isAdmin },
     { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
   ];
 
@@ -112,7 +112,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   ];
 
   const storefrontLinks = [
-    { to: withStoreId("/admin/onboarding", activeStoreId), icon: Rocket, label: "Store Setup", show: isAdmin },
+    { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
     { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },

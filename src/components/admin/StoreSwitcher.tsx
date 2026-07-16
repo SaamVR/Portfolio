@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronsUpDown, Store, PlusCircle, ArrowRightCircle } from "lucide-react";
 import { useLocation, useNavigate } from "@/lib/react-router-dom-shim";
 import { withStoreId } from "@/lib/admin-paths";
-import { cn } from "@/lib/utils";
+import { useStoreCreationEligibility } from "@/hooks/useStoreCreationEligibility";
 
 export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) {
   const { storeMemberships, activeStoreId, setActiveStoreId } = useAuth();
@@ -21,6 +21,7 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
   const location = useLocation();
   const queryClient = useQueryClient();
   const storeIds = storeMemberships.map(m => m.storeId);
+  const { data: storeCreationEligibility } = useStoreCreationEligibility();
 
   const { data: stores } = useQuery({
     queryKey: ["user-stores", storeIds],
@@ -39,6 +40,8 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
 
   const activeStore = stores?.find(s => s.id === activeStoreId);
   const hasStores = Boolean(stores?.length);
+  const canCreateStore = !hasStores || Boolean(storeCreationEligibility?.allowed);
+  const creationBlockedReason = storeCreationEligibility?.reason ?? "Your current package does not allow another store right now.";
 
   const buildNextRoute = (storeId: string) => {
     const basePath = location.pathname.startsWith("/cms-admin") ? "/admin" : location.pathname || "/admin";
@@ -55,6 +58,19 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
     queryClient.invalidateQueries({ queryKey: ["admin-messages"] });
     queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
     navigate(buildNextRoute(storeId));
+  };
+
+  const goToNewStoreFlow = () => {
+    if (!canCreateStore) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.assign("/signup?intent=new-store");
+      return;
+    }
+
+    navigate("/signup?intent=new-store");
   };
 
   if (mobile) {
@@ -92,22 +108,35 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
                 No stores yet. Start onboarding to create your first storefront.
               </div>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/signup")} className="cursor-pointer text-primary">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {hasStores ? "Create New Store" : "Create First Store"}
-            </DropdownMenuItem>
+            {canCreateStore ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={goToNewStoreFlow} className="cursor-pointer text-primary">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {hasStores ? "Create New Store" : "Create First Store"}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                <DropdownMenuSeparator />
+                <div className="px-3 py-3 text-xs text-muted-foreground">
+                  {creationBlockedReason}
+                </div>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-11 w-11 shrink-0 rounded-2xl border-dashed border-primary/40 text-primary"
-          onClick={() => navigate("/signup")}
-        >
-          <PlusCircle className="h-4 w-4" />
-        </Button>
+        {canCreateStore ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-2xl border-dashed border-primary/40 text-primary"
+            onClick={goToNewStoreFlow}
+          >
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -142,11 +171,22 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
             No stores yet. Create one to unlock the admin workspace.
           </div>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate("/signup")} className="cursor-pointer text-primary">
-          {hasStores ? <PlusCircle className="mr-2 h-4 w-4" /> : <ArrowRightCircle className="mr-2 h-4 w-4" />}
-          {hasStores ? "Create New Store" : "Create First Store"}
-        </DropdownMenuItem>
+        {canCreateStore ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={goToNewStoreFlow} className="cursor-pointer text-primary">
+              {hasStores ? <PlusCircle className="mr-2 h-4 w-4" /> : <ArrowRightCircle className="mr-2 h-4 w-4" />}
+              {hasStores ? "Create New Store" : "Create First Store"}
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-3 text-xs text-muted-foreground">
+              {creationBlockedReason}
+            </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

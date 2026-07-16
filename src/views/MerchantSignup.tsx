@@ -69,6 +69,7 @@ export default function MerchantSignup() {
   const { user, loading, refreshRole, setActiveStoreId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const intent = searchParams.get("intent");
   const [step, setStep] = useState<SignupStep>("methods");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -276,7 +277,7 @@ export default function MerchantSignup() {
       setActiveStoreId(data.store_id);
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
 
-      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}`;
+      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
       window.location.href = onboardingPath;
     } catch (error: any) {
       toast.error(error.message || "Failed to create workspace");
