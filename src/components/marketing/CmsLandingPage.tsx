@@ -803,7 +803,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
                       <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
                     </div>
-                    <div className={`truncate rounded-md border px-2 py-0.5 text-center font-mono text-[9px] sm:px-3 sm:text-[10px] ${previewDevice === "mobile" ? "w-[58%]" : "w-[45%] sm:w-1/2"} ${isLightTheme ? "border-slate-200 bg-white text-slate-500" : "border-white/5 bg-slate-950/80 text-zinc-500"}`}>
+                    <div className={`truncate rounded-md border px-2 py-0.5 text-center font-mono text-[9px] w-[45%] sm:w-1/2 sm:px-3 sm:text-[10px] ${isLightTheme ? "border-slate-200 bg-white text-slate-500" : "border-white/5 bg-slate-950/80 text-zinc-500"}`}>
                       {previewStoreUrl}
                     </div>
                     <div className="w-6 sm:w-10" />
