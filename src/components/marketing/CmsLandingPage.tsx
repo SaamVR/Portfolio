@@ -594,21 +594,42 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 <div className="space-y-4">
                   <div>
                     <label className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Site type</label>
-                    <div className="relative mt-2">
-                      <select
-                        value={siteType}
-                        onChange={(e) => applySiteProfile(e.target.value as SiteKey)}
-                        className={`w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-sm font-semibold outline-none transition focus:ring-2 ${theme.ring} ${
-                          isLightTheme ? "border-slate-300 bg-white text-slate-900" : "border-white/10 bg-white/5 text-white"
-                        }`}
-                      >
-                        {Object.entries(siteProfiles).map(([key, profile]) => (
-                          <option key={key} value={key} className={isLightTheme ? "bg-white text-slate-900" : "bg-slate-950 text-white"}>
-                            {profile.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-zinc-500" />
+                    <div className="mt-3 grid gap-2">
+                      {Object.entries(siteProfiles).map(([key, profile]) => {
+                        const active = siteType === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => applySiteProfile(key as SiteKey)}
+                            className={`rounded-2xl border px-4 py-3 text-left transition-all ${
+                              active
+                                ? `${theme.border} ${theme.accent} shadow-[0_14px_30px_rgba(15,23,42,0.08)]`
+                                : isLightTheme
+                                  ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                  : "border-white/10 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className={`text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{profile.name}</p>
+                                <p className={`mt-1 text-xs leading-relaxed ${mutedText}`}>{profile.tagline}</p>
+                              </div>
+                              <span
+                                className={`mt-0.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                                  active
+                                    ? `${theme.primary} text-white`
+                                    : isLightTheme
+                                      ? "bg-slate-100 text-slate-600"
+                                      : "bg-white/5 text-zinc-400"
+                                }`}
+                              >
+                                {active ? "Selected" : "Preview"}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
