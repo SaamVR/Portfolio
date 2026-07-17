@@ -22,7 +22,6 @@ import {
   Layout,
   MessageSquareQuote,
   Monitor,
-  Moon,
   PackageCheck,
   Palette,
   PanelTop,
@@ -34,7 +33,6 @@ import {
   Smartphone,
   Star,
   Store,
-  Sun,
   ShoppingBag,
   Tag,
   Type,
@@ -383,6 +381,7 @@ const mobileExperiencePoints = [
 type ThemeKey = keyof typeof colorThemes;
 type FontKey = keyof typeof fontThemes;
 type SiteKey = keyof typeof siteProfiles;
+type PreviewPageKey = "home" | "shop" | "offers" | "account";
 
 function getMarketingPreviewStoreUrl(slug: string) {
   const directUrl = absoluteStoreUrl({ slug });
@@ -417,7 +416,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
 }
 
 export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>("emerald");
   const [activeFont, setActiveFont] = useState<FontKey>("modern");
@@ -426,6 +425,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const [announcementText, setAnnouncementText] = useState("20% off launch week with code NEWDROP");
   const [heroHeading, setHeroHeading] = useState("Dress the launch like it already belongs on a billboard.");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("mobile");
+  const [previewPage, setPreviewPage] = useState<PreviewPageKey>("home");
   const [currentStep, setCurrentStep] = useState<(typeof onboardingSteps)[number]["id"]>(1);
   const [paymentMode, setPaymentMode] = useState<"manual" | "hybrid">("manual");
   const [domainConnected, setDomainConnected] = useState(true);
@@ -441,6 +441,22 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const previewSlug = createStoreSlug(storeName || siteProfile.storeName);
   const previewStoreUrl = getMarketingPreviewStoreUrl(previewSlug);
   const isLightTheme = isThemeMounted ? resolvedTheme === "light" : false;
+  const previewNavItems = [
+    { key: "home", label: "Home", icon: Home },
+    { key: "shop", label: "Shop", icon: ShoppingBag },
+    { key: "offers", label: "Offers", icon: Tag },
+    { key: "account", label: "Account", icon: Store },
+  ] as const;
+  const offerHighlights = [
+    announcementText.trim() || siteProfile.announcement,
+    `${paymentMode === "hybrid" ? "COD + manual payment" : "Manual payment"} ready for launch`,
+    domainConnected ? `${previewSlug}.${PLATFORM_PRIMARY_DOMAIN} looks branded from day one` : "Start with the preview link and connect your domain later",
+  ];
+  const accountHighlights = [
+    { label: "Store name", value: storeName || siteProfile.storeName },
+    { label: "Launch URL", value: previewStoreUrl.replace(/^https?:\/\//, "") },
+    { label: "Payments", value: paymentMode === "hybrid" ? "Cash on delivery + manual payment" : "Manual payment verification" },
+  ];
   const pageShell = isLightTheme
     ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
     : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
@@ -517,18 +533,6 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setTheme(isLightTheme ? "dark" : "light")}
-              aria-label="Toggle color mode"
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                isLightTheme
-                  ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                  : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {isLightTheme ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
-            </button>
             <Link href="/admin/login" className={`hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:inline-flex ${
               isLightTheme ? "text-slate-700 hover:bg-slate-200/70" : "text-zinc-300 hover:bg-white/5 hover:text-white"
             }`}>
@@ -750,10 +754,23 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       </p>
                       <p className={`pt-1 text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>{siteProfile.sectionLabel}</p>
                     </div>
-                    <div className={`hidden gap-3 text-[10px] font-medium sm:flex ${mutedText}`}>
-                      <span>Shop</span>
-                      <span>Story</span>
-                      <span>Support</span>
+                    <div className={`hidden gap-2 text-[10px] font-medium sm:flex ${mutedText}`}>
+                      {previewNavItems.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setPreviewPage(item.key)}
+                          className={`rounded-full px-3 py-1.5 transition ${
+                            previewPage === item.key
+                              ? `${theme.accent} ${theme.primaryText}`
+                              : isLightTheme
+                                ? "hover:bg-white hover:text-slate-900"
+                                : "hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
                     {previewDevice === "mobile" ? (
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
@@ -806,6 +823,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 } ${isLightTheme ? "bg-white" : "bg-[#020611]"}`}
               >
                 <div className={`space-y-4 p-3 sm:space-y-6 sm:p-5 ${previewDevice === "mobile" ? "pb-5" : ""}`}>
+                  {previewPage === "home" ? (
                   <div className={`relative overflow-hidden rounded-[1.5rem] border ${isLightTheme ? "border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]" : "border-white/8 bg-gradient-to-br shadow-[0_24px_70px_rgba(2,6,23,0.45)]"} ${theme.heroSurface}`}>
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_35%)]" />
                     <div className={`absolute inset-x-0 top-0 h-24 ${isLightTheme ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.36),transparent)]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]"}`} />
@@ -875,12 +893,27 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       </div>
                     </div>
                   </div>
+                  ) : null}
 
-                  <div className={`grid gap-3 ${previewDevice === "mobile" ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+                  <div className={`grid gap-3 ${
+                    previewPage === "home"
+                      ? previewDevice === "mobile"
+                        ? "grid-cols-1"
+                        : "sm:grid-cols-2 lg:grid-cols-3"
+                      : previewPage === "shop"
+                        ? previewDevice === "mobile"
+                          ? "grid-cols-1"
+                          : "sm:grid-cols-2 xl:grid-cols-3"
+                        : "grid-cols-1"
+                  }`}>
                     {siteProfile.products.map((product, index) => (
                       <article
                         key={product.name}
-                        className={`group rounded-2xl border p-3 transition ${isLightTheme ? "border-slate-200 bg-slate-50 hover:border-slate-300 hover:shadow-[0_18px_35px_rgba(15,23,42,0.07)]" : "border-white/6 bg-slate-900/60 hover:border-white/12 hover:bg-slate-900/80"}`}
+                        className={`group rounded-2xl border p-3 transition ${
+                          isLightTheme ? "border-slate-200 bg-slate-50 hover:border-slate-300 hover:shadow-[0_18px_35px_rgba(15,23,42,0.07)]" : "border-white/6 bg-slate-900/60 hover:border-white/12 hover:bg-slate-900/80"
+                        } ${
+                          previewPage === "offers" || previewPage === "account" ? "hidden" : ""
+                        }`}
                       >
                         <div className={`relative mb-3 flex aspect-[4/5] items-end overflow-hidden rounded-xl bg-gradient-to-br ${theme.heroSurface} p-3`}>
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_42%)]" />
@@ -902,6 +935,65 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                         </div>
                       </article>
                     ))}
+
+                    {previewPage === "shop" ? (
+                      <div className={`rounded-[1.5rem] border p-4 sm:col-span-2 xl:col-span-3 ${isLightTheme ? "border-slate-200 bg-slate-50/85" : "border-white/8 bg-white/[0.03]"}`}>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Shop filters</p>
+                            <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.tagline}</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {[siteProfile.badge, "Ready to ship", paymentMode === "hybrid" ? "COD" : "Manual payment"].map((item) => (
+                              <span key={item} className={`rounded-full px-3 py-1 text-[10px] font-semibold ${theme.chip}`}>
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {previewPage === "offers" ? (
+                      <>
+                        {offerHighlights.map((offer, index) => (
+                          <article
+                            key={offer}
+                            className={`rounded-[1.45rem] border p-4 sm:p-5 ${
+                              index === 0
+                                ? `${theme.accent} ${isLightTheme ? "border-slate-200 text-slate-900" : "border-white/10 text-white"}`
+                                : isLightTheme
+                                  ? "border-slate-200 bg-slate-50/90"
+                                  : "border-white/8 bg-white/[0.03]"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Offer {index + 1}</p>
+                                <p className={`mt-2 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{offer}</p>
+                              </div>
+                              <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${theme.chip}`}>Live</span>
+                            </div>
+                          </article>
+                        ))}
+                      </>
+                    ) : null}
+
+                    {previewPage === "account" ? (
+                      <>
+                        <article className={`rounded-[1.5rem] border p-4 sm:p-5 ${isLightTheme ? "border-slate-200 bg-slate-50/90" : "border-white/8 bg-white/[0.03]"}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Account snapshot</p>
+                          <h3 className={`mt-2 text-base font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>A friendly account page from day one</h3>
+                          <p className={`mt-2 text-sm leading-relaxed ${mutedText}`}>Customers can review their latest order, payment instructions, and support details without opening chat.</p>
+                        </article>
+                        {accountHighlights.map((item) => (
+                          <article key={item.label} className={`rounded-2xl border px-4 py-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-slate-950/35"}`}>
+                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>{item.label}</p>
+                            <p className={`mt-2 break-words text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.value}</p>
+                          </article>
+                        ))}
+                      </>
+                    ) : null}
                   </div>
 
                   {previewDevice === "mobile" ? (
@@ -925,19 +1017,16 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-[#0b1220]"
                         }`}
                       >
-                        {[
-                          { label: "Home", icon: Home, active: true },
-                          { label: "Shop", icon: ShoppingBag, active: false },
-                          { label: "Offers", icon: Tag, active: false },
-                          { label: "Account", icon: Store, active: false },
-                        ].map((item) => {
+                        {previewNavItems.map((item) => {
                           const Icon = item.icon;
+                          const active = previewPage === item.key;
                           return (
                             <button
                               key={item.label}
                               type="button"
+                              onClick={() => setPreviewPage(item.key)}
                               className={`flex flex-col items-center gap-1 rounded-[1rem] px-2 py-2.5 text-[10px] font-semibold transition ${
-                                item.active
+                                active
                                   ? `${theme.accent} ${theme.primaryText} shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`
                                   : isLightTheme
                                     ? "text-slate-500 hover:bg-slate-50"
@@ -945,7 +1034,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                               }`}
                             >
                               <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                                item.active
+                                active
                                   ? isLightTheme
                                     ? "bg-white shadow-sm"
                                     : "bg-white/10"
@@ -970,8 +1059,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       </section>
 
       <section id="sandbox" className="relative z-10 mx-auto max-w-6xl px-4 pb-24">
-        <div className={`rounded-[2rem] border p-4 shadow-[0_28px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 ${sandboxShell}`}>
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className={`rounded-[2rem] border p-4 shadow-[0_28px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 lg:p-7 ${sandboxShell}`}>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-2">
               <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
                 <Settings2 className="h-3.5 w-3.5" />
@@ -989,9 +1078,9 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:gap-6">
             <div className="space-y-4">
-              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {onboardingSteps.map((step) => {
                   const Icon = step.icon;
                   const active = currentStep === step.id;
@@ -1000,7 +1089,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                       key={step.id}
                       type="button"
                       onClick={() => setCurrentStep(step.id)}
-                      className={`min-w-[220px] rounded-2xl border p-4 text-left transition-all sm:min-w-0 ${
+                      className={`rounded-2xl border p-4 text-left transition-all ${
                         active
                           ? `${theme.border} ${isLightTheme ? "bg-white shadow-[0_18px_36px_rgba(15,23,42,0.08)]" : "bg-white/10"}`
                           : isLightTheme
@@ -1205,7 +1294,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
             <div className="space-y-4">
               <div className={`rounded-[1.75rem] border p-4 shadow-2xl sm:p-5 ${sandboxSoftCard}`}>
-                <div className={`flex items-start justify-between gap-4 border-b pb-4 ${isLightTheme ? "border-slate-200" : "border-white/5"}`}>
+                <div className={`flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between ${isLightTheme ? "border-slate-200" : "border-white/5"}`}>
                   <div>
                     <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${fieldLabelText}`}>Launch readiness</p>
                     <h3 className={`font-heading text-lg font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>Simple setup, clear finish line</h3>
@@ -1235,7 +1324,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                         </span>
                         <span className={`font-semibold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{item.label}</span>
                       </span>
-                      <span className={`break-words pl-9 sm:max-w-[48%] sm:pl-0 ${subtleText}`}>{item.value}</span>
+                      <span className={`break-words pl-9 text-left sm:max-w-[48%] sm:pl-0 sm:text-right ${subtleText}`}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -1475,7 +1564,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       </section>
 
       <section className="relative z-10 mx-auto max-w-6xl px-4 py-16 sm:py-24">
-        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
+        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           <div className="space-y-4">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${sectionBadge}`}>
               <Rocket className="h-3.5 w-3.5" />
@@ -1488,7 +1577,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               A short checklist helps merchants see what happens next.
             </p>
           </div>
-          <div className="grid gap-3">
+          <div className="grid gap-3 sm:gap-4">
             {checklistItems.map((item, index) => (
               <div key={item} className={`flex items-start gap-4 rounded-2xl border p-4 ${
                 isLightTheme ? "border-slate-200 bg-white/90" : "border-white/8 bg-white/[0.03]"
