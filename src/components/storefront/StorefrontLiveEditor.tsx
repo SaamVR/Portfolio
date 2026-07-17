@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
@@ -150,6 +151,34 @@ export function StorefrontLiveEditor({
     }
   };
 
+  const updateSelectedArrayItem = (field: string, index: number, patch: Record<string, unknown>) => {
+    if (!selectedBlock) return;
+    const currentItems = Array.isArray((selectedBlock.props as Record<string, unknown>)[field])
+      ? ([...(selectedBlock.props as Record<string, unknown>)[field] as unknown[]] as Record<string, unknown>[])
+      : [];
+    currentItems[index] = {
+      ...(currentItems[index] ?? {}),
+      ...patch,
+    };
+    updateSelectedBlockProps({ [field]: currentItems });
+  };
+
+  const addSelectedArrayItem = (field: string, item: Record<string, unknown>) => {
+    if (!selectedBlock) return;
+    const currentItems = Array.isArray((selectedBlock.props as Record<string, unknown>)[field])
+      ? ([...(selectedBlock.props as Record<string, unknown>)[field] as unknown[]] as Record<string, unknown>[])
+      : [];
+    updateSelectedBlockProps({ [field]: [...currentItems, item] });
+  };
+
+  const removeSelectedArrayItem = (field: string, index: number) => {
+    if (!selectedBlock) return;
+    const currentItems = Array.isArray((selectedBlock.props as Record<string, unknown>)[field])
+      ? ([...(selectedBlock.props as Record<string, unknown>)[field] as unknown[]] as Record<string, unknown>[])
+      : [];
+    updateSelectedBlockProps({ [field]: currentItems.filter((_, itemIndex) => itemIndex !== index) });
+  };
+
   const moveSelectedBlock = (direction: -1 | 1) => {
     if (!selectedBlock) return;
 
@@ -240,6 +269,22 @@ export function StorefrontLiveEditor({
                   onChange={(event) => updateSelectedBlockNumber("overlayOpacity", event.target.value)}
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Hero Media</Label>
+              <CloudinaryUpload
+                value={selectedBlock.props.mediaUrl ?? ""}
+                onChange={(url) => updateSelectedBlockProps({ mediaUrl: url })}
+                onSelectAsset={(asset) => {
+                  if (!asset) return;
+                  updateSelectedBlockProps({ mediaType: asset.resourceType });
+                }}
+                folder="hero"
+                accept="image/*,video/*"
+                label="Upload hero media"
+                resourceType="auto"
+                storeId={store.id}
+              />
             </div>
             <div className="grid gap-2">
               <Label>Overlay Color</Label>
@@ -354,51 +399,140 @@ export function StorefrontLiveEditor({
         );
       case "social-feed":
         return (
-          <div className="grid gap-2">
-            <Label>Images (comma separated)</Label>
-            <Textarea
-              rows={4}
-              value={((selectedBlock.props.images as string[] | undefined) ?? []).join(", ")}
-              onChange={(event) => updateSelectedBlockProps({
-                images: event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
-              })}
-            />
+          <div className="grid gap-3">
+            {((selectedBlock.props.images as string[] | undefined) ?? []).map((image, index) => (
+              <div key={`${image}-${index}`} className="rounded-xl border border-border p-3">
+                <div className="grid gap-2">
+                  <Label>Image {index + 1}</Label>
+                  <CloudinaryUpload
+                    value={image}
+                    onChange={(url) => {
+                      const next = [ ...(((selectedBlock.props.images as string[] | undefined) ?? [])) ];
+                      next[index] = url;
+                      updateSelectedBlockProps({ images: next });
+                    }}
+                    folder="social-feed"
+                    accept="image/*"
+                    label="Upload social image"
+                    resourceType="image"
+                    storeId={store.id}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => {
+                    const next = [ ...(((selectedBlock.props.images as string[] | undefined) ?? [])) ].filter((_, itemIndex) => itemIndex !== index);
+                    updateSelectedBlockProps({ images: next });
+                  }}>
+                    Remove image
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => updateSelectedBlockProps({
+              images: [...(((selectedBlock.props.images as string[] | undefined) ?? [])), ""],
+            })}>
+              Add image
+            </Button>
+          </div>
+        );
+      case "video-reel":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Video Upload</Label>
+              <CloudinaryUpload
+                value={selectedBlock.props.videoUrl ?? ""}
+                onChange={(url) => updateSelectedBlockProps({ videoUrl: url })}
+                folder="video-reel"
+                accept="video/*"
+                label="Upload video"
+                resourceType="video"
+                storeId={store.id}
+              />
+            </div>
           </div>
         );
       case "faq-accordion":
         return (
-          <div className="grid gap-2">
-            <Label>FAQs JSON</Label>
-            <Textarea
-              rows={6}
-              className="font-mono text-xs"
-              value={JSON.stringify(selectedBlock.props.faqs ?? [], null, 2)}
-              onChange={(event) => updateSelectedBlockJsonArray("faqs", event.target.value)}
-            />
+          <div className="grid gap-3">
+            {((selectedBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []).map((faq, index) => (
+              <div key={`${faq.q}-${index}`} className="rounded-xl border border-border p-3">
+                <div className="grid gap-2">
+                  <Label>Question</Label>
+                  <Input value={faq.q ?? ""} onChange={(event) => updateSelectedArrayItem("faqs", index, { q: event.target.value })} />
+                  <Label>Answer</Label>
+                  <Textarea rows={3} value={faq.a ?? ""} onChange={(event) => updateSelectedArrayItem("faqs", index, { a: event.target.value })} />
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeSelectedArrayItem("faqs", index)}>
+                    Remove FAQ
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => addSelectedArrayItem("faqs", { q: "", a: "" })}>
+              Add FAQ
+            </Button>
           </div>
         );
       case "trust-badges":
         return (
-          <div className="grid gap-2">
-            <Label>Badges JSON</Label>
-            <Textarea
-              rows={6}
-              className="font-mono text-xs"
-              value={JSON.stringify(selectedBlock.props.badges ?? [], null, 2)}
-              onChange={(event) => updateSelectedBlockJsonArray("badges", event.target.value)}
-            />
+          <div className="grid gap-3">
+            {((selectedBlock.props.badges as Array<{ label: string; description?: string; icon?: string }> | undefined) ?? []).map((badge, index) => (
+              <div key={`${badge.label}-${index}`} className="rounded-xl border border-border p-3">
+                <div className="grid gap-2">
+                  <Label>Label</Label>
+                  <Input value={badge.label ?? ""} onChange={(event) => updateSelectedArrayItem("badges", index, { label: event.target.value })} />
+                  <Label>Description</Label>
+                  <Textarea rows={2} value={badge.description ?? ""} onChange={(event) => updateSelectedArrayItem("badges", index, { description: event.target.value })} />
+                  <Label>Icon</Label>
+                  <Select value={badge.icon ?? "shield"} onValueChange={(value) => updateSelectedArrayItem("badges", index, { icon: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="truck">truck</SelectItem>
+                      <SelectItem value="payment">payment</SelectItem>
+                      <SelectItem value="returns">returns</SelectItem>
+                      <SelectItem value="support">support</SelectItem>
+                      <SelectItem value="shield">shield</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeSelectedArrayItem("badges", index)}>
+                    Remove badge
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => addSelectedArrayItem("badges", { label: "", description: "", icon: "shield" })}>
+              Add badge
+            </Button>
           </div>
         );
       case "testimonials":
         return (
-          <div className="grid gap-2">
-            <Label>Reviews JSON</Label>
-            <Textarea
-              rows={6}
-              className="font-mono text-xs"
-              value={JSON.stringify(selectedBlock.props.reviews ?? [], null, 2)}
-              onChange={(event) => updateSelectedBlockJsonArray("reviews", event.target.value)}
-            />
+          <div className="grid gap-3">
+            {((selectedBlock.props.reviews as Array<{ name: string; rating?: number; comment: string }> | undefined) ?? []).map((review, index) => (
+              <div key={`${review.name}-${index}`} className="rounded-xl border border-border p-3">
+                <div className="grid gap-2">
+                  <Label>Name</Label>
+                  <Input value={review.name ?? ""} onChange={(event) => updateSelectedArrayItem("reviews", index, { name: event.target.value })} />
+                  <Label>Rating</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={String(review.rating ?? 5)}
+                    onChange={(event) => {
+                      const parsed = Number.parseInt(event.target.value || "5", 10);
+                      updateSelectedArrayItem("reviews", index, { rating: Number.isNaN(parsed) ? 5 : parsed });
+                    }}
+                  />
+                  <Label>Comment</Label>
+                  <Textarea rows={3} value={review.comment ?? ""} onChange={(event) => updateSelectedArrayItem("reviews", index, { comment: event.target.value })} />
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeSelectedArrayItem("reviews", index)}>
+                    Remove review
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => addSelectedArrayItem("reviews", { name: "", rating: 5, comment: "" })}>
+              Add review
+            </Button>
           </div>
         );
       default:
