@@ -842,9 +842,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                           </span>
                         ))}
                       </div>
-                      <div className={`grid grid-cols-2 gap-2 ${
-                        isLightTheme ? "" : ""
-                      }`}>
+                      <div className="grid grid-cols-2 gap-2">
                         {[
                           { label: "Orders", value: "24h dispatch" },
                           { label: "Support", value: siteProfile.support },
@@ -1006,17 +1004,36 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
 
                     {previewPage === "shop" ? (
                       <div className={`rounded-[1.5rem] border p-4 sm:col-span-2 xl:col-span-3 ${isLightTheme ? "border-slate-200 bg-slate-50/85" : "border-white/8 bg-white/[0.03]"}`}>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Shop filters</p>
-                            <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.tagline}</p>
+                        <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Shop filters</p>
+                              <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{siteProfile.tagline}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {[siteProfile.badge, "Ready to ship", paymentMode === "hybrid" ? "COD" : "Manual payment"].map((item) => (
+                                <span key={item} className={`rounded-full px-3 py-1 text-[10px] font-semibold ${theme.chip}`}>
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {[siteProfile.badge, "Ready to ship", paymentMode === "hybrid" ? "COD" : "Manual payment"].map((item) => (
-                              <span key={item} className={`rounded-full px-3 py-1 text-[10px] font-semibold ${theme.chip}`}>
-                                {item}
-                              </span>
-                            ))}
+                          <div className={`rounded-2xl border p-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-slate-950/35"}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className={`text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>Cart preview</p>
+                                <p className={`mt-1 text-sm font-bold ${isLightTheme ? "text-slate-950" : "text-white"}`}>{cartCount} item{cartCount > 1 ? "s" : ""} ready</p>
+                              </div>
+                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${theme.chip}`}>Demo cart</span>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              {cartItems.map((item) => (
+                                <div key={item.name} className="flex items-center justify-between gap-3">
+                                  <p className={`text-xs font-semibold ${isLightTheme ? "text-slate-900" : "text-white"}`}>{item.name}</p>
+                                  <span className={`text-[11px] font-bold ${theme.primaryText}`}>{item.price}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
