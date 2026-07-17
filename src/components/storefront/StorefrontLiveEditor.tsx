@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Paintbrush2, Save, Settings2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, Save, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
+import { cmsBlockTypeOptions, createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,6 +76,8 @@ export function StorefrontLiveEditor({
 }) {
   const [editorMode, setEditorMode] = useState<"basic" | "advanced">("basic");
   const [saving, setSaving] = useState(false);
+  const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
+  const [insertPosition, setInsertPosition] = useState<"before" | "after">("after");
   const location = useLocation();
   const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(page.id)}&returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const selectedBlock = useMemo(
@@ -195,6 +198,55 @@ export function StorefrontLiveEditor({
       return {
         ...currentPage,
         blocks: blocks.map((item, sortOrder) => ({ ...item, sortOrder })),
+      };
+    }));
+  };
+
+  const duplicateSelectedBlock = () => {
+    if (!selectedBlock) return;
+
+    setStore((current) => updatePage(current, page.id, (currentPage) => {
+      const sourceIndex = currentPage.blocks.findIndex((block) => block.id === selectedBlock.id);
+      if (sourceIndex === -1) {
+        return currentPage;
+      }
+
+      const sourceBlock = currentPage.blocks[sourceIndex];
+      const duplicatedBlock: StorePageBlock = {
+        ...sourceBlock,
+        id: crypto.randomUUID(),
+        sortOrder: sourceIndex + 1,
+      };
+
+      const blocks = [...currentPage.blocks];
+      blocks.splice(sourceIndex + 1, 0, duplicatedBlock);
+      onSelectedBlockChange(duplicatedBlock.id);
+
+      return {
+        ...currentPage,
+        blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })),
+      };
+    }));
+  };
+
+  const insertNewBlock = () => {
+    if (!selectedBlock) return;
+
+    setStore((current) => updatePage(current, page.id, (currentPage) => {
+      const sourceIndex = currentPage.blocks.findIndex((block) => block.id === selectedBlock.id);
+      if (sourceIndex === -1) {
+        return currentPage;
+      }
+
+      const insertionIndex = insertPosition === "before" ? sourceIndex : sourceIndex + 1;
+      const nextBlock = createDefaultBlock(nextBlockType, insertionIndex);
+      const blocks = [...currentPage.blocks];
+      blocks.splice(insertionIndex, 0, nextBlock);
+      onSelectedBlockChange(nextBlock.id);
+
+      return {
+        ...currentPage,
+        blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })),
       };
     }));
   };
@@ -635,7 +687,48 @@ export function StorefrontLiveEditor({
                       <ArrowDown className="h-4 w-4" />
                       Down
                     </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()}>
+                      <Copy className="h-4 w-4" />
+                      Duplicate
+                    </Button>
                   </div>
+                  {editorMode === "advanced" ? (
+                    <div className="grid gap-3 rounded-xl border border-border p-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Insert block inline</p>
+                        <p className="text-xs text-muted-foreground">Add a new section before or after the currently selected block.</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label>Block Type</Label>
+                          <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {cmsBlockTypeOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Insert Position</Label>
+                          <Select value={insertPosition} onValueChange={(value) => setInsertPosition(value as "before" | "after")}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="before">Before selected</SelectItem>
+                              <SelectItem value="after">After selected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => insertNewBlock()}>
+                        <Plus className="h-4 w-4" />
+                        Insert Block
+                      </Button>
+                    </div>
+                  ) : null}
                   {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
                     <div key={field} className="grid gap-2">
                       <Label>{field}</Label>
