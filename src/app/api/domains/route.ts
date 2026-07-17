@@ -25,6 +25,7 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 type StoreDomainRow = {
   id: string;
@@ -90,6 +91,24 @@ async function loadStoreDomains(supabaseAdmin: SupabaseClient, storeId: string) 
 
   if (error) throw error;
   return (data ?? []) as StoreDomainRow[];
+}
+
+async function loadStoreSummary(supabaseAdmin: SupabaseClient, storeId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("stores")
+    .select("slug")
+    .eq("id", storeId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const slug = typeof data?.slug === "string" ? data.slug : "";
+  const baseDomain = getStoreSubdomainBaseDomain();
+
+  return {
+    slug,
+    platformDomain: slug && baseDomain ? `${slug}.${baseDomain}` : "",
+  };
 }
 
 async function upsertStoreDomain(
@@ -262,7 +281,11 @@ export async function GET(req: Request) {
       if (access.error) return access.error;
 
       const domains = await loadStoreDomains(access.supabaseAdmin, storeId);
-      return NextResponse.json({ domains: domains.map(serializeDomain) });
+      const store = await loadStoreSummary(access.supabaseAdmin, storeId);
+      return NextResponse.json({
+        store,
+        domains: domains.map(serializeDomain),
+      });
     }
 
     if (!rawDomain) {

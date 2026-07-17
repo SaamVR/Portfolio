@@ -36,6 +36,11 @@ type StoreDomain = {
   isWwwDomain: boolean;
 };
 
+type DomainPageStore = {
+  slug?: string;
+  platformDomain?: string;
+};
+
 function statusTone(status: string) {
   switch (status) {
     case "active":
@@ -69,6 +74,7 @@ function labelForStatus(status: string) {
 export const CustomDomainTab = () => {
   const { activeStoreId } = useAuth();
   const [storeSlug, setStoreSlug] = useState("");
+  const [platformDomainFromServer, setPlatformDomainFromServer] = useState("");
   const [domainInput, setDomainInput] = useState("");
   const [domains, setDomains] = useState<StoreDomain[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,9 +82,10 @@ export const CustomDomainTab = () => {
   const [actioningHostname, setActioningHostname] = useState<string | null>(null);
 
   const platformDomain = useMemo(() => {
+    if (platformDomainFromServer) return platformDomainFromServer;
     if (!storeSlug) return "";
     return `${storeSlug}.${getStoreSubdomainBaseDomain()}`;
-  }, [storeSlug]);
+  }, [platformDomainFromServer, storeSlug]);
 
   const primaryDomain = domains.find((domain) => domain.isPrimary && domain.isActive)?.hostname
     ?? domains.find((domain) => domain.isActive)?.hostname
@@ -97,6 +104,7 @@ export const CustomDomainTab = () => {
   async function fetchDomainState() {
     if (!activeStoreId) {
       setStoreSlug("");
+      setPlatformDomainFromServer("");
       setDomains([]);
       setLoading(false);
       return;
@@ -104,23 +112,16 @@ export const CustomDomainTab = () => {
 
     setLoading(true);
     try {
-      const [{ data: storeData, error: storeError }, domainResponse] = await Promise.all([
-        (supabase as any)
-          .from("stores")
-          .select("slug")
-          .eq("id", activeStoreId)
-          .single(),
-        fetch(`/api/domains?storeId=${encodeURIComponent(activeStoreId)}`, { cache: "no-store" }),
-      ]);
-
-      if (storeError) throw storeError;
+      const domainResponse = await fetch(`/api/domains?storeId=${encodeURIComponent(activeStoreId)}`, { cache: "no-store" });
       if (!domainResponse.ok) {
         const body = await domainResponse.json().catch(() => ({}));
         throw new Error(body.error || "Failed to load domains");
       }
 
       const domainData = await domainResponse.json();
-      setStoreSlug(storeData?.slug ?? "");
+      const store = (domainData.store ?? {}) as DomainPageStore;
+      setStoreSlug(store.slug ?? "");
+      setPlatformDomainFromServer(store.platformDomain ?? "");
       setDomains(domainData.domains ?? []);
     } catch (error) {
       console.error("Failed to load store domains:", error);
@@ -160,6 +161,13 @@ export const CustomDomainTab = () => {
       if (!response.ok) throw new Error(body.error || "Failed to add domain");
 
       setDomainInput("");
+      const store = (body.store ?? {}) as DomainPageStore;
+      if (store.slug) {
+        setStoreSlug(store.slug);
+      }
+      if (store.platformDomain) {
+        setPlatformDomainFromServer(store.platformDomain);
+      }
       setDomains(body.domains ?? []);
       toast.success("Custom domain connected. Add the DNS records below to finish setup.");
     } catch (error) {
@@ -287,7 +295,7 @@ export const CustomDomainTab = () => {
           <div className="rounded-xl border border-border bg-secondary/20 p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Platform domain</p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input readOnly value={platformDomain || "Store slug not available"} className="font-mono text-xs" />
+              <Input readOnly value={platformDomain || storefrontUrl} className="font-mono text-xs" />
               <Button type="button" variant="outline" onClick={() => copyValue(platformDomain, "Platform domain")} disabled={!platformDomain}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copy
@@ -296,6 +304,16 @@ export const CustomDomainTab = () => {
             <p className="mt-2 text-xs text-muted-foreground">
               Current storefront URL: <span className="font-mono">{storefrontUrl}</span>
             </p>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-border bg-background p-4">
+            <p className="text-sm font-semibold text-foreground">What you need to do</p>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+              <li>Keep your current platform subdomain live during setup.</li>
+              <li>Enter the domain you want to connect, such as `example.com` or `www.example.com`.</li>
+              <li>Add the exact DNS records shown below in your registrar or DNS provider.</li>
+              <li>Come back here and press `Check Connection` until the domain becomes active.</li>
+            </ol>
           </div>
 
           <div className="space-y-2">
@@ -420,6 +438,9 @@ export const CustomDomainTab = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                      Add these records exactly as shown at your domain provider. If the same host already has an old A or CNAME record pointing elsewhere, remove or replace that conflicting record.
+                    </div>
                     {records.map((record, index) => (
                       <div key={`${record.type}-${record.name}-${index}`} className="rounded-xl border border-border p-4">
                         <div className="mb-3 flex items-center justify-between">

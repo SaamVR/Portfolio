@@ -2,9 +2,13 @@ import type { DomainRecordInstruction } from "@/lib/domains";
 
 const VERCEL_API = "https://api.vercel.com";
 
-function getRequiredServerEnv(name: "VERCEL_TOKEN" | "VERCEL_TEAM_ID" | "VERCEL_PROJECT_ID") {
+function getServerEnv(name: "VERCEL_TOKEN" | "VERCEL_TEAM_ID" | "VERCEL_PROJECT_ID") {
   const fallbackName = name === "VERCEL_TOKEN" ? "VERCEL_API_TOKEN" : null;
-  const value = process.env[name] ?? (fallbackName ? process.env[fallbackName] : undefined);
+  return process.env[name] ?? (fallbackName ? process.env[fallbackName] : undefined);
+}
+
+function getRequiredServerEnv(name: "VERCEL_TOKEN" | "VERCEL_PROJECT_ID") {
+  const value = getServerEnv(name);
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
@@ -59,10 +63,10 @@ function buildHeaders(initHeaders?: HeadersInit) {
 }
 
 async function vercelRequest<T>(pathname: string, init: RequestInit = {}) {
-  const teamId = getRequiredServerEnv("VERCEL_TEAM_ID");
   const url = new URL(pathname, VERCEL_API);
+  const teamId = getServerEnv("VERCEL_TEAM_ID");
 
-  if (!url.searchParams.has("teamId")) {
+  if (teamId && !url.searchParams.has("teamId")) {
     url.searchParams.set("teamId", teamId);
   }
 
