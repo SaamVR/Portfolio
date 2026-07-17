@@ -36,8 +36,8 @@ interface DispatchResult {
 
 const templates: Record<string, (data: Payload) => { subject: string; html: string }> = {
   "welcome": (data) => ({
-    subject: `Welcome to ThreadBD, ${data.storeName}!`,
-    html: `<p>Hi there,</p><p>Welcome to ThreadBD! Your store <strong>${data.storeName}</strong> has been created.</p>`,
+    subject: `Welcome to EZComo, ${data.storeName}!`,
+    html: `<p>Hi there,</p><p>Welcome to EZComo! Your store <strong>${data.storeName}</strong> has been created.</p>`,
   }),
   "store-published": (data) => ({
     subject: `Your store ${data.storeName} is live!`,
@@ -113,7 +113,7 @@ async function sendResendEmail(to: string, subject: string, html: string): Promi
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "ThreadBD <noreply@threadbd.com>",
+      from: Deno.env.get("EMAIL_FROM") || "EZComo <noreply@ezcomo.shop>",
       to: [to],
       subject,
       html,

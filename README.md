@@ -1,6 +1,6 @@
-# ThreadBD Commerce Engine
+# EZComo Commerce Engine
 
-ThreadBD Commerce Engine is a Next.js and Supabase commerce CMS for Bangladesh-first storefronts. It includes a multi-tenant storefront runtime, merchant admin dashboard, page-builder CMS, onboarding flow, media management, store-scoped commerce data, and Supabase Edge Functions for platform operations.
+EZComo Commerce Engine is a Next.js and Supabase commerce CMS for Bangladesh-first storefronts. It includes a multi-tenant storefront runtime, merchant admin dashboard, page-builder CMS, onboarding flow, media management, store-scoped commerce data, and Supabase Edge Functions for platform operations.
 
 ## Stack
 

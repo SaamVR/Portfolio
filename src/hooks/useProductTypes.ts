@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
-export const DEFAULT_STORE_ID = "00000000-0000-4000-8000-000000000001";
 
 export function useProductTypes(explicitStoreId?: string | null) {
   const store = useOptionalStore();

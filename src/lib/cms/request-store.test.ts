@@ -18,6 +18,6 @@ describe("request store helpers", () => {
 
     expect(candidates[0]).toBe("configured-store");
     expect(candidates[1]).toBe("public-store");
-    expect(candidates.includes("threadbd")).toBe(false);
+    expect(candidates.includes("ezcomo")).toBe(false);
   });
 });

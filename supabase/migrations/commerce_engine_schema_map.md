@@ -6,7 +6,7 @@ For cleaned, purpose-based SQL packs, use `supabase/schema/sql/`.
 
 ## Platform CMS
 
-- `cms_plans`: public package definitions for Starter, Growth, and Scale.
+- `cms_plans`: public package definitions for Basic, Advanced, and Pro.
 - `cms_signup_leads`: pre-sales/signup interest before a full workspace exists.
 - `user_roles`: platform-level roles, reserved for engine operators.
 
@@ -41,7 +41,7 @@ The default demo tenant is `00000000-0000-4000-8000-000000000001`.
 
 - `bkash-payment` must resolve payment settings by `store_id` before falling back globally.
 - `sitemap` must generate platform URLs plus tenant storefront URLs.
-- `stock-notifications` should use store-aware sender/copy instead of hard-coded ThreadBD branding.
+- `stock-notifications` should use store-aware sender/copy instead of hard-coded platform branding.
 
 ## Organized SQL Packs
 

@@ -32,9 +32,9 @@ test("root and www base domains stay on the platform app", () => {
 });
 
 test("single tenant subdomains resolve to store slugs", () => {
-  assert.equal(resolveSubdomainStoreSlug("threadbd.stores.example.com", routingEnv), "threadbd");
+  assert.equal(resolveSubdomainStoreSlug("ezcomo.stores.example.com", routingEnv), "ezcomo");
   assert.equal(resolveSubdomainStoreSlug("fresh-food.commerce.example.com", routingEnv), "fresh-food");
-  assert.equal(resolveSubdomainStoreSlug("nested.threadbd.stores.example.com", routingEnv), null);
+  assert.equal(resolveSubdomainStoreSlug("nested.ezcomo.stores.example.com", routingEnv), null);
 });
 
 test("platform paths bypass tenant rewrites on tenant domains", () => {
@@ -47,9 +47,9 @@ test("platform paths bypass tenant rewrites on tenant domains", () => {
 });
 
 test("tenant paths rewrite into the store route shape", () => {
-  assert.equal(getTenantRewritePath("threadbd", "/"), "/stores/threadbd");
-  assert.equal(getTenantRewritePath("threadbd", "/shop"), "/stores/threadbd/shop");
-  assert.equal(getTenantRewritePath("threadbd", "/about-us"), "/stores/threadbd/about-us");
+  assert.equal(getTenantRewritePath("ezcomo", "/"), "/stores/ezcomo");
+  assert.equal(getTenantRewritePath("ezcomo", "/shop"), "/stores/ezcomo/shop");
+  assert.equal(getTenantRewritePath("ezcomo", "/about-us"), "/stores/ezcomo/about-us");
 });
 
 test("custom domains resolve only when the custom domain resolver finds a store", async () => {

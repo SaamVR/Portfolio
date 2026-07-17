@@ -114,7 +114,7 @@ async function main() {
       description: "Temporary store for billing smoke test",
       currency_code: "BDT",
       locale: "en-BD",
-      plan: "starter",
+      plan: "basic",
       store_type: "general",
       is_published: false,
     });

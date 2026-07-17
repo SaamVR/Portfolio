@@ -5,7 +5,7 @@ Reviewed during the Commerce Engine CMS pivot.
 ## Updated
 
 - `bkash-payment`
-  - Removed hard-coded ThreadBD fallback origin.
+  - Removed hard-coded platform fallback origin.
   - Uses `CMS_PUBLIC_URL` and comma-separated `ALLOWED_ORIGINS`.
   - Resolves `store_id` from payload or order number.
   - Reads tenant-scoped `site_settings.payment_settings`, with a global fallback for migration safety.
@@ -17,7 +17,7 @@ Reviewed during the Commerce Engine CMS pivot.
   - Emits tenant storefront URLs from `stores`, `store_pages`, and product records.
 
 - `stock-notifications`
-  - Removed hard-coded ThreadBD sender/copy.
+  - Removed hard-coded sender/copy.
   - Uses `STOCK_EMAIL_FROM`.
   - Filters notification recipients by `store_id` when present.
   - Uses the store name in email content.

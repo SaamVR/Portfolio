@@ -168,7 +168,7 @@ values (
   'Unpublished store used for tenant RLS checks.',
   'BDT',
   'en-BD',
-  'starter',
+  'basic',
   'general',
   false
 );

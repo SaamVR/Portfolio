@@ -7,12 +7,12 @@ const input: PlatformAnalyticsInput = {
     { id: "store-b", owner_id: "owner-beta", name: "Beta", slug: "beta", is_published: false, updated_at: "2026-06-01" },
   ],
   plans: [
-    { id: "starter", name: "Starter", monthly_price: 0 },
-    { id: "growth", name: "Growth", monthly_price: 1490 },
+    { id: "basic", name: "Basic", monthly_price: 0 },
+    { id: "advanced", name: "Advanced", monthly_price: 1490 },
   ],
   subscriptions: [
-    { store_id: "store-a", plan_id: "growth", status: "active" },
-    { store_id: "store-b", plan_id: "starter", status: "trialing" },
+    { store_id: "store-a", plan_id: "advanced", status: "active" },
+    { store_id: "store-b", plan_id: "basic", status: "trialing" },
   ],
   orders: [
     { store_id: "store-a", status: "delivered", total: 1200 },
@@ -47,7 +47,7 @@ describe("platform admin analytics", () => {
     const alpha = summaries.find((store) => store.id === "store-a");
     const beta = summaries.find((store) => store.id === "store-b");
 
-    expect(alpha?.planName).toBe("Growth");
+    expect(alpha?.planName).toBe("Advanced");
     expect(alpha?.revenue).toBe(1200);
     expect(alpha?.customPageTotal).toBe(1);
     expect(alpha?.visibleBlockTotal).toBe(1);

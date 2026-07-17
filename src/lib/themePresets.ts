@@ -11,7 +11,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: "default",
     name: "Emerald Dark",
-    description: "The original ThreadBD theme — deep dark tones with green accents",
+    description: "A premium dark theme — deep dark tones with emerald accents",
     preview: { bg: "#101418", primary: "#2ea96b", accent: "#d4a534" },
     dark: {
       "--background": "220 20% 7%",

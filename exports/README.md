@@ -1,4 +1,4 @@
-# ThreadBD Database Export
+# EZComo Database Export
 
 ## How to Import into Your Supabase Project
 

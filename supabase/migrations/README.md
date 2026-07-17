@@ -23,6 +23,6 @@ Use this folder for:
 
 - `supabase/migrations/` remains the deployable history.
 - This folder is the organized reference layer.
-- The legacy ThreadBD single-store tables were kept and upgraded with `store_id` so the CMS can evolve without a destructive rewrite.
+- The legacy single-store tables were kept and upgraded with `store_id` so the CMS can evolve without a destructive rewrite.
 - `rls_smoke_can_manage_store.sql` is a rollback-only live-policy smoke test for owner/admin/editor/viewer/outsider/platform-admin access across the main tenant-managed tables. Run it with `npm run test:db:rls` against a local or dev Postgres URL.
 - `npm run test:db` is the combined local DB preflight. It runs the tenant RLS smoke first and then the billing route smoke so release checks cover both isolation and paid-plan activation flow.

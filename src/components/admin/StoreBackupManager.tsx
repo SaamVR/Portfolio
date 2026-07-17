@@ -355,7 +355,7 @@ export default function StoreBackupManager() {
       const importedSubscriptions = (rewrittenData.store_subscriptions ?? []).map((row: any) => ({
         id: crypto.randomUUID(),
         store_id: targetStore.id,
-        plan_id: typeof row?.plan_id === "string" && row.plan_id.trim().length > 0 ? row.plan_id : "starter",
+        plan_id: typeof row?.plan_id === "string" && row.plan_id.trim().length > 0 ? row.plan_id : "basic",
         status: "trialing",
         trial_ends_at: null,
         current_period_ends_at: null,

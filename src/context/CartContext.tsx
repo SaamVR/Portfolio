@@ -4,16 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { CartContext, type CartItem } from "@/context/cart-context";
 
-const CART_STORAGE_KEY_PREFIX = "threadbd-cart-";
-const CART_TIME_KEY_PREFIX = "threadbd-cart-time-";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
+
 const GLOBAL_CART_KEY = "global";
 
-function getStorageKey(storeId?: string) {
-  return `${CART_STORAGE_KEY_PREFIX}${storeId || GLOBAL_CART_KEY}`;
+function getStorageKey(storeId?: string | null) {
+  return getScopedStorefrontStorageKey("cart", storeId);
 }
 
-function getTimeKey(storeId?: string) {
-  return `${CART_TIME_KEY_PREFIX}${storeId || GLOBAL_CART_KEY}`;
+function getTimeKey(storeId?: string | null) {
+  return getScopedStorefrontStorageKey("cart-time", storeId);
 }
 
 function isSameCartLine(item: CartItem, productId: string, size: string, storeId?: string) {

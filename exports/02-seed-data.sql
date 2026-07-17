@@ -1,5 +1,5 @@
 -- ============================================================
--- THREADBD SEED DATA
+-- EZCOMO SEED DATA
 -- Insert this AFTER running 01-schema.sql
 -- Generated: 2026-02-28
 -- ============================================================
@@ -58,16 +58,16 @@ INSERT INTO public.coupon_codes (id, code, discount_type, discount_value, min_or
 -- SITE SETTINGS
 -- =====================
 INSERT INTO public.site_settings (key, value) VALUES
-  ('footer', '{"about_text": "THREADBD — Premium menswear for the modern Bangladeshi man.", "social_links": {}}'),
-  ('about_page', '{"title": "About THREADBD", "content": "We are a premium menswear brand based in Bangladesh."}'),
+  ('footer', '{"about_text": "EZComo — Premium clothing and everyday essentials.", "social_links": {}}'),
+  ('about_page', '{"title": "About EZComo", "content": "We are a premium fashion brand providing high-quality clothing."}'),
   ('faq_entries', '[{"q": "What is your return policy?", "a": "We accept returns within 3 days of delivery."}, {"q": "How long does delivery take?", "a": "Delivery takes 2-5 business days inside Dhaka, 5-7 days outside."}, {"q": "Do you offer Cash on Delivery?", "a": "Yes, we offer COD across Bangladesh."}]'),
   ('categories', '[{"label": "T-Shirts", "value": "T-Shirt"}, {"label": "Polos", "value": "Polo"}, {"label": "Shirts", "value": "Shirt"}, {"label": "Trousers", "value": "Trousers"}, {"label": "Innerwear", "value": "Innerwear"}]'),
-  ('seo_settings', '{"site_title": "ThreadBD - Premium Streetwear Bangladesh", "meta_description": "Shop premium streetwear, t-shirts, polos, and more from ThreadBD. Free delivery across Bangladesh.", "keywords": "streetwear, bangladesh, t-shirt, fashion, clothing", "og_image": ""}'),
+  ('seo_settings', '{"site_title": "EZComo - Premium Streetwear & Essentials", "meta_description": "Shop premium streetwear, t-shirts, polos, and more from EZComo. Free delivery available.", "keywords": "streetwear, clothing, fashion, essentials", "og_image": ""}'),
   ('payment_settings', '{"bkash_enabled": true, "bkash_number": "01307762156", "nagad_enabled": true, "nagad_number": "01638543758"}'),
   ('whatsapp_support', '{"enabled": true, "number": "8801307762156", "message": "Hi! I need help with my order."}'),
   ('delivery_settings', '{"enabled": true, "delivery_fee": 100, "free_threshold": 2000}'),
   ('active_theme', '"default"'),
   ('announcement_bar', '{"enabled": true, "bg_color": "#b00c0c", "text": "Free shipping on orders over ৳2000 🚚", "messages": ["bkash 5 offf", "Announcement Bar", "Announcement Bar", "Announcement Bar"], "link": "/shop"}'),
-  ('contact_page', '{"address": "Dhaka, Bangladesh", "email": "hello@threadbd.com", "phone": "+880 1307762156"}'),
-  ('hero_section', '{"title": "Elevate Your Style with ThreadBD", "subtitle": "Premium menswear crafted for the modern gentleman", "cta_text": "Shop Now!!", "cta_link": "/shop", "media_type": "image", "media_url": "", "overlay_color": "#d6d6d6", "overlay_opacity": 24}'),
+  ('contact_page', '{"address": "Dhaka, Bangladesh", "email": "hello@example.com", "phone": "+880 1307762156"}'),
+  ('hero_section', '{"title": "Elevate Your Everyday Style", "subtitle": "Premium clothing crafted for modern comfort", "cta_text": "Shop Now!!", "cta_link": "/shop", "media_type": "image", "media_url": "", "overlay_color": "#d6d6d6", "overlay_opacity": 24}'),
   ('promo_banner', '{"enabled": false, "title": "Summer Sale: Up to 50% Off", "subtitle": "Shop the latest drops before they''re gone", "badge_text": "Limited Time", "bg_style": "accent", "cta_text": "Shop Now!!", "cta_link": "/shop"}');

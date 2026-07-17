@@ -385,7 +385,7 @@ describe("billing checkout side effects", () => {
 
 describe("billing subscription side effects", () => {
   test("writes the exact active free-plan subscription payload", async () => {
-    const admin = createSubscriptionAdminMock({ id: "starter", monthly_price: 0 });
+    const admin = createSubscriptionAdminMock({ id: "basic", monthly_price: 0 });
 
     mock.method(billingSubscriptionRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
     mock.method(billingSubscriptionRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
@@ -394,17 +394,17 @@ describe("billing subscription side effects", () => {
     const response = await subscriptionPatch(
       jsonRequest("https://example.com/api/billing/subscription", "PATCH", {
         storeId: "store_1",
-        planId: "starter",
+        planId: "basic",
       }),
     );
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { success: true, status: "active", planId: "starter" });
+    assert.deepEqual(await response.json(), { success: true, status: "active", planId: "basic" });
     assert.deepEqual(admin.upserts, [
       {
         payload: {
           store_id: "store_1",
-          plan_id: "starter",
+          plan_id: "basic",
           status: "active",
           provider: null,
           provider_subscription_id: null,
@@ -417,7 +417,7 @@ describe("billing subscription side effects", () => {
   });
 
   test("writes the exact cancelled subscription payload for cancel actions", async () => {
-    const admin = createSubscriptionAdminMock({ id: "growth", monthly_price: 1499 });
+    const admin = createSubscriptionAdminMock({ id: "advanced", monthly_price: 1499 });
 
     mock.method(billingSubscriptionRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
     mock.method(billingSubscriptionRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
@@ -426,18 +426,18 @@ describe("billing subscription side effects", () => {
     const response = await subscriptionPatch(
       jsonRequest("https://example.com/api/billing/subscription", "PATCH", {
         storeId: "store_1",
-        planId: "growth",
+        planId: "advanced",
         action: "cancel",
       }),
     );
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { success: true, status: "cancelled", planId: "growth" });
+    assert.deepEqual(await response.json(), { success: true, status: "cancelled", planId: "advanced" });
     assert.deepEqual(admin.upserts, [
       {
         payload: {
           store_id: "store_1",
-          plan_id: "growth",
+          plan_id: "advanced",
           status: "cancelled",
           provider: null,
           provider_subscription_id: null,

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,8 +95,10 @@ const BkashCallback = () => {
     executePayment();
   }, [paymentID, callbackStatus, orderId, storeId, navigate]);
 
+  const LayoutWrapper = storeId ? StorefrontLayout : Layout;
+
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead title="bKash Payment Verification" description="Verifying your bKash payment." noindex />
       <PageTransition>
         <section className="py-20 flex min-h-[60vh] items-center justify-center">
@@ -153,7 +156,7 @@ const BkashCallback = () => {
           </div>
         </section>
       </PageTransition>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

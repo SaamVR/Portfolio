@@ -36,8 +36,8 @@ describe("store backup helpers", () => {
   });
 
   it("infers backup media names and folders", () => {
-    const url = "https://res.cloudinary.com/demo/image/upload/stores/threadbd/hero/v123456/banner.jpg";
+    const url = "https://res.cloudinary.com/demo/image/upload/stores/ezcomo/hero/v123456/banner.jpg";
     expect(inferBackupMediaFileName(url)).toBe("banner.jpg");
-    expect(inferBackupMediaFolder(url)).toBe("stores/threadbd/hero");
+    expect(inferBackupMediaFolder(url)).toBe("stores/ezcomo/hero");
   });
 });

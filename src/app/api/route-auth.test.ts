@@ -99,7 +99,7 @@ describe("billing subscription route authorization", () => {
     const response = await subscriptionPatch(
       jsonRequest("https://example.com/api/billing/subscription", "PATCH", {
         storeId: "store_1",
-        planId: "starter",
+        planId: "basic",
       }),
     );
 
@@ -120,7 +120,7 @@ describe("billing subscription route authorization", () => {
     const response = await subscriptionPatch(
       jsonRequest("https://example.com/api/billing/subscription", "PATCH", {
         storeId: "store_1",
-        planId: "starter",
+        planId: "basic",
       }),
     );
 
