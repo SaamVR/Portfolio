@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, RotateCcw, Save, Settings2, Trash2, Undo2 } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, RotateCcw, Save, Settings2, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,16 @@ const BASIC_TEXT_FIELDS = [
 const PROMO_BG_STYLES = ["gradient", "dark", "accent", "luxury-gold", "indigo", "rose", "aurora", "luxury-dark", "confetti", "mesh-gradient"] as const;
 const PROMO_ALIGNMENTS = ["left", "center", "right"] as const;
 const PROMO_PADDING_SIZES = ["compact", "cozy", "large"] as const;
+
+function serializeStoreDraft(store: Store): string {
+  return JSON.stringify(store);
+}
+
+function formatSavedTime(value: Date | null): string {
+  return value
+    ? value.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : "";
+}
 
 function updatePage(store: Store, pageId: string, updater: (page: StorePage) => StorePage) {
   return {
@@ -79,9 +90,13 @@ export function StorefrontLiveEditor({
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [insertPosition, setInsertPosition] = useState<"before" | "after">("after");
   const [history, setHistory] = useState<Store[]>([]);
+  const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const lastLoadedStoreRef = useRef(store);
   const location = useLocation();
   const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(page.id)}&returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+  const currentSnapshot = useMemo(() => serializeStoreDraft(store), [store]);
+  const hasUnsavedChanges = currentSnapshot !== persistedSnapshot;
   const selectedBlock = useMemo(
     () => page.blocks.find((block) => block.id === selectedBlockId) ?? null,
     [page.blocks, selectedBlockId],
@@ -95,8 +110,24 @@ export function StorefrontLiveEditor({
 
   useEffect(() => {
     lastLoadedStoreRef.current = store;
+    setPersistedSnapshot(serializeStoreDraft(store));
     setHistory([]);
-  }, [store]);
+    setLastSavedAt(null);
+  }, [page.id, store.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasUnsavedChanges) {
+      return undefined;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   if (!canManageStore) {
     return null;
@@ -126,10 +157,21 @@ export function StorefrontLiveEditor({
   };
 
   const resetToLoadedState = () => {
+    if (hasUnsavedChanges && typeof window !== "undefined" && !window.confirm("Discard unsaved live edits and reset this storefront to the last loaded state?")) {
+      return;
+    }
     setStore(lastLoadedStoreRef.current);
     setHistory([]);
     onSelectedBlockChange(null);
     toast.success("Live editor reset to the last loaded storefront state.");
+  };
+
+  const toggleAdminMode = () => {
+    if (adminMode && hasUnsavedChanges && typeof window !== "undefined" && !window.confirm("Close the live editor with unsaved changes still in your local draft?")) {
+      return;
+    }
+
+    onAdminModeChange(!adminMode);
   };
 
   const updateStoreThemeToken = (token: string, value: string) => {
@@ -292,6 +334,21 @@ export function StorefrontLiveEditor({
     }));
   };
 
+  const switchSelectedBlockType = (nextType: StorePageBlock["type"]) => {
+    if (!selectedBlock || selectedBlock.type === nextType) return;
+
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => {
+      const replacement = createDefaultBlock(nextType, block.sortOrder);
+      return {
+        ...replacement,
+        id: block.id,
+        sortOrder: block.sortOrder,
+        isVisible: block.isVisible,
+      };
+    }));
+    toast.success(`Switched block to ${nextType}.`);
+  };
+
   const insertNewBlock = () => {
     if (!selectedBlock) return;
 
@@ -339,6 +396,11 @@ export function StorefrontLiveEditor({
         return;
       }
 
+      const nextSnapshot = serializeStoreDraft(store);
+      setPersistedSnapshot(nextSnapshot);
+      lastLoadedStoreRef.current = store;
+      setHistory([]);
+      setLastSavedAt(new Date());
       toast.success("Live storefront changes saved.");
     } finally {
       setSaving(false);
@@ -346,6 +408,16 @@ export function StorefrontLiveEditor({
   };
 
   const resolvedThemeVars = resolveStoreThemeVars(store.theme).vars;
+  const saveStatusLabel = saving
+    ? "Saving live changes..."
+    : hasUnsavedChanges
+      ? lastSavedAt
+        ? `Local draft active. Last saved ${formatSavedTime(lastSavedAt)}.`
+        : "Local draft active. Save to publish your storefront edits."
+      : lastSavedAt
+        ? `All live changes saved at ${formatSavedTime(lastSavedAt)}.`
+        : "All live changes saved.";
+  const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
 
   const renderAdvancedControls = () => {
     if (!selectedBlock || editorMode !== "advanced") {
@@ -660,171 +732,214 @@ export function StorefrontLiveEditor({
   };
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[min(420px,calc(100vw-2rem))] flex-col gap-3">
-      <div className="pointer-events-auto flex justify-end">
-        <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 p-2 shadow-lg backdrop-blur">
-          <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} onClick={() => onAdminModeChange(!adminMode)}>
+    <div className="pointer-events-none fixed inset-x-3 bottom-3 z-50 flex justify-end sm:inset-x-auto sm:right-4 sm:max-w-[min(440px,calc(100vw-2rem))]">
+      <div className="flex w-full max-w-[min(440px,100%)] flex-col gap-3">
+        <div className="pointer-events-auto flex justify-end">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 rounded-[1.75rem] border border-border bg-background/95 p-2 shadow-lg backdrop-blur">
+            <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} onClick={toggleAdminMode} title={adminMode ? "Close live editor" : "Open live editor"}>
             {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
-          <Button type="button" size="icon" variant="ghost" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
-            <Undo2 className="h-4 w-4" />
-          </Button>
-          <Button type="button" size="icon" variant="ghost" onClick={() => resetToLoadedState()} title="Reset live editor">
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
-            <SelectTrigger className="h-9 w-[128px] rounded-full border-none bg-transparent px-3">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="basic">Basic Mode</SelectItem>
-              <SelectItem value="advanced">Advanced Mode</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button type="button" size="sm" onClick={() => void saveLiveEdits()} disabled={saving} className="rounded-full">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save
-          </Button>
-        </div>
-      </div>
-
-      {adminMode ? (
-        <div className="pointer-events-auto rounded-3xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live Website Editor</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">{page.title}</p>
-            </div>
-            <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
-              <Link to={pageEditorHref}>Open Builder</Link>
+            </Button>
+            <Button type="button" size="icon" variant="ghost" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button type="button" size="icon" variant="ghost" onClick={() => resetToLoadedState()} title="Reset live editor">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
+              <SelectTrigger className="h-9 min-w-[136px] rounded-full border-none bg-transparent px-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="basic">Basic Mode</SelectItem>
+                <SelectItem value="advanced">Advanced Mode</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="button" size="sm" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges} className="rounded-full">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {hasUnsavedChanges ? "Save" : "Saved"}
             </Button>
           </div>
+        </div>
 
-          <div className="mt-4 space-y-4">
-            <div className="rounded-2xl border border-border p-3">
-              <div className="mb-3 flex items-center gap-2">
-                <Paintbrush2 className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium text-foreground">Theme tokens</p>
+        {adminMode ? (
+          <div className="pointer-events-auto max-h-[calc(100vh-5.5rem)] overflow-y-auto rounded-[1.75rem] border border-border bg-background/95 p-4 shadow-2xl backdrop-blur sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live Website Editor</p>
+                  <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Saved"}</Badge>
+                </div>
+                <p className="mt-1 truncate text-sm font-semibold text-foreground">{page.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{saveStatusLabel}</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {GUIDED_THEME_TOKENS.map((token) => {
-                  const currentValue = store.theme.customCssVars[token.key] ?? resolvedThemeVars[token.key] ?? "";
-                  return (
-                    <div key={token.key} className="grid gap-2">
-                      <Label>{token.label}</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="color"
-                          value={hslChannelsToHex(currentValue) ?? "#000000"}
-                          onChange={(event) => {
-                            const next = hexToHslChannels(event.target.value);
-                            if (!next) return;
-                            updateStoreThemeToken(token.key, next);
-                          }}
-                          className="h-10 w-16 p-1"
-                        />
-                        <Input value={currentValue} onChange={(event) => updateStoreThemeToken(token.key, event.target.value)} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
+                <Link to={pageEditorHref}>Open Builder</Link>
+              </Button>
             </div>
 
-            <div className="rounded-2xl border border-border p-3">
-              <div className="mb-3 flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium text-foreground">Selected block</p>
+            {hasUnsavedChanges ? (
+              <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-950 dark:text-amber-100">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>Your edits are only in this local live draft until you press Save.</p>
+                </div>
               </div>
-              {!selectedBlock ? (
-                <p className="text-sm text-muted-foreground">Click a highlighted section on the storefront to edit it here.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-foreground">{selectedBlock.type}</p>
-                    <Switch
-                      checked={selectedBlock.isVisible}
-                      onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked })))}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(-1)}>
-                      <ArrowUp className="h-4 w-4" />
-                      Up
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(1)}>
-                      <ArrowDown className="h-4 w-4" />
-                      Down
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()}>
-                      <Copy className="h-4 w-4" />
-                      Duplicate
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => removeSelectedBlock()}>
-                      <Trash2 className="h-4 w-4" />
-                      Remove
-                    </Button>
-                  </div>
-                  {editorMode === "advanced" ? (
-                    <div className="grid gap-3 rounded-xl border border-border p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Insert block inline</p>
-                        <p className="text-xs text-muted-foreground">Add a new section before or after the currently selected block.</p>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                          <Label>Block Type</Label>
-                          <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {cmsBlockTypeOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Insert Position</Label>
-                          <Select value={insertPosition} onValueChange={(value) => setInsertPosition(value as "before" | "after")}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="before">Before selected</SelectItem>
-                              <SelectItem value="after">After selected</SelectItem>
-                            </SelectContent>
-                          </Select>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-950 dark:text-emerald-100">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>The live storefront is synced with the latest saved changes.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 space-y-4">
+              <div className="rounded-2xl border border-border p-3">
+                <div className="mb-3 flex items-center gap-2">
+                  <Paintbrush2 className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Theme tokens</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {GUIDED_THEME_TOKENS.map((token) => {
+                    const currentValue = store.theme.customCssVars[token.key] ?? resolvedThemeVars[token.key] ?? "";
+                    return (
+                      <div key={token.key} className="grid gap-2">
+                        <Label>{token.label}</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="color"
+                            value={hslChannelsToHex(currentValue) ?? "#000000"}
+                            onChange={(event) => {
+                              const next = hexToHslChannels(event.target.value);
+                              if (!next) return;
+                              updateStoreThemeToken(token.key, next);
+                            }}
+                            className="h-10 w-16 p-1"
+                          />
+                          <Input value={currentValue} onChange={(event) => updateStoreThemeToken(token.key, event.target.value)} />
                         </div>
                       </div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => insertNewBlock()}>
-                        <Plus className="h-4 w-4" />
-                        Insert Block
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border p-3">
+                <div className="mb-3 flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Selected block</p>
+                </div>
+                {!selectedBlock ? (
+                  <p className="text-sm text-muted-foreground">Click a highlighted section on the storefront to edit it here.</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">{selectedBlock.type}</p>
+                        <Badge variant="outline">{selectedBlock.isVisible ? "Visible" : "Hidden"}</Badge>
+                      </div>
+                      <Switch
+                        checked={selectedBlock.isVisible}
+                        onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked })))}
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(-1)} className="justify-start">
+                        <ArrowUp className="h-4 w-4" />
+                        Move up
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(1)} className="justify-start">
+                        <ArrowDown className="h-4 w-4" />
+                        Move down
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()} className="justify-start">
+                        <Copy className="h-4 w-4" />
+                        Duplicate
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => removeSelectedBlock()} className="justify-start">
+                        <Trash2 className="h-4 w-4" />
+                        Remove
                       </Button>
                     </div>
-                  ) : null}
-                  {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
-                    <div key={field} className="grid gap-2">
-                      <Label>{field}</Label>
-                      {field === "body" || field.toLowerCase().includes("subtitle") ? (
-                        <Textarea
-                          value={String(selectedBlock.props[field] ?? "")}
-                          onChange={(event) => updateSelectedBlockField(field, event.target.value)}
-                        />
-                      ) : (
-                        <Input
-                          value={String(selectedBlock.props[field] ?? "")}
-                          onChange={(event) => updateSelectedBlockField(field, event.target.value)}
-                        />
-                      )}
-                    </div>
-                  ))}
-                  {renderAdvancedControls()}
-                </div>
-              )}
+                    {editorMode === "advanced" ? (
+                      <div className="grid gap-3 rounded-xl border border-border p-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-medium text-foreground">Advanced block tools</p>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">Switch block type or insert a new section beside the current block.</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-2">
+                            <Label>Switch Block Type</Label>
+                            <Select value={selectedBlock.type} onValueChange={(value) => switchSelectedBlockType(value as StorePageBlock["type"])}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {cmsBlockTypeOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Insert Position</Label>
+                            <Select value={insertPosition} onValueChange={(value) => setInsertPosition(value as "before" | "after")}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="before">Before selected</SelectItem>
+                                <SelectItem value="after">After selected</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                          <div className="grid gap-2">
+                            <Label>Insert Block Type</Label>
+                            <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {cmsBlockTypeOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button type="button" size="sm" variant="outline" onClick={() => insertNewBlock()} className="sm:min-w-[132px]">
+                            <Plus className="h-4 w-4" />
+                            Insert Block
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
+                      <div key={field} className="grid gap-2">
+                        <Label>{field}</Label>
+                        {field === "body" || field.toLowerCase().includes("subtitle") ? (
+                          <Textarea
+                            value={String(selectedBlock.props[field] ?? "")}
+                            onChange={(event) => updateSelectedBlockField(field, event.target.value)}
+                          />
+                        ) : (
+                          <Input
+                            value={String(selectedBlock.props[field] ?? "")}
+                            onChange={(event) => updateSelectedBlockField(field, event.target.value)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    {renderAdvancedControls()}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
