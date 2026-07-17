@@ -37,6 +37,7 @@ import {
   parseThemePackageImport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
+import { resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import type { Json } from "@/integrations/supabase/types";
 
 type StoreThemeSettingsRow = {
@@ -346,10 +347,17 @@ const SiteSettings = () => {
 
   const activeThemeId = themeData?.theme_package_id ?? themeData?.preset_id ?? "default";
   const [localThemeId, setLocalThemeId] = useState(activeThemeId);
+  const [localThemeMode, setLocalThemeMode] = useState<"light" | "dark">(themeData?.mode === "light" ? "light" : "dark");
+  const [localThemeColors, setLocalThemeColors] = useState<Record<string, string>>(themeData?.colors ?? {});
 
   useEffect(() => {
     setLocalThemeId(activeThemeId);
   }, [activeThemeId]);
+
+  useEffect(() => {
+    setLocalThemeMode(themeData?.mode === "light" ? "light" : "dark");
+    setLocalThemeColors(themeData?.colors ?? {});
+  }, [themeData?.colors, themeData?.mode, themeData?.theme_package_id, themeData?.preset_id]);
 
   const activeThemePackage = useMemo(
     () => resolveThemePackageById(localThemeId, themePackages, themeData?.preset_id ?? "default"),
@@ -586,18 +594,39 @@ const SiteSettings = () => {
     setLocalThemeId(themeId);
   };
 
+  const handleThemeModeChange = (mode: "light" | "dark") => {
+    setLocalThemeMode(mode);
+  };
+
+  const handleThemeColorChange = (key: string, value: string) => {
+    setLocalThemeColors((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const handleThemeColorReset = () => {
+    setLocalThemeColors({});
+  };
+
   const saveTheme = async () => {
     if (!activeStoreId) return;
 
     setSaving("active_theme");
     try {
+      const resolvedThemeVars = resolveStoreThemeVars({
+        presetId: activeThemePackage.presetId,
+        themePackageId: activeThemePackage.id,
+        mode: localThemeMode,
+        customCssVars: localThemeColors,
+      }, themePackages).vars;
       const fullPayload = {
         store_id: activeStoreId,
         preset_id: activeThemePackage.presetId,
-        mode: themeData?.mode ?? "dark",
+        mode: localThemeMode,
         theme_package_id: activeThemePackage.id,
         theme_package_version: activeThemePackage.version,
-        colors: activeThemePackage.tokens[(themeData?.mode as "light" | "dark" | undefined) ?? "dark"] ?? {},
+        colors: localThemeColors,
         typography: {
           headingFont: resolvedHeadingFont,
           bodyFont: resolvedBodyFont,
@@ -611,8 +640,8 @@ const SiteSettings = () => {
           borderRadius: settings.theme_customization?.border_radius ?? undefined,
         },
         resolved_tokens: {
-          light: activeThemePackage.tokens.light,
-          dark: activeThemePackage.tokens.dark,
+          light: localThemeMode === "light" ? resolvedThemeVars : activeThemePackage.tokens.light,
+          dark: localThemeMode === "dark" ? resolvedThemeVars : activeThemePackage.tokens.dark,
         },
         custom_css: activeThemePackage.customCss ?? null,
       };
@@ -623,7 +652,7 @@ const SiteSettings = () => {
           {
             store_id: activeStoreId,
             preset_id: activeThemePackage.presetId,
-            mode: themeData?.mode ?? "dark",
+            mode: localThemeMode,
             colors: fullPayload.colors,
             typography: fullPayload.typography,
             components: fullPayload.components,
@@ -1335,11 +1364,15 @@ const SiteSettings = () => {
             update={update}
             SaveButton={SaveButton}
             localThemeId={localThemeId}
-            activeThemeMode={resolvedThemeMode}
+            activeThemeMode={localThemeMode}
+            localThemeColors={localThemeColors}
             activeHeadingFont={resolvedHeadingFontControl}
             activeBodyFont={resolvedBodyFontControl}
             activeBorderRadius={resolvedBorderRadius}
             handleThemeSelect={handleThemeSelect}
+            handleThemeModeChange={handleThemeModeChange}
+            handleThemeColorChange={handleThemeColorChange}
+            handleThemeColorReset={handleThemeColorReset}
             saveTheme={saveTheme}
             saving={saving}
             themePackages={themePackages}

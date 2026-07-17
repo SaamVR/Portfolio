@@ -44,6 +44,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Wand2,
+  Code2,
+  ClipboardCopy,
+  Rocket,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -147,6 +150,8 @@ type StoreLayoutPackage = {
     pages: StorePage[];
   };
 };
+
+type AdvancedCodePanel = "page-json" | "block-json" | "theme-css" | "layout";
 
 function serializeStoreDraft(store: Store): string {
   return JSON.stringify(store);
@@ -289,6 +294,10 @@ export default function CmsPagesManager() {
   const [revisionLabel, setRevisionLabel] = useState("");
   const [revisions, setRevisions] = useState<Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: StorePageBlock[] }>>([]);
   const [loadingRevisions, setLoadingRevisions] = useState(false);
+  const [activeAdvancedCodePanel, setActiveAdvancedCodePanel] = useState<AdvancedCodePanel>("page-json");
+  const [advancedPageJsonDraft, setAdvancedPageJsonDraft] = useState("");
+  const [advancedSelectedBlockJsonDraft, setAdvancedSelectedBlockJsonDraft] = useState("");
+  const [advancedThemeCssDraft, setAdvancedThemeCssDraft] = useState("");
   const [persistedSnapshot, setPersistedSnapshot] = useState("");
   const [recoverableDraft, setRecoverableDraft] = useState<RecoverableDraft | null>(null);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
@@ -1443,6 +1452,7 @@ export default function CmsPagesManager() {
         blocks: selectedPage.blocks,
       }, null, 2)
     : "";
+  const selectedBlockJson = selectedBlock ? JSON.stringify(selectedBlock, null, 2) : "";
   const basicGuideSteps: Array<{ id: BasicGuideStep; title: string; description: string; sectionId: string }> = [
     { id: "basics", title: "Store Basics", description: "Name, summary, publishing, and core page choice.", sectionId: "basic-step-basics" },
     { id: "hero", title: "Hero", description: "Main headline, media, and first call to action.", sectionId: "basic-step-hero" },
@@ -1472,6 +1482,33 @@ export default function CmsPagesManager() {
     launch: hasUnsavedChanges ? "Save the current draft, then preview the page on the live storefront." : "Open preview and do a final merchant-eye pass before you leave Basic Editing.",
   };
   const nextBasicStep = basicGuideSteps[activeBasicStepIndex + 1] ?? null;
+  const basicStepActionLabels: Record<BasicGuideStep, string[]> = {
+    basics: [
+      "Confirm the store name and summary shoppers will recognize.",
+      "Make sure the correct page is being edited before changing content.",
+      "Decide whether this store should stay draft or go live after review.",
+    ],
+    hero: [
+      "Write the clearest promise first, then support it with one CTA.",
+      "Upload hero media that instantly explains the product or vibe.",
+      "Keep headline and subtitle short enough for mobile shoppers.",
+    ],
+    promotion: [
+      "Use one campaign idea instead of stacking multiple offers.",
+      "Feature a product section title that makes browsing feel intentional.",
+      "Check that CTA labels match where the button actually goes.",
+    ],
+    sections: [
+      "Answer the top questions customers ask before ordering.",
+      "Add proof with media, testimonials, or trust messaging.",
+      "Use supporting sections to reduce support chats after launch.",
+    ],
+    launch: [
+      "Preview the page like a first-time shopper, not like an editor.",
+      "Save when the story, trust, and CTA flow feel consistent.",
+      "Only move to Advanced if you need layout or code-level control.",
+    ],
+  };
   const actionDockTargets = isAdvancedEditor
     ? [
         { id: "page-builder-details", label: "Details" },
@@ -1484,6 +1521,103 @@ export default function CmsPagesManager() {
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  useEffect(() => {
+    setAdvancedPageJsonDraft(advancedPageJson);
+  }, [advancedPageJson]);
+
+  useEffect(() => {
+    setAdvancedSelectedBlockJsonDraft(selectedBlockJson);
+  }, [selectedBlockJson]);
+
+  useEffect(() => {
+    setAdvancedThemeCssDraft(store.theme.customCss ?? "");
+  }, [store.theme.customCss]);
+
+  const copyBuilderText = async (value: string, label: string) => {
+    if (!value.trim()) {
+      toast.error(`Nothing to copy from ${label}.`);
+      return;
+    }
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        throw new Error("Clipboard not available");
+      }
+      toast.success(`${label} copied.`);
+    } catch {
+      toast.error(`Failed to copy ${label}.`);
+    }
+  };
+
+  const applyAdvancedPageJson = () => {
+    if (!selectedPage) return;
+
+    try {
+      const parsed = JSON.parse(advancedPageJsonDraft) as Partial<StorePage>;
+      const sanitizedPage = sanitizeStorePage({
+        id: selectedPage.id,
+        slug: parsed.slug ?? selectedPage.slug,
+        title: parsed.title ?? selectedPage.title,
+        seoTitle: parsed.seoTitle ?? selectedPage.seoTitle ?? "",
+        seoDescription: parsed.seoDescription ?? selectedPage.seoDescription ?? "",
+        isHomepage: Boolean(parsed.isHomepage ?? selectedPage.isHomepage),
+        blocks: sanitizeStoreBlocks(parsed.blocks ?? selectedPage.blocks).map((block, index) => ({
+          ...block,
+          id: typeof block.id === "string" && block.id.trim() ? block.id : crypto.randomUUID(),
+          sortOrder: index,
+        })),
+      });
+
+      if (!sanitizedPage) {
+        throw new Error("The page JSON did not produce a valid page.");
+      }
+
+      updateSelectedPage(() => sanitizedPage);
+      setSelectedBlockId(sanitizedPage.blocks[0]?.id ?? "");
+      toast.success("Applied page JSON to the current page draft.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to apply page JSON.");
+    }
+  };
+
+  const applyAdvancedSelectedBlockJson = () => {
+    if (!selectedPage || !selectedBlock) return;
+
+    try {
+      const parsed = JSON.parse(advancedSelectedBlockJsonDraft) as Partial<StorePageBlock>;
+      const sanitizedBlocks = sanitizeStoreBlocks([
+        {
+          id: selectedBlock.id,
+          type: parsed.type ?? selectedBlock.type,
+          sortOrder: selectedBlock.sortOrder,
+          isVisible: parsed.isVisible ?? selectedBlock.isVisible,
+          props: parsed.props ?? selectedBlock.props,
+        } as StorePageBlock,
+      ]);
+      const sanitizedBlock = sanitizedBlocks[0];
+
+      if (!sanitizedBlock) {
+        throw new Error("The block JSON did not produce a valid block.");
+      }
+
+      updateBlock(selectedBlock.id, () => ({
+        ...sanitizedBlock,
+        id: selectedBlock.id,
+        sortOrder: selectedBlock.sortOrder,
+      }));
+      toast.success("Applied selected block JSON.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to apply block JSON.");
+    }
+  };
+
+  const applyAdvancedThemeCss = () => {
+    updateStoreTheme({ customCss: advancedThemeCssDraft });
+    toast.success("Applied custom theme CSS to the local draft.");
   };
 
   return (
@@ -2299,13 +2433,33 @@ export default function CmsPagesManager() {
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-foreground">{activeBasicStepMeta.title}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">{basicStepRecommendations[basicGuideStep]}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{basicStepRecommendations[basicGuideStep]}</p>
+                          </div>
+                          <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"}>
+                            {basicStepCompletion[basicGuideStep] ? "Ready" : "Needs attention"}
+                          </Badge>
+                        </div>
+                        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
+                          <div className="rounded-xl border border-border bg-background/75 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Step objective</p>
+                            <p className="mt-2 text-sm font-medium text-foreground">{activeBasicStepMeta.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                              {basicStepRecommendations[basicGuideStep]}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border bg-background/75 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recommended actions</p>
+                            <div className="mt-2 space-y-2">
+                              {basicStepActionLabels[basicGuideStep].map((item) => (
+                                <div key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                  <span>{item}</span>
+                                </div>
+                              ))}
                             </div>
-                            <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"}>
-                              {basicStepCompletion[basicGuideStep] ? "Ready" : "Needs attention"}
-                            </Badge>
                           </div>
                         </div>
+                      </div>
                       </div>
                       {basicGuideStep === "basics" ? (
                       <div id="basic-step-basics" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
@@ -2756,6 +2910,37 @@ export default function CmsPagesManager() {
                           <p className="mt-1 text-xs text-muted-foreground">
                             Preview the live storefront, save confidently, and only open Advanced Editing when you truly need structure or code-level controls.
                           </p>
+                        </div>
+                        <div className="grid gap-3 lg:grid-cols-3">
+                          {[
+                            {
+                              title: "Message check",
+                              ready: Boolean(heroBlock?.props.title && heroBlock?.props.ctaText),
+                              detail: "Your headline and CTA should tell shoppers what to do next immediately.",
+                            },
+                            {
+                              title: "Trust check",
+                              ready: Boolean(
+                                (((faqBlock?.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []).length > 0)
+                                || Boolean(trustBlock?.props.title)
+                                || Boolean(testimonialsBlock?.props.title),
+                              ),
+                              detail: "Make sure support answers, proof, or trust cues appear before customers hesitate.",
+                            },
+                            {
+                              title: "Publish check",
+                              ready: Boolean(store.isPublished && !hasUnsavedChanges),
+                              detail: "Go live after preview when the page feels coherent on mobile and desktop.",
+                            },
+                          ].map((item) => (
+                            <div key={item.title} className="rounded-xl border border-border/70 bg-background/80 p-3">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={item.ready ? "outline" : "secondary"}>{item.ready ? "Ready" : "Review"}</Badge>
+                                <p className="text-sm font-medium text-foreground">{item.title}</p>
+                              </div>
+                              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+                            </div>
+                          ))}
                         </div>
                         <div className="grid gap-3 md:grid-cols-3">
                           <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Status: {basicStatusLabel}</div>
@@ -3529,31 +3714,115 @@ export default function CmsPagesManager() {
                     <CardDescription>Technical editing surfaces for raw page payloads, selected block props, and layout import/export workflows.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid gap-4 xl:grid-cols-2">
-                      <div className="grid gap-2 rounded-lg border border-border p-4">
-                        <div className="flex items-center justify-between gap-3">
+                    <Tabs value={activeAdvancedCodePanel} onValueChange={(value) => setActiveAdvancedCodePanel(value as AdvancedCodePanel)} className="space-y-4">
+                      <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-secondary/40 p-1">
+                        <TabsTrigger value="page-json" className="gap-2"><Code2 className="h-4 w-4" /> Page JSON</TabsTrigger>
+                        <TabsTrigger value="block-json" className="gap-2"><FileText className="h-4 w-4" /> Block JSON</TabsTrigger>
+                        <TabsTrigger value="theme-css" className="gap-2"><Wand2 className="h-4 w-4" /> Theme CSS</TabsTrigger>
+                        <TabsTrigger value="layout" className="gap-2"><LayoutTemplate className="h-4 w-4" /> Layout Tools</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="page-json" className="grid gap-3 rounded-lg border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-medium text-foreground">Current Page JSON</p>
-                            <p className="text-xs text-muted-foreground">Read-only page snapshot for audits, diffs, and copying into external tools.</p>
+                            <p className="text-xs text-muted-foreground">Edit the selected page schema directly when you want to batch structural content changes without touching one field at a time.</p>
                           </div>
                           <Badge variant="outline">{selectedPage?.slug ?? "/"}</Badge>
                         </div>
-                        <Textarea readOnly rows={18} className="font-mono text-xs" value={advancedPageJson} />
-                      </div>
-                      <div className="grid gap-2 rounded-lg border border-border p-4">
-                        <div className="flex items-center justify-between gap-3">
+                        <Textarea rows={20} className="font-mono text-xs" value={advancedPageJsonDraft} onChange={(event) => setAdvancedPageJsonDraft(event.target.value)} />
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => setAdvancedPageJsonDraft(advancedPageJson)} className="gap-2">
+                            <RefreshCcw className="h-4 w-4" />
+                            Reset
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => void copyBuilderText(advancedPageJsonDraft, "page JSON")} className="gap-2">
+                            <ClipboardCopy className="h-4 w-4" />
+                            Copy
+                          </Button>
+                          <Button type="button" size="sm" onClick={applyAdvancedPageJson} className="gap-2">
+                            <Rocket className="h-4 w-4" />
+                            Apply To Draft
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="block-json" className="grid gap-3 rounded-lg border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-medium text-foreground">Selected Block JSON</p>
-                            <p className="text-xs text-muted-foreground">Use this with the raw block props editor above when you need type-specific low-level changes.</p>
+                            <p className="text-xs text-muted-foreground">Technical editors can patch deep block props here, then return to the visual preview to confirm the result.</p>
                           </div>
                           <Badge variant="outline">{advancedJsonLabel}</Badge>
                         </div>
-                        <Textarea readOnly rows={18} className="font-mono text-xs" value={selectedBlock ? JSON.stringify(selectedBlock, null, 2) : ""} />
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-xs text-muted-foreground">
-                      Layout export/import stays available from the Advanced header actions so technical editors can move full page structures between workspaces.
-                    </div>
+                        <Textarea
+                          rows={20}
+                          className="font-mono text-xs"
+                          value={advancedSelectedBlockJsonDraft}
+                          onChange={(event) => setAdvancedSelectedBlockJsonDraft(event.target.value)}
+                          placeholder="Select a block to edit its raw JSON payload."
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => setAdvancedSelectedBlockJsonDraft(selectedBlockJson)} className="gap-2" disabled={!selectedBlock}>
+                            <RefreshCcw className="h-4 w-4" />
+                            Reset
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => void copyBuilderText(advancedSelectedBlockJsonDraft, "block JSON")} className="gap-2" disabled={!selectedBlock}>
+                            <ClipboardCopy className="h-4 w-4" />
+                            Copy
+                          </Button>
+                          <Button type="button" size="sm" onClick={applyAdvancedSelectedBlockJson} className="gap-2" disabled={!selectedBlock}>
+                            <Rocket className="h-4 w-4" />
+                            Apply To Draft
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="theme-css" className="grid gap-3 rounded-lg border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Custom Theme CSS</p>
+                            <p className="text-xs text-muted-foreground">Use store-scoped CSS for precise polish after theme tokens and guided controls are no longer enough.</p>
+                          </div>
+                          <Badge variant="outline">store.theme.customCss</Badge>
+                        </div>
+                        <Textarea rows={16} className="font-mono text-xs" value={advancedThemeCssDraft} onChange={(event) => setAdvancedThemeCssDraft(event.target.value)} />
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => setAdvancedThemeCssDraft(store.theme.customCss ?? "")} className="gap-2">
+                            <RefreshCcw className="h-4 w-4" />
+                            Reset
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => void copyBuilderText(advancedThemeCssDraft, "theme CSS")} className="gap-2">
+                            <ClipboardCopy className="h-4 w-4" />
+                            Copy
+                          </Button>
+                          <Button type="button" size="sm" onClick={applyAdvancedThemeCss} className="gap-2">
+                            <Rocket className="h-4 w-4" />
+                            Apply To Draft
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="layout" className="grid gap-4 rounded-lg border border-border p-4">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Layout Import / Export</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Move full storefront structures between workspaces, archive current drafts, or hand off a JSON package to a technical teammate.</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Button type="button" variant="outline" onClick={exportStoreLayout} className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Export Current Layout
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => layoutImportInputRef.current?.click()} className="gap-2">
+                            <Import className="h-4 w-4" />
+                            Import Layout Package
+                          </Button>
+                        </div>
+                        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-xs text-muted-foreground">
+                          Layout import replaces the local draft after confirmation. Save after importing so the normalized persistence flow writes the result as the next storefront revision.
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                 </Card>
               ) : null}

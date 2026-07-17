@@ -127,6 +127,14 @@ export const launchTemplates: LaunchTemplate[] = [
             subtitle: "Use real product photos, campaign shots, or creator images to make the brand feel active and trustworthy.",
             images: [],
           }),
+          block("testimonials", 7, {
+            title: "What shoppers notice after their first order",
+            subtitle: "Keep short, specific proof close to the product discovery flow.",
+            reviews: [
+              { name: "Nafisa", rating: 5, comment: "The fit guidance was clear and delivery updates felt reliable from the first order." },
+              { name: "Rahat", rating: 5, comment: "The collection felt premium without being confusing. I found what I needed quickly." },
+            ],
+          }),
         ],
       },
       {
@@ -234,6 +242,14 @@ export const launchTemplates: LaunchTemplate[] = [
               { q: "Can customers pay online or on delivery?", a: "Mention whether customers can pay in advance, on delivery, or through any other flow you support." },
             ],
           }),
+          block("trust-badges", 5, {
+            title: "Why regular customers keep reordering",
+            badges: [
+              { label: "Fresh batch handling", description: "Use this badge to explain freshness, prep timing, or daily limits.", icon: "shield" },
+              { label: "Reliable local delivery", description: "Clarify the delivery zone, rider timing, or pickup handoff process.", icon: "truck" },
+              { label: "Simple payment options", description: "Tell customers whether they can prepay, confirm manually, or pay on delivery.", icon: "payment" },
+            ],
+          }),
         ],
       },
       {
@@ -339,6 +355,22 @@ export const launchTemplates: LaunchTemplate[] = [
               { q: "How long does delivery take?", a: "Set clear delivery expectations by region or service level so customers know what to expect before checkout." },
               { q: "Which payment methods are available?", a: "Tell customers whether they can pay online, on delivery, or through any other checkout flow you support." },
               { q: "How do customers get support after ordering?", a: "Add your preferred support channel and response hours so buyers know they can reach you." },
+            ],
+          }),
+          block("trust-badges", 6, {
+            title: "Trust cues before checkout",
+            badges: [
+              { label: "Clear support flow", description: "Use this to explain the fastest support channel and response expectation.", icon: "support" },
+              { label: "Flexible payment setup", description: "Tell customers whether they can pay online, manually, or on delivery.", icon: "payment" },
+              { label: "Delivery confidence", description: "Explain how you handle regions, timing, or fulfillment confirmation.", icon: "truck" },
+            ],
+          }),
+          block("testimonials", 7, {
+            title: "Quick proof for first-time buyers",
+            subtitle: "Use short comments that reduce hesitation without slowing the page down.",
+            reviews: [
+              { name: "Tanzim", rating: 5, comment: "The checkout was simple and the delivery expectations were clear before I ordered." },
+              { name: "Sadia", rating: 5, comment: "It felt like a real store, not a random catalog page. Support was easy to find too." },
             ],
           }),
         ],

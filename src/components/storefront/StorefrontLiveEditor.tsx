@@ -51,6 +51,11 @@ function formatSavedTime(value: Date | null): string {
     : "";
 }
 
+function scrollToLiveEditorSection(sectionId: string) {
+  if (typeof document === "undefined") return;
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function updatePage(store: Store, pageId: string, updater: (page: StorePage) => StorePage) {
   return {
     ...store,
@@ -430,6 +435,16 @@ export function StorefrontLiveEditor({
   };
 
   const resolvedThemeVars = resolveStoreThemeVars(store.theme).vars;
+  const liveDockTargets = editorMode === "advanced"
+    ? [
+        { id: "live-editor-theme", label: "Theme" },
+        { id: "live-editor-selected-block", label: "Block" },
+        { id: "live-editor-advanced-tools", label: "Advanced" },
+      ]
+    : [
+        { id: "live-editor-theme", label: "Theme" },
+        { id: "live-editor-selected-block", label: "Content" },
+      ];
   const saveStatusLabel = saving
     ? "Saving live changes..."
     : hasUnsavedChanges
@@ -817,6 +832,23 @@ export function StorefrontLiveEditor({
                   {hasUnsavedChanges ? "Save updates" : "Autosaved / Saved"}
                 </Button>
               </div>
+              <div className="grid gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Jump</p>
+                <div className="flex flex-wrap gap-2">
+                  {liveDockTargets.map((target) => (
+                    <Button
+                      key={target.id}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => scrollToLiveEditorSection(target.id)}
+                    >
+                      {target.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -856,7 +888,7 @@ export function StorefrontLiveEditor({
             )}
 
             <div className="mt-4 space-y-4">
-              <div className="rounded-2xl border border-border p-3">
+              <div id="live-editor-theme" className="rounded-2xl border border-border p-3 scroll-mt-28">
                 <div className="mb-3 flex items-center gap-2">
                   <Paintbrush2 className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-foreground">Theme tokens</p>
@@ -886,7 +918,7 @@ export function StorefrontLiveEditor({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border p-3">
+              <div id="live-editor-selected-block" className="rounded-2xl border border-border p-3 scroll-mt-28">
                 <div className="mb-3 flex items-center gap-2">
                   <Settings2 className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-foreground">Selected block</p>
@@ -924,7 +956,7 @@ export function StorefrontLiveEditor({
                       </Button>
                     </div>
                     {editorMode === "advanced" ? (
-                      <div className="grid gap-3 rounded-xl border border-border p-3">
+                      <div id="live-editor-advanced-tools" className="grid gap-3 rounded-xl border border-border p-3 scroll-mt-28">
                         <div>
                           <div className="flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-primary" />
