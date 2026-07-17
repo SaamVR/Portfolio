@@ -87,6 +87,31 @@ export const CustomDomainTab = () => {
     return `${storeSlug}.${getStoreSubdomainBaseDomain()}`;
   }, [platformDomainFromServer, storeSlug]);
 
+  const previewRecords = useMemo(() => {
+    if (!domainInput.trim()) return [];
+    try {
+      const host = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
+      if (!host || !host.includes(".")) return [];
+      
+      const parts = host.split(".");
+      const isApex = parts.length === 2;
+      const isWww = parts[0] === "www" && parts.length === 3;
+      
+      const records: { type: string, name: string, value: string }[] = [];
+      
+      if (isApex || isWww) {
+        records.push({ type: "A", name: "@", value: "76.76.21.21" });
+        records.push({ type: "CNAME", name: "www", value: "cname.vercel-dns.com" });
+      } else {
+        const name = parts.slice(0, -2).join(".");
+        records.push({ type: "CNAME", name, value: "cname.vercel-dns.com" });
+      }
+      return records;
+    } catch {
+      return [];
+    }
+  }, [domainInput]);
+
   const primaryDomain = domains.find((domain) => domain.isPrimary && domain.isActive)?.hostname
     ?? domains.find((domain) => domain.isActive)?.hostname
     ?? null;
@@ -372,6 +397,34 @@ export const CustomDomainTab = () => {
             <p className="text-xs text-muted-foreground">
               You can paste a full URL. We normalize it on the server, reject platform or localhost domains, and fetch the exact DNS values from Vercel.
             </p>
+            {previewRecords.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm font-semibold text-foreground">Expected DNS Records</p>
+                {previewRecords.map((record, index) => (
+                  <div key={index} className="rounded-xl border border-border bg-secondary/10 p-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Type</p>
+                        <p className="mt-1 font-mono text-sm">{record.type}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Name</p>
+                        <p className="mt-1 font-mono text-sm">{record.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Value</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <p className="break-all font-mono text-sm">{record.value}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => void copyValue(record.value, `${record.type} value`)} className="h-6 px-2 text-xs">
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

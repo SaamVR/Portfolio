@@ -356,7 +356,11 @@ export async function POST(req: Request) {
     const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
     const { apexHostname, wwwHostname, defaultPrimaryHostname } = domainRouteDeps.getDomainPair(normalized);
 
-    for (const hostname of [apexHostname, wwwHostname]) {
+    const hostnamesToAdd = normalized.isApexDomain 
+      ? [apexHostname, wwwHostname]
+      : [normalized.hostname];
+
+    for (const hostname of hostnamesToAdd) {
       const available = await ensureHostnameAvailable(access.supabaseAdmin, storeId, hostname);
       if (!available) {
         return NextResponse.json({ error: "Domain is already connected to another store" }, { status: 409 });
@@ -365,7 +369,7 @@ export async function POST(req: Request) {
 
     const createdDomains: StoreDomainRow[] = [];
 
-    for (const hostname of [apexHostname, wwwHostname]) {
+    for (const hostname of hostnamesToAdd) {
       const projectDomain = await addOrFetchProjectDomain(hostname);
       const configuration = await domainRouteDeps.getDomainConfiguration(hostname);
       const verification = projectDomain.verification ?? [];
