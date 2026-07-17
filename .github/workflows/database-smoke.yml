@@ -73,7 +73,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
             echo "SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-           echo "NEXT_PUBLIC_APP_URL=http://localhost"
+           echo "NEXT_PUBLIC_APP_URL=https://localhost"
           } >> "$GITHUB_ENV"
 
       - name: Run DB smoke gate
