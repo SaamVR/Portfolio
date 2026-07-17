@@ -137,7 +137,10 @@ export const CustomDomainTab = () => {
 
     setLoading(true);
     try {
-      const domainResponse = await fetch(`/api/domains?storeId=${encodeURIComponent(activeStoreId)}`, { cache: "no-store" });
+      const domainResponse = await fetch(`/api/domains?storeId=${encodeURIComponent(activeStoreId)}`, { 
+        cache: "no-store",
+        headers: await withAuthHeaders(),
+      });
       if (!domainResponse.ok) {
         const body = await domainResponse.json().catch(() => ({}));
         throw new Error(body.error || "Failed to load domains");
