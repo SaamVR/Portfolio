@@ -17,6 +17,16 @@ type PlanCard = {
 
 const marketingPlans: PlanCard[] = [
   {
+    id: "free",
+    name: "Free Forever",
+    price: "BDT 0/mo",
+    trial: "No credit card required",
+    description: "A simple start for new stores testing the waters.",
+    features: ["1 storefront", "Limited access", "No custom domains", "Community support"],
+    cta: "Start Free",
+    featured: false,
+  },
+  {
     id: "basic",
     name: "Basic",
     price: "BDT 990/mo",
@@ -57,7 +67,7 @@ export async function CmsPricing() {
     return {
       ...plan,
       price: isContactOnlyPlan(livePlan ?? { id: plan.id }) ? formatPlanPrice(livePlan) : formatPlanPrice(livePlan),
-      trial: `${trialDays}-day free trial`,
+      trial: plan.id === "free" ? plan.trial : `${trialDays}-day free trial`,
       cta: isContactOnlyPlan(livePlan ?? { id: plan.id }) ? "Contact Support" : plan.cta,
       description: livePlan?.description || plan.description,
       contactOnly: isContactOnlyPlan(livePlan ?? { id: plan.id }),
@@ -65,65 +75,75 @@ export async function CmsPricing() {
   });
 
   return (
-    <section id="plans" className="border-t border-slate-200 bg-stone-100 py-20 text-slate-950 dark:border-white/8 dark:bg-slate-950 dark:text-white">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="max-w-2xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+    <section id="plans" className="relative border-t border-slate-900 bg-[#060a12] py-24 text-white overflow-hidden">
+      <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-[800px] rounded-full bg-emerald-500/15 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-0 left-[-10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px]" />
+      <div className="pointer-events-none absolute right-[-10%] top-[30%] h-[400px] w-[400px] rounded-full bg-rose-500/10 blur-[120px]" />
+
+      <div className="relative z-10 mx-auto max-w-[90rem] px-4 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-1.5 text-sm font-semibold text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
             <Sparkles className="h-4 w-4" />
-            Packages
+            Pricing Packages
           </div>
-          <h2 className="font-heading text-3xl font-bold text-slate-950 dark:text-white sm:text-4xl">
+          <h2 className="font-heading text-3xl font-extrabold text-white sm:text-5xl tracking-tight">
             Pick the plan that fits your store.
           </h2>
-          <p className="mt-3 text-slate-600 dark:text-zinc-400">
-            Every plan starts with a 14-day trial, so merchants can explore before they commit.
+          <p className="mt-4 text-lg text-zinc-400">
+            Start for free and upgrade when you're ready to grow.
           </p>
         </div>
 
-        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+        <div className="mt-16 grid gap-6 lg:grid-cols-4 items-stretch">
           {plans.map((plan) => (
             <article
               key={plan.name}
-              className={`group rounded-[1.75rem] border p-6 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1.5 ${
+              className={`group flex flex-col rounded-[2rem] border p-8 backdrop-blur-2xl transition-all duration-500 hover:-translate-y-2 ${
                 plan.featured
-                  ? "border-emerald-500/35 bg-emerald-50/90 text-slate-950 shadow-[0_25px_80px_rgba(16,185,129,0.12)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.18)] dark:border-emerald-400/25 dark:bg-[linear-gradient(180deg,rgba(16,24,39,0.96),rgba(6,78,59,0.35))] dark:text-white dark:shadow-[0_25px_80px_rgba(16,185,129,0.2)] dark:hover:shadow-[0_32px_90px_rgba(16,185,129,0.28)]"
-                  : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.06)] hover:border-slate-300 hover:shadow-[0_24px_70px_rgba(15,23,42,0.1)] dark:border-white/8 dark:bg-slate-900/55 dark:text-white dark:shadow-[0_18px_60px_rgba(0,0,0,0.16)] dark:hover:border-white/14 dark:hover:bg-slate-900/70 dark:hover:shadow-[0_28px_80px_rgba(0,0,0,0.24)]"
+                  ? "border-emerald-400/30 bg-[linear-gradient(180deg,rgba(16,24,39,0.95),rgba(6,78,59,0.4))] shadow-[0_25px_80px_rgba(16,185,129,0.2)] hover:shadow-[0_32px_90px_rgba(16,185,129,0.35)]"
+                  : "border-white/10 bg-slate-900/50 shadow-[0_18px_60px_rgba(0,0,0,0.2)] hover:border-white/20 hover:bg-slate-900/70 hover:shadow-[0_28px_80px_rgba(0,0,0,0.35)]"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-semibold">{plan.name}</h3>
-                  <p className={`mt-2 text-sm ${plan.featured ? "text-slate-600 dark:text-emerald-50/85" : "text-slate-600 dark:text-zinc-400"}`}>
+                  <h3 className="text-2xl font-bold">{plan.name}</h3>
+                  <p className={`mt-2 text-sm leading-relaxed ${plan.featured ? "text-emerald-100/90" : "text-zinc-400"}`}>
                     {plan.description}
                   </p>
                 </div>
                 {plan.featured ? (
-                  <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-white/10 dark:text-white">Best balance</span>
+                  <span className="shrink-0 rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Best balance</span>
                 ) : plan.eyebrow ? (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
+                  <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-300">
                     {plan.eyebrow}
                   </span>
                 ) : null}
               </div>
-              {plan.price ? (
-                <p className="mt-6 font-heading text-3xl font-bold">{plan.price}</p>
-              ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-4 dark:border-white/10 dark:bg-white/[0.03]">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-zinc-100">Custom pricing</p>
-                </div>
-              )}
-              <p className={`mt-2 text-sm font-medium ${plan.featured ? "text-emerald-700 dark:text-emerald-100" : "text-slate-600 dark:text-zinc-300"}`}>
-                {plan.trial}
-              </p>
-              <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-zinc-200">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <PlanCtaButton planId={plan.id} cta={plan.cta} featured={plan.featured} contactOnly={plan.contactOnly} />
+              <div className="mt-8 flex-1">
+                {plan.price ? (
+                  <p className="font-heading text-4xl font-extrabold">{plan.price === "BDT 0/mo" ? "Free" : plan.price}</p>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 px-4 py-4">
+                    <p className="text-sm font-semibold text-zinc-200">Custom pricing</p>
+                  </div>
+                )}
+                <p className={`mt-2 text-sm font-semibold ${plan.featured ? "text-emerald-300" : "text-zinc-400"}`}>
+                  {plan.trial}
+                </p>
+                <ul className="mt-8 space-y-4 text-sm font-medium text-zinc-200">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${plan.featured ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-zinc-300"}`}>
+                        <Check className="h-3 w-3" />
+                      </div>
+                      <span className="leading-tight">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-8">
+                <PlanCtaButton planId={plan.id} cta={plan.cta} featured={plan.featured} contactOnly={plan.contactOnly} />
+              </div>
             </article>
           ))}
         </div>
