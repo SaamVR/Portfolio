@@ -37,6 +37,7 @@ type StoreSubscriptionRecord = {
   store_id: string;
   plan_id: string | null;
   status: string | null;
+  trial_ends_at?: string | null;
 };
 
 type StorePlanRecord = {
@@ -162,7 +163,10 @@ Deno.serve(async (req) => {
     const storeName = String(payload.store_name ?? "").trim();
     const requestedSlug = String(payload.store_slug ?? "").trim();
     const businessType = String(payload.business_type ?? "general-catalog").trim() || "general-catalog";
-    const planId = String(payload.plan_id ?? "basic").trim() || "basic";
+    const requestedPlanId = String(payload.plan_id ?? "").trim();
+    const sourceStoreId = String(payload.source_store_id ?? "").trim();
+    const intent = String(payload.intent ?? "").trim();
+    const isAdditionalStoreFlow = intent === "new-store";
 
     if (!storeName) {
       return new Response(JSON.stringify({ error: "Store name is required" }), {
@@ -183,13 +187,11 @@ Deno.serve(async (req) => {
       { data: existingStoreBySlug },
       { data: ownedStores },
       { data: ownerMemberships },
-      { data: existingPlan },
       { data: blueprintRecord },
     ] = await Promise.all([
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
       supabaseAdmin.from("stores").select("id").eq("owner_id", user.id),
       supabaseAdmin.from("store_memberships").select("store_id").eq("user_id", user.id).eq("role", "owner"),
-      supabaseAdmin.from("cms_plans").select("id, monthly_price, store_limit, trial_days, contact_only").eq("id", planId).eq("is_active", true).maybeSingle(),
       supabaseAdmin
         .from("store_blueprints")
         .select("id, business_family, catalog_mode, store_description, default_theme, default_site_settings")
@@ -232,15 +234,50 @@ Deno.serve(async (req) => {
       ...(((ownerMemberships as OwnerMembershipRecord[] | null) ?? []).map((row) => row.store_id).filter(Boolean)),
     ]));
 
+    const requestedPlan = !isAdditionalStoreFlow && requestedPlanId
+      ? await supabaseAdmin
+        .from("cms_plans")
+        .select("id, name, monthly_price, store_limit, trial_days, contact_only")
+        .eq("id", requestedPlanId)
+        .eq("is_active", true)
+        .maybeSingle()
+      : { data: null };
+
+    let inheritedPlanId = requestedPlan.data?.id ?? null;
+    let inheritedPlanRecord = (requestedPlan.data as StorePlanRecord | null) ?? null;
+    let inheritedTrialEndsAt: string | null = null;
+
     if (ownedStoreIds.length > 0) {
       const { data: ownedSubscriptions } = await supabaseAdmin
         .from("store_subscriptions")
-        .select("store_id, plan_id, status")
+        .select("store_id, plan_id, status, trial_ends_at")
         .in("store_id", ownedStoreIds);
 
       const activePaidSubscriptions = ((ownedSubscriptions as StoreSubscriptionRecord[] | null) ?? []).filter(
         (row) => row.status === "active" && typeof row.plan_id === "string" && row.plan_id.length > 0,
       );
+
+      const activeOrTrialSubscriptions = ((ownedSubscriptions as StoreSubscriptionRecord[] | null) ?? []).filter(
+        (row) => (row.status === "active" || row.status === "trialing") && typeof row.plan_id === "string" && row.plan_id.length > 0,
+      );
+
+      if (isAdditionalStoreFlow) {
+        if (sourceStoreId && !ownedStoreIds.includes(sourceStoreId)) {
+          return new Response(JSON.stringify({ error: "The selected source store does not belong to your account." }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const preferredSubscription = sourceStoreId
+          ? activeOrTrialSubscriptions.find((row) => row.store_id === sourceStoreId)
+          : activeOrTrialSubscriptions[0];
+
+        inheritedPlanId = preferredSubscription?.plan_id ?? inheritedPlanId;
+        inheritedTrialEndsAt = preferredSubscription?.status === "trialing"
+          ? (preferredSubscription.trial_ends_at ?? null)
+          : null;
+      }
 
       if (activePaidSubscriptions.length === 0) {
         return new Response(JSON.stringify({
@@ -253,8 +290,12 @@ Deno.serve(async (req) => {
 
       const activePlanIds = Array.from(new Set(activePaidSubscriptions.map((row) => row.plan_id).filter(Boolean))) as string[];
       const { data: activePlans } = activePlanIds.length > 0
-        ? await supabaseAdmin.from("cms_plans").select("id, store_limit, monthly_price").in("id", activePlanIds)
+        ? await supabaseAdmin.from("cms_plans").select("id, name, store_limit, monthly_price, trial_days, contact_only").in("id", activePlanIds)
         : { data: [] };
+
+      if (isAdditionalStoreFlow && inheritedPlanId) {
+        inheritedPlanRecord = ((activePlans as StorePlanRecord[] | null) ?? []).find((plan) => plan.id === inheritedPlanId) ?? inheritedPlanRecord;
+      }
 
       const maxAllowedStores = ((activePlans as StorePlanRecord[] | null) ?? []).reduce<number>((max, plan) => {
         if (plan.store_limit === null) {
@@ -274,11 +315,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    const finalPlanId = existingPlan?.id ?? "basic";
-    const trialLengthDays = Math.max(0, Number(existingPlan?.trial_days ?? 14) || 14);
-    const trialEndsAt = new Date(Date.now() + trialLengthDays * 24 * 60 * 60 * 1000).toISOString();
+    const effectivePlan = inheritedPlanRecord;
+    if (effectivePlan?.contact_only) {
+      return new Response(JSON.stringify({ error: "This plan is activated through support. Please contact support to continue." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const finalPlanId = effectivePlan?.id ?? (isAdditionalStoreFlow ? "basic" : requestedPlanId || "basic");
+    const trialLengthDays = Math.max(0, Number(effectivePlan?.trial_days ?? 14) || 14);
+    const trialEndsAt = inheritedTrialEndsAt ?? new Date(Date.now() + trialLengthDays * 24 * 60 * 60 * 1000).toISOString();
     const planRequiresPayment = false;
-    const subscriptionStatus = "trialing";
+    const subscriptionStatus = inheritedTrialEndsAt ? "trialing" : "trialing";
 
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")

@@ -66,10 +66,10 @@ function getSignupRootDomain() {
 }
 
 export default function MerchantSignup() {
-  const { user, loading, refreshRole, setActiveStoreId } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading, refreshRole, setActiveStoreId, activeStoreId } = useAuth();
   const [searchParams] = useSearchParams();
   const intent = searchParams.get("intent");
+  const isAdditionalStoreFlow = intent === "new-store";
   const [step, setStep] = useState<SignupStep>("methods");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -116,11 +116,11 @@ export default function MerchantSignup() {
         if (data && data.length > 0) {
           const nextPlans = data as unknown as PlanCatalogRecord[];
           setPlans(nextPlans);
-          const requestedPlanId = searchParams.get("planId");
+          const requestedPlanId = isAdditionalStoreFlow ? null : searchParams.get("planId");
           setForm((prev) => ({ ...prev, planId: resolveSignupPlanId(nextPlans, requestedPlanId) }));
         }
       });
-  }, [searchParams]);
+  }, [isAdditionalStoreFlow, searchParams]);
 
   useEffect(() => {
     let active = true;
@@ -250,8 +250,8 @@ export default function MerchantSignup() {
 
   const handleSubmitDetails = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.name.trim() || !form.storeName.trim() || !form.storeSlug.trim()) {
-      toast.error("Please fill in name, store name, and store URL");
+    if ((!isAdditionalStoreFlow && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
+      toast.error(isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL");
       return;
     }
 
@@ -264,7 +264,9 @@ export default function MerchantSignup() {
           store_slug: form.storeSlug.trim(),
           site_url: siteUrl,
           business_type: form.businessType,
-          plan_id: form.planId,
+          plan_id: isAdditionalStoreFlow ? undefined : form.planId,
+          source_store_id: isAdditionalStoreFlow ? activeStoreId : undefined,
+          intent: isAdditionalStoreFlow ? "new-store" : "initial-signup",
         },
       });
       if (error) throw error;
@@ -322,10 +324,16 @@ export default function MerchantSignup() {
           <div className="mb-6">
             <p className="text-sm font-semibold text-primary">Merchant signup</p>
             <h2 className="mt-2 font-heading text-2xl font-bold">
-              {step === "details" ? "Store details" : step === "verify" ? "Verify phone" : "Choose sign-in method"}
+              {step === "details"
+                ? isAdditionalStoreFlow ? "Add another store" : "Store details"
+                : step === "verify" ? "Verify phone" : "Choose sign-in method"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {step === "details" ? "Workspace creation happens after this step." : "Sign in first so the workspace has an owner."}
+              {step === "details"
+                ? isAdditionalStoreFlow
+                  ? "This store will reuse your existing owner account and package limits."
+                  : "Workspace creation happens after this step."
+                : "Sign in first so the workspace has an owner."}
             </p>
           </div>
 
@@ -386,13 +394,15 @@ export default function MerchantSignup() {
 
           {step === "details" ? (
             <form onSubmit={handleSubmitDetails} className="space-y-4">
-              <div>
-                <Label htmlFor="owner-name">Owner Name</Label>
-                <div className="relative mt-1">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="owner-name" data-testid="merchant-signup-owner-name" value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Your name" className="pl-10" />
+              {!isAdditionalStoreFlow ? (
+                <div>
+                  <Label htmlFor="owner-name">Owner Name</Label>
+                  <div className="relative mt-1">
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input id="owner-name" data-testid="merchant-signup-owner-name" value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Your name" className="pl-10" />
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div>
                 <Label htmlFor="store-name">Store Name</Label>
                 <div className="relative mt-1">
@@ -420,23 +430,30 @@ export default function MerchantSignup() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="plan-id">Plan</Label>
-                  <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id} disabled={isContactOnlyPlan(p)}>
-                        {isContactOnlyPlan(p) ? `${p.name} - Contact support` : p.name}
-                      </option>
-                    ))}
-                  </select>
-                  {plans.some((plan) => plan.id === "pro") ? (
-                    <p className="mt-1 text-xs text-muted-foreground">Trial accounts can create one store. Additional stores unlock after your first paid package is active. Pro is support-managed.</p>
-                  ) : null}
-                </div>
+                {!isAdditionalStoreFlow ? (
+                  <div>
+                    <Label htmlFor="plan-id">Plan</Label>
+                    <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
+                      {plans.map((p) => (
+                        <option key={p.id} value={p.id} disabled={isContactOnlyPlan(p)}>
+                          {isContactOnlyPlan(p) ? `${p.name} - Contact support` : p.name}
+                        </option>
+                      ))}
+                    </select>
+                    {plans.some((plan) => plan.id === "pro") ? (
+                      <p className="mt-1 text-xs text-muted-foreground">Trial accounts can create one store. Additional stores unlock after your first paid package is active. Pro is support-managed.</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Package</p>
+                    <p className="mt-1 text-sm text-foreground">This store will inherit your current EZComo package limits automatically.</p>
+                  </div>
+                )}
               </div>
               <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails} className="h-11 w-full">
                 {submittingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create CMS Workspace
+                {isAdditionalStoreFlow ? "Create Additional Store" : "Create CMS Workspace"}
               </Button>
             </form>
           ) : null}
