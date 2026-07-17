@@ -300,6 +300,7 @@ export default function OnboardingWizard() {
   const { user, role, activeStoreId: contextStoreId, setActiveStoreId } = useAuth();
   const searchParams = useSearchParams();
   const requestedStoreId = searchParams?.get("storeId");
+  const guideMode = searchParams?.get("guide") === "continue";
   const activeStoreId = requestedStoreId || contextStoreId;
   const { seedData, isSeeding } = useSeedData(activeStoreId ?? null);
   const { data: entitlements } = useStoreEntitlements(activeStoreId);
@@ -308,7 +309,7 @@ export default function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(true);
-  const [setupLocked, setSetupLocked] = useState(false);
+  const [initialSetupCompleted, setInitialSetupCompleted] = useState(false);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
   const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
@@ -339,7 +340,7 @@ export default function OnboardingWizard() {
     setSlugAvailable(true);
     setSlugChecking(false);
     setSaving(false);
-    setSetupLocked(false);
+    setInitialSetupCompleted(false);
     setBlueprints(fallbackStoreBlueprints);
     setThemePackages(fallbackThemePackages);
     setPageBlueprints(fallbackPageBlueprints);
@@ -377,7 +378,7 @@ export default function OnboardingWizard() {
         setThemePackages(loadedThemePackages);
         setPageBlueprints(loadedPageBlueprints);
 
-        const [{ data: storeRecord }, { data: themeRecord }, { data: siteSettings }, businessProfileResult, pageCountResult] = await Promise.all([
+        const [{ data: storeRecord }, { data: themeRecord }, { data: onboardingSettings }, businessProfileResult] = await Promise.all([
           supabase
             .from("stores")
             .select("name, slug, custom_domain, description, logo_url, store_type, is_published")
@@ -388,16 +389,12 @@ export default function OnboardingWizard() {
             .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
-          supabase.from("site_settings").select("value").eq("key", "payment_settings").eq("store_id", activeStoreId as string).maybeSingle(),
+          supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "onboarding_status"]),
           supabase
             .from("store_business_profiles")
             .select("blueprint_id, blueprint_version, business_family, catalog_mode")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
-          supabase
-            .from("store_pages")
-            .select("id", { count: "exact", head: true })
-            .eq("store_id", activeStoreId as string),
         ]);
 
         const store = storeRecord as {
@@ -417,7 +414,12 @@ export default function OnboardingWizard() {
           typography?: { headingFont?: string; bodyFont?: string };
           components?: { borderRadius?: string };
         } | null;
-        const payment = (siteSettings?.value ?? {}) as Partial<DraftState["payment"]>;
+        const siteSettingsRows = Array.isArray(onboardingSettings) ? onboardingSettings as Array<{ key?: string; value?: unknown }> : [];
+        const payment = ((siteSettingsRows.find((entry) => entry.key === "payment_settings")?.value ?? {}) as Partial<DraftState["payment"]>);
+        const onboardingStatus = (siteSettingsRows.find((entry) => entry.key === "onboarding_status")?.value ?? {}) as {
+          completed?: boolean;
+          completed_at?: string | null;
+        };
         const businessProfile = businessProfileResult?.data as {
           blueprint_id?: string;
           blueprint_version?: number | null;
@@ -433,12 +435,12 @@ export default function OnboardingWizard() {
         const safeBlueprint = resolvedBlueprint ?? resolveStoreBlueprint(getDefaultBlueprintId(loadedBlueprints), loadedBlueprints);
         const hasCompletedInitialSetup = Boolean(
           store?.is_published
-          || themeRecord
-          || (pageCountResult.count ?? 0) > 0,
+          || onboardingStatus?.completed
+          || onboardingStatus?.completed_at,
         );
 
         if (!active) return;
-        setSetupLocked(hasCompletedInitialSetup);
+        setInitialSetupCompleted(hasCompletedInitialSetup);
         setDraft(draftFromBlueprint(safeBlueprint.id, loadedThemePackages, {
           storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
           slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
@@ -485,7 +487,7 @@ export default function OnboardingWizard() {
   }, [activeStoreId]);
 
   useEffect(() => {
-    if (setupLocked) {
+    if (initialSetupCompleted) {
       setSlugChecking(false);
       setSlugAvailable(true);
       return;
@@ -510,7 +512,7 @@ export default function OnboardingWizard() {
 
     const timer = window.setTimeout(() => void checkSlug(), 300);
     return () => window.clearTimeout(timer);
-  }, [activeStoreId, draft.slug, setupLocked]);
+  }, [activeStoreId, draft.slug, initialSetupCompleted]);
 
   if (role !== "admin") {
     return null;
@@ -650,6 +652,11 @@ export default function OnboardingWizard() {
 
       const siteSettingsRows = buildBlueprintSiteSettingsEntries(selectedBlueprint, {
         payment_settings: draft.payment as unknown as Json,
+        onboarding_status: {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completed_via: publish ? "publish" : "draft_save",
+        } as Json,
       }).map((entry) => ({
         store_id: activeStoreId,
         key: entry.key,
@@ -691,7 +698,7 @@ export default function OnboardingWizard() {
     toast.success("Store URL copied.");
   };
 
-  if (setupLocked && activeStoreId) {
+  if (initialSetupCompleted && !guideMode && activeStoreId) {
     const siteSettingsHref = `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}`;
     const pageBuilderHref = buildPageBuilderPath("basic", { storeId: activeStoreId });
     const dashboardHref = `/admin?storeId=${encodeURIComponent(activeStoreId)}`;
@@ -884,9 +891,12 @@ export default function OnboardingWizard() {
                     data-testid="onboarding-store-slug"
                     value={draft.slug}
                     onChange={(event) => updateDraft({ slug: createStoreSlug(event.target.value) })}
+                    disabled={initialSetupCompleted}
                   />
-                  <p className={`text-xs ${slugAvailable ? "text-muted-foreground" : "text-destructive"}`}>
-                    {slugChecking ? "Checking availability..." : slugAvailable ? "Slug is available." : "Slug is already used."}
+                  <p className={`text-xs ${initialSetupCompleted || slugAvailable ? "text-muted-foreground" : "text-destructive"}`}>
+                    {initialSetupCompleted
+                      ? "Store URL is locked after first-time setup."
+                      : slugChecking ? "Checking availability..." : slugAvailable ? "Slug is available." : "Slug is already used."}
                   </p>
                 </div>
                 <div className="grid gap-2">
