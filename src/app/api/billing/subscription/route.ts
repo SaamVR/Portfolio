@@ -72,6 +72,13 @@ export async function PATCH(req: Request) {
 
     if (error) throw error;
 
+    if (nextStatus !== "active") {
+      await supabaseAdmin
+        .from("stores")
+        .update({ custom_domain: null })
+        .eq("id", storeId);
+    }
+
     return NextResponse.json({ success: true, status: nextStatus, planId: plan.id });
   } catch (error) {
     console.error("Subscription update error:", error);

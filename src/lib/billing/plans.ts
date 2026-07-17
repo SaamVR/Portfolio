@@ -24,6 +24,20 @@ export type SubscriptionRecordLike = {
 
 export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
   {
+    id: "free",
+    name: "Free",
+    description: "A lightweight starter package for testing your first storefront before upgrading.",
+    monthly_price: 0,
+    annual_price: 0,
+    annual_discount_percentage: 0,
+    currency_code: "BDT",
+    store_limit: 1,
+    is_active: true,
+    sort_order: 5,
+    trial_days: 0,
+    contact_only: false,
+  },
+  {
     id: "basic",
     name: "Basic",
     description: "A simple start for new stores that want to launch fast.",
@@ -69,6 +83,12 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
 
 export function getPlanTrialDays(plan?: Pick<PlanCatalogRecord, "trial_days"> | null) {
   return Math.max(0, Number(plan?.trial_days ?? 14) || 14);
+}
+
+export function isFreePlan(plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "id"> | null) {
+  if (!plan) return false;
+  if (plan.id === "free") return true;
+  return getPlanPrice(plan, "monthly") === 0 && getPlanPrice(plan, "annual") === 0;
 }
 
 export function isContactOnlyPlan(plan?: Pick<PlanCatalogRecord, "contact_only" | "id"> | null) {
@@ -119,6 +139,15 @@ export function isSubscriptionLive(
 ) {
   const status = getEffectiveSubscriptionStatus(subscription, now);
   return status === "active" || status === "trialing";
+}
+
+export function canUseCustomDomains(
+  subscription?: SubscriptionRecordLike | null,
+  plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "id"> | null,
+  featureEnabled = false,
+  now = new Date(),
+) {
+  return featureEnabled && getEffectiveSubscriptionStatus(subscription, now) === "active" && !isFreePlan(plan);
 }
 
 export type BillingInterval = "monthly" | "annual";

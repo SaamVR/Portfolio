@@ -316,11 +316,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const finalPlanId = effectivePlan?.id ?? (isAdditionalStoreFlow ? "basic" : requestedPlanId || "basic");
-    const trialLengthDays = Math.max(0, Number(effectivePlan?.trial_days ?? 14) || 14);
-    const trialEndsAt = inheritedTrialEndsAt ?? new Date(Date.now() + trialLengthDays * 24 * 60 * 60 * 1000).toISOString();
+    const finalPlanId = effectivePlan?.id ?? (isAdditionalStoreFlow ? "basic" : requestedPlanId || "free");
+    const monthlyPrice = Math.max(0, Number(effectivePlan?.monthly_price ?? 0) || 0);
+    const trialLengthDays = Math.max(0, Number(effectivePlan?.trial_days ?? (monthlyPrice > 0 ? 14 : 0)) || 0);
+    const trialEndsAt = trialLengthDays > 0
+      ? (inheritedTrialEndsAt ?? new Date(Date.now() + trialLengthDays * 24 * 60 * 60 * 1000).toISOString())
+      : null;
     const planRequiresPayment = false;
-    const subscriptionStatus = inheritedTrialEndsAt ? "trialing" : "trialing";
+    const subscriptionStatus = trialEndsAt ? "trialing" : "active";
 
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")

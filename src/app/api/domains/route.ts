@@ -27,6 +27,7 @@ import {
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
 import { getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+import { canUseCustomDomains } from "@/lib/billing/plans";
 
 type StoreDomainRow = {
   id: string;
@@ -115,6 +116,79 @@ async function loadStoreSummary(supabaseAdmin: SupabaseClient, storeId: string) 
 async function loadStoreSummaryByServiceRole(storeId: string) {
   const supabaseAdmin = domainRouteDeps.getSupabaseAdminClient();
   return loadStoreSummary(supabaseAdmin, storeId);
+}
+
+type DomainAccessState = {
+  allowed: boolean;
+  featureEnabled: boolean;
+  message: string;
+  planName: string | null;
+  subscriptionStatus: string | null;
+};
+
+async function loadDomainAccess(supabaseAdmin: SupabaseClient, storeId: string): Promise<DomainAccessState> {
+  const { data: subscription, error: subscriptionError } = await supabaseAdmin
+    .from("store_subscriptions")
+    .select("plan_id, status, trial_ends_at, cms_plans(name, monthly_price, annual_price)")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (subscriptionError) throw subscriptionError;
+
+  const planId = typeof subscription?.plan_id === "string" ? subscription.plan_id : null;
+  const { data: customDomainFeature, error: featureError } = planId
+    ? await supabaseAdmin
+        .from("cms_plan_features")
+        .select("enabled")
+        .eq("plan_id", planId)
+        .eq("feature_key", "custom_domains")
+        .maybeSingle()
+    : { data: null, error: null };
+
+  if (featureError) throw featureError;
+
+  const featureEnabled = Boolean(customDomainFeature?.enabled);
+  const plan = (subscription?.cms_plans ?? null) as { name?: string | null; monthly_price?: number | null; annual_price?: number | null } | null;
+  const allowed = canUseCustomDomains(
+    subscription as { status?: string | null; trial_ends_at?: string | null } | null,
+    planId
+      ? {
+          id: planId,
+          monthly_price: plan?.monthly_price ?? null,
+          annual_price: plan?.annual_price ?? null,
+        }
+      : null,
+    featureEnabled,
+  );
+
+  let message = "Custom domains are unavailable for this store.";
+  if (!featureEnabled) {
+    message = "This plan does not include custom domains. Upgrade to a package that includes domain access.";
+  } else if ((subscription?.status ?? null) === "trialing") {
+    message = "Custom domains unlock only after your paid package becomes active. They stay unavailable during trial.";
+  } else if (!allowed) {
+    message = "Custom domains unlock only on active paid packages.";
+  }
+
+  return {
+    allowed,
+    featureEnabled,
+    message,
+    planName: typeof plan?.name === "string" ? plan.name : null,
+    subscriptionStatus: typeof subscription?.status === "string" ? subscription.status : null,
+  };
+}
+
+async function requireCustomDomainAccess(supabaseAdmin: SupabaseClient, storeId: string) {
+  const domainAccess = await loadDomainAccess(supabaseAdmin, storeId);
+  if (!domainAccess.allowed) {
+    return {
+      error: NextResponse.json({ error: domainAccess.message, domainAccess }, { status: 403 }),
+      domainAccess,
+    };
+  }
+
+  return { domainAccess };
 }
 
 async function upsertStoreDomain(
@@ -305,8 +379,10 @@ export async function GET(req: Request) {
 
       const domains = await loadStoreDomains(access.supabaseAdmin, storeId);
       const store = await loadStoreSummary(access.supabaseAdmin, storeId);
+      const domainAccess = await loadDomainAccess(access.supabaseAdmin, storeId);
       return NextResponse.json({
         store,
+        domainAccess,
         domains: domains.map(serializeDomain),
       });
     }
@@ -353,6 +429,8 @@ export async function POST(req: Request) {
 
     const access = await requireDomainManager(req, storeId);
     if (access.error) return access.error;
+    const domainAccessResult = await requireCustomDomainAccess(access.supabaseAdmin, storeId);
+    if (domainAccessResult.error) return domainAccessResult.error;
 
     const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
     const { apexHostname, wwwHostname, defaultPrimaryHostname } = domainRouteDeps.getDomainPair(normalized);
@@ -410,6 +488,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       store,
+      domainAccess: domainAccessResult.domainAccess,
       domains: refreshed.map(serializeDomain),
       primaryHostname: defaultPrimaryHostname,
       warning,
@@ -455,6 +534,8 @@ export async function PATCH(req: Request) {
 
     const access = await requireDomainManager(req, storeId);
     if (access.error) return access.error;
+    const domainAccessResult = await requireCustomDomainAccess(access.supabaseAdmin, storeId);
+    if (domainAccessResult.error) return domainAccessResult.error;
 
     const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
 
@@ -464,7 +545,7 @@ export async function PATCH(req: Request) {
         await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
       }
       const store = await loadStoreSummary(access.supabaseAdmin, storeId);
-      return NextResponse.json({ success: true, store, domain });
+      return NextResponse.json({ success: true, store, domainAccess: domainAccessResult.domainAccess, domain });
     }
 
     if (action === "make-primary") {
@@ -524,6 +605,8 @@ export async function DELETE(req: Request) {
 
     const access = await requireDomainManager(req, storeId);
     if (access.error) return access.error;
+    const domainAccessResult = await requireCustomDomainAccess(access.supabaseAdmin, storeId);
+    if (domainAccessResult.error) return domainAccessResult.error;
 
     const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
     const domainPair = domainRouteDeps.getDomainPair(normalized.hostname);
@@ -551,7 +634,7 @@ export async function DELETE(req: Request) {
       .eq("id", storeId)
       .in("custom_domain", [domainPair.apexHostname, domainPair.wwwHostname]);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, domainAccess: domainAccessResult.domainAccess });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to remove custom domain" },

@@ -82,6 +82,7 @@ export default function MerchantSignup() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
   const [plans, setPlans] = useState<PlanCatalogRecord[]>([
+    { id: "free", name: "Free", description: null, monthly_price: 0, trial_days: 0, contact_only: false },
     { id: "basic", name: "Basic", description: null, monthly_price: 990, trial_days: 14, contact_only: false },
     { id: "advanced", name: "Advanced", description: null, monthly_price: 1490, trial_days: 14, contact_only: false },
     { id: "pro", name: "Pro", description: null, monthly_price: 3990, trial_days: 14, contact_only: true },
@@ -93,7 +94,7 @@ export default function MerchantSignup() {
     storeName: "",
     storeSlug: "",
     businessType: requestedBlueprint || "general-catalog",
-    planId: searchParams.get("planId") || "basic",
+    planId: searchParams.get("planId") || "free",
     otpCode: "",
   });
   const slugCheckSequence = useRef(0);
@@ -592,7 +593,7 @@ export default function MerchantSignup() {
                       ))}
                     </select>
                     {plans.some((plan) => plan.id === "pro") ? (
-                      <p className="mt-1 text-xs text-muted-foreground">Trial accounts can create one store. Additional stores unlock after your first paid package is active. Pro is support-managed.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Free includes one store and an EZComo subdomain. Paid plans start with a 14-day trial, and custom domains unlock only after a paid package becomes active.</p>
                     ) : null}
                   </div>
                 ) : (

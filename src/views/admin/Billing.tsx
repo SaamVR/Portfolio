@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  canUseCustomDomains,
   formatPlanPrice,
   getPlanAnnualDiscountPercent,
   getEffectiveSubscriptionStatus,
@@ -280,9 +281,9 @@ export default function Billing() {
     }
   };
 
-  const planName = subscription?.cms_plans?.name || "Basic";
+  const planName = subscription?.cms_plans?.name || "Free";
   const planPrice = subscription?.cms_plans?.monthly_price || 0;
-  const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "basic";
+  const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "free";
   const status = getEffectiveSubscriptionStatus(subscription) || "trialing";
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
@@ -290,6 +291,7 @@ export default function Billing() {
   const confirmedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "paid");
   const pendingInvoices = (invoices || []).filter((invoice: any) => invoice.status === "pending");
   const failedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "failed");
+  const customDomainsUnlocked = canUseCustomDomains(subscription, subscription?.cms_plans, true);
 
   const formatInvoiceMethod = (invoice: any) => {
     if (invoice.payment_method === "bkash_manual") return "Manual bKash";
@@ -408,6 +410,12 @@ export default function Billing() {
                   <span className="font-medium text-foreground">{format(new Date(currentPeriodEndsAt), "PPP")}</span>
                 </div>
               )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Custom domains</span>
+                <span className="font-medium text-foreground">
+                  {customDomainsUnlocked ? "Unlocked" : status === "trialing" ? "Locked during trial" : "Not included on this plan"}
+                </span>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="bg-muted/50 border-t border-border flex flex-col gap-3 items-stretch">
@@ -523,7 +531,7 @@ export default function Billing() {
                       }}
                     >
                       {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {isCurrent ? "Current Plan" : isContactPlan ? "Contact Support" : "Start Trial"}
+                      {isCurrent ? "Current Plan" : isContactPlan ? "Contact Support" : Number(plan.monthly_price ?? 0) > 0 ? "Start Trial" : "Choose Free"}
                     </Button>
                     {!isCurrent && !isContactPlan ? (
                       <div className="mt-3 grid grid-cols-2 gap-2">

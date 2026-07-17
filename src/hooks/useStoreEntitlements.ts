@@ -29,7 +29,7 @@ export function useStoreEntitlements(storeId?: string | null) {
       const planId = subscription?.plan_id as string | undefined;
       const subscriptionStatus = getEffectiveSubscriptionStatus(subscription as any) ?? undefined;
       const paidPlanReady = subscriptionStatus === "active" || subscriptionStatus === "trialing";
-      const defaultPlan = (allPlans ?? []).find((p: any) => p.id === "basic") ?? (allPlans ?? [])[0] ?? { id: "basic" };
+      const defaultPlan = (allPlans ?? []).find((p: any) => p.id === "free") ?? (allPlans ?? [])[0] ?? { id: "free" };
       const effectivePlanId = planId && paidPlanReady ? planId : defaultPlan.id;
       const { data: planMappings } = effectivePlanId
         ? await (supabase as any).from("cms_plan_features").select("feature_key, enabled").eq("plan_id", effectivePlanId)
@@ -42,6 +42,16 @@ export function useStoreEntitlements(storeId?: string | null) {
         emailOverrides: (emailOverrides ?? []) as any[],
         isPlatformAdmin: platformRole === "admin",
       });
+
+      if (subscriptionStatus !== "active" && featureMap instanceof Map) {
+        const currentCustomDomains = featureMap.get("custom_domains");
+        if (currentCustomDomains) {
+          featureMap.set("custom_domains", {
+            ...currentCustomDomains,
+            enabled: false,
+          });
+        }
+      }
 
       return {
         planId: planId ?? null,

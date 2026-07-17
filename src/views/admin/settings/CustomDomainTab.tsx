@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 
 type DomainRecordInstruction = {
   type: string;
@@ -73,6 +74,7 @@ function labelForStatus(status: string) {
 
 export const CustomDomainTab = () => {
   const { activeStoreId } = useAuth();
+  const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const [storeSlug, setStoreSlug] = useState("");
   const [platformDomainFromServer, setPlatformDomainFromServer] = useState("");
   const [domainInput, setDomainInput] = useState("");
@@ -80,6 +82,8 @@ export const CustomDomainTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actioningHostname, setActioningHostname] = useState<string | null>(null);
+  const [domainAccessMessage, setDomainAccessMessage] = useState<string | null>(null);
+  const customDomainsEnabled = entitlementData?.featureMap?.get("custom_domains")?.enabled ?? false;
 
   const platformDomain = useMemo(() => {
     if (platformDomainFromServer) return platformDomainFromServer;
@@ -131,6 +135,7 @@ export const CustomDomainTab = () => {
       setStoreSlug("");
       setPlatformDomainFromServer("");
       setDomains([]);
+      setDomainAccessMessage(null);
       setLoading(false);
       return;
     }
@@ -148,6 +153,7 @@ export const CustomDomainTab = () => {
 
       const domainData = await domainResponse.json();
       const store = (domainData.store ?? {}) as DomainPageStore;
+      setDomainAccessMessage(typeof domainData.domainAccess?.message === "string" ? domainData.domainAccess.message : null);
       setStoreSlug(store.slug ?? "");
       setPlatformDomainFromServer(store.platformDomain ?? "");
       setDomains(domainData.domains ?? []);
@@ -185,6 +191,10 @@ export const CustomDomainTab = () => {
 
   async function addDomain() {
     if (!activeStoreId || !domainInput.trim()) return;
+    if (!customDomainsEnabled) {
+      toast.error(domainAccessMessage || "Custom domains unlock only after a paid package with domain access becomes active.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -225,6 +235,10 @@ export const CustomDomainTab = () => {
 
   async function checkDomain(hostname: string) {
     if (!activeStoreId) return;
+    if (!customDomainsEnabled) {
+      toast.error(domainAccessMessage || "Custom domains unlock only after a paid package with domain access becomes active.");
+      return;
+    }
 
     setActioningHostname(hostname);
     try {
@@ -262,6 +276,10 @@ export const CustomDomainTab = () => {
 
   async function makePrimary(hostname: string) {
     if (!activeStoreId) return;
+    if (!customDomainsEnabled) {
+      toast.error(domainAccessMessage || "Custom domains unlock only after a paid package with domain access becomes active.");
+      return;
+    }
 
     setActioningHostname(hostname);
     try {
@@ -294,6 +312,10 @@ export const CustomDomainTab = () => {
 
   async function removeDomain(hostname: string) {
     if (!activeStoreId) return;
+    if (!customDomainsEnabled) {
+      toast.error(domainAccessMessage || "Custom domains unlock only after a paid package with domain access becomes active.");
+      return;
+    }
 
     setActioningHostname(hostname);
     try {
@@ -364,6 +386,12 @@ export const CustomDomainTab = () => {
               </p>
             ) : null}
           </div>
+
+          {!customDomainsEnabled ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700">
+              {domainAccessMessage || "Custom domains are unavailable on free stores and during trial. Upgrade to an eligible paid package and complete payment activation first."}
+            </div>
+          ) : null}
 
           <div className="rounded-xl border border-dashed border-border bg-background p-4">
             <p className="text-sm font-semibold text-foreground">What you need to do</p>
