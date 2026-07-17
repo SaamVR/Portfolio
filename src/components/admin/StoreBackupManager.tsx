@@ -117,7 +117,7 @@ type AccessImportMode = "none" | "invites_only" | "memberships_and_invites";
 type BackupFormat = "json" | "zip";
 
 export default function StoreBackupManager() {
-  const { platformRole, role, activeStoreId } = useAuth();
+  const { platformRole, role, activeStoreId, user } = useAuth();
   const isPlatformAdmin = platformRole === "admin";
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -271,6 +271,9 @@ export default function StoreBackupManager() {
       if (tableName === "store_subscriptions" && !isPlatformAdmin) {
         continue;
       }
+      if (tableName === "store_memberships") {
+        continue;
+      }
       const { error } = await (supabase as any).from(tableName).delete().eq("store_id", storeId);
       if (error) {
         throw error;
@@ -316,6 +319,20 @@ export default function StoreBackupManager() {
       if (replaceTargetContent) {
         await clearTargetStore(targetStore.id);
       }
+
+      const ensureCurrentUserMembership = async (nextRole: "owner" | "admin" | "editor" | "viewer" = "owner") => {
+        if (!user?.id) return;
+        const { error } = await (supabase as any).from("store_memberships").upsert({
+          store_id: targetStore.id,
+          user_id: user.id,
+          role: nextRole,
+          invited_by: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "store_id,user_id" });
+        if (error) throw error;
+      };
+
+      await ensureCurrentUserMembership("owner");
 
       const incomingStore = rewrittenData.store as StoreOption | undefined;
       const nextStoreRow = {
@@ -476,10 +493,13 @@ export default function StoreBackupManager() {
         }
       }
 
+      await ensureCurrentUserMembership("owner");
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["media_library", targetStore.id] }),
         queryClient.invalidateQueries({ queryKey: ["site_settings", targetStore.id] }),
         queryClient.invalidateQueries({ queryKey: ["backup-stores"] }),
+        queryClient.invalidateQueries({ queryKey: ["store-entitlements"] }),
       ]);
 
       setLastSummary(`Imported ${parsedPackage.source.storeName} into ${targetStore.name} with ${parsedPackage.mediaFiles.length} packaged media files, ${includeOperationalData ? "including" : "excluding"} operational data, and access mode ${accessImportMode}.`);
@@ -644,7 +664,7 @@ export default function StoreBackupManager() {
               <div className="flex items-start gap-2">
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
-                  Import now preserves the target store owner, and by default also keeps the target domain and restores the imported store as draft. Invite imports are regenerated as new pending codes, and membership imports assume those user accounts already exist on this platform.
+                  Import now preserves the target store owner and your current admin access, and by default also keeps the target domain and restores the imported store as draft. Invite imports are regenerated as new pending codes, and membership imports assume those user accounts already exist on this platform.
                 </p>
               </div>
             </div>
