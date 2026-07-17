@@ -112,6 +112,11 @@ async function loadStoreSummary(supabaseAdmin: SupabaseClient, storeId: string) 
   };
 }
 
+async function loadStoreSummaryByServiceRole(storeId: string) {
+  const supabaseAdmin = domainRouteDeps.getSupabaseAdminClient();
+  return loadStoreSummary(supabaseAdmin, storeId);
+}
+
 async function upsertStoreDomain(
   supabaseAdmin: SupabaseClient,
   payload: Record<string, unknown>,
@@ -187,6 +192,22 @@ function serializeDomain(row: StoreDomainRow) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function addOrFetchProjectDomain(hostname: string) {
+  try {
+    return await domainRouteDeps.addProjectDomain(hostname);
+  } catch (error) {
+    const status = error instanceof Error && "status" in error
+      ? Number((error as { status?: number }).status)
+      : null;
+
+    if (status === 409) {
+      return domainRouteDeps.getProjectDomain(hostname);
+    }
+
+    throw error;
+  }
 }
 
 async function syncHostnameStatus(
@@ -320,8 +341,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let storeId: string | null = null;
   try {
-    const { storeId, domain: rawDomain } = await req.json();
+    const body = await req.json();
+    storeId = typeof body.storeId === "string" ? body.storeId : null;
+    const rawDomain = body.domain;
     if (!storeId || !rawDomain) {
       return NextResponse.json({ error: "Missing storeId or domain" }, { status: 400 });
     }
@@ -342,7 +366,7 @@ export async function POST(req: Request) {
     const createdDomains: StoreDomainRow[] = [];
 
     for (const hostname of [apexHostname, wwwHostname]) {
-      const projectDomain = await domainRouteDeps.addProjectDomain(hostname);
+      const projectDomain = await addOrFetchProjectDomain(hostname);
       const configuration = await domainRouteDeps.getDomainConfiguration(hostname);
       const verification = projectDomain.verification ?? [];
       const dnsRecords = buildVercelDnsInstructions(hostname, normalized.apexDomain, configuration, verification);
@@ -367,7 +391,14 @@ export async function POST(req: Request) {
       createdDomains.push(domainRow);
     }
 
-    await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
+    let warning: string | null = null;
+    try {
+      await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
+    } catch (error) {
+      warning = error instanceof Error
+        ? error.message
+        : "The domain was added, but redirect setup still needs attention.";
+    }
 
     const refreshed = await loadStoreDomains(access.supabaseAdmin, storeId);
     const store = await loadStoreSummary(access.supabaseAdmin, storeId);
@@ -376,8 +407,30 @@ export async function POST(req: Request) {
       store,
       domains: refreshed.map(serializeDomain),
       primaryHostname: defaultPrimaryHostname,
+      warning,
     });
   } catch (error) {
+    if (storeId) {
+      try {
+        const supabaseAdmin = domainRouteDeps.getSupabaseAdminClient();
+        const domains = await loadStoreDomains(supabaseAdmin, storeId);
+
+        if (domains.length > 0) {
+          const store = await loadStoreSummaryByServiceRole(storeId);
+          return NextResponse.json({
+            success: true,
+            store,
+            domains: domains.map(serializeDomain),
+            warning: error instanceof Error
+              ? error.message
+              : "The domain was added, but some follow-up configuration still needs attention.",
+          });
+        }
+      } catch {
+        // If recovery fails, return the original error response below.
+      }
+    }
+
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to update custom domain",

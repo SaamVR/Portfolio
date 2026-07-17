@@ -181,8 +181,13 @@ export const CustomDomainTab = () => {
         setPlatformDomainFromServer(store.platformDomain);
       }
       setDomains(body.domains ?? []);
-      toast.success("Custom domain connected. Add the DNS records below to finish setup.");
+      if (body.warning) {
+        toast.success("Custom domain added. Review the DNS details below.");
+      } else {
+        toast.success("Custom domain connected. Add the DNS records below to finish setup.");
+      }
     } catch (error) {
+      await fetchDomainState();
       toast.error(error instanceof Error ? error.message : "Failed to add domain");
       console.error("Domain add error:", error);
     } finally {
@@ -344,6 +349,14 @@ export const CustomDomainTab = () => {
 
           <div className="space-y-2">
             <Label htmlFor="custom-domain-input">Add custom domain</Label>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+              Before adding the domain:
+              <ul className="mt-2 list-disc pl-5">
+                <li>Use a domain you control at your registrar or DNS provider.</li>
+                <li>Add the domain here first so we can fetch the exact records Vercel expects.</li>
+                <li>After that, copy the records shown below and create them in your DNS dashboard.</li>
+              </ul>
+            </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Input
                 id="custom-domain-input"
