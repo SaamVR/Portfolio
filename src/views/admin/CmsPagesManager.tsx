@@ -36,6 +36,7 @@ import {
   Store as StoreIcon,
   Redo2,
   Undo2,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -120,6 +121,8 @@ type RecoverableDraft = {
   snapshot: string;
   updatedAt: string;
 };
+
+type BasicGuideStep = "basics" | "hero" | "promotion" | "sections" | "launch";
 
 const STORE_LAYOUT_PACKAGE_SCHEMA = "ecomcms.storefront-layout.v1";
 
@@ -284,6 +287,8 @@ export default function CmsPagesManager() {
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
   const [undoStack, setUndoStack] = useState<Store[]>([]);
   const [redoStack, setRedoStack] = useState<Store[]>([]);
+  const [basicGuideStep, setBasicGuideStep] = useState<BasicGuideStep>("basics");
+  const [isActionDockMinimized, setIsActionDockMinimized] = useState(false);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
@@ -1431,6 +1436,22 @@ export default function CmsPagesManager() {
         blocks: selectedPage.blocks,
       }, null, 2)
     : "";
+  const basicGuideSteps: Array<{ id: BasicGuideStep; title: string; description: string; sectionId: string }> = [
+    { id: "basics", title: "Store Basics", description: "Name, summary, publishing, and core page choice.", sectionId: "basic-step-basics" },
+    { id: "hero", title: "Hero", description: "Main headline, media, and first call to action.", sectionId: "basic-step-hero" },
+    { id: "promotion", title: "Promotion", description: "Promo banner, featured products, and launch hooks.", sectionId: "basic-step-promotion" },
+    { id: "sections", title: "Sections", description: "FAQ, trust, media, testimonials, and supporting content.", sectionId: "basic-step-sections" },
+    { id: "launch", title: "Preview & Publish", description: "Check the page, save confidently, and open advanced tools only if needed.", sectionId: "basic-step-launch" },
+  ];
+  const activeBasicStepMeta = basicGuideSteps.find((step) => step.id === basicGuideStep) ?? basicGuideSteps[0];
+  const actionDockTargets = isAdvancedEditor
+    ? [
+        { id: "page-builder-details", label: "Details" },
+        { id: "page-builder-blocks", label: "Blocks" },
+        { id: "page-builder-preview", label: "Preview" },
+        { id: "advanced-code-panels", label: "Code" },
+      ]
+    : basicGuideSteps.map((step) => ({ id: step.sectionId, label: step.title }));
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2023,6 +2044,7 @@ export default function CmsPagesManager() {
           </div>
 
           {selectedPage ? (
+            <>
             <div className="space-y-6">
               <Card className="border-border">
                 <div id="page-builder-details" />
@@ -2206,9 +2228,76 @@ export default function CmsPagesManager() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {!isAdvancedEditor ? (
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <p className="text-sm font-semibold text-foreground">Guided Basic Editing</p>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {activeBasicStepMeta.description} Basic mode is the merchant-safe path and should cover most whole-site editing without touching block structure.
+                            </p>
+                          </div>
+                          <Badge variant="secondary">{basicGuideSteps.findIndex((step) => step.id === basicGuideStep) + 1}/{basicGuideSteps.length}</Badge>
+                        </div>
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                          {basicGuideSteps.map((step) => (
+                            <button
+                              key={step.id}
+                              type="button"
+                              onClick={() => {
+                                setBasicGuideStep(step.id);
+                                scrollToBuilderSection(step.sectionId);
+                              }}
+                              className={cn(
+                                "rounded-xl border px-3 py-3 text-left transition-colors",
+                                basicGuideStep === step.id
+                                  ? "border-primary/30 bg-background text-foreground shadow-sm"
+                                  : "border-transparent bg-background/70 text-muted-foreground hover:border-primary/20",
+                              )}
+                            >
+                              <p className="text-sm font-medium">{step.title}</p>
+                              <p className="mt-1 text-[11px] leading-4">{step.description}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div id="basic-step-basics" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
+                        <div className="rounded-xl border border-border p-4 md:col-span-2">
+                          <p className="text-sm font-semibold text-foreground">Store Basics</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Confirm the page, store summary, and whether this storefront is live.</p>
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <Label>Editing Page</Label>
+                              <Input value={selectedPage.title} readOnly />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Page URL</Label>
+                              <Input value={selectedPage.slug} readOnly />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Store Name</Label>
+                              <Input value={store.name} onChange={(e) => commitStoreChange({ ...store, name: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Store Published</Label>
+                              <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
+                                <span className="text-sm text-foreground">{store.isPublished ? "Published" : "Draft"}</span>
+                                <Switch checked={store.isPublished} onCheckedChange={(checked) => commitStoreChange({ ...store, isPublished: checked })} />
+                              </div>
+                            </div>
+                            <div className="grid gap-2 md:col-span-2">
+                              <Label>Store Description</Label>
+                              <Textarea rows={4} value={store.description} onChange={(e) => commitStoreChange({ ...store, description: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="basic-step-hero" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {heroBlock ? (
-                        <div className="rounded-xl border border-border p-4">
+                        <div className="rounded-xl border border-border p-4 md:col-span-2">
                           <p className="text-sm font-semibold text-foreground">Hero Section</p>
                           <p className="mt-1 text-xs text-muted-foreground">Main headline, supporting text, calls to action, and hero media.</p>
                           <div className="mt-4 grid gap-3">
@@ -2253,6 +2342,8 @@ export default function CmsPagesManager() {
                           </div>
                         </div>
                       ) : null}
+                      </div>
+                      <div id="basic-step-promotion" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {promoBlock ? (
                         <div className="rounded-xl border border-border p-4">
                           <p className="text-sm font-semibold text-foreground">Promo Banner</p>
@@ -2316,10 +2407,12 @@ export default function CmsPagesManager() {
                           </div>
                         </div>
                       ) : null}
+                      </div>
+                      <div id="basic-step-sections" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {faqBlock ? (
                         <div className="rounded-xl border border-border p-4">
                           <p className="text-sm font-semibold text-foreground">FAQ Section</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Update the section heading here. Detailed FAQ item editing stays in Advanced.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Update the section heading and manage common question/answer pairs right here.</p>
                           <div className="mt-4 grid gap-3">
                             <div className="grid gap-2">
                               <Label>Title</Label>
@@ -2329,8 +2422,60 @@ export default function CmsPagesManager() {
                               <Label>Subtitle</Label>
                               <Input value={faqBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(faqBlock.id, "faq-accordion", { subtitle: e.target.value })} />
                             </div>
-                            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                              FAQ items use the advanced technical editor.
+                            <div className="grid gap-3 rounded-lg border border-border p-3 md:col-span-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-medium text-foreground">FAQ Items</p>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => updateBlockProps(faqBlock.id, "faq-accordion", {
+                                    faqs: [...((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []), { q: "", a: "" }],
+                                  })}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Add FAQ
+                                </Button>
+                              </div>
+                              {(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? [])).map((faq, index) => (
+                                <div key={`${faq.q}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                  <div className="grid gap-2">
+                                    <Label>Question {index + 1}</Label>
+                                    <Input
+                                      value={faq.q ?? ""}
+                                      onChange={(e) => {
+                                        const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))];
+                                        next[index] = { ...(next[index] ?? { q: "", a: "" }), q: e.target.value };
+                                        updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label>Answer</Label>
+                                    <Textarea
+                                      rows={3}
+                                      value={faq.a ?? ""}
+                                      onChange={(e) => {
+                                        const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))];
+                                        next[index] = { ...(next[index] ?? { q: "", a: "" }), a: e.target.value };
+                                        updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
+                                      }}
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-fit text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))].filter((_, itemIndex) => itemIndex !== index);
+                                      updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
+                                    }}
+                                  >
+                                    Remove FAQ
+                                  </Button>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -2353,7 +2498,7 @@ export default function CmsPagesManager() {
                       {socialFeedBlock ? (
                         <div className="rounded-xl border border-border p-4">
                           <p className="text-sm font-semibold text-foreground">Social Feed</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Update the section title, intro text, and image URLs through a simple form.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Update the section title, intro text, and upload or reorder the media you want to show.</p>
                           <div className="mt-4 grid gap-3">
                             <div className="grid gap-2">
                               <Label>Title</Label>
@@ -2363,9 +2508,60 @@ export default function CmsPagesManager() {
                               <Label>Subtitle</Label>
                               <Input value={socialFeedBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { subtitle: e.target.value })} />
                             </div>
-                            <div className="grid gap-2">
-                              <Label>Image URLs</Label>
-                              <Textarea rows={4} value={((socialFeedBlock.props.images as string[]) || []).join("\n")} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { images: e.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} placeholder={"https://...\nhttps://..."} />
+                            <div className="grid gap-3 md:col-span-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <Label>Feed Media</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => updateBlockProps(socialFeedBlock.id, "social-feed", {
+                                    images: [...(((socialFeedBlock.props.images as string[] | undefined) ?? [])), ""],
+                                  })}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Add Slot
+                                </Button>
+                              </div>
+                              {((((socialFeedBlock.props.images as string[] | undefined) ?? []))).map((image, index) => (
+                                <div key={`${image}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                  <Label>Media {index + 1}</Label>
+                                  <CloudinaryUpload
+                                    value={image}
+                                    onChange={(url) => {
+                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))];
+                                      next[index] = url;
+                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
+                                    }}
+                                    folder="social-feed"
+                                    accept="image/*,video/*"
+                                    label="Upload feed media"
+                                    resourceType="auto"
+                                    storeId={store.id}
+                                  />
+                                  <Input
+                                    value={image}
+                                    placeholder="Or paste media URL"
+                                    onChange={(e) => {
+                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))];
+                                      next[index] = e.target.value;
+                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-fit text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))].filter((_, itemIndex) => itemIndex !== index);
+                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
+                                    }}
+                                  >
+                                    Remove Media
+                                  </Button>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -2440,7 +2636,8 @@ export default function CmsPagesManager() {
                           </div>
                         </div>
                       ) : null}
-                      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 md:col-span-2">
+                      </div>
+                      <div id="basic-step-launch" className="rounded-xl border border-dashed border-border bg-muted/20 p-4 scroll-mt-28">
                         <p className="text-sm font-medium text-foreground">Need deeper layout or developer controls?</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link> for block ordering, template changes, raw JSON, and theme code.
@@ -3179,45 +3376,9 @@ export default function CmsPagesManager() {
                 </CardContent>
               </Card>
 
-              {!isAdvancedEditor ? (
-                <div className="sticky bottom-0 z-30 -mx-4 border-t border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl">
-                  <div className="rounded-2xl border border-border/80 bg-card/90 px-3 py-3 shadow-sm sm:px-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">Basic Editing Actions</p>
-                        <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="rounded-full">
-                          <Undo2 className="h-4 w-4" />
-                          Undo
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="rounded-full">
-                          <Redo2 className="h-4 w-4" />
-                          Redo
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
-                          <a href={previewHref} target="_blank" rel="noreferrer">
-                            <Eye className="h-4 w-4" />
-                            Preview
-                          </a>
-                        </Button>
-                        <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="rounded-full">
-                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground sm:hidden">
-                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Mobile-first merchant editing</div>
-                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Autosaves local draft before publish</div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
               {isAdvancedEditor ? (
                 <Card className="border-border">
+                  <div id="advanced-code-panels" />
                   <CardHeader>
                     <CardTitle className="text-lg">Code Panels</CardTitle>
                     <CardDescription>Technical editing surfaces for raw page payloads, selected block props, and layout import/export workflows.</CardDescription>
@@ -3301,6 +3462,85 @@ export default function CmsPagesManager() {
                   Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.
                 </div>
             </div>
+            <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex max-w-[calc(100vw-1.5rem)] justify-end sm:max-w-[420px]">
+              <div className="pointer-events-auto w-full rounded-[1.75rem] border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Advanced Editing Dock" : "Basic Editing Dock"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => setIsActionDockMinimized((current) => !current)}
+                  >
+                    {isActionDockMinimized ? "Expand" : "Minimize"}
+                  </Button>
+                </div>
+                {!isActionDockMinimized ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="rounded-full">
+                        <Undo2 className="h-4 w-4" />
+                        Undo
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="rounded-full">
+                        <Redo2 className="h-4 w-4" />
+                        Redo
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                        <a href={previewHref} target="_blank" rel="noreferrer">
+                          <Eye className="h-4 w-4" />
+                          Preview
+                        </a>
+                      </Button>
+                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="rounded-full">
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save
+                      </Button>
+                    </div>
+                    <div className="grid gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Jump To</p>
+                      <div className="flex flex-wrap gap-2">
+                        {actionDockTargets.map((target) => (
+                          <Button
+                            key={target.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => {
+                              if (!isAdvancedEditor) {
+                                const step = basicGuideSteps.find((item) => item.sectionId === target.id);
+                                if (step) {
+                                  setBasicGuideStep(step.id);
+                                }
+                              }
+                              scrollToBuilderSection(target.id);
+                            }}
+                          >
+                            {target.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    {!isAdvancedEditor ? (
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                        <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Guided merchant flow</div>
+                        <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Autosaves local draft before publish</div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
+                        Advanced mode keeps full block editing, raw JSON, and code-oriented review panels in reach.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            </>
           ) : (
             <Card className="border-border rounded-xl">
               <CardContent className="flex min-h-[280px] flex-col justify-center gap-5 p-5">
