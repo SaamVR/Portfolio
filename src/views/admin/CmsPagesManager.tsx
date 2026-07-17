@@ -34,6 +34,8 @@ import {
   PanelsTopLeft,
   Smartphone,
   Store as StoreIcon,
+  Redo2,
+  Undo2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -280,6 +282,8 @@ export default function CmsPagesManager() {
   const [persistedSnapshot, setPersistedSnapshot] = useState("");
   const [recoverableDraft, setRecoverableDraft] = useState<RecoverableDraft | null>(null);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
+  const [undoStack, setUndoStack] = useState<Store[]>([]);
+  const [redoStack, setRedoStack] = useState<Store[]>([]);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
@@ -305,6 +309,7 @@ export default function CmsPagesManager() {
   const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
+  const pushHistoryLimit = 20;
   const activeBlueprint = useMemo(
     () => resolveStoreBlueprint(storeBlueprintId, storeBlueprints),
     [storeBlueprintId, storeBlueprints],
@@ -350,10 +355,43 @@ export default function CmsPagesManager() {
     [installedBlueprintVersion],
   );
 
+  const commitStoreChange = useCallback((
+    updater: Store | null | ((current: Store | null) => Store | null),
+    options?: { trackHistory?: boolean; resetHistory?: boolean },
+  ) => {
+    const trackHistory = options?.trackHistory ?? true;
+    const resetHistory = options?.resetHistory ?? false;
+
+    setStore((current) => {
+      const next = typeof updater === "function" ? updater(current) : updater;
+
+      if (resetHistory) {
+        setUndoStack([]);
+        setRedoStack([]);
+        return next;
+      }
+
+      if (
+        trackHistory
+        && current
+        && next
+        && serializeStoreDraft(current) !== serializeStoreDraft(next)
+      ) {
+        setUndoStack((existing) => {
+          const snapshot = [...existing, current];
+          return snapshot.length > pushHistoryLimit ? snapshot.slice(snapshot.length - pushHistoryLimit) : snapshot;
+        });
+        setRedoStack([]);
+      }
+
+      return next;
+    });
+  }, []);
+
   const loadStore = useCallback(async () => {
     setLoading(true);
     if (!activeStoreId) {
-      setStore(null);
+      commitStoreChange(null, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(null);
       setInstalledBlueprintVersion(null);
       setSelectedPageId("");
@@ -374,7 +412,7 @@ export default function CmsPagesManager() {
       const storeRecord = storeResponse.data as StoreRecord | null;
 
       if (!storeRecord) {
-        setStore(null);
+        commitStoreChange(null, { trackHistory: false, resetHistory: true });
         setInstalledThemePackageVersion(null);
         setInstalledBlueprintVersion(null);
         setSelectedPageId("");
@@ -427,7 +465,7 @@ export default function CmsPagesManager() {
       setThemePackages(loadedThemePackages);
       setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
       setInstalledBlueprintVersion(typeof businessProfile?.blueprint_version === "number" ? businessProfile.blueprint_version : null);
-      setStore(parsedStore);
+      commitStoreChange(parsedStore, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
         ? (themeResponse.data as ThemeRecord).theme_package_version ?? null
         : null);
@@ -444,13 +482,13 @@ export default function CmsPagesManager() {
     } catch (error) {
       console.error("Failed to load CMS store workspace:", error);
       toast.error("Failed to refresh the page builder workspace. Please try again.");
-      setStore(null);
+      commitStoreChange(null, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(null);
       setInstalledBlueprintVersion(null);
     } finally {
       setLoading(false);
     }
-  }, [activeStoreId, requestedBlockId, requestedPageId]);
+  }, [activeStoreId, commitStoreChange, requestedBlockId, requestedPageId]);
 
   const currentSnapshot = useMemo(() => (store ? serializeStoreDraft(store) : ""), [store]);
   const hasUnsavedChanges = Boolean(store && persistedSnapshot && currentSnapshot !== persistedSnapshot);
@@ -616,7 +654,7 @@ export default function CmsPagesManager() {
   }, [selectedPageId]);
 
   const updateSelectedPage = (updater: (page: StorePage) => StorePage) => {
-    setStore((current) => {
+    commitStoreChange((current) => {
       if (!current) return current;
       return {
         ...current,
@@ -626,7 +664,7 @@ export default function CmsPagesManager() {
   };
 
   const updateStoreTheme = (patch: Partial<Store["theme"]>) => {
-    setStore((current) => {
+    commitStoreChange((current) => {
       if (!current) return current;
       return {
         ...current,
@@ -766,7 +804,7 @@ export default function CmsPagesManager() {
   };
 
   const addPage = () => {
-    setStore((current) => {
+    commitStoreChange((current) => {
       if (!current) return current;
       const page = pageBlueprintsEnabled
         ? instantiatePageBlueprint(newPageTemplate, current.pages.length, availablePageBlueprints) ?? createDefaultCmsPage(current.pages.length)
@@ -777,7 +815,7 @@ export default function CmsPagesManager() {
   };
 
   const duplicatePage = (pageId: string) => {
-    setStore((current) => {
+    commitStoreChange((current) => {
       if (!current) return current;
       const sourcePage = current.pages.find((page) => page.id === pageId);
       if (!sourcePage) return current;
@@ -835,7 +873,7 @@ export default function CmsPagesManager() {
   };
 
   const removePage = (pageId: string) => {
-    setStore((current) => {
+    commitStoreChange((current) => {
       if (!current) return current;
       const remainingPages = current.pages.filter((page) => page.id !== pageId);
 
@@ -1067,7 +1105,7 @@ export default function CmsPagesManager() {
         pages: normalizedPages,
       });
 
-      setStore(candidate);
+      commitStoreChange(candidate);
       setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
       setSelectedBlockId("");
       setWorkspaceTab("pages");
@@ -1190,7 +1228,7 @@ export default function CmsPagesManager() {
       return;
     }
 
-    setStore(parsedStore.data);
+    commitStoreChange(parsedStore.data, { trackHistory: false, resetHistory: true });
     setSelectedPageId((current) => (parsedStore.data.pages.some((page) => page.id === current) ? current : parsedStore.data.pages[0]?.id ?? ""));
     setRecoverableDraft(null);
     toast.success("Local draft restored. Save Page Builder changes to publish it.");
@@ -1203,6 +1241,36 @@ export default function CmsPagesManager() {
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
     toast.success("Local draft discarded.");
+  };
+
+  const undoStoreChange = () => {
+    const previous = undoStack[undoStack.length - 1];
+    if (!previous || !store) {
+      toast.error("Nothing to undo.");
+      return;
+    }
+
+    setRedoStack((existing) => {
+      const next = [...existing, store];
+      return next.length > pushHistoryLimit ? next.slice(next.length - pushHistoryLimit) : next;
+    });
+    setUndoStack((existing) => existing.slice(0, -1));
+    commitStoreChange(previous, { trackHistory: false });
+  };
+
+  const redoStoreChange = () => {
+    const next = redoStack[redoStack.length - 1];
+    if (!next || !store) {
+      toast.error("Nothing to redo.");
+      return;
+    }
+
+    setUndoStack((existing) => {
+      const snapshot = [...existing, store];
+      return snapshot.length > pushHistoryLimit ? snapshot.slice(snapshot.length - pushHistoryLimit) : snapshot;
+    });
+    setRedoStack((existing) => existing.slice(0, -1));
+    commitStoreChange(next, { trackHistory: false });
   };
 
   if (role !== "admin") {
@@ -1334,6 +1402,18 @@ export default function CmsPagesManager() {
   const previewFrameClassName = previewViewport === "mobile" ? "mx-auto w-full max-w-[420px]" : "w-full";
   const visibleBlockCount = selectedPage?.blocks.filter((block) => block.isVisible).length ?? 0;
   const selectedPageNumber = selectedPage ? store.pages.findIndex((page) => page.id === selectedPage.id) + 1 : 0;
+  const heroBlock = selectedPage?.blocks.find((block) => block.type === "hero") ?? null;
+  const promoBlock = selectedPage?.blocks.find((block) => block.type === "promo-banner") ?? null;
+  const featuredProductsBlock = selectedPage?.blocks.find((block) => block.type === "featured-products") ?? null;
+  const faqBlock = selectedPage?.blocks.find((block) => block.type === "faq-accordion") ?? null;
+  const trustBlock = selectedPage?.blocks.find((block) => block.type === "trust-badges") ?? null;
+  const basicStatusLabel = saving
+    ? "Saving changes..."
+    : hasUnsavedChanges
+      ? lastDraftSavedAt
+        ? `Autosaved locally at ${lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+        : "Unsaved changes in local draft"
+      : "All changes saved";
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1627,7 +1707,7 @@ export default function CmsPagesManager() {
                 </div>
                 <div id="store-basics" className="grid gap-2 scroll-mt-36">
                   <Label>Store Name</Label>
-                  <Input value={store.name} onChange={(e) => setStore({ ...store, name: e.target.value })} />
+                  <Input value={store.name} onChange={(e) => commitStoreChange({ ...store, name: e.target.value })} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Store Slug</Label>
@@ -1636,14 +1716,14 @@ export default function CmsPagesManager() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Store Description</Label>
-                  <Textarea rows={4} value={store.description} onChange={(e) => setStore({ ...store, description: e.target.value })} />
+                  <Textarea rows={4} value={store.description} onChange={(e) => commitStoreChange({ ...store, description: e.target.value })} />
                 </div>
                 <div id="store-publishing" className="flex items-center justify-between rounded-lg border border-border p-3 scroll-mt-36">
                   <div>
                     <p className="text-sm font-medium text-foreground">Store Published</p>
                     <p className="text-xs text-muted-foreground">Turn this off to keep the CMS store in draft mode.</p>
                   </div>
-                  <Switch checked={store.isPublished} onCheckedChange={(checked) => setStore({ ...store, isPublished: checked })} />
+                  <Switch checked={store.isPublished} onCheckedChange={(checked) => commitStoreChange({ ...store, isPublished: checked })} />
                 </div>
               </TabsContent>
 
@@ -1774,6 +1854,19 @@ export default function CmsPagesManager() {
                       })}
                     </div>
                   </div>
+                  {isAdvancedEditor ? (
+                    <div className="grid gap-2 rounded-lg border border-border p-4">
+                      <Label>Custom Theme CSS</Label>
+                      <Textarea
+                        rows={8}
+                        className="font-mono text-xs"
+                        value={store.theme.customCss ?? ""}
+                        onChange={(e) => updateStoreTheme({ customCss: e.target.value })}
+                        placeholder="/* Advanced theme overrides for technical editors */"
+                      />
+                      <p className="text-xs text-muted-foreground">Advanced mode only. This CSS is applied on top of the resolved theme tokens for this store.</p>
+                    </div>
+                  ) : null}
                 </div>
               </TabsContent>
 
@@ -2040,7 +2133,7 @@ export default function CmsPagesManager() {
                       checked={selectedPage.isHomepage}
                       disabled={!isAdvancedEditor}
                       onCheckedChange={(checked) =>
-                        setStore((current) => {
+                        commitStoreChange((current) => {
                           if (!current) return current;
                           return {
                             ...current,
@@ -2049,7 +2142,7 @@ export default function CmsPagesManager() {
                                 ? { ...page, isHomepage: checked, slug: checked ? "/" : page.slug === "/" ? `/${page.title.toLowerCase().replace(/\s+/g, "-")}` : page.slug }
                                 : checked
                                   ? { ...page, isHomepage: false }
-                                  : page,
+                              : page,
                             ),
                           };
                         })
@@ -2063,27 +2156,29 @@ export default function CmsPagesManager() {
                 <div id="page-builder-blocks" />
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <CardTitle className="text-lg">Blocks</CardTitle>
+                    <CardTitle className="text-lg">{isAdvancedEditor ? "Blocks" : "Page Content"}</CardTitle>
                     <CardDescription>
                       {isAdvancedEditor
                         ? "Reorder, hide, configure, duplicate, and expand the sections for this page."
-                        : "Focus one section at a time, update its content, and keep layout edits lightweight."}
-                      {selectedBlock ? ` Currently editing ${selectedBlock.type}.` : ""}
+                        : "Update key storefront sections through forms and toggles without working directly with block structure."}
+                      {isAdvancedEditor && selectedBlock ? ` Currently editing ${selectedBlock.type}.` : ""}
                     </CardDescription>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
-                      <SelectTrigger className="w-full sm:w-[220px]">
-                        <SelectValue placeholder="Choose block type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableBlockRegistry.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isAdvancedEditor ? (
+                      <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                          <SelectValue placeholder="Choose block type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBlockRegistry.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
                     {isAdvancedEditor ? (
                       <Button variant="outline" onClick={addBlock} className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -2093,6 +2188,160 @@ export default function CmsPagesManager() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {!isAdvancedEditor ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {heroBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Hero Section</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Main headline, supporting text, calls to action, and hero media.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Headline</Label>
+                              <Input value={heroBlock.props.title ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Highlight Text</Label>
+                              <Input value={heroBlock.props.highlight ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { highlight: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Description</Label>
+                              <Textarea rows={4} value={heroBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { subtitle: e.target.value })} />
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>Primary Button</Label>
+                                <Input value={heroBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { ctaText: e.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Primary Link</Label>
+                                <Input value={heroBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { ctaLink: e.target.value })} />
+                              </div>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Hero Media</Label>
+                              <CloudinaryUpload
+                                value={heroBlock.props.mediaUrl ?? ""}
+                                onChange={(url) => updateBlockProps(heroBlock.id, "hero", { mediaUrl: url })}
+                                onSelectAsset={(asset) => {
+                                  if (!asset) return;
+                                  updateBlockProps(heroBlock.id, "hero", { mediaType: asset.resourceType });
+                                }}
+                                folder="hero"
+                                accept="image/*,video/*"
+                                label="Upload hero media"
+                                resourceType="auto"
+                                storeId={store.id}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {promoBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Promo Banner</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Promotion message, badge, action button, and visibility settings.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={promoBlock.props.title ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Message</Label>
+                              <Textarea rows={4} value={promoBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { subtitle: e.target.value })} />
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>Badge</Label>
+                                <Input value={promoBlock.props.badgeText ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { badgeText: e.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Alignment</Label>
+                                <Select value={(promoBlock.props.textAlignment as string | undefined) ?? "center"} onValueChange={(value) => updateBlockProps(promoBlock.id, "promo-banner", { textAlignment: value })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="center">Center</SelectItem>
+                                    <SelectItem value="right">Right</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>Button Label</Label>
+                                <Input value={promoBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { ctaText: e.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Button Link</Label>
+                                <Input value={promoBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { ctaLink: e.target.value })} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {featuredProductsBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Featured Products</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Control the section title, intro line, and how many products appear.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Section Title</Label>
+                              <Input value={featuredProductsBlock.props.title ?? ""} onChange={(e) => updateBlockProps(featuredProductsBlock.id, "featured-products", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Tagline</Label>
+                              <Input value={featuredProductsBlock.props.tagline ?? ""} onChange={(e) => updateBlockProps(featuredProductsBlock.id, "featured-products", { tagline: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Product Count</Label>
+                              <Input type="number" min={1} max={24} value={String(featuredProductsBlock.props.limit ?? 6)} onChange={(e) => updateFeaturedProductLimit(featuredProductsBlock.id, Number(e.target.value || 6))} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {faqBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">FAQ Section</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Update the section heading here. Detailed FAQ item editing stays in Advanced.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={faqBlock.props.title ?? ""} onChange={(e) => updateBlockProps(faqBlock.id, "faq-accordion", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Subtitle</Label>
+                              <Input value={faqBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(faqBlock.id, "faq-accordion", { subtitle: e.target.value })} />
+                            </div>
+                            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                              FAQ items use the advanced technical editor.
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {trustBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Trust Section</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Edit the section heading here. Badge lists and structured entries stay in Advanced.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={trustBlock.props.title ?? ""} onChange={(e) => updateBlockProps(trustBlock.id, "trust-badges", { title: e.target.value })} />
+                            </div>
+                            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                              Structured badge editing lives in Advanced Editing.
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 md:col-span-2">
+                        <p className="text-sm font-medium text-foreground">Need deeper layout or developer controls?</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link> for block ordering, template changes, raw JSON, and theme code.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {isAdvancedEditor ? (
                   <div className="sticky top-16 z-10 -mx-6 border-y border-border/60 bg-background/95 px-6 py-3 backdrop-blur-xl md:hidden">
                     <div className="overflow-x-auto">
                       <div className="flex min-w-max items-center gap-2">
@@ -2113,13 +2362,14 @@ export default function CmsPagesManager() {
                       </div>
                     </div>
                   </div>
-                  {selectedPage.blocks.length === 0 ? (
+                  ) : null}
+                  {isAdvancedEditor && selectedPage.blocks.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                       No blocks yet. Add one to start composing this page for the current blueprint.
                     </div>
                   ) : null}
 
-                  {selectedPage.blocks.length > 0 ? (
+                  {isAdvancedEditor && selectedPage.blocks.length > 0 ? (
                     <div id="block-library" className="rounded-xl border border-border bg-muted/20 p-3 scroll-mt-36">
                       <div className="flex flex-wrap items-center gap-2">
                         {selectedPage.blocks.map((block, index) => {
@@ -2146,6 +2396,7 @@ export default function CmsPagesManager() {
                     </div>
                   ) : null}
 
+                  {isAdvancedEditor ? (
                   <div id="block-list" className="space-y-4 scroll-mt-36">
                   {selectedPage.blocks.map((block, index) => {
                     const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
@@ -2589,6 +2840,29 @@ export default function CmsPagesManager() {
                               </div>
                             ) : null}
 
+                            {isFocused ? (
+                              <div className="grid gap-2 rounded-lg border border-border p-3">
+                                <Label>Raw Block Props JSON</Label>
+                                <Textarea
+                                  rows={10}
+                                  className="font-mono text-xs"
+                                  value={JSON.stringify(block.props ?? {}, null, 2)}
+                                  onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value) as Record<string, unknown>;
+                                      updateBlock(block.id, (current) => ({
+                                        ...current,
+                                        props: parsed,
+                                      } as StorePageBlock));
+                                    } catch {
+                                      // Keep current value until JSON becomes valid again.
+                                    }
+                                  }}
+                                />
+                                <p className="text-xs text-muted-foreground">Advanced mode only. Edit the raw block payload directly when you need full control.</p>
+                              </div>
+                            ) : null}
+
                             {isFocused && !["featured-products", "rich-text", "countdown", "hero", "promo-banner", "category-showcase", "recently-viewed", "social-feed", "video-reel", "faq-accordion", "trust-badges", "testimonials"].includes(block.type) ? (
                             <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
                               This block currently uses the existing storefront component and its existing site settings. Block-specific editing can be expanded next.
@@ -2599,6 +2873,7 @@ export default function CmsPagesManager() {
                     );
                   })}
                   </div>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -2796,6 +3071,37 @@ export default function CmsPagesManager() {
                   </StoreProvider>
                 </CardContent>
               </Card>
+
+              {!isAdvancedEditor ? (
+                <div className="sticky bottom-0 z-30 -mx-4 border-t border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">Basic Editing Actions</p>
+                      <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0}>
+                        <Undo2 className="h-4 w-4" />
+                        Undo
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0}>
+                        <Redo2 className="h-4 w-4" />
+                        Redo
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <a href={previewHref} target="_blank" rel="noreferrer">
+                          <Eye className="h-4 w-4" />
+                          Preview
+                        </a>
+                      </Button>
+                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving}>
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {isAdvancedEditor ? (
                 <Card className="border-border">
