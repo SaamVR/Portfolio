@@ -877,11 +877,13 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
               <div
                 className={`${
                   previewDevice === "mobile"
-                    ? "h-[34rem] overflow-y-auto overscroll-contain"
+                    ? "relative h-[34rem]"
                     : ""
                 } ${isLightTheme ? "bg-white" : "bg-[#020611]"}`}
               >
-                <div className={`space-y-4 p-3 sm:space-y-6 sm:p-5 ${previewDevice === "mobile" ? "pb-5" : ""}`}>
+                <div className={`space-y-4 p-3 sm:space-y-6 sm:p-5 ${
+                  previewDevice === "mobile" ? "h-full overflow-y-auto overscroll-contain pb-28" : ""
+                }`}>
                   {previewPage === "home" ? (
                   <div className={`relative overflow-hidden rounded-[1.5rem] border ${isLightTheme ? "border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]" : "border-white/8 bg-gradient-to-br shadow-[0_24px_70px_rgba(2,6,23,0.45)]"} ${theme.heroSurface}`}>
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_35%)]" />
@@ -1101,10 +1103,10 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   </div>
 
                   {previewDevice === "mobile" ? (
-                    <div className={`sticky bottom-0 z-20 -mx-3 mt-4 border-t px-3 pb-3 pt-2 backdrop-blur-xl sm:-mx-5 sm:px-5 ${
+                    <div className={`absolute inset-x-0 bottom-0 z-20 border-t px-3 pb-3 pt-2 backdrop-blur-xl ${
                       isLightTheme ? "border-slate-200 bg-white/92" : "border-white/8 bg-slate-950/88"
                     }`}>
-                      <div className={`mb-2 flex items-center justify-between rounded-2xl border px-3 py-2 ${
+                      <div className={`mb-2 flex min-h-[52px] items-center justify-between rounded-2xl border px-3 py-2 ${
                         isLightTheme ? "border-slate-200 bg-slate-50/95" : "border-white/8 bg-white/[0.04]"
                       }`}>
                         <div className="min-w-0">
