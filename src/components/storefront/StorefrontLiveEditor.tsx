@@ -33,6 +33,10 @@ const BASIC_TEXT_FIELDS = [
   "videoUrl",
 ] as const;
 
+const PROMO_BG_STYLES = ["gradient", "dark", "accent", "luxury-gold", "indigo", "rose", "aurora", "luxury-dark", "confetti", "mesh-gradient"] as const;
+const PROMO_ALIGNMENTS = ["left", "center", "right"] as const;
+const PROMO_PADDING_SIZES = ["compact", "cozy", "large"] as const;
+
 function updatePage(store: Store, pageId: string, updater: (page: StorePage) => StorePage) {
   return {
     ...store,
@@ -112,6 +116,40 @@ export function StorefrontLiveEditor({
     } as StorePageBlock)));
   };
 
+  const updateSelectedBlockProps = (patch: Record<string, unknown>) => {
+    if (!selectedBlock) return;
+
+    setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
+      ...block,
+      props: {
+        ...(block.props as Record<string, unknown>),
+        ...patch,
+      },
+    } as StorePageBlock)));
+  };
+
+  const updateSelectedBlockNumber = (field: string, value: string) => {
+    if (!selectedBlock) return;
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+      updateSelectedBlockProps({ [field]: undefined });
+      return;
+    }
+    updateSelectedBlockProps({ [field]: parsed });
+  };
+
+  const updateSelectedBlockJsonArray = (field: string, value: string) => {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (!Array.isArray(parsed)) {
+        throw new Error("Not an array");
+      }
+      updateSelectedBlockProps({ [field]: parsed });
+    } catch {
+      toast.error(`Invalid JSON array for ${field}.`);
+    }
+  };
+
   const moveSelectedBlock = (direction: -1 | 1) => {
     if (!selectedBlock) return;
 
@@ -164,6 +202,213 @@ export function StorefrontLiveEditor({
   };
 
   const resolvedThemeVars = resolveStoreThemeVars(store.theme).vars;
+
+  const renderAdvancedControls = () => {
+    if (!selectedBlock || editorMode !== "advanced") {
+      return null;
+    }
+
+    switch (selectedBlock.type) {
+      case "hero":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Anchor ID</Label>
+              <Input value={selectedBlock.props.anchorId ?? ""} onChange={(event) => updateSelectedBlockProps({ anchorId: event.target.value })} />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Media Type</Label>
+                <Select
+                  value={(selectedBlock.props.mediaType as "image" | "video" | undefined) ?? "image"}
+                  onValueChange={(value) => updateSelectedBlockProps({ mediaType: value })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Image</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Overlay Opacity</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={selectedBlock.props.overlayOpacity?.toString() ?? ""}
+                  onChange={(event) => updateSelectedBlockNumber("overlayOpacity", event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Overlay Color</Label>
+              <Input value={selectedBlock.props.overlayColor ?? ""} onChange={(event) => updateSelectedBlockProps({ overlayColor: event.target.value })} />
+            </div>
+          </div>
+        );
+      case "promo-banner":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Background Style</Label>
+                <Select value={(selectedBlock.props.bgStyle as string | undefined) ?? "gradient"} onValueChange={(value) => updateSelectedBlockProps({ bgStyle: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROMO_BG_STYLES.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Text Alignment</Label>
+                <Select value={(selectedBlock.props.textAlignment as string | undefined) ?? "center"} onValueChange={(value) => updateSelectedBlockProps({ textAlignment: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROMO_ALIGNMENTS.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Padding Size</Label>
+                <Select value={(selectedBlock.props.paddingSize as string | undefined) ?? "cozy"} onValueChange={(value) => updateSelectedBlockProps({ paddingSize: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROMO_PADDING_SIZES.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Card Opacity</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={selectedBlock.props.cardOpacity?.toString() ?? ""}
+                  onChange={(event) => updateSelectedBlockNumber("cardOpacity", event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Glow</Label>
+                <Switch checked={(selectedBlock.props.enableGlow as boolean | undefined) ?? false} onCheckedChange={(checked) => updateSelectedBlockProps({ enableGlow: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Particles</Label>
+                <Switch checked={(selectedBlock.props.enableParticles as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ enableParticles: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Orbs</Label>
+                <Switch checked={(selectedBlock.props.enableOrbs as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ enableOrbs: checked })} />
+              </div>
+            </div>
+          </div>
+        );
+      case "featured-products":
+        return (
+          <div className="grid gap-2">
+            <Label>Product Limit</Label>
+            <Input
+              type="number"
+              min="1"
+              max="24"
+              value={selectedBlock.props.limit?.toString() ?? "6"}
+              onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)}
+            />
+          </div>
+        );
+      case "countdown":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>End Date</Label>
+              <Input value={selectedBlock.props.endDate ?? ""} placeholder="2026-12-31T23:59:59" onChange={(event) => updateSelectedBlockProps({ endDate: event.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Background Gradient</Label>
+              <Input value={selectedBlock.props.bgGradient ?? ""} onChange={(event) => updateSelectedBlockProps({ bgGradient: event.target.value })} />
+            </div>
+          </div>
+        );
+      case "rich-text":
+        return (
+          <div className="grid gap-2">
+            <Label>Alignment</Label>
+            <Select value={(selectedBlock.props.align as "left" | "center" | undefined) ?? "center"} onValueChange={(value) => updateSelectedBlockProps({ align: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left">left</SelectItem>
+                <SelectItem value="center">center</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      case "social-feed":
+        return (
+          <div className="grid gap-2">
+            <Label>Images (comma separated)</Label>
+            <Textarea
+              rows={4}
+              value={((selectedBlock.props.images as string[] | undefined) ?? []).join(", ")}
+              onChange={(event) => updateSelectedBlockProps({
+                images: event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+              })}
+            />
+          </div>
+        );
+      case "faq-accordion":
+        return (
+          <div className="grid gap-2">
+            <Label>FAQs JSON</Label>
+            <Textarea
+              rows={6}
+              className="font-mono text-xs"
+              value={JSON.stringify(selectedBlock.props.faqs ?? [], null, 2)}
+              onChange={(event) => updateSelectedBlockJsonArray("faqs", event.target.value)}
+            />
+          </div>
+        );
+      case "trust-badges":
+        return (
+          <div className="grid gap-2">
+            <Label>Badges JSON</Label>
+            <Textarea
+              rows={6}
+              className="font-mono text-xs"
+              value={JSON.stringify(selectedBlock.props.badges ?? [], null, 2)}
+              onChange={(event) => updateSelectedBlockJsonArray("badges", event.target.value)}
+            />
+          </div>
+        );
+      case "testimonials":
+        return (
+          <div className="grid gap-2">
+            <Label>Reviews JSON</Label>
+            <Textarea
+              rows={6}
+              className="font-mono text-xs"
+              value={JSON.stringify(selectedBlock.props.reviews ?? [], null, 2)}
+              onChange={(event) => updateSelectedBlockJsonArray("reviews", event.target.value)}
+            />
+          </div>
+        );
+      default:
+        return (
+          <p className="text-xs text-muted-foreground">
+            Advanced mode for this block is still lightweight here. Use Page Builder for deeper structure changes.
+          </p>
+        );
+    }
+  };
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[min(420px,calc(100vw-2rem))] flex-col gap-3">
@@ -273,9 +518,7 @@ export function StorefrontLiveEditor({
                       )}
                     </div>
                   ))}
-                  {editorMode === "advanced" ? (
-                    <p className="text-xs text-muted-foreground">Advanced mode keeps the live editor focused, then hands complex page structure changes off to Page Builder.</p>
-                  ) : null}
+                  {renderAdvancedControls()}
                 </div>
               )}
             </div>
