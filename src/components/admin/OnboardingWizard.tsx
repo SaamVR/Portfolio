@@ -695,6 +695,7 @@ export default function OnboardingWizard() {
     const siteSettingsHref = `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}`;
     const pageBuilderHref = buildPageBuilderPath("basic", { storeId: activeStoreId });
     const dashboardHref = `/admin?storeId=${encodeURIComponent(activeStoreId)}`;
+    const onboardingGuideHref = `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId)}&guide=continue`;
 
     return (
       <div className="mx-auto max-w-3xl">
@@ -706,7 +707,7 @@ export default function OnboardingWizard() {
             </Badge>
             <CardTitle className="text-2xl">This store has already completed first-time setup</CardTitle>
             <CardDescription className="max-w-2xl">
-              The storefront URL and initial launch wiring are locked after the first setup so live routing stays stable. Keep editing the store from the normal admin workspace instead of reopening onboarding.
+              The storefront URL and initial launch wiring are locked after the first setup so live routing stays stable. You can still use onboarding as a guided checklist, then move into the editor and settings screens for deeper changes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -726,6 +727,12 @@ export default function OnboardingWizard() {
                 <a href={dashboardHref}>
                   <ArrowLeft className="h-4 w-4" />
                   Back to Dashboard
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={onboardingGuideHref}>
+                  <Sparkles className="h-4 w-4" />
+                  Continue Guided Setup
                 </a>
               </Button>
               <Button asChild variant="outline" className="gap-2">

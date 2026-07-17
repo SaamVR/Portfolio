@@ -5,15 +5,17 @@ import AdminSidebar from "./AdminSidebar";
 import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
-import { LayoutDashboard, Search, Settings, ShoppingCart, SlidersHorizontal, SquarePen, SquareStack } from "lucide-react";
+import { LayoutDashboard, Moon, Search, Settings, ShoppingCart, SlidersHorizontal, SquarePen, SquareStack, SunMedium, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
+import { useTheme } from "next-themes";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
   { path: "/admin/page-builder/basic", label: "Basic Editing", description: "Safer storefront content, visibility, and theme edits" },
   { path: "/admin/page-builder/advanced", label: "Advanced Editing", description: "Full page structure, templates, revisions, and deeper block controls" },
   { path: "/admin/page-builder", label: "Basic Editing", description: "Safer storefront content, visibility, and theme edits" },
+  { path: "/admin/onboarding", label: "Onboarding", description: "Initial setup, blueprint seeding, and guided launch flow" },
   { path: "/admin/cms", label: "Page Builder", description: "Storefront pages, blocks, and live preview" },
   { path: "/admin/products", label: "Products", description: "Catalog, stock, and merchandising" },
   { path: "/admin/orders", label: "Orders", description: "Fulfillment and customer purchases" },
@@ -26,6 +28,7 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
 const mobileAdminRoutes = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard },
   { to: "/admin/site-settings", label: "Settings", icon: Settings },
+  { to: "/admin/onboarding", label: "Setup", icon: WandSparkles },
   { to: buildPageBuilderPath("basic"), label: "Basic", icon: SquarePen },
   { to: buildPageBuilderPath("advanced"), label: "Advanced", icon: SlidersHorizontal },
   { to: "/admin/products", label: "Catalog", icon: SquareStack },
@@ -39,6 +42,8 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const { user, session, role, loading, refreshRole, signOut } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDarkTheme = resolvedTheme === "dark";
   const currentWorkspace =
     workspaceLabels.find((workspace) => location.pathname === workspace.path || location.pathname.startsWith(`${workspace.path}/`)) ?? {
       label: "Store Dashboard",
@@ -124,6 +129,15 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             <div className="hidden md:block">
               <StoreSwitcher />
             </div>
+            <button
+              onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkTheme ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className="hidden sm:inline">{isDarkTheme ? "Light" : "Dark"}</span>
+            </button>
             <button
               onClick={() => setCommandOpen(true)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"

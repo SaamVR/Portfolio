@@ -14,6 +14,7 @@ import {
   LogOut,
   ArrowLeft,
   Rocket,
+  WandSparkles,
   Users,
   ShoppingCart,
   Mail,
@@ -25,6 +26,9 @@ import {
   Shield,
   CreditCard,
   HelpCircle,
+  ExternalLink,
+  FilePlus2,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,7 @@ import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 type SidebarLink = {
   to: string;
@@ -43,6 +48,27 @@ type SidebarLink = {
   external?: boolean;
   match?: string[];
 };
+
+type StorePageNavRow = {
+  id: string;
+  title: string;
+  slug: string;
+  is_homepage: boolean | null;
+};
+
+type ActiveStoreMeta = {
+  slug: string;
+  custom_domain?: string | null;
+};
+
+function inferPagePlacement(page: StorePageNavRow) {
+  if (page.is_homepage || page.slug === "/") return "Homepage / main navigation";
+  if (page.slug.includes("faq")) return "Footer / help links";
+  if (page.slug.includes("about")) return "Footer / brand links";
+  if (page.slug.includes("policy") || page.slug.includes("return") || page.slug.includes("contact")) return "Footer / support links";
+  if (page.slug.includes("product")) return "Product journey";
+  return "Custom page";
+}
 
 const AdminSidebar = () => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
@@ -86,6 +112,35 @@ const AdminSidebar = () => {
   });
 
   const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
+  const { data: storePages = [] } = useQuery({
+    queryKey: ["sidebar-store-pages", activeStoreId],
+    queryFn: async () => {
+      if (!activeStoreId) return [] as StorePageNavRow[];
+      const { data, error } = await supabase
+        .from("store_pages")
+        .select("id, title, slug, is_homepage")
+        .eq("store_id", activeStoreId as string)
+        .order("is_homepage", { ascending: false })
+        .order("slug");
+      if (error) throw error;
+      return (data ?? []) as StorePageNavRow[];
+    },
+    enabled: Boolean(activeStoreId) && cmsEnabled,
+  });
+  const { data: activeStoreMeta } = useQuery({
+    queryKey: ["sidebar-active-store-meta", activeStoreId],
+    queryFn: async () => {
+      if (!activeStoreId) return null as ActiveStoreMeta | null;
+      const { data, error } = await supabase
+        .from("stores")
+        .select("slug, custom_domain")
+        .eq("id", activeStoreId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ActiveStoreMeta | null) ?? null;
+    },
+    enabled: Boolean(activeStoreId) && cmsEnabled,
+  });
   const navSections: Array<{ title: string; links: SidebarLink[] }> = [
     {
       title: "Operations",
@@ -103,6 +158,7 @@ const AdminSidebar = () => {
       title: "Storefront",
       links: [
         { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
+        { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
         { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled, match: ["/admin/page-builder", "/admin/page-builder/basic"] },
         { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled, match: ["/admin/page-builder/advanced"] },
         { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
@@ -189,6 +245,64 @@ const AdminSidebar = () => {
             </div>
           );
         })}
+
+        {cmsEnabled ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2 px-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Store Pages
+              </p>
+              <Link
+                to={buildPageBuilderPath("advanced", { storeId: activeStoreId })}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <FilePlus2 className="h-3.5 w-3.5" />
+                New Page
+              </Link>
+            </div>
+            {storePages.length > 0 ? storePages.map((page) => (
+              <div key={page.id} className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
+                <div className="flex items-start gap-2">
+                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
+                      {page.is_homepage ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Home</span> : null}
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{page.slug}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">{inferPagePlacement(page)}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Link
+                        to={buildPageBuilderPath("basic", { storeId: activeStoreId, pageId: page.id })}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      {activeStoreMeta?.slug ? (
+                        <a
+                          href={absoluteStoreUrl(
+                            { slug: activeStoreMeta.slug, customDomain: activeStoreMeta.custom_domain ?? null },
+                            page.is_homepage || page.slug === "/" ? "/" : page.slug,
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Visit
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+                No pages found yet. Open Advanced Editing to create your first custom page.
+              </div>
+            )}
+          </div>
+        ) : null}
       </nav>
 
       <div className="border-t border-border p-4 space-y-2">

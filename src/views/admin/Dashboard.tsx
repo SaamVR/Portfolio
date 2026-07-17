@@ -24,6 +24,9 @@ import {
   Mail,
   MessageSquare,
   PanelsTopLeft,
+  WandSparkles,
+  Eye,
+  Settings2,
 } from "lucide-react";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -91,6 +94,7 @@ const Dashboard = () => {
   const [statusData, setStatusData] = useState<any[]>([]);
   const [planNotice, setPlanNotice] = useState<DashboardPlanNotice | null>(null);
   const [trialPlanDismissed, setTrialPlanDismissed] = useState(false);
+  const [setupCoachDismissed, setSetupCoachDismissed] = useState(false);
   const [storeHealth, setStoreHealth] = useState<StoreReadinessState>({
     score: 0,
     items: [],
@@ -287,6 +291,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!activeStoreId || typeof window === "undefined") return;
     setTrialPlanDismissed(window.localStorage.getItem(`dashboard-trial-plan-dismissed:${activeStoreId}`) === "true");
+    setSetupCoachDismissed(window.localStorage.getItem(`dashboard-setup-coach-dismissed:${activeStoreId}`) === "true");
   }, [activeStoreId]);
 
   const dismissTrialPlanNotice = () => {
@@ -295,6 +300,53 @@ const Dashboard = () => {
       window.localStorage.setItem(`dashboard-trial-plan-dismissed:${activeStoreId}`, "true");
     }
   };
+
+  const dismissSetupCoach = () => {
+    setSetupCoachDismissed(true);
+    if (activeStoreId && typeof window !== "undefined") {
+      window.localStorage.setItem(`dashboard-setup-coach-dismissed:${activeStoreId}`, "true");
+    }
+  };
+
+  const setupWizardSteps = [
+    {
+      id: "onboarding",
+      label: "Complete onboarding review",
+      done: storeHealth.score >= 20,
+      href: `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId ?? "")}`,
+      action: "Review your store basics, launch copy, and starter setup flow.",
+      cta: "Open onboarding",
+      icon: WandSparkles,
+    },
+    {
+      id: "content",
+      label: "Polish homepage content",
+      done: pageStats.visibleHomepageBlocks >= 3,
+      href: buildPageBuilderPath("basic", { storeId: activeStoreId }),
+      action: "Guide shoppers through hero, trust, FAQ, and key selling sections.",
+      cta: "Open Basic Editing",
+      icon: PanelsTopLeft,
+    },
+    {
+      id: "settings",
+      label: "Finish payments and contact",
+      done: storeHealth.items.filter((item) => item.label === "Payment method configured" || item.label === "Customer contact is configured").every((item) => item.done),
+      href: withStoreId("/admin/site-settings?tab=payment", activeStoreId),
+      action: "Set how buyers pay and how they can reach you.",
+      cta: "Open Site Settings",
+      icon: Settings2,
+    },
+    {
+      id: "launch",
+      label: "Preview and publish",
+      done: storeHealth.items.find((item) => item.label === "Store is published")?.done ?? false,
+      href: buildPageBuilderPath("basic", { storeId: activeStoreId }),
+      action: "Preview the storefront, then publish when the setup feels trustworthy.",
+      cta: "Preview before launch",
+      icon: Eye,
+    },
+  ];
+  const nextWizardStep = setupWizardSteps.find((step) => !step.done) ?? null;
 
   const statCards = [
     { title: "Total Orders", value: orderStats.total, icon: ShoppingCart, color: "text-primary" },
@@ -431,6 +483,38 @@ const Dashboard = () => {
         </Card>
       ) : null}
 
+      {!setupCoachDismissed && nextWizardStep ? (
+        <Card className="border-primary/25 bg-primary/5">
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <WandSparkles className="h-5 w-5 text-primary" />
+                Setup Coach
+              </CardTitle>
+              <CardDescription>
+                Your dashboard is watching for missing launch pieces. Next up: {nextWizardStep.label.toLowerCase()}.
+              </CardDescription>
+            </div>
+            <Button type="button" variant="ghost" size="icon" onClick={dismissSetupCoach} aria-label="Dismiss setup coach">
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button asChild className="gap-2">
+              <Link to={nextWizardStep.href}>
+                <nextWizardStep.icon className="h-4 w-4" />
+                {nextWizardStep.cta}
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to={`/admin/onboarding?storeId=${encodeURIComponent(activeStoreId)}`}>
+                Reopen onboarding guide
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Stats grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {statCards.map((card, i) => (
@@ -502,6 +586,41 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border bg-card/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <WandSparkles className="h-5 w-5 text-primary" />
+            Merchant Setup Wizard
+          </CardTitle>
+          <CardDescription>
+            A guided sequence for finishing the store without having to guess what should come next.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-2">
+          {setupWizardSteps.map((step, index) => (
+            <div key={step.id} className="rounded-xl border border-border bg-background/40 p-4">
+              <div className="flex items-start gap-3">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${step.done ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                  <step.icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">{index + 1}. {step.label}</p>
+                    <Badge variant={step.done ? "default" : "outline"}>{step.done ? "Done" : "Next"}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{step.action}</p>
+                  {!step.done ? (
+                    <Link to={step.href} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                      {step.cta} <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -597,6 +716,7 @@ const Dashboard = () => {
           {[
             { label: "Manage Products", to: "/admin/products", icon: Package },
             { label: "View Orders", to: "/admin/orders", icon: ShoppingCart },
+            { label: "Onboarding", to: "/admin/onboarding", icon: PanelsTopLeft },
             { label: "Basic Editing", to: buildPageBuilderPath("basic"), icon: PanelsTopLeft, adminOnly: true },
             { label: "Site Settings", to: "/admin/site-settings", icon: TrendingUp, adminOnly: true },
           ]

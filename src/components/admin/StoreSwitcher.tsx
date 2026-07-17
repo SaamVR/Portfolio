@@ -10,10 +10,11 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronsUpDown, Store, PlusCircle, ArrowRightCircle } from "lucide-react";
+import { ChevronsUpDown, Store, PlusCircle, ArrowRightCircle, ExternalLink } from "lucide-react";
 import { useLocation, useNavigate } from "@/lib/react-router-dom-shim";
 import { withStoreId } from "@/lib/admin-paths";
 import { useStoreCreationEligibility } from "@/hooks/useStoreCreationEligibility";
+import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) {
   const { storeMemberships, activeStoreId, setActiveStoreId } = useAuth();
@@ -73,6 +74,12 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
     navigate("/signup?intent=new-store");
   };
 
+  const openStorefront = (store: { slug: string }) => {
+    if (typeof window !== "undefined") {
+      window.open(absoluteStoreUrl({ slug: store.slug }, "/"), "_blank", "noopener,noreferrer");
+    }
+  };
+
   if (mobile) {
     return (
       <div className="flex min-w-0 items-center gap-2">
@@ -95,14 +102,22 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
             <DropdownMenuLabel>Switch Store</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {hasStores ? stores?.map(store => (
-              <DropdownMenuItem
-                key={store.id}
-                onClick={() => handleSwitch(store.id)}
-                className="cursor-pointer justify-between"
-              >
-                <span className="truncate">{store.name}</span>
-                {store.id === activeStoreId && <div className="h-2 w-2 rounded-full bg-green-500" />}
-              </DropdownMenuItem>
+              <div key={store.id}>
+                <DropdownMenuItem
+                  onClick={() => handleSwitch(store.id)}
+                  className="cursor-pointer justify-between"
+                >
+                  <span className="truncate">{store.name}</span>
+                  {store.id === activeStoreId && <div className="h-2 w-2 rounded-full bg-green-500" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openStorefront(store)}
+                  className="cursor-pointer pl-8 text-xs text-muted-foreground"
+                >
+                  <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                  View store
+                </DropdownMenuItem>
+              </div>
             )) : (
               <div className="px-3 py-3 text-sm text-muted-foreground">
                 No stores yet. Start onboarding to create your first storefront.
@@ -156,16 +171,24 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
         <DropdownMenuLabel>Switch Store</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {hasStores ? stores?.map(store => (
-          <DropdownMenuItem 
-            key={store.id} 
-            onClick={() => handleSwitch(store.id)}
-            className="cursor-pointer justify-between"
-          >
-            <span className="truncate">{store.name}</span>
-            {store.id === activeStoreId && (
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-            )}
-          </DropdownMenuItem>
+          <div key={store.id}>
+            <DropdownMenuItem 
+              onClick={() => handleSwitch(store.id)}
+              className="cursor-pointer justify-between"
+            >
+              <span className="truncate">{store.name}</span>
+              {store.id === activeStoreId && (
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => openStorefront(store)}
+              className="cursor-pointer pl-8 text-xs text-muted-foreground"
+            >
+              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+              View store
+            </DropdownMenuItem>
+          </div>
         )) : (
           <div className="px-3 py-3 text-sm text-muted-foreground">
             No stores yet. Create one to unlock the admin workspace.

@@ -17,6 +17,10 @@ type ResolvedAccessState = {
   nextRole: AppRole;
 };
 
+type OwnedStoreAccessRow = {
+  id: string;
+};
+
 type CachedAccessState = ResolvedAccessState & {
   userId: string;
   updatedAt: string;
@@ -128,7 +132,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [setActiveStoreId]);
 
   const fetchRole = useCallback(async (userId: string): Promise<ResolvedAccessState> => {
-    const [{ data: platformRole, error: platformRoleError }, { data: memberships, error: membershipsError }] =
+    const [
+      { data: platformRole, error: platformRoleError },
+      { data: memberships, error: membershipsError },
+      { data: ownedStores, error: ownedStoresError },
+    ] =
       await withTimeout(
         Promise.all([
           supabase
@@ -141,6 +149,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .select("role, store_id")
             .eq("user_id", userId)
             .order("created_at", { ascending: true }),
+          (supabase as any)
+            .from("stores")
+            .select("id")
+            .eq("owner_id", userId)
+            .order("created_at", { ascending: true }),
         ]),
         ROLE_FETCH_TIMEOUT_MS,
         "Timed out while refreshing account permissions",
@@ -148,23 +161,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (platformRoleError) throw platformRoleError;
     if (membershipsError) throw membershipsError;
+    if (ownedStoresError) throw ownedStoresError;
 
     const membershipRows = ((memberships ?? []) as Array<{ role: StoreRole; store_id: string }>).filter(
       (membership): membership is { role: NonNullable<StoreRole>; store_id: string } => Boolean(membership.role && membership.store_id),
     );
-    const mappedMemberships = membershipRows.map((membership) => ({
-      storeId: membership.store_id,
-      role: membership.role,
-    }));
+    const ownedStoreRows = ((ownedStores ?? []) as OwnedStoreAccessRow[]).filter((store): store is OwnedStoreAccessRow => Boolean(store.id));
+    const membershipMap = new Map<string, StoreMembership>();
+
+    membershipRows.forEach((membership) => {
+      membershipMap.set(membership.store_id, {
+        storeId: membership.store_id,
+        role: membership.role,
+      });
+    });
+
+    ownedStoreRows.forEach((store) => {
+      if (!membershipMap.has(store.id)) {
+        membershipMap.set(store.id, {
+          storeId: store.id,
+          role: "owner",
+        });
+      }
+    });
+
+    const mappedMemberships = Array.from(membershipMap.values());
     const preferredStoreId =
       typeof window !== "undefined"
         ? window.localStorage.getItem(ACTIVE_STORE_STORAGE_KEY)
         : null;
     const preferredMembership = preferredStoreId
-      ? membershipRows.find((membership) => membership.store_id === preferredStoreId)
+      ? mappedMemberships.find((membership) => membership.storeId === preferredStoreId)
       : null;
-    const membership = preferredMembership ?? membershipRows[0] ?? null;
-    const resolvedStoreId = membership?.store_id ?? null;
+    const membership = preferredMembership ?? mappedMemberships[0] ?? null;
+    const resolvedStoreId = membership?.storeId ?? null;
     const nextStoreRole = (membership?.role as StoreRole) ?? null;
     const nextPlatformRole = (platformRole?.role as PlatformRole) ?? null;
     let nextRole: AppRole = null;

@@ -32,6 +32,7 @@ import {
   Images,
   HardDriveDownload,
   Shield,
+  WandSparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -85,6 +86,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Discount Coupons", icon: Tag, category: "Pages", action: () => navigate("/admin/coupons") },
     { label: "Categories & Types Manager", icon: FolderTree, category: "Pages", action: () => navigate("/admin/categories"), show: isAdmin },
     { label: "Store Settings", icon: Rocket, category: "Pages", action: () => navigate(withStoreId("/admin/site-settings", activeStoreId)), show: isAdmin },
+    { label: "Onboarding Wizard", icon: WandSparkles, category: "Pages", action: () => navigate("/admin/onboarding"), show: isAdmin },
     { label: "Basic Editing Workspace", icon: SquarePen, category: "Pages", action: () => navigate(buildPageBuilderPath("basic")), show: cmsEnabled },
     { label: "Advanced Editing Workspace", icon: SlidersHorizontal, category: "Pages", action: () => navigate(buildPageBuilderPath("advanced")), show: cmsEnabled },
     { label: "Media Library Workspace", icon: Images, category: "Pages", action: () => navigate("/admin/media"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
@@ -124,6 +126,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Review Pending Product Ratings", icon: Eye, action: () => navigate("/admin/reviews?filter=pending") },
     { label: "Open Basic Editing", icon: SquarePen, action: () => navigate(buildPageBuilderPath("basic")) },
     { label: "Open Advanced Editing", icon: SlidersHorizontal, action: () => navigate(buildPageBuilderPath("advanced")) },
+    { label: "Open Onboarding", icon: WandSparkles, action: () => navigate("/admin/onboarding") },
     { label: "Open Store Settings", icon: Rocket, action: () => navigate(withStoreId("/admin/site-settings", activeStoreId)) },
   ];
 

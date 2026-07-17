@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Menu,
   Rocket,
+  WandSparkles,
   Images,
   HardDriveDownload,
   Shield,
@@ -104,6 +105,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   const quickLinks = [
     { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Settings", show: isAdmin },
+    { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
     { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Edit", show: cmsEnabled },
   ];
 
@@ -116,6 +118,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
 
   const storefrontLinks = [
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
+    { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
     { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled },
     { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
