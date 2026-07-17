@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   formatPlanPrice,
   getEffectiveSubscriptionStatus,
@@ -279,6 +280,64 @@ export default function Billing() {
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
   const remainingTrialDays = getRemainingTrialDays(trialEndsAt);
+  const confirmedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "paid");
+  const pendingInvoices = (invoices || []).filter((invoice: any) => invoice.status === "pending");
+  const failedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "failed");
+
+  const formatInvoiceMethod = (invoice: any) => {
+    if (invoice.payment_method === "bkash_manual") return "Manual bKash";
+    if (invoice.payment_method === "bkash") return "bKash Checkout";
+    if (typeof invoice.payment_method === "string" && invoice.payment_method.trim()) {
+      return invoice.payment_method.replace(/_/g, " ");
+    }
+    if (typeof invoice.provider === "string" && invoice.provider.trim()) {
+      return invoice.provider.replace(/_/g, " ");
+    }
+    return "Platform billing";
+  };
+
+  const getInvoiceDisplayDate = (invoice: any) => {
+    if (invoice.status === "paid" && invoice.paid_at) return invoice.paid_at;
+    return invoice.created_at;
+  };
+
+  const renderInvoiceRow = (invoice: any) => {
+    const displayDate = getInvoiceDisplayDate(invoice);
+    return (
+      <div key={invoice.id} className="rounded-xl border border-border bg-background p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-medium text-sm text-foreground">BDT {invoice.amount}</div>
+              {invoice.status === "paid" ? (
+                <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                  Confirmed
+                </Badge>
+              ) : invoice.status === "failed" ? (
+                <Badge variant="destructive">Failed</Badge>
+              ) : (
+                <Badge variant="outline">Pending</Badge>
+              )}
+            </div>
+            <div className="grid gap-1 text-xs text-muted-foreground">
+              <p>Date: {displayDate ? format(new Date(displayDate), "PPP p") : "N/A"}</p>
+              <p>Method: {formatInvoiceMethod(invoice)}</p>
+              <p>Plan: {invoice.plan_id}</p>
+              {invoice.provider_invoice_id ? <p>Reference: {invoice.provider_invoice_id}</p> : null}
+              {invoice.billing_period_start || invoice.billing_period_end ? (
+                <p>
+                  Billing period:{" "}
+                  {invoice.billing_period_start ? format(new Date(invoice.billing_period_start), "PPP") : "N/A"}
+                  {" - "}
+                  {invoice.billing_period_end ? format(new Date(invoice.billing_period_end), "PPP") : "N/A"}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -361,33 +420,40 @@ export default function Billing() {
               <History className="h-5 w-5 text-primary" />
               Payment History
             </CardTitle>
-            <CardDescription>Recent invoices and payments.</CardDescription>
+            <CardDescription>Past payments, payment methods, and verification status.</CardDescription>
           </CardHeader>
           <CardContent>
             {invoicesLoading ? (
               <div className="py-4 text-center text-sm text-muted-foreground">Loading history...</div>
             ) : invoices && invoices.length > 0 ? (
-              <div className="space-y-4">
-                {invoices.map((invoice: any) => (
-                  <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background">
-                    <div>
-                      <div className="font-medium text-sm text-foreground">BDT {invoice.amount}</div>
-                      <div className="text-xs text-muted-foreground">{format(new Date(invoice.created_at), "PPP")}</div>
+              <Tabs defaultValue="confirmed" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="confirmed">Confirmed ({confirmedInvoices.length})</TabsTrigger>
+                  <TabsTrigger value="pending">Pending ({pendingInvoices.length})</TabsTrigger>
+                  <TabsTrigger value="failed">Failed ({failedInvoices.length})</TabsTrigger>
+                </TabsList>
+                <TabsContent value="confirmed" className="space-y-4">
+                  {confirmedInvoices.length > 0 ? confirmedInvoices.map(renderInvoiceRow) : (
+                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
+                      <p className="text-sm text-muted-foreground">No confirmed payments yet.</p>
                     </div>
-                    {invoice.status === "paid" ? (
-                      <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Paid
-                      </Badge>
-                    ) : invoice.status === "failed" ? (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" /> Failed
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Pending</Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="pending" className="space-y-4">
+                  {pendingInvoices.length > 0 ? pendingInvoices.map(renderInvoiceRow) : (
+                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
+                      <p className="text-sm text-muted-foreground">No pending payment requests.</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="failed" className="space-y-4">
+                  {failedInvoices.length > 0 ? failedInvoices.map(renderInvoiceRow) : (
+                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
+                      <p className="text-sm text-muted-foreground">No failed payments.</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             ) : (
               <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
                 <p className="text-sm text-muted-foreground">No payment history available.</p>
