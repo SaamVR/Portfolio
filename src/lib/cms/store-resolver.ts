@@ -119,6 +119,10 @@ function getStoreSubdomainBaseDomains() {
     configured.push(siteHost);
   }
 
+  if (!configured.includes("localhost")) {
+    configured.push("localhost");
+  }
+
   return configured;
 }
 
