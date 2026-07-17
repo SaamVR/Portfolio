@@ -1,9 +1,27 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { buildResolvedStoreFromRecords } from "@/lib/cms/store-resolver";
+import { buildResolvedStoreFromRecords, canAccessStorefrontStore } from "@/lib/cms/store-resolver";
 import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 describe("store resolver mapping", () => {
+  it("allows storefront access for trialing stores even before the publish flag is flipped", () => {
+    expect(
+      canAccessStorefrontStore(
+        { is_published: false },
+        { status: "trialing", trial_ends_at: "2026-07-31T00:00:00.000Z" },
+      ),
+    ).toBe(true);
+  });
+
+  it("still blocks storefront access when the subscription is no longer live", () => {
+    expect(
+      canAccessStorefrontStore(
+        { is_published: true },
+        { status: "past_due", trial_ends_at: "2026-07-10T00:00:00.000Z" },
+      ),
+    ).toBe(false);
+  });
+
   it("uses business profile blueprints and theme package defaults when records are sparse", () => {
     const store = buildResolvedStoreFromRecords(
       {
@@ -33,7 +51,7 @@ describe("store resolver mapping", () => {
       [],
     );
 
-    expect(store.description).toBe("A focused storefront designed to sell one hero product with a tighter story and stronger conversion path.");
+    expect(store.description).toBe("A focused storefront designed to sell one hero product with demo media, proof, and a tighter conversion path.");
     expect(store.theme.presetId).toBe("ocean-teal");
     expect(store.theme.themePackageId).toBe("ocean-teal");
     expect(store.theme.mode).toBe("dark");

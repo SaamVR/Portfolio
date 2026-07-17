@@ -8,6 +8,7 @@ import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
+import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { sanitizeStorePage } from "@/lib/cms/validation";
@@ -208,9 +209,28 @@ export function buildResolvedStoreFromRecords(
   });
 }
 
+export function canAccessStorefrontStore(
+  store: Pick<StoreRow, "is_published"> | null | undefined,
+  subscription?: StoreSubscriptionRow | null,
+) {
+  if (!store) {
+    return false;
+  }
+
+  return isSubscriptionLive(subscription ?? null);
+}
+
+function getStoreResolverClient() {
+  try {
+    return getSupabaseAdminClient();
+  } catch {
+    return getCmsSupabaseServerClient();
+  }
+}
+
 export async function resolveStoreByHostname(hostname?: string): Promise<Store | null> {
   const normalizedHostname = normalizeHostname(hostname);
-  const supabase = getCmsSupabaseServerClient();
+  const supabase = getStoreResolverClient();
 
   if (!normalizedHostname || !supabase) {
     return isLocalStorefrontHostname(hostname) ? await getDefaultStore() : null;
@@ -220,7 +240,6 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
   const query = supabase
     .from("stores")
     .select("id")
-    .eq("is_published", true)
     .limit(1);
 
   const { data: stores, error } = subdomainSlug
@@ -237,7 +256,7 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
     .select("status, trial_ends_at")
     .eq("store_id", matchedStore.id)
     .maybeSingle();
-  if (!isSubscriptionLive((subscription as StoreSubscriptionRow | null) ?? null)) {
+  if (!canAccessStorefrontStore({ is_published: true }, (subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 
@@ -246,7 +265,7 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
 }
 
 export async function getStoreBySlug(slug: string): Promise<Store | null> {
-  const supabase = getCmsSupabaseServerClient();
+  const supabase = getStoreResolverClient();
 
   if (!supabase) {
     return null;
@@ -267,7 +286,7 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
     .select("status, trial_ends_at")
     .eq("store_id", store.id)
     .maybeSingle();
-  if (!Boolean(store.is_published) || !isSubscriptionLive((subscription as StoreSubscriptionRow | null) ?? null)) {
+  if (!canAccessStorefrontStore(store as Pick<StoreRow, "is_published">, (subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 
@@ -275,7 +294,7 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
 }
 
 export async function getStoreById(storeId: string): Promise<Store | null> {
-  const supabase = getCmsSupabaseServerClient();
+  const supabase = getStoreResolverClient();
 
   if (!supabase) {
     return null;
