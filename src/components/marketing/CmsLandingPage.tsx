@@ -522,11 +522,11 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className={`sticky top-0 z-50 ${headerShell}`}>
-        <nav className={`mx-auto mt-3 flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[1.7rem] border px-4 shadow-[0_18px_45px_rgba(15,23,42,0.12)] backdrop-blur-3xl sm:px-5 ${
+      <header className={`sticky top-3 z-50 ${headerShell}`}>
+        <nav className={`mx-auto flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[1.7rem] border px-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-md saturate-150 sm:px-5 ${
           isLightTheme
-            ? "border-white/55 bg-white/50"
-            : "border-white/10 bg-slate-950/45"
+            ? "border-white/40 bg-white/40"
+            : "border-white/10 bg-slate-950/40"
         }`}>
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
