@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import SEOHead from "@/components/SEOHead";
@@ -24,8 +24,11 @@ import {
   type StoreBlueprintDefinition,
 } from "@/lib/cms/store-blueprints";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
+import { cn } from "@/lib/utils";
 
 type SignupStep = "methods" | "verify" | "details";
+
+type SlugAvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 
 function normalizeHost(value?: string | null) {
   if (!value) return null;
@@ -76,6 +79,8 @@ export default function MerchantSignup() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
   const [plans, setPlans] = useState<PlanCatalogRecord[]>([
     { id: "basic", name: "Basic", description: null, monthly_price: 990, trial_days: 14, contact_only: false },
     { id: "advanced", name: "Advanced", description: null, monthly_price: 1490, trial_days: 14, contact_only: false },
@@ -91,6 +96,7 @@ export default function MerchantSignup() {
     planId: searchParams.get("planId") || "basic",
     otpCode: "",
   });
+  const slugCheckSequence = useRef(0);
 
   const blueprintGroups = useMemo(() => {
     const groups = new Map<string, StoreBlueprintDefinition[]>();
@@ -106,6 +112,9 @@ export default function MerchantSignup() {
     () => absoluteStoreUrl({ slug: form.storeSlug || "your-store" }, "/"),
     [form.storeSlug],
   );
+  const signupRootDomain = useMemo(() => getSignupRootDomain(), []);
+  const normalizedSlug = form.storeSlug.trim();
+  const canSubmitDetails = normalizedSlug.length > 0 && slugState !== "checking" && slugState !== "taken" && slugState !== "invalid";
 
   useEffect(() => {
     supabase
@@ -171,6 +180,44 @@ export default function MerchantSignup() {
     setStep("details");
   }, [loading, user]);
 
+  useEffect(() => {
+    setSubmitError(null);
+  }, [form.businessType, form.name, form.planId, form.storeName, form.storeSlug]);
+
+  useEffect(() => {
+    const slug = slugify(form.storeSlug);
+
+    if (!slug) {
+      setSlugState(form.storeSlug.trim() ? "invalid" : "idle");
+      return;
+    }
+
+    const currentSequence = slugCheckSequence.current + 1;
+    slugCheckSequence.current = currentSequence;
+    setSlugState("checking");
+
+    const timer = window.setTimeout(async () => {
+      const { data, error } = await (supabase as any)
+        .from("stores")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (slugCheckSequence.current !== currentSequence) {
+        return;
+      }
+
+      if (error) {
+        setSlugState("idle");
+        return;
+      }
+
+      setSlugState(data ? "taken" : "available");
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [form.storeSlug]);
+
   const update = (field: string, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -182,6 +229,82 @@ export default function MerchantSignup() {
       return next;
     });
   };
+
+  const extractSignupErrorMessage = async (error: unknown) => {
+    const context = typeof error === "object" && error !== null && "context" in error
+      ? (error as { context?: Response }).context
+      : null;
+
+    if (context instanceof Response) {
+      try {
+        const payload = await context.clone().json() as { error?: string; details?: string };
+        if (typeof payload?.error === "string" && payload.error.trim()) {
+          return payload.details ? `${payload.error} ${payload.details}` : payload.error;
+        }
+      } catch {
+        try {
+          const text = await context.clone().text();
+          if (text.trim()) {
+            return text.trim();
+          }
+        } catch {
+          // Ignore response parsing failures and fall back to the standard error message.
+        }
+      }
+    }
+
+    return error instanceof Error ? error.message : String(error ?? "");
+  };
+
+  const getFriendlySignupError = (message: string) => {
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes("already taken") || normalized.includes("already in use")) {
+      return "That store URL is already being used. Please choose another one.";
+    }
+    if (normalized.includes("contact support")) {
+      return "That package is enabled through support. Please contact us to activate it.";
+    }
+    if (normalized.includes("trial accounts can create only one store")) {
+      return "Your trial can only create one live store. Activate a paid package to add more.";
+    }
+    if (normalized.includes("allows up to")) {
+      return message;
+    }
+    if (normalized.includes("must be signed in") || normalized.includes("invalid session")) {
+      return "Your session expired while creating the store. Please sign in again and retry.";
+    }
+    if (normalized.includes("failed to create store workspace")) {
+      return "We could not create the store workspace yet. Please try again in a moment.";
+    }
+    if (normalized.includes("setup could not finish")) {
+      return "Your store started creating, but the setup did not finish. Please retry once and contact support if it happens again.";
+    }
+    if (normalized.includes("edge function") || normalized.includes("failed to fetch") || normalized.includes("internal server error")) {
+      return "We could not reach the signup service right now. Please try again in a moment.";
+    }
+
+    return message || "We could not create the store right now. Please try again.";
+  };
+
+  const slugStatusCopy = useMemo(() => {
+    if (!normalizedSlug) {
+      return `Your store can go live at ${siteUrl.replace(/^https?:\/\//, "")}`;
+    }
+
+    switch (slugState) {
+      case "checking":
+        return `Checking whether ${normalizedSlug}.${signupRootDomain} is available...`;
+      case "available":
+        return `${normalizedSlug}.${signupRootDomain} is available.`;
+      case "taken":
+        return `${normalizedSlug}.${signupRootDomain} is already taken.`;
+      case "invalid":
+        return "Use letters, numbers, and hyphens for the store URL.";
+      default:
+        return `Your store can go live at ${siteUrl.replace(/^https?:\/\//, "")}`;
+    }
+  }, [normalizedSlug, signupRootDomain, siteUrl, slugState]);
 
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
@@ -254,8 +377,22 @@ export default function MerchantSignup() {
 
   const handleSubmitDetails = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSubmitError(null);
     if ((!isAdditionalStoreFlow && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
-      toast.error(isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL");
+      const message = isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (!canSubmitDetails) {
+      const message = slugState === "taken"
+        ? "That store URL is already taken. Please choose another one."
+        : slugState === "checking"
+          ? "Please wait while we check that store URL."
+          : "Please enter a valid store URL before continuing.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
 
@@ -286,7 +423,10 @@ export default function MerchantSignup() {
       const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
       window.location.href = onboardingPath;
     } catch (error: any) {
-      toast.error(error.message || "Failed to create workspace");
+      const rawMessage = await extractSignupErrorMessage(error);
+      const message = getFriendlySignupError(rawMessage);
+      setSubmitError(message);
+      toast.error(message);
     } finally {
       setSubmittingDetails(false);
     }
@@ -417,7 +557,14 @@ export default function MerchantSignup() {
               <div>
                 <Label htmlFor="store-slug">Store URL</Label>
                 <Input id="store-slug" data-testid="merchant-signup-store-slug" value={form.storeSlug} onChange={(event) => update("storeSlug", slugify(event.target.value))} placeholder="my-store" className="mt-1" />
-                <p className="mt-1 truncate text-xs text-muted-foreground">{siteUrl}</p>
+                <p
+                  className={cn(
+                    "mt-1 text-xs",
+                    slugState === "available" ? "text-emerald-600" : slugState === "taken" || slugState === "invalid" ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {slugStatusCopy}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -455,7 +602,12 @@ export default function MerchantSignup() {
                   </div>
                 )}
               </div>
-              <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails} className="h-11 w-full">
+              {submitError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {submitError}
+                </div>
+              ) : null}
+              <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails || !canSubmitDetails} className="h-11 w-full">
                 {submittingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isAdditionalStoreFlow ? "Create Additional Store" : "Create CMS Workspace"}
               </Button>

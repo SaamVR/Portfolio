@@ -222,13 +222,6 @@ Deno.serve(async (req) => {
       : { data: null };
     const themeSeed = buildThemeSeed(defaultTheme, (themePackageRecord as ThemePackageRecord | null) ?? null);
 
-    if (existingPlan?.contact_only) {
-      return new Response(JSON.stringify({ error: "This plan is activated through support. Please contact support to continue." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const ownedStoreIds = Array.from(new Set([
       ...(((ownedStores as OwnedStoreRecord[] | null) ?? []).map((row) => row.id).filter(Boolean)),
       ...(((ownerMemberships as OwnerMembershipRecord[] | null) ?? []).map((row) => row.store_id).filter(Boolean)),
