@@ -276,6 +276,7 @@ async function configureApexRedirect(
 
   await clearOtherPrimaryFlags(supabaseAdmin, storeId, primaryHostname);
   await updateStoreDomain(supabaseAdmin, primaryHostname, { is_primary: true });
+  await supabaseAdmin.from("stores").update({ custom_domain: primaryHostname }).eq("id", storeId);
 
   if (redirectHostname && domainMap.has(redirectHostname) && primaryHostname === wwwHostname) {
     await domainRouteDeps.updateProjectDomain(apexHostname, {
@@ -481,6 +482,11 @@ export async function PATCH(req: Request) {
       await clearOtherPrimaryFlags(access.supabaseAdmin, storeId, normalized.hostname);
       const updated = await updateStoreDomain(access.supabaseAdmin, normalized.hostname, { is_primary: true });
 
+      await access.supabaseAdmin
+        .from("stores")
+        .update({ custom_domain: normalized.hostname })
+        .eq("id", storeId);
+
       if (!selected.is_www_domain) {
         const domainPair = domainRouteDeps.getDomainPair(normalized.hostname);
         if (domainPair.redirectHostname) {
@@ -537,6 +543,13 @@ export async function DELETE(req: Request) {
       .in("hostname", [domainPair.apexHostname, domainPair.wwwHostname]);
 
     if (error) throw error;
+
+    // Clear custom_domain if it matches the removed domain
+    await access.supabaseAdmin
+      .from("stores")
+      .update({ custom_domain: null })
+      .eq("id", storeId)
+      .in("custom_domain", [domainPair.apexHostname, domainPair.wwwHostname]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

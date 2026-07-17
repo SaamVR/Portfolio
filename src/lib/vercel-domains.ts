@@ -92,9 +92,8 @@ async function vercelRequest<T>(pathname: string, init: RequestInit = {}) {
 
   if (!response.ok) {
     const message = body?.error?.message || body?.message || `Vercel API request failed with ${response.status}`;
-    const debug = getVercelConfigDebug();
     const enrichedMessage = response.status === 404
-      ? `${message}. Vercel project lookup used projectId=${debug.projectId ?? "missing"}, teamId=${debug.teamId ?? "none"}, hasToken=${debug.hasToken}. If you changed env vars recently, restart the Next.js server.`
+      ? `${message}. Vercel project lookup failed. Check if project ID is correctly configured.`
       : message;
 
     const error = new Error(enrichedMessage) as Error & { status?: number; body?: VercelDomainErrorShape | null };
