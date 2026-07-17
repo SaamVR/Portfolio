@@ -62,6 +62,8 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 
 type StoreRecord = {
   id: string;
@@ -1116,122 +1118,21 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const selectedThemePackage = resolveThemePackageById(safeStore.theme.themePackageId, themePackages, safeStore.theme.presetId);
+    const persistResult = await persistStorefrontState({
+      client: supabase,
+      store: safeStore,
+      ownerId: user.id,
+      blueprint: activeBlueprint,
+      themePackages,
+      selectedPage,
+      revisionLabel,
+      changedBy: user.id,
+    });
 
-    const { error: themeError } = await supabase.from("store_themes").upsert(
-      {
-        store_id: safeStore.id,
-        preset_id: selectedThemePackage.presetId,
-        theme_package_id: selectedThemePackage.id,
-        theme_package_version: selectedThemePackage.version,
-        mode: safeStore.theme.mode,
-        colors: safeStore.theme.customCssVars,
-        resolved_tokens: {
-          light: selectedThemePackage.tokens.light,
-          dark: selectedThemePackage.tokens.dark,
-        },
-        typography: {
-          headingFont: safeStore.theme.headingFont,
-          bodyFont: safeStore.theme.bodyFont,
-        },
-        components: {
-          borderRadius: safeStore.theme.borderRadius,
-        },
-      },
-      { onConflict: "store_id" },
-    );
-
-    if (themeError) {
-      toast.error("Failed to save store theme.");
+    if (persistResult.error) {
+      toast.error(`Failed to save Page Builder changes: ${persistResult.error.message || "Unknown persistence error"}`);
       setSaving(false);
       return;
-    }
-
-    const pageRows = safeStore.pages.map((page) => ({
-      id: page.id,
-      store_id: safeStore.id,
-      slug: page.slug,
-      title: page.title,
-      seo_title: page.seoTitle || null,
-      seo_description: page.seoDescription || null,
-      is_homepage: page.isHomepage,
-    }));
-
-    const { error: pageError } = await supabase.from("store_pages").upsert(pageRows, { onConflict: "id" });
-
-    if (pageError) {
-      toast.error("Failed to save store pages.");
-      setSaving(false);
-      return;
-    }
-
-    const { data: existingPages } = await supabase.from("store_pages").select("id").eq("store_id", safeStore.id);
-    const existingPageIds = new Set<string>(((existingPages as Array<{ id: string }> | null) ?? []).map((page) => page.id));
-    const localPageIds = new Set(safeStore.pages.map((page) => page.id));
-    const pageIdsToDelete = Array.from(existingPageIds).filter((id) => !localPageIds.has(id));
-
-    if (pageIdsToDelete.length > 0) {
-      await supabase.from("store_page_blocks").delete().in("page_id", pageIdsToDelete);
-      await supabase.from("store_pages").delete().in("id", pageIdsToDelete);
-    }
-
-    const blockRows = safeStore.pages.flatMap((page) =>
-      page.blocks.map((block, index) => ({
-        id: block.id,
-        page_id: page.id,
-        store_id: safeStore.id,
-        block_type: block.type as any,
-        props: block.props as any,
-        sort_order: index,
-        is_visible: block.isVisible,
-      })),
-    );
-
-    if (blockRows.length > 0) {
-      const { error: blockError } = await supabase.from("store_page_blocks").upsert(blockRows, { onConflict: "id" });
-
-      if (blockError) {
-        toast.error("Failed to save page blocks.");
-        setSaving(false);
-        return;
-      }
-    }
-
-    const { data: existingBlocks } = await supabase.from("store_page_blocks").select("id").eq("store_id", safeStore.id);
-    const existingBlockIds = new Set<string>(((existingBlocks as Array<{ id: string }> | null) ?? []).map((block) => block.id));
-    const localBlockIds = new Set(blockRows.map((block) => block.id));
-    const blockIdsToDelete = Array.from(existingBlockIds).filter((id) => !localBlockIds.has(id));
-
-    if (blockIdsToDelete.length > 0) {
-      await supabase.from("store_page_blocks").delete().in("id", blockIdsToDelete);
-    }
-
-    const { error: businessProfileError } = await supabase.from("store_business_profiles").upsert(
-      {
-        store_id: safeStore.id,
-        blueprint_id: activeBlueprint.id,
-        blueprint_version: 1,
-        business_family: activeBlueprint.businessFamily,
-        catalog_mode: activeBlueprint.catalogMode,
-        enabled_modules: activeBlueprint.capabilities,
-      },
-      { onConflict: "store_id" },
-    );
-
-    if (businessProfileError) {
-      toast.error("Failed to save store business profile.");
-      setSaving(false);
-      return;
-    }
-
-    if (selectedPage) {
-      await supabase.from("store_page_revisions").insert({
-        page_id: selectedPage.id,
-        store_id: safeStore.id,
-        revision_label: revisionLabel.trim() || "Manual save",
-        changed_by: user.id,
-        blocks_snapshot: sanitizeStoreBlocks(selectedPage.blocks) as any,
-      });
     }
 
     toast.success("Page Builder changes saved.");
@@ -1792,6 +1693,50 @@ export default function CmsPagesManager() {
                   <div className="grid gap-2">
                     <Label>Border Radius</Label>
                     <Input value={store.theme.borderRadius ?? ""} placeholder="0.5rem" onChange={(e) => updateStoreTheme({ borderRadius: e.target.value })} />
+                  </div>
+                  <div className="grid gap-3 rounded-lg border border-border p-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Guided theme overrides</p>
+                      <p className="text-xs text-muted-foreground">Override the selected package without affecting any other store.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {GUIDED_THEME_TOKENS.map((token) => {
+                        const resolvedVars = resolveStoreThemeVars(store.theme, themePackages).vars;
+                        const currentValue = store.theme.customCssVars[token.key] ?? resolvedVars[token.key] ?? "";
+
+                        return (
+                          <div key={token.key} className="grid gap-2">
+                            <Label>{token.label}</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="color"
+                                value={hslChannelsToHex(currentValue) ?? "#000000"}
+                                onChange={(event) => {
+                                  const next = hexToHslChannels(event.target.value);
+                                  if (!next) return;
+                                  updateStoreTheme({
+                                    customCssVars: {
+                                      ...store.theme.customCssVars,
+                                      [token.key]: next,
+                                    },
+                                  });
+                                }}
+                                className="h-10 w-16 p-1"
+                              />
+                              <Input
+                                value={currentValue}
+                                onChange={(event) => updateStoreTheme({
+                                  customCssVars: {
+                                    ...store.theme.customCssVars,
+                                    [token.key]: event.target.value,
+                                  },
+                                })}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </TabsContent>

@@ -15,7 +15,11 @@ export function StoreThemeScope({
   const scopedCustomCss = scopeStoreThemeCss(theme.customCss, scopeSelector);
 
   return (
-    <div data-store-theme-scope={scopeId} style={getStoreThemeStyle(theme)}>
+    <div
+      data-store-theme-scope={scopeId}
+      data-theme-mode={theme.mode}
+      style={getStoreThemeStyle(theme)}
+    >
       {scopedCustomCss ? <style>{scopedCustomCss}</style> : null}
       {children}
     </div>

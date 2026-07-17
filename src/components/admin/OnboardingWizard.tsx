@@ -34,6 +34,8 @@ import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { fallbackPageBlueprints, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import {
@@ -75,6 +77,7 @@ interface DraftState {
   headingFont: string;
   bodyFont: string;
   borderRadius: string;
+  customCssVars: Record<string, string>;
   heroTagline: string;
   heroTitle: string;
   heroHighlight: string;
@@ -162,6 +165,7 @@ function draftFromBlueprint(
     headingFont: previous?.headingFont || themePackage.tokens.typography.headingFont || blueprint.defaultTheme.headingFont || "",
     bodyFont: previous?.bodyFont || themePackage.tokens.typography.bodyFont || blueprint.defaultTheme.bodyFont || "",
     borderRadius: previous?.borderRadius || themePackage.tokens.components.borderRadius || blueprint.defaultTheme.borderRadius || "0.75rem",
+    customCssVars: previous?.customCssVars || {},
     heroTagline: previous?.heroTagline || blueprint.hero.tagline,
     heroTitle: previous?.heroTitle || blueprint.hero.title,
     heroHighlight: previous?.heroHighlight || blueprint.hero.highlight,
@@ -279,6 +283,7 @@ function buildPreviewStore(
       borderRadius: draft.borderRadius,
       customCssVars: {
         ...(themePackage.tokens[draft.themeMode] ?? {}),
+        ...draft.customCssVars,
       },
       customCss: themePackage.customCss,
     },
@@ -407,6 +412,7 @@ export default function OnboardingWizard() {
           preset_id?: string;
           theme_package_id?: string | null;
           mode?: Store["theme"]["mode"];
+          colors?: Record<string, string>;
           typography?: { headingFont?: string; bodyFont?: string };
           components?: { borderRadius?: string };
         } | null;
@@ -445,6 +451,7 @@ export default function OnboardingWizard() {
           headingFont: theme?.typography?.headingFont || undefined,
           bodyFont: theme?.typography?.bodyFont || undefined,
           borderRadius: theme?.components?.borderRadius || undefined,
+          customCssVars: theme?.colors || {},
           payment: {
             ...getBlueprintPaymentDefaultsFromCollection(safeBlueprint.id, loadedBlueprints),
             ...payment,
@@ -535,6 +542,7 @@ export default function OnboardingWizard() {
         headingFont: current.headingFont,
         bodyFont: current.bodyFont,
         borderRadius: current.borderRadius,
+        customCssVars: current.customCssVars,
         payment: {
           ...getBlueprintPaymentDefaultsFromCollection(blueprintId, blueprints),
           bkash_number: current.payment.bkash_number,
@@ -605,87 +613,37 @@ export default function OnboardingWizard() {
         return;
       }
 
-      const fullThemePayload = {
-        store_id: activeStoreId,
-        preset_id: selectedThemePackage.presetId,
-        mode: draft.themeMode,
-        theme_package_id: selectedThemePackage.id,
-        theme_package_version: selectedThemePackage.version,
-        colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
-        typography: {
-          headingFont: draft.headingFont,
-          bodyFont: draft.bodyFont,
-        },
-        components: {
-          borderRadius: draft.borderRadius,
-        },
-        overrides: {
-          themeMode: draft.themeMode,
-          headingFont: draft.headingFont,
-          bodyFont: draft.bodyFont,
-          borderRadius: draft.borderRadius,
-        },
-        resolved_tokens: {
-          light: selectedThemePackage.tokens.light,
-          dark: selectedThemePackage.tokens.dark,
-        },
-        custom_css: selectedThemePackage.customCss ?? null,
-      };
-
-      let themeError = (await supabase.from("store_themes").upsert(fullThemePayload, { onConflict: "store_id" })).error;
-      if (themeError) {
-        themeError = (await supabase.from("store_themes").upsert(
-          {
-            store_id: activeStoreId,
-            preset_id: selectedThemePackage.presetId,
+      const persistResult = await persistStorefrontState({
+        client: supabase,
+        store: {
+          id: activeStoreId,
+          name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
+          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
+          logoUrl: draft.logoUrl.trim() || undefined,
+          customDomain: draft.customDomain?.trim() || undefined,
+          description: draft.description.trim() || selectedBlueprint.storeDescription,
+          currencyCode: "BDT",
+          locale: "en-BD",
+          isPublished: publish,
+          theme: {
+            presetId: selectedThemePackage.presetId,
+            themePackageId: selectedThemePackage.id,
             mode: draft.themeMode,
-            colors: selectedThemePackage.tokens[draft.themeMode] ?? {},
-            typography: fullThemePayload.typography,
-            components: fullThemePayload.components,
-            custom_css: fullThemePayload.custom_css,
+            headingFont: draft.headingFont,
+            bodyFont: draft.bodyFont,
+            borderRadius: draft.borderRadius,
+            customCssVars: draft.customCssVars,
+            customCss: selectedThemePackage.customCss ?? undefined,
           },
-          { onConflict: "store_id" },
-        )).error;
-      }
+          pages,
+        },
+        blueprint: selectedBlueprint,
+        ownerId: user.id,
+        themePackages,
+      });
 
-      if (themeError) {
-        toast.error("Failed to save theme setup.");
-        return;
-      }
-
-      const pageRows = pages.map((page) => ({
-        id: page.id,
-        store_id: activeStoreId,
-        slug: page.slug,
-        title: page.title,
-        seo_title: page.seoTitle ?? null,
-        seo_description: page.seoDescription ?? null,
-        is_homepage: page.isHomepage,
-      }));
-      await supabase.from("store_page_blocks").delete().eq("store_id", activeStoreId as string);
-      await supabase.from("store_pages").delete().eq("store_id", activeStoreId as string);
-
-      const { error: pagesError } = await supabase.from("store_pages").insert(pageRows);
-      if (pagesError) {
-        toast.error("Failed to save storefront pages.");
-        return;
-      }
-
-      const blockRows = pages.flatMap((page) =>
-        page.blocks.map((pageBlock, index) => ({
-          id: pageBlock.id,
-          page_id: page.id,
-          store_id: activeStoreId,
-          block_type: pageBlock.type,
-          props: pageBlock.props,
-          sort_order: index,
-          is_visible: pageBlock.isVisible,
-        })),
-      );
-
-      const { error: blocksError } = await supabase.from("store_page_blocks").insert(blockRows);
-      if (blocksError) {
-        toast.error("Failed to save storefront blocks.");
+      if (persistResult.error) {
+        toast.error(`Failed to save storefront setup: ${persistResult.error.message || "Unknown persistence error"}`);
         return;
       }
 
@@ -1078,6 +1036,55 @@ export default function OnboardingWizard() {
                 <div className="grid gap-2">
                   <Label>Border Radius</Label>
                   <Input value={draft.borderRadius} onChange={(event) => updateDraft({ borderRadius: event.target.value })} />
+                </div>
+                <div className="grid gap-3 rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Guided theme overrides</p>
+                    <p className="text-xs text-muted-foreground">Use these store-only brand tokens without leaving the launch flow.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {GUIDED_THEME_TOKENS.map((token) => {
+                      const resolvedVars = resolveStoreThemeVars({
+                        presetId: draft.themePackageId,
+                        themePackageId: draft.themePackageId,
+                        mode: draft.themeMode,
+                        customCssVars: draft.customCssVars,
+                      }, themePackages).vars;
+                      const currentValue = draft.customCssVars[token.key] ?? resolvedVars[token.key] ?? "";
+
+                      return (
+                        <div key={token.key} className="grid gap-2">
+                          <Label>{token.label}</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="color"
+                              value={hslChannelsToHex(currentValue) ?? "#000000"}
+                              onChange={(event) => {
+                                const next = hexToHslChannels(event.target.value);
+                                if (!next) return;
+                                updateDraft({
+                                  customCssVars: {
+                                    ...draft.customCssVars,
+                                    [token.key]: next,
+                                  },
+                                });
+                              }}
+                              className="h-10 w-16 p-1"
+                            />
+                            <Input
+                              value={currentValue}
+                              onChange={(event) => updateDraft({
+                                customCssVars: {
+                                  ...draft.customCssVars,
+                                  [token.key]: event.target.value,
+                                },
+                              })}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             ) : null}

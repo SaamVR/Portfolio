@@ -69,6 +69,7 @@ export default function MerchantSignup() {
   const { user, loading, refreshRole, setActiveStoreId, activeStoreId } = useAuth();
   const [searchParams] = useSearchParams();
   const intent = searchParams.get("intent");
+  const requestedBlueprint = searchParams.get("blueprint");
   const isAdditionalStoreFlow = intent === "new-store";
   const [step, setStep] = useState<SignupStep>("methods");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
@@ -86,7 +87,7 @@ export default function MerchantSignup() {
     phone: "",
     storeName: "",
     storeSlug: "",
-    businessType: "general-catalog",
+    businessType: requestedBlueprint || "general-catalog",
     planId: searchParams.get("planId") || "basic",
     otpCode: "",
   });
@@ -131,10 +132,13 @@ export default function MerchantSignup() {
 
       setBlueprints(loaded);
       setForm((prev) => {
+        const requested = requestedBlueprint && loaded.some((item) => item.id === requestedBlueprint)
+          ? requestedBlueprint
+          : null;
         const hasCurrent = loaded.some((item) => item.id === prev.businessType);
         return {
           ...prev,
-          businessType: hasCurrent ? prev.businessType : loaded[0].id,
+          businessType: requested ?? (hasCurrent ? prev.businessType : loaded[0].id),
         };
       });
     };
@@ -143,7 +147,7 @@ export default function MerchantSignup() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [requestedBlueprint]);
 
   useEffect(() => {
     if (!user || loading) return;
