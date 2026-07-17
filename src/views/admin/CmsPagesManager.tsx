@@ -31,12 +31,19 @@ import {
   Import,
   Layers3,
   Monitor,
+  PanelRightClose,
+  PanelRightOpen,
   PanelsTopLeft,
   Smartphone,
   Store as StoreIcon,
   Redo2,
   Undo2,
   Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Wand2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -1444,12 +1451,34 @@ export default function CmsPagesManager() {
     { id: "launch", title: "Preview & Publish", description: "Check the page, save confidently, and open advanced tools only if needed.", sectionId: "basic-step-launch" },
   ];
   const activeBasicStepMeta = basicGuideSteps.find((step) => step.id === basicGuideStep) ?? basicGuideSteps[0];
+  const activeBasicStepIndex = basicGuideSteps.findIndex((step) => step.id === basicGuideStep);
+  const basicStepCompletion = {
+    basics: Boolean(store.name.trim() && store.description.trim()),
+    hero: Boolean(heroBlock?.props.title && heroBlock?.props.subtitle && heroBlock?.props.ctaText),
+    promotion: Boolean((promoBlock?.props.title ?? promoBlock?.props.subtitle ?? featuredProductsBlock?.props.title ?? "").toString().trim()),
+    sections: Boolean(
+      (((faqBlock?.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []).length > 0)
+      || (((socialFeedBlock?.props.images as string[] | undefined) ?? []).filter(Boolean).length > 0)
+      || Boolean(testimonialsBlock?.props.title)
+      || Boolean(trustBlock?.props.title),
+    ),
+    launch: Boolean(!hasUnsavedChanges),
+  } satisfies Record<BasicGuideStep, boolean>;
+  const basicStepRecommendations: Record<BasicGuideStep, string> = {
+    basics: store.isPublished ? "Store is already live. Double-check the summary before moving on." : "Finish the store summary, then continue to your first impression.",
+    hero: heroBlock?.props.mediaUrl ? "Hero media is in place. Tighten the CTA next if needed." : "Add headline, CTA, and media so shoppers immediately understand the offer.",
+    promotion: featuredProductsBlock ? "Use this step to spotlight bestsellers and any current campaign." : "Add at least one promotion hook so the homepage is not just a headline.",
+    sections: socialFeedBlock ? "Add proof, FAQs, and supporting media so customers trust the store without extra support messages." : "Strengthen trust and support answers here before publishing.",
+    launch: hasUnsavedChanges ? "Save the current draft, then preview the page on the live storefront." : "Open preview and do a final merchant-eye pass before you leave Basic Editing.",
+  };
+  const nextBasicStep = basicGuideSteps[activeBasicStepIndex + 1] ?? null;
   const actionDockTargets = isAdvancedEditor
     ? [
         { id: "page-builder-details", label: "Details" },
         { id: "page-builder-blocks", label: "Blocks" },
         { id: "page-builder-preview", label: "Preview" },
         { id: "advanced-code-panels", label: "Code" },
+        { id: "advanced-revisions", label: "Revisions" },
       ]
     : basicGuideSteps.map((step) => ({ id: step.sectionId, label: step.title }));
   const scrollToBuilderSection = (sectionId: string) => {
@@ -2233,11 +2262,11 @@ export default function CmsPagesManager() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
+                              <Wand2 className="h-4 w-4 text-primary" />
                               <p className="text-sm font-semibold text-foreground">Guided Basic Editing</p>
                             </div>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {activeBasicStepMeta.description} Basic mode is the merchant-safe path and should cover most whole-site editing without touching block structure.
+                              {activeBasicStepMeta.description} Basic mode is meant to feel more like a merchant setup assistant than block editing.
                             </p>
                           </div>
                           <Badge variant="secondary">{basicGuideSteps.findIndex((step) => step.id === basicGuideStep) + 1}/{basicGuideSteps.length}</Badge>
@@ -2258,16 +2287,31 @@ export default function CmsPagesManager() {
                                   : "border-transparent bg-background/70 text-muted-foreground hover:border-primary/20",
                               )}
                             >
-                              <p className="text-sm font-medium">{step.title}</p>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium">{step.title}</p>
+                                {basicStepCompletion[step.id] ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" /> : <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />}
+                              </div>
                               <p className="mt-1 text-[11px] leading-4">{step.description}</p>
                             </button>
                           ))}
                         </div>
+                        <div className="mt-4 rounded-2xl border border-border/60 bg-background/80 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{activeBasicStepMeta.title}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{basicStepRecommendations[basicGuideStep]}</p>
+                            </div>
+                            <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"}>
+                              {basicStepCompletion[basicGuideStep] ? "Ready" : "Needs attention"}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
+                      {basicGuideStep === "basics" ? (
                       <div id="basic-step-basics" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                         <div className="rounded-xl border border-border p-4 md:col-span-2">
                           <p className="text-sm font-semibold text-foreground">Store Basics</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Confirm the page, store summary, and whether this storefront is live.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Start with the essentials that merchants expect to understand first: what page they are on, what the store says about itself, and whether the site is live.</p>
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <div className="grid gap-2">
                               <Label>Editing Page</Label>
@@ -2293,13 +2337,24 @@ export default function CmsPagesManager() {
                               <Textarea rows={4} value={store.description} onChange={(e) => commitStoreChange({ ...store, description: e.target.value })} />
                             </div>
                           </div>
+                          <div className="mt-4 flex justify-end">
+                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
+                              setBasicGuideStep("hero");
+                              scrollToBuilderSection("basic-step-hero");
+                            }}>
+                              Next Step
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
+                      ) : null}
+                      {basicGuideStep === "hero" ? (
                       <div id="basic-step-hero" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {heroBlock ? (
                         <div className="rounded-xl border border-border p-4 md:col-span-2">
                           <p className="text-sm font-semibold text-foreground">Hero Section</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Main headline, supporting text, calls to action, and hero media.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Shape the first thing shoppers see: promise, CTA, and media. Keep this sharp and easy to skim on mobile.</p>
                           <div className="mt-4 grid gap-3">
                             <div className="grid gap-2">
                               <Label>Headline</Label>
@@ -2340,9 +2395,28 @@ export default function CmsPagesManager() {
                               />
                             </div>
                           </div>
+                          <div className="mt-4 flex flex-wrap justify-between gap-2">
+                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
+                              setBasicGuideStep("basics");
+                              scrollToBuilderSection("basic-step-basics");
+                            }}>
+                              <ChevronLeft className="h-4 w-4" />
+                              Back
+                            </Button>
+                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
+                              setBasicGuideStep("promotion");
+                              scrollToBuilderSection("basic-step-promotion");
+                            }}>
+                              Next Step
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ) : null}
                       </div>
+                      ) : null}
+                      {basicGuideStep === "promotion" ? (
+                      <>
                       <div id="basic-step-promotion" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {promoBlock ? (
                         <div className="rounded-xl border border-border p-4">
@@ -2408,6 +2482,26 @@ export default function CmsPagesManager() {
                         </div>
                       ) : null}
                       </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
+                          setBasicGuideStep("hero");
+                          scrollToBuilderSection("basic-step-hero");
+                        }}>
+                          <ChevronLeft className="h-4 w-4" />
+                          Back
+                        </Button>
+                        <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
+                          setBasicGuideStep("sections");
+                          scrollToBuilderSection("basic-step-sections");
+                        }}>
+                          Next Step
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      </>
+                      ) : null}
+                      {basicGuideStep === "sections" ? (
+                      <>
                       <div id="basic-step-sections" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                       {faqBlock ? (
                         <div className="rounded-xl border border-border p-4">
@@ -2637,12 +2731,63 @@ export default function CmsPagesManager() {
                         </div>
                       ) : null}
                       </div>
-                      <div id="basic-step-launch" className="rounded-xl border border-dashed border-border bg-muted/20 p-4 scroll-mt-28">
-                        <p className="text-sm font-medium text-foreground">Need deeper layout or developer controls?</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link> for block ordering, template changes, raw JSON, and theme code.
-                        </p>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
+                          setBasicGuideStep("promotion");
+                          scrollToBuilderSection("basic-step-promotion");
+                        }}>
+                          <ChevronLeft className="h-4 w-4" />
+                          Back
+                        </Button>
+                        <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
+                          setBasicGuideStep("launch");
+                          scrollToBuilderSection("basic-step-launch");
+                        }}>
+                          Next Step
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
+                      </>
+                      ) : null}
+                      {basicGuideStep === "launch" ? (
+                      <div id="basic-step-launch" className="space-y-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 scroll-mt-28">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Preview & Publish</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Preview the live storefront, save confidently, and only open Advanced Editing when you truly need structure or code-level controls.
+                          </p>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Status: {basicStatusLabel}</div>
+                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Undo and redo are always available from the dock.</div>
+                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Need templates, raw JSON, CSS, or structure changes? Use Advanced.</div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                            <a href={previewHref} target="_blank" rel="noreferrer">
+                              <Eye className="h-4 w-4" />
+                              Preview storefront
+                            </a>
+                          </Button>
+                          <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="gap-2 rounded-full">
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Save changes
+                          </Button>
+                          <Button asChild type="button" variant="outline" size="sm" className="rounded-full">
+                            <Link to={advancedEditorHref}>Open Advanced Editing</Link>
+                          </Button>
+                        </div>
+                        <div className="flex justify-start">
+                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
+                            setBasicGuideStep("sections");
+                            scrollToBuilderSection("basic-step-sections");
+                          }}>
+                            <ChevronLeft className="h-4 w-4" />
+                            Back
+                          </Button>
+                        </div>
+                      </div>
+                      ) : null}
                     </div>
                   ) : null}
                   {isAdvancedEditor ? (
@@ -3414,7 +3559,7 @@ export default function CmsPagesManager() {
               ) : null}
 
               {isAdvancedEditor ? (
-                <Card className="border-border">
+                <Card id="advanced-revisions" className="border-border scroll-mt-36">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <History className="h-4 w-4 text-primary" />
@@ -3462,47 +3607,82 @@ export default function CmsPagesManager() {
                   Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.
                 </div>
             </div>
-            <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex max-w-[calc(100vw-1.5rem)] justify-end sm:max-w-[420px]">
-              <div className="pointer-events-auto w-full rounded-[1.75rem] border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Advanced Editing Dock" : "Basic Editing Dock"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+            <div className="pointer-events-none fixed right-2 top-1/2 z-40 flex -translate-y-1/2 justify-end sm:right-4">
+              <div className="pointer-events-auto flex items-center gap-2">
+                {isActionDockMinimized ? (
+                  <div className="flex flex-col items-end gap-2">
+                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={undoStoreChange} disabled={undoStack.length === 0} title="Undo">
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" asChild title="Preview">
+                      <a href={previewHref} target="_blank" rel="noreferrer">
+                        <Eye className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button type="button" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => void saveAll()} disabled={saving} title="Save">
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-full shadow-lg"
+                      onClick={() => setIsActionDockMinimized(false)}
+                      title="Expand dock"
+                    >
+                      <PanelRightOpen className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => setIsActionDockMinimized((current) => !current)}
-                  >
-                    {isActionDockMinimized ? "Expand" : "Minimize"}
-                  </Button>
-                </div>
-                {!isActionDockMinimized ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="rounded-full">
+                ) : (
+                  <div className="w-[min(320px,calc(100vw-1rem))] rounded-[1.5rem] border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Advanced Editing Dock" : "Basic Editing Dock"}</p>
+                        <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 rounded-full"
+                        onClick={() => setIsActionDockMinimized(true)}
+                        title="Minimize dock"
+                      >
+                        <PanelRightClose className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="justify-start rounded-full">
                         <Undo2 className="h-4 w-4" />
                         Undo
                       </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="rounded-full">
+                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="justify-start rounded-full">
                         <Redo2 className="h-4 w-4" />
                         Redo
                       </Button>
-                      <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                      <Button type="button" variant="outline" size="sm" asChild className="justify-start rounded-full">
                         <a href={previewHref} target="_blank" rel="noreferrer">
                           <Eye className="h-4 w-4" />
                           Preview
                         </a>
                       </Button>
-                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="rounded-full">
+                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="justify-start rounded-full">
                         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         Save
                       </Button>
                     </div>
-                    <div className="grid gap-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Jump To</p>
+                    <div className="mt-3 grid gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Jump To</p>
+                        {!isAdvancedEditor ? (
+                          <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"} className="text-[10px]">
+                            {basicStepCompletion[basicGuideStep] ? "Ready" : "In progress"}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {actionDockTargets.map((target) => (
                           <Button
@@ -3527,17 +3707,16 @@ export default function CmsPagesManager() {
                       </div>
                     </div>
                     {!isAdvancedEditor ? (
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                        <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Guided merchant flow</div>
-                        <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Autosaves local draft before publish</div>
+                      <div className="mt-3 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
+                        Merchant-safe flow with guided steps, local draft autosave, and quick jump links.
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                        Advanced mode keeps full block editing, raw JSON, and code-oriented review panels in reach.
+                      <div className="mt-3 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
+                        Advanced mode keeps block controls, code panels, revisions, and layout workflows within quick reach.
                       </div>
                     )}
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
             </>

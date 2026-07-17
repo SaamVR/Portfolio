@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, RotateCcw, Save, Settings2, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,8 @@ export function StorefrontLiveEditor({
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [insertPosition, setInsertPosition] = useState<"before" | "after">("after");
   const [history, setHistory] = useState<Store[]>([]);
+  const [redoHistory, setRedoHistory] = useState<Store[]>([]);
+  const [isDockMinimized, setIsDockMinimized] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const lastLoadedStoreRef = useRef(store);
@@ -115,6 +117,7 @@ export function StorefrontLiveEditor({
     lastLoadedStoreRef.current = store;
     setPersistedSnapshot(serializeStoreDraft(store));
     setHistory([]);
+    setRedoHistory([]);
     setLastSavedAt(null);
   }, [page.id, store.id]);
 
@@ -137,13 +140,14 @@ export function StorefrontLiveEditor({
   }
 
   const applyStoreChange = (updater: (current: Store) => Store) => {
-    setStore((current) => {
-      setHistory((existing) => {
-        const next = [...existing, current];
-        return next.length > 20 ? next.slice(next.length - 20) : next;
+      setStore((current) => {
+        setHistory((existing) => {
+          const next = [...existing, current];
+          return next.length > 20 ? next.slice(next.length - 20) : next;
+        });
+        setRedoHistory([]);
+        return updater(current);
       });
-      return updater(current);
-    });
   };
 
   const undoLastChange = () => {
@@ -155,6 +159,21 @@ export function StorefrontLiveEditor({
       }
 
       setStore(previous);
+      setRedoHistory((existingRedo) => [...existingRedo, store]);
+      return existing.slice(0, -1);
+    });
+  };
+
+  const redoLastChange = () => {
+    setRedoHistory((existing) => {
+      const nextState = existing[existing.length - 1];
+      if (!nextState) {
+        toast.error("No live editor changes to redo.");
+        return existing;
+      }
+
+      setHistory((previousHistory) => [...previousHistory, store]);
+      setStore(nextState);
       return existing.slice(0, -1);
     });
   };
@@ -735,33 +754,71 @@ export function StorefrontLiveEditor({
   };
 
   return (
-    <div className="pointer-events-none fixed inset-x-3 bottom-3 z-50 flex justify-end sm:inset-x-auto sm:right-4 sm:max-w-[min(440px,calc(100vw-2rem))]">
-      <div className="flex w-full max-w-[min(440px,100%)] flex-col gap-3">
+    <div className="pointer-events-none fixed right-2 top-1/2 z-50 flex -translate-y-1/2 justify-end sm:right-4">
+      <div className="flex w-full max-w-[min(440px,100%)] flex-col items-end gap-3">
         <div className="pointer-events-auto flex justify-end">
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 rounded-[1.75rem] border border-border bg-background/95 p-2 shadow-lg backdrop-blur">
-            <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} onClick={toggleAdminMode} title={adminMode ? "Close live editor" : "Open live editor"}>
-            {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
-              <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button type="button" size="icon" variant="ghost" onClick={() => resetToLoadedState()} title="Reset live editor">
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
-              <SelectTrigger className="h-9 min-w-[136px] rounded-full border-none bg-transparent px-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="basic">Basic Mode</SelectItem>
-                <SelectItem value="advanced">Advanced Mode</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="button" size="sm" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges} className="rounded-full">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {hasUnsavedChanges ? "Save" : "Saved"}
-            </Button>
-          </div>
+          {isDockMinimized ? (
+            <div className="flex flex-col items-end gap-2">
+              <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} className="h-10 w-10 rounded-full shadow-lg" onClick={toggleAdminMode} title={adminMode ? "Close live editor" : "Open live editor"}>
+                {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => redoLastChange()} disabled={redoHistory.length === 0} title="Redo live edit">
+                <Redo2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges} title={hasUnsavedChanges ? "Save live edits" : "All changes saved"}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setIsDockMinimized(false)} title="Expand live editor dock">
+                <PanelRightOpen className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex w-full max-w-[min(320px,calc(100vw-1rem))] flex-col gap-2 rounded-[1.5rem] border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Live Editor Dock</p>
+                  <p className="truncate text-xs text-muted-foreground">{saveStatusLabel}</p>
+                </div>
+                <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setIsDockMinimized(true)} title="Minimize live editor dock">
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" size="sm" variant={adminMode ? "secondary" : "outline"} className="justify-start rounded-full" onClick={toggleAdminMode}>
+                  {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {adminMode ? "Close" : "Open"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => resetToLoadedState()}>
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => undoLastChange()} disabled={history.length === 0}>
+                  <Undo2 className="h-4 w-4" />
+                  Undo
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => redoLastChange()} disabled={redoHistory.length === 0}>
+                  <Redo2 className="h-4 w-4" />
+                  Redo
+                </Button>
+                <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
+                  <SelectTrigger className="col-span-2 h-9 rounded-full px-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basic">Basic Mode</SelectItem>
+                    <SelectItem value="advanced">Advanced Mode</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="sm" className="col-span-2 justify-start rounded-full" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {hasUnsavedChanges ? "Save updates" : "Autosaved / Saved"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {adminMode ? (
