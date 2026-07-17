@@ -522,11 +522,11 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className={`sticky top-4 z-50 px-4 lg:px-0 ${headerShell}`}>
-        <nav className={`mx-auto flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[2rem] border shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-2xl saturate-200 px-4 sm:px-6 transition-all duration-300 ${
+      <header className={`fixed inset-x-0 top-4 z-50 px-4 lg:px-0 w-full ${headerShell}`}>
+        <nav className={`mx-auto flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[2rem] border shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-[24px] saturate-[1.8] px-4 sm:px-6 transition-all duration-300 ${
           isLightTheme
-            ? "border-white/50 bg-white/20"
-            : "border-white/10 bg-slate-950/30"
+            ? "border-white/50 bg-white/15"
+            : "border-white/10 bg-slate-950/15"
         }`}>
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
@@ -571,7 +571,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
         </nav>
       </header>
 
-      <section id="builder" className="relative z-10 mx-auto max-w-6xl px-4 pb-14 pt-8 sm:pt-12">
+      <section id="builder" className="relative z-10 mx-auto max-w-6xl px-4 pb-14 pt-28 sm:pt-32">
         <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
           <div className="order-2 space-y-5 sm:space-y-6 lg:order-1">
             <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold ${theme.border} ${theme.accent} ${theme.primaryText}`}>
