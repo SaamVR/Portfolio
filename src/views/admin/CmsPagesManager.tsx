@@ -47,6 +47,9 @@ import {
   Code2,
   ClipboardCopy,
   Rocket,
+  MapPin,
+  ShoppingBag,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
@@ -133,7 +136,7 @@ type RecoverableDraft = {
   updatedAt: string;
 };
 
-type BasicGuideStep = "basics" | "hero" | "promotion" | "sections" | "launch";
+type BasicGuideStep = "basics" | "homepage" | "product" | "checkout" | "custom" | "launch";
 
 const STORE_LAYOUT_PACKAGE_SCHEMA = "ecomcms.storefront-layout.v1";
 
@@ -307,11 +310,12 @@ export default function CmsPagesManager() {
   const [basicGuideStep, setBasicGuideStep] = useState<BasicGuideStep>("basics");
   const [isActionDockMinimized, setIsActionDockMinimized] = useState(false);
   const [desktopPreviewMode, setDesktopPreviewMode] = useState<"side" | "below" | "minimized" | "hidden">("side");
+  const [desktopPreviewSide, setDesktopPreviewSide] = useState<"left" | "right">("right");
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
-  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages">("pages");
+  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info">("pages");
   const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
@@ -536,6 +540,7 @@ export default function CmsPagesManager() {
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
     setDesktopPreviewMode("side");
+    setDesktopPreviewSide("right");
     setIsMobilePreviewOpen(false);
   }, [activeStoreId]);
 
@@ -1455,6 +1460,7 @@ export default function CmsPagesManager() {
   const heroBlock = selectedPage?.blocks.find((block) => block.type === "hero") ?? null;
   const promoBlock = selectedPage?.blocks.find((block) => block.type === "promo-banner") ?? null;
   const featuredProductsBlock = selectedPage?.blocks.find((block) => block.type === "featured-products") ?? null;
+  const richTextBlock = selectedPage?.blocks.find((block) => block.type === "rich-text") ?? null;
   const faqBlock = selectedPage?.blocks.find((block) => block.type === "faq-accordion") ?? null;
   const trustBlock = selectedPage?.blocks.find((block) => block.type === "trust-badges") ?? null;
   const socialFeedBlock = selectedPage?.blocks.find((block) => block.type === "social-feed") ?? null;
@@ -1467,6 +1473,72 @@ export default function CmsPagesManager() {
   const customContentPages = store.pages.filter((page) => !page.isHomepage && !/product|shop|catalog|checkout/i.test(`${page.slug} ${page.title}`));
   const checkoutSettingsHref = withStoreId("/admin/site-settings?tab=payment", activeStoreId);
   const shippingSettingsHref = withStoreId("/admin/site-settings?tab=delivery", activeStoreId);
+  const supportSettingsHref = withStoreId("/admin/site-settings?tab=support", activeStoreId);
+  const faqSettingsHref = withStoreId("/admin/site-settings?tab=faq", activeStoreId);
+  const aboutSettingsHref = withStoreId("/admin/site-settings?tab=about", activeStoreId);
+  const footerSettingsHref = withStoreId("/admin/site-settings?tab=footer", activeStoreId);
+  const selectedProductPage = productStoryPages.find((page) => page.id === selectedPageId) ?? productStoryPages[0] ?? null;
+  const selectedCustomContentPage = customContentPages.find((page) => page.id === selectedPageId) ?? customContentPages[0] ?? null;
+  const getPageBlock = (page: StorePage | null, type: StorePageBlock["type"]) => page?.blocks.find((block) => block.type === type) ?? null;
+  const homepageHeroBlock = getPageBlock(homepagePage, "hero");
+  const homepagePromoBlock = getPageBlock(homepagePage, "promo-banner");
+  const homepageFeaturedProductsBlock = getPageBlock(homepagePage, "featured-products");
+  const homepageFaqBlock = getPageBlock(homepagePage, "faq-accordion");
+  const homepageTrustBlock = getPageBlock(homepagePage, "trust-badges");
+  const homepageSocialFeedBlock = getPageBlock(homepagePage, "social-feed");
+  const homepageVideoReelBlock = getPageBlock(homepagePage, "video-reel");
+  const homepageTestimonialsBlock = getPageBlock(homepagePage, "testimonials");
+  const homepageCategoryShowcaseBlock = getPageBlock(homepagePage, "category-showcase");
+  const homepageRecentlyViewedBlock = getPageBlock(homepagePage, "recently-viewed");
+  const productRichTextBlock = getPageBlock(selectedProductPage, "rich-text");
+  const productFaqBlock = getPageBlock(selectedProductPage, "faq-accordion");
+  const productTrustBlock = getPageBlock(selectedProductPage, "trust-badges");
+  const customRichTextBlock = getPageBlock(selectedCustomContentPage, "rich-text");
+  const customFaqBlock = getPageBlock(selectedCustomContentPage, "faq-accordion");
+  const customTrustBlock = getPageBlock(selectedCustomContentPage, "trust-badges");
+  const homepageHeroProps = (homepageHeroBlock?.props ?? {}) as {
+    title?: string;
+    highlight?: string;
+    subtitle?: string;
+    ctaText?: string;
+    ctaLink?: string;
+    mediaUrl?: string;
+    mediaType?: string;
+  };
+  const homepagePromoProps = (homepagePromoBlock?.props ?? {}) as {
+    title?: string;
+    subtitle?: string;
+  };
+  const homepageFeaturedProps = (homepageFeaturedProductsBlock?.props ?? {}) as {
+    title?: string;
+    tagline?: string;
+    limit?: number;
+  };
+  const homepageFaqProps = (homepageFaqBlock?.props ?? {}) as {
+    title?: string;
+    faqs?: Array<{ q: string; a: string }>;
+  };
+  const homepageTrustProps = (homepageTrustBlock?.props ?? {}) as { title?: string };
+  const homepageSocialProps = (homepageSocialFeedBlock?.props ?? {}) as {
+    title?: string;
+    subtitle?: string;
+    images?: string[];
+  };
+  const homepageTestimonialsProps = (homepageTestimonialsBlock?.props ?? {}) as {
+    title?: string;
+  };
+  const productRichTextProps = (productRichTextBlock?.props ?? {}) as {
+    title?: string;
+    body?: string;
+  };
+  const productFaqProps = (productFaqBlock?.props ?? {}) as { title?: string };
+  const productTrustProps = (productTrustBlock?.props ?? {}) as { title?: string };
+  const customRichTextProps = (customRichTextBlock?.props ?? {}) as {
+    title?: string;
+    body?: string;
+  };
+  const customFaqProps = (customFaqBlock?.props ?? {}) as { title?: string };
+  const customTrustProps = (customTrustBlock?.props ?? {}) as { title?: string };
   const selectedPageJourneyLabel = selectedPage?.isHomepage
     ? "Homepage"
     : /product|shop|catalog/i.test(`${selectedPage?.slug ?? ""} ${selectedPage?.title ?? ""}`)
@@ -1494,30 +1566,53 @@ export default function CmsPagesManager() {
   const selectedBlockJson = selectedBlock ? JSON.stringify(selectedBlock, null, 2) : "";
   const basicGuideSteps: Array<{ id: BasicGuideStep; title: string; description: string; sectionId: string }> = [
     { id: "basics", title: "Store Basics", description: "Name, summary, publishing, and core page choice.", sectionId: "basic-step-basics" },
-    { id: "hero", title: "Hero", description: "Main headline, media, and first call to action.", sectionId: "basic-step-hero" },
-    { id: "promotion", title: "Promotion", description: "Promo banner, featured products, and launch hooks.", sectionId: "basic-step-promotion" },
-    { id: "sections", title: "Sections", description: "FAQ, trust, media, testimonials, and supporting content.", sectionId: "basic-step-sections" },
+    { id: "homepage", title: "Homepage", description: "Hero, promotions, proof, and shopper-first story flow.", sectionId: "basic-step-homepage" },
+    { id: "product", title: "Product Page", description: "Catalog and product-story guidance without raw block editing.", sectionId: "basic-step-product" },
+    { id: "checkout", title: "Checkout Trust", description: "Payment, delivery, support, and reassurance settings.", sectionId: "basic-step-checkout" },
+    { id: "custom", title: "Custom Pages", description: "FAQ, about, policy, and supporting page content.", sectionId: "basic-step-custom" },
     { id: "launch", title: "Preview & Publish", description: "Check the page, save confidently, and open advanced tools only if needed.", sectionId: "basic-step-launch" },
   ];
   const activeBasicStepMeta = basicGuideSteps.find((step) => step.id === basicGuideStep) ?? basicGuideSteps[0];
   const activeBasicStepIndex = basicGuideSteps.findIndex((step) => step.id === basicGuideStep);
   const basicStepCompletion = {
     basics: Boolean(store.name.trim() && store.description.trim()),
-    hero: Boolean(heroBlock?.props.title && heroBlock?.props.subtitle && heroBlock?.props.ctaText),
-    promotion: Boolean((promoBlock?.props.title ?? promoBlock?.props.subtitle ?? featuredProductsBlock?.props.title ?? "").toString().trim()),
-    sections: Boolean(
-      (((faqBlock?.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []).length > 0)
-      || (((socialFeedBlock?.props.images as string[] | undefined) ?? []).filter(Boolean).length > 0)
-      || Boolean(testimonialsBlock?.props.title)
-      || Boolean(trustBlock?.props.title),
+    homepage: Boolean(
+      homepageHeroProps.title
+      && homepageHeroProps.subtitle
+      && homepageHeroProps.ctaText
+      && ((homepagePromoProps.title ?? homepageFeaturedProps.title ?? "").toString().trim())
+      && (
+        ((homepageFaqProps.faqs ?? []).length > 0)
+        || ((homepageSocialProps.images ?? []).filter(Boolean).length > 0)
+        || Boolean(homepageTestimonialsProps.title)
+        || Boolean(homepageTrustProps.title)
+      ),
+    ),
+    product: Boolean(
+      selectedProductPage
+      && (
+        Boolean(selectedProductPage.seoTitle?.trim())
+        || Boolean(productRichTextProps.title)
+        || Boolean(productTrustProps.title)
+      ),
+    ),
+    checkout: Boolean(Boolean(checkoutSettingsHref) && Boolean(shippingSettingsHref)),
+    custom: Boolean(
+      selectedCustomContentPage
+      && (
+        Boolean(customRichTextProps.title)
+        || Boolean(customFaqProps.title)
+        || Boolean(customTrustProps.title)
+      ),
     ),
     launch: Boolean(!hasUnsavedChanges),
   } satisfies Record<BasicGuideStep, boolean>;
   const basicStepRecommendations: Record<BasicGuideStep, string> = {
     basics: store.isPublished ? "Store is already live. Double-check the summary before moving on." : "Finish the store summary, then continue to your first impression.",
-    hero: heroBlock?.props.mediaUrl ? "Hero media is in place. Tighten the CTA next if needed." : "Add headline, CTA, and media so shoppers immediately understand the offer.",
-    promotion: featuredProductsBlock ? "Use this step to spotlight bestsellers and any current campaign." : "Add at least one promotion hook so the homepage is not just a headline.",
-    sections: socialFeedBlock ? "Add proof, FAQs, and supporting media so customers trust the store without extra support messages." : "Strengthen trust and support answers here before publishing.",
+    homepage: homepageHeroProps.mediaUrl ? "Homepage media is in place. Tighten the headline, campaign, and proof flow next." : "Lead with a strong hero, then support it with products and trust cues.",
+    product: selectedProductPage ? "Refine your main product or catalog page so shoppers can browse with confidence." : "Create or select a product-focused page in Advanced, then return here for guided content setup.",
+    checkout: "Use guided settings for payment, delivery, support, and policy reassurance instead of raw page editing.",
+    custom: selectedCustomContentPage ? "Use custom pages to answer FAQs, tell your story, and reduce hesitation." : "Add About, FAQ, or policy pages in Advanced, then come back here for merchant-safe editing.",
     launch: hasUnsavedChanges ? "Save the current draft, then preview the page on the live storefront." : "Open preview and do a final merchant-eye pass before you leave Basic Editing.",
   };
   const nextBasicStep = basicGuideSteps[activeBasicStepIndex + 1] ?? null;
@@ -1527,20 +1622,25 @@ export default function CmsPagesManager() {
       "Make sure the correct page is being edited before changing content.",
       "Decide whether this store should stay draft or go live after review.",
     ],
-    hero: [
+    homepage: [
       "Write the clearest promise first, then support it with one CTA.",
-      "Upload hero media that instantly explains the product or vibe.",
-      "Keep headline and subtitle short enough for mobile shoppers.",
+      "Use campaign and product sections to guide the next shopper click.",
+      "Add trust content before expecting first-time visitors to buy.",
     ],
-    promotion: [
-      "Use one campaign idea instead of stacking multiple offers.",
-      "Feature a product section title that makes browsing feel intentional.",
-      "Check that CTA labels match where the button actually goes.",
+    product: [
+      "Choose the main product or catalog page customers will land on next.",
+      "Keep page titles and summaries specific to what shoppers can browse or buy.",
+      "Add trust or FAQ support close to the buying decision.",
     ],
-    sections: [
-      "Answer the top questions customers ask before ordering.",
-      "Add proof with media, testimonials, or trust messaging.",
-      "Use supporting sections to reduce support chats after launch.",
+    checkout: [
+      "Review payment methods customers can trust immediately.",
+      "Clarify delivery timing, fees, and order expectations.",
+      "Keep support and policy links easy to find before checkout hesitation starts.",
+    ],
+    custom: [
+      "Use About, FAQ, and policy pages to answer questions before support messages arrive.",
+      "Keep each page focused on one purpose instead of mixing everything together.",
+      "End long-form pages with a next step, support path, or trust cue.",
     ],
     launch: [
       "Preview the page like a first-time shopper, not like an editor.",
@@ -1561,15 +1661,15 @@ export default function CmsPagesManager() {
     {
       id: "homepage",
       label: "Homepage",
-      state: basicStepCompletion.hero && basicStepCompletion.promotion ? "Ready" : homepagePage ? "In progress" : "Needs setup",
+      state: basicStepCompletion.homepage ? "Ready" : homepagePage ? "In progress" : "Needs setup",
       detail: homepagePage ? "Lead with the hero, promotion, trust, and publish checks." : "Seed the homepage and set your first impression before anything else.",
       actionLabel: homepagePage ? "Open Homepage" : "Go To Basics",
       onClick: () => {
         if (homepagePage) {
           setSelectedPageId(homepagePage.id);
         }
-        setBasicGuideStep("hero");
-        scrollToBuilderSection(homepagePage ? "basic-step-hero" : "basic-step-basics");
+        setBasicGuideStep(homepagePage ? "homepage" : "basics");
+        scrollToBuilderSection(homepagePage ? "basic-step-homepage" : "basic-step-basics");
       },
     },
     {
@@ -1581,8 +1681,8 @@ export default function CmsPagesManager() {
       onClick: () => {
         if (productStoryPages[0]) {
           setSelectedPageId(productStoryPages[0].id);
-          setBasicGuideStep("promotion");
-          scrollToBuilderSection("basic-step-promotion");
+          setBasicGuideStep("product");
+          scrollToBuilderSection("basic-step-product");
           return;
         }
         window.location.href = advancedEditorHref;
@@ -1607,14 +1707,276 @@ export default function CmsPagesManager() {
       onClick: () => {
         if (customContentPages[0]) {
           setSelectedPageId(customContentPages[0].id);
-          setBasicGuideStep("sections");
-          scrollToBuilderSection("basic-step-sections");
+          setBasicGuideStep("custom");
+          scrollToBuilderSection("basic-step-custom");
           return;
         }
         window.location.href = shippingSettingsHref;
       },
     },
   ] as const;
+  const basicCompletionChecks = [
+    {
+      label: "Hero clarity",
+      done: Boolean(homepageHeroProps.title && homepageHeroProps.ctaText),
+      blocker: "Hero is missing a clear title or CTA.",
+    },
+    {
+      label: "Trust content",
+      done: Boolean(
+        ((homepageFaqProps.faqs ?? []).length > 0)
+        || Boolean(homepageTestimonialsProps.title)
+        || Boolean(homepageTrustProps.title),
+      ),
+      blocker: "FAQ, testimonials, or trust messaging still needs setup.",
+    },
+    {
+      label: "Product discovery",
+      done: Boolean(homepageFeaturedProps.title || productStoryPages.length > 0),
+      blocker: "Shoppers still need a clearer path into products or catalog pages.",
+    },
+    {
+      label: "Checkout readiness",
+      done: Boolean(checkoutSettingsHref),
+      blocker: "Payment and delivery settings should be reviewed before launch.",
+    },
+    {
+      label: "Publish confidence",
+      done: !hasUnsavedChanges,
+      blocker: "Save the current draft before doing the final preview pass.",
+    },
+  ] as const;
+  const completionScore = Math.round((basicCompletionChecks.filter((item) => item.done).length / basicCompletionChecks.length) * 100);
+  const activeBlockers = basicCompletionChecks.filter((item) => !item.done).map((item) => item.blocker);
+  const nextRecommendedAction = !homepagePage
+    ? {
+        title: "Create the homepage foundation first",
+        detail: "Start with the hero and promotion sections so the store immediately explains what it sells.",
+        actionLabel: "Open Homepage Step",
+        action: () => {
+          setBasicGuideStep("homepage");
+          scrollToBuilderSection("basic-step-homepage");
+        },
+      }
+    : !homepageHeroProps.ctaText
+      ? {
+          title: "Add the homepage CTA",
+          detail: "The hero still needs a strong action button so shoppers know where to go next.",
+          actionLabel: "Fix Homepage CTA",
+          action: () => {
+            setSelectedPageId(homepagePage.id);
+            setBasicGuideStep("homepage");
+            scrollToBuilderSection("basic-step-homepage");
+          },
+        }
+      : ((homepageFaqProps.faqs ?? []).length === 0) && !homepageTestimonialsProps.title
+        ? {
+            title: "Add trust-building content",
+            detail: "FAQ or testimonial content is still missing, so shoppers may hesitate before buying.",
+            actionLabel: "Open Homepage Trust",
+            action: () => {
+              setSelectedPageId(homepagePage.id);
+              setBasicGuideStep("homepage");
+              scrollToBuilderSection("basic-step-homepage");
+            },
+          }
+        : !selectedProductPage
+          ? {
+              title: "Create a product discovery page",
+              detail: "Customers still need a dedicated page for browsing products, collections, or featured offers.",
+              actionLabel: "Open Advanced Editing",
+              action: () => {
+                window.location.href = advancedEditorHref;
+              },
+            }
+        : hasUnsavedChanges
+          ? {
+              title: "Save and re-check the live preview",
+              detail: "Your current draft has changes waiting to be saved before the final merchant-eye pass.",
+              actionLabel: "Jump To Publish Step",
+              action: () => {
+                setBasicGuideStep("launch");
+                scrollToBuilderSection("basic-step-launch");
+              },
+            }
+          : {
+              title: "Review checkout trust next",
+              detail: "The storefront content looks healthy. Do a payment and delivery review before calling it launch-ready.",
+              actionLabel: "Open Checkout Settings",
+              action: () => {
+                window.location.href = checkoutSettingsHref;
+              },
+            };
+  const previewChecklist = [
+    {
+      label: "CTA clarity",
+      done: Boolean(homepageHeroProps.ctaText),
+      hint: "Shoppers should instantly know the next click.",
+    },
+    {
+      label: "Mobile readability",
+      done: Boolean((homepageHeroProps.title ?? "").toString().trim().length <= 60),
+      hint: "Headline and support copy should stay easy to scan on phones.",
+    },
+    {
+      label: "Trust proof",
+      done: Boolean(
+        ((homepageFaqProps.faqs ?? []).length > 0)
+        || Boolean(homepageTestimonialsProps.title)
+        || Boolean(homepageTrustProps.title),
+      ),
+      hint: "FAQ, testimonials, or trust badges should reduce buying hesitation.",
+    },
+    {
+      label: "Product path",
+      done: Boolean(homepageFeaturedProps.title || productStoryPages.length > 0),
+      hint: "The page should point toward products, collections, or inquiry flow.",
+    },
+  ] as const;
+  const activeJourneyWizard = selectedPage?.isHomepage
+    ? {
+        title: "Homepage Setup",
+        steps: [
+          "Lead with one clear promise and CTA.",
+          "Use promotion blocks to spotlight the current campaign.",
+          "Add FAQ, testimonials, or trust sections before publishing.",
+        ],
+      }
+      : /product|shop|catalog/i.test(`${selectedPage?.slug ?? ""} ${selectedPage?.title ?? ""}`)
+      ? {
+          title: "Product Page Story",
+          steps: [
+            "Clarify what shoppers can browse or buy here.",
+            "Make product sections easy to discover and compare.",
+            "Keep supporting proof close to the shopping path.",
+          ],
+        }
+      : {
+          title: "Custom Page Content",
+          steps: [
+            "Keep the page focused on one purpose, like FAQ, policy, or brand story.",
+            "Use short sections instead of long walls of text.",
+            "Add a closing CTA or support path so the page still moves shoppers forward.",
+        ],
+        };
+  const openBasicStep = (step: BasicGuideStep) => {
+    setBasicGuideStep(step);
+    const target = basicGuideSteps.find((item) => item.id === step);
+    if (target) {
+      scrollToBuilderSection(target.sectionId);
+    }
+  };
+  const openPageAndStep = (pageId: string, step: BasicGuideStep) => {
+    setSelectedPageId(pageId);
+    setBasicGuideStep(step);
+    const target = basicGuideSteps.find((item) => item.id === step);
+    if (target) {
+      scrollToBuilderSection(target.sectionId);
+    }
+  };
+  const basicStepBlockers: Record<BasicGuideStep, string> = {
+    basics: store.name.trim() && store.description.trim() ? "Store basics look good." : "Store name or description still needs attention.",
+    homepage: homepageHeroProps.ctaText && (((homepageFaqProps.faqs ?? []).length > 0) || Boolean(homepageTestimonialsProps.title) || Boolean(homepageTrustProps.title))
+      ? "Homepage story and trust flow are taking shape."
+      : "Homepage still needs a stronger CTA, product path, or trust content.",
+    product: selectedProductPage
+      ? "Use this section to sharpen product browsing, trust, and page summary content."
+      : "No product-focused page is selected yet.",
+    checkout: "Review payment, delivery, support, and policy confidence before launch.",
+    custom: selectedCustomContentPage
+      ? "Use custom pages to answer support and trust questions before they become messages."
+      : "Add About, FAQ, or policy pages to complete the storefront story.",
+    launch: hasUnsavedChanges ? "You still have unsaved changes before the final review." : "Ready for final preview and publish checks.",
+  };
+  const basicStepPrimaryLabels: Record<BasicGuideStep, string> = {
+    basics: basicStepCompletion.basics ? "Review Basics" : "Complete Basics",
+    homepage: basicStepCompletion.homepage ? "Review Homepage" : "Build Homepage",
+    product: basicStepCompletion.product ? "Refine Product Page" : "Set Up Product Page",
+    checkout: "Review Checkout Trust",
+    custom: basicStepCompletion.custom ? "Review Custom Pages" : "Set Up Custom Pages",
+    launch: hasUnsavedChanges ? "Finish Launch Check" : "Open Launch Review",
+  };
+  const infoMapCards = [
+    homepagePage ? {
+      id: "info-homepage",
+      title: "Homepage",
+      icon: StoreIcon,
+      placements: ["Homepage", "Main storefront", "First visit"],
+      summary: "Hero, promotion, product discovery, and trust content that shapes the first impression.",
+      actionLabel: "Open Homepage Setup",
+      onClick: () => openPageAndStep(homepagePage.id, "homepage"),
+    } : null,
+    selectedProductPage ? {
+      id: "info-product",
+      title: selectedProductPage.title,
+      icon: ShoppingBag,
+      placements: ["Product page", "Catalog flow", selectedProductPage.slug],
+      summary: "Product browsing or collection storytelling that helps shoppers move from interest into purchase.",
+      actionLabel: "Open Product Setup",
+      onClick: () => openPageAndStep(selectedProductPage.id, "product"),
+    } : null,
+    selectedCustomContentPage ? {
+      id: "info-custom",
+      title: selectedCustomContentPage.title,
+      icon: FileText,
+      placements: ["Custom page", /about/i.test(selectedCustomContentPage.slug) ? "Navbar / brand story" : "Footer / support", selectedCustomContentPage.slug],
+      summary: "Supporting content like About, FAQ, policy, or service explanations.",
+      actionLabel: "Open Custom Page Setup",
+      onClick: () => openPageAndStep(selectedCustomContentPage.id, "custom"),
+    } : null,
+    {
+      id: "info-checkout",
+      title: "Checkout Trust",
+      icon: HelpCircle,
+      placements: ["Checkout", "Payment flow", "Delivery expectations"],
+      summary: "Payment methods, delivery notes, and support reassurance that reduce hesitation before order placement.",
+      actionLabel: "Open Checkout Trust",
+      onClick: () => openBasicStep("checkout"),
+    },
+    {
+      id: "info-footer",
+      title: "Footer & Support",
+      icon: MapPin,
+      placements: ["Footer", "Support", "Site-wide"],
+      summary: "Footer copy, support links, extra navigation, and policy access that appear across the storefront.",
+      actionLabel: "Open Footer Settings",
+      onClick: () => {
+        window.location.href = footerSettingsHref;
+      },
+    },
+  ].filter(Boolean) as Array<{
+    id: string;
+    title: string;
+    icon: typeof StoreIcon;
+    placements: string[];
+    summary: string;
+    actionLabel: string;
+    onClick: () => void;
+  }>;
+  const renderCollapsedBasicStep = (step: BasicGuideStep) => {
+    const meta = basicGuideSteps.find((item) => item.id === step) ?? activeBasicStepMeta;
+    const isReady = basicStepCompletion[step];
+
+    return (
+      <div id={meta.sectionId} className="scroll-mt-28 rounded-xl border border-border/80 bg-background/70 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">{meta.title}</p>
+              <Badge variant={isReady ? "outline" : "secondary"} className="text-[10px]">
+                {isReady ? "Ready" : "Needs attention"}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{meta.description}</p>
+            <p className="mt-3 text-xs text-muted-foreground">{basicStepBlockers[step]}</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => openBasicStep(step)}>
+            {basicStepPrimaryLabels[step]}
+          </Button>
+        </div>
+      </div>
+    );
+  };
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1935,6 +2297,46 @@ export default function CmsPagesManager() {
                     {guidedPageJourneys.filter((item) => item.state === "Ready" || item.state === "Configured" || item.state === "Active").length}/{guidedPageJourneys.length} tracks moving
                   </Badge>
                 </div>
+                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Next Recommended Action</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{nextRecommendedAction.title}</p>
+                        <p className="mt-2 text-xs leading-5 text-muted-foreground">{nextRecommendedAction.detail}</p>
+                      </div>
+                      <Button type="button" size="sm" className="rounded-full" onClick={nextRecommendedAction.action}>
+                        {nextRecommendedAction.actionLabel}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card/80 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Merchant Readiness</p>
+                        <p className="mt-1 text-xs text-muted-foreground">A quick confidence score based on hero, trust, discovery, checkout, and save status.</p>
+                      </div>
+                      <div className="rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground">
+                        {completionScore}%
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-secondary/70">
+                      <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${completionScore}%` }} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {basicCompletionChecks.map((item) => (
+                        <Badge key={item.label} variant={item.done ? "outline" : "secondary"}>
+                          {item.done ? "Done" : "Needs work"}: {item.label}
+                        </Badge>
+                      ))}
+                    </div>
+                    {activeBlockers.length > 0 ? (
+                      <div className="mt-3 rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">
+                        {activeBlockers[0]}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
                 <div className="mt-4 grid gap-3 xl:grid-cols-4">
                   {guidedPageJourneys.map((journey, index) => (
                     <div key={journey.id} className="rounded-xl border border-border bg-card/80 p-3">
@@ -1950,6 +2352,25 @@ export default function CmsPagesManager() {
                       </Button>
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 rounded-2xl border border-border bg-card/80 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{activeJourneyWizard.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Basic mode should feel like a mini-wizard for the page you are actively shaping.
+                      </p>
+                    </div>
+                    <Badge variant="outline">{selectedPageJourneyLabel}</Badge>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {activeJourneyWizard.steps.map((step, index) => (
+                      <div key={step} className="rounded-xl border border-border/70 bg-background/70 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Step {index + 1}</p>
+                        <p className="mt-2 text-sm text-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -2138,10 +2559,12 @@ export default function CmsPagesManager() {
                   <p className="text-sm font-semibold text-foreground">Editor workspace</p>
                   <p className="text-xs text-muted-foreground">
                     {workspaceTab === "pages"
-                      ? "Pick a page first, then focus one block at a time."
+                      ? "Pick a page first, then focus one section or guided setup area at a time."
                       : workspaceTab === "theme"
                         ? "Adjust store-wide visual settings."
-                        : "Store setup and publishing details."}
+                        : workspaceTab === "info"
+                          ? "See where content appears across the storefront and jump into edits."
+                          : "Store setup and publishing details."}
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileSettingsOpen(false)}>
@@ -2150,11 +2573,12 @@ export default function CmsPagesManager() {
               </div>
             </div>
 
-            <Tabs value={workspaceTab} onValueChange={(value) => setWorkspaceTab(value as "store" | "theme" | "pages")} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs value={workspaceTab} onValueChange={(value) => setWorkspaceTab(value as "store" | "theme" | "pages" | "info")} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="store">Store</TabsTrigger>
                 <TabsTrigger value="theme">Theme</TabsTrigger>
                 <TabsTrigger value="pages">Pages</TabsTrigger>
+                <TabsTrigger value="info">Info</TabsTrigger>
               </TabsList>
 
               <TabsContent value="store" className="space-y-4">
@@ -2343,6 +2767,83 @@ export default function CmsPagesManager() {
                       <p className="text-xs text-muted-foreground">Advanced mode only. This CSS is applied on top of the resolved theme tokens for this store.</p>
                     </div>
                   ) : null}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="info" className="space-y-4">
+                <div className="rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-0.5 h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Storefront Placement Map</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Use this map to understand where content appears before you edit it. Each card shows a lightweight storefront skeleton and can jump you straight into the matching setup area.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-4">
+                  {infoMapCards.map((card) => {
+                    const Icon = card.icon;
+
+                    return (
+                      <div key={card.id} className="rounded-2xl border border-border bg-background/85 p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-primary" />
+                              <p className="text-sm font-semibold text-foreground">{card.title}</p>
+                            </div>
+                            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{card.summary}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {card.placements.map((placement) => (
+                                <Badge key={`${card.id}-${placement}`} variant="outline">{placement}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={card.onClick}>
+                            {card.actionLabel}
+                          </Button>
+                        </div>
+                        <div className="mt-4 rounded-2xl border border-border/70 bg-muted/30 p-4">
+                          <div className="grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)]">
+                            <div className="space-y-2 rounded-xl border border-border/60 bg-background/80 p-3">
+                              <div className="h-3 w-20 rounded-full bg-muted" />
+                              <div className="h-8 rounded-xl bg-muted/80" />
+                              <div className="h-8 rounded-xl bg-muted/70" />
+                            </div>
+                            <div className="space-y-3 rounded-xl border border-border/60 bg-background/80 p-3">
+                              <div className="h-4 w-28 rounded-full bg-muted" />
+                              <div className="h-24 rounded-2xl bg-muted/75" />
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <div className="h-20 rounded-xl bg-muted/70" />
+                                <div className="h-20 rounded-xl bg-muted/60" />
+                              </div>
+                              <div className="h-12 rounded-xl bg-muted/50" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Button type="button" variant="outline" className="justify-start rounded-xl" onClick={() => { window.location.href = faqSettingsHref; }}>
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Open FAQ settings
+                  </Button>
+                  <Button type="button" variant="outline" className="justify-start rounded-xl" onClick={() => { window.location.href = aboutSettingsHref; }}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Open About settings
+                  </Button>
+                  <Button type="button" variant="outline" className="justify-start rounded-xl" onClick={() => { window.location.href = supportSettingsHref; }}>
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Open support settings
+                  </Button>
+                  <Button type="button" variant="outline" className="justify-start rounded-xl" onClick={() => { window.location.href = checkoutSettingsHref; }}>
+                    <ShoppingBag className="mr-2 h-4 w-4" />
+                    Open payment settings
+                  </Button>
                 </div>
               </TabsContent>
 
@@ -2740,19 +3241,19 @@ export default function CmsPagesManager() {
                       <div id="basic-step-basics" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
                         <div className="rounded-xl border border-border p-4 md:col-span-2">
                           <p className="text-sm font-semibold text-foreground">Store Basics</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Start with the essentials that merchants expect to understand first: what page they are on, what the store says about itself, and whether the site is live.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Start with the essentials merchants expect first: identity, publishing, and where the main homepage experience lives.</p>
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="grid gap-2">
-                              <Label>Editing Page</Label>
-                              <Input value={selectedPage.title} readOnly />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Page URL</Label>
-                              <Input value={selectedPage.slug} readOnly />
-                            </div>
                             <div className="grid gap-2">
                               <Label>Store Name</Label>
                               <Input value={store.name} onChange={(e) => commitStoreChange({ ...store, name: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Store Slug</Label>
+                              <Input value={store.slug} readOnly />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Homepage</Label>
+                              <Input value={homepagePage?.title ?? "No homepage selected"} readOnly />
                             </div>
                             <div className="grid gap-2">
                               <Label>Store Published</Label>
@@ -2767,417 +3268,365 @@ export default function CmsPagesManager() {
                             </div>
                           </div>
                           <div className="mt-4 flex justify-end">
-                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
-                              setBasicGuideStep("hero");
-                              scrollToBuilderSection("basic-step-hero");
-                            }}>
+                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("homepage")}>
                               Next Step
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       </div>
-                      ) : null}
-                      {basicGuideStep === "hero" ? (
-                      <div id="basic-step-hero" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
-                      {heroBlock ? (
-                        <div className="rounded-xl border border-border p-4 md:col-span-2">
-                          <p className="text-sm font-semibold text-foreground">Hero Section</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Shape the first thing shoppers see: promise, CTA, and media. Keep this sharp and easy to skim on mobile.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Headline</Label>
-                              <Input value={heroBlock.props.title ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Highlight Text</Label>
-                              <Input value={heroBlock.props.highlight ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { highlight: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Description</Label>
-                              <Textarea rows={4} value={heroBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { subtitle: e.target.value })} />
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="grid gap-2">
-                                <Label>Primary Button</Label>
-                                <Input value={heroBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { ctaText: e.target.value })} />
+                      ) : renderCollapsedBasicStep("basics")}
+                      {basicGuideStep === "homepage" ? (
+                      <div id="basic-step-homepage" className="space-y-4 scroll-mt-28">
+                        {homepagePage ? (
+                          <>
+                            {selectedPage?.id !== homepagePage.id ? (
+                              <div className="rounded-xl border border-border/80 bg-background/80 p-4">
+                                <p className="text-sm font-medium text-foreground">You are currently viewing {selectedPage?.title}.</p>
+                                <p className="mt-1 text-xs text-muted-foreground">Switch to the homepage to edit the main storefront story in Basic mode.</p>
+                                <Button type="button" variant="outline" size="sm" className="mt-3 rounded-full" onClick={() => openPageAndStep(homepagePage.id, "homepage")}>
+                                  Switch to Homepage
+                                </Button>
                               </div>
-                              <div className="grid gap-2">
-                                <Label>Primary Link</Label>
-                                <Input value={heroBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(heroBlock.id, "hero", { ctaLink: e.target.value })} />
-                              </div>
+                            ) : null}
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {homepageHeroBlock ? (
+                                <div className="rounded-xl border border-border p-4 md:col-span-2">
+                                  <p className="text-sm font-semibold text-foreground">Hero</p>
+                                  <p className="mt-1 text-xs text-muted-foreground">Lead with one promise, one CTA, and media that helps shoppers understand the offer instantly.</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Headline</Label>
+                                      <Input value={homepageHeroProps.title ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { title: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Highlight Text</Label>
+                                      <Input value={homepageHeroProps.highlight ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { highlight: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Description</Label>
+                                      <Textarea rows={4} value={homepageHeroProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { subtitle: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div className="grid gap-2">
+                                        <Label>Primary Button</Label>
+                                        <Input value={homepageHeroProps.ctaText ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { ctaText: e.target.value })} />
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label>Primary Link</Label>
+                                        <Input value={homepageHeroProps.ctaLink ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { ctaLink: e.target.value })} />
+                                      </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Hero Media</Label>
+                                      <CloudinaryUpload
+                                        value={homepageHeroProps.mediaUrl ?? ""}
+                                        onChange={(url) => updateBlockProps(homepageHeroBlock.id, "hero", { mediaUrl: url })}
+                                        onSelectAsset={(asset) => {
+                                          if (!asset) return;
+                                          updateBlockProps(homepageHeroBlock.id, "hero", { mediaType: asset.resourceType });
+                                        }}
+                                        folder="hero"
+                                        accept="image/*,video/*"
+                                        label="Upload hero media"
+                                        resourceType="auto"
+                                        storeId={store.id}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {homepagePromoBlock ? (
+                                <div className="rounded-xl border border-border p-4">
+                                  <p className="text-sm font-semibold text-foreground">Promotion</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Promo Title</Label>
+                                      <Input value={homepagePromoProps.title ?? ""} onChange={(e) => updateBlockProps(homepagePromoBlock.id, "promo-banner", { title: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Promo Message</Label>
+                                      <Textarea rows={4} value={homepagePromoProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepagePromoBlock.id, "promo-banner", { subtitle: e.target.value })} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {homepageFeaturedProductsBlock ? (
+                                <div className="rounded-xl border border-border p-4">
+                                  <p className="text-sm font-semibold text-foreground">Featured Products</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Section Title</Label>
+                                      <Input value={homepageFeaturedProps.title ?? ""} onChange={(e) => updateBlockProps(homepageFeaturedProductsBlock.id, "featured-products", { title: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Tagline</Label>
+                                      <Input value={homepageFeaturedProps.tagline ?? ""} onChange={(e) => updateBlockProps(homepageFeaturedProductsBlock.id, "featured-products", { tagline: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Product Count</Label>
+                                      <Input type="number" min={1} max={24} value={String(homepageFeaturedProps.limit ?? 6)} onChange={(e) => updateFeaturedProductLimit(homepageFeaturedProductsBlock.id, Number(e.target.value || 6))} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {homepageFaqBlock ? (
+                                <div className="rounded-xl border border-border p-4 md:col-span-2">
+                                  <p className="text-sm font-semibold text-foreground">FAQ</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Heading</Label>
+                                      <Input value={homepageFaqProps.title ?? ""} onChange={(e) => updateBlockProps(homepageFaqBlock.id, "faq-accordion", { title: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-3 rounded-lg border border-border p-3">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-medium text-foreground">Questions</p>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: [...(homepageFaqProps.faqs ?? []), { q: "", a: "" }] })}>
+                                          <Plus className="h-4 w-4" />
+                                          Add FAQ
+                                        </Button>
+                                      </div>
+                                      {((homepageFaqProps.faqs ?? [])).map((faq, index) => (
+                                        <div key={`${faq.q}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                          <Input value={faq.q ?? ""} placeholder={`Question ${index + 1}`} onChange={(e) => {
+                                            const next = [...(homepageFaqProps.faqs ?? [])];
+                                            next[index] = { ...(next[index] ?? { q: "", a: "" }), q: e.target.value };
+                                            updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: next });
+                                          }} />
+                                          <Textarea rows={3} value={faq.a ?? ""} placeholder="Answer" onChange={(e) => {
+                                            const next = [...(homepageFaqProps.faqs ?? [])];
+                                            next[index] = { ...(next[index] ?? { q: "", a: "" }), a: e.target.value };
+                                            updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: next });
+                                          }} />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {homepageSocialFeedBlock ? (
+                                <div className="rounded-xl border border-border p-4">
+                                  <p className="text-sm font-semibold text-foreground">Social Feed</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Title</Label>
+                                      <Input value={homepageSocialProps.title ?? ""} onChange={(e) => updateBlockProps(homepageSocialFeedBlock.id, "social-feed", { title: e.target.value })} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Subtitle</Label>
+                                      <Input value={homepageSocialProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepageSocialFeedBlock.id, "social-feed", { subtitle: e.target.value })} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {homepageTrustBlock ? (
+                                <div className="rounded-xl border border-border p-4">
+                                  <p className="text-sm font-semibold text-foreground">Trust Section</p>
+                                  <div className="mt-4 grid gap-3">
+                                    <div className="grid gap-2">
+                                      <Label>Heading</Label>
+                                      <Input value={homepageTrustProps.title ?? ""} onChange={(e) => updateBlockProps(homepageTrustBlock.id, "trust-badges", { title: e.target.value })} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
-                            <div className="grid gap-2">
-                              <Label>Hero Media</Label>
-                              <CloudinaryUpload
-                                value={heroBlock.props.mediaUrl ?? ""}
-                                onChange={(url) => updateBlockProps(heroBlock.id, "hero", { mediaUrl: url })}
-                                onSelectAsset={(asset) => {
-                                  if (!asset) return;
-                                  updateBlockProps(heroBlock.id, "hero", { mediaType: asset.resourceType });
-                                }}
-                                folder="hero"
-                                accept="image/*,video/*"
-                                label="Upload hero media"
-                                resourceType="auto"
-                                storeId={store.id}
-                              />
+                            <div className="flex flex-wrap justify-between gap-2">
+                              <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("basics")}>
+                                <ChevronLeft className="h-4 w-4" />
+                                Back
+                              </Button>
+                              <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("product")}>
+                                Next Step
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
                             </div>
+                          </>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                            <p className="text-sm font-medium text-foreground">No homepage is ready yet.</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Create or assign a homepage in Advanced Editing, then return here for guided setup.</p>
                           </div>
+                        )}
+                      </div>
+                      ) : renderCollapsedBasicStep("homepage")}
+                      {basicGuideStep === "product" ? (
+                      <div id="basic-step-product" className="space-y-4 scroll-mt-28">
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Product Page Story</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Guide shoppers from browsing into confidence without touching raw block structure.</p>
+                          {productStoryPages.length > 0 ? (
+                            <>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {productStoryPages.map((page) => (
+                                  <Button key={page.id} type="button" size="sm" variant={selectedProductPage?.id === page.id ? "secondary" : "outline"} className="rounded-full" onClick={() => openPageAndStep(page.id, "product")}>
+                                    {page.title}
+                                  </Button>
+                                ))}
+                              </div>
+                              {selectedProductPage ? (
+                                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                  <div className="grid gap-2">
+                                    <Label>Page Title</Label>
+                                    <Input value={selectedPage?.id === selectedProductPage.id ? selectedPage.title : selectedProductPage.title} onChange={(e) => updateSelectedPage((page) => ({ ...page, title: e.target.value }))} />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label>Page Slug</Label>
+                                    <Input value={selectedProductPage.slug} readOnly />
+                                  </div>
+                                  <div className="grid gap-2 md:col-span-2">
+                                    <Label>SEO Title</Label>
+                                    <Input value={selectedPage?.id === selectedProductPage.id ? selectedPage.seoTitle ?? "" : selectedProductPage.seoTitle ?? ""} onChange={(e) => updateSelectedPage((page) => ({ ...page, seoTitle: e.target.value }))} />
+                                  </div>
+                                  <div className="grid gap-2 md:col-span-2">
+                                    <Label>SEO Description</Label>
+                                    <Textarea rows={3} value={selectedPage?.id === selectedProductPage.id ? selectedPage.seoDescription ?? "" : selectedProductPage.seoDescription ?? ""} onChange={(e) => updateSelectedPage((page) => ({ ...page, seoDescription: e.target.value }))} />
+                                  </div>
+                                  {productRichTextBlock ? (
+                                    <div className="grid gap-2 md:col-span-2 rounded-xl border border-border/70 p-3">
+                                      <Label>Story Section Title</Label>
+                                      <Input value={productRichTextProps.title ?? ""} onChange={(e) => updateBlockProps(productRichTextBlock.id, "rich-text", { title: e.target.value })} />
+                                      <Label>Story Section Copy</Label>
+                                      <Textarea rows={5} value={productRichTextProps.body ?? ""} onChange={(e) => updateBlockProps(productRichTextBlock.id, "rich-text", { body: e.target.value })} />
+                                    </div>
+                                  ) : null}
+                                  {productTrustBlock ? (
+                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                      <Label>Trust Heading</Label>
+                                      <Input value={productTrustProps.title ?? ""} onChange={(e) => updateBlockProps(productTrustBlock.id, "trust-badges", { title: e.target.value })} />
+                                    </div>
+                                  ) : null}
+                                  {productFaqBlock ? (
+                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                      <Label>FAQ Heading</Label>
+                                      <Input value={productFaqProps.title ?? ""} onChange={(e) => updateBlockProps(productFaqBlock.id, "faq-accordion", { title: e.target.value })} />
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                              <p className="text-sm font-medium text-foreground">No product-focused pages yet.</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Open Advanced Editing to add a catalog, collection, or product-story page first.</p>
+                              <Button asChild type="button" variant="outline" size="sm" className="mt-3 rounded-full">
+                                <Link to={advancedEditorHref}>Open Advanced Editing</Link>
+                              </Button>
+                            </div>
+                          )}
                           <div className="mt-4 flex flex-wrap justify-between gap-2">
-                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
-                              setBasicGuideStep("basics");
-                              scrollToBuilderSection("basic-step-basics");
-                            }}>
+                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("homepage")}>
                               <ChevronLeft className="h-4 w-4" />
                               Back
                             </Button>
-                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
-                              setBasicGuideStep("promotion");
-                              scrollToBuilderSection("basic-step-promotion");
-                            }}>
+                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("checkout")}>
                               Next Step
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
-                      ) : null}
                       </div>
-                      ) : null}
-                      {basicGuideStep === "promotion" ? (
-                      <>
-                      <div id="basic-step-promotion" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
-                      {promoBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Promo Banner</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Promotion message, badge, action button, and visibility settings.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={promoBlock.props.title ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Message</Label>
-                              <Textarea rows={4} value={promoBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { subtitle: e.target.value })} />
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="grid gap-2">
-                                <Label>Badge</Label>
-                                <Input value={promoBlock.props.badgeText ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { badgeText: e.target.value })} />
-                              </div>
-                              <div className="grid gap-2">
-                                <Label>Alignment</Label>
-                                <Select value={(promoBlock.props.textAlignment as string | undefined) ?? "center"} onValueChange={(value) => updateBlockProps(promoBlock.id, "promo-banner", { textAlignment: value })}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="left">Left</SelectItem>
-                                    <SelectItem value="center">Center</SelectItem>
-                                    <SelectItem value="right">Right</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="grid gap-2">
-                                <Label>Button Label</Label>
-                                <Input value={promoBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { ctaText: e.target.value })} />
-                              </div>
-                              <div className="grid gap-2">
-                                <Label>Button Link</Label>
-                                <Input value={promoBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(promoBlock.id, "promo-banner", { ctaLink: e.target.value })} />
-                              </div>
-                            </div>
-                          </div>
+                      ) : renderCollapsedBasicStep("product")}
+                      {basicGuideStep === "checkout" ? (
+                      <div id="basic-step-checkout" className="space-y-4 rounded-xl border border-border p-4 scroll-mt-28">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Checkout Trust</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Customers decide whether to finish the order here. Keep payment, delivery, policy, and support expectations clear.</p>
                         </div>
-                      ) : null}
-                      {featuredProductsBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Featured Products</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Control the section title, intro line, and how many products appear.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Section Title</Label>
-                              <Input value={featuredProductsBlock.props.title ?? ""} onChange={(e) => updateBlockProps(featuredProductsBlock.id, "featured-products", { title: e.target.value })} />
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {[
+                            { title: "Payment Settings", detail: "Manage enabled payment methods and checkout confidence.", actionLabel: "Open Payment Settings", action: () => { window.location.href = checkoutSettingsHref; } },
+                            { title: "Delivery Settings", detail: "Clarify delivery fees, timing, and fulfillment rules.", actionLabel: "Open Delivery Settings", action: () => { window.location.href = shippingSettingsHref; } },
+                            { title: "Support Settings", detail: "Make help channels visible before customers hesitate.", actionLabel: "Open Support Settings", action: () => { window.location.href = supportSettingsHref; } },
+                            { title: "Policy Content", detail: "Keep refund, exchange, and policy guidance easy to find.", actionLabel: "Open FAQ / Policy", action: () => { window.location.href = faqSettingsHref; } },
+                          ].map((item) => (
+                            <div key={item.title} className="rounded-xl border border-border/70 bg-background/80 p-4">
+                              <p className="text-sm font-medium text-foreground">{item.title}</p>
+                              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+                              <Button type="button" variant="outline" size="sm" className="mt-4 rounded-full" onClick={item.action}>
+                                {item.actionLabel}
+                              </Button>
                             </div>
-                            <div className="grid gap-2">
-                              <Label>Tagline</Label>
-                              <Input value={featuredProductsBlock.props.tagline ?? ""} onChange={(e) => updateBlockProps(featuredProductsBlock.id, "featured-products", { tagline: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Product Count</Label>
-                              <Input type="number" min={1} max={24} value={String(featuredProductsBlock.props.limit ?? 6)} onChange={(e) => updateFeaturedProductLimit(featuredProductsBlock.id, Number(e.target.value || 6))} />
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      ) : null}
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("product")}>
+                            <ChevronLeft className="h-4 w-4" />
+                            Back
+                          </Button>
+                          <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("custom")}>
+                            Next Step
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap justify-between gap-2">
-                        <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
-                          setBasicGuideStep("hero");
-                          scrollToBuilderSection("basic-step-hero");
-                        }}>
-                          <ChevronLeft className="h-4 w-4" />
-                          Back
-                        </Button>
-                        <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
-                          setBasicGuideStep("sections");
-                          scrollToBuilderSection("basic-step-sections");
-                        }}>
-                          Next Step
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      </>
-                      ) : null}
-                      {basicGuideStep === "sections" ? (
-                      <>
-                      <div id="basic-step-sections" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
-                      {faqBlock ? (
+                      ) : renderCollapsedBasicStep("checkout")}
+                      {basicGuideStep === "custom" ? (
+                      <div id="basic-step-custom" className="space-y-4 scroll-mt-28">
                         <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">FAQ Section</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Update the section heading and manage common question/answer pairs right here.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={faqBlock.props.title ?? ""} onChange={(e) => updateBlockProps(faqBlock.id, "faq-accordion", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Subtitle</Label>
-                              <Input value={faqBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(faqBlock.id, "faq-accordion", { subtitle: e.target.value })} />
-                            </div>
-                            <div className="grid gap-3 rounded-lg border border-border p-3 md:col-span-2">
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-medium text-foreground">FAQ Items</p>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => updateBlockProps(faqBlock.id, "faq-accordion", {
-                                    faqs: [...((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []), { q: "", a: "" }],
-                                  })}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                  Add FAQ
-                                </Button>
+                          <p className="text-sm font-semibold text-foreground">Custom Pages</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Use supporting pages for FAQs, brand story, policy, and reassurance without dropping into block lists.</p>
+                          {customContentPages.length > 0 ? (
+                            <>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {customContentPages.map((page) => (
+                                  <Button key={page.id} type="button" size="sm" variant={selectedCustomContentPage?.id === page.id ? "secondary" : "outline"} className="rounded-full" onClick={() => openPageAndStep(page.id, "custom")}>
+                                    {page.title}
+                                  </Button>
+                                ))}
                               </div>
-                              {(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? [])).map((faq, index) => (
-                                <div key={`${faq.q}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
+                              {selectedCustomContentPage ? (
+                                <div className="mt-4 grid gap-4 md:grid-cols-2">
                                   <div className="grid gap-2">
-                                    <Label>Question {index + 1}</Label>
-                                    <Input
-                                      value={faq.q ?? ""}
-                                      onChange={(e) => {
-                                        const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))];
-                                        next[index] = { ...(next[index] ?? { q: "", a: "" }), q: e.target.value };
-                                        updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
-                                      }}
-                                    />
+                                    <Label>Page Title</Label>
+                                    <Input value={selectedPage?.id === selectedCustomContentPage.id ? selectedPage.title : selectedCustomContentPage.title} onChange={(e) => updateSelectedPage((page) => ({ ...page, title: e.target.value }))} />
                                   </div>
                                   <div className="grid gap-2">
-                                    <Label>Answer</Label>
-                                    <Textarea
-                                      rows={3}
-                                      value={faq.a ?? ""}
-                                      onChange={(e) => {
-                                        const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))];
-                                        next[index] = { ...(next[index] ?? { q: "", a: "" }), a: e.target.value };
-                                        updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
-                                      }}
-                                    />
+                                    <Label>Page Slug</Label>
+                                    <Input value={selectedCustomContentPage.slug} readOnly />
                                   </div>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-fit text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      const next = [...(((faqBlock.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []))].filter((_, itemIndex) => itemIndex !== index);
-                                      updateBlockProps(faqBlock.id, "faq-accordion", { faqs: next });
-                                    }}
-                                  >
-                                    Remove FAQ
-                                  </Button>
+                                  {customRichTextBlock ? (
+                                    <div className="grid gap-2 md:col-span-2 rounded-xl border border-border/70 p-3">
+                                      <Label>Page Heading</Label>
+                                      <Input value={customRichTextProps.title ?? ""} onChange={(e) => updateBlockProps(customRichTextBlock.id, "rich-text", { title: e.target.value })} />
+                                      <Label>Page Body</Label>
+                                      <Textarea rows={6} value={customRichTextProps.body ?? ""} onChange={(e) => updateBlockProps(customRichTextBlock.id, "rich-text", { body: e.target.value })} />
+                                    </div>
+                                  ) : null}
+                                  {customFaqBlock ? (
+                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                      <Label>FAQ Heading</Label>
+                                      <Input value={customFaqProps.title ?? ""} onChange={(e) => updateBlockProps(customFaqBlock.id, "faq-accordion", { title: e.target.value })} />
+                                    </div>
+                                  ) : null}
+                                  {customTrustBlock ? (
+                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
+                                      <Label>Trust Heading</Label>
+                                      <Input value={customTrustProps.title ?? ""} onChange={(e) => updateBlockProps(customTrustBlock.id, "trust-badges", { title: e.target.value })} />
+                                    </div>
+                                  ) : null}
                                 </div>
-                              ))}
+                              ) : null}
+                            </>
+                          ) : (
+                            <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                              <p className="text-sm font-medium text-foreground">No custom pages are available yet.</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Add an About, FAQ, or policy page in Advanced Editing first, then return here for guided copy updates.</p>
                             </div>
+                          )}
+                          <div className="mt-4 flex flex-wrap justify-between gap-2">
+                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("checkout")}>
+                              <ChevronLeft className="h-4 w-4" />
+                              Back
+                            </Button>
+                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("launch")}>
+                              Next Step
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                      ) : null}
-                      {trustBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Trust Section</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Edit the section heading here. Badge lists and structured entries stay in Advanced.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={trustBlock.props.title ?? ""} onChange={(e) => updateBlockProps(trustBlock.id, "trust-badges", { title: e.target.value })} />
-                            </div>
-                            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                              Structured badge editing lives in Advanced Editing.
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                      {socialFeedBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Social Feed</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Update the section title, intro text, and upload or reorder the media you want to show.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={socialFeedBlock.props.title ?? ""} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Subtitle</Label>
-                              <Input value={socialFeedBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { subtitle: e.target.value })} />
-                            </div>
-                            <div className="grid gap-3 md:col-span-2">
-                              <div className="flex items-center justify-between gap-3">
-                                <Label>Feed Media</Label>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => updateBlockProps(socialFeedBlock.id, "social-feed", {
-                                    images: [...(((socialFeedBlock.props.images as string[] | undefined) ?? [])), ""],
-                                  })}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                  Add Slot
-                                </Button>
-                              </div>
-                              {((((socialFeedBlock.props.images as string[] | undefined) ?? []))).map((image, index) => (
-                                <div key={`${image}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                  <Label>Media {index + 1}</Label>
-                                  <CloudinaryUpload
-                                    value={image}
-                                    onChange={(url) => {
-                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))];
-                                      next[index] = url;
-                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
-                                    }}
-                                    folder="social-feed"
-                                    accept="image/*,video/*"
-                                    label="Upload feed media"
-                                    resourceType="auto"
-                                    storeId={store.id}
-                                  />
-                                  <Input
-                                    value={image}
-                                    placeholder="Or paste media URL"
-                                    onChange={(e) => {
-                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))];
-                                      next[index] = e.target.value;
-                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
-                                    }}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-fit text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      const next = [...(((socialFeedBlock.props.images as string[] | undefined) ?? []))].filter((_, itemIndex) => itemIndex !== index);
-                                      updateBlockProps(socialFeedBlock.id, "social-feed", { images: next });
-                                    }}
-                                  >
-                                    Remove Media
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                      {videoReelBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Video Highlight</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Set the video title, URL, and CTA without touching raw block settings.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={videoReelBlock.props.title ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Video URL</Label>
-                              <Input value={videoReelBlock.props.videoUrl ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { videoUrl: e.target.value })} />
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="grid gap-2">
-                                <Label>CTA Label</Label>
-                                <Input value={videoReelBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { ctaText: e.target.value })} />
-                              </div>
-                              <div className="grid gap-2">
-                                <Label>CTA Link</Label>
-                                <Input value={videoReelBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { ctaLink: e.target.value })} />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                      {testimonialsBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Testimonials</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Edit the section heading here. Review entries stay in Advanced for structured editing.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={testimonialsBlock.props.title ?? ""} onChange={(e) => updateBlockProps(testimonialsBlock.id, "testimonials", { title: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Subtitle</Label>
-                              <Input value={testimonialsBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(testimonialsBlock.id, "testimonials", { subtitle: e.target.value })} />
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                      {categoryShowcaseBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Category Showcase</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Adjust the category section headline and intro without entering block mode.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Tagline</Label>
-                              <Input value={categoryShowcaseBlock.props.tagline ?? ""} onChange={(e) => updateBlockProps(categoryShowcaseBlock.id, "category-showcase", { tagline: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={categoryShowcaseBlock.props.title ?? ""} onChange={(e) => updateBlockProps(categoryShowcaseBlock.id, "category-showcase", { title: e.target.value })} />
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-                      {recentlyViewedBlock ? (
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Recently Viewed</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Simple heading control for the recently viewed products section.</p>
-                          <div className="mt-4 grid gap-3">
-                            <div className="grid gap-2">
-                              <Label>Title</Label>
-                              <Input value={recentlyViewedBlock.props.title ?? ""} onChange={(e) => updateBlockProps(recentlyViewedBlock.id, "recently-viewed", { title: e.target.value })} />
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
                       </div>
-                      <div className="flex flex-wrap justify-between gap-2">
-                        <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
-                          setBasicGuideStep("promotion");
-                          scrollToBuilderSection("basic-step-promotion");
-                        }}>
-                          <ChevronLeft className="h-4 w-4" />
-                          Back
-                        </Button>
-                        <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => {
-                          setBasicGuideStep("launch");
-                          scrollToBuilderSection("basic-step-launch");
-                        }}>
-                          Next Step
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      </>
-                      ) : null}
+                      ) : renderCollapsedBasicStep("custom")}
                       {basicGuideStep === "launch" ? (
                       <div id="basic-step-launch" className="space-y-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 scroll-mt-28">
                         <div>
@@ -3190,15 +3639,15 @@ export default function CmsPagesManager() {
                           {[
                             {
                               title: "Message check",
-                              ready: Boolean(heroBlock?.props.title && heroBlock?.props.ctaText),
+                              ready: Boolean(homepageHeroProps.title && homepageHeroProps.ctaText),
                               detail: "Your headline and CTA should tell shoppers what to do next immediately.",
                             },
                             {
                               title: "Trust check",
                               ready: Boolean(
-                                (((faqBlock?.props.faqs as Array<{ q: string; a: string }> | undefined) ?? []).length > 0)
-                                || Boolean(trustBlock?.props.title)
-                                || Boolean(testimonialsBlock?.props.title),
+                                ((homepageFaqProps.faqs ?? []).length > 0)
+                                || Boolean(homepageTrustProps.title)
+                                || Boolean(homepageTestimonialsProps.title),
                               ),
                               detail: "Make sure support answers, proof, or trust cues appear before customers hesitate.",
                             },
@@ -3223,11 +3672,9 @@ export default function CmsPagesManager() {
                           <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Need templates, raw JSON, CSS, or structure changes? Use Advanced.</div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
-                            <a href={previewHref} target="_blank" rel="noreferrer">
-                              <Eye className="h-4 w-4" />
-                              Preview storefront
-                            </a>
+                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={openPreviewWorkspace}>
+                            <Eye className="h-4 w-4" />
+                            Preview storefront
                           </Button>
                           <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="gap-2 rounded-full">
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -3239,15 +3686,15 @@ export default function CmsPagesManager() {
                         </div>
                         <div className="flex justify-start">
                           <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
-                            setBasicGuideStep("sections");
-                            scrollToBuilderSection("basic-step-sections");
+                            setBasicGuideStep("custom");
+                            scrollToBuilderSection("basic-step-custom");
                           }}>
                             <ChevronLeft className="h-4 w-4" />
                             Back
                           </Button>
                         </div>
                       </div>
-                      ) : null}
+                      ) : renderCollapsedBasicStep("launch")}
                     </div>
                   ) : null}
                   {isAdvancedEditor ? (
@@ -3846,6 +4293,18 @@ export default function CmsPagesManager() {
                         size="sm"
                         variant="ghost"
                         className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => {
+                          setDesktopPreviewMode("side");
+                          setDesktopPreviewSide((current) => (current === "right" ? "left" : "right"));
+                        }}
+                      >
+                        Flip Side
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-md px-3 text-xs"
                         onClick={() => setDesktopPreviewMode("minimized")}
                       >
                         Min
@@ -4049,7 +4508,10 @@ export default function CmsPagesManager() {
                   </div>
                 ) : null}
                 {desktopPreviewMode === "side" ? (
-                  <div className="hidden lg:block fixed right-24 top-24 z-30 w-[min(460px,calc(100vw-8rem))]">
+                  <div className={cn(
+                    "hidden lg:block fixed top-24 z-30 w-[min(460px,calc(100vw-8rem))]",
+                    desktopPreviewSide === "right" ? "right-24" : "left-24",
+                  )}>
                     <Card className="overflow-hidden border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl">
                       <CardHeader className="space-y-3 border-b border-border/70 pb-4">
                         <div className="flex items-start justify-between gap-3">
@@ -4087,6 +4549,9 @@ export default function CmsPagesManager() {
                           <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("below")}>
                             Push Below
                           </Button>
+                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewSide((current) => (current === "right" ? "left" : "right"))}>
+                            Move {desktopPreviewSide === "right" ? "Left" : "Right"}
+                          </Button>
                           <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("hidden")}>
                             Close
                           </Button>
@@ -4098,6 +4563,23 @@ export default function CmsPagesManager() {
                         </div>
                       </CardHeader>
                       <CardContent className="max-h-[78vh] overflow-auto p-4">
+                        <div className="mb-4 rounded-xl border border-border/70 bg-background/80 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Preview Checklist</p>
+                            <Badge variant="outline">{previewChecklist.filter((item) => item.done).length}/{previewChecklist.length} ready</Badge>
+                          </div>
+                          <div className="mt-3 grid gap-2">
+                            {previewChecklist.map((item) => (
+                              <div key={item.label} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card/70 px-3 py-2">
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                                  <p className="mt-1 text-[11px] text-muted-foreground">{item.hint}</p>
+                                </div>
+                                <Badge variant={item.done ? "outline" : "secondary"}>{item.done ? "Good" : "Check"}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                         {previewCanvas}
                       </CardContent>
                     </Card>
@@ -4248,6 +4730,23 @@ export default function CmsPagesManager() {
                   </Button>
                 </div>
                 <div className="overflow-auto px-4 pb-6 pt-4">
+                  <div className="mb-4 rounded-xl border border-border/70 bg-background/80 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Preview Checklist</p>
+                      <Badge variant="outline">{previewChecklist.filter((item) => item.done).length}/{previewChecklist.length} ready</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      {previewChecklist.map((item) => (
+                        <div key={item.label} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card/70 px-3 py-2">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.label}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">{item.hint}</p>
+                          </div>
+                          <Badge variant={item.done ? "outline" : "secondary"}>{item.done ? "Good" : "Check"}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   {previewCanvas}
                 </div>
               </SheetContent>
