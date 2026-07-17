@@ -5,6 +5,8 @@ export type PlanCatalogRecord = {
   name: string;
   description: string | null;
   monthly_price: number | null;
+  annual_price?: number | null;
+  annual_discount_percentage?: number | null;
   currency_code?: string | null;
   store_limit?: number | null;
   is_active?: boolean | null;
@@ -26,6 +28,8 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
     name: "Basic",
     description: "A simple start for new stores that want to launch fast.",
     monthly_price: 990,
+    annual_price: 11880,
+    annual_discount_percentage: 0,
     currency_code: "BDT",
     store_limit: 1,
     is_active: true,
@@ -38,6 +42,8 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
     name: "Advanced",
     description: "Best for growing brands that want stronger campaigns and more control.",
     monthly_price: 1490,
+    annual_price: 17880,
+    annual_discount_percentage: 0,
     currency_code: "BDT",
     store_limit: 3,
     is_active: true,
@@ -50,6 +56,8 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
     name: "Pro",
     description: "For teams that need more stores, deeper support, and a guided launch plan.",
     monthly_price: 3990,
+    annual_price: 47880,
+    annual_discount_percentage: 0,
     currency_code: "BDT",
     store_limit: null,
     is_active: true,
@@ -113,8 +121,32 @@ export function isSubscriptionLive(
   return status === "active" || status === "trialing";
 }
 
-export function formatPlanPrice(plan?: Pick<PlanCatalogRecord, "monthly_price" | "currency_code"> | null) {
-  const amount = Number(plan?.monthly_price ?? 0);
+export type BillingInterval = "monthly" | "annual";
+
+export function getPlanPrice(
+  plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price"> | null,
+  interval: BillingInterval = "monthly",
+) {
+  if (interval === "annual") {
+    const annualAmount = Number(plan?.annual_price ?? 0);
+    if (Number.isFinite(annualAmount) && annualAmount > 0) {
+      return annualAmount;
+    }
+    return Math.max(0, Number(plan?.monthly_price ?? 0) * 12);
+  }
+
+  return Math.max(0, Number(plan?.monthly_price ?? 0));
+}
+
+export function getPlanAnnualDiscountPercent(plan?: Pick<PlanCatalogRecord, "annual_discount_percentage"> | null) {
+  return Math.max(0, Number(plan?.annual_discount_percentage ?? 0) || 0);
+}
+
+export function formatPlanPrice(
+  plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "currency_code"> | null,
+  interval: BillingInterval = "monthly",
+) {
+  const amount = getPlanPrice(plan, interval);
   const currency = plan?.currency_code || "BDT";
   return `${currency} ${Math.round(amount).toLocaleString()}`;
 }
@@ -127,7 +159,7 @@ export async function loadPublicPlanCatalog() {
 
   const { data } = await supabase
     .from("cms_plans")
-    .select("id, name, description, monthly_price, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
+    .select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
     .eq("is_active", true)
     .order("sort_order");
 

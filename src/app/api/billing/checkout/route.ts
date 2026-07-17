@@ -38,10 +38,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { storeId, planId } = await req.json();
+    const { storeId, planId, billingInterval } = await req.json();
     if (!storeId || !planId) {
       return NextResponse.json({ error: "Missing storeId or planId" }, { status: 400 });
     }
+    const interval = billingInterval === "annual" ? "annual" : "monthly";
 
     supabaseAdmin = billingCheckoutRouteDeps.getSupabaseAdminClient();
     const authorized = await billingCheckoutRouteDeps.canManageStore(supabaseAdmin, storeId, user.id, [
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
 
     const { data: plan, error: planError } = await supabaseAdmin
       .from("cms_plans")
-      .select("id, monthly_price, currency_code, is_active, contact_only")
+      .select("id, monthly_price, annual_price, currency_code, is_active, contact_only")
       .eq("id", planId)
       .maybeSingle();
 
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This plan must be activated through support" }, { status: 400 });
     }
 
-    const amount = Number(plan.monthly_price ?? 0);
+    const amount = Number(interval === "annual" ? (plan.annual_price ?? Number(plan.monthly_price ?? 0) * 12) : plan.monthly_price ?? 0);
     if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "This plan does not require checkout" }, { status: 400 });
     }
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
         currency: plan.currency_code || "BDT",
         status: "pending",
         provider: "bkash",
+        billing_interval: interval,
         billing_period_start: billingCheckoutRouteDeps.now().toISOString(),
       })
       .select("id")

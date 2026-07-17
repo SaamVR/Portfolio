@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
   const { data: invoice, error: invoiceError } = await supabaseAdmin
     .from("store_invoices")
-    .select("id, store_id, plan_id, amount, currency, status, provider_invoice_id")
+    .select("id, store_id, plan_id, amount, currency, status, provider_invoice_id, billing_interval")
     .eq("id", invoiceId)
     .maybeSingle();
 
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
     }
 
     const now = billingBkashCallbackRouteDeps.now();
-    const periodEnd = addMonths(now, 1);
+    const periodEnd = addMonths(now, invoice.billing_interval === "annual" ? 12 : 1);
 
     await supabaseAdmin
       .from("store_invoices")
@@ -140,6 +140,7 @@ export async function GET(req: Request) {
         paid_at: now.toISOString(),
         payment_method: "bkash",
         provider_invoice_id: paymentID,
+        billing_period_start: now.toISOString(),
         billing_period_end: periodEnd.toISOString(),
       })
       .eq("id", invoice.id);

@@ -24,10 +24,13 @@ import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   formatPlanPrice,
+  getPlanAnnualDiscountPercent,
   getEffectiveSubscriptionStatus,
+  getPlanPrice,
   getPlanTrialDays,
   getRemainingTrialDays,
   isContactOnlyPlan,
+  type BillingInterval,
 } from "@/lib/billing/plans";
 
 export default function Billing() {
@@ -39,6 +42,7 @@ export default function Billing() {
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<any | null>(null);
+  const [selectedBillingInterval, setSelectedBillingInterval] = useState<BillingInterval>("monthly");
   const [paymentMode, setPaymentMode] = useState<"choose" | "automated" | "manual">("choose");
   const [trxId, setTrxId] = useState("");
   const [submittingManualPayment, setSubmittingManualPayment] = useState(false);
@@ -69,6 +73,7 @@ export default function Billing() {
     setActionPlanId(null);
     setPaymentDialogOpen(false);
     setSelectedPlanForPayment(null);
+    setSelectedBillingInterval("monthly");
     setPaymentMode("choose");
     setTrxId("");
     setSubmittingManualPayment(false);
@@ -111,7 +116,7 @@ export default function Billing() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("cms_plans")
-        .select("id, name, description, monthly_price, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
+        .select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
         .eq("is_active", true)
         .order("sort_order");
 
@@ -145,14 +150,15 @@ export default function Billing() {
     ]);
   };
 
-  const handleInitiatePayment = (plan: any) => {
+  const handleInitiatePayment = (plan: any, billingInterval: BillingInterval = "monthly") => {
     setSelectedPlanForPayment(plan);
+    setSelectedBillingInterval(billingInterval);
     setPaymentMode("choose");
     setTrxId("");
     setPaymentDialogOpen(true);
   };
 
-  const handlePayNow = async (targetPlanId?: string) => {
+  const handlePayNow = async (targetPlanId?: string, billingInterval: BillingInterval = selectedBillingInterval) => {
     try {
       if (!activeStoreId) {
         throw new Error("No active store selected");
@@ -168,7 +174,7 @@ export default function Billing() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ storeId: activeStoreId, planId }),
+        body: JSON.stringify({ storeId: activeStoreId, planId, billingInterval }),
       });
 
       if (!res.ok) {
@@ -205,7 +211,7 @@ export default function Billing() {
 
       const monthlyPrice = Number(plan.monthly_price ?? 0);
       if (monthlyPrice > 0) {
-        handleInitiatePayment(plan);
+        handleInitiatePayment(plan, "monthly");
         return;
       }
 
@@ -252,7 +258,8 @@ export default function Billing() {
         .insert({
           store_id: activeStoreId,
           plan_id: selectedPlanForPayment.id,
-          amount: Number(selectedPlanForPayment.monthly_price),
+          amount: getPlanPrice(selectedPlanForPayment, selectedBillingInterval),
+          billing_interval: selectedBillingInterval,
           currency: "BDT",
           status: "pending",
           provider: "bkash_manual",
@@ -303,6 +310,7 @@ export default function Billing() {
 
   const renderInvoiceRow = (invoice: any) => {
     const displayDate = getInvoiceDisplayDate(invoice);
+    const billingStart = invoice.billing_period_start || (invoice.status === "paid" ? invoice.paid_at : null);
     return (
       <div key={invoice.id} className="rounded-xl border border-border bg-background p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -324,14 +332,15 @@ export default function Billing() {
               <p>Method: {formatInvoiceMethod(invoice)}</p>
               <p>Plan: {invoice.plan_id}</p>
               {invoice.provider_invoice_id ? <p>Reference: {invoice.provider_invoice_id}</p> : null}
-              {invoice.billing_period_start || invoice.billing_period_end ? (
+              {billingStart || invoice.billing_period_end ? (
                 <p>
                   Billing period:{" "}
-                  {invoice.billing_period_start ? format(new Date(invoice.billing_period_start), "PPP") : "N/A"}
+                  {billingStart ? format(new Date(billingStart), "PPP") : "N/A"}
                   {" - "}
                   {invoice.billing_period_end ? format(new Date(invoice.billing_period_end), "PPP") : "N/A"}
                 </p>
               ) : null}
+              {invoice.status === "paid" && invoice.paid_at ? <p>Activated on: {format(new Date(invoice.paid_at), "PPP p")}</p> : null}
             </div>
           </div>
         </div>
@@ -380,7 +389,7 @@ export default function Billing() {
                 {planName}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                {`BDT ${planPrice} / month`}
+                {`${formatPlanPrice(subscription?.cms_plans)} / month`}
               </div>
             </div>
 
@@ -474,11 +483,11 @@ export default function Billing() {
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
               {(plans || []).map((plan: any) => {
-                const monthlyPrice = Number(plan.monthly_price ?? 0);
                 const isCurrent = plan.id === currentPlanId;
                 const isContactPlan = isContactOnlyPlan(plan);
                 const isBusy = actionPlanId === plan.id;
                 const planTrial = `${getPlanTrialDays(plan)}-day trial`;
+                const annualDiscount = getPlanAnnualDiscountPercent(plan);
 
                 return (
                   <div key={plan.id} className={`rounded-lg border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border bg-background"}`}>
@@ -494,6 +503,8 @@ export default function Billing() {
                         {formatPlanPrice(plan)}
                       </p>
                       <p className="text-xs text-muted-foreground">per month</p>
+                      <p className="mt-2 text-sm font-medium text-foreground">{formatPlanPrice(plan, "annual")} per year</p>
+                      {annualDiscount > 0 ? <p className="text-xs text-primary">Save {annualDiscount}% with annual billing</p> : null}
                     </div>
                     <p className="mt-2 text-xs font-medium text-primary">{planTrial}</p>
                     <div className="mt-4 text-xs text-muted-foreground">
@@ -514,6 +525,20 @@ export default function Billing() {
                       {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       {isCurrent ? "Current Plan" : isContactPlan ? "Contact Support" : "Start Trial"}
                     </Button>
+                    {!isCurrent && !isContactPlan ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button type="button" variant="outline" disabled={Boolean(actionPlanId)} onClick={() => {
+                          handleInitiatePayment(plan, "monthly");
+                        }}>
+                          Monthly
+                        </Button>
+                        <Button type="button" variant="outline" disabled={Boolean(actionPlanId)} onClick={() => {
+                          handleInitiatePayment(plan, "annual");
+                        }}>
+                          Annual
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -530,18 +555,26 @@ export default function Billing() {
             </DialogTitle>
             <DialogDescription>
               {paymentMode === "choose" 
-                ? `Start the ${selectedPlanForPayment?.name} plan for ${formatPlanPrice(selectedPlanForPayment)} per month after a ${getPlanTrialDays(selectedPlanForPayment)}-day trial.`
-                : `Please follow instructions below to pay BDT ${selectedPlanForPayment?.monthly_price} using manual bKash.`
+                ? `Start the ${selectedPlanForPayment?.name} plan for ${formatPlanPrice(selectedPlanForPayment, selectedBillingInterval)} per ${selectedBillingInterval === "annual" ? "year" : "month"} after a ${getPlanTrialDays(selectedPlanForPayment)}-day trial.`
+                : `Please follow instructions below to pay ${formatPlanPrice(selectedPlanForPayment, selectedBillingInterval)} using manual bKash.`
               }
             </DialogDescription>
           </DialogHeader>
 
           {paymentMode === "choose" ? (
             <div className="flex flex-col gap-4 py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={selectedBillingInterval === "monthly" ? "default" : "outline"} onClick={() => setSelectedBillingInterval("monthly")}>
+                  Monthly
+                </Button>
+                <Button type="button" variant={selectedBillingInterval === "annual" ? "default" : "outline"} onClick={() => setSelectedBillingInterval("annual")}>
+                  Annual
+                </Button>
+              </div>
               <Button 
                 onClick={() => {
                   setPaymentDialogOpen(false);
-                  handlePayNow(selectedPlanForPayment?.id);
+                  handlePayNow(selectedPlanForPayment?.id, selectedBillingInterval);
                 }} 
                 className="w-full h-14 flex flex-col items-center justify-center gap-0.5"
               >
@@ -575,7 +608,7 @@ export default function Billing() {
                   <li>Go to your bKash app or dial *247#</li>
                   <li>Choose <span className="font-bold text-foreground">Send Money</span></li>
                   <li>Enter Merchant/Receiver Number: <span className="font-bold text-foreground text-sm font-mono tracking-wider">{platformManualBkashNumber}</span></li>
-                  <li>Amount: <span className="font-bold text-foreground text-sm">BDT {selectedPlanForPayment?.monthly_price}</span></li>
+                  <li>Amount: <span className="font-bold text-foreground text-sm">{formatPlanPrice(selectedPlanForPayment, selectedBillingInterval)}</span></li>
                   <li>Complete transaction and copy the Transaction ID (TrxID)</li>
                 </ol>
               </div>

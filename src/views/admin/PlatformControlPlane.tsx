@@ -130,6 +130,8 @@ export default function PlatformControlPlane() {
     name: "",
     description: "",
     monthly_price: "",
+    annual_price: "",
+    annual_discount_percentage: "0",
     currency_code: "BDT",
     store_limit: "",
     trial_days: "14",
@@ -145,6 +147,8 @@ export default function PlatformControlPlane() {
       name: "",
       description: "",
       monthly_price: "",
+      annual_price: "",
+      annual_discount_percentage: "0",
       currency_code: "BDT",
       store_limit: "",
       trial_days: "14",
@@ -162,6 +166,8 @@ export default function PlatformControlPlane() {
       name: plan.name,
       description: plan.description,
       monthly_price: plan.monthly_price != null ? String(plan.monthly_price) : "",
+      annual_price: (plan as any).annual_price != null ? String((plan as any).annual_price) : "",
+      annual_discount_percentage: (plan as any).annual_discount_percentage != null ? String((plan as any).annual_discount_percentage) : "0",
       currency_code: (plan as any).currency_code || "BDT",
       store_limit: (plan as any).store_limit != null ? String((plan as any).store_limit) : "",
       trial_days: (plan as any).trial_days != null ? String((plan as any).trial_days) : "14",
@@ -196,7 +202,7 @@ export default function PlatformControlPlane() {
         { data: invoices },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
-        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, currency_code, store_limit, trial_days, contact_only, sort_order, is_active").order("sort_order"),
+        (supabase as any).from("cms_plans").select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, trial_days, contact_only, sort_order, is_active").order("sort_order"),
         (supabase as any).from("cms_plan_features").select("plan_id, feature_key, enabled"),
         (supabase as any).from("stores").select("id, owner_id, name, slug, custom_domain, is_published, updated_at").order("name"),
         (supabase as any).from("store_subscriptions").select("store_id, plan_id, status"),
@@ -548,6 +554,8 @@ export default function PlatformControlPlane() {
       name: planForm.name.trim(),
       description: planForm.description.trim(),
       monthly_price: planForm.monthly_price.trim() !== "" ? parseInt(planForm.monthly_price.trim(), 10) : null,
+      annual_price: planForm.annual_price.trim() !== "" ? parseInt(planForm.annual_price.trim(), 10) : null,
+      annual_discount_percentage: Math.max(0, Math.min(100, parseInt(planForm.annual_discount_percentage.trim(), 10) || 0)),
       currency_code: planForm.currency_code.trim(),
       store_limit: planForm.store_limit.trim() !== "" ? parseInt(planForm.store_limit.trim(), 10) : null,
       trial_days: Math.max(0, parseInt(planForm.trial_days.trim(), 10) || 0),
@@ -587,13 +595,14 @@ export default function PlatformControlPlane() {
     try {
       const now = new Date();
       const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      periodEnd.setMonth(periodEnd.getMonth() + (invoice.billing_interval === "annual" ? 12 : 1));
 
       const { error: invoiceError } = await (supabase as any)
         .from("store_invoices")
         .update({
           status: "paid",
           paid_at: now.toISOString(),
+          billing_period_start: now.toISOString(),
           billing_period_end: periodEnd.toISOString(),
         })
         .eq("id", invoice.id);
@@ -1306,6 +1315,30 @@ export default function PlatformControlPlane() {
                   value={planForm.monthly_price}
                   onChange={(e) => setPlanForm((prev) => ({ ...prev, monthly_price: e.target.value }))}
                   placeholder="e.g. 5000"
+                />
+              </div>
+              <div>
+                <Label htmlFor="plan-annual-price">Annual Price (BDT)</Label>
+                <Input
+                  id="plan-annual-price"
+                  type="number"
+                  value={planForm.annual_price}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, annual_price: e.target.value }))}
+                  placeholder="e.g. 50000"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="plan-annual-discount">Annual Discount (%)</Label>
+                <Input
+                  id="plan-annual-discount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={planForm.annual_discount_percentage}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, annual_discount_percentage: e.target.value }))}
+                  placeholder="0"
                 />
               </div>
               <div>
