@@ -471,8 +471,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
     ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
     : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
   const headerShell = isLightTheme
-    ? "border-white/50 bg-white/45 shadow-[0_22px_55px_rgba(15,23,42,0.10)]"
-    : "border-white/10 bg-slate-950/38 shadow-[0_22px_55px_rgba(0,0,0,0.28)]";
+    ? "bg-transparent"
+    : "bg-transparent";
   const panelShell = isLightTheme
     ? "border-slate-300/70 bg-white/88 text-slate-950"
     : "border-white/8 bg-slate-900/45 text-white";
@@ -522,11 +522,11 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-3xl supports-[backdrop-filter]:bg-opacity-60 ${headerShell}`}>
-        <nav className={`mx-auto mt-3 flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[1.7rem] border px-4 sm:px-5 ${
+      <header className={`sticky top-0 z-50 ${headerShell}`}>
+        <nav className={`mx-auto mt-3 flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[1.7rem] border px-4 shadow-[0_18px_45px_rgba(15,23,42,0.12)] backdrop-blur-3xl sm:px-5 ${
           isLightTheme
-            ? "border-white/60 bg-white/40"
-            : "border-white/10 bg-white/[0.04]"
+            ? "border-white/55 bg-white/50"
+            : "border-white/10 bg-slate-950/45"
         }`}>
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
