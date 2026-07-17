@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadStoreBlueprints, resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
 import { loadThemePackages } from "@/lib/theme-packages";
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -94,7 +95,9 @@ export function StorefrontLiveEditor({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const lastLoadedStoreRef = useRef(store);
   const location = useLocation();
-  const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(page.id)}&returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+  const returnTo = `${location.pathname}${location.search}`;
+  const basicEditorHref = buildPageBuilderPath("basic", { pageId: page.id, returnTo });
+  const advancedEditorHref = buildPageBuilderPath("advanced", { pageId: page.id, returnTo });
   const currentSnapshot = useMemo(() => serializeStoreDraft(store), [store]);
   const hasUnsavedChanges = currentSnapshot !== persistedSnapshot;
   const selectedBlock = useMemo(
@@ -773,7 +776,9 @@ export function StorefrontLiveEditor({
                 <p className="mt-1 text-xs text-muted-foreground">{saveStatusLabel}</p>
               </div>
               <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
-                <Link to={pageEditorHref}>Open Builder</Link>
+                <Link to={editorMode === "advanced" ? advancedEditorHref : basicEditorHref}>
+                  {editorMode === "advanced" ? "Open Advanced" : "Open Basic"}
+                </Link>
               </Button>
             </div>
 

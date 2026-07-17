@@ -4,6 +4,7 @@ import { ExternalLink, Eye, EyeOff, FilePenLine, SquarePen } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 
 type StorefrontAdminOverlayProps = {
   pageId: string;
@@ -20,7 +21,8 @@ export function StorefrontAdminOverlay({
 }: StorefrontAdminOverlayProps) {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(pageId)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const basicEditorHref = buildPageBuilderPath("basic", { pageId, returnTo });
+  const advancedEditorHref = buildPageBuilderPath("advanced", { pageId, returnTo });
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col gap-2">
@@ -39,10 +41,13 @@ export function StorefrontAdminOverlay({
               Hide Overlay
             </Button>
             <Button asChild type="button" size="sm" variant="outline">
-              <Link to={pageEditorHref}>
+              <Link to={basicEditorHref}>
                 <FilePenLine className="h-4 w-4" />
-                Edit Page
+                Basic Editing
               </Link>
+            </Button>
+            <Button asChild type="button" size="sm" variant="outline">
+              <Link to={advancedEditorHref}>Advanced Editing</Link>
             </Button>
           </div>
         </div>
@@ -54,12 +59,12 @@ export function StorefrontAdminOverlay({
             {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={pageEditorHref} aria-label="Edit page in Page Builder">
+            <Link to={basicEditorHref} aria-label="Edit page in basic editing workspace">
               <SquarePen className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={pageEditorHref} aria-label="Open Page Builder">
+            <Link to={advancedEditorHref} aria-label="Open advanced editing workspace">
               <ExternalLink className="h-4 w-4" />
             </Link>
           </Button>

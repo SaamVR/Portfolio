@@ -43,6 +43,7 @@ import {
 } from "@/lib/cms/launch-templates";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
@@ -692,7 +693,7 @@ export default function OnboardingWizard() {
 
   if (setupLocked && activeStoreId) {
     const siteSettingsHref = `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}`;
-    const pageBuilderHref = `/admin/page-builder?storeId=${encodeURIComponent(activeStoreId)}`;
+    const pageBuilderHref = buildPageBuilderPath("basic", { storeId: activeStoreId });
     const dashboardHref = `/admin?storeId=${encodeURIComponent(activeStoreId)}`;
 
     return (
@@ -736,7 +737,7 @@ export default function OnboardingWizard() {
               <Button asChild variant="outline" className="gap-2">
                 <a href={pageBuilderHref}>
                   <Package className="h-4 w-4" />
-                  Open Page Builder
+                  Open Basic Editing
                 </a>
               </Button>
               <Button asChild variant="outline" className="gap-2">

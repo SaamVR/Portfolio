@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { buildStoreReadinessScore, type StoreReadinessState } from "@/lib/platform/store-readiness";
@@ -596,7 +597,7 @@ const Dashboard = () => {
           {[
             { label: "Manage Products", to: "/admin/products", icon: Package },
             { label: "View Orders", to: "/admin/orders", icon: ShoppingCart },
-            { label: "Page Builder", to: "/admin/page-builder", icon: PanelsTopLeft, adminOnly: true },
+            { label: "Basic Editing", to: buildPageBuilderPath("basic"), icon: PanelsTopLeft, adminOnly: true },
             { label: "Site Settings", to: "/admin/site-settings", icon: TrendingUp, adminOnly: true },
           ]
             .filter((a) => !a.adminOnly || role === "admin")

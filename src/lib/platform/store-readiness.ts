@@ -89,14 +89,14 @@ export function buildStoreReadinessScore({
       done: visibleHomepageBlocks >= 3,
       points: 10,
       action: "Add or unhide more homepage sections in the CMS builder.",
-      href: "/admin/page-builder",
+      href: buildPageBuilderPath("basic"),
     },
     {
       label: "Information page is added",
       done: customPageTotal >= 1,
       points: 10,
       action: "Create at least one page like About, Contact, Returns, or Policy.",
-      href: "/admin/page-builder",
+      href: buildPageBuilderPath("advanced"),
     },
   ];
 
@@ -105,3 +105,4 @@ export function buildStoreReadinessScore({
     items,
   };
 }
+import { buildPageBuilderPath } from "@/lib/admin-paths";

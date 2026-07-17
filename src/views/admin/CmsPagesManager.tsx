@@ -38,8 +38,8 @@ import {
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
-import { withStoreId } from "@/lib/admin-paths";
+import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import {
   DEFAULT_STORE_CURRENCY_CODE,
   DEFAULT_STORE_DESCRIPTION,
@@ -257,6 +257,7 @@ function getBlueprintBootstrapStoreName(blueprintId: string) {
 export default function CmsPagesManager() {
   const { user, role , activeStoreId} = useAuth();
   const { data: entitlements } = useStoreEntitlements(activeStoreId);
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [store, setStore] = useState<Store | null>(null);
   const [selectedPageId, setSelectedPageId] = useState("");
@@ -287,6 +288,20 @@ export default function CmsPagesManager() {
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
+  const builderMode = location.pathname.includes("/advanced") ? "advanced" : "basic";
+  const isAdvancedEditor = builderMode === "advanced";
+  const basicEditorHref = buildPageBuilderPath("basic", {
+    pageId: requestedPageId,
+    blockId: requestedBlockId || null,
+    returnTo,
+    storeId: activeStoreId,
+  });
+  const advancedEditorHref = buildPageBuilderPath("advanced", {
+    pageId: requestedPageId,
+    blockId: requestedBlockId || null,
+    returnTo,
+    storeId: activeStoreId,
+  });
   const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
@@ -1335,10 +1350,27 @@ export default function CmsPagesManager() {
               {selectedPage?.isHomepage ? <Badge variant="outline">Homepage</Badge> : null}
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-normal text-foreground">Page Builder</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-normal text-foreground">
+                  {isAdvancedEditor ? "Advanced Editing" : "Basic Editing"}
+                </h1>
+                <Badge variant={isAdvancedEditor ? "secondary" : "outline"}>
+                  {isAdvancedEditor ? "Full workspace" : "Merchant-safe workspace"}
+                </Badge>
+              </div>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Shape storefront pages, theme settings, and live sections for {store.name}.
+                {isAdvancedEditor
+                  ? `Manage storefront pages, templates, structure, revisions, and deep block controls for ${store.name}.`
+                  : `Update storefront content, theme tokens, visibility, and page details for ${store.name} with simpler navigation.`}
               </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant={isAdvancedEditor ? "outline" : "secondary"} size="sm" className="rounded-full">
+                <Link to={basicEditorHref}>Basic Editing</Link>
+              </Button>
+              <Button asChild variant={isAdvancedEditor ? "secondary" : "outline"} size="sm" className="rounded-full">
+                <Link to={advancedEditorHref}>Advanced Editing</Link>
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
@@ -1395,14 +1427,18 @@ export default function CmsPagesManager() {
                 <span className="hidden sm:inline">Preview Page</span>
               </a>
             </Button>
-            <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export Layout</span>
-            </Button>
-            <Button variant="outline" onClick={() => layoutImportInputRef.current?.click()} className="gap-2 px-3">
-              <Import className="h-4 w-4" />
-              <span className="hidden sm:inline">Import Layout</span>
-            </Button>
+            {isAdvancedEditor ? (
+              <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export Layout</span>
+              </Button>
+            ) : null}
+            {isAdvancedEditor ? (
+              <Button variant="outline" onClick={() => layoutImportInputRef.current?.click()} className="gap-2 px-3">
+                <Import className="h-4 w-4" />
+                <span className="hidden sm:inline">Import Layout</span>
+              </Button>
+            ) : null}
             <Button onClick={() => void saveAll()} disabled={saving} className="gap-2 px-3">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span className="hidden sm:inline">Save Pages</span>
@@ -1763,7 +1799,11 @@ export default function CmsPagesManager() {
                 </div>
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <p className="text-sm font-medium text-foreground">Pages & Navigation</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Select the page you want to edit, duplicate it, or create a new one from a compatible blueprint.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isAdvancedEditor
+                      ? "Select the page you want to edit, duplicate it, or create a new one from a compatible blueprint."
+                      : "Select a page and update content safely. Structural page creation and replacements stay in Advanced Editing."}
+                  </p>
                 </div>
                 <div id="pages-library" className="rounded-lg border border-border p-3 scroll-mt-36">
                   <div className="grid gap-3">
@@ -1772,9 +1812,14 @@ export default function CmsPagesManager() {
                         Page blueprints are disabled for this store. New pages will start blank and blueprint replacement is locked.
                       </div>
                     ) : null}
+                    {!isAdvancedEditor ? (
+                      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                        New pages, template swaps, and layout imports live in <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link>.
+                      </div>
+                    ) : null}
                     <div className="grid gap-2">
                       <Label>New Page Template</Label>
-                      <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled}>
+                      <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled || !isAdvancedEditor}>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a template" />
                         </SelectTrigger>
@@ -1793,10 +1838,12 @@ export default function CmsPagesManager() {
                         Showing templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> blueprint.
                       </p>
                     </div>
-                    <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add Page
-                    </Button>
+                    {isAdvancedEditor ? (
+                      <Button size="sm" variant="outline" onClick={addPage} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Page
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1827,30 +1874,34 @@ export default function CmsPagesManager() {
                         </div>
                         <div className="flex items-center gap-2">
                           {page.isHomepage ? <Badge variant="secondary">Home</Badge> : null}
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              duplicatePage(page.id);
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              removePage(page.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isAdvancedEditor ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                duplicatePage(page.id);
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                          {isAdvancedEditor ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removePage(page.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -1895,7 +1946,7 @@ export default function CmsPagesManager() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Page Slug</Label>
-                    <Input value={selectedPage.slug} onChange={(e) => updateSelectedPage((page) => ({ ...page, slug: e.target.value }))} />
+                    <Input value={selectedPage.slug} onChange={(e) => updateSelectedPage((page) => ({ ...page, slug: e.target.value }))} disabled={!isAdvancedEditor} />
                   </div>
                   <div className="grid gap-2 md:col-span-2">
                     <Label>SEO Title</Label>
@@ -1907,7 +1958,11 @@ export default function CmsPagesManager() {
                   </div>
                   <div className="grid gap-2 md:col-span-2">
                     <Label>Revision Label For Next Save</Label>
-                    <Input value={revisionLabel} placeholder="Homepage cleanup, seasonal refresh, trust update..." onChange={(e) => setRevisionLabel(e.target.value)} />
+                    <Input
+                      value={revisionLabel}
+                      placeholder={isAdvancedEditor ? "Homepage cleanup, seasonal refresh, trust update..." : "Optional note for this content pass"}
+                      onChange={(e) => setRevisionLabel(e.target.value)}
+                    />
                   </div>
                   {selectedPage.isHomepage ? (
                     <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
@@ -1925,37 +1980,46 @@ export default function CmsPagesManager() {
                       </div>
                     </div>
                   ) : null}
-                  <div id="page-template" className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4 scroll-mt-36">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Apply Page Template</p>
-                      <p className="text-xs text-muted-foreground">Replace the current block stack with a prebuilt page structure.</p>
+                  {isAdvancedEditor ? (
+                    <div id="page-template" className="grid gap-3 md:col-span-2 rounded-lg border border-border p-4 scroll-mt-36">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Apply Page Template</p>
+                        <p className="text-xs text-muted-foreground">Replace the current block stack with a prebuilt page structure.</p>
+                      </div>
+                      <div className="flex flex-col gap-2 md:flex-row">
+                        <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageBlueprintsEnabled}>
+                          <SelectTrigger className="md:max-w-[280px]">
+                            <SelectValue placeholder="Choose a template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availablePageBlueprints.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!pageBlueprintsEnabled}>
+                          <LayoutTemplate className="h-4 w-4" />
+                          Apply Template
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
+                      </p>
+                      {!pageBlueprintsEnabled ? (
+                        <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use blueprint-backed page structures here.</p>
+                      ) : null}
                     </div>
-                    <div className="flex flex-col gap-2 md:flex-row">
-                      <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageBlueprintsEnabled}>
-                        <SelectTrigger className="md:max-w-[280px]">
-                          <SelectValue placeholder="Choose a template" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availablePageBlueprints.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!pageBlueprintsEnabled}>
-                        <LayoutTemplate className="h-4 w-4" />
-                        Apply Template
-                      </Button>
+                  ) : (
+                    <div id="page-template" className="grid gap-2 md:col-span-2 rounded-lg border border-dashed border-border p-4 scroll-mt-36">
+                      <p className="text-sm font-medium text-foreground">Need a new layout or template?</p>
+                      <p className="text-xs text-muted-foreground">
+                        Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link> for page templates, homepage restructuring, and blueprint-driven layout changes.
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
-                    </p>
-                    {!pageBlueprintsEnabled ? (
-                      <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use blueprint-backed page structures here.</p>
-                    ) : null}
-                  </div>
-                  {selectedPage.isHomepage ? (
+                  )}
+                  {selectedPage.isHomepage && isAdvancedEditor ? (
                     <div className="flex flex-col gap-3 rounded-lg border border-border p-4 md:col-span-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-medium text-foreground">Recommended Homepage</p>
@@ -1974,6 +2038,7 @@ export default function CmsPagesManager() {
                     </div>
                     <Switch
                       checked={selectedPage.isHomepage}
+                      disabled={!isAdvancedEditor}
                       onCheckedChange={(checked) =>
                         setStore((current) => {
                           if (!current) return current;
@@ -2000,7 +2065,9 @@ export default function CmsPagesManager() {
                   <div>
                     <CardTitle className="text-lg">Blocks</CardTitle>
                     <CardDescription>
-                      Reorder, hide, and configure the sections for this page.
+                      {isAdvancedEditor
+                        ? "Reorder, hide, configure, duplicate, and expand the sections for this page."
+                        : "Focus one section at a time, update its content, and keep layout edits lightweight."}
                       {selectedBlock ? ` Currently editing ${selectedBlock.type}.` : ""}
                     </CardDescription>
                   </div>
@@ -2017,10 +2084,12 @@ export default function CmsPagesManager() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={addBlock} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add Block
-                    </Button>
+                    {isAdvancedEditor ? (
+                      <Button variant="outline" onClick={addBlock} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Block
+                      </Button>
+                    ) : null}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -2677,30 +2746,34 @@ export default function CmsPagesManager() {
                                       >
                                         <ArrowDown className="h-4 w-4" />
                                       </Button>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 bg-background/95"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          duplicateBlock(block.id);
-                                        }}
-                                      >
-                                        <Copy className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          removeBlock(block.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
+                                      {isAdvancedEditor ? (
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="outline"
+                                          className="h-8 w-8 bg-background/95"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            duplicateBlock(block.id);
+                                          }}
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </Button>
+                                      ) : null}
+                                      {isAdvancedEditor ? (
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="outline"
+                                          className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            removeBlock(block.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      ) : null}
                                     </div>
                                     <div
                                       className={cn(
@@ -2724,48 +2797,50 @@ export default function CmsPagesManager() {
                 </CardContent>
               </Card>
 
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <History className="h-4 w-4 text-primary" />
-                    Revision History
-                  </CardTitle>
-                  <CardDescription>Recent saved snapshots for this page. Restore loads the snapshot back into the editor.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {loadingRevisions ? (
-                    <div className="flex justify-center py-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    </div>
-                  ) : null}
-
-                  {!loadingRevisions && revisions.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      No saved revisions yet. The first snapshot appears after you save the CMS.
-                    </div>
-                  ) : null}
-
-                  {revisions.map((revision) => (
-                    <div key={revision.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{revision.revision_label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(revision.created_at).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
+              {isAdvancedEditor ? (
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <History className="h-4 w-4 text-primary" />
+                      Revision History
+                    </CardTitle>
+                    <CardDescription>Recent saved snapshots for this page. Restore loads the snapshot back into the editor.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {loadingRevisions ? (
+                      <div className="flex justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => restoreRevision(revision.id)}>
-                        Restore
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                    ) : null}
+
+                    {!loadingRevisions && revisions.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                        No saved revisions yet. The first snapshot appears after you save the CMS.
+                      </div>
+                    ) : null}
+
+                    {revisions.map((revision) => (
+                      <div key={revision.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{revision.revision_label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(revision.created_at).toLocaleString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => restoreRevision(revision.id)}>
+                          Restore
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
 
                 <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                   Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.

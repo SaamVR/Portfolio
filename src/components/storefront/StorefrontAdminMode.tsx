@@ -4,6 +4,7 @@ import { LayoutTemplate } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import type { StorePageBlock } from "@/lib/cms/schema";
 
 type StorefrontAdminModeProps = {
@@ -15,7 +16,7 @@ type StorefrontAdminModeProps = {
 export function StorefrontAdminMode({ pageId, block, index }: StorefrontAdminModeProps) {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  const blockEditorHref = `/admin/page-builder?page=${encodeURIComponent(pageId)}&block=${encodeURIComponent(block.id)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const blockEditorHref = buildPageBuilderPath("advanced", { pageId, blockId: block.id, returnTo });
 
   return (
     <div className="pointer-events-none absolute inset-x-3 top-3 z-40 flex items-start justify-between gap-3">

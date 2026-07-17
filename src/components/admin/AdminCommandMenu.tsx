@@ -11,6 +11,8 @@ import {
   Tag,
   FolderTree,
   PanelsTopLeft,
+  SquarePen,
+  SlidersHorizontal,
   Settings,
   KeyRound,
   Users,
@@ -34,7 +36,7 @@ import {
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { withStoreId } from "@/lib/admin-paths";
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import {
   CommandDialog,
   CommandInput,
@@ -56,6 +58,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const isPlatformAdmin = platformRole === "admin";
   const isAdmin = role === "admin";
+  const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -82,7 +85,8 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Discount Coupons", icon: Tag, category: "Pages", action: () => navigate("/admin/coupons") },
     { label: "Categories & Types Manager", icon: FolderTree, category: "Pages", action: () => navigate("/admin/categories"), show: isAdmin },
     { label: "Store Settings", icon: Rocket, category: "Pages", action: () => navigate(withStoreId("/admin/site-settings", activeStoreId)), show: isAdmin },
-    { label: "Page Builder Workspace", icon: PanelsTopLeft, category: "Pages", action: () => navigate("/admin/page-builder"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { label: "Basic Editing Workspace", icon: SquarePen, category: "Pages", action: () => navigate(buildPageBuilderPath("basic")), show: cmsEnabled },
+    { label: "Advanced Editing Workspace", icon: SlidersHorizontal, category: "Pages", action: () => navigate(buildPageBuilderPath("advanced")), show: cmsEnabled },
     { label: "Media Library Workspace", icon: Images, category: "Pages", action: () => navigate("/admin/media"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { label: "Store Backup & Import Workspace", icon: HardDriveDownload, category: "Pages", action: () => navigate("/admin/backup"), show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { label: "Site Customization Settings", icon: Settings, category: "Pages", action: () => navigate("/admin/site-settings"), show: isAdmin },
@@ -93,11 +97,11 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
 
   const sectorItems = [
     { label: "Brand & SEO (Global Store Settings)", icon: Compass, action: () => navigate("/admin/site-settings?tab=brand_seo") },
-    { label: "Homepage Blocks & Layouts", icon: LayoutDashboard, action: () => navigate("/admin/page-builder") },
-    { label: "Hero Banner, Media & Overlay Blocks", icon: Flame, action: () => navigate("/admin/page-builder") },
+    { label: "Homepage Blocks & Layouts", icon: LayoutDashboard, action: () => navigate(buildPageBuilderPath("advanced")) },
+    { label: "Hero Banner, Media & Overlay Blocks", icon: Flame, action: () => navigate(buildPageBuilderPath("advanced")) },
     { label: "Media Library Assets Browser", icon: Images, action: () => navigate("/admin/media") },
     { label: "Store Backup Export & Import Tools", icon: HardDriveDownload, action: () => navigate("/admin/backup") },
-    { label: "Promo Banner & Conversion Blocks", icon: Megaphone, action: () => navigate("/admin/page-builder") },
+    { label: "Promo Banner & Conversion Blocks", icon: Megaphone, action: () => navigate(buildPageBuilderPath("advanced")) },
     { label: "Announcement Rotating Messages Bar", icon: Megaphone, action: () => navigate("/admin/site-settings?tab=announcement") },
     { label: "Theme Preset Palettes, Fonts & Border Style", icon: Palette, action: () => navigate("/admin/site-settings?tab=themes") },
     { label: "Exit-Intent Popups & Upsells Builder", icon: MousePointerClick, action: () => navigate("/admin/site-settings?tab=upsells") },
@@ -109,7 +113,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Loyalty Points Rewards Rules", icon: Gift, action: () => navigate("/admin/site-settings?tab=loyalty") },
     { label: "Contact Form Email Setup", icon: Mail, action: () => navigate("/admin/site-settings?tab=contact") },
     { label: "Footer Links, Copywrite & Brand Text", icon: Settings, action: () => navigate("/admin/site-settings?tab=footer") },
-    { label: "Page Builder: Pages, Blocks & Revisions", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
+    { label: "Page Builder: Pages, Blocks & Revisions", icon: PanelsTopLeft, action: () => navigate(buildPageBuilderPath("advanced")) },
     { label: "Legacy Homepage Fallback Fields", icon: PanelsTopLeft, action: () => navigate("/admin/site-settings?tab=home_sections") },
   ];
 
@@ -118,7 +122,8 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
     { label: "Create Promo Coupon Code", icon: Plus, action: () => navigate("/admin/coupons?action=create") },
     { label: "View Unread Inquiries", icon: Eye, action: () => navigate("/admin/messages?filter=unread") },
     { label: "Review Pending Product Ratings", icon: Eye, action: () => navigate("/admin/reviews?filter=pending") },
-    { label: "Open Page Builder", icon: PanelsTopLeft, action: () => navigate("/admin/page-builder") },
+    { label: "Open Basic Editing", icon: SquarePen, action: () => navigate(buildPageBuilderPath("basic")) },
+    { label: "Open Advanced Editing", icon: SlidersHorizontal, action: () => navigate(buildPageBuilderPath("advanced")) },
     { label: "Open Store Settings", icon: Rocket, action: () => navigate(withStoreId("/admin/site-settings", activeStoreId)) },
   ];
 

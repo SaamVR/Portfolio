@@ -9,6 +9,8 @@ import {
   LayoutDashboard,
   Package,
   PanelsTopLeft,
+  SquarePen,
+  SlidersHorizontal,
   ShoppingCart,
   Mail,
   MessageSquare,
@@ -41,7 +43,7 @@ import {
 } from "@/components/ui/sheet";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { withStoreId } from "@/lib/admin-paths";
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import StoreSwitcher from "./StoreSwitcher";
 
@@ -58,6 +60,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const supportUrl = getSupportUrl();
   const supportIsExternal = isExternalSupportUrl(supportUrl);
+  const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
 
   // Fetch unread message count
   const { data: unreadCount = 0 } = useQuery({
@@ -101,7 +104,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   const quickLinks = [
     { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Settings", show: isAdmin },
-    { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Edit", show: cmsEnabled },
   ];
 
   const commerceLinks = [
@@ -113,7 +116,8 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
 
   const storefrontLinks = [
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
-    { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
+    { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled },
+    { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },

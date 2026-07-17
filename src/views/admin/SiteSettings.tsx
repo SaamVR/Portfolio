@@ -26,6 +26,7 @@ import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import {
   buildThemePackageExport,
@@ -208,9 +209,9 @@ const SiteSettings = () => {
         </div>
         {pageBuilderEnabled ? (
           <Button asChild variant="outline" className="gap-2">
-            <Link to="/admin/page-builder">
+            <Link to={buildPageBuilderPath("basic")}>
               <PanelsTopLeft className="h-4 w-4" />
-              Open Page Builder
+              Open Basic Editing
             </Link>
           </Button>
         ) : (
@@ -1960,9 +1961,9 @@ const SiteSettings = () => {
               </div>
               {pageBuilderEnabled ? (
                 <Button asChild className="gap-2">
-                  <Link to="/admin/page-builder">
+                  <Link to={buildPageBuilderPath("basic")}>
                     <PanelsTopLeft className="h-4 w-4" />
-                    Open Page Builder
+                    Open Basic Editing
                   </Link>
                 </Button>
               ) : null}

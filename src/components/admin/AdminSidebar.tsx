@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +8,8 @@ import {
   Package,
   Settings,
   PanelsTopLeft,
+  SquarePen,
+  SlidersHorizontal,
   KeyRound,
   LogOut,
   ArrowLeft,
@@ -28,8 +31,18 @@ import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { withStoreId } from "@/lib/admin-paths";
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
+
+type SidebarLink = {
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  show: boolean;
+  badge?: number;
+  external?: boolean;
+  match?: string[];
+};
 
 const AdminSidebar = () => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
@@ -72,24 +85,41 @@ const AdminSidebar = () => {
     refetchInterval: 30000,
   });
 
-  const links = [
-    { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
-    { to: "/admin/products", icon: Package, label: "Products", show: true },
-    { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
-    { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
-    { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
-    { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
-    { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
-    { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
-    { to: "/admin/page-builder", icon: PanelsTopLeft, label: "Page Builder", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false) },
-    { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
-    { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
-    { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
-    { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
-    { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
-    { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
-    { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
-    { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
+  const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
+  const navSections: Array<{ title: string; links: SidebarLink[] }> = [
+    {
+      title: "Operations",
+      links: [
+        { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
+        { to: "/admin/products", icon: Package, label: "Products", show: true },
+        { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
+        { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
+        { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
+        { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
+        { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
+      ],
+    },
+    {
+      title: "Storefront",
+      links: [
+        { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
+        { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled, match: ["/admin/page-builder", "/admin/page-builder/basic"] },
+        { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled, match: ["/admin/page-builder/advanced"] },
+        { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
+        { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
+        { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
+      ],
+    },
+    {
+      title: "Admin",
+      links: [
+        { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
+        { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
+        { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
+        { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
+        { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
+      ],
+    },
   ];
 
   return (
@@ -103,50 +133,62 @@ const AdminSidebar = () => {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-4">
-        {links
-          .filter((l) => l.show)
-          .map((link) => {
-            const active = location.pathname === link.to;
-            return (
-              <div key={link.to}>
-                {link.external ? (
-                  <a
-                    href={link.to}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+      <nav className="flex flex-1 flex-col gap-5 p-4">
+        {navSections.map((section) => {
+          const visibleLinks = section.links.filter((link) => link.show);
+          if (visibleLinks.length === 0) return null;
+
+          return (
+            <div key={section.title} className="space-y-1.5">
+              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {section.title}
+              </p>
+              {visibleLinks.map((link) => {
+                const active = link.external
+                  ? false
+                  : (link.match ?? [link.to]).some((match) => location.pathname === match || location.pathname.startsWith(`${match}/`));
+
+                return (
+                  <div key={link.to}>
+                    {link.external ? (
+                      <a
+                        href={link.to}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                        )}
+                      >
+                        <link.icon className="h-4 w-4" />
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.to}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          active
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                        )}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <link.icon className="h-4 w-4" />
+                        <span>{link.label}</span>
+                        {link.badge !== undefined && link.badge > 0 && (
+                          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                            {link.badge > 99 ? "99+" : link.badge}
+                          </span>
+                        )}
+                      </Link>
                     )}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.label}
-                  </a>
-                ) : (
-                  <Link
-                    to={link.to}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.label}
-                    {link.badge !== undefined && link.badge > 0 && (
-                      <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                        {link.badge > 99 ? "99+" : link.badge}
-                      </span>
-                    )}
-                  </Link>
-                )}
-              </div>
-            );
-          })}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t border-border p-4 space-y-2">

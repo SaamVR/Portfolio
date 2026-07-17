@@ -5,12 +5,15 @@ import AdminSidebar from "./AdminSidebar";
 import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
-import { LayoutDashboard, PanelsTopLeft, Search, Settings, ShoppingCart, SquareStack } from "lucide-react";
+import { LayoutDashboard, Search, Settings, ShoppingCart, SlidersHorizontal, SquarePen, SquareStack } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
-  { path: "/admin/page-builder", label: "Page Builder", description: "Storefront pages, blocks, and live preview" },
+  { path: "/admin/page-builder/basic", label: "Basic Editing", description: "Safer storefront content, visibility, and theme edits" },
+  { path: "/admin/page-builder/advanced", label: "Advanced Editing", description: "Full page structure, templates, revisions, and deeper block controls" },
+  { path: "/admin/page-builder", label: "Basic Editing", description: "Safer storefront content, visibility, and theme edits" },
   { path: "/admin/cms", label: "Page Builder", description: "Storefront pages, blocks, and live preview" },
   { path: "/admin/products", label: "Products", description: "Catalog, stock, and merchandising" },
   { path: "/admin/orders", label: "Orders", description: "Fulfillment and customer purchases" },
@@ -23,7 +26,8 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
 const mobileAdminRoutes = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard },
   { to: "/admin/site-settings", label: "Settings", icon: Settings },
-  { to: "/admin/page-builder", label: "Builder", icon: PanelsTopLeft },
+  { to: buildPageBuilderPath("basic"), label: "Basic", icon: SquarePen },
+  { to: buildPageBuilderPath("advanced"), label: "Advanced", icon: SlidersHorizontal },
   { to: "/admin/products", label: "Catalog", icon: SquareStack },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
 ];
