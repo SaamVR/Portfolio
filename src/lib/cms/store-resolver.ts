@@ -29,6 +29,11 @@ interface StoreRow {
   is_published: boolean | null;
 }
 
+interface StoreDomainLookupRow {
+  store_id: string;
+  hostname: string;
+}
+
 interface StoreThemeRow {
   preset_id: string | null;
   theme_package_id?: string | null;
@@ -237,30 +242,47 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
   }
 
   const subdomainSlug = getStoreSlugFromHostname(normalizedHostname);
-  const query = supabase
-    .from("stores")
-    .select("id")
-    .limit(1);
+  let matchedStoreId: string | null = null;
 
-  const { data: stores, error } = subdomainSlug
-    ? await query.eq("slug", subdomainSlug)
-    : await query.eq("custom_domain", normalizedHostname);
+  if (subdomainSlug) {
+    const { data: stores, error } = await supabase
+      .from("stores")
+      .select("id")
+      .eq("slug", subdomainSlug)
+      .limit(1);
 
-  const matchedStore = stores?.[0] as Pick<StoreRow, "id"> | undefined;
-  if (error || !matchedStore) {
-    return null;
+    const matchedStore = stores?.[0] as Pick<StoreRow, "id"> | undefined;
+    if (error || !matchedStore) {
+      return null;
+    }
+
+    matchedStoreId = matchedStore.id;
+  } else {
+    const { data: domains, error } = await supabase
+      .from("store_domains")
+      .select("store_id, hostname")
+      .eq("hostname", normalizedHostname)
+      .eq("status", "active")
+      .limit(1);
+
+    const matchedDomain = domains?.[0] as StoreDomainLookupRow | undefined;
+    if (error || !matchedDomain) {
+      return null;
+    }
+
+    matchedStoreId = matchedDomain.store_id;
   }
 
   const { data: subscription } = await supabase
     .from("store_subscriptions")
     .select("status, trial_ends_at")
-    .eq("store_id", matchedStore.id)
+    .eq("store_id", matchedStoreId)
     .maybeSingle();
   if (!canAccessStorefrontStore({ is_published: true }, (subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 
-  const store = await getStoreById(matchedStore.id);
+  const store = await getStoreById(matchedStoreId);
   return store;
 }
 

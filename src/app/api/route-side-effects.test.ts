@@ -161,57 +161,156 @@ function createSubscriptionAdminMock(plan: { id: string; monthly_price: number; 
 }
 
 function createDomainAdminMock(options?: { existingDomainStoreId?: string | null }) {
-  const storeUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const domainUpserts: Array<Record<string, unknown>> = [];
+  const domainUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const deletedDomains: Array<{ storeId: string; hostnames: string[] }> = [];
+  const domains = new Map<string, Record<string, unknown>>();
 
   return {
-    storeUpdates,
+    domainUpserts,
+    domainUpdates,
+    deletedDomains,
     client: {
       from(table: string) {
-        if (table !== "stores") {
-          throw new Error(`Unexpected table ${table}`);
+        if (table === "store_domains") {
+          return {
+            select() {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  return this;
+                },
+                neq(column: string, value: string) {
+                  filters.push([`neq:${column}`, value]);
+                  return this;
+                },
+                in(_column: string, _values: string[]) {
+                  return this;
+                },
+                order() {
+                  const storeId = filters.find(([column]) => column === "store_id")?.[1];
+                  const rows = Array.from(domains.values()).filter((row) => !storeId || row.store_id === storeId);
+                  return Promise.resolve({ data: rows, error: null });
+                },
+                limit() {
+                  return this;
+                },
+                maybeSingle: async () => {
+                  const hostname = filters.find(([column]) => column === "hostname")?.[1];
+                  const storeId = filters.find(([column]) => column === "store_id")?.[1];
+                  const excludedStoreId = filters.find(([column]) => column === "neq:store_id")?.[1];
+                  const existing = hostname
+                    ? Array.from(domains.values()).find((row) => row.hostname === hostname && row.store_id !== excludedStoreId)
+                    : null;
+
+                  if (options?.existingDomainStoreId && hostname && !existing) {
+                    return { data: { store_id: options.existingDomainStoreId }, error: null };
+                  }
+
+                  const own = hostname
+                    ? Array.from(domains.values()).find((row) => row.hostname === hostname && (!storeId || row.store_id === storeId))
+                    : null;
+                  return { data: own ?? null, error: null };
+                },
+              };
+            },
+            upsert(payload: Record<string, unknown>) {
+              domainUpserts.push(payload);
+              domains.set(String(payload.hostname), {
+                id: `domain_${domainUpserts.length}`,
+                hostname: payload.hostname,
+                store_id: payload.store_id,
+                status: payload.status,
+                is_primary: payload.is_primary,
+                is_www_domain: payload.is_www_domain,
+                vercel_verified: payload.vercel_verified,
+                vercel_misconfigured: payload.vercel_misconfigured,
+                configured_by: payload.configured_by ?? null,
+                verification_records: payload.verification_records ?? [],
+                dns_records: payload.dns_records ?? [],
+                last_vercel_error: payload.last_vercel_error ?? null,
+                last_checked_at: payload.last_checked_at ?? null,
+                activated_at: payload.activated_at ?? null,
+                created_at: payload.created_at ?? FIXED_NOW.toISOString(),
+                updated_at: payload.updated_at ?? FIXED_NOW.toISOString(),
+              });
+              return {
+                select() {
+                  return {
+                    single: async () => ({ data: domains.get(String(payload.hostname)), error: null }),
+                  };
+                },
+              };
+            },
+            update(payload: Record<string, unknown>) {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  return this;
+                },
+                neq(column: string, value: string) {
+                  filters.push([`neq:${column}`, value]);
+                  const storeId = filters.find(([name]) => name === "store_id")?.[1];
+                  if (storeId) {
+                    for (const row of domains.values()) {
+                      if (row.store_id === storeId && row.hostname !== value) {
+                        Object.assign(row, payload);
+                      }
+                    }
+                  }
+                  domainUpdates.push({ payload, filters: [...filters] });
+                  return Promise.resolve({ error: null });
+                },
+                select() {
+                  return {
+                    single: async () => {
+                      const hostname = filters.find(([name]) => name === "hostname")?.[1];
+                      const row = hostname ? domains.get(hostname) : null;
+                      if (row) Object.assign(row, payload);
+                      domainUpdates.push({ payload, filters: [...filters] });
+                      return { data: row, error: null };
+                    },
+                  };
+                },
+              };
+            },
+            delete() {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  return {
+                    in(_nextColumn: string, values: string[]) {
+                      deletedDomains.push({ storeId: value, hostnames: values });
+                      for (const hostname of values) {
+                        domains.delete(hostname);
+                      }
+                      return Promise.resolve({ error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
         }
 
-        return {
-          select() {
-            const filters: Array<[string, string]> = [];
-            return {
-              eq(column: string, value: string) {
-                filters.push([column, value]);
-                return {
-                  neq(_neqColumn: string, _neqValue: string) {
-                    return {
-                      maybeSingle: async () => ({
-                        data: options?.existingDomainStoreId
-                          ? { id: options.existingDomainStoreId }
-                          : null,
-                        error: null,
-                      }),
-                    };
-                  },
-                };
-              },
-            };
-          },
-          update(payload: Record<string, unknown>) {
-            const filters: Array<[string, string]> = [];
-            return {
-              eq(column: string, value: string) {
-                filters.push([column, value]);
-                return {
-                  eq(nextColumn: string, nextValue: string) {
-                    filters.push([nextColumn, nextValue]);
-                    storeUpdates.push({ payload, filters: [...filters] });
-                    return Promise.resolve({ error: null });
-                  },
-                  then(resolve: (value: { error: null }) => unknown) {
-                    storeUpdates.push({ payload, filters: [...filters] });
-                    return Promise.resolve(resolve({ error: null }));
-                  },
-                };
-              },
-            };
-          },
-        };
+        if (table === "stores") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({ data: null, error: null }),
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table ${table}`);
       },
     },
   };
@@ -369,6 +468,7 @@ describe("billing checkout side effects", () => {
         currency: "BDT",
         status: "pending",
         provider: "bkash",
+        billing_interval: "monthly",
         billing_period_start: FIXED_NOW.toISOString(),
       },
     ]);
@@ -454,8 +554,9 @@ describe("domain route side effects", () => {
   test("blocks cross-store custom-domain claims before Vercel or store updates", async () => {
     const admin = createDomainAdminMock({ existingDomainStoreId: "other_store" });
 
-    process.env.VERCEL_API_TOKEN = "vercel-token";
+    process.env.VERCEL_TOKEN = "vercel-token";
     process.env.VERCEL_PROJECT_ID = "project_123";
+    process.env.VERCEL_TEAM_ID = "team_123";
 
     mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
     mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
@@ -476,76 +577,76 @@ describe("domain route side effects", () => {
       error: "Domain is already connected to another store",
     });
     assert.equal(fetchMock.mock.callCount(), 0);
-    assert.equal(admin.storeUpdates.length, 0);
+    assert.equal(admin.domainUpserts.length, 0);
   });
 
-  test("allows owner/admin domain claims and writes the normalized domain to the store", async () => {
+  test("allows owner/admin domain claims and writes paired store domains", async () => {
     const admin = createDomainAdminMock();
 
-    process.env.VERCEL_API_TOKEN = "vercel-token";
+    process.env.VERCEL_TOKEN = "vercel-token";
     process.env.VERCEL_PROJECT_ID = "project_123";
+    process.env.VERCEL_TEAM_ID = "team_123";
 
     mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_1" }) as never);
     mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
     mock.method(domainRouteDeps, "canManageStore", async () => true);
-    const fetchMock = mock.method(domainRouteDeps, "fetch", async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ verified: true }),
+    mock.method(domainRouteDeps, "addProjectDomain", async (hostname: string) => ({
+      name: hostname,
+      verified: true,
+      verification: [],
+    }) as never);
+    mock.method(domainRouteDeps, "getDomainConfiguration", async () => ({
+      configuredBy: "A",
+      recommendedIPv4: [{ rank: 1, value: "76.76.21.21" }],
+      recommendedCNAME: [{ rank: 1, value: "cname.vercel-dns.com" }],
+      misconfigured: false,
+    }) as never);
+    mock.method(domainRouteDeps, "updateProjectDomain", async () => ({
+      name: "example.com",
+      verified: true,
     }) as never);
 
     const response = await domainsPost(
       jsonRequest("https://example.com/api/domains", "POST", {
         storeId: "store_1",
-        domain: " HTTPS://Shop.Example.com/path ",
+        domain: " HTTPS://Example.com/path ",
       }),
     );
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      success: true,
-      verified: true,
-      domain: "shop.example.com",
-    });
-    assert.equal(fetchMock.mock.callCount(), 1);
-    assert.deepEqual(admin.storeUpdates, [
-      {
-        payload: { custom_domain: "shop.example.com" },
-        filters: [["id", "store_1"]],
-      },
-    ]);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.primaryHostname, "www.example.com");
+    assert.deepEqual(
+      admin.domainUpserts.map((entry) => entry.hostname),
+      ["example.com", "www.example.com"],
+    );
   });
 
-  test("clears only the matching custom domain on successful removal", async () => {
+  test("removes both apex and www domain entries on successful removal", async () => {
     const admin = createDomainAdminMock();
 
-    process.env.VERCEL_API_TOKEN = "vercel-token";
+    process.env.VERCEL_TOKEN = "vercel-token";
     process.env.VERCEL_PROJECT_ID = "project_123";
+    process.env.VERCEL_TEAM_ID = "team_123";
 
     mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
     mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
     mock.method(domainRouteDeps, "canManageStore", async () => true);
-    mock.method(domainRouteDeps, "fetch", async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    }) as never);
+    mock.method(domainRouteDeps, "removeProjectDomain", async () => undefined as never);
 
     const response = await domainsDelete(
-      new Request("https://example.com/api/domains?storeId=store_1&domain=Shop.Example.com", {
+      new Request("https://example.com/api/domains?storeId=store_1&domain=Example.com", {
         method: "DELETE",
       }),
     );
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { success: true });
-    assert.deepEqual(admin.storeUpdates, [
+    assert.deepEqual(admin.deletedDomains, [
       {
-        payload: { custom_domain: null },
-        filters: [
-          ["id", "store_1"],
-          ["custom_domain", "shop.example.com"],
-        ],
+        storeId: "store_1",
+        hostnames: ["example.com", "www.example.com"],
       },
     ]);
   });
@@ -726,6 +827,7 @@ describe("bKash callback context integrity", () => {
           paid_at: FIXED_NOW.toISOString(),
           payment_method: "bkash",
           provider_invoice_id: "pay_1",
+          billing_period_start: FIXED_NOW.toISOString(),
           billing_period_end: expectedPeriodEnd,
         },
         filters: [["id", "invoice_1"]],

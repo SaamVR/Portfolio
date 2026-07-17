@@ -61,13 +61,13 @@ async function fetchStoreSlugByCustomDomain(
   }
 
   const query = new URLSearchParams({
-    select: "slug",
-    custom_domain: `eq.${hostname}`,
-    is_published: "eq.true",
+    select: "store:stores!inner(slug,is_published)",
+    hostname: `eq.${hostname}`,
+    status: "eq.active",
     limit: "1",
   });
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/stores?${query.toString()}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/store_domains?${query.toString()}`, {
     headers: {
       apikey: supabaseKey,
       Authorization: `Bearer ${supabaseKey}`,
@@ -80,8 +80,12 @@ async function fetchStoreSlugByCustomDomain(
     return null;
   }
 
-  const stores = (await response.json()) as Array<{ slug?: string }>;
-  return stores[0]?.slug ?? null;
+  const domains = (await response.json()) as Array<{ store?: { slug?: string; is_published?: boolean } }>;
+  if (domains[0]?.store?.is_published === false) {
+    return null;
+  }
+
+  return domains[0]?.store?.slug ?? null;
 }
 
 export async function resolveCustomDomainStoreSlug(

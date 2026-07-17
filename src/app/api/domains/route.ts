@@ -1,75 +1,298 @@
 import { NextResponse } from "next/server";
-import { getCmsRootDomain, getPlatformSiteUrl, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildRedirectInstruction,
+  deriveStoreDomainStatus,
+  getDomainPair,
+  isPlatformHostname,
+  normalizeDomainInput,
+  type DomainRecordInstruction,
+} from "@/lib/domains";
+import {
+  buildVercelDnsInstructions,
+  addProjectDomain,
+  getDomainConfiguration,
+  getProjectDomain,
+  removeProjectDomain,
+  updateProjectDomain,
+  verifyProjectDomain,
+  type VercelDomainConfiguration,
+  type VercelProjectDomain,
+  type VercelVerificationChallenge,
+} from "@/lib/vercel-domains";
 import {
   canManageStore,
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
 
+type StoreDomainRow = {
+  id: string;
+  store_id: string;
+  hostname: string;
+  status: string;
+  is_primary: boolean;
+  is_www_domain: boolean;
+  vercel_verified: boolean;
+  vercel_misconfigured: boolean;
+  configured_by: string | null;
+  verification_records: DomainRecordInstruction[] | null;
+  dns_records: DomainRecordInstruction[] | null;
+  last_vercel_error: Record<string, unknown> | null;
+  last_checked_at: string | null;
+  activated_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export const domainRouteDeps = {
   getAuthenticatedUser,
   getSupabaseAdminClient,
   canManageStore,
   fetch: (...args: Parameters<typeof fetch>) => fetch(...args),
+  normalizeDomainInput,
+  getDomainPair,
+  isPlatformHostname,
+  addProjectDomain,
+  getDomainConfiguration,
+  getProjectDomain,
+  verifyProjectDomain,
+  updateProjectDomain,
+  removeProjectDomain,
+  now: () => new Date().toISOString(),
 };
-
-function normalizeDomain(domain: string) {
-  return domain
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "")
-    .replace(/\.$/, "");
-}
-
-function isValidDomain(domain: string) {
-  if (domain.length > 253) return false;
-  if (domain === "localhost" || domain.endsWith(".localhost")) return false;
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(domain)) return false;
-
-  return /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(domain);
-}
-
-function configuredPlatformDomains() {
-  return [
-    getCmsRootDomain(),
-    getStoreSubdomainBaseDomain(),
-    getPlatformSiteUrl(),
-  ]
-    .filter((value): value is string => Boolean(value))
-    .map(normalizeDomain);
-}
-
-function isPlatformDomain(domain: string) {
-  return configuredPlatformDomains().some(
-    (platformDomain) => domain === platformDomain || domain.endsWith(`.${platformDomain}`),
-  );
-}
 
 async function requireDomainManager(req: Request, storeId: string) {
   const user = await domainRouteDeps.getAuthenticatedUser(req);
-  if (!user) return null;
+  if (!user) {
+    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
 
   const supabaseAdmin = domainRouteDeps.getSupabaseAdminClient();
-  const authorized = await domainRouteDeps.canManageStore(supabaseAdmin, storeId, user.id, [
-    "owner",
-    "admin",
-  ]);
+  const authorized = await domainRouteDeps.canManageStore(supabaseAdmin, storeId, user.id, ["owner", "admin"]);
+  if (!authorized) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
 
-  return authorized ? supabaseAdmin : null;
+  return { supabaseAdmin, userId: user.id };
 }
 
-async function ensureDomainIsAvailable(storeId: string, domain: string) {
-  const supabaseAdmin = domainRouteDeps.getSupabaseAdminClient();
+function asJson(value: unknown) {
+  return (value ?? null) as Record<string, unknown> | null;
+}
+
+async function loadStoreDomains(supabaseAdmin: SupabaseClient, storeId: string) {
   const { data, error } = await supabaseAdmin
-    .from("stores")
-    .select("id")
-    .eq("custom_domain", domain)
-    .neq("id", storeId)
+    .from("store_domains")
+    .select("*")
+    .eq("store_id", storeId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as StoreDomainRow[];
+}
+
+async function upsertStoreDomain(
+  supabaseAdmin: SupabaseClient,
+  payload: Record<string, unknown>,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("store_domains")
+    .upsert(payload, { onConflict: "hostname" })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as StoreDomainRow;
+}
+
+async function updateStoreDomain(
+  supabaseAdmin: SupabaseClient,
+  hostname: string,
+  payload: Record<string, unknown>,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("store_domains")
+    .update(payload)
+    .eq("hostname", hostname)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as StoreDomainRow;
+}
+
+async function ensureHostnameAvailable(
+  supabaseAdmin: SupabaseClient,
+  storeId: string,
+  hostname: string,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("store_domains")
+    .select("store_id")
+    .eq("hostname", hostname)
+    .neq("store_id", storeId)
     .maybeSingle();
 
   if (error) throw error;
   return !data;
+}
+
+async function clearOtherPrimaryFlags(supabaseAdmin: SupabaseClient, storeId: string, keepHostname: string) {
+  const { error } = await supabaseAdmin
+    .from("store_domains")
+    .update({ is_primary: false })
+    .eq("store_id", storeId)
+    .neq("hostname", keepHostname);
+
+  if (error) throw error;
+}
+
+function serializeDomain(row: StoreDomainRow) {
+  return {
+    id: row.id,
+    hostname: row.hostname,
+    status: row.status,
+    isPrimary: row.is_primary,
+    isActive: row.status === "active" && row.vercel_verified && !row.vercel_misconfigured,
+    vercelVerified: row.vercel_verified,
+    vercelMisconfigured: row.vercel_misconfigured,
+    configuredBy: row.configured_by,
+    verificationRecords: row.verification_records ?? [],
+    dnsRecords: row.dns_records ?? [],
+    lastError: row.last_vercel_error,
+    lastCheckedAt: row.last_checked_at,
+    activatedAt: row.activated_at,
+    isWwwDomain: row.is_www_domain,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function syncHostnameStatus(
+  supabaseAdmin: SupabaseClient,
+  hostname: string,
+  now = domainRouteDeps.now(),
+) {
+  let projectDomain: VercelProjectDomain;
+
+  try {
+    projectDomain = await domainRouteDeps.getProjectDomain(hostname);
+  } catch (error) {
+    const updated = await updateStoreDomain(supabaseAdmin, hostname, {
+      status: "failed",
+      last_vercel_error: asJson({ message: error instanceof Error ? error.message : "Failed to fetch Vercel domain" }),
+      last_checked_at: now,
+    });
+
+    return serializeDomain(updated);
+  }
+
+  if (!projectDomain.verified) {
+    try {
+      projectDomain = await domainRouteDeps.verifyProjectDomain(hostname);
+    } catch (error) {
+      await updateStoreDomain(supabaseAdmin, hostname, {
+        last_vercel_error: asJson({ message: error instanceof Error ? error.message : "Domain verification failed" }),
+        last_checked_at: now,
+      });
+    }
+  }
+
+  const configuration = await domainRouteDeps.getDomainConfiguration(hostname);
+  const normalized = domainRouteDeps.normalizeDomainInput(hostname);
+  const verification = projectDomain.verification ?? [];
+  const dnsRecords = buildVercelDnsInstructions(hostname, normalized.apexDomain, configuration, verification);
+  const status = deriveStoreDomainStatus(projectDomain.verified, configuration.misconfigured);
+
+  const updated = await updateStoreDomain(supabaseAdmin, hostname, {
+    status,
+    vercel_verified: projectDomain.verified,
+    vercel_misconfigured: configuration.misconfigured,
+    configured_by: configuration.configuredBy,
+    verification_records: verification,
+    dns_records: dnsRecords,
+    last_vercel_error: null,
+    last_checked_at: now,
+    activated_at: status === "active" ? now : null,
+  });
+
+  return serializeDomain(updated);
+}
+
+async function configureApexRedirect(
+  supabaseAdmin: SupabaseClient,
+  storeId: string,
+  hostname: string,
+) {
+  const { apexHostname, wwwHostname, defaultPrimaryHostname, redirectHostname } = domainRouteDeps.getDomainPair(hostname);
+
+  const domains = await loadStoreDomains(supabaseAdmin, storeId);
+  const domainMap = new Map(domains.map((domain) => [domain.hostname, domain]));
+  const primaryHostname = domainMap.get(defaultPrimaryHostname)?.status === "active"
+    ? defaultPrimaryHostname
+    : hostname;
+
+  await clearOtherPrimaryFlags(supabaseAdmin, storeId, primaryHostname);
+  await updateStoreDomain(supabaseAdmin, primaryHostname, { is_primary: true });
+
+  if (redirectHostname && domainMap.has(redirectHostname) && primaryHostname === wwwHostname) {
+    await domainRouteDeps.updateProjectDomain(apexHostname, {
+      redirect: wwwHostname,
+      redirectStatusCode: 308,
+    });
+
+    await updateStoreDomain(supabaseAdmin, apexHostname, {
+      dns_records: [
+        ...(domainMap.get(apexHostname)?.dns_records ?? []),
+        buildRedirectInstruction(apexHostname, wwwHostname),
+      ],
+    });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const storeId = searchParams.get("storeId");
+    const rawDomain = searchParams.get("domain");
+
+    if (storeId) {
+      const access = await requireDomainManager(req, storeId);
+      if (access.error) return access.error;
+
+      const domains = await loadStoreDomains(access.supabaseAdmin, storeId);
+      return NextResponse.json({ domains: domains.map(serializeDomain) });
+    }
+
+    if (!rawDomain) {
+      return NextResponse.json({ error: "Missing domain" }, { status: 400 });
+    }
+
+    const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
+    const projectDomain = await domainRouteDeps.getProjectDomain(normalized.hostname);
+    const configuration = await domainRouteDeps.getDomainConfiguration(normalized.hostname);
+
+    return NextResponse.json({
+      hostname: normalized.hostname,
+      verified: projectDomain.verified,
+      misconfigured: configuration.misconfigured,
+      status: deriveStoreDomainStatus(projectDomain.verified, configuration.misconfigured),
+      configuredBy: configuration.configuredBy,
+      verificationRecords: projectDomain.verification ?? [],
+      dnsRecords: buildVercelDnsInstructions(
+        normalized.hostname,
+        normalized.apexDomain,
+        configuration,
+        projectDomain.verification ?? [],
+      ),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to check domain" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {
@@ -79,66 +302,117 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing storeId or domain" }, { status: 400 });
     }
 
-    const domain = normalizeDomain(rawDomain);
-    if (!isValidDomain(domain)) {
-      return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
+    const access = await requireDomainManager(req, storeId);
+    if (access.error) return access.error;
+
+    const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
+    const { apexHostname, wwwHostname, defaultPrimaryHostname } = domainRouteDeps.getDomainPair(normalized);
+
+    for (const hostname of [apexHostname, wwwHostname]) {
+      const available = await ensureHostnameAvailable(access.supabaseAdmin, storeId, hostname);
+      if (!available) {
+        return NextResponse.json({ error: "Domain is already connected to another store" }, { status: 409 });
+      }
     }
 
-    if (isPlatformDomain(domain)) {
-      return NextResponse.json({ error: "Platform domains cannot be claimed" }, { status: 400 });
+    const createdDomains: StoreDomainRow[] = [];
+
+    for (const hostname of [apexHostname, wwwHostname]) {
+      const projectDomain = await domainRouteDeps.addProjectDomain(hostname);
+      const configuration = await domainRouteDeps.getDomainConfiguration(hostname);
+      const verification = projectDomain.verification ?? [];
+      const dnsRecords = buildVercelDnsInstructions(hostname, normalized.apexDomain, configuration, verification);
+      const status = deriveStoreDomainStatus(projectDomain.verified, configuration.misconfigured);
+
+      const domainRow = await upsertStoreDomain(access.supabaseAdmin, {
+        store_id: storeId,
+        hostname,
+        status,
+        is_primary: hostname === defaultPrimaryHostname,
+        is_www_domain: hostname === wwwHostname,
+        vercel_verified: projectDomain.verified,
+        vercel_misconfigured: configuration.misconfigured,
+        configured_by: configuration.configuredBy,
+        verification_records: verification,
+        dns_records: dnsRecords,
+        last_vercel_error: null,
+        last_checked_at: domainRouteDeps.now(),
+        activated_at: status === "active" ? domainRouteDeps.now() : null,
+      });
+
+      createdDomains.push(domainRow);
     }
 
-    const supabaseAdmin = await requireDomainManager(req, storeId);
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
 
-    const domainAvailable = await ensureDomainIsAvailable(storeId, domain);
-    if (!domainAvailable) {
-      return NextResponse.json({ error: "Domain is already connected to another store" }, { status: 409 });
-    }
-
-    const vercelApiToken = process.env.VERCEL_API_TOKEN;
-    const vercelProjectId = process.env.VERCEL_PROJECT_ID;
-
-    if (!vercelApiToken || !vercelProjectId) {
-      return NextResponse.json(
-        { error: "Domain provisioning is not configured" },
-        { status: 503 },
-      );
-    }
-
-    const response = await domainRouteDeps.fetch(
-      `https://api.vercel.com/v9/projects/${vercelProjectId}/domains`,
-      {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${vercelApiToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: domain }),
-      },
-    );
-
-    const data = await response.json();
-    if (!response.ok && response.status !== 409) {
-      return NextResponse.json(
-        { error: data.error?.message || "Failed to add domain to Vercel" },
-        { status: response.status },
-      );
-    }
-
-    const { error: dbError } = await supabaseAdmin
-      .from("stores")
-      .update({ custom_domain: domain })
-      .eq("id", storeId);
-
-    if (dbError) throw dbError;
-
-    return NextResponse.json({ success: true, verified: Boolean(data.verified), domain });
+    const refreshed = await loadStoreDomains(access.supabaseAdmin, storeId);
+    return NextResponse.json({
+      success: true,
+      domains: refreshed.map(serializeDomain),
+      primaryHostname: defaultPrimaryHostname,
+    });
   } catch (error) {
-    console.error("Domain API error:", error);
-    return NextResponse.json({ error: "Failed to update custom domain" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to update custom domain" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { storeId, action, domain: rawDomain } = await req.json();
+    if (!storeId || !action || !rawDomain) {
+      return NextResponse.json({ error: "Missing storeId, action, or domain" }, { status: 400 });
+    }
+
+    const access = await requireDomainManager(req, storeId);
+    if (access.error) return access.error;
+
+    const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
+
+    if (action === "check") {
+      const domain = await syncHostnameStatus(access.supabaseAdmin, normalized.hostname);
+      if (domain.isActive) {
+        await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
+      }
+      return NextResponse.json({ success: true, domain });
+    }
+
+    if (action === "make-primary") {
+      const domains = await loadStoreDomains(access.supabaseAdmin, storeId);
+      const selected = domains.find((domain) => domain.hostname === normalized.hostname);
+
+      if (!selected) {
+        return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+      }
+
+      if (!(selected.status === "active" && selected.vercel_verified && !selected.vercel_misconfigured)) {
+        return NextResponse.json({ error: "Only active domains can become primary" }, { status: 409 });
+      }
+
+      await clearOtherPrimaryFlags(access.supabaseAdmin, storeId, normalized.hostname);
+      const updated = await updateStoreDomain(access.supabaseAdmin, normalized.hostname, { is_primary: true });
+
+      if (!selected.is_www_domain) {
+        const domainPair = domainRouteDeps.getDomainPair(normalized.hostname);
+        if (domainPair.redirectHostname) {
+          await domainRouteDeps.updateProjectDomain(domainPair.redirectHostname, {
+            redirect: normalized.hostname,
+            redirectStatusCode: 308,
+          });
+        }
+      }
+
+      return NextResponse.json({ success: true, domain: serializeDomain(updated) });
+    }
+
+    return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to update domain" },
+      { status: 500 },
+    );
   }
 }
 
@@ -152,91 +426,33 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Missing storeId or domain" }, { status: 400 });
     }
 
-    const domain = normalizeDomain(rawDomain);
-    const supabaseAdmin = await requireDomainManager(req, storeId);
-    if (!supabaseAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireDomainManager(req, storeId);
+    if (access.error) return access.error;
+
+    const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
+    const domainPair = domainRouteDeps.getDomainPair(normalized.hostname);
+
+    for (const hostname of [domainPair.apexHostname, domainPair.wwwHostname]) {
+      try {
+        await domainRouteDeps.removeProjectDomain(hostname);
+      } catch {
+        // Let the DB cleanup continue even if Vercel already detached one hostname.
+      }
     }
 
-    const vercelApiToken = process.env.VERCEL_API_TOKEN;
-    const vercelProjectId = process.env.VERCEL_PROJECT_ID;
+    const { error } = await access.supabaseAdmin
+      .from("store_domains")
+      .delete()
+      .eq("store_id", storeId)
+      .in("hostname", [domainPair.apexHostname, domainPair.wwwHostname]);
 
-    if (!vercelApiToken || !vercelProjectId) {
-      return NextResponse.json(
-        { error: "Domain provisioning is not configured" },
-        { status: 503 },
-      );
-    }
-
-    const response = await domainRouteDeps.fetch(
-      `https://api.vercel.com/v9/projects/${vercelProjectId}/domains/${domain}`,
-      {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${vercelApiToken}`,
-      },
-      },
-    );
-
-    if (!response.ok && response.status !== 404) {
-      const data = await response.json();
-      return NextResponse.json(
-        { error: data.error?.message || "Failed to remove domain from Vercel" },
-        { status: response.status },
-      );
-    }
-
-    const { error: dbError } = await supabaseAdmin
-      .from("stores")
-      .update({ custom_domain: null })
-      .eq("id", storeId)
-      .eq("custom_domain", domain);
-
-    if (dbError) throw dbError;
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Domain delete error:", error);
-    return NextResponse.json({ error: "Failed to remove custom domain" }, { status: 500 });
-  }
-}
-
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const rawDomain = searchParams.get("domain");
-    if (!rawDomain) {
-      return NextResponse.json({ error: "Missing domain" }, { status: 400 });
-    }
-
-    const domain = normalizeDomain(rawDomain);
-    if (!isValidDomain(domain)) {
-      return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
-    }
-
-    const vercelApiToken = process.env.VERCEL_API_TOKEN;
-    const vercelProjectId = process.env.VERCEL_PROJECT_ID;
-    if (!vercelApiToken || !vercelProjectId) {
-      return NextResponse.json({ verified: false, configured: false });
-    }
-
-    const response = await domainRouteDeps.fetch(
-      `https://api.vercel.com/v9/projects/${vercelProjectId}/domains/${domain}`,
-      {
-      headers: {
-        Authorization: `Bearer ${vercelApiToken}`,
-      },
-      },
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to remove custom domain" },
+      { status: 500 },
     );
-
-    if (!response.ok) {
-      return NextResponse.json({ verified: false, configured: true });
-    }
-
-    const data = await response.json();
-    return NextResponse.json({ verified: Boolean(data.verified), configured: true });
-  } catch (error) {
-    console.error("Domain status error:", error);
-    return NextResponse.json({ error: "Failed to check domain" }, { status: 500 });
   }
 }

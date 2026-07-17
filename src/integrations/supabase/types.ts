@@ -1230,6 +1230,71 @@ export type Database = {
           },
         ]
       }
+      store_domains: {
+        Row: {
+          activated_at: string | null
+          configured_by: string | null
+          created_at: string
+          dns_records: Json
+          hostname: string
+          id: string
+          is_primary: boolean
+          is_www_domain: boolean
+          last_checked_at: string | null
+          last_vercel_error: Json | null
+          status: string
+          store_id: string
+          updated_at: string
+          verification_records: Json
+          vercel_misconfigured: boolean
+          vercel_verified: boolean
+        }
+        Insert: {
+          activated_at?: string | null
+          configured_by?: string | null
+          created_at?: string
+          dns_records?: Json
+          hostname: string
+          id?: string
+          is_primary?: boolean
+          is_www_domain?: boolean
+          last_checked_at?: string | null
+          last_vercel_error?: Json | null
+          status?: string
+          store_id: string
+          updated_at?: string
+          verification_records?: Json
+          vercel_misconfigured?: boolean
+          vercel_verified?: boolean
+        }
+        Update: {
+          activated_at?: string | null
+          configured_by?: string | null
+          created_at?: string
+          dns_records?: Json
+          hostname?: string
+          id?: string
+          is_primary?: boolean
+          is_www_domain?: boolean
+          last_checked_at?: string | null
+          last_vercel_error?: Json | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+          verification_records?: Json
+          vercel_misconfigured?: boolean
+          vercel_verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_domains_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_page_blocks: {
         Row: {
           block_type: string

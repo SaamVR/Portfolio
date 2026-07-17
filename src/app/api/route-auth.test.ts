@@ -167,8 +167,8 @@ describe("domain management route authorization", () => {
       }),
     );
 
-    assert.equal(response.status, 401);
-    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
     assert.equal(canManageStoreMock.mock.callCount(), 1);
     assert.equal(fetchMock.mock.callCount(), 0);
   });

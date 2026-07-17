@@ -48,12 +48,12 @@ function joinOriginPath(origin: string, path = "/") {
   return normalizedPath === "/" ? origin : `${origin}${normalizedPath}`;
 }
 
-export function resolveStoreOrigin(store?: { slug: string; customDomain?: string | null } | null) {
+export function resolveStoreOrigin(store?: { slug: string; customDomain?: string | null; primaryDomain?: string | null } | null) {
   if (!store?.slug) {
     return siteUrl;
   }
 
-  const customDomain = normalizeDomain(store.customDomain);
+  const customDomain = normalizeDomain(store.primaryDomain ?? store.customDomain);
   if (customDomain) {
     return `https://${customDomain}`;
   }
@@ -66,7 +66,7 @@ export function resolveStoreOrigin(store?: { slug: string; customDomain?: string
   return `${siteUrl}/stores/${encodeURIComponent(store.slug)}`;
 }
 
-export function absoluteStoreUrl(store?: { slug: string; customDomain?: string | null } | null, path = "/") {
+export function absoluteStoreUrl(store?: { slug: string; customDomain?: string | null; primaryDomain?: string | null } | null, path = "/") {
   const origin = resolveStoreOrigin(store);
   if (origin.includes("/stores/")) {
     const normalizedPath = path === "/" ? "" : (path.startsWith("/") ? path : `/${path}`);
