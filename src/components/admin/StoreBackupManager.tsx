@@ -21,6 +21,8 @@ type StoreOption = {
   name: string;
   slug: string;
   description: string | null;
+  custom_domain?: string | null;
+  owner_id?: string | null;
   currency_code: string | null;
   locale: string | null;
   plan: string | null;
@@ -126,6 +128,9 @@ export default function StoreBackupManager() {
   const [backupFormat, setBackupFormat] = useState<BackupFormat>("zip");
   const [replaceTargetContent, setReplaceTargetContent] = useState(true);
   const [preserveTargetSlug, setPreserveTargetSlug] = useState(true);
+  const [preserveTargetDomain, setPreserveTargetDomain] = useState(true);
+  const [keepImportedStoreDraft, setKeepImportedStoreDraft] = useState(true);
+  const [includeOperationalData, setIncludeOperationalData] = useState(false);
   const [accessImportMode, setAccessImportMode] = useState<AccessImportMode>("invites_only");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -136,7 +141,7 @@ export default function StoreBackupManager() {
     queryFn: async () => {
       let query = (supabase as any)
         .from("stores")
-        .select("id, name, slug, description, currency_code, locale, plan, store_type, logo_url, is_published")
+        .select("id, owner_id, name, slug, custom_domain, description, currency_code, locale, plan, store_type, logo_url, is_published")
         .order("name");
 
       if (!isPlatformAdmin) {
@@ -263,6 +268,9 @@ export default function StoreBackupManager() {
 
   const clearTargetStore = async (storeId: string) => {
     for (const tableName of DELETE_ORDER) {
+      if (tableName === "store_subscriptions" && !isPlatformAdmin) {
+        continue;
+      }
       const { error } = await (supabase as any).from(tableName).delete().eq("store_id", storeId);
       if (error) {
         throw error;
@@ -311,12 +319,19 @@ export default function StoreBackupManager() {
 
       const incomingStore = rewrittenData.store as StoreOption | undefined;
       const nextStoreRow = {
-        ...incomingStore,
-        id: targetStore.id,
+        name: incomingStore?.name ?? targetStore.name,
         slug: preserveTargetSlug ? targetStore.slug : incomingStore?.slug ?? targetStore.slug,
+        custom_domain: preserveTargetDomain ? targetStore.custom_domain ?? null : incomingStore?.custom_domain ?? null,
+        description: incomingStore?.description ?? null,
+        currency_code: incomingStore?.currency_code ?? targetStore.currency_code ?? "BDT",
+        locale: incomingStore?.locale ?? targetStore.locale ?? "en-BD",
+        plan: targetStore.plan ?? incomingStore?.plan ?? "basic",
+        store_type: incomingStore?.store_type ?? targetStore.store_type ?? "general-catalog",
+        logo_url: incomingStore?.logo_url ?? null,
+        is_published: keepImportedStoreDraft ? false : Boolean(incomingStore?.is_published),
       };
 
-      const { error: storeError } = await (supabase as any).from("stores").upsert(nextStoreRow, { onConflict: "id" });
+      const { error: storeError } = await (supabase as any).from("stores").update(nextStoreRow).eq("id", targetStore.id);
       if (storeError) throw storeError;
 
       const importedThemeRows = Array.isArray(rewrittenData.store_themes) ? rewrittenData.store_themes : [];
@@ -352,19 +367,22 @@ export default function StoreBackupManager() {
         if (error) throw error;
       };
 
-      const importedSubscriptions = (rewrittenData.store_subscriptions ?? []).map((row: any) => ({
-        id: crypto.randomUUID(),
-        store_id: targetStore.id,
-        plan_id: typeof row?.plan_id === "string" && row.plan_id.trim().length > 0 ? row.plan_id : "basic",
-        status: "trialing",
-        trial_ends_at: null,
-        current_period_ends_at: null,
-        provider: null,
-        provider_subscription_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
-      await upsertRows("store_subscriptions", importedSubscriptions, "store_id");
+      if (isPlatformAdmin) {
+        const importedSubscriptions = (rewrittenData.store_subscriptions ?? []).map((row: any) => ({
+          id: crypto.randomUUID(),
+          store_id: targetStore.id,
+          plan_id: typeof row?.plan_id === "string" && row.plan_id.trim().length > 0 ? row.plan_id : targetStore.plan || "basic",
+          status: keepImportedStoreDraft ? "trialing" : (row?.status ?? "trialing"),
+          trial_ends_at: row?.trial_ends_at ?? null,
+          current_period_ends_at: row?.current_period_ends_at ?? null,
+          provider: row?.provider ?? null,
+          provider_subscription_id: row?.provider_subscription_id ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+        await upsertRows("store_subscriptions", importedSubscriptions, "store_id");
+      }
+
       await upsertRows("store_business_profiles", rewrittenData.store_business_profiles ?? [], "store_id");
       await upsertRows(
         "store_themes",
@@ -380,10 +398,12 @@ export default function StoreBackupManager() {
       await upsertRows("product_types", rewrittenData.product_types ?? []);
       await upsertRows("products", rewrittenData.products ?? []);
       await upsertRows("coupon_codes", rewrittenData.coupon_codes ?? []);
-      await upsertRows("orders", rewrittenData.orders ?? []);
-      await upsertRows("product_reviews", rewrittenData.product_reviews ?? []);
-      await upsertRows("contact_messages", rewrittenData.contact_messages ?? []);
-      await upsertRows("customer_addresses", rewrittenData.customer_addresses ?? []);
+      if (includeOperationalData) {
+        await upsertRows("orders", rewrittenData.orders ?? []);
+        await upsertRows("product_reviews", rewrittenData.product_reviews ?? []);
+        await upsertRows("contact_messages", rewrittenData.contact_messages ?? []);
+        await upsertRows("customer_addresses", rewrittenData.customer_addresses ?? []);
+      }
       await upsertRows("store_pages", rewrittenData.store_pages ?? []);
       await upsertRows("store_page_blocks", rewrittenData.store_page_blocks ?? []);
       const importedRevisions = (rewrittenData.store_page_revisions ?? []).map((row: any) => ({
@@ -462,7 +482,7 @@ export default function StoreBackupManager() {
         queryClient.invalidateQueries({ queryKey: ["backup-stores"] }),
       ]);
 
-      setLastSummary(`Imported ${parsedPackage.source.storeName} into ${targetStore.name} with ${parsedPackage.mediaFiles.length} packaged media files and access mode ${accessImportMode}.`);
+      setLastSummary(`Imported ${parsedPackage.source.storeName} into ${targetStore.name} with ${parsedPackage.mediaFiles.length} packaged media files, ${includeOperationalData ? "including" : "excluding"} operational data, and access mode ${accessImportMode}.`);
       toast.success("Store backup imported.");
     } catch (error: any) {
       console.error(error);
@@ -586,6 +606,27 @@ export default function StoreBackupManager() {
               </div>
               <Switch checked={preserveTargetSlug} onCheckedChange={setPreserveTargetSlug} />
             </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Preserve target domain</p>
+                <p className="text-xs text-muted-foreground">Keep the current custom domain instead of importing the source domain.</p>
+              </div>
+              <Switch checked={preserveTargetDomain} onCheckedChange={setPreserveTargetDomain} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Keep imported store as draft</p>
+                <p className="text-xs text-muted-foreground">Safer default for imported sites so they do not go live immediately.</p>
+              </div>
+              <Switch checked={keepImportedStoreDraft} onCheckedChange={setKeepImportedStoreDraft} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Include operational data</p>
+                <p className="text-xs text-muted-foreground">Import orders, reviews, messages, and saved customer addresses too.</p>
+              </div>
+              <Switch checked={includeOperationalData} onCheckedChange={setIncludeOperationalData} />
+            </div>
             <div className="grid gap-2">
               <Label>Staff Access Import</Label>
               <Select value={accessImportMode} onValueChange={(value) => setAccessImportMode(value as AccessImportMode)}>
@@ -603,10 +644,15 @@ export default function StoreBackupManager() {
               <div className="flex items-start gap-2">
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
-                  Import rewrites store ownership to the selected workspace and can overwrite target content. Invite imports are regenerated as new pending codes, and membership imports assume those user accounts already exist on this platform.
+                  Import now preserves the target store owner, and by default also keeps the target domain and restores the imported store as draft. Invite imports are regenerated as new pending codes, and membership imports assume those user accounts already exist on this platform.
                 </p>
               </div>
             </div>
+            {!isPlatformAdmin ? (
+              <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-xs text-blue-100">
+                Billing subscriptions are preserved from the target store during import. Only platform admins can rewrite subscription rows.
+              </div>
+            ) : null}
             <div className="rounded-lg border border-border bg-card/50 p-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
