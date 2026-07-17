@@ -471,8 +471,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
     ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
     : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
   const headerShell = isLightTheme
-    ? "border-slate-200/80 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
-    : "border-white/10 bg-slate-950/55 shadow-[0_18px_45px_rgba(0,0,0,0.22)]";
+    ? "border-white/50 bg-white/45 shadow-[0_22px_55px_rgba(15,23,42,0.10)]"
+    : "border-white/10 bg-slate-950/38 shadow-[0_22px_55px_rgba(0,0,0,0.28)]";
   const panelShell = isLightTheme
     ? "border-slate-300/70 bg-white/88 text-slate-950"
     : "border-white/8 bg-slate-900/45 text-white";
@@ -522,8 +522,12 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-2xl supports-[backdrop-filter]:bg-opacity-75 ${headerShell}`}>
-        <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-3 px-4">
+      <header className={`sticky top-0 z-50 border-b backdrop-blur-3xl supports-[backdrop-filter]:bg-opacity-60 ${headerShell}`}>
+        <nav className={`mx-auto mt-3 flex h-[4.6rem] max-w-6xl items-center justify-between gap-3 rounded-[1.7rem] border px-4 sm:px-5 ${
+          isLightTheme
+            ? "border-white/60 bg-white/40"
+            : "border-white/10 bg-white/[0.04]"
+        }`}>
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
               EZ
@@ -770,16 +774,41 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                   : "w-full"
               }`}
             >
-              <div className={`flex items-center justify-between border-b px-3 py-2.5 sm:px-4 sm:py-3 ${isLightTheme ? "border-slate-200 bg-slate-50" : "border-white/5 bg-slate-900/90"}`}>
-                <div className="flex gap-1.5">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-                </div>
-                <div className={`truncate rounded-md border px-2 py-0.5 text-center font-mono text-[9px] sm:px-3 sm:text-[10px] ${previewDevice === "mobile" ? "w-[58%]" : "w-[45%] sm:w-1/2"} ${isLightTheme ? "border-slate-200 bg-white text-slate-500" : "border-white/5 bg-slate-950/80 text-zinc-500"}`}>
-                  {previewStoreUrl}
-                </div>
-                <div className="w-6 sm:w-10" />
+              <div className={`border-b px-3 py-2.5 sm:px-4 sm:py-3 ${isLightTheme ? "border-slate-200 bg-slate-50" : "border-white/5 bg-slate-900/90"}`}>
+                {previewDevice === "mobile" ? (
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${
+                      isLightTheme ? "bg-white text-slate-700 shadow-sm" : "bg-white/10 text-zinc-100"
+                    }`}>
+                      <Store className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-xs font-bold ${isLightTheme ? "text-slate-900" : "text-white"}`}>{storeName || siteProfile.storeName}</p>
+                      <p className={`truncate text-[10px] ${subtleText}`}>{previewStoreUrl.replace(/^https?:\/\//, "")}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage("shop")}
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${
+                        isLightTheme ? "bg-slate-900 text-white" : "bg-white/10 text-white"
+                      }`}
+                    >
+                      Cart {cartCount}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                    </div>
+                    <div className={`truncate rounded-md border px-2 py-0.5 text-center font-mono text-[9px] sm:px-3 sm:text-[10px] ${previewDevice === "mobile" ? "w-[58%]" : "w-[45%] sm:w-1/2"} ${isLightTheme ? "border-slate-200 bg-white text-slate-500" : "border-white/5 bg-slate-950/80 text-zinc-500"}`}>
+                      {previewStoreUrl}
+                    </div>
+                    <div className="w-6 sm:w-10" />
+                  </div>
+                )}
               </div>
 
               {announcementText.trim() ? (
@@ -815,13 +844,6 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                         </button>
                       ))}
                     </div>
-                    {previewDevice === "mobile" ? (
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
-                        isLightTheme ? "border-slate-200 bg-white text-slate-700" : "border-white/10 bg-white/[0.05] text-zinc-200"
-                      }`}>
-                        <ShoppingBag className="h-4 w-4" />
-                      </div>
-                    ) : null}
                   </div>
 
                   {previewDevice === "mobile" ? (
