@@ -22,6 +22,7 @@ import {
   Layout,
   MessageSquareQuote,
   Monitor,
+  Moon,
   PackageCheck,
   Palette,
   PanelTop,
@@ -33,6 +34,7 @@ import {
   Smartphone,
   Star,
   Store,
+  Sun,
   ShoppingBag,
   Tag,
   Type,
@@ -416,7 +418,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
 }
 
 export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>("emerald");
   const [activeFont, setActiveFont] = useState<FontKey>("modern");
@@ -469,8 +471,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
     ? "bg-stone-100 text-slate-950 selection:bg-emerald-500 selection:text-white"
     : "bg-slate-950 text-white selection:bg-emerald-400 selection:text-slate-950";
   const headerShell = isLightTheme
-    ? "border-slate-300/70 bg-stone-100/85"
-    : "border-white/10 bg-slate-950/80";
+    ? "border-slate-200/80 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
+    : "border-white/10 bg-slate-950/55 shadow-[0_18px_45px_rgba(0,0,0,0.22)]";
   const panelShell = isLightTheme
     ? "border-slate-300/70 bg-white/88 text-slate-950"
     : "border-white/8 bg-slate-900/45 text-white";
@@ -520,7 +522,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
       <div className={`pointer-events-none absolute bottom-[8%] left-[20%] h-[380px] w-[380px] rounded-full blur-[120px] ${isLightTheme ? "bg-slate-300/30 opacity-30" : "bg-white/5 opacity-20"}`} />
       <div className={`pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] ${isLightTheme ? "opacity-[0.08]" : "opacity-30"} [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_65%,transparent_100%)]`} />
 
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${headerShell}`}>
+      <header className={`sticky top-0 z-50 border-b backdrop-blur-2xl supports-[backdrop-filter]:bg-opacity-75 ${headerShell}`}>
         <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-3 px-4">
           <Link href="/" className={`flex items-center gap-3 ${isLightTheme ? "text-slate-950" : "text-white"}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black shadow-lg ${theme.primary}`}>
@@ -540,9 +542,21 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
             <a href="#plans" className="nav-link-anim pb-1 hover:text-current">Pricing</a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setTheme(isLightTheme ? "dark" : "light")}
+              aria-label="Toggle color mode"
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                isLightTheme
+                  ? "border-slate-300 bg-white/90 text-slate-700 hover:bg-slate-100"
+                  : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {isLightTheme ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+            </button>
             <Link href="/admin/login" className={`hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:inline-flex ${
-              isLightTheme ? "text-slate-700 hover:bg-slate-200/70" : "text-zinc-300 hover:bg-white/5 hover:text-white"
+              isLightTheme ? "border border-slate-300 bg-white/90 text-slate-800 hover:bg-slate-100" : "text-zinc-300 hover:bg-white/5 hover:text-white"
             }`}>
               Login
             </Link>
@@ -1003,8 +1017,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                     ))}
 
                     {previewPage === "shop" ? (
-                      <div className={`rounded-[1.5rem] border p-4 sm:col-span-2 xl:col-span-3 ${isLightTheme ? "border-slate-200 bg-slate-50/85" : "border-white/8 bg-white/[0.03]"}`}>
-                        <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+                      <div className={`rounded-[1.5rem] border p-4 ${previewDevice === "mobile" ? "" : "sm:col-span-2 xl:col-span-3"} ${isLightTheme ? "border-slate-200 bg-slate-50/85" : "border-white/8 bg-white/[0.03]"}`}>
+                        <div className={`grid gap-4 ${previewDevice === "mobile" ? "grid-cols-1" : "lg:grid-cols-[1fr_0.9fr]"}`}>
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${subtleText}`}>Shop filters</p>
@@ -1018,7 +1032,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                               ))}
                             </div>
                           </div>
-                          <div className={`rounded-2xl border p-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-slate-950/35"}`}>
+                          <div className={`min-w-0 rounded-2xl border p-3 ${isLightTheme ? "border-slate-200 bg-white" : "border-white/8 bg-slate-950/35"}`}>
                             <div className="flex items-center justify-between gap-3">
                               <div>
                                 <p className={`text-[10px] uppercase tracking-[0.18em] ${subtleText}`}>Cart preview</p>
@@ -1029,7 +1043,7 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                             <div className="mt-3 space-y-2">
                               {cartItems.map((item) => (
                                 <div key={item.name} className="flex items-center justify-between gap-3">
-                                  <p className={`text-xs font-semibold ${isLightTheme ? "text-slate-900" : "text-white"}`}>{item.name}</p>
+                                  <p className={`min-w-0 flex-1 text-xs font-semibold ${isLightTheme ? "text-slate-900" : "text-white"}`}>{item.name}</p>
                                   <span className={`text-[11px] font-bold ${theme.primaryText}`}>{item.price}</span>
                                 </div>
                               ))}
@@ -1435,7 +1449,11 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
                 <Link href="/signup" className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 py-3 text-sm font-bold text-white shadow-xl transition-all hover:-translate-y-0.5 sm:w-auto ${theme.primary} ${theme.button}`}>
                   Continue to signup
                 </Link>
-                <Link href="/admin/login" className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-white/10 sm:w-auto">
+                <Link href="/admin/login" className={`inline-flex min-h-12 w-full items-center justify-center rounded-full border px-6 py-3 text-sm font-bold transition-all hover:-translate-y-0.5 sm:w-auto ${
+                  isLightTheme
+                    ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-100"
+                    : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                }`}>
                   Already have admin access?
                 </Link>
               </div>
