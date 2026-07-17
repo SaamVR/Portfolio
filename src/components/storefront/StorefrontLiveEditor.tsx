@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, Save, Settings2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Loader2, Paintbrush2, Plus, RotateCcw, Save, Settings2, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +78,8 @@ export function StorefrontLiveEditor({
   const [saving, setSaving] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [insertPosition, setInsertPosition] = useState<"before" | "after">("after");
+  const [history, setHistory] = useState<Store[]>([]);
+  const lastLoadedStoreRef = useRef(store);
   const location = useLocation();
   const pageEditorHref = `/admin/page-builder?page=${encodeURIComponent(page.id)}&returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const selectedBlock = useMemo(
@@ -91,12 +93,47 @@ export function StorefrontLiveEditor({
     }
   }, [adminMode, onSelectedBlockChange]);
 
+  useEffect(() => {
+    lastLoadedStoreRef.current = store;
+    setHistory([]);
+  }, [store]);
+
   if (!canManageStore) {
     return null;
   }
 
+  const applyStoreChange = (updater: (current: Store) => Store) => {
+    setStore((current) => {
+      setHistory((existing) => {
+        const next = [...existing, current];
+        return next.length > 20 ? next.slice(next.length - 20) : next;
+      });
+      return updater(current);
+    });
+  };
+
+  const undoLastChange = () => {
+    setHistory((existing) => {
+      const previous = existing[existing.length - 1];
+      if (!previous) {
+        toast.error("No live editor changes to undo.");
+        return existing;
+      }
+
+      setStore(previous);
+      return existing.slice(0, -1);
+    });
+  };
+
+  const resetToLoadedState = () => {
+    setStore(lastLoadedStoreRef.current);
+    setHistory([]);
+    onSelectedBlockChange(null);
+    toast.success("Live editor reset to the last loaded storefront state.");
+  };
+
   const updateStoreThemeToken = (token: string, value: string) => {
-    setStore((current) => ({
+    applyStoreChange((current) => ({
       ...current,
       theme: {
         ...current.theme,
@@ -111,7 +148,7 @@ export function StorefrontLiveEditor({
   const updateSelectedBlockField = (field: string, value: string) => {
     if (!selectedBlock) return;
 
-    setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
       ...block,
       props: {
         ...(block.props as Record<string, unknown>),
@@ -123,7 +160,7 @@ export function StorefrontLiveEditor({
   const updateSelectedBlockProps = (patch: Record<string, unknown>) => {
     if (!selectedBlock) return;
 
-    setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
       ...block,
       props: {
         ...(block.props as Record<string, unknown>),
@@ -185,7 +222,7 @@ export function StorefrontLiveEditor({
   const moveSelectedBlock = (direction: -1 | 1) => {
     if (!selectedBlock) return;
 
-    setStore((current) => updatePage(current, page.id, (currentPage) => {
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
       const blocks = [...currentPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
       const index = blocks.findIndex((block) => block.id === selectedBlock.id);
       const nextIndex = index + direction;
@@ -205,7 +242,7 @@ export function StorefrontLiveEditor({
   const duplicateSelectedBlock = () => {
     if (!selectedBlock) return;
 
-    setStore((current) => updatePage(current, page.id, (currentPage) => {
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
       const sourceIndex = currentPage.blocks.findIndex((block) => block.id === selectedBlock.id);
       if (sourceIndex === -1) {
         return currentPage;
@@ -229,10 +266,36 @@ export function StorefrontLiveEditor({
     }));
   };
 
+  const removeSelectedBlock = () => {
+    if (!selectedBlock) return;
+
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
+      if (currentPage.blocks.length <= 1) {
+        toast.error("A page needs at least one block.");
+        return currentPage;
+      }
+
+      const sourceIndex = currentPage.blocks.findIndex((block) => block.id === selectedBlock.id);
+      if (sourceIndex === -1) {
+        return currentPage;
+      }
+
+      const blocks = currentPage.blocks.filter((block) => block.id !== selectedBlock.id)
+        .map((block, index) => ({ ...block, sortOrder: index }));
+      const nextSelected = blocks[Math.max(0, sourceIndex - 1)] ?? blocks[0] ?? null;
+      onSelectedBlockChange(nextSelected?.id ?? null);
+
+      return {
+        ...currentPage,
+        blocks,
+      };
+    }));
+  };
+
   const insertNewBlock = () => {
     if (!selectedBlock) return;
 
-    setStore((current) => updatePage(current, page.id, (currentPage) => {
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
       const sourceIndex = currentPage.blocks.findIndex((block) => block.id === selectedBlock.id);
       if (sourceIndex === -1) {
         return currentPage;
@@ -603,6 +666,12 @@ export function StorefrontLiveEditor({
           <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} onClick={() => onAdminModeChange(!adminMode)}>
             {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
+          <Button type="button" size="icon" variant="ghost" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button type="button" size="icon" variant="ghost" onClick={() => resetToLoadedState()} title="Reset live editor">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
           <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
             <SelectTrigger className="h-9 w-[128px] rounded-full border-none bg-transparent px-3">
               <SelectValue />
@@ -690,6 +759,10 @@ export function StorefrontLiveEditor({
                     <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()}>
                       <Copy className="h-4 w-4" />
                       Duplicate
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => removeSelectedBlock()}>
+                      <Trash2 className="h-4 w-4" />
+                      Remove
                     </Button>
                   </div>
                   {editorMode === "advanced" ? (
