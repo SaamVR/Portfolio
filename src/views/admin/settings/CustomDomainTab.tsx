@@ -123,6 +123,18 @@ export const CustomDomainTab = () => {
       setStoreSlug(store.slug ?? "");
       setPlatformDomainFromServer(store.platformDomain ?? "");
       setDomains(domainData.domains ?? []);
+
+      if (!store.slug && activeStoreId) {
+        const { data: fallbackStore } = await supabase
+          .from("stores")
+          .select("slug")
+          .eq("id", activeStoreId)
+          .maybeSingle();
+
+        if (fallbackStore?.slug) {
+          setStoreSlug(fallbackStore.slug);
+        }
+      }
     } catch (error) {
       console.error("Failed to load store domains:", error);
       toast.error(error instanceof Error ? error.message : "Failed to load domain settings");
@@ -172,6 +184,7 @@ export const CustomDomainTab = () => {
       toast.success("Custom domain connected. Add the DNS records below to finish setup.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add domain");
+      console.error("Domain add error:", error);
     } finally {
       setSaving(false);
     }
@@ -194,6 +207,14 @@ export const CustomDomainTab = () => {
 
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Failed to check connection");
+
+      const store = (body.store ?? {}) as DomainPageStore;
+      if (store.slug) {
+        setStoreSlug(store.slug);
+      }
+      if (store.platformDomain) {
+        setPlatformDomainFromServer(store.platformDomain);
+      }
 
       setDomains((current) =>
         current.map((domain) => (domain.hostname === hostname ? body.domain : domain)),
@@ -304,6 +325,11 @@ export const CustomDomainTab = () => {
             <p className="mt-2 text-xs text-muted-foreground">
               Current storefront URL: <span className="font-mono">{storefrontUrl}</span>
             </p>
+            {storeSlug ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Current store subdomain: <span className="font-mono">{storeSlug}</span>
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-dashed border-border bg-background p-4">

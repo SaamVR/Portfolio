@@ -11,6 +11,7 @@ import {
 import {
   buildVercelDnsInstructions,
   addProjectDomain,
+  getVercelConfigDebug,
   getDomainConfiguration,
   getProjectDomain,
   removeProjectDomain,
@@ -369,14 +370,19 @@ export async function POST(req: Request) {
     await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
 
     const refreshed = await loadStoreDomains(access.supabaseAdmin, storeId);
+    const store = await loadStoreSummary(access.supabaseAdmin, storeId);
     return NextResponse.json({
       success: true,
+      store,
       domains: refreshed.map(serializeDomain),
       primaryHostname: defaultPrimaryHostname,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update custom domain" },
+      {
+        error: error instanceof Error ? error.message : "Failed to update custom domain",
+        vercel: getVercelConfigDebug(),
+      },
       { status: 500 },
     );
   }
@@ -399,7 +405,8 @@ export async function PATCH(req: Request) {
       if (domain.isActive) {
         await configureApexRedirect(access.supabaseAdmin, storeId, normalized.hostname);
       }
-      return NextResponse.json({ success: true, domain });
+      const store = await loadStoreSummary(access.supabaseAdmin, storeId);
+      return NextResponse.json({ success: true, store, domain });
     }
 
     if (action === "make-primary") {
@@ -433,7 +440,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update domain" },
+      {
+        error: error instanceof Error ? error.message : "Failed to update domain",
+        vercel: getVercelConfigDebug(),
+      },
       { status: 500 },
     );
   }

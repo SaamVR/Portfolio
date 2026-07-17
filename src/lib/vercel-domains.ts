@@ -50,6 +50,18 @@ export interface VercelDomainErrorShape {
   message?: string;
 }
 
+export function getVercelConfigDebug() {
+  const projectId = getServerEnv("VERCEL_PROJECT_ID") ?? null;
+  const teamId = getServerEnv("VERCEL_TEAM_ID") ?? null;
+  const token = getServerEnv("VERCEL_TOKEN");
+
+  return {
+    projectId,
+    teamId,
+    hasToken: Boolean(token),
+  };
+}
+
 async function parseJson(response: Response) {
   return (await response.json().catch(() => null)) as VercelDomainErrorShape | null;
 }
@@ -79,9 +91,13 @@ async function vercelRequest<T>(pathname: string, init: RequestInit = {}) {
   const body = await parseJson(response);
 
   if (!response.ok) {
-    const error = new Error(
-      body?.error?.message || body?.message || `Vercel API request failed with ${response.status}`,
-    ) as Error & { status?: number; body?: VercelDomainErrorShape | null };
+    const message = body?.error?.message || body?.message || `Vercel API request failed with ${response.status}`;
+    const debug = getVercelConfigDebug();
+    const enrichedMessage = response.status === 404
+      ? `${message}. Vercel project lookup used projectId=${debug.projectId ?? "missing"}, teamId=${debug.teamId ?? "none"}, hasToken=${debug.hasToken}. If you changed env vars recently, restart the Next.js server.`
+      : message;
+
+    const error = new Error(enrichedMessage) as Error & { status?: number; body?: VercelDomainErrorShape | null };
     error.status = response.status;
     error.body = body;
     throw error;
