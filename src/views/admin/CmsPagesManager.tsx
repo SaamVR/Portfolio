@@ -1407,6 +1407,11 @@ export default function CmsPagesManager() {
   const featuredProductsBlock = selectedPage?.blocks.find((block) => block.type === "featured-products") ?? null;
   const faqBlock = selectedPage?.blocks.find((block) => block.type === "faq-accordion") ?? null;
   const trustBlock = selectedPage?.blocks.find((block) => block.type === "trust-badges") ?? null;
+  const socialFeedBlock = selectedPage?.blocks.find((block) => block.type === "social-feed") ?? null;
+  const videoReelBlock = selectedPage?.blocks.find((block) => block.type === "video-reel") ?? null;
+  const testimonialsBlock = selectedPage?.blocks.find((block) => block.type === "testimonials") ?? null;
+  const categoryShowcaseBlock = selectedPage?.blocks.find((block) => block.type === "category-showcase") ?? null;
+  const recentlyViewedBlock = selectedPage?.blocks.find((block) => block.type === "recently-viewed") ?? null;
   const basicStatusLabel = saving
     ? "Saving changes..."
     : hasUnsavedChanges
@@ -1414,6 +1419,18 @@ export default function CmsPagesManager() {
         ? `Autosaved locally at ${lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
         : "Unsaved changes in local draft"
       : "All changes saved";
+  const advancedJsonLabel = selectedBlock ? `${selectedBlock.type}.json` : "selected-block.json";
+  const advancedPageJson = selectedPage
+    ? JSON.stringify({
+        id: selectedPage.id,
+        title: selectedPage.title,
+        slug: selectedPage.slug,
+        seoTitle: selectedPage.seoTitle ?? "",
+        seoDescription: selectedPage.seoDescription ?? "",
+        isHomepage: selectedPage.isHomepage,
+        blocks: selectedPage.blocks,
+      }, null, 2)
+    : "";
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2333,6 +2350,96 @@ export default function CmsPagesManager() {
                           </div>
                         </div>
                       ) : null}
+                      {socialFeedBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Social Feed</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Update the section title, intro text, and image URLs through a simple form.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={socialFeedBlock.props.title ?? ""} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Subtitle</Label>
+                              <Input value={socialFeedBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { subtitle: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Image URLs</Label>
+                              <Textarea rows={4} value={((socialFeedBlock.props.images as string[]) || []).join("\n")} onChange={(e) => updateBlockProps(socialFeedBlock.id, "social-feed", { images: e.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} placeholder={"https://...\nhttps://..."} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {videoReelBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Video Highlight</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Set the video title, URL, and CTA without touching raw block settings.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={videoReelBlock.props.title ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Video URL</Label>
+                              <Input value={videoReelBlock.props.videoUrl ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { videoUrl: e.target.value })} />
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="grid gap-2">
+                                <Label>CTA Label</Label>
+                                <Input value={videoReelBlock.props.ctaText ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { ctaText: e.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>CTA Link</Label>
+                                <Input value={videoReelBlock.props.ctaLink ?? ""} onChange={(e) => updateBlockProps(videoReelBlock.id, "video-reel", { ctaLink: e.target.value })} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {testimonialsBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Testimonials</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Edit the section heading here. Review entries stay in Advanced for structured editing.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={testimonialsBlock.props.title ?? ""} onChange={(e) => updateBlockProps(testimonialsBlock.id, "testimonials", { title: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Subtitle</Label>
+                              <Input value={testimonialsBlock.props.subtitle ?? ""} onChange={(e) => updateBlockProps(testimonialsBlock.id, "testimonials", { subtitle: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {categoryShowcaseBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Category Showcase</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Adjust the category section headline and intro without entering block mode.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Tagline</Label>
+                              <Input value={categoryShowcaseBlock.props.tagline ?? ""} onChange={(e) => updateBlockProps(categoryShowcaseBlock.id, "category-showcase", { tagline: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={categoryShowcaseBlock.props.title ?? ""} onChange={(e) => updateBlockProps(categoryShowcaseBlock.id, "category-showcase", { title: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {recentlyViewedBlock ? (
+                        <div className="rounded-xl border border-border p-4">
+                          <p className="text-sm font-semibold text-foreground">Recently Viewed</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Simple heading control for the recently viewed products section.</p>
+                          <div className="mt-4 grid gap-3">
+                            <div className="grid gap-2">
+                              <Label>Title</Label>
+                              <Input value={recentlyViewedBlock.props.title ?? ""} onChange={(e) => updateBlockProps(recentlyViewedBlock.id, "recently-viewed", { title: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 md:col-span-2">
                         <p className="text-sm font-medium text-foreground">Need deeper layout or developer controls?</p>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -3074,33 +3181,75 @@ export default function CmsPagesManager() {
 
               {!isAdvancedEditor ? (
                 <div className="sticky bottom-0 z-30 -mx-4 border-t border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">Basic Editing Actions</p>
-                      <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+                  <div className="rounded-2xl border border-border/80 bg-card/90 px-3 py-3 shadow-sm sm:px-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">Basic Editing Actions</p>
+                        <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="rounded-full">
+                          <Undo2 className="h-4 w-4" />
+                          Undo
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="rounded-full">
+                          <Redo2 className="h-4 w-4" />
+                          Redo
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                          <a href={previewHref} target="_blank" rel="noreferrer">
+                            <Eye className="h-4 w-4" />
+                            Preview
+                          </a>
+                        </Button>
+                        <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="rounded-full">
+                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          Save
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0}>
-                        <Undo2 className="h-4 w-4" />
-                        Undo
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0}>
-                        <Redo2 className="h-4 w-4" />
-                        Redo
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <a href={previewHref} target="_blank" rel="noreferrer">
-                          <Eye className="h-4 w-4" />
-                          Preview
-                        </a>
-                      </Button>
-                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving}>
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Save
-                      </Button>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground sm:hidden">
+                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Mobile-first merchant editing</div>
+                      <div className="rounded-xl border border-border/70 bg-background/80 px-3 py-2">Autosaves local draft before publish</div>
                     </div>
                   </div>
                 </div>
+              ) : null}
+
+              {isAdvancedEditor ? (
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Code Panels</CardTitle>
+                    <CardDescription>Technical editing surfaces for raw page payloads, selected block props, and layout import/export workflows.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <div className="grid gap-2 rounded-lg border border-border p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Current Page JSON</p>
+                            <p className="text-xs text-muted-foreground">Read-only page snapshot for audits, diffs, and copying into external tools.</p>
+                          </div>
+                          <Badge variant="outline">{selectedPage?.slug ?? "/"}</Badge>
+                        </div>
+                        <Textarea readOnly rows={18} className="font-mono text-xs" value={advancedPageJson} />
+                      </div>
+                      <div className="grid gap-2 rounded-lg border border-border p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Selected Block JSON</p>
+                            <p className="text-xs text-muted-foreground">Use this with the raw block props editor above when you need type-specific low-level changes.</p>
+                          </div>
+                          <Badge variant="outline">{advancedJsonLabel}</Badge>
+                        </div>
+                        <Textarea readOnly rows={18} className="font-mono text-xs" value={selectedBlock ? JSON.stringify(selectedBlock, null, 2) : ""} />
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-xs text-muted-foreground">
+                      Layout export/import stays available from the Advanced header actions so technical editors can move full page structures between workspaces.
+                    </div>
+                  </CardContent>
+                </Card>
               ) : null}
 
               {isAdvancedEditor ? (
