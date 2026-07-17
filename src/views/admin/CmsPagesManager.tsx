@@ -77,6 +77,7 @@ import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemeP
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type StoreRecord = {
   id: string;
@@ -305,6 +306,8 @@ export default function CmsPagesManager() {
   const [redoStack, setRedoStack] = useState<Store[]>([]);
   const [basicGuideStep, setBasicGuideStep] = useState<BasicGuideStep>("basics");
   const [isActionDockMinimized, setIsActionDockMinimized] = useState(false);
+  const [desktopPreviewMode, setDesktopPreviewMode] = useState<"side" | "below" | "minimized" | "hidden">("side");
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
@@ -532,6 +535,8 @@ export default function CmsPagesManager() {
     setPersistedSnapshot("");
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
+    setDesktopPreviewMode("side");
+    setIsMobilePreviewOpen(false);
   }, [activeStoreId]);
 
   useEffect(() => {
@@ -1294,6 +1299,30 @@ export default function CmsPagesManager() {
     commitStoreChange(next, { trackHistory: false });
   };
 
+  useEffect(() => {
+    setAdvancedPageJsonDraft(
+      selectedPage
+        ? JSON.stringify({
+            id: selectedPage.id,
+            title: selectedPage.title,
+            slug: selectedPage.slug,
+            seoTitle: selectedPage.seoTitle ?? "",
+            seoDescription: selectedPage.seoDescription ?? "",
+            isHomepage: selectedPage.isHomepage,
+            blocks: selectedPage.blocks,
+          }, null, 2)
+        : "",
+    );
+  }, [selectedPage]);
+
+  useEffect(() => {
+    setAdvancedSelectedBlockJsonDraft(selectedBlock ? JSON.stringify(selectedBlock, null, 2) : "");
+  }, [selectedBlock]);
+
+  useEffect(() => {
+    setAdvancedThemeCssDraft(store?.theme.customCss ?? "");
+  }, [store?.theme.customCss]);
+
   if (role !== "admin") {
     return null;
   }
@@ -1433,6 +1462,16 @@ export default function CmsPagesManager() {
   const testimonialsBlock = selectedPage?.blocks.find((block) => block.type === "testimonials") ?? null;
   const categoryShowcaseBlock = selectedPage?.blocks.find((block) => block.type === "category-showcase") ?? null;
   const recentlyViewedBlock = selectedPage?.blocks.find((block) => block.type === "recently-viewed") ?? null;
+  const homepagePage = store.pages.find((page) => page.isHomepage) ?? null;
+  const productStoryPages = store.pages.filter((page) => /product|shop|catalog/i.test(`${page.slug} ${page.title}`));
+  const customContentPages = store.pages.filter((page) => !page.isHomepage && !/product|shop|catalog|checkout/i.test(`${page.slug} ${page.title}`));
+  const checkoutSettingsHref = withStoreId("/admin/site-settings?tab=payment", activeStoreId);
+  const shippingSettingsHref = withStoreId("/admin/site-settings?tab=delivery", activeStoreId);
+  const selectedPageJourneyLabel = selectedPage?.isHomepage
+    ? "Homepage"
+    : /product|shop|catalog/i.test(`${selectedPage?.slug ?? ""} ${selectedPage?.title ?? ""}`)
+      ? "Product Discovery"
+      : "Custom Page";
   const basicStatusLabel = saving
     ? "Saving changes..."
     : hasUnsavedChanges
@@ -1518,22 +1557,78 @@ export default function CmsPagesManager() {
         { id: "advanced-revisions", label: "Revisions" },
       ]
     : basicGuideSteps.map((step) => ({ id: step.sectionId, label: step.title }));
+  const guidedPageJourneys = [
+    {
+      id: "homepage",
+      label: "Homepage",
+      state: basicStepCompletion.hero && basicStepCompletion.promotion ? "Ready" : homepagePage ? "In progress" : "Needs setup",
+      detail: homepagePage ? "Lead with the hero, promotion, trust, and publish checks." : "Seed the homepage and set your first impression before anything else.",
+      actionLabel: homepagePage ? "Open Homepage" : "Go To Basics",
+      onClick: () => {
+        if (homepagePage) {
+          setSelectedPageId(homepagePage.id);
+        }
+        setBasicGuideStep("hero");
+        scrollToBuilderSection(homepagePage ? "basic-step-hero" : "basic-step-basics");
+      },
+    },
+    {
+      id: "product-discovery",
+      label: "Product Discovery",
+      state: productStoryPages.length > 0 ? "Configured" : "Recommended",
+      detail: productStoryPages.length > 0 ? `${productStoryPages.length} product-focused page${productStoryPages.length > 1 ? "s are" : " is"} ready to refine.` : "Create or refine a product, catalog, or collection story page next.",
+      actionLabel: productStoryPages[0] ? "Open Product Page" : "Open Advanced",
+      onClick: () => {
+        if (productStoryPages[0]) {
+          setSelectedPageId(productStoryPages[0].id);
+          setBasicGuideStep("promotion");
+          scrollToBuilderSection("basic-step-promotion");
+          return;
+        }
+        window.location.href = advancedEditorHref;
+      },
+    },
+    {
+      id: "checkout",
+      label: "Checkout",
+      state: "Settings",
+      detail: "Payment, delivery, incentives, and reassurance live in guided checkout settings instead of raw page blocks.",
+      actionLabel: "Open Checkout Settings",
+      onClick: () => {
+        window.location.href = checkoutSettingsHref;
+      },
+    },
+    {
+      id: "custom-pages",
+      label: "Custom Pages",
+      state: customContentPages.length > 0 ? "Active" : "Optional",
+      detail: customContentPages.length > 0 ? `${customContentPages.length} custom content page${customContentPages.length > 1 ? "s are" : " is"} available for FAQs, about, policy, and story content.` : "Add About, FAQ, policy, or brand story pages after the main shopping flow is clear.",
+      actionLabel: customContentPages[0] ? "Open Custom Page" : "Review Shipping Settings",
+      onClick: () => {
+        if (customContentPages[0]) {
+          setSelectedPageId(customContentPages[0].id);
+          setBasicGuideStep("sections");
+          scrollToBuilderSection("basic-step-sections");
+          return;
+        }
+        window.location.href = shippingSettingsHref;
+      },
+    },
+  ] as const;
   const scrollToBuilderSection = (sectionId: string) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const openPreviewWorkspace = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      setPreviewViewport("mobile");
+      setIsMobilePreviewOpen(true);
+      return;
+    }
 
-  useEffect(() => {
-    setAdvancedPageJsonDraft(advancedPageJson);
-  }, [advancedPageJson]);
-
-  useEffect(() => {
-    setAdvancedSelectedBlockJsonDraft(selectedBlockJson);
-  }, [selectedBlockJson]);
-
-  useEffect(() => {
-    setAdvancedThemeCssDraft(store.theme.customCss ?? "");
-  }, [store.theme.customCss]);
+    setDesktopPreviewMode((current) => (current === "hidden" || current === "minimized" ? "side" : current));
+    scrollToBuilderSection("page-builder-preview");
+  };
 
   const copyBuilderText = async (value: string, label: string) => {
     if (!value.trim()) {
@@ -1620,6 +1715,157 @@ export default function CmsPagesManager() {
     toast.success("Applied custom theme CSS to the local draft.");
   };
 
+  const previewCanvas = (
+    <StoreProvider store={store}>
+      <StoreThemeScope theme={store.theme}>
+        <div className={previewFrameClassName}>
+          <div className="overflow-hidden rounded-xl border border-border bg-background">
+            <div className="border-b border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              {selectedPage?.title ?? "Preview"}
+            </div>
+            <div className={cn("overflow-y-auto", previewViewport === "mobile" ? "max-h-[70vh]" : "max-h-[720px]")}>
+              {previewBlocks.length > 0 ? (
+                previewBlocks.map((block, index) => {
+                  const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
+                  const isFocused = selectedBlockId === block.id;
+
+                  return (
+                    <div
+                      key={block.id}
+                      id={`cms-preview-block-${block.id}`}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          setSelectedBlockId(block.id);
+                        }
+                      }}
+                      onClick={() => setSelectedBlockId(block.id)}
+                      className={cn(
+                        "group relative block w-full cursor-pointer text-left transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        isFocused && "bg-primary/5",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-lg border bg-background/90 px-3 py-2 opacity-0 shadow-sm backdrop-blur transition-opacity",
+                          "group-hover:opacity-100 group-focus-visible:opacity-100",
+                          isFocused ? "border-primary/40 opacity-100" : "border-border/80",
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-foreground">
+                            {index + 1}. {blockMeta?.label ?? block.type}
+                          </p>
+                          <p className="truncate text-[11px] text-muted-foreground">{block.type}</p>
+                        </div>
+                        <Badge variant={isFocused ? "secondary" : "outline"}>
+                          {isFocused ? "Editing" : "Select"}
+                        </Badge>
+                      </div>
+                      <div
+                        className={cn(
+                          "absolute inset-x-3 bottom-3 z-20 flex flex-wrap justify-end gap-2 opacity-0 transition-opacity",
+                          "group-hover:opacity-100 group-focus-visible:opacity-100",
+                          isFocused && "opacity-100",
+                        )}
+                      >
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isFocused ? "secondary" : "outline"}
+                          className="h-8"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedBlockId(block.id);
+                          }}
+                        >
+                          {isFocused ? "Focused" : "Edit"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 bg-background/95"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }));
+                          }}
+                        >
+                          {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 bg-background/95"
+                          disabled={index === 0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            moveBlock(block.id, -1);
+                          }}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 bg-background/95"
+                          disabled={index === previewBlocks.length - 1}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            moveBlock(block.id, 1);
+                          }}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                        {isAdvancedEditor ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 bg-background/95"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              duplicateBlock(block.id);
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        {isAdvancedEditor ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removeBlock(block.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className={cn("transition-all", isFocused && "ring-2 ring-inset ring-primary/30")}>
+                        <StorefrontBlockRenderer block={block} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-8 text-sm text-muted-foreground">Add blocks to preview this page.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </StoreThemeScope>
+    </StoreProvider>
+  );
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-card/70 p-4 shadow-sm md:p-5">
@@ -1676,6 +1922,37 @@ export default function CmsPagesManager() {
                 <p className="mt-1 truncate text-sm font-semibold text-foreground">{store.slug}</p>
               </div>
             </div>
+            {!isAdvancedEditor ? (
+              <div className="rounded-2xl border border-border/80 bg-background/70 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Guided Store Setup</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Work through the key storefront surfaces one by one. You are currently editing: {selectedPageJourneyLabel}.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="w-fit">
+                    {guidedPageJourneys.filter((item) => item.state === "Ready" || item.state === "Configured" || item.state === "Active").length}/{guidedPageJourneys.length} tracks moving
+                  </Badge>
+                </div>
+                <div className="mt-4 grid gap-3 xl:grid-cols-4">
+                  {guidedPageJourneys.map((journey, index) => (
+                    <div key={journey.id} className="rounded-xl border border-border bg-card/80 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-foreground">{index + 1}. {journey.label}</p>
+                        <Badge variant={journey.state === "Needs setup" ? "secondary" : "outline"} className="text-[10px]">
+                          {journey.state}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">{journey.detail}</p>
+                      <Button type="button" variant="outline" size="sm" className="mt-3 rounded-full" onClick={journey.onClick}>
+                        {journey.actionLabel}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <input
@@ -1702,11 +1979,9 @@ export default function CmsPagesManager() {
               <RefreshCcw className="h-4 w-4" />
               <span className="hidden sm:inline">Reload</span>
             </Button>
-            <Button variant="outline" asChild className="gap-2 px-3">
-              <a href={previewHref} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                <span className="hidden sm:inline">Preview Page</span>
-              </a>
+            <Button variant="outline" onClick={openPreviewWorkspace} className="gap-2 px-3">
+              <Eye className="h-4 w-4" />
+              <span className="hidden sm:inline">Open Preview</span>
             </Button>
             {isAdvancedEditor ? (
               <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
@@ -3511,7 +3786,8 @@ export default function CmsPagesManager() {
                 </CardContent>
               </Card>
 
-              <Card className="border-border overflow-hidden">
+              {desktopPreviewMode === "below" ? (
+                <Card className="border-border overflow-hidden">
                 <div id="page-builder-preview" />
                 <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -3546,165 +3822,50 @@ export default function CmsPagesManager() {
                         <Smartphone className="h-4 w-4" />
                       </Button>
                     </div>
+                    <div className="flex items-center rounded-lg border border-border p-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={desktopPreviewMode === "below" ? "secondary" : "ghost"}
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setDesktopPreviewMode("below")}
+                      >
+                        Below
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setDesktopPreviewMode("side")}
+                      >
+                        Side
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setDesktopPreviewMode("minimized")}
+                      >
+                        Min
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setDesktopPreviewMode("hidden")}
+                      >
+                        Hide
+                      </Button>
+                    </div>
                     <Badge variant="outline">{selectedPage.slug}</Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <StoreProvider store={store}>
-                    <StoreThemeScope theme={store.theme}>
-                      <div className={previewFrameClassName}>
-                        <div className="overflow-hidden rounded-xl border border-border bg-background">
-                          <div className="border-b border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            {selectedPage.title}
-                          </div>
-                          <div className="max-h-[720px] overflow-y-auto">
-                            {previewBlocks.length > 0 ? (
-                              previewBlocks.map((block, index) => {
-                                const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
-                                const isFocused = selectedBlockId === block.id;
-
-                                return (
-                                  <div
-                                    key={block.id}
-                                    id={`cms-preview-block-${block.id}`}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        setSelectedBlockId(block.id);
-                                      }
-                                    }}
-                                    onClick={() => setSelectedBlockId(block.id)}
-                                    className={cn(
-                                      "group relative block w-full text-left transition-colors cursor-pointer",
-                                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                                      isFocused && "bg-primary/5",
-                                    )}
-                                  >
-                                    <div
-                                      className={cn(
-                                        "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-lg border bg-background/90 px-3 py-2 opacity-0 shadow-sm backdrop-blur transition-opacity",
-                                        "group-hover:opacity-100 group-focus-visible:opacity-100",
-                                        isFocused ? "border-primary/40 opacity-100" : "border-border/80",
-                                      )}
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="truncate text-xs font-semibold text-foreground">
-                                          {index + 1}. {blockMeta?.label ?? block.type}
-                                        </p>
-                                        <p className="truncate text-[11px] text-muted-foreground">{block.type}</p>
-                                      </div>
-                                      <Badge variant={isFocused ? "secondary" : "outline"}>
-                                        {isFocused ? "Editing" : "Select"}
-                                      </Badge>
-                                    </div>
-                                    <div
-                                      className={cn(
-                                        "absolute inset-x-3 bottom-3 z-20 flex flex-wrap justify-end gap-2 opacity-0 transition-opacity",
-                                        "group-hover:opacity-100 group-focus-visible:opacity-100",
-                                        isFocused && "opacity-100",
-                                      )}
-                                    >
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={isFocused ? "secondary" : "outline"}
-                                        className="h-8"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          setSelectedBlockId(block.id);
-                                        }}
-                                      >
-                                        {isFocused ? "Focused" : "Edit"}
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 bg-background/95"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }));
-                                        }}
-                                      >
-                                        {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 bg-background/95"
-                                        disabled={index === 0}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          moveBlock(block.id, -1);
-                                        }}
-                                      >
-                                        <ArrowUp className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 bg-background/95"
-                                        disabled={index === previewBlocks.length - 1}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          moveBlock(block.id, 1);
-                                        }}
-                                      >
-                                        <ArrowDown className="h-4 w-4" />
-                                      </Button>
-                                      {isAdvancedEditor ? (
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          className="h-8 w-8 bg-background/95"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            duplicateBlock(block.id);
-                                          }}
-                                        >
-                                          <Copy className="h-4 w-4" />
-                                        </Button>
-                                      ) : null}
-                                      {isAdvancedEditor ? (
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            removeBlock(block.id);
-                                          }}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      ) : null}
-                                    </div>
-                                    <div
-                                      className={cn(
-                                        "transition-all",
-                                        isFocused && "ring-2 ring-inset ring-primary/30",
-                                      )}
-                                    >
-                                      <StorefrontBlockRenderer block={block} />
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <div className="p-8 text-sm text-muted-foreground">Add blocks to preview this page.</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </StoreThemeScope>
-                  </StoreProvider>
-                </CardContent>
+                <CardContent>{previewCanvas}</CardContent>
               </Card>
+              ) : null}
 
               {isAdvancedEditor ? (
                 <Card className="border-border">
@@ -3875,6 +4036,73 @@ export default function CmsPagesManager() {
                 <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                   Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.
                 </div>
+                {desktopPreviewMode === "minimized" ? (
+                  <div className="hidden lg:flex fixed right-24 top-28 z-30 items-center gap-2 rounded-full border border-border/80 bg-background/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+                    <Eye className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Preview minimized</span>
+                    <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={() => setDesktopPreviewMode("side")}>
+                      Reopen
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={() => setDesktopPreviewMode("hidden")}>
+                      Hide
+                    </Button>
+                  </div>
+                ) : null}
+                {desktopPreviewMode === "side" ? (
+                  <div className="hidden lg:block fixed right-24 top-24 z-30 w-[min(460px,calc(100vw-8rem))]">
+                    <Card className="overflow-hidden border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl">
+                      <CardHeader className="space-y-3 border-b border-border/70 pb-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <CardTitle className="text-lg">Live Preview</CardTitle>
+                            <CardDescription>
+                              Floating storefront preview for quicker merchant review without leaving the editor.
+                            </CardDescription>
+                          </div>
+                          <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setDesktopPreviewMode("minimized")}>
+                            <PanelRightClose className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center rounded-lg border border-border p-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant={previewViewport === "desktop" ? "secondary" : "ghost"}
+                              className="h-8 w-8"
+                              onClick={() => setPreviewViewport("desktop")}
+                            >
+                              <Monitor className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant={previewViewport === "mobile" ? "secondary" : "ghost"}
+                              className="h-8 w-8"
+                              onClick={() => setPreviewViewport("mobile")}
+                            >
+                              <Smartphone className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("below")}>
+                            Push Below
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("hidden")}>
+                            Close
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                            <a href={previewHref} target="_blank" rel="noreferrer">
+                              Open Full Tab
+                            </a>
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="max-h-[78vh] overflow-auto p-4">
+                        {previewCanvas}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : null}
             </div>
             <div className="pointer-events-none fixed right-2 top-1/2 z-40 flex -translate-y-1/2 justify-end sm:right-4">
               <div className="pointer-events-auto flex items-center gap-2">
@@ -3886,10 +4114,8 @@ export default function CmsPagesManager() {
                     <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
                       <Redo2 className="h-4 w-4" />
                     </Button>
-                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" asChild title="Preview">
-                      <a href={previewHref} target="_blank" rel="noreferrer">
-                        <Eye className="h-4 w-4" />
-                      </a>
+                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={openPreviewWorkspace} title="Preview">
+                      <Eye className="h-4 w-4" />
                     </Button>
                     <Button type="button" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => void saveAll()} disabled={saving} title="Save">
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -3932,11 +4158,9 @@ export default function CmsPagesManager() {
                         <Redo2 className="h-4 w-4" />
                         Redo
                       </Button>
-                      <Button type="button" variant="outline" size="sm" asChild className="justify-start rounded-full">
-                        <a href={previewHref} target="_blank" rel="noreferrer">
-                          <Eye className="h-4 w-4" />
-                          Preview
-                        </a>
+                      <Button type="button" variant="outline" size="sm" onClick={openPreviewWorkspace} className="justify-start rounded-full">
+                        <Eye className="h-4 w-4" />
+                        Preview
                       </Button>
                       <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="justify-start rounded-full">
                         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -3988,6 +4212,46 @@ export default function CmsPagesManager() {
                 )}
               </div>
             </div>
+            <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
+              <SheetContent side="bottom" className="h-[92vh] rounded-t-[1.75rem] px-0 pb-0 pt-6 lg:hidden">
+                <SheetHeader className="px-4">
+                  <SheetTitle>Mobile Preview</SheetTitle>
+                  <SheetDescription>
+                    Review the current page like a shopper on a phone, then close and continue editing.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-4 flex items-center justify-between gap-3 border-y border-border/70 px-4 py-3">
+                  <div className="flex items-center rounded-lg border border-border p-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={previewViewport === "desktop" ? "secondary" : "ghost"}
+                      className="h-8 w-8"
+                      onClick={() => setPreviewViewport("desktop")}
+                    >
+                      <Monitor className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={previewViewport === "mobile" ? "secondary" : "ghost"}
+                      className="h-8 w-8"
+                      onClick={() => setPreviewViewport("mobile")}
+                    >
+                      <Smartphone className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
+                    <a href={previewHref} target="_blank" rel="noreferrer">
+                      Open Full Tab
+                    </a>
+                  </Button>
+                </div>
+                <div className="overflow-auto px-4 pb-6 pt-4">
+                  {previewCanvas}
+                </div>
+              </SheetContent>
+            </Sheet>
             </>
           ) : (
             <Card className="border-border rounded-xl">
