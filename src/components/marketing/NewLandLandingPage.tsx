@@ -44,6 +44,7 @@ export function NewLandLandingPage() {
   const [storeName, setStoreName] = useState("Luna Wear");
   const [goal, setGoal] = useState("Start selling this week");
   const [domainReady, setDomainReady] = useState(true);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
 
   const activeBusiness = businessTypes.find((item) => item.key === business) ?? businessTypes[0];
 
@@ -112,6 +113,9 @@ export function NewLandLandingPage() {
                 <Link href="/signup" className="inline-flex min-h-12 items-center justify-center rounded-full bg-emerald-500 px-7 py-3 text-sm font-bold text-white shadow-[0_18px_40px_rgba(16,185,129,0.25)] transition hover:-translate-y-0.5">
                   Start your 14-day trial
                 </Link>
+                <a href="#live-preview" className="inline-flex min-h-12 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 px-7 py-3 text-sm font-bold text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100">
+                  Preview the page
+                </a>
                 <a href="#setup-lab" className="inline-flex min-h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-3 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-50">
                   See the setup flow
                 </a>
@@ -151,23 +155,49 @@ export function NewLandLandingPage() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-4 shadow-[0_28px_80px_rgba(15,23,42,0.10)] sm:p-6">
+            <div id="live-preview" className="rounded-[2rem] border border-slate-200 bg-white/92 p-4 shadow-[0_28px_80px_rgba(15,23,42,0.10)] sm:p-6">
               <div className="rounded-[1.6rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Live concept</p>
                     <p className="mt-1 text-sm font-bold text-slate-950">{storeName || "Your store"} preview</p>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">Mobile-first</span>
+                  <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode("desktop")}
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold transition ${
+                        previewMode === "desktop" ? "bg-slate-950 text-white" : "text-slate-500"
+                      }`}
+                    >
+                      Desktop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode("mobile")}
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold transition ${
+                        previewMode === "mobile" ? "bg-emerald-500 text-white" : "text-slate-500"
+                      }`}
+                    >
+                      Mobile
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white">
+                <div className={`mt-4 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white transition-all ${previewMode === "mobile" ? "mx-auto max-w-[360px]" : "w-full"}`}>
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="truncate text-[11px] font-mono text-slate-500">
                       {domainReady ? `${(storeName || "your-store").toLowerCase().replace(/\s+/g, "-")}.${PLATFORM_PRIMARY_DOMAIN}` : `preview.${PLATFORM_PRIMARY_DOMAIN}`}
                     </p>
                   </div>
                   <div className="space-y-4 p-4">
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Preview mode</p>
+                        <p className="mt-1 text-sm font-bold text-slate-950">{previewMode === "mobile" ? "Mobile storefront" : "Desktop storefront"}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">Clickable concept</span>
+                    </div>
                     <div className="rounded-[1.4rem] bg-[linear-gradient(135deg,#ecfdf5_0%,#f8fafc_100%)] p-4">
                       <span className="inline-flex rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
                         {activeBusiness.label}
@@ -187,6 +217,17 @@ export function NewLandLandingPage() {
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Offer</p>
                         <p className="mt-2 text-sm font-bold text-slate-950">{activeBusiness.offer}</p>
                       </div>
+                    </div>
+
+                    <div className={`grid gap-3 ${previewMode === "mobile" ? "grid-cols-1" : "sm:grid-cols-3"}`}>
+                      {["Home", "Shop", "Offers"].map((item, index) => (
+                        <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{item}</p>
+                          <p className="mt-2 text-sm font-bold text-slate-950">
+                            {index === 0 ? activeBusiness.headline : index === 1 ? `${activeBusiness.label} products with clearer browsing` : activeBusiness.offer}
+                          </p>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -331,6 +372,10 @@ export function NewLandLandingPage() {
                   ))}
                 </div>
               </div>
+
+              <a href="#live-preview" className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800">
+                Open live preview
+              </a>
             </div>
           </div>
         </div>
