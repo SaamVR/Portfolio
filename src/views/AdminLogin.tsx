@@ -38,9 +38,16 @@ const AdminLogin = () => {
     const value = searchParams.get("mode");
     return value === "setup" ? "setup" : "invite";
   }, [searchParams]);
+  const requestedNextPath = useMemo(() => {
+    const value = searchParams.get("next");
+    if (!value || !value.startsWith("/") || value.startsWith("//")) {
+      return null;
+    }
+    return value;
+  }, [searchParams]);
   const isSetupRoute = location.pathname === "/admin/setup";
   const showingPlatformSetup = isSetupRoute || mode === "setup";
-  const postLoginPath = platformRole === "admin" ? "/cms-admin" : "/admin";
+  const postLoginPath = requestedNextPath ?? (platformRole === "admin" ? "/cms-admin" : "/admin");
 
   useEffect(() => {
     if (!user || role || loading || showingPlatformSetup || recoveringAccess) {
@@ -80,12 +87,11 @@ const AdminLogin = () => {
         if (!active) return;
 
         toast.success("Store access restored.");
-        navigate(
-          ownedStore && !ownedStore.is_published
+        const recoveredPath = requestedNextPath
+          ?? (ownedStore && !ownedStore.is_published
             ? `/admin/onboarding?storeId=${recoveredStoreId}`
-            : `/admin?storeId=${recoveredStoreId}`,
-          { replace: true },
-        );
+            : `/admin?storeId=${recoveredStoreId}`);
+        navigate(recoveredPath, { replace: true });
       } finally {
         if (active) {
           setRecoveringAccess(false);
@@ -104,6 +110,7 @@ const AdminLogin = () => {
     recoveringAccess,
     refreshRole,
     role,
+    requestedNextPath,
     setActiveStoreId,
     showingPlatformSetup,
     user,
