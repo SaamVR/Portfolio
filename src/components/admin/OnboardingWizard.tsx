@@ -44,6 +44,7 @@ import {
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
+import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
@@ -297,7 +298,7 @@ function getStoreUrl(slug: string, customDomain?: string | null) {
 }
 
 export default function OnboardingWizard() {
-  const { user, role, activeStoreId: contextStoreId, setActiveStoreId } = useAuth();
+  const { user, role, loading: authLoading, refreshRole, signOut, activeStoreId: contextStoreId, setActiveStoreId } = useAuth();
   const searchParams = useSearchParams();
   const requestedStoreId = searchParams?.get("storeId");
   const guideMode = searchParams?.get("guide") === "continue";
@@ -514,8 +515,60 @@ export default function OnboardingWizard() {
     return () => window.clearTimeout(timer);
   }, [activeStoreId, draft.slug, initialSetupCompleted]);
 
+  if (authLoading) {
+    return (
+      <AdminRecoveryPanel
+        title="Restoring onboarding access"
+        description="We are reconnecting your store setup session and loading the store context."
+        loadingLabel="Loading onboarding workspace."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+      />
+    );
+  }
+
+  if (!user) {
+    return (
+      <AdminRecoveryPanel
+        title="Sign in required"
+        description="Sign in to continue setting up this store."
+        retryLabel="Go to dashboard login"
+        onRetry={() => {
+          if (typeof window !== "undefined") {
+            window.location.assign("/admin/login");
+          }
+        }}
+      />
+    );
+  }
+
+  if (requestedStoreId && !activeStoreId) {
+    return (
+      <AdminRecoveryPanel
+        title="Preparing store setup"
+        description="We found the onboarding link and are attaching it to your store workspace."
+        loadingLabel="Connecting the selected store."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+      />
+    );
+  }
+
   if (role !== "admin") {
-    return null;
+    return (
+      <AdminRecoveryPanel
+        title="Restoring onboarding access"
+        description="Your account is signed in, but store permissions have not fully restored yet."
+        retryLabel="Retry access"
+        secondaryLabel="Sign out"
+        onRetry={() => void refreshRole()}
+        onSecondary={() => void signOut()}
+      />
+    );
   }
 
   const updateDraft = (patch: Partial<DraftState>) => {
