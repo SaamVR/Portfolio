@@ -442,12 +442,15 @@ export default function MerchantSignup() {
         seedOwnerAccessCache(user.id, data.store_id);
       }
 
-      await refreshRole();
       setActiveStoreId(data.store_id);
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
+      void refreshRole();
 
-      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
-      window.location.href = onboardingPath;
+      const onboardingPath =
+        typeof data?.dashboard_path === "string" && data.dashboard_path.trim().length > 0
+          ? data.dashboard_path
+          : `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
+      window.location.assign(onboardingPath);
     } catch (error: any) {
       const rawMessage = await extractSignupErrorMessage(error);
       const message = getFriendlySignupError(rawMessage);
