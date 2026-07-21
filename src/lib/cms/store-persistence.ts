@@ -15,6 +15,56 @@ type PersistStorefrontOptions = {
   changedBy?: string | null;
 };
 
+export function mapPersistedPageIdsByLocalId(
+  pages: Array<{ id: string; slug: string }>,
+  existingPages: Array<{ id: string; slug: string }>,
+) {
+  const existingPagesBySlug = new Map(existingPages.map((page) => [page.slug, page.id]));
+  return new Map(pages.map((page) => [page.id, existingPagesBySlug.get(page.slug) ?? page.id]));
+}
+
+export function mapPersistedBlockIdsByLocalId(
+  pages: Array<{ id: string; slug: string; blocks: Array<{ id: string; type: string }> }>,
+  persistedPageIdByLocalId: Map<string, string>,
+  existingBlocks: Array<{ id: string; page_id: string; block_type: string; sort_order?: number }>,
+) {
+  const mappedBlockIdByLocalId = new Map<string, string>();
+  const usedExistingBlockIds = new Set<string>();
+
+  for (const page of pages) {
+    const persistedPageId = persistedPageIdByLocalId.get(page.id) ?? page.id;
+    const pageExistingBlocks = existingBlocks
+      .filter((block) => block.page_id === persistedPageId)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+    for (const block of page.blocks) {
+      if (pageExistingBlocks.some((eb) => eb.id === block.id && !usedExistingBlockIds.has(eb.id))) {
+        mappedBlockIdByLocalId.set(block.id, block.id);
+        usedExistingBlockIds.add(block.id);
+      }
+    }
+
+    for (const block of page.blocks) {
+      if (mappedBlockIdByLocalId.has(block.id)) {
+        continue;
+      }
+
+      const matchingExisting = pageExistingBlocks.find(
+        (eb) => eb.block_type === block.type && !usedExistingBlockIds.has(eb.id),
+      );
+
+      if (matchingExisting) {
+        mappedBlockIdByLocalId.set(block.id, matchingExisting.id);
+        usedExistingBlockIds.add(matchingExisting.id);
+      } else {
+        mappedBlockIdByLocalId.set(block.id, block.id);
+      }
+    }
+  }
+
+  return mappedBlockIdByLocalId;
+}
+
 export async function persistStorefrontState({
   client,
   store,
@@ -61,15 +111,40 @@ export async function persistStorefrontState({
       },
       components: {
         borderRadius: store.theme.borderRadius,
+        aesthetic: store.theme.aesthetic,
+        effects: store.theme.effects,
       },
+      aesthetic: store.theme.aesthetic ?? "minimal",
+      radius_scale: store.theme.radiusScale ?? 1,
+      density_scale: store.theme.densityScale ?? 1,
+      effects: store.theme.effects ?? {
+        scrollReveals: false,
+        hoverEffects: true,
+        parallax: false,
+        intensity: "medium",
+      },
+      palette_source: store.theme.paletteSource ?? null,
+      palette_seed: store.theme.paletteSeed ?? null,
+      schema_version: store.theme.schemaVersion ?? 1,
       custom_css: store.theme.customCss ?? selectedThemePackage.customCss ?? null,
     },
     { onConflict: "store_id" },
   );
   if (themeError) return { error: themeError };
 
+  const { data: existingPagesBeforeSave, error: existingPagesError } = await client
+    .from("store_pages")
+    .select("id, slug")
+    .eq("store_id", store.id);
+  if (existingPagesError) return { error: existingPagesError };
+
+  const persistedPageIdByLocalId = mapPersistedPageIdsByLocalId(
+    store.pages,
+    (existingPagesBeforeSave as Array<{ id: string; slug: string }> | null) ?? [],
+  );
+
   const pageRows = store.pages.map((page) => ({
-    id: page.id,
+    id: persistedPageIdByLocalId.get(page.id) ?? page.id,
     store_id: store.id,
     slug: page.slug,
     title: page.title,
@@ -83,7 +158,7 @@ export async function persistStorefrontState({
 
   const { data: existingPages } = await client.from("store_pages").select("id").eq("store_id", store.id);
   const existingPageIds = new Set<string>(((existingPages as Array<{ id: string }> | null) ?? []).map((page) => page.id));
-  const localPageIds = new Set(store.pages.map((page) => page.id));
+  const localPageIds = new Set(pageRows.map((page) => page.id));
   const pageIdsToDelete = Array.from(existingPageIds).filter((id) => !localPageIds.has(id));
 
   if (pageIdsToDelete.length > 0) {
@@ -93,15 +168,33 @@ export async function persistStorefrontState({
     if (deletePagesError) return { error: deletePagesError };
   }
 
+  const { data: existingBlocksBeforeSave, error: existingBlocksBeforeSaveError } = await client
+    .from("store_page_blocks")
+    .select("id, page_id, block_type, sort_order")
+    .eq("store_id", store.id);
+  if (existingBlocksBeforeSaveError) return { error: existingBlocksBeforeSaveError };
+
+  const persistedBlockIdByLocalId = mapPersistedBlockIdsByLocalId(
+    store.pages,
+    persistedPageIdByLocalId,
+    (existingBlocksBeforeSave as Array<{ id: string; page_id: string; block_type: string; sort_order?: number }> | null) ?? [],
+  );
+
   const blockRows = store.pages.flatMap((page) =>
     page.blocks.map((block, index) => ({
-      id: block.id,
-      page_id: page.id,
+      id: persistedBlockIdByLocalId.get(block.id) ?? block.id,
+      page_id: persistedPageIdByLocalId.get(page.id) ?? page.id,
       store_id: store.id,
       block_type: block.type,
       props: block.props,
       sort_order: index,
       is_visible: block.isVisible,
+      entrance_animation: block.entranceAnimation ?? null,
+      hover_effect: block.hoverEffect ?? null,
+      effect_override: block.effectOverride ?? null,
+      layout_variant: block.layoutVariant ?? null,
+      custom_html: block.customHtml ?? null,
+      custom_css: block.customCss ?? null,
     })),
   );
 
@@ -135,7 +228,7 @@ export async function persistStorefrontState({
 
   if (selectedPage && changedBy) {
     const { error: revisionError } = await client.from("store_page_revisions").insert({
-      page_id: selectedPage.id,
+      page_id: persistedPageIdByLocalId.get(selectedPage.id) ?? selectedPage.id,
       store_id: store.id,
       revision_label: revisionLabel?.trim() || "Manual save",
       changed_by: changedBy,
