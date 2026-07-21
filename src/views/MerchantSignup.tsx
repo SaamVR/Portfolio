@@ -30,9 +30,6 @@ type SignupStep = "methods" | "verify" | "details";
 
 type SlugAvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 
-const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
-const ACCESS_CACHE_STORAGE_KEY = "commerce-engine-access-cache";
-
 function normalizeHost(value?: string | null) {
   if (!value) return null;
 
@@ -69,24 +66,6 @@ function getSignupRootDomain() {
   }
 
   return "localhost";
-}
-
-function seedOwnerAccessCache(userId: string, storeId: string) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(ACTIVE_STORE_STORAGE_KEY, storeId);
-  window.localStorage.setItem(
-    ACCESS_CACHE_STORAGE_KEY,
-    JSON.stringify({
-      userId,
-      updatedAt: new Date().toISOString(),
-      memberships: [{ storeId, role: "owner" }],
-      resolvedStoreId: storeId,
-      nextStoreRole: "owner",
-      nextPlatformRole: null,
-      nextRole: "admin",
-    }),
-  );
 }
 
 export default function MerchantSignup() {
@@ -438,19 +417,12 @@ export default function MerchantSignup() {
         throw new Error("Workspace was created without a store id. Please try again.");
       }
 
-      if (user?.id) {
-        seedOwnerAccessCache(user.id, data.store_id);
-      }
-
+      await refreshRole();
       setActiveStoreId(data.store_id);
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
-      void refreshRole();
 
-      const onboardingPath =
-        typeof data?.dashboard_path === "string" && data.dashboard_path.trim().length > 0
-          ? data.dashboard_path
-          : `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
-      window.location.assign(onboardingPath);
+      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
+      window.location.href = onboardingPath;
     } catch (error: any) {
       const rawMessage = await extractSignupErrorMessage(error);
       const message = getFriendlySignupError(rawMessage);
