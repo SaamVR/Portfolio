@@ -30,6 +30,9 @@ type SignupStep = "methods" | "verify" | "details";
 
 type SlugAvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 
+const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
+const ACCESS_CACHE_STORAGE_KEY = "commerce-engine-access-cache";
+
 function normalizeHost(value?: string | null) {
   if (!value) return null;
 
@@ -66,6 +69,24 @@ function getSignupRootDomain() {
   }
 
   return "localhost";
+}
+
+function seedOwnerAccessCache(userId: string, storeId: string) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(ACTIVE_STORE_STORAGE_KEY, storeId);
+  window.localStorage.setItem(
+    ACCESS_CACHE_STORAGE_KEY,
+    JSON.stringify({
+      userId,
+      updatedAt: new Date().toISOString(),
+      memberships: [{ storeId, role: "owner" }],
+      resolvedStoreId: storeId,
+      nextStoreRole: "owner",
+      nextPlatformRole: null,
+      nextRole: "admin",
+    }),
+  );
 }
 
 export default function MerchantSignup() {
@@ -415,6 +436,10 @@ export default function MerchantSignup() {
       if (data?.error) throw new Error(String(data.error));
       if (!data?.store_id) {
         throw new Error("Workspace was created without a store id. Please try again.");
+      }
+
+      if (user?.id) {
+        seedOwnerAccessCache(user.id, data.store_id);
       }
 
       await refreshRole();

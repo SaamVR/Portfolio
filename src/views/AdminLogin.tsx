@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-clien
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 
 const AdminLogin = () => {
-  const { user, role, platformRole, storeRole, loading, refreshRole } = useAuth();
+  const { user, role, platformRole, storeRole, loading, refreshRole, setActiveStoreId } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,6 +32,7 @@ const AdminLogin = () => {
   const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [claimingInvite, setClaimingInvite] = useState(false);
   const [claimingSetup, setClaimingSetup] = useState(false);
+  const [recoveringAccess, setRecoveringAccess] = useState(false);
 
   const mode = useMemo(() => {
     const value = searchParams.get("mode");
@@ -40,6 +41,73 @@ const AdminLogin = () => {
   const isSetupRoute = location.pathname === "/admin/setup";
   const showingPlatformSetup = isSetupRoute || mode === "setup";
   const postLoginPath = platformRole === "admin" ? "/cms-admin" : "/admin";
+
+  useEffect(() => {
+    if (!user || role || loading || showingPlatformSetup || recoveringAccess) {
+      return;
+    }
+
+    let active = true;
+
+    const recoverStoreAccess = async () => {
+      setRecoveringAccess(true);
+      try {
+        const [{ data: ownedStores }, { data: memberships }] = await Promise.all([
+          supabase
+            .from("stores")
+            .select("id, is_published, created_at")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(1),
+          supabase
+            .from("store_memberships")
+            .select("store_id, role, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(1),
+        ]);
+
+        if (!active) return;
+
+        const ownedStore = ownedStores?.[0] ?? null;
+        const membership = memberships?.[0] ?? null;
+        const recoveredStoreId = ownedStore?.id ?? membership?.store_id ?? null;
+
+        if (!recoveredStoreId) return;
+
+        setActiveStoreId(recoveredStoreId);
+        await refreshRole();
+        if (!active) return;
+
+        toast.success("Store access restored.");
+        navigate(
+          ownedStore && !ownedStore.is_published
+            ? `/admin/onboarding?storeId=${recoveredStoreId}`
+            : `/admin?storeId=${recoveredStoreId}`,
+          { replace: true },
+        );
+      } finally {
+        if (active) {
+          setRecoveringAccess(false);
+        }
+      }
+    };
+
+    void recoverStoreAccess();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    loading,
+    navigate,
+    recoveringAccess,
+    refreshRole,
+    role,
+    setActiveStoreId,
+    showingPlatformSetup,
+    user,
+  ]);
 
   const setMode = (nextMode: "setup" | "invite") => {
     const next = new URLSearchParams(searchParams);
@@ -268,7 +336,9 @@ const AdminLogin = () => {
           <CardTitle className="font-heading text-2xl">Dashboard Access</CardTitle>
           <CardDescription>
             {user
-              ? showingPlatformSetup
+              ? recoveringAccess
+                ? "Restoring your store access."
+                : showingPlatformSetup
                 ? "Claim first-admin access if this CMS has never been initialized."
                 : "Enter an invite code to join your store workspace."
               : showingPlatformSetup
@@ -390,7 +460,12 @@ const AdminLogin = () => {
                 {storeRole ? ` • store role: ${storeRole}` : ""}
               </p>
 
-              {showingPlatformSetup ? (
+              {recoveringAccess ? (
+                <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Restoring your store access...
+                </div>
+              ) : showingPlatformSetup ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
                     This is only for the first admin. If your CMS is already initialized, use an invite code instead.
