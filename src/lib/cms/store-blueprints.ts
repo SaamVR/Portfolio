@@ -1,310 +1,52 @@
-import { launchTemplates, type LaunchTemplateId } from "@/lib/cms/launch-templates";
+import type { LaunchTemplateId } from "@/lib/cms/launch-templates";
 import type { StoreTheme } from "@/lib/cms/schema";
+import {
+  buildStorefrontTemplateSiteSettingsEntries,
+  resolveCompatibleTemplateSeedId,
+  storefrontTemplateSeedDefinitions,
+  type BlueprintOnboardingStep,
+  type StoreBusinessFamily,
+  type StoreCatalogMode,
+  type StorefrontTemplateSeedDefinition,
+} from "@/lib/cms/storefront-templates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
+export type { StoreBusinessFamily, StoreCatalogMode, BlueprintOnboardingStep } from "@/lib/cms/storefront-templates";
 
-export type StoreBusinessFamily = "commerce" | "booking" | "listing" | "service";
-export type StoreCatalogMode = "single_product" | "multi_product" | "menu" | "inquiry_only";
-export type OnboardingStepId =
-  | "blueprint"
-  | "brand"
-  | "content"
-  | "catalog"
-  | "theme"
-  | "payments"
-  | "launch";
-
-export interface BlueprintOnboardingStep {
-  id: OnboardingStepId;
-  title: string;
-  description: string;
+export interface StoreBlueprintDefinition extends Omit<StorefrontTemplateSeedDefinition, "legacyBlueprintIds"> {
+  schemaVersion?: number;
 }
 
-export interface StoreBlueprintDefinition {
-  id: string;
-  legacyTemplateId?: LaunchTemplateId;
-  name: string;
-  shortName: string;
-  description: string;
-  businessFamily: StoreBusinessFamily;
-  catalogMode: StoreCatalogMode;
-  group: string;
-  recommendedPageSet: string[];
-  recommendedBlockSet: string[];
-  defaultTheme: StoreTheme;
-  storeDescription: string;
-  hero: {
-    tagline: string;
-    title: string;
-    highlight: string;
-    subtitle: string;
-  };
-  capabilities: string[];
-  onboarding: {
-    steps: BlueprintOnboardingStep[];
-  };
-  defaultSiteSettings: Record<string, Json>;
-}
-
-const defaultOnboardingSteps: BlueprintOnboardingStep[] = [
-  { id: "blueprint", title: "Blueprint", description: "Pick the site style and launch pattern" },
-  { id: "brand", title: "Brand", description: "Name, logo, slug, and brand summary" },
-  { id: "content", title: "Content", description: "Front-page hero copy and media" },
-  { id: "catalog", title: "Catalog", description: "Choose how products and buying work" },
-  { id: "theme", title: "Theme", description: "Pick a design package and visual defaults" },
-  { id: "payments", title: "Payments", description: "Configure checkout and conversion options" },
-  { id: "launch", title: "Launch", description: "Save, publish, and share" },
-];
-
-function themeFromTemplate(id: LaunchTemplateId): StoreTheme {
-  const template = launchTemplates.find((item) => item.id === id) ?? launchTemplates[0];
+function cloneBlueprintDefinition(definition: StorefrontTemplateSeedDefinition): StoreBlueprintDefinition {
   return {
-    ...template.theme,
-    customCssVars: { ...template.theme.customCssVars },
+    ...definition,
+    recommendedPageSet: [...definition.recommendedPageSet],
+    recommendedBlockSet: [...definition.recommendedBlockSet],
+    defaultTheme: {
+      ...definition.defaultTheme,
+      customCssVars: { ...(definition.defaultTheme.customCssVars ?? {}) },
+    } as StoreTheme,
+    hero: { ...definition.hero },
+    capabilities: [...definition.capabilities],
+    onboarding: {
+      steps: definition.onboarding.steps.map((step) => ({ ...step })),
+    },
+    defaultSiteSettings: Object.fromEntries(
+      buildStorefrontTemplateSiteSettingsEntries(definition).map((entry) => [entry.key, entry.value]),
+    ),
   };
 }
 
-function paymentSettingsFromTemplate(id: LaunchTemplateId) {
-  const template = launchTemplates.find((item) => item.id === id) ?? launchTemplates[0];
-  return {
-    cod_enabled: template.paymentDefaults.cod_enabled,
-    bkash_enabled: template.paymentDefaults.bkash_enabled,
-    nagad_enabled: template.paymentDefaults.nagad_enabled,
-    prepaid_badge_text: template.paymentDefaults.prepaid_badge_text,
-    prepayment_discount_type: template.paymentDefaults.prepayment_discount_type,
-    prepayment_discount_value: template.paymentDefaults.prepayment_discount_value,
-  } satisfies Json;
-}
-
-function buildDefaultSiteSettings(
-  templateId: LaunchTemplateId,
-  storefrontProfile: Record<string, Json>,
-) {
-  return {
-    storefront_profile: storefrontProfile,
-    payment_settings: paymentSettingsFromTemplate(templateId),
-  } satisfies Record<string, Json>;
-}
-
-export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = [
-  {
-    id: "clothing",
-    legacyTemplateId: "clothing",
-    name: "Fashion Catalog",
-    shortName: "Fashion",
-    description: "A conversion-ready apparel storefront for drops, collections, styling stories, and frequent launches.",
-    businessFamily: "commerce",
-    catalogMode: "multi_product",
-    group: "Clothing",
-    recommendedPageSet: ["home", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "testimonials", "social-feed", "trust-badges", "faq-accordion", "recently-viewed"],
-    defaultTheme: themeFromTemplate("clothing"),
-    storeDescription: "Premium clothing, curated drops, outfit storytelling, and everyday essentials with strong trust cues and flexible fulfillment options.",
-    hero: {
-      tagline: "New Season",
-      title: "Wear Your",
-      highlight: "Identity",
-      subtitle: "Launch a fashion storefront with styled hero storytelling, drop-ready merchandising, social proof, and mobile-first checkout.",
-    },
-    capabilities: ["catalog", "cart", "checkout", "promotions"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("clothing", {
-        product_visibility: "catalog",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "gadgets",
-    legacyTemplateId: "general",
-    name: "Gadgets & Electronics",
-    shortName: "Gadgets",
-    description: "A sharper electronics storefront for devices, accessories, bundles, specs, and feature-led launches.",
-    businessFamily: "commerce",
-    catalogMode: "multi_product",
-    group: "Electronics / Gadgets",
-    recommendedPageSet: ["home", "about", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "video-reel", "rich-text", "faq-accordion", "trust-badges", "testimonials", "recently-viewed"],
-    defaultTheme: {
-      presetId: "midnight-blue",
-      mode: "dark",
-      headingFont: "'Outfit', sans-serif",
-      bodyFont: "'Inter', sans-serif",
-      borderRadius: "0.75rem",
-      customCssVars: {},
-    },
-    storeDescription: "Smart devices, practical accessories, spec-led merchandising, demo media, and purchase-confidence messaging for modern buyers.",
-    hero: {
-      tagline: "Engineered for Everyday",
-      title: "Gear Up with",
-      highlight: "Better Tech",
-      subtitle: "Show specs, bundles, demo media, and confident trust signals without inheriting placeholder fashion copy.",
-    },
-    capabilities: ["catalog", "cart", "checkout", "specs"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("general", {
-        product_visibility: "catalog",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "crafts",
-    legacyTemplateId: "general",
-    name: "Crafts & Handmade",
-    shortName: "Crafts",
-    description: "A warmer story-led storefront for handmade goods, gifts, commissions, small-batch collections, and custom orders.",
-    businessFamily: "commerce",
-    catalogMode: "multi_product",
-    group: "Crafts / Handmade",
-    recommendedPageSet: ["home", "about", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "rich-text", "social-feed", "testimonials", "trust-badges", "faq-accordion"],
-    defaultTheme: {
-      presetId: "warm-earth",
-      mode: "light",
-      headingFont: "'Outfit', sans-serif",
-      bodyFont: "'Inter', sans-serif",
-      borderRadius: "1rem",
-      customCssVars: {},
-    },
-    storeDescription: "Handmade collections, limited batches, maker stories, commission-friendly FAQs, and gift-ready merchandising for independent brands.",
-    hero: {
-      tagline: "Made with Care",
-      title: "Bring Handmade",
-      highlight: "Closer",
-      subtitle: "Present process, craft, and product details in a way that feels personal, giftable, and worth trusting.",
-    },
-    capabilities: ["catalog", "cart", "checkout", "storytelling"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("general", {
-        product_visibility: "catalog",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "food",
-    legacyTemplateId: "food",
-    name: "Food & Menu",
-    shortName: "Food",
-    description: "A menu-style storefront for daily specials, bakery drops, meal boxes, subscriptions, and local ordering.",
-    businessFamily: "commerce",
-    catalogMode: "menu",
-    group: "Food / Menu",
-    recommendedPageSet: ["home", "about-kitchen"],
-    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "social-feed", "rich-text", "faq-accordion", "trust-badges", "testimonials"],
-    defaultTheme: themeFromTemplate("food"),
-    storeDescription: "Fresh food, bakery bestsellers, daily specials, kitchen trust cues, and local-order confidence built into the buying flow.",
-    hero: {
-      tagline: "Fresh Today",
-      title: "Homemade",
-      highlight: "Goodness",
-      subtitle: "Sell meals, bakery items, and daily specials with sharper appetite cues, timing hooks, and fast ordering.",
-    },
-    capabilities: ["catalog", "cart", "local_delivery"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("food", {
-        product_visibility: "menu",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "single-product",
-    legacyTemplateId: "general",
-    name: "Single Product Launch",
-    shortName: "Single Product",
-    description: "A focused launch flow for one flagship item, bundle, preorder, or campaign-led hero product with stronger persuasion pacing.",
-    businessFamily: "commerce",
-    catalogMode: "single_product",
-    group: "Single Product",
-    recommendedPageSet: ["home", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "video-reel", "rich-text", "faq-accordion", "testimonials", "trust-badges", "social-feed"],
-    defaultTheme: {
-      presetId: "ocean-teal",
-      mode: "dark",
-      headingFont: "'Outfit', sans-serif",
-      bodyFont: "'Inter', sans-serif",
-      borderRadius: "0.75rem",
-      customCssVars: {},
-    },
-    storeDescription: "A focused storefront designed to sell one hero product with demo media, proof, and a tighter conversion path.",
-    hero: {
-      tagline: "One Product, One Story",
-      title: "Launch Your",
-      highlight: "Flagship",
-      subtitle: "Keep attention on the core offer with demo-first storytelling, a tighter structure, and a clearer CTA flow.",
-    },
-    capabilities: ["single_product", "cart", "checkout", "campaigns"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("general", {
-        product_visibility: "single_product",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "general-catalog",
-    legacyTemplateId: "general",
-    name: "General Catalog",
-    shortName: "Catalog",
-    description: "A flexible default for mixed-product stores that need a polished, conversion-ready starting point with better discovery and trust rhythm.",
-    businessFamily: "commerce",
-    catalogMode: "multi_product",
-    group: "General Catalog",
-    recommendedPageSet: ["home", "about", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "rich-text", "faq-accordion", "social-feed", "trust-badges", "testimonials", "recently-viewed"],
-    defaultTheme: themeFromTemplate("general"),
-    storeDescription: "A flexible storefront for products, bundles, promotions, everyday ecommerce operations, and more trustworthy first-purchase pacing.",
-    hero: {
-      tagline: "Built to Adapt",
-      title: "Create a Store That",
-      highlight: "Fits You",
-      subtitle: "Start from a neutral but sellable catalog structure with better discovery, trust cues, and room to adapt.",
-    },
-    capabilities: ["catalog", "cart", "checkout"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("general", {
-        product_visibility: "catalog",
-        checkout_mode: "standard",
-      }),
-  },
-  {
-    id: "inquiry-catalog",
-    legacyTemplateId: "general",
-    name: "Inquiry-Led Catalog",
-    shortName: "Inquiry",
-    description: "A browse-only catalog for quote-based or assisted selling, with hidden prices, proof sections, FAQs, and stronger lead capture cues.",
-    businessFamily: "commerce",
-    catalogMode: "inquiry_only",
-    group: "Inquiry / Browse Only",
-    recommendedPageSet: ["home", "about", "contact"],
-    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "rich-text", "faq-accordion", "testimonials", "trust-badges", "social-feed"],
-    defaultTheme: {
-      presetId: "royal-purple",
-      mode: "light",
-      headingFont: "'Outfit', sans-serif",
-      bodyFont: "'Inter', sans-serif",
-      borderRadius: "0.75rem",
-      customCssVars: {},
-    },
-    storeDescription: "Show products, services, or collections without forcing direct checkout, and convert interest into more qualified conversations.",
-    hero: {
-      tagline: "Talk Before They Buy",
-      title: "Turn Browsing into",
-      highlight: "Qualified Leads",
-      subtitle: "Ideal for custom orders, higher-ticket products, or cases where proof and conversation come before price and checkout.",
-    },
-    capabilities: ["catalog", "inquiry_only", "lead_capture"],
-    onboarding: { steps: defaultOnboardingSteps },
-    defaultSiteSettings: buildDefaultSiteSettings("general", {
-        product_visibility: "inquiry_only",
-        checkout_mode: "whatsapp",
-        hide_prices: true,
-      }),
-  },
-];
+export const fallbackStoreBlueprints: StoreBlueprintDefinition[] = storefrontTemplateSeedDefinitions.map(cloneBlueprintDefinition);
 
 export function findStoreBlueprintById(
   id: string | null | undefined,
   blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
 ): StoreBlueprintDefinition | undefined {
-  return blueprints.find((item) => item.id === id)
+  const normalizedTemplateId = resolveCompatibleTemplateSeedId(id ?? null);
+
+  return blueprints.find((item) => item.id === normalizedTemplateId)
+    ?? blueprints.find((item) => item.id === id)
     ?? blueprints.find((item) => item.legacyTemplateId === id);
 }
 
@@ -338,15 +80,7 @@ export function buildBlueprintSiteSettingsEntries(
   blueprint: StoreBlueprintDefinition,
   overrides: Record<string, Json> = {},
 ) {
-  const mergedSettings = {
-    ...blueprint.defaultSiteSettings,
-    ...overrides,
-  };
-
-  return Object.entries(mergedSettings).map(([key, value]) => ({
-    key,
-    value,
-  }));
+  return buildStorefrontTemplateSiteSettingsEntries(blueprint, overrides);
 }
 
 export type StoreBlueprintRow = {
@@ -366,6 +100,7 @@ export type StoreBlueprintRow = {
   required_capabilities?: Json | null;
   onboarding_schema?: Json | null;
   default_site_settings?: Json | null;
+  schema_version?: number | null;
   is_active?: boolean | null;
 };
 
@@ -419,7 +154,11 @@ export function buildBlueprintDefinitionFromRow(row: StoreBlueprintRow): StoreBl
 
   return {
     ...fallback,
-    id: row.id,
+    id: resolveCompatibleTemplateSeedId(row.id, {
+      productVisibility: typeof (row.default_site_settings as Record<string, unknown> | null | undefined)?.storefront_profile === "object"
+        ? (((row.default_site_settings as Record<string, Json>).storefront_profile as Record<string, Json>)?.product_visibility as string | null | undefined) ?? null
+        : null,
+    }) ?? row.id,
     legacyTemplateId: typeof row.legacy_template_id === "string" ? (row.legacy_template_id as LaunchTemplateId) : fallback.legacyTemplateId,
     name: row.name,
     shortName: row.short_name ?? fallback.shortName,
@@ -447,6 +186,7 @@ export function buildBlueprintDefinitionFromRow(row: StoreBlueprintRow): StoreBl
       steps: onboardingSchema?.steps?.length ? onboardingSchema.steps : fallback.onboarding.steps,
     },
     defaultSiteSettings: mergeBlueprintSiteSettings(fallback.defaultSiteSettings, row.default_site_settings),
+    schemaVersion: row.schema_version ?? fallback.schemaVersion ?? 1,
   };
 }
 
@@ -472,6 +212,7 @@ export async function loadStoreBlueprints(
       "required_capabilities",
       "onboarding_schema",
       "default_site_settings",
+      "schema_version",
       "is_active",
     ].join(","))
     .order("name");
@@ -529,6 +270,7 @@ export async function loadStoreBlueprintById(
       "required_capabilities",
       "onboarding_schema",
       "default_site_settings",
+      "schema_version",
       "is_active",
     ].join(","))
     .eq("id", blueprintId)

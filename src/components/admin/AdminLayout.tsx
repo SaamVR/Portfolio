@@ -1,14 +1,19 @@
+"use client";
+
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, useLocation } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import AdminSidebar from "./AdminSidebar";
 import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
+import { AdminPreviewStoreButton } from "./AdminPreviewStoreButton";
 import { LayoutDashboard, Moon, Search, Settings, ShoppingCart, SlidersHorizontal, SquarePen, SquareStack, SunMedium, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
-import { buildPageBuilderPath } from "@/lib/admin-paths";
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { useTheme } from "next-themes";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
@@ -39,7 +44,7 @@ const isActiveAdminRoute = (pathname: string, target: string) =>
   target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, session, role, loading, refreshRole, signOut } = useAuth();
+  const { user, session, role, activeStoreId, loading, refreshRole, signOut } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
@@ -54,6 +59,19 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname.startsWith("/admin/page-builder/") ||
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
+  const { data: deletedStoreHistory } = useQuery({
+    queryKey: ["deleted-store-history-redirect", user?.id ?? ""],
+    enabled: Boolean(user?.id) && !role,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("store_deletion_records")
+        .select("id")
+        .eq("owner_user_id", user?.id as string)
+        .limit(1);
+
+      return Boolean(data?.length);
+    },
+  });
 
   if (loading) {
     return (
@@ -72,6 +90,10 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
 
   if (!loading && !session) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!loading && session && user && !role && deletedStoreHistory) {
+    return <Navigate to="/account/sites-removed" replace />;
   }
 
   if (!role || !user) {
@@ -129,6 +151,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             <div className="hidden md:block">
               <StoreSwitcher />
             </div>
+            <AdminPreviewStoreButton />
             <button
               onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
               className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
@@ -162,12 +185,13 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             <div className="overflow-x-auto">
               <div className="flex min-w-max items-center gap-2 pb-1">
                 {mobileAdminRoutes.map((route) => {
+                  const routeTo = route.to.startsWith("/admin/page-builder") ? withStoreId(route.to, activeStoreId) : route.to;
                   const active = isActiveAdminRoute(location.pathname, route.to);
                   const Icon = route.icon;
                   return (
                     <Link
                       key={route.to}
-                      to={route.to}
+                      to={routeTo}
                       className={cn(
                         "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors",
                         active

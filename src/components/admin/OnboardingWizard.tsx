@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminPreviewStoreButton } from "@/components/admin/AdminPreviewStoreButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +36,10 @@ import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
-import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { fallbackPageBlueprints, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
+import { getCatalogModeLabel } from "@/lib/cms/storefront-compat";
 import {
   type LaunchTemplatePaymentDefaults,
 } from "@/lib/cms/launch-templates";
@@ -90,6 +92,22 @@ interface DraftState {
   };
   isPublished: boolean;
 }
+
+const onboardingCatalogModes = [
+  "single_product",
+  "multi_product",
+  "menu",
+  "inquiry_only",
+  "landing_only",
+] as const;
+
+const onboardingCatalogModeDescriptions: Record<(typeof onboardingCatalogModes)[number], string> = {
+  single_product: "One flagship offer with a tighter conversion path.",
+  multi_product: "A classic browse-and-buy product catalog.",
+  menu: "Menu or assortment browsing with local ordering.",
+  inquiry_only: "Browse-only or quote-led selling with assisted conversion.",
+  landing_only: "A marketing-first launch page with direct contact or WhatsApp ordering.",
+};
 
 function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePaymentDefaults {
   return getBlueprintPaymentDefaultsFromCollection(blueprintId);
@@ -210,7 +228,31 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
   return pages.map((page) => ({
     ...page,
     blocks: page.blocks.map((block) => {
+      if (block.type === "hero" && draft.catalogMode === "landing_only") {
+        return {
+          ...block,
+          props: {
+            ...block.props,
+            ctaText: "Order via WhatsApp",
+            ctaLink: "#whatsapp",
+            secondaryCtaText: undefined,
+            secondaryCtaLink: undefined,
+          },
+        };
+      }
+
       if (block.type === "featured-products") {
+        if (draft.catalogMode === "landing_only") {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              title: block.props.title || "Offerings",
+              tagline: block.props.tagline || "Direct Order",
+            },
+          };
+        }
+
         if (draft.catalogMode === "single_product") {
           return {
             ...block,
@@ -235,16 +277,31 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
         }
       }
 
-      if (block.type === "promo-banner" && draft.catalogMode === "inquiry_only") {
-        return {
-          ...block,
-          props: {
-            ...block.props,
-            title: "Talk with the seller before checkout",
-            subtitle: "Use WhatsApp, phone, or a contact form when pricing, availability, or fulfillment needs a conversation first.",
-            ctaText: "Start a Conversation",
-          },
-        };
+      if (block.type === "promo-banner") {
+        if (draft.catalogMode === "landing_only") {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              title: "Order Directly via WhatsApp",
+              subtitle: "Skip traditional cart and checkout forms. Chat directly with us to place your order.",
+              ctaText: "Order on WhatsApp",
+              ctaLink: "#whatsapp",
+            },
+          };
+        }
+
+        if (draft.catalogMode === "inquiry_only") {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              title: "Talk with the seller before checkout",
+              subtitle: "Use WhatsApp, phone, or a contact form when pricing, availability, or fulfillment needs a conversation first.",
+              ctaText: "Start a Conversation",
+            },
+          };
+        }
       }
 
       return block;
@@ -279,6 +336,8 @@ function buildPreviewStore(
       presetId: themePackage.presetId,
       themePackageId: themePackage.id,
       mode: draft.themeMode,
+      aesthetic: blueprint.defaultTheme.aesthetic || "minimal",
+      effects: blueprint.defaultTheme.effects || { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
       headingFont: draft.headingFont,
       bodyFont: draft.bodyFont,
       borderRadius: draft.borderRadius,
@@ -632,6 +691,8 @@ export default function OnboardingWizard() {
             presetId: selectedThemePackage.presetId,
             themePackageId: selectedThemePackage.id,
             mode: draft.themeMode,
+            aesthetic: selectedBlueprint.defaultTheme.aesthetic || "minimal",
+            effects: selectedBlueprint.defaultTheme.effects || { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
             headingFont: draft.headingFont,
             bodyFont: draft.bodyFont,
             borderRadius: draft.borderRadius,
@@ -958,7 +1019,7 @@ export default function OnboardingWizard() {
 
             {activeStep.id === "catalog" ? (
               <div className="grid gap-3">
-                {(["single_product", "multi_product", "menu", "inquiry_only"] as const).map((mode) => (
+                {onboardingCatalogModes.map((mode) => (
                   <button
                     key={mode}
                     type="button"
@@ -969,12 +1030,9 @@ export default function OnboardingWizard() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium text-foreground">{mode.replace(/_/g, " ")}</p>
+                        <p className="font-medium text-foreground">{getCatalogModeLabel(mode)}</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {mode === "single_product" ? "One flagship offer with a tighter conversion path."
-                            : mode === "multi_product" ? "A classic browse-and-buy product catalog."
-                            : mode === "menu" ? "Menu or assortment browsing with local ordering."
-                            : "Browse-only or quote-led selling with assisted conversion."}
+                          {onboardingCatalogModeDescriptions[mode]}
                         </p>
                       </div>
                       {draft.catalogMode === mode ? <CheckCircle2 className="h-5 w-5 text-primary" /> : null}
@@ -1057,11 +1115,11 @@ export default function OnboardingWizard() {
                 </div>
                 <div className="grid gap-3 rounded-lg border border-border p-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Guided theme overrides</p>
-                    <p className="text-xs text-muted-foreground">Use these store-only brand tokens without leaving the launch flow.</p>
+                    <p className="text-sm font-medium text-foreground">Basic Color Customizer</p>
+                    <p className="text-xs text-muted-foreground">Customize primary, accent, and background brand colors that save to customCssVars.</p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {GUIDED_THEME_TOKENS.map((token) => {
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {BASIC_THEME_TOKENS.map((token) => {
                       const resolvedVars = resolveStoreThemeVars({
                         presetId: draft.themePackageId,
                         themePackageId: draft.themePackageId,
@@ -1076,10 +1134,9 @@ export default function OnboardingWizard() {
                           <div className="flex items-center gap-2">
                             <Input
                               type="color"
-                              value={hslChannelsToHex(currentValue) ?? "#000000"}
+                              value={hslChannelsToHex(currentValue) ?? (currentValue.startsWith("#") ? currentValue : "#000000")}
                               onChange={(event) => {
-                                const next = hexToHslChannels(event.target.value);
-                                if (!next) return;
+                                const next = hexToHslChannels(event.target.value) ?? event.target.value;
                                 updateDraft({
                                   customCssVars: {
                                     ...draft.customCssVars,
@@ -1087,7 +1144,7 @@ export default function OnboardingWizard() {
                                   },
                                 });
                               }}
-                              className="h-10 w-16 p-1"
+                              className="h-10 w-16 p-1 cursor-pointer"
                             />
                             <Input
                               value={currentValue}
@@ -1203,12 +1260,15 @@ export default function OnboardingWizard() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="button" asChild variant="outline" className="gap-2">
-              <a href={storeUrl} target="_blank" rel="noreferrer">
-                <Eye className="h-4 w-4" />
-                View Store
-              </a>
-            </Button>
+            <div className="flex items-center gap-2">
+              <AdminPreviewStoreButton variant="button" />
+              <Button type="button" asChild variant="outline" className="gap-2">
+                <a href={storeUrl} target="_blank" rel="noreferrer">
+                  <Eye className="h-4 w-4" />
+                  View Store
+                </a>
+              </Button>
+            </div>
           )}
         </div>
       </div>

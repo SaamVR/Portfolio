@@ -1,6 +1,7 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useState } from "react";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
@@ -95,21 +96,24 @@ const Contact = () => {
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const address = contact?.address || "Business address will appear here.";
-  const phone = contact?.phone || "Phone details will appear here.";
-  const emailAddr = contact?.email || "support@example.com";
-  const whatsapp = contact?.whatsapp || phone;
+  const address = contact?.address?.trim() || "";
+  const phone = contact?.phone?.trim() || "";
+  const emailAddr = contact?.email?.trim() || "";
+  const whatsapp = contact?.whatsapp?.trim() || phone;
   const badge = contact?.badge || "Get in Touch";
   const title = contact?.title || `Contact ${storeName}`;
-  const description = contact?.description || `Reach ${storeName} by email, phone, or WhatsApp.`;
+  const description = contact?.description || currentStore?.description || `Reach ${storeName}.`;
   const formButtonLabel = contact?.form_button_label || "Send Message";
-  const responseTimeLabel = contact?.response_time_label || "Response Time";
-  const responseTimeText = contact?.response_time_text || "Usually within 1 business day. For urgent order changes, call or message us right after placing the order.";
+  const responseTimeLabel = contact?.response_time_label?.trim() || "Response Time";
+  const responseTimeText = contact?.response_time_text?.trim() || "";
   const whatsappDigits = whatsapp.replace(/[^0-9]/g, "");
-  const whatsappHref = `https://wa.me/${whatsappDigits.startsWith("0") && whatsappDigits.length === 11 ? `88${whatsappDigits}` : whatsappDigits}?text=${encodeURIComponent(`Hi ${storeName}`)}`;
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits.startsWith("0") && whatsappDigits.length === 11 ? `88${whatsappDigits}` : whatsappDigits}?text=${encodeURIComponent(`Hi ${storeName}`)}`
+    : "";
+  const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead
         title={title}
         description={description}
@@ -135,30 +139,35 @@ const Contact = () => {
                     </p>
 
                     <div className="mt-6 flex flex-wrap gap-3">
-                      <a
-                        href={whatsappHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90"
-                      >
-                        Chat on WhatsApp
-                        <ArrowRight className="h-4 w-4" />
-                      </a>
-                      <a
-                        href={`tel:${phone}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:text-primary"
-                      >
-                        Call the store
-                      </a>
+                      {whatsappHref ? (
+                        <a
+                          href={whatsappHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition hover:opacity-90"
+                        >
+                          Chat on WhatsApp
+                          <ArrowRight className="h-4 w-4" />
+                        </a>
+                      ) : null}
+                      {phone ? (
+                        <a
+                          href={`tel:${phone}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:text-primary"
+                        >
+                          Call the store
+                        </a>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                     {[
-                      { label: "Phone", value: phone, icon: Phone },
-                      { label: "Email", value: emailAddr, icon: Mail },
-                      { label: responseTimeLabel, value: responseTimeText, icon: Clock },
-                    ].map((item) => {
+                      phone ? { label: "Phone", value: phone, icon: Phone } : null,
+                      emailAddr ? { label: "Email", value: emailAddr, icon: Mail } : null,
+                      responseTimeText ? { label: responseTimeLabel, value: responseTimeText, icon: Clock } : null,
+                    ].filter(Boolean).map((item) => {
+                      if (!item) return null;
                       const Icon = item.icon;
                       return (
                         <div key={item.label} className="rounded-[1.4rem] border border-border bg-secondary/60 p-4">
@@ -198,32 +207,36 @@ const Contact = () => {
                     </div>
 
                     <div className="grid gap-3">
-                      <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-                        <div className="flex items-start gap-3">
-                          <MapPin className="mt-1 h-4.5 w-4.5 shrink-0 text-primary" />
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">Store address</p>
-                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{address}</p>
+                      {address ? (
+                        <div className="rounded-2xl border border-border bg-secondary/50 p-4">
+                          <div className="flex items-start gap-3">
+                            <MapPin className="mt-1 h-4.5 w-4.5 shrink-0 text-primary" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Store address</p>
+                              <p className="mt-1 text-sm leading-6 text-muted-foreground">{address}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : null}
 
-                      <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-                        <div className="flex items-start gap-3">
-                          <MessageCircle className="mt-1 h-4.5 w-4.5 shrink-0 text-primary" />
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">WhatsApp support</p>
-                            <a
-                              href={whatsappHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-1 inline-flex text-sm text-primary hover:underline"
-                            >
-                              {whatsapp}
-                            </a>
+                      {whatsappHref ? (
+                        <div className="rounded-2xl border border-border bg-secondary/50 p-4">
+                          <div className="flex items-start gap-3">
+                            <MessageCircle className="mt-1 h-4.5 w-4.5 shrink-0 text-primary" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">WhatsApp support</p>
+                              <a
+                                href={whatsappHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 inline-flex text-sm text-primary hover:underline"
+                              >
+                                {whatsapp}
+                              </a>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -242,10 +255,6 @@ const Contact = () => {
                         referrerPolicy="no-referrer-when-downgrade"
                         title="Store location"
                       />
-                    </div>
-                  ) : contact?.map_enabled ? (
-                    <div className="rounded-[1.6rem] border border-border bg-secondary/50 p-6 text-sm text-muted-foreground shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-                      Map preview: {address}
                     </div>
                   ) : null}
                 </div>
@@ -302,15 +311,17 @@ const Contact = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <Clock className="mt-0.5 h-4.5 w-4.5 shrink-0 text-primary" />
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{responseTimeLabel}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{responseTimeText}</p>
+                    {responseTimeText ? (
+                      <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <Clock className="mt-0.5 h-4.5 w-4.5 shrink-0 text-primary" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{responseTimeLabel}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{responseTimeText}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : null}
 
                     <button
                       type="submit"
@@ -326,7 +337,7 @@ const Contact = () => {
           </div>
         </section>
       </PageTransition>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

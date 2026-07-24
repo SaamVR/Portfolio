@@ -6,6 +6,16 @@ import { cn } from "@/lib/utils";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
+interface ExitIntentSettings {
+  enabled?: boolean;
+  bg_color?: string;
+  image_url?: string;
+  title?: string;
+  offer_text?: string;
+  discount_amount?: string;
+  discount_code?: string;
+}
+
 export default function ExitIntentPopup() {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
@@ -14,7 +24,8 @@ export default function ExitIntentPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data: exitIntent = {} } = useSiteSettings<any>("exit_intent", storeId);
+  const { data: fetchedExitIntent } = useSiteSettings<ExitIntentSettings>("exit_intent", storeId);
+  const exitIntent = fetchedExitIntent ?? {};
 
   useEffect(() => {
     // Only run if enabled

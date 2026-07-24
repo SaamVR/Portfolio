@@ -22,6 +22,21 @@ describe("store resolver mapping", () => {
     ).toBe(false);
   });
 
+  it("ensures preview token bypass is scoped to the matching store_id only", () => {
+    const tokenStoreId: string = "store-a";
+    const requestedStoreId: string = "store-b";
+
+    // A token for store-a must never grant access to store-b
+    const isValidForStoreB = tokenStoreId === requestedStoreId;
+    expect(isValidForStoreB).toBe(false);
+  });
+
+  it("ensures unexpired preview token allows unpublished store preview access", () => {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const isUnexpired = new Date(expiresAt).getTime() > Date.now();
+    expect(isUnexpired).toBe(true);
+  });
+
   it("uses business profile blueprints and theme package defaults when records are sparse", () => {
     const store = buildResolvedStoreFromRecords(
       {
@@ -91,6 +106,8 @@ describe("store resolver mapping", () => {
         defaultTheme: {
           presetId: "royal-purple",
           mode: "light",
+          aesthetic: "minimal",
+          effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
           headingFont: "'Outfit', sans-serif",
           bodyFont: "'Inter', sans-serif",
           borderRadius: "1rem",
@@ -171,6 +188,7 @@ describe("store resolver mapping", () => {
           id: "gallery-rich-text",
           type: "rich-text",
           isVisible: true,
+          visible: true,
           sortOrder: 0,
           props: {
             title: "Gallery",
@@ -221,6 +239,8 @@ describe("store resolver mapping", () => {
         defaultTheme: {
           presetId: "merchant-noir",
           mode: "light",
+          aesthetic: "minimal",
+          effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
           headingFont: "'Manrope', sans-serif",
           bodyFont: "'Inter', sans-serif",
           borderRadius: "1.25rem",

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
@@ -23,6 +23,12 @@ import {
   loadStoreBlueprints,
   type StoreBlueprintDefinition,
 } from "@/lib/cms/store-blueprints";
+import {
+  getStorefrontTemplateDefinition,
+  resolveStorefrontTemplateId,
+  storefrontTemplateOptions,
+  type StorefrontTemplateId,
+} from "@/lib/cms/storefront-templates";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { cn } from "@/lib/utils";
 
@@ -88,12 +94,14 @@ export default function MerchantSignup() {
     { id: "pro", name: "Pro", description: null, monthly_price: 3990, trial_days: 14, contact_only: true },
   ]);
   const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
+  const [accountRestriction, setAccountRestriction] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     storeName: "",
     storeSlug: "",
     businessType: requestedBlueprint || "general-catalog",
+    storefrontTemplateId: resolveStorefrontTemplateId(undefined, { blueprintId: requestedBlueprint || "general-catalog" }) as StorefrontTemplateId,
     planId: searchParams.get("planId") || "free",
     otpCode: "",
   });
@@ -108,6 +116,10 @@ export default function MerchantSignup() {
     }
     return Array.from(groups.entries());
   }, [blueprints]);
+  const selectedTemplate = useMemo(
+    () => getStorefrontTemplateDefinition(form.storefrontTemplateId),
+    [form.storefrontTemplateId],
+  );
 
   const siteUrl = useMemo(
     () => absoluteStoreUrl({ slug: form.storeSlug || "your-store" }, "/"),
@@ -146,9 +158,13 @@ export default function MerchantSignup() {
           ? requestedBlueprint
           : null;
         const hasCurrent = loaded.some((item) => item.id === prev.businessType);
+        const nextBusinessType = requested ?? (hasCurrent ? prev.businessType : loaded[0].id);
         return {
           ...prev,
-          businessType: requested ?? (hasCurrent ? prev.businessType : loaded[0].id),
+          businessType: nextBusinessType,
+          storefrontTemplateId: resolveStorefrontTemplateId(prev.storefrontTemplateId, {
+            blueprintId: nextBusinessType,
+          }) as StorefrontTemplateId,
         };
       });
     };
@@ -182,8 +198,43 @@ export default function MerchantSignup() {
   }, [loading, user]);
 
   useEffect(() => {
+    let active = true;
+
+    const loadAccountRestriction = async () => {
+      if (!user?.id) {
+        if (active) setAccountRestriction(null);
+        return;
+      }
+
+      const { data } = await (supabase as any)
+        .from("merchant_account_statuses")
+        .select("can_create_store, status_note")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (data?.can_create_store === false) {
+        setAccountRestriction(
+          typeof data?.status_note === "string" && data.status_note.trim()
+            ? data.status_note
+            : "Your account cannot create new stores right now. Please contact support.",
+        );
+        return;
+      }
+
+      setAccountRestriction(null);
+    };
+
+    void loadAccountRestriction();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     setSubmitError(null);
-  }, [form.businessType, form.name, form.planId, form.storeName, form.storeSlug]);
+  }, [form.businessType, form.name, form.planId, form.storeName, form.storeSlug, form.storefrontTemplateId]);
 
   useEffect(() => {
     const slug = slugify(form.storeSlug);
@@ -226,6 +277,11 @@ export default function MerchantSignup() {
       if (field === "name" && !prev.storeName) {
         next.storeName = `${value.trim()}'s Store`.trim();
         next.storeSlug = slugify(next.storeName);
+      }
+      if (field === "businessType") {
+        next.storefrontTemplateId = resolveStorefrontTemplateId(prev.storefrontTemplateId, {
+          blueprintId: value,
+        }) as StorefrontTemplateId;
       }
       return next;
     });
@@ -406,6 +462,7 @@ export default function MerchantSignup() {
           store_slug: form.storeSlug.trim(),
           site_url: siteUrl,
           business_type: form.businessType,
+          storefront_template_id: form.storefrontTemplateId,
           plan_id: isAdditionalStoreFlow ? undefined : form.planId,
           source_store_id: isAdditionalStoreFlow ? activeStoreId : undefined,
           intent: isAdditionalStoreFlow ? "new-store" : "initial-signup",
@@ -417,12 +474,14 @@ export default function MerchantSignup() {
         throw new Error("Workspace was created without a store id. Please try again.");
       }
 
-      await refreshRole();
       setActiveStoreId(data.store_id);
-      toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Welcome to your dashboard.");
+      await refreshRole();
+      toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Your storefront is live and the dashboard is ready.");
 
-      const onboardingPath = `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}${intent === "new-store" ? "&intent=new-store" : ""}`;
-      window.location.href = onboardingPath;
+      const dashboardPath = typeof data?.dashboard_path === "string" && data.dashboard_path.trim()
+        ? data.dashboard_path
+        : `/admin?storeId=${encodeURIComponent(data.store_id)}`;
+      window.location.href = dashboardPath;
     } catch (error: any) {
       const rawMessage = await extractSignupErrorMessage(error);
       const message = getFriendlySignupError(rawMessage);
@@ -603,15 +662,36 @@ export default function MerchantSignup() {
                   </div>
                 )}
               </div>
+              <div>
+                <Label htmlFor="storefront-template">Launch Template</Label>
+                <select
+                  id="storefront-template"
+                  value={form.storefrontTemplateId}
+                  onChange={(event) => update("storefrontTemplateId", event.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  {storefrontTemplateOptions.map((template) => (
+                    <option key={template.value} value={template.value}>
+                      {template.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">{selectedTemplate.description}</p>
+              </div>
               {submitError ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {submitError}
                 </div>
               ) : null}
-              <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails || !canSubmitDetails} className="h-11 w-full">
+              <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails || !canSubmitDetails || Boolean(accountRestriction)} className="h-11 w-full">
                 {submittingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isAdditionalStoreFlow ? "Create Additional Store" : "Create CMS Workspace"}
               </Button>
+              {accountRestriction ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {accountRestriction}
+                </div>
+              ) : null}
             </form>
           ) : null}
 

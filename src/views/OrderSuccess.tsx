@@ -19,7 +19,7 @@ const OrderSuccess = ({ explicitStoreId, explicitStoreSlug }: OrderSuccessProps 
   const storeSlug = explicitStoreSlug ?? currentStore?.slug;
   const storeName = currentStore?.name ?? "the store";
 
-  const LayoutWrapper = explicitStoreId ? StorefrontLayout : Layout;
+  const LayoutWrapper = (explicitStoreId ?? currentStore?.id) ? StorefrontLayout : Layout;
 
   return (
     <LayoutWrapper>

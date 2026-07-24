@@ -106,7 +106,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
     { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Settings", show: isAdmin },
     { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-    { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Edit", show: cmsEnabled },
+    { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Edit", show: cmsEnabled },
   ];
 
   const commerceLinks = [
@@ -119,8 +119,8 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
   const storefrontLinks = [
     { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
     { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-    { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled },
-    { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled },
+    { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Editing", show: cmsEnabled },
+    { to: buildPageBuilderPath("advanced", { storeId: activeStoreId }), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled },
     { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
     { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
     { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },

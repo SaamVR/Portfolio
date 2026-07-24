@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
+import { triggerWhatsAppOrderNotify } from "@/lib/cms/whatsapp-order-notify";
+import { normalizeOrderItems } from "@/lib/cms/order-input";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allowedPaymentMethods = new Set(["bkash", "nagad", "cod"]);
-
-type OrderItemInput = {
-  productId?: unknown;
-  size?: unknown;
-  quantity?: unknown;
-};
+const allowedPaymentMethods = new Set(["bkash", "bkash_manual", "nagad", "cod"]);
 
 function getClientIp(req: Request) {
   return (
@@ -28,32 +24,6 @@ function readMoney(value: unknown) {
   const amount = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(amount)) return 0;
   return Math.max(0, Math.round(amount));
-}
-
-function normalizeItems(items: unknown) {
-  if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
-    throw new Error("Cart must contain between 1 and 50 items");
-  }
-
-  return items.map((raw) => {
-    const item = raw as OrderItemInput;
-    const productId = typeof item.productId === "string" ? item.productId.trim() : "";
-    const quantity = Number(item.quantity);
-
-    if (!uuidPattern.test(productId)) {
-      throw new Error("Cart contains an invalid product");
-    }
-
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
-      throw new Error("Cart contains an invalid quantity");
-    }
-
-    return {
-      productId,
-      size: readText(item.size, 80) || "Free Size",
-      quantity,
-    };
-  });
 }
 
 function mapOrderError(message: string) {
@@ -101,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payment method" }, { status: 400 });
     }
 
-    const items = normalizeItems(body?.items);
+    const items = normalizeOrderItems(body?.items);
     const user = await getAuthenticatedUser(req);
     const supabaseAdmin = getSupabaseAdminClient();
 
@@ -131,6 +101,19 @@ export async function POST(req: Request) {
     if (!order?.order_number) {
       return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }
+
+    // Fail-safe WhatsApp order notification for merchant
+    void triggerWhatsAppOrderNotify(supabaseAdmin, {
+      store_id: storeId,
+      order_id: order.id,
+      order_number: order.order_number,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      shipping_address: shippingAddress,
+      shipping_city: shippingCity,
+      total: Number(order.total ?? 0),
+      items: order.items || items,
+    });
 
     return NextResponse.json({ order });
   } catch (error) {

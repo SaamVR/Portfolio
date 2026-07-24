@@ -22,6 +22,15 @@ import {
 import { ChevronDown } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+
+interface NavigationSettings {
+  primary_links?: Array<{ label?: string; url?: string }>;
+  shop_label?: string;
+  show_account?: boolean;
+  show_wishlist?: boolean;
+  show_cart?: boolean;
+}
 
 const MobileMenu = () => {
   const { totalItems } = useCart();
@@ -30,14 +39,20 @@ const MobileMenu = () => {
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
   const currentStore = useOptionalStore();
+  const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
+  const homePath = storefrontPath("/", currentStore?.slug);
+  const shopPath = storefrontPath("/shop", currentStore?.slug);
   const fallbackShopLinks = [
-    { label: "Browse Catalog", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: "Browse Catalog", to: shopPath },
+    { label: "Latest Additions", to: shopPath },
+    { label: "Popular Picks", to: shopPath },
   ];
-  const authPath = `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`;
+  const authPath = storefrontPath(
+    `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`,
+    currentStore?.slug,
+  );
   const shopLinks = dynamicProductCategories.length > 0
     ? dynamicProductCategories.slice(0, 6).map((category: any) => ({
         label: category.name,
@@ -49,12 +64,27 @@ const MobileMenu = () => {
           to: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
         }))
       : fallbackShopLinks;
-  const navLinks = [
-    { label: "Home", to: storefrontPath("/", currentStore?.slug) },
+  const defaultNavLinks = [
+    { label: "Home", to: homePath },
     { label: "About", to: storefrontPath("/about", currentStore?.slug) },
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
     { label: "FAQ", to: storefrontPath("/faq", currentStore?.slug) },
   ];
+  const navLinks = navigation?.primary_links?.length
+    ? navigation.primary_links
+      .filter((link): link is { label: string; url: string } => Boolean(link?.label && link?.url))
+      .map((link) => ({
+        label: link.label,
+        to: storefrontPath(link.url, currentStore?.slug),
+      }))
+    : defaultNavLinks;
+  const homeLink = navLinks.find((link) => link.to === homePath) ?? { label: "Home", to: homePath };
+  const shopLink = navLinks.find((link) => link.to === shopPath);
+  const secondaryLinks = navLinks.filter((link) => link.to !== homePath && link.to !== shopPath);
+  const shopLabel = navigation?.shop_label?.trim() || shopLink?.label || "Shop";
+  const showAccount = navigation?.show_account ?? true;
+  const showWishlist = navigation?.show_wishlist ?? true;
+  const showCart = navigation?.show_cart ?? true;
 
   return (
     <Sheet>
@@ -81,36 +111,43 @@ const MobileMenu = () => {
 
         <nav className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-2 pb-6" aria-label="Mobile navigation">
           <Link
-            to={storefrontPath("/", currentStore?.slug)}
+            to={homeLink.to}
             className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
-              location.pathname === "/"
+              location.pathname === homePath
                 ? "bg-primary text-primary-foreground shadow-md"
                 : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
             }`}
           >
-            Home
+            {homeLink.label}
           </Link>
 
-          {/* Expandable Shop section */}
-          <Collapsible open={shopOpen} onOpenChange={setShopOpen}>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all">
-              Shop
-              <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${shopOpen ? "rotate-180 text-primary" : ""}`} />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
-              {shopLinks.map((link) => (
+          {shopLink ? (
+            <Collapsible open={shopOpen} onOpenChange={setShopOpen}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all">
+                {shopLabel}
+                <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${shopOpen ? "rotate-180 text-primary" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
                 <Link
-                  key={link.label}
-                  to={link.to}
+                  to={shopLink.to}
                   className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {link.label}
+                  All
                 </Link>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
+                {shopLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    to={link.to}
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
 
-          {navLinks.slice(1).map((link) => (
+          {secondaryLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
@@ -126,41 +163,47 @@ const MobileMenu = () => {
         </nav>
 
         <div className="mt-auto border-t border-white/10 pt-6 flex flex-col gap-2">
-          <Link
-            to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
-            className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
-          >
-            <User className="h-5 w-5 text-primary/80" />
-            {user ? "My Account" : "Sign In"}
-          </Link>
-          <Link
-            to={storefrontPath("/wishlist", currentStore?.slug)}
-            className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <Heart className="h-5 w-5 text-primary/80" />
-              Wishlist
-            </div>
-            {wishlistCount > 0 && (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
-                {wishlistCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            to={storefrontPath("/cart", currentStore?.slug)}
-            className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <ShoppingBag className="h-5 w-5 text-primary/80" />
-              Cart
-            </div>
-            {totalItems > 0 && (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {totalItems}
-              </span>
-            )}
-          </Link>
+          {showAccount ? (
+            <Link
+              to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
+              className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+            >
+              <User className="h-5 w-5 text-primary/80" />
+              {user ? "My Account" : "Sign In"}
+            </Link>
+          ) : null}
+          {showWishlist ? (
+            <Link
+              to={storefrontPath("/wishlist", currentStore?.slug)}
+              className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Heart className="h-5 w-5 text-primary/80" />
+                Wishlist
+              </div>
+              {wishlistCount > 0 && (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
+          ) : null}
+          {showCart ? (
+            <Link
+              to={storefrontPath("/cart", currentStore?.slug)}
+              className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="h-5 w-5 text-primary/80" />
+                Cart
+              </div>
+              {totalItems > 0 && (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>

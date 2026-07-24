@@ -7,7 +7,11 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    webpackMemoryOptimizations: true,
+  },
   images: {
+    maximumRedirects: 5,
     remotePatterns: [
       {
         protocol: 'https',
@@ -23,7 +27,22 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.supabase.co',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'loremflickr.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+        pathname: '/**',
+      },
     ],
   },
   turbopack: {
@@ -65,7 +84,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://*.supabase.co; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss: https://*.supabase.co https://api.cloudinary.com http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://*.supabase.co https://loremflickr.com https://placehold.co https://api.dicebear.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss: https://*.supabase.co https://api.cloudinary.com http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*;"
           }
         ],
       },

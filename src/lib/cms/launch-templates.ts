@@ -2,7 +2,7 @@ import { createDefaultBlock } from "@/lib/cms/block-library";
 import { createStoreSlug, slugify } from "@/lib/slug";
 import type { StorePage, StorePageBlock, StoreTheme } from "@/lib/cms/schema";
 
-export type LaunchTemplateId = "clothing" | "food" | "general";
+export type LaunchTemplateId = "clothing" | "food" | "general" | "landing" | "gadgets" | "crafts";
 
 export interface LaunchTemplatePaymentDefaults {
   bkash_enabled: boolean;
@@ -56,6 +56,8 @@ export const launchTemplates: LaunchTemplate[] = [
     theme: {
       presetId: "default",
       mode: "dark",
+      aesthetic: "minimal",
+      effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
       headingFont: "'Outfit', sans-serif",
       bodyFont: "'Plus Jakarta Sans', sans-serif",
       borderRadius: "0.75rem",
@@ -180,6 +182,8 @@ export const launchTemplates: LaunchTemplate[] = [
     theme: {
       presetId: "warm-earth",
       mode: "light",
+      aesthetic: "minimal",
+      effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
       headingFont: "'Outfit', sans-serif",
       bodyFont: "'Plus Jakarta Sans', sans-serif",
       borderRadius: "1rem",
@@ -291,6 +295,8 @@ export const launchTemplates: LaunchTemplate[] = [
     theme: {
       presetId: "ocean-teal",
       mode: "light",
+      aesthetic: "minimal",
+      effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
       headingFont: "'Outfit', sans-serif",
       bodyFont: "'Plus Jakarta Sans', sans-serif",
       borderRadius: "0.75rem",
@@ -401,6 +407,340 @@ export const launchTemplates: LaunchTemplate[] = [
       nagad_enabled: false,
       cod_enabled: true,
       prepaid_badge_text: "Fast Processing",
+      prepayment_discount_type: "none",
+      prepayment_discount_value: 0,
+    },
+  },
+  {
+    id: "landing",
+    name: "Landing Page",
+    shortName: "Landing",
+    description: "A direct-to-WhatsApp promotional landing page with a conversion-focused hero, key highlights, trust badges, and FAQs.",
+    storeDescription: "Direct-to-WhatsApp landing page for instant customer orders and inquiries.",
+    theme: {
+      presetId: "midnight-blue",
+      mode: "dark",
+      aesthetic: "minimal",
+      effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
+      headingFont: "'Outfit', sans-serif",
+      bodyFont: "'Plus Jakarta Sans', sans-serif",
+      borderRadius: "0.75rem",
+      customCssVars: {},
+    },
+    hero: {
+      tagline: "Direct Order",
+      title: "Connect & Order",
+      highlight: "on WhatsApp",
+      subtitle: "Skip traditional checkout steps and talk directly with the seller for instant customer service and custom ordering.",
+      ctaText: "Order via WhatsApp",
+      ctaLink: "#whatsapp",
+      secondaryCtaText: "Read FAQs",
+      secondaryCtaLink: "#faq",
+    },
+    pages: [
+      {
+        slug: "/",
+        title: "Home",
+        seoTitle: "Promotional Landing Page",
+        seoDescription: "Order directly on WhatsApp with fast support and custom response.",
+        isHomepage: true,
+        blocks: [
+          block("hero", 0, {
+            tagline: "Direct Order",
+            title: "Connect & Order",
+            highlight: "on WhatsApp",
+            subtitle: "Skip traditional checkout steps and talk directly with the seller for instant customer service and custom ordering.",
+            ctaText: "Order via WhatsApp",
+            ctaLink: "#whatsapp",
+            secondaryCtaText: "Read FAQs",
+            secondaryCtaLink: "#faq",
+          }),
+          block("rich-text", 1, {
+            eyebrow: "Why Order Directly",
+            title: "Fast, personal customer service without checkout friction",
+            body: "Connect directly with our team to place your order, customize options, or ask questions before you buy.\n\n- Instant WhatsApp order confirmation\n- Personal customer assistance for questions or custom options\n- Fast local delivery and payment guidance",
+            align: "left",
+          }),
+          block("trust-badges", 2, {
+            title: "Why customers prefer direct ordering",
+            badges: [
+              { label: "Direct Communication", description: "Talk directly with the merchant on WhatsApp for quick confirmation.", icon: "support" },
+              { label: "Flexible Payments", description: "Pay via bKash, Nagad, or Cash on Delivery after order confirmation.", icon: "payment" },
+              { label: "Fast Handoff", description: "Clear delivery timeline and real-time updates directly in your chat.", icon: "truck" },
+            ],
+          }),
+          block("faq-accordion", 3, {
+            title: "Frequently Asked Questions",
+            subtitle: "Everything you need to know about direct ordering.",
+            faqs: [
+              { q: "How do I place an order?", a: "Click the WhatsApp button to start a conversation. We will confirm item availability, total price, and delivery details with you." },
+              { q: "What payment methods are supported?", a: "We support bKash, Nagad, and Cash on Delivery. Payment details are provided directly in WhatsApp during chat." },
+              { q: "How long does delivery take?", a: "Delivery timing is confirmed when you place your order via chat based on your location and items." },
+            ],
+          }),
+        ],
+      },
+    ],
+    paymentDefaults: {
+      bkash_enabled: true,
+      nagad_enabled: true,
+      cod_enabled: true,
+      prepaid_badge_text: "WhatsApp Verified",
+      prepayment_discount_type: "none",
+      prepayment_discount_value: 0,
+    },
+  },
+  {
+    id: "gadgets",
+    name: "Gadgets & Electronics Store",
+    shortName: "Gadgets",
+    description: "A tech-focused storefront for devices, accessories, specs, and feature-led product showcases.",
+    storeDescription: "Smart devices, practical accessories, spec-led merchandising, and warranty support.",
+    theme: {
+      presetId: "midnight-blue",
+      mode: "dark",
+      aesthetic: "minimal",
+      effects: { scrollReveals: true, hoverEffects: true, parallax: false, intensity: "subtle" },
+      headingFont: "'Outfit', sans-serif",
+      bodyFont: "'Plus Jakarta Sans', sans-serif",
+      borderRadius: "0.75rem",
+      customCssVars: {},
+    },
+    hero: {
+      tagline: "Engineered for Everyday",
+      title: "Gear Up with",
+      highlight: "Better Tech",
+      subtitle: "Discover high-performance gadgets, smart audio, charging gear, and essential accessories with verified warranty support.",
+      ctaText: "Explore Tech",
+      ctaLink: "/shop",
+      secondaryCtaText: "View Spec Sheets",
+      secondaryCtaLink: "/shop",
+    },
+    pages: [
+      {
+        slug: "/",
+        title: "Home",
+        seoTitle: "Gadgets & Electronics Store",
+        seoDescription: "Shop smart devices, accessories, and tech gear with warranty.",
+        isHomepage: true,
+        blocks: [
+          block("hero", 0, {
+            tagline: "Engineered for Everyday",
+            title: "Gear Up with",
+            highlight: "Better Tech",
+            subtitle: "Discover high-performance gadgets, smart audio, charging gear, and essential accessories with verified warranty support.",
+            ctaText: "Explore Tech",
+            ctaLink: "/shop",
+            secondaryCtaText: "View Spec Sheets",
+            secondaryCtaLink: "/shop",
+          }),
+          block("promo-banner", 1, {
+            title: "Next-Gen Gear & Bundles",
+            subtitle: "Save on essential gadget bundles, fast chargers, and daily tech upgrades.",
+            ctaText: "Shop Tech Bundles",
+            ctaLink: "/shop",
+            badgeText: "Featured Tech",
+            bgStyle: "dark",
+            textAlignment: "center",
+          }),
+          block("category-showcase", 2, {
+            tagline: "Categories",
+            title: "Browse by Tech Type",
+          }),
+          block("featured-products", 3, {
+            limit: 6,
+            title: "Bestselling Gear",
+            tagline: "High Specs",
+          }),
+          block("rich-text", 4, {
+            eyebrow: "Warranty & Quality",
+            title: "Built for reliable performance and spec transparency",
+            body: "Shop electronics with confidence.\n\n- Detailed specifications and compatibility guidance\n- Official warranty and replacement support\n- Fast, safe packaging and verified delivery",
+            align: "left",
+          }),
+          block("faq-accordion", 5, {
+            title: "Gadget & Warranty FAQs",
+            subtitle: "Clear answers regarding specs, warranty claims, and shipping.",
+            faqs: [
+              { q: "Do these electronics come with a warranty?", a: "Yes! All gadgets include seller or brand warranty details clearly listed on the product page." },
+              { q: "How are fragile devices packaged for shipping?", a: "Products are double-boxed with anti-static foam and shock protection to ensure safe transit." },
+              { q: "What is your return policy for defective tech?", a: "If a device arrives defective, contact support within 7 days for immediate replacement or repair." },
+            ],
+          }),
+          block("trust-badges", 6, {
+            title: "Tech Purchase Cues",
+            badges: [
+              { label: "Warranty Covered", description: "Official warranty and serial verification.", icon: "shield" },
+              { label: "Shockproof Packaging", description: "Multi-layer protective boxing for sensitive devices.", icon: "truck" },
+              { label: "Tech Support", description: "Dedicated customer assistance for device setup and troubleshooting.", icon: "support" },
+            ],
+          }),
+          block("testimonials", 7, {
+            title: "Verified buyer reviews",
+            subtitle: "See what customers say about product performance and delivery.",
+            reviews: [
+              { name: "Tanvir", rating: 5, comment: "The specs matched the description exactly, and packaging was solid." },
+              { name: "Farhan", rating: 5, comment: "Fast shipping and helpful customer support when verifying compatibility." },
+            ],
+          }),
+        ],
+      },
+      {
+        slug: "/policy",
+        title: "Policy",
+        seoTitle: "Warranty and Return Policy",
+        seoDescription: "Warranty guidelines, delivery care, and return policy.",
+        isHomepage: false,
+        blocks: [
+          block("rich-text", 0, {
+            eyebrow: "Warranty Policy",
+            title: "Clear gadget warranty and support terms",
+            body: "Our electronics coverage guarantees peace of mind for every customer.\n\n- Warranty coverage breakdown and claim steps\n- Defective item replacement window\n- Shipping protection for delicate hardware",
+            align: "left",
+          }),
+          block("faq-accordion", 1, {
+            title: "Tech policy questions",
+            subtitle: "Understanding warranty and replacement terms.",
+            faqs: [
+              { q: "How do I claim warranty support?", a: "Keep your invoice and contact support with your order ID to initiate a claim." },
+              { q: "What is covered under warranty?", a: "Manufacturing defects and hardware failures under normal usage are fully covered." },
+            ],
+          }),
+        ],
+      },
+    ],
+    paymentDefaults: {
+      bkash_enabled: true,
+      nagad_enabled: true,
+      cod_enabled: true,
+      prepaid_badge_text: "Verified Tech Order",
+      prepayment_discount_type: "none",
+      prepayment_discount_value: 0,
+    },
+  },
+  {
+    id: "crafts",
+    name: "Crafts & Handmade Store",
+    shortName: "Crafts",
+    description: "A story-led storefront for handmade goods, artisan gifts, commissions, and small-batch collections.",
+    storeDescription: "Handmade collections, limited batches, maker stories, giftable items, and custom order support.",
+    theme: {
+      presetId: "warm-earth",
+      mode: "light",
+      aesthetic: "minimal",
+      effects: { scrollReveals: true, hoverEffects: true, parallax: false, intensity: "subtle" },
+      headingFont: "'Outfit', sans-serif",
+      bodyFont: "'Plus Jakarta Sans', sans-serif",
+      borderRadius: "1rem",
+      customCssVars: {},
+    },
+    hero: {
+      tagline: "Made with Care",
+      title: "Bring Handmade",
+      highlight: "Closer",
+      subtitle: "Discover small-batch artisan creations, handcrafted gifts, and custom pieces crafted with passion and detail.",
+      ctaText: "Browse Crafts",
+      ctaLink: "/shop",
+      secondaryCtaText: "Meet the Maker",
+      secondaryCtaLink: "/about",
+    },
+    pages: [
+      {
+        slug: "/",
+        title: "Home",
+        seoTitle: "Crafts & Handmade Goods",
+        seoDescription: "Shop artisanal handcrafted goods, gifts, and custom pieces.",
+        isHomepage: true,
+        blocks: [
+          block("hero", 0, {
+            tagline: "Made with Care",
+            title: "Bring Handmade",
+            highlight: "Closer",
+            subtitle: "Discover small-batch artisan creations, handcrafted gifts, and custom pieces crafted with passion and detail.",
+            ctaText: "Browse Crafts",
+            ctaLink: "/shop",
+            secondaryCtaText: "Meet the Maker",
+            secondaryCtaLink: "/about",
+          }),
+          block("promo-banner", 1, {
+            title: "Small Batch Release",
+            subtitle: "Each piece is individually crafted. Reserve limited-run items before they sell out.",
+            ctaText: "View Limited Items",
+            ctaLink: "/shop",
+            badgeText: "Artisan Made",
+            bgStyle: "luxury-gold",
+            textAlignment: "center",
+          }),
+          block("category-showcase", 2, {
+            tagline: "Collections",
+            title: "Explore Handmade Categories",
+          }),
+          block("featured-products", 3, {
+            limit: 6,
+            title: "Artisan Favorites",
+            tagline: "Handcrafted",
+          }),
+          block("rich-text", 4, {
+            eyebrow: "Our Craft Philosophy",
+            title: "Unique pieces made with sustainable materials and dedication",
+            body: "Every product carries a story.\n\n- Sustainably sourced natural materials\n- Individually handcrafted by independent makers\n- Custom personalization options available on request",
+            align: "left",
+          }),
+          block("faq-accordion", 5, {
+            title: "Handmade & Custom Order FAQs",
+            subtitle: "Answers about craft materials, custom sizing, and gift wrapping.",
+            faqs: [
+              { q: "Are all items 100% handmade?", a: "Yes, every product is handcrafted in small batches, making each piece subtly unique." },
+              { q: "Can I request custom colors or personalized engraving?", a: "Absolutely! Contact us before or right after placing your order to discuss custom modifications." },
+              { q: "Is gift packaging available?", a: "Yes, we offer eco-friendly gift wrapping and custom handwritten note cards upon request." },
+            ],
+          }),
+          block("trust-badges", 6, {
+            title: "Artisan Trust Cues",
+            badges: [
+              { label: "100% Handcrafted", description: "Authentic small-batch artisan production.", icon: "shield" },
+              { label: "Careful Packaging", description: "Eco-friendly, protective gift boxes for delicate items.", icon: "truck" },
+              { label: "Custom Orders", description: "Direct maker support for custom sizes and personal touches.", icon: "support" },
+            ],
+          }),
+          block("testimonials", 7, {
+            title: "Words from craft lovers",
+            subtitle: "Real feedback from buyers who value artisan craftsmanship.",
+            reviews: [
+              { name: "Sabrina", rating: 5, comment: "The packaging was beautiful and the craft quality surpassed my expectations." },
+              { name: "Ayman", rating: 5, comment: "Ordered a custom piece for a birthday gift—the seller was super attentive and helpful." },
+            ],
+          }),
+        ],
+      },
+      {
+        slug: "/policy",
+        title: "Policy",
+        seoTitle: "Crafts Delivery and Custom Order Policy",
+        seoDescription: "Information on custom orders, craft care, and shipping.",
+        isHomepage: false,
+        blocks: [
+          block("rich-text", 0, {
+            eyebrow: "Artisan Policy",
+            title: "Craft delivery and custom order guidelines",
+            body: "Clear guidelines for custom commissions and artisanal products.\n\n- Small-batch creation timelines\n- Custom order cancellation and adjustment windows\n- Gift wrapping and protective delivery packaging",
+            align: "left",
+          }),
+          block("faq-accordion", 1, {
+            title: "Craft policy details",
+            subtitle: "Understand lead times and custom order terms.",
+            faqs: [
+              { q: "What is the lead time for custom items?", a: "Custom items take 3-7 business days to craft depending on complexity before shipment." },
+            ],
+          }),
+        ],
+      },
+    ],
+    paymentDefaults: {
+      bkash_enabled: true,
+      nagad_enabled: true,
+      cod_enabled: true,
+      prepaid_badge_text: "Handmade Deposit",
       prepayment_discount_type: "none",
       prepayment_discount_value: 0,
     },

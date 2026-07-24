@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@/lib/react-router-dom-shim";
-import { X, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Product } from "@/data/products";
 import { useCart } from "@/context/useCart";
@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
+import { getRenderableSizeOptions, shouldShowSizeOptions } from "@/lib/cms/storefront-product-presentation";
 
 interface ProductQuickViewProps {
   product: Product | null;
@@ -19,11 +21,16 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
   const [selectedSize, setSelectedSize] = useState("");
   const { addItem } = useCart();
   const currentStore = useOptionalStore();
+  const presentation = useStoreProductPresentation(product);
 
   if (!product) return null;
 
+  const { cardVariant, specs } = presentation;
+  const sizeOptions = getRenderableSizeOptions(product, specs, cardVariant);
+  const requiresSizeSelection = shouldShowSizeOptions(product, specs, cardVariant);
+
   const handleAddToCart = () => {
-    if (!selectedSize) {
+    if (requiresSizeSelection && !selectedSize) {
       toast.error("Please select a size");
       return;
     }
@@ -32,7 +39,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
       name: product.name,
       price: product.price,
       image: product.image,
-      size: selectedSize,
+      size: selectedSize || sizeOptions[0] || "Default",
       storeId: currentStore?.id,
     });
     toast.success("Added to cart!");
@@ -70,28 +77,29 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
               <p className="mb-4 font-heading text-2xl font-bold text-primary">৳{product.price}</p>
               <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
 
-              {/* Sizes */}
-              <div className="mb-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground">Size</p>
-                <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      aria-label={`Select size ${size}`}
-                      aria-pressed={selectedSize === size}
-                      className={cn(
-                        "flex h-9 w-12 items-center justify-center rounded-md border text-xs font-medium smooth-hover",
-                        selectedSize === size
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-                      )}
-                    >
-                      {size}
-                    </button>
-                  ))}
+              {requiresSizeSelection ? (
+                <div className="mb-6">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground">Size</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sizeOptions.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        aria-label={`Select size ${size}`}
+                        aria-pressed={selectedSize === size}
+                        className={cn(
+                          "flex h-9 min-w-12 items-center justify-center rounded-md border px-3 text-xs font-medium smooth-hover",
+                          selectedSize === size
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
 
             <div className="space-y-3">

@@ -83,7 +83,7 @@ const Footer = () => {
 
   const brandName = footer?.brand_name || currentStore?.name || "Store";
   const brandHighlight = footer?.brand_highlight || "";
-  const aboutText = footer?.about_text || "Use this space to explain what the store offers, who it serves, and what makes the experience worth choosing.";
+  const aboutText = footer?.about_text || currentStore?.description || "";
   const newsletterHeading = footer?.newsletter_heading || "Stay Updated";
   const newsletterDesc = footer?.newsletter_description || "Share updates, launches, offers, or announcements with interested customers.";
   const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
@@ -133,7 +133,7 @@ const Footer = () => {
             <h3 className="font-heading text-lg font-bold text-foreground">
               {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
             </h3>
-            <p className="mt-3 text-sm text-muted-foreground">{aboutText}</p>
+            {aboutText ? <p className="mt-3 text-sm text-muted-foreground">{aboutText}</p> : null}
           </div>
         );
       case "shop":
@@ -238,10 +238,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">{renderedSections}</div>
         <div className="mt-16 flex flex-col items-center justify-center gap-4 border-t border-white/5 pt-8 text-[13px] text-muted-foreground/60">
           <p className="tracking-wide">{paymentText}</p>
-          <div className="flex items-center gap-6">
-            <p className="tracking-wider">{copyrightText}</p>
-            <Link href="/admin/login" className="tracking-wider transition-colors hover:text-primary">Dashboard</Link>
-          </div>
+          <p className="tracking-wider">{copyrightText}</p>
         </div>
       </div>
     </footer>

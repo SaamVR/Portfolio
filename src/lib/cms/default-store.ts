@@ -16,6 +16,8 @@ const defaultStoreData = {
   theme: {
     presetId: "default",
     mode: "dark",
+    aesthetic: "minimal",
+    effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
     headingFont: "'Outfit', sans-serif",
     bodyFont: "'Plus Jakarta Sans', sans-serif",
     borderRadius: "0.5rem",
@@ -35,6 +37,7 @@ const defaultStoreData = {
           type: "countdown",
           sortOrder: 0,
           isVisible: true,
+          visible: true,
           props: {},
         },
         {
@@ -42,6 +45,7 @@ const defaultStoreData = {
           type: "hero",
           sortOrder: 1,
           isVisible: true,
+          visible: true,
           props: {},
         },
         {
@@ -49,6 +53,7 @@ const defaultStoreData = {
           type: "category-showcase",
           sortOrder: 2,
           isVisible: true,
+          visible: true,
           props: {},
         },
         {
@@ -56,6 +61,7 @@ const defaultStoreData = {
           type: "featured-products",
           sortOrder: 3,
           isVisible: true,
+          visible: true,
           props: {
             limit: 6,
           },
@@ -65,6 +71,7 @@ const defaultStoreData = {
           type: "promo-banner",
           sortOrder: 4,
           isVisible: true,
+          visible: true,
           props: {},
         },
         {
@@ -72,6 +79,7 @@ const defaultStoreData = {
           type: "social-feed",
           sortOrder: 5,
           isVisible: true,
+          visible: true,
           props: {
             title: "Styled by our customers",
             subtitle: "Real-life looks, product details, and campaign moments.",
@@ -88,6 +96,7 @@ const defaultStoreData = {
           type: "trust-badges",
           sortOrder: 6,
           isVisible: true,
+          visible: true,
           props: {
             title: "Shop with confidence",
             badges: [
@@ -102,6 +111,7 @@ const defaultStoreData = {
           type: "testimonials",
           sortOrder: 7,
           isVisible: true,
+          visible: true,
           props: {
             title: "Loved by first-time buyers",
             subtitle: "Social proof that makes new customers feel safer at checkout.",
@@ -117,6 +127,7 @@ const defaultStoreData = {
           type: "rich-text",
           sortOrder: 8,
           isVisible: true,
+          visible: true,
           props: {
             eyebrow: "Why shop with us",
             title: "Clear policies, checkout guidance, and support after purchase",
@@ -129,6 +140,7 @@ const defaultStoreData = {
           type: "faq-accordion",
           sortOrder: 9,
           isVisible: true,
+          visible: true,
           props: {
             title: "Questions before checkout",
             subtitle: "Answer the practical doubts that usually stop first-time buyers.",
@@ -144,6 +156,7 @@ const defaultStoreData = {
           type: "recently-viewed",
           sortOrder: 10,
           isVisible: true,
+          visible: true,
           props: {},
         },
       ],
@@ -161,6 +174,7 @@ const defaultStoreData = {
           type: "rich-text",
           sortOrder: 0,
           isVisible: true,
+          visible: true,
           props: {
             eyebrow: "Our Story",
             title: "Tell customers what this business is about",
@@ -173,6 +187,7 @@ const defaultStoreData = {
           type: "trust-badges",
           sortOrder: 1,
           isVisible: true,
+          visible: true,
           props: {
             title: "What customers can expect",
             badges: [
@@ -197,6 +212,7 @@ const defaultStoreData = {
           type: "rich-text",
           sortOrder: 0,
           isVisible: true,
+          visible: true,
           props: {
             eyebrow: "Store Policy",
             title: "Set clear expectations before purchase",
@@ -209,6 +225,7 @@ const defaultStoreData = {
           type: "faq-accordion",
           sortOrder: 1,
           isVisible: true,
+          visible: true,
           props: {
             title: "Policy FAQs",
             subtitle: "Use these answers to reduce confusion before the customer orders.",
@@ -222,6 +239,13 @@ const defaultStoreData = {
       ],
     },
   ],
+  siteSettings: {
+    storefront_profile: {
+      template_id: "fashion",
+      product_visibility: "catalog",
+      checkout_mode: "standard",
+    },
+  },
 } satisfies Store;
 
 export function createDefaultStore(): Store {

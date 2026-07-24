@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle, Store } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, MessageCircle, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle, Store as StoreIcon } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrandSeoTab } from "./settings/BrandSeoTab";
@@ -21,13 +21,17 @@ import { ThemesTab } from "./settings/ThemesTab";
 import { CustomDomainTab } from "./settings/CustomDomainTab";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Database } from "lucide-react";
-import { seedDemoProducts } from "@/data/seedDemoProducts";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
+import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
+import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { applyTemplateDemoContentToPages, buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
+import { isTemplateSeedMetadata, reseedTemplateCatalog, unseedTemplateCatalog } from "@/lib/cms/template-seed-management";
 import {
   buildThemePackageExport,
   fallbackThemePackages,
@@ -37,7 +41,19 @@ import {
   parseThemePackageImport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
+import { buildBlueprintSiteSettingsEntries, resolveStoreBlueprint, type StoreBusinessFamily, type StoreCatalogMode } from "@/lib/cms/store-blueprints";
+import { isSettingsTabCompatible } from "@/lib/cms/storefront-compat";
+import {
+  getAvailableSettingsTabs,
+  isLegacySettingsTab,
+  mobilePinnedSettingTabs,
+  resolveStorefrontSettingsContext,
+  validSettingTabs,
+  type SettingsTabOption,
+} from "@/lib/cms/site-settings-tabs";
+import { getStorefrontTemplateDefinition, resolveSeedBlueprintIdForTemplate, storefrontTemplateOptions, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import type { Store } from "@/lib/cms/schema";
 import type { Json } from "@/integrations/supabase/types";
 
 type StoreThemeSettingsRow = {
@@ -55,6 +71,8 @@ type StoreThemeSettingsRow = {
 type StoreBusinessProfileSettingsRow = {
   blueprint_id?: string | null;
   blueprint_version?: number | null;
+  business_family?: StoreBusinessFamily | null;
+  catalog_mode?: StoreCatalogMode | null;
 };
 
 const headingFontOptions = {
@@ -69,37 +87,6 @@ const bodyFontOptions = {
   roboto: "Roboto, sans-serif",
   opensans: "'Open Sans', sans-serif",
 } as const;
-
-const mobilePinnedSettingTabs = [
-  "brand_seo",
-  "themes",
-  "payment",
-  "delivery",
-  "support",
-  "contact",
-  "page_builder",
-] as const;
-
-const validSettingTabs = new Set([
-  "brand_seo",
-  "home_sections",
-  "hero",
-  "promo",
-  "announcement",
-  "themes",
-  "upsells",
-  "payment",
-  "delivery",
-  "loyalty",
-  "support",
-  "about",
-  "faq",
-  "contact",
-  "footer",
-  "domain",
-  "notifications",
-  "page_builder",
-]);
 
 const scrollToAdminSection = (sectionId: string) => {
   if (typeof document === "undefined") return;
@@ -150,8 +137,24 @@ const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
   "home_categories",
 ]);
 
+const templateScopedSettingsToPreserve = [
+  "announcement_bar",
+  "brand_seo",
+  "payment_settings",
+  "delivery_settings",
+  "notification_settings",
+  "whatsapp_support",
+  "loyalty_settings",
+  "contact_page",
+  "about_page",
+  "faq_entries",
+  "footer",
+  "navigation",
+  "shop_page",
+] as const;
+
 const SiteSettings = () => {
-  const { role, session, activeStoreId, loading: authLoading, refreshRole, signOut } = useAuth();
+  const { role, session, activeStoreId, loading: authLoading, refreshRole, setActiveStoreId, signOut } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -160,44 +163,14 @@ const SiteSettings = () => {
   const [dbTypes, setDbTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [seedingTemplateData, setSeedingTemplateData] = useState(false);
+  const [unseedingTemplateData, setUnseedingTemplateData] = useState(false);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
-
-  const rawActiveTab = searchParams.get("tab") || "brand_seo";
-  const normalizedActiveTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
-  const activeTab = validSettingTabs.has(normalizedActiveTab) ? normalizedActiveTab : "brand_seo";
-
-  const handleTabChange = (value: string) => {
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.set("tab", value);
-    setSearchParams(nextSearchParams);
-    setShowMobileAllTabs(false);
-    setShowMobileLegacyTabs(false);
-  };
 
   const [tabQuery, setTabQuery] = useState("");
   const [showMobileAllTabs, setShowMobileAllTabs] = useState(false);
   const [showMobileLegacyTabs, setShowMobileLegacyTabs] = useState(false);
-
-  const tabOptions = [
-    { value: "brand_seo", label: "Brand & SEO", category: "Store Identity", keywords: "brand title description seo logo highlight name" },
-    { value: "home_sections", label: "Fallback Home Sections", category: "Legacy Fallbacks", keywords: "legacy fallback featured category tagline catalog title homepage migration" },
-    { value: "hero", label: "Fallback Hero Fields", category: "Legacy Fallbacks", keywords: "legacy fallback hero background image video media title tagline overlay button cta homepage migration" },
-    { value: "promo", label: "Fallback Promo Fields", category: "Legacy Fallbacks", keywords: "legacy fallback promo discount sale button text color card opacity homepage migration" },
-    { value: "announcement", label: "Announcement Bar", category: "Store Identity", keywords: "announcement rotation text bar color bg message" },
-    { value: "themes", label: "Themes Customizer", category: "Design System", keywords: "theme colors palette presets font layout border radius container width preset preset presets typography style styles" },
-    { value: "upsells", label: "Upsells & Popups", category: "Checkout & Log", keywords: "popup count-down upsells discount coupon exit-intent popups modal drawer card" },
-    { value: "payment", label: "Payment Config", category: "Checkout & Log", keywords: "payment bkash nagad api cash on delivery prepayment incentive method credentials gateway credentials" },
-    { value: "delivery", label: "Delivery Options", category: "Checkout & Log", keywords: "delivery fee shipping rate primary secondary zone threshold free shipping weight" },
-    { value: "loyalty", label: "Loyalty & Rewards", category: "Checkout & Log", keywords: "loyalty rewards point balance rate cashback checkout signup bonus points reward rewards" },
-    { value: "support", label: "Support & WhatsApp", category: "Information", keywords: "support whatsapp help phone message number contact support support number helpline" },
-    { value: "about", label: "About Page", category: "Information", keywords: "about us page text details description history values story team" },
-    { value: "faq", label: "FAQ & Return Policy", category: "Information", keywords: "faq questions answers return refund policy returns exchange queries shipping returns policy policy policies" },
-    { value: "contact", label: "Contact Inquiries", category: "Information", keywords: "contact email form submit queries address office hours contact page map location" },
-    { value: "footer", label: "Footer Details", category: "Store Identity", keywords: "footer link social copyright pay text message description information links copy footer settings social social links" },
-    { value: "domain", label: "Custom Domain", category: "Store Identity", keywords: "custom domain dns website url address connect" },
-    { value: "notifications", label: "Notifications", category: "Information", keywords: "sms email notifications order receipt shipped tracking tracking sms alert email gateway resend greenweb sms api key" },
-    { value: "page_builder", label: "Page Builder", category: "Storefront", keywords: "page builder pages blocks homepage custom page revisions seo slug layout rich text storefront sections" },
-  ];
   const pageBuilderEnabled = getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
   const LegacyHomepageNotice = ({ title }: { title: string }) => (
     <Card className="border-amber-500/30 bg-amber-500/5">
@@ -224,16 +197,6 @@ const SiteSettings = () => {
       </CardContent>
     </Card>
   );
-
-  const filteredTabs = tabOptions.filter(
-    (t) =>
-      t.label.toLowerCase().includes(tabQuery.toLowerCase()) ||
-      t.keywords.toLowerCase().includes(tabQuery.toLowerCase()) ||
-      t.category.toLowerCase().includes(tabQuery.toLowerCase())
-  );
-  const mobileQuickTabs = tabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
-  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && tab.category !== "Legacy Fallbacks");
-  const mobileLegacyTabs = filteredTabs.filter((tab) => tab.category === "Legacy Fallbacks");
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -315,7 +278,7 @@ const SiteSettings = () => {
     queryFn: async (): Promise<StoreBusinessProfileSettingsRow | null> => {
       const { data } = await supabase
         .from("store_business_profiles")
-        .select("blueprint_id, blueprint_version")
+        .select("blueprint_id, blueprint_version, business_family, catalog_mode")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
 
@@ -323,11 +286,67 @@ const SiteSettings = () => {
         ? {
             blueprint_id: data.blueprint_id ?? null,
             blueprint_version: typeof data.blueprint_version === "number" ? data.blueprint_version : null,
+            business_family: (data.business_family as StoreBusinessFamily | null) ?? null,
+            catalog_mode: (data.catalog_mode as StoreCatalogMode | null) ?? null,
           }
         : null;
     },
     enabled: Boolean(activeStoreId),
   });
+  const blueprintProfile = resolveStoreBlueprint(businessProfileData?.blueprint_id ?? "general-catalog");
+  const activeBusinessFamily = businessProfileData?.business_family ?? blueprintProfile.businessFamily;
+  const activeCatalogMode = businessProfileData?.catalog_mode ?? blueprintProfile.catalogMode;
+  const storefrontContext = useMemo(
+    () => resolveStorefrontSettingsContext(activeBusinessFamily, activeCatalogMode),
+    [activeBusinessFamily, activeCatalogMode],
+  );
+  const activeTemplateId = (settings.storefront_profile?.template_id as StorefrontTemplateId | undefined)
+    ?? (blueprintProfile.defaultSiteSettings.storefront_profile as Record<string, unknown> | undefined)?.template_id as StorefrontTemplateId | undefined
+    ?? "fashion";
+  const activeTemplateDefinition = getStorefrontTemplateDefinition(activeTemplateId);
+  const availableTabOptions = useMemo<SettingsTabOption[]>(
+    () => getAvailableSettingsTabs({
+      businessFamily: activeBusinessFamily,
+      catalogMode: activeCatalogMode,
+      templateId: activeTemplateId,
+    }).filter((tab) => isSettingsTabCompatible(tab.value, activeBusinessFamily, activeCatalogMode)),
+    [activeBusinessFamily, activeCatalogMode, activeTemplateId],
+  );
+  const activeTabLookup = new Set(availableTabOptions.map((tab) => tab.value));
+  const defaultVisibleTab = availableTabOptions[0]?.value ?? "brand_seo";
+  const rawActiveTab = searchParams.get("tab") || defaultVisibleTab;
+  const normalizedActiveTab = rawActiveTab === "cms_pages" ? "page_builder" : rawActiveTab;
+  const normalizedActiveTabValue = normalizedActiveTab as SettingsTabOption["value"];
+  const activeTab = validSettingTabs.has(normalizedActiveTabValue) && activeTabLookup.has(normalizedActiveTabValue)
+    ? normalizedActiveTabValue
+    : defaultVisibleTab;
+
+  const handleTabChange = (value: string) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set("tab", value);
+    setSearchParams(nextSearchParams);
+    setShowMobileAllTabs(false);
+    setShowMobileLegacyTabs(false);
+  };
+  const filteredTabs = availableTabOptions.filter(
+    (t) =>
+      t.label.toLowerCase().includes(tabQuery.toLowerCase()) ||
+      t.keywords.toLowerCase().includes(tabQuery.toLowerCase()) ||
+      t.category.toLowerCase().includes(tabQuery.toLowerCase())
+  );
+  const mobileQuickTabs = availableTabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
+  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && !isLegacySettingsTab(tab.value));
+  const mobileLegacyTabs = filteredTabs.filter((tab) => isLegacySettingsTab(tab.value));
+
+  useEffect(() => {
+    if (activeTab === normalizedActiveTab) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set("tab", activeTab);
+    setSearchParams(nextSearchParams);
+  }, [activeTab, normalizedActiveTab, searchParams, setSearchParams]);
 
   const { data: notificationEvents, isLoading: notificationEventsLoading } = useQuery({
     queryKey: ["email-events", activeStoreId],
@@ -441,6 +460,7 @@ const SiteSettings = () => {
           props: (block.props ?? {}) as any,
           sortOrder: block.sort_order ?? 0,
           isVisible: block.is_visible ?? true,
+          visible: block.is_visible ?? true,
         },
         key,
         value,
@@ -468,6 +488,11 @@ const SiteSettings = () => {
   const saveSetting = async (key: string) => {
     if (!activeStoreId) return;
 
+    if (key === "storefront_profile") {
+      await applyTemplateToStorefront();
+      return;
+    }
+
     setSaving(key);
     try {
       const { error } = await supabase
@@ -491,11 +516,309 @@ const SiteSettings = () => {
     setSaving(null);
   };
 
+  const handleMerchantStoreDeleted = async (result: { deletedAllOwnedStores: boolean }) => {
+    setActiveStoreId(null);
+    await refreshRole();
+
+    if (result.deletedAllOwnedStores) {
+      window.location.assign("/account/sites-removed");
+      return;
+    }
+
+    window.location.assign("/admin");
+  };
+
   const update = (key: string, field: string, value: any) => {
     setSettings((prev) => ({
       ...prev,
       [key]: { ...prev[key], [field]: value },
     }));
+  };
+
+  const applyTemplateToStorefront = async () => {
+    if (!activeStoreId || !session?.user) {
+      toast.error("Open the merchant store first, then retry.");
+      return;
+    }
+
+    setApplyingTemplate(true);
+
+    try {
+      const seedBlueprintId = resolveSeedBlueprintIdForTemplate(activeTemplateId);
+      const selectedBlueprint = resolveStoreBlueprint(seedBlueprintId);
+      const themePackage = resolveThemePackageById(
+        selectedBlueprint.defaultTheme.presetId,
+        themePackages,
+        selectedBlueprint.defaultTheme.presetId,
+      );
+
+      const { data: storeRow, error: storeError } = await supabase
+        .from("stores")
+        .select("id, owner_id, name, slug, description, logo_url, custom_domain, currency_code, locale, is_published")
+        .eq("id", activeStoreId)
+        .maybeSingle();
+
+      if (storeError || !storeRow) {
+        throw storeError ?? new Error("Store not found.");
+      }
+
+      const catalogSeed = buildTemplateCatalogSeedRows(activeStoreId, activeTemplateId);
+      const seededPages = applyTemplateDemoContentToPages(
+        instantiateStorePagesFromBlueprint(selectedBlueprint),
+        activeTemplateId,
+      );
+      const nextStorefrontProfile = {
+        ...(settings.storefront_profile ?? {}),
+        ...(selectedBlueprint.defaultSiteSettings.storefront_profile as Record<string, Json> | undefined ?? {}),
+        blueprint_id: selectedBlueprint.id,
+        template_id: activeTemplateId,
+      } satisfies Record<string, Json>;
+
+      const storePayload: Store = {
+        id: storeRow.id,
+        name: storeRow.name ?? selectedBlueprint.name,
+        slug: storeRow.slug,
+        logoUrl: storeRow.logo_url ?? undefined,
+        customDomain: storeRow.custom_domain ?? undefined,
+        description: storeRow.description ?? selectedBlueprint.storeDescription,
+        currencyCode: storeRow.currency_code ?? "BDT",
+        locale: storeRow.locale ?? "en-BD",
+        isPublished: Boolean(storeRow.is_published),
+        theme: {
+          presetId: themePackage.presetId,
+          themePackageId: themePackage.id,
+          mode: selectedBlueprint.defaultTheme.mode,
+          aesthetic: selectedBlueprint.defaultTheme.aesthetic ?? "minimal",
+          effects: selectedBlueprint.defaultTheme.effects ?? {
+            scrollReveals: false,
+            hoverEffects: true,
+            parallax: false,
+            intensity: "medium",
+          },
+          headingFont: selectedBlueprint.defaultTheme.headingFont,
+          bodyFont: selectedBlueprint.defaultTheme.bodyFont,
+          borderRadius: selectedBlueprint.defaultTheme.borderRadius,
+          radiusScale: selectedBlueprint.defaultTheme.radiusScale,
+          densityScale: selectedBlueprint.defaultTheme.densityScale,
+          paletteSource: selectedBlueprint.defaultTheme.paletteSource,
+          paletteSeed: selectedBlueprint.defaultTheme.paletteSeed,
+          schemaVersion: selectedBlueprint.defaultTheme.schemaVersion,
+          customCssVars: {},
+          customCss: themePackage.customCss ?? undefined,
+        },
+        pages: seededPages,
+      };
+
+      const persistResult = await persistStorefrontState({
+        client: supabase,
+        store: storePayload,
+        ownerId: storeRow.owner_id ?? session.user.id,
+        blueprint: selectedBlueprint,
+        themePackages,
+      });
+
+      if (persistResult.error) {
+        throw persistResult.error;
+      }
+
+      const blueprintSettings = Object.fromEntries(
+        buildBlueprintSiteSettingsEntries(selectedBlueprint).map((entry) => [entry.key, entry.value]),
+      ) as Record<string, Json>;
+
+      const preservedSettings = templateScopedSettingsToPreserve.reduce<Record<string, Json>>((accumulator, key) => {
+        const value = settings[key];
+        if (value !== undefined) {
+          accumulator[key] = value as Json;
+        }
+        return accumulator;
+      }, {});
+
+      const currentSeedMetadata = isTemplateSeedMetadata(settings.catalog_seed_metadata)
+        ? settings.catalog_seed_metadata
+        : null;
+
+      const mergedTemplateSettings = {
+        ...blueprintSettings,
+        ...preservedSettings,
+      };
+
+      const reseededCatalog = await reseedTemplateCatalog(supabase as any, activeStoreId, activeTemplateId, currentSeedMetadata);
+
+      const nextSeedSettings = {
+        catalog_seed_metadata: reseededCatalog.metadata as Json,
+        categories_custom_data: (reseededCatalog.siteSettings as any)?.categories_custom_data ?? ([] as Json),
+        seed_testimonials: (reseededCatalog.siteSettings as any)?.seed_testimonials ?? ([] as Json),
+        services_seed: (reseededCatalog.siteSettings as any)?.services_seed ?? ([] as Json),
+      };
+
+      const siteSettingsRows = Object.entries({
+        ...mergedTemplateSettings,
+        ...nextSeedSettings,
+      }).map(([key, value]) => ({
+        store_id: activeStoreId,
+        key,
+        value: value as Json,
+      }));
+
+      const { error: siteSettingsError } = await supabase
+        .from("site_settings")
+        .upsert(siteSettingsRows, { onConflict: "store_id,key" });
+
+      if (siteSettingsError) {
+        throw siteSettingsError;
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        ...blueprintSettings,
+        ...(reseededCatalog.siteSettings as Record<string, Json>),
+        ...preservedSettings,
+        ...nextSeedSettings,
+        storefront_profile: nextStorefrontProfile,
+      }));
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["site_settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["store_pages"] }),
+        queryClient.invalidateQueries({ queryKey: ["store_page_blocks"] }),
+        queryClient.invalidateQueries({ queryKey: ["store_themes"] }),
+        queryClient.invalidateQueries({ queryKey: ["store_business_profiles"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_types"] }),
+        queryClient.invalidateQueries({ queryKey: ["storefront"] }),
+      ]);
+
+      toast.success(`${activeTemplateDefinition.label} template applied to this storefront.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to apply template");
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
+
+  const seedTemplateDemoCatalog = async () => {
+    if (!activeStoreId) {
+      toast.error("Open the merchant store first, then retry.");
+      return;
+    }
+
+    setSeedingTemplateData(true);
+    try {
+      const currentSeedMetadata = isTemplateSeedMetadata(settings.catalog_seed_metadata)
+        ? settings.catalog_seed_metadata
+        : null;
+      const catalogSeed = await reseedTemplateCatalog(
+        supabase as any,
+        activeStoreId,
+        activeTemplateId,
+        currentSeedMetadata,
+      );
+      const seededSiteSettings = catalogSeed.siteSettings as {
+        categories_custom_data?: Json;
+        seed_testimonials?: Json;
+        services_seed?: Json;
+      };
+
+      const nextSeedSettings = {
+        catalog_seed_metadata: catalogSeed.metadata as Json,
+        categories_custom_data: seededSiteSettings.categories_custom_data ?? ([] as Json),
+        seed_testimonials: seededSiteSettings.seed_testimonials ?? ([] as Json),
+        services_seed: seededSiteSettings.services_seed ?? ([] as Json),
+      };
+
+      const { error: siteSettingsError } = await supabase
+        .from("site_settings")
+        .upsert(
+          Object.entries(nextSeedSettings).map(([key, value]) => ({
+            store_id: activeStoreId,
+            key,
+            value,
+          })),
+          { onConflict: "store_id,key" },
+        );
+
+      if (siteSettingsError) {
+        throw siteSettingsError;
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        ...nextSeedSettings,
+      }));
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["site_settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_types"] }),
+        queryClient.invalidateQueries({ queryKey: ["storefront"] }),
+      ]);
+
+      toast.success(`${activeTemplateDefinition.label} demo data seeded for this store.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to seed template demo data.");
+    } finally {
+      setSeedingTemplateData(false);
+    }
+  };
+
+  const unseedTemplateDemoData = async () => {
+    if (!activeStoreId) {
+      toast.error("Open the merchant store first, then retry.");
+      return;
+    }
+
+    const currentSeedMetadata = isTemplateSeedMetadata(settings.catalog_seed_metadata)
+      ? settings.catalog_seed_metadata
+      : null;
+
+
+    setUnseedingTemplateData(true);
+    try {
+      await unseedTemplateCatalog(supabase as any, activeStoreId, currentSeedMetadata);
+
+      const clearedSeedSettings = {
+        catalog_seed_metadata: {} as Json,
+        categories_custom_data: [] as Json,
+        seed_testimonials: [] as Json,
+        services_seed: [] as Json,
+      };
+
+      const { error: siteSettingsError } = await supabase
+        .from("site_settings")
+        .upsert(
+          Object.entries(clearedSeedSettings).map(([key, value]) => ({
+            store_id: activeStoreId,
+            key,
+            value,
+          })),
+          { onConflict: "store_id,key" },
+        );
+
+      if (siteSettingsError) {
+        throw siteSettingsError;
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        ...clearedSeedSettings,
+      }));
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["site_settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_categories"] }),
+        queryClient.invalidateQueries({ queryKey: ["product_types"] }),
+        queryClient.invalidateQueries({ queryKey: ["storefront"] }),
+      ]);
+
+      toast.success("Seeded demo catalog removed from this store.");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to unseed template demo data.");
+    } finally {
+      setUnseedingTemplateData(false);
+    }
   };
 
   // FAQ array helpers
@@ -860,7 +1183,7 @@ const SiteSettings = () => {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild className="gap-2">
                 <Link to="/admin">
-                  <Store className="h-4 w-4" />
+                  <StoreIcon className="h-4 w-4" />
                   Go To Dashboard
                 </Link>
               </Button>
@@ -883,11 +1206,14 @@ const SiteSettings = () => {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-heading text-2xl font-bold text-foreground md:text-3xl">Site Settings</h1>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+              {blueprintProfile.shortName} · {activeCatalogMode.replaceAll("_", " ")}
+            </span>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary md:hidden">
-              {tabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"}
+              {availableTabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">Edit your store's content and appearance</p>
+          <p className="text-sm text-muted-foreground">{storefrontContext.supportSummary}</p>
           {isMissingActiveThemeReference ? (
             <p className="mt-2 text-sm text-amber-600">
               This store references a theme package that is no longer available. The editor is showing the nearest compatible fallback until you save a new package choice.
@@ -906,11 +1232,19 @@ const SiteSettings = () => {
         </div>
         <Button
           variant="outline"
-          onClick={() => void seedDemoProducts(activeStoreId)}
-          disabled={!activeStoreId}
+          onClick={() => void seedTemplateDemoCatalog()}
+          disabled={!activeStoreId || seedingTemplateData}
           className="gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary w-full sm:w-auto"
         >
-          <Database className="h-4 w-4" /> Seed Demo Products
+          {seedingTemplateData ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />} Seed Demo Products
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => void unseedTemplateDemoData()}
+          disabled={!activeStoreId || unseedingTemplateData}
+          className="gap-2 border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive w-full sm:w-auto"
+        >
+          {unseedingTemplateData ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Unseed Demo Products
         </Button>
       </div>
 
@@ -918,7 +1252,7 @@ const SiteSettings = () => {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {tabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"} workspace
+              {availableTabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"} workspace
             </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               Use the section rail to jump quickly, then save from the sticky action bar as you work through longer forms.
@@ -929,6 +1263,84 @@ const SiteSettings = () => {
           </span>
         </div>
       </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <p className="text-sm font-medium text-foreground">Active storefront profile</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {blueprintProfile.name} is running as a {activeBusinessFamily} storefront with a {activeCatalogMode.replaceAll("_", " ")} experience.
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <p className="text-sm font-medium text-foreground">Merchant-scoped data</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Navigation, payments, delivery, notifications, and theme changes save against this store only and should never bleed into another merchant.
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <p className="text-sm font-medium text-foreground">Copy follows the blueprint</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Labels and section hints adapt to the active storefront profile so editors see {storefrontContext.pageLabel.toLowerCase()} language instead of generic catalog wording.
+          </p>
+        </div>
+      </div>
+
+      <Card className="border-border">
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-base">Storefront Template</CardTitle>
+          <CardDescription>
+            Choose which reusable storefront renderer this store should use. Commerce logic, products, cart, checkout, auth, routing, and store data stay shared.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,280px)_1fr]">
+            <div className="grid gap-2">
+              <Label>Template ID</Label>
+              <Select
+                value={activeTemplateId}
+                onValueChange={(value) => update("storefront_profile", "template_id", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a storefront template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {storefrontTemplateOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                This writes to <code>site_settings.storefront_profile.template_id</code> for the active merchant only.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Use Apply Template after saving if you want to rebuild this merchant storefront with the selected template's page structure and theme.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/60 p-4">
+              <p className="text-sm font-medium text-foreground">{activeTemplateDefinition.label}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{activeTemplateDefinition.description}</p>
+              <div className="mt-4 grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                <p>Card style: {activeTemplateDefinition.presentation.cardStyle}</p>
+                <p>Image ratio: {activeTemplateDefinition.presentation.imageRatio}</p>
+                <p>Spacing: {activeTemplateDefinition.presentation.spacingDensity}</p>
+                <p>Typography: {activeTemplateDefinition.presentation.typographyScale}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <SaveButton settingKey="storefront_profile" />
+            <Button onClick={applyTemplateToStorefront} disabled={applyingTemplate || saving === "storefront_profile"} variant="outline" className="gap-2">
+              {applyingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <StoreIcon className="h-4 w-4" />}
+              Apply Template
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Applying replaces this store's CMS page structure, block layout, theme package, and business-profile seed for the active merchant only. Products, users, orders, and payment data stay store-scoped and untouched.
+          </p>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Navigation & Search & Select */}
@@ -1732,6 +2144,9 @@ const SiteSettings = () => {
         {/* Contact Page */}
         <TabsContent value="contact">
           <MobileSectionShell title="Contact Page" description="Contact details and map controls are sectioned for simpler mobile editing.">
+              <div className="rounded-xl border border-border/70 bg-background/60 p-3 text-xs text-muted-foreground">
+                This page supports your current storefront by turning visitors into {storefrontContext.conversionLabel}. Keep the response promise and contact channels accurate for this merchant.
+              </div>
               <div className="grid gap-2">
                 <Label>Badge</Label>
                 <Input value={settings.contact_page?.badge ?? ""} onChange={(e) => update("contact_page", "badge", e.target.value)} placeholder="Get in Touch" />
@@ -1792,6 +2207,197 @@ const SiteSettings = () => {
               </div>
               <SaveButton settingKey="contact_page" />
               <StickySectionSaveBar settingKey="contact_page" title="Contact page" hint="Save inquiry details and map visibility." />
+          </MobileSectionShell>
+        </TabsContent>
+
+        <TabsContent value="navigation">
+          <MobileSectionShell title="Navigation" description="Control the shared storefront header and mobile menu without editing code.">
+              <MobileSectionJumper items={[
+                { id: "navigation-links", label: "Primary Links" },
+                { id: "navigation-shop", label: "Feature Card" },
+                { id: "navigation-visibility", label: "Visibility" },
+              ]} />
+
+              <div id="navigation-links" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Primary Links</h3>
+                    <p className="text-xs text-muted-foreground">These links drive the desktop header and mobile menu.</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => {
+                    const links = settings.navigation?.primary_links ?? [];
+                    setSettings((prev) => ({
+                      ...prev,
+                      navigation: { ...prev.navigation, primary_links: [...links, { label: "", url: "" }] },
+                    }));
+                  }}>
+                    <Plus className="h-4 w-4" /> Add Link
+                  </Button>
+                </div>
+                {((settings.navigation?.primary_links as { label: string; url: string }[]) ?? [
+                  { label: "Home", url: "/" },
+                  { label: "Shop", url: "/shop" },
+                  { label: "About", url: "/about" },
+                  { label: "Contact", url: "/contact" },
+                ]).map((link, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <Input value={link.label} placeholder="Label" onChange={(e) => {
+                      const updated = [...((settings.navigation?.primary_links as { label: string; url: string }[]) ?? [
+                        { label: "Home", url: "/" },
+                        { label: "Shop", url: "/shop" },
+                        { label: "About", url: "/about" },
+                        { label: "Contact", url: "/contact" },
+                      ])];
+                      updated[i] = { ...updated[i], label: e.target.value };
+                      setSettings((prev) => ({ ...prev, navigation: { ...prev.navigation, primary_links: updated } }));
+                    }} />
+                    <Input value={link.url} placeholder="/contact" onChange={(e) => {
+                      const updated = [...((settings.navigation?.primary_links as { label: string; url: string }[]) ?? [
+                        { label: "Home", url: "/" },
+                        { label: "Shop", url: "/shop" },
+                        { label: "About", url: "/about" },
+                        { label: "Contact", url: "/contact" },
+                      ])];
+                      updated[i] = { ...updated[i], url: e.target.value };
+                      setSettings((prev) => ({ ...prev, navigation: { ...prev.navigation, primary_links: updated } }));
+                    }} />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-destructive hover:text-destructive" onClick={() => {
+                      const updated = ((settings.navigation?.primary_links as { label: string; url: string }[]) ?? []).filter((_: any, idx: number) => idx !== i);
+                      setSettings((prev) => ({ ...prev, navigation: { ...prev.navigation, primary_links: updated } }));
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div id="navigation-shop" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <h3 className="text-sm font-semibold text-foreground">{storefrontContext.pageLabel} Feature Card</h3>
+                <p className="text-xs text-muted-foreground">
+                  Use this spotlight area to guide visitors toward the main place they should {storefrontContext.browseVerb} on this storefront.
+                </p>
+                <div className="grid gap-2">
+                  <Label>Primary Link Label</Label>
+                  <Input value={settings.navigation?.shop_label ?? ""} placeholder={storefrontContext.pageLabel.replace(" Page", "")} onChange={(e) => update("navigation", "shop_label", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Feature Title</Label>
+                  <Input value={settings.navigation?.shop_feature_title ?? ""} placeholder={`${storefrontContext.pageLabel.replace(" Page", "")} Highlights`} onChange={(e) => update("navigation", "shop_feature_title", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Feature Subtitle</Label>
+                  <Textarea value={settings.navigation?.shop_feature_subtitle ?? ""} placeholder={`Explain what visitors should ${storefrontContext.browseVerb} first.`} onChange={(e) => update("navigation", "shop_feature_subtitle", e.target.value)} rows={2} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Feature Image URL</Label>
+                  <Input value={settings.navigation?.shop_feature_image ?? ""} placeholder="https://..." onChange={(e) => update("navigation", "shop_feature_image", e.target.value)} />
+                </div>
+              </div>
+
+              <div id="navigation-visibility" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <h3 className="text-sm font-semibold text-foreground">Visibility</h3>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.navigation?.show_search ?? true} onCheckedChange={(v) => update("navigation", "show_search", v)} />
+                  <Label>Show desktop search</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.navigation?.show_theme_toggle ?? true} onCheckedChange={(v) => update("navigation", "show_theme_toggle", v)} />
+                  <Label>Show theme toggle</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.navigation?.show_account ?? true} onCheckedChange={(v) => update("navigation", "show_account", v)} />
+                  <Label>Show account entry</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.navigation?.show_wishlist ?? true} onCheckedChange={(v) => update("navigation", "show_wishlist", v)} />
+                  <Label>Show wishlist entry</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.navigation?.show_cart ?? true} onCheckedChange={(v) => update("navigation", "show_cart", v)} />
+                  <Label>Show cart entry</Label>
+                </div>
+              </div>
+
+              <SaveButton settingKey="navigation" />
+              <StickySectionSaveBar settingKey="navigation" title="Navigation settings" hint="Save header links, menu feature copy, and icon visibility." />
+          </MobileSectionShell>
+        </TabsContent>
+
+        <TabsContent value="shop_page">
+          <MobileSectionShell title={storefrontContext.pageLabel} description={`Customize the page copy and shopper-facing controls for browsing ${storefrontContext.itemLabelPlural}.`}>
+              <MobileSectionJumper items={[
+                { id: "shop-page-copy", label: "Copy" },
+                { id: "shop-page-states", label: "States" },
+                { id: "shop-page-filters", label: "Filters" },
+              ]} />
+
+              <div id="shop-page-copy" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <h3 className="text-sm font-semibold text-foreground">Page Copy</h3>
+                <div className="grid gap-2">
+                  <Label>Eyebrow</Label>
+                  <Input value={settings.shop_page?.eyebrow ?? ""} placeholder={storefrontContext.pageLabel.replace(" Page", "")} onChange={(e) => update("shop_page", "eyebrow", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Title</Label>
+                  <Input value={settings.shop_page?.title ?? ""} placeholder={`All ${storefrontContext.itemLabelPlural}`} onChange={(e) => update("shop_page", "title", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Description</Label>
+                  <Textarea value={settings.shop_page?.description ?? ""} placeholder={`Describe which ${storefrontContext.itemLabelPlural} visitors can ${storefrontContext.browseVerb} here.`} onChange={(e) => update("shop_page", "description", e.target.value)} rows={2} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Search Placeholder</Label>
+                  <Input value={settings.shop_page?.search_placeholder ?? ""} placeholder={`Search ${storefrontContext.itemLabelPlural}...`} onChange={(e) => update("shop_page", "search_placeholder", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Size Guide Button Label</Label>
+                  <Input value={settings.shop_page?.size_guide_label ?? ""} placeholder="Size Guide" onChange={(e) => update("shop_page", "size_guide_label", e.target.value)} />
+                </div>
+              </div>
+
+              <div id="shop-page-states" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <h3 className="text-sm font-semibold text-foreground">Empty and End States</h3>
+                <div className="grid gap-2">
+                  <Label>Empty Title</Label>
+                  <Input value={settings.shop_page?.empty_title ?? ""} placeholder={`No ${storefrontContext.itemLabelPlural} found`} onChange={(e) => update("shop_page", "empty_title", e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Empty Description</Label>
+                  <Textarea value={settings.shop_page?.empty_description ?? ""} placeholder={`Explain what the visitor should do next if they do not find the right ${storefrontContext.itemLabelSingular}.`} onChange={(e) => update("shop_page", "empty_description", e.target.value)} rows={2} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>End of Collection Message</Label>
+                  <Textarea value={settings.shop_page?.end_message ?? ""} placeholder={`You have reached the end of these ${storefrontContext.itemLabelPlural}.`} onChange={(e) => update("shop_page", "end_message", e.target.value)} rows={2} />
+                </div>
+              </div>
+
+              <div id="shop-page-filters" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <h3 className="text-sm font-semibold text-foreground">Filter Visibility</h3>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.shop_page?.show_sale_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_sale_filter", v)} />
+                  <Label>Show sale filter</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.shop_page?.show_price_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_price_filter", v)} />
+                  <Label>Show price filter</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.shop_page?.show_size_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_size_filter", v)} />
+                  <Label>Show size filter</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.shop_page?.show_color_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_color_filter", v)} />
+                  <Label>Show color filter</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={settings.shop_page?.show_size_guide ?? true} onCheckedChange={(v) => update("shop_page", "show_size_guide", v)} />
+                  <Label>Show size guide button</Label>
+                </div>
+              </div>
+
+              <SaveButton settingKey="shop_page" />
+              <StickySectionSaveBar settingKey="shop_page" title="Shop page settings" hint="Save catalog copy and shopper-facing filter controls." />
           </MobileSectionShell>
         </TabsContent>
 
@@ -2007,7 +2613,30 @@ const SiteSettings = () => {
           </Card>
         </TabsContent>
         <TabsContent value="domain">
-          <CustomDomainTab />
+          <div className="space-y-6">
+            <CustomDomainTab />
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>
+                  Permanently remove this site and all of its store-scoped content from your workspace.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Delete this site only if you are sure you no longer need its products, pages, orders, messages, reviews, and settings.
+                </div>
+                {activeStoreId ? (
+                  <DeleteStoreDialog
+                    storeId={activeStoreId}
+                    storeName={settings.brand_seo?.site_name || "this site"}
+                    mode="merchant"
+                    onDeleted={handleMerchantStoreDeleted}
+                  />
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
         <TabsContent value="notifications">
           <MobileSectionShell title="Transactional Notifications" description="Notification credentials and recent delivery events stay easier to scan and save on long mobile forms.">

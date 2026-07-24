@@ -1,6 +1,14 @@
 import type { StoreTheme } from "@/lib/cms/schema";
 import { fallbackThemePackages, resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 
+export const BASIC_THEME_TOKENS = [
+  { key: "--primary", label: "Primary" },
+  { key: "--accent", label: "Accent" },
+  { key: "--background", label: "Background" },
+] as const;
+
+export type BasicThemeTokenKey = (typeof BASIC_THEME_TOKENS)[number]["key"];
+
 export const GUIDED_THEME_TOKENS = [
   { key: "--primary", label: "Primary" },
   { key: "--accent", label: "Accent" },

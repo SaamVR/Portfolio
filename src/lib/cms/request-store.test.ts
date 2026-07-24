@@ -5,7 +5,7 @@ describe("request store helpers", () => {
   it("only tries local slug fallback for localhost requests that resolved to the default store", () => {
     expect(shouldTryLocalStoreSlugFallback("localhost:3000", "00000000-0000-4000-8000-000000000001")).toBe(true);
     expect(shouldTryLocalStoreSlugFallback("127.0.0.1:3000", "00000000-0000-4000-8000-000000000001")).toBe(true);
-    expect(shouldTryLocalStoreSlugFallback("localhost:3000", null)).toBe(true);
+    expect(shouldTryLocalStoreSlugFallback("localhost:3000", null)).toBe(false);
     expect(shouldTryLocalStoreSlugFallback("shop.example.com", "00000000-0000-4000-8000-000000000001")).toBe(false);
     expect(shouldTryLocalStoreSlugFallback("localhost:3000", "store-2")).toBe(false);
   });

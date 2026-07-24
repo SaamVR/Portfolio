@@ -48,6 +48,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           limit: 6,
         },
@@ -58,6 +59,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           eyebrow: "Story",
           title: "Give customers a stronger reason to trust your store",
@@ -71,6 +73,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           title: "Seen in real life",
           subtitle: "Use real product photos, customer posts, or campaign images here.",
@@ -88,6 +91,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           title: "See it in action",
           videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
@@ -101,6 +105,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           title: "Frequently Asked Questions",
           faqs: [
@@ -116,6 +121,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           title: "Shop with confidence",
           badges: [
@@ -131,6 +137,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {
           title: "Customers are talking",
           subtitle: "Real review snippets help first-time buyers feel safer before checkout.",
@@ -147,6 +154,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         type,
         sortOrder,
         isVisible: true,
+        visible: true,
         props: {},
       };
   }

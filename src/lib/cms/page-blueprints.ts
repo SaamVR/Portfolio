@@ -4,9 +4,11 @@ import { sanitizeStorePage } from "@/lib/cms/validation";
 import type { StorePage } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { StoreBusinessFamily, StoreCatalogMode } from "@/lib/cms/store-blueprints";
+import { allStoreCatalogModes } from "@/lib/cms/storefront-compat";
 
 export interface CmsPageBlueprint {
   id: string;
+  schemaVersion?: number;
   name: string;
   description: string;
   businessFamily: StoreBusinessFamily;
@@ -14,10 +16,11 @@ export interface CmsPageBlueprint {
   page: Omit<StorePage, "id">;
 }
 
-const commerceCatalogModes: StoreCatalogMode[] = ["single_product", "multi_product", "menu", "inquiry_only"];
+const commerceCatalogModes: StoreCatalogMode[] = [...allStoreCatalogModes];
 
 export const fallbackPageBlueprints: CmsPageBlueprint[] = cmsPageTemplates.map((template) => ({
   ...template,
+  schemaVersion: 1,
   businessFamily: "commerce",
   catalogModes: commerceCatalogModes,
 }));
@@ -29,12 +32,13 @@ type PageBlueprintRow = {
   business_family: string | null;
   catalog_modes: Json | null;
   page_payload: Json | null;
+  schema_version?: number | null;
   is_active: boolean | null;
 };
 
 function isStoreCatalogModes(value: unknown): value is StoreCatalogMode[] {
   return Array.isArray(value)
-    && value.every((item) => item === "single_product" || item === "multi_product" || item === "menu" || item === "inquiry_only");
+    && value.every((item) => typeof item === "string" && allStoreCatalogModes.includes(item as StoreCatalogMode));
 }
 
 function mergePageBlueprintRow(row: PageBlueprintRow): CmsPageBlueprint {
@@ -50,6 +54,7 @@ function mergePageBlueprintRow(row: PageBlueprintRow): CmsPageBlueprint {
     page: typeof row.page_payload === "object" && row.page_payload
       ? (row.page_payload as Omit<StorePage, "id">)
       : fallback.page,
+    schemaVersion: row.schema_version ?? fallback.schemaVersion ?? 1,
   };
 }
 
@@ -58,7 +63,7 @@ export async function loadPageBlueprints(
 ): Promise<CmsPageBlueprint[]> {
   const { data, error } = await client
     .from("page_blueprints")
-    .select("id, name, description, business_family, catalog_modes, page_payload, is_active")
+    .select("id, name, description, business_family, catalog_modes, page_payload, is_active, schema_version")
     .order("name");
 
   if (error || !Array.isArray(data) || data.length === 0) {

@@ -26,6 +26,8 @@ import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
+import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -336,6 +338,10 @@ export default function PlatformControlPlane() {
     await queryClient.invalidateQueries({ queryKey: ["store-entitlements"] });
   };
 
+  const handlePlatformStoreDeleted = async () => {
+    await refreshAll();
+  };
+
   const togglePlanFeature = async (planId: string, featureKey: string, enabled: boolean) => {
     const { error } = await (supabase as any).from("cms_plan_features").upsert(
       { plan_id: planId, feature_key: featureKey, enabled },
@@ -609,19 +615,16 @@ export default function PlatformControlPlane() {
 
       if (invoiceError) throw invoiceError;
 
-      const { error: subError } = await (supabase as any)
-        .from("store_subscriptions")
-        .upsert(
-          {
-            store_id: invoice.store_id,
-            plan_id: invoice.plan_id,
-            status: "active",
-            provider: "bkash_manual",
-            provider_subscription_id: invoice.provider_invoice_id,
-            current_period_ends_at: periodEnd.toISOString(),
-          },
-          { onConflict: "store_id" }
-        );
+      const supabaseAdmin = getSupabaseAdminClient();
+      const { error: subError } = await upsertStoreSubscription(supabaseAdmin, {
+        storeId: invoice.store_id,
+        planId: invoice.plan_id,
+        status: "active",
+        provider: "bkash_manual",
+        providerSubscriptionId: invoice.provider_invoice_id,
+        currentPeriodEndsAt: periodEnd.toISOString(),
+        trialEndsAt: null,
+      });
 
       if (subError) throw subError;
 
@@ -1124,6 +1127,16 @@ export default function PlatformControlPlane() {
                   <Mail className="h-4 w-4" />
                   Run Action
                 </Button>
+                {selectedStore ? (
+                  <DeleteStoreDialog
+                    storeId={selectedStore.id}
+                    storeName={selectedStore.name}
+                    mode="platform"
+                    buttonLabel="Delete Selected Site"
+                    buttonClassName="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onDeleted={handlePlatformStoreDeleted}
+                  />
+                ) : null}
               </CardContent>
             </Card>
 

@@ -1,5 +1,6 @@
 import { Link } from "@/lib/react-router-dom-shim";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
@@ -16,9 +17,10 @@ const Wishlist = () => {
   const storeName = currentStore?.name ?? "this store";
   const { data: products = [], isLoading } = useProducts(currentStore?.id);
   const wishlistProducts = products.filter((p) => items.includes(p.id));
+  const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead title="Wishlist" description={`Saved products from ${storeName}.`} noindex />
       <PageTransition>
         <section className="py-16">
@@ -71,7 +73,7 @@ const Wishlist = () => {
           </div>
         </section>
       </PageTransition>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

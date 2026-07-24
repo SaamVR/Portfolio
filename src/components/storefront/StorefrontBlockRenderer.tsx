@@ -5,7 +5,10 @@ import FeaturedProducts from "@/components/FeaturedProducts";
 import HeroSection from "@/components/HeroSection";
 import PromoBanner from "@/components/PromoBanner";
 import RecentlyViewed from "@/components/RecentlyViewed";
-import type { StorePageBlock } from "@/lib/cms/schema";
+import type { RichTextDoc, RichTextNode, StorePageBlock } from "@/lib/cms/schema";
+import type { StorefrontTemplateDefinition } from "@/lib/cms/storefront-templates";
+import { parseLegacyStringToDoc } from "@/lib/cms/rich-text-adapter";
+import React from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AlertTriangle, BadgeCheck, CreditCard, Headset, Instagram, Play, ShieldCheck, Star, Truck, Undo2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -13,19 +16,79 @@ import { Button } from "@/components/ui/button";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 
-function parseRichTextBody(body: string) {
-  const lines = body
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
+  if (!nodes || !Array.isArray(nodes)) return null;
 
-  const bullets = lines
-    .filter((line) => line.startsWith("- ") || line.startsWith("* "))
-    .map((line) => line.slice(2).trim());
-
-  const paragraphs = lines.filter((line) => !line.startsWith("- ") && !line.startsWith("* "));
-
-  return { bullets, paragraphs };
+  return nodes.map((node, i) => {
+    switch (node.type) {
+      case "paragraph":
+        return (
+          <p key={i} className="text-base leading-8 text-muted-foreground md:text-lg">
+            {renderRichTextNodes(node.content)}
+          </p>
+        );
+      case "heading": {
+        const level = (node.attrs?.level as number) || 2;
+        if (level === 1) {
+          return (
+            <h2 key={i} className="font-heading text-2xl font-bold text-foreground mt-4 mb-2">
+              {renderRichTextNodes(node.content)}
+            </h2>
+          );
+        }
+        if (level === 3) {
+          return (
+            <h4 key={i} className="font-heading text-lg font-bold text-foreground mt-3 mb-1">
+              {renderRichTextNodes(node.content)}
+            </h4>
+          );
+        }
+        return (
+          <h3 key={i} className="font-heading text-xl font-bold text-foreground mt-4 mb-2">
+            {renderRichTextNodes(node.content)}
+          </h3>
+        );
+      }
+      case "bulletList":
+        return (
+          <div key={i} className="mt-6 grid gap-3 sm:grid-cols-2">
+            {node.content?.map((item, idx) => (
+              <div key={idx} className="flex items-start gap-3 rounded-2xl border border-border bg-card/70 px-4 py-4 text-left shadow-sm">
+                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span className="text-sm font-medium leading-6 text-foreground">
+                  {renderRichTextNodes(item.content)}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      case "orderedList":
+        return (
+          <ol key={i} className="mt-4 list-decimal pl-6 space-y-2 text-foreground">
+            {renderRichTextNodes(node.content)}
+          </ol>
+        );
+      case "listItem":
+        return <span key={i}>{renderRichTextNodes(node.content)}</span>;
+      case "text": {
+        let textElement: React.ReactNode = node.text || "";
+        if (node.marks) {
+          for (const mark of node.marks) {
+            if (mark.type === "bold") {
+              textElement = <strong>{textElement}</strong>;
+            } else if (mark.type === "italic") {
+              textElement = <em>{textElement}</em>;
+            } else if (mark.type === "code") {
+              textElement = <code className="bg-muted px-1 py-0.5 rounded text-sm">{textElement}</code>;
+            }
+          }
+        }
+        return <span key={i}>{textElement}</span>;
+      }
+      default:
+        return renderRichTextNodes(node.content);
+    }
+  });
 }
 
 function RichTextBlock({
@@ -36,12 +99,13 @@ function RichTextBlock({
 }: {
   eyebrow?: string;
   title: string;
-  body: string;
+  body: RichTextDoc | string;
   align: "left" | "center";
 }) {
   const textAlignClass = align === "left" ? "text-left" : "text-center";
   const contentAlignClass = align === "left" ? "mr-auto" : "mx-auto";
-  const { bullets, paragraphs } = parseRichTextBody(body);
+  const doc = typeof body === "string" ? parseLegacyStringToDoc(body) : (body || { type: "doc", content: [] });
+
   const reassuranceItems = [
     { icon: ShieldCheck, title: "Clear policies", description: "Customers buy faster when delivery, support, and exchange information is easy to understand." },
     { icon: CreditCard, title: "Checkout clarity", description: "Show which payment, inquiry, or booking steps apply without making people hunt for them." },
@@ -68,25 +132,8 @@ function RichTextBlock({
               {title}
             </h2>
             <div className="mt-5 space-y-4">
-              {(paragraphs.length ? paragraphs : [body]).map((paragraph) => (
-                <p key={paragraph} className="text-base leading-8 text-muted-foreground md:text-lg">
-                  {paragraph}
-                </p>
-              ))}
+              {renderRichTextNodes(doc.content)}
             </div>
-            {bullets.length ? (
-              <div className={`mt-8 grid gap-3 ${align === "left" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                {bullets.map((bullet) => (
-                  <div
-                    key={bullet}
-                    className="flex items-start gap-3 rounded-2xl border border-border bg-card/70 px-4 py-4 text-left shadow-sm"
-                  >
-                    <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span className="text-sm font-medium leading-6 text-foreground">{bullet}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
           </div>
           {align === "left" ? (
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
@@ -334,7 +381,13 @@ function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle
   );
 }
 
-export function StorefrontBlockRenderer({ block }: { block: StorePageBlock }) {
+export function StorefrontBlockRenderer({
+  block,
+  template,
+}: {
+  block: StorePageBlock;
+  template?: StorefrontTemplateDefinition;
+}) {
   if (!block.isVisible) {
     return null;
   }
@@ -347,40 +400,137 @@ export function StorefrontBlockRenderer({ block }: { block: StorePageBlock }) {
     </div>
   );
 
+  // Mock data context for tag resolution - in production this would come from a React Context or Global State
+  const dataContext = {
+    store: {
+      name: "Acme Store",
+      meta_description: "The best products in the world",
+    },
+    product: {
+      price: "$99.00",
+      inventory_count: "42",
+    },
+    customer: {
+      name: "Valued Customer",
+    }
+  };
+
+  const resolveTags = (obj: any): any => {
+    if (typeof obj === 'string') {
+      return obj.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+        const keys = path.trim().split('.');
+        let current: any = dataContext;
+        for (const key of keys) {
+          if (current === undefined || current === null) return match;
+          current = current[key];
+        }
+        return current !== undefined ? String(current) : match;
+      });
+    } else if (Array.isArray(obj)) {
+      return obj.map(item => resolveTags(item));
+    } else if (typeof obj === 'object' && obj !== null) {
+      const newObj: any = {};
+      for (const key in obj) {
+        newObj[key] = resolveTags(obj[key]);
+      }
+      return newObj;
+    }
+    return obj;
+  };
+
+  const resolvedProps = resolveTags(block.props);
+  const blockLayoutVariant = block.layoutVariant ?? template?.presentation.blockLayoutVariants?.[block.type];
+
   const renderBlock = () => {
     switch (block.type) {
       case "countdown":
-        return <CountdownTimer overrides={block.props} />;
+        return <CountdownTimer overrides={resolvedProps} />;
       case "hero":
-        return <HeroSection overrides={{ ...block.props, disableLegacyFallback: true }} />;
+        return <HeroSection overrides={{ ...resolvedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
       case "promo-banner":
-        return <PromoBanner overrides={{ ...block.props, disableLegacyFallback: true }} />;
+        return <PromoBanner overrides={{ ...resolvedProps, disableLegacyFallback: true }} />;
       case "category-showcase":
-        return <CategoryShowcase overrides={{ ...block.props, disableLegacyFallback: true }} />;
+        return <CategoryShowcase overrides={{ ...resolvedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
       case "featured-products":
-        return <FeaturedProducts limit={block.props.limit} title={block.props.title} tagline={block.props.tagline} disableLegacyFallback />;
+        return (
+          <FeaturedProducts
+            limit={resolvedProps.limit}
+            title={resolvedProps.title}
+            tagline={resolvedProps.tagline}
+            source={resolvedProps.source}
+            category={resolvedProps.category}
+            productType={resolvedProps.productType}
+            layoutVariant={blockLayoutVariant}
+            disableLegacyFallback
+          />
+        );
       case "recently-viewed":
-        return <RecentlyViewed title={block.props.title} />;
+        return <RecentlyViewed title={resolvedProps.title} />;
       case "rich-text":
-        return <RichTextBlock {...block.props} />;
+        return <RichTextBlock {...resolvedProps} />;
       case "social-feed":
-        return <SocialFeedBlock {...block.props} />;
+        return <SocialFeedBlock {...resolvedProps} />;
       case "video-reel":
-        return <VideoReelBlock {...block.props} />;
+        return <VideoReelBlock {...resolvedProps} />;
       case "faq-accordion":
-        return <FaqAccordionBlock {...block.props} />;
+        return <FaqAccordionBlock {...resolvedProps} />;
       case "trust-badges":
-        return <TrustBadgesBlock {...block.props} />;
+        return <TrustBadgesBlock {...resolvedProps} />;
       case "testimonials":
-        return <TestimonialsBlock {...block.props} />;
+        return <TestimonialsBlock {...resolvedProps} />;
       default:
         return null;
     }
   };
 
+  const customCss = (block.props as any).customCss as Record<string, string> | undefined;
+  const blockClass = `custom-block-${block.id}`;
+
+  const renderCustomCss = () => {
+    let styleString = "";
+
+    if (customCss) {
+      let baseCss = "";
+      let tabletCss = "";
+      let mobileCss = "";
+      
+      for (const [key, value] of Object.entries(customCss)) {
+         const cssKey = key.replace("tablet:", "").replace("mobile:", "").replace(/([A-Z])/g, "-$1").toLowerCase();
+         if (key.startsWith("tablet:")) {
+           tabletCss += `${cssKey}: ${value};\n`;
+         } else if (key.startsWith("mobile:")) {
+           mobileCss += `${cssKey}: ${value};\n`;
+         } else {
+           baseCss += `${cssKey}: ${value};\n`;
+         }
+      }
+      
+      if (baseCss || tabletCss || mobileCss) {
+        styleString += `.${blockClass} { \n${baseCss} }`;
+        if (tabletCss) {
+          styleString += `\n@media (max-width: 1024px) { .${blockClass} { \n${tabletCss} } }`;
+        }
+        if (mobileCss) {
+          styleString += `\n@media (max-width: 768px) { .${blockClass} { \n${mobileCss} } }`;
+        }
+      }
+    }
+
+    if (block.customCss) {
+      styleString += `\n${block.customCss}`;
+    }
+    
+    if (!styleString) return null;
+    return <style dangerouslySetInnerHTML={{ __html: styleString }} />;
+  };
+
   return (
     <ErrorBoundary fallback={BlockFallback}>
-      {renderBlock()}
+      {renderCustomCss()}
+      <div className={`w-full transition-all duration-200 ${blockClass}`}>
+        {renderBlock()}
+        {block.customHtml && <div dangerouslySetInnerHTML={{ __html: block.customHtml }} />}
+      </div>
     </ErrorBoundary>
   );
 }

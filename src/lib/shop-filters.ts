@@ -1,6 +1,6 @@
 import type { Product } from "@/data/products";
 
-export type ShopSortOption = "newest" | "price-asc" | "price-desc";
+export type ShopSortOption = "newest" | "price-asc" | "price-desc" | "rating" | "name-asc";
 
 export interface ShopFilterState {
   query: string;
@@ -59,6 +59,7 @@ export function filterAndSortProducts(products: Product[], filters: ShopFilterSt
     .sort((a, b) => {
       if (filters.sort === "price-asc") return a.price - b.price;
       if (filters.sort === "price-desc") return b.price - a.price;
+      if (filters.sort === "name-asc") return a.name.localeCompare(b.name);
       return 0;
     });
 }

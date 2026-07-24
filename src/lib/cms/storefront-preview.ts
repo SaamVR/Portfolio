@@ -21,6 +21,7 @@ export function buildBlueprintPreviewStore(
     locale: "en-BD",
     isPublished: true,
     theme: {
+      ...blueprint.defaultTheme,
       presetId: themePackage.presetId,
       themePackageId: themePackage.id,
       mode: blueprint.defaultTheme.mode,
@@ -34,5 +35,6 @@ export function buildBlueprintPreviewStore(
       customCss: blueprint.defaultTheme.customCss ?? themePackage.customCss,
     },
     pages: instantiateStorePagesFromBlueprint(blueprint),
+    siteSettings: blueprint.defaultSiteSettings,
   };
 }

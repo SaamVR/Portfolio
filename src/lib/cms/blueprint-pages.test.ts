@@ -23,6 +23,21 @@ describe("blueprint page instantiation", () => {
     expect(pages.some((page) => page.slug === "/about-brand")).toBe(true);
   });
 
+  it("adds a shop page for catalog-style commerce blueprints", () => {
+    const pages = instantiateStorePagesFromBlueprint("general-catalog");
+    const shopPage = pages.find((page) => page.slug === "/shop");
+
+    expect(shopPage).toBeDefined();
+    expect(shopPage?.title).toBe("Shop");
+    expect(shopPage?.isHomepage).toBe(false);
+  });
+
+  it("does not add a shop page for single-product launch blueprints", () => {
+    const pages = instantiateStorePagesFromBlueprint("single-product");
+
+    expect(pages.some((page) => page.slug === "/shop")).toBe(false);
+  });
+
   it("instantiates custom recommended page blueprints from the provided collection", () => {
     const blueprint = {
       id: "custom-blueprint",
@@ -38,6 +53,8 @@ describe("blueprint page instantiation", () => {
       defaultTheme: {
         presetId: "minimal",
         mode: "light",
+        aesthetic: "minimal",
+        effects: { scrollReveals: false, hoverEffects: true, parallax: false, intensity: "subtle" },
         headingFont: "'Inter', sans-serif",
         bodyFont: "'Inter', sans-serif",
         borderRadius: "0.75rem",
@@ -72,6 +89,7 @@ describe("blueprint page instantiation", () => {
           id: "lookbook-rich-text",
           type: "rich-text",
           isVisible: true,
+          visible: true,
           sortOrder: 0,
           props: {
             title: "Lookbook",
@@ -97,6 +115,7 @@ describe("blueprint page instantiation", () => {
           id: "rich-1",
           type: "rich-text",
           isVisible: true,
+          visible: true,
           sortOrder: 99,
           props: {
             title: "Promo headline",
@@ -108,6 +127,7 @@ describe("blueprint page instantiation", () => {
           id: "bad-rich",
           type: "rich-text",
           isVisible: true,
+          visible: true,
           sortOrder: 100,
           props: {
             title: "",

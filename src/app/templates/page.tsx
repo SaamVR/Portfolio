@@ -60,11 +60,11 @@ export default function TemplatesPage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#f7f1e6_0%,#f4efe8_28%,#ebf1ea_68%,#e4ebe6_100%)] text-slate-950">
       <header className="border-b border-slate-950/10 bg-white/78 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950">
-            <ArrowLeft className="h-4 w-4" />
+          <Link href="/" className="group inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-slate-950">
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
             Back to homepage
           </Link>
-          <Link href="/signup" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
+          <Link href="/signup" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:scale-105 hover:bg-slate-800 active:scale-95">
             Start building
           </Link>
         </div>
@@ -88,7 +88,7 @@ export default function TemplatesPage() {
                 <a
                   key={group}
                   href={`#template-group-${group.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  className="rounded-full border border-slate-950/10 bg-white/75 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-950/30"
+                  className="rounded-full border border-slate-950/10 bg-white/75 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all hover:bg-white hover:border-slate-950/30 hover:text-slate-900 hover:shadow-sm"
                 >
                   {group}
                 </a>
@@ -97,18 +97,18 @@ export default function TemplatesPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)]">
-              <Sparkles className="h-5 w-5 text-amber-600" />
+            <div className="group rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <Sparkles className="h-5 w-5 text-amber-600 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12" />
               <p className="mt-4 text-2xl font-bold text-slate-950">{templateCards.length}</p>
               <p className="mt-1 text-sm text-slate-600">Blueprint families tuned for different storefront stories.</p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)]">
-              <Store className="h-5 w-5 text-emerald-600" />
+            <div className="group rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <Store className="h-5 w-5 text-emerald-600 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12" />
               <p className="mt-4 text-2xl font-bold text-slate-950">Live</p>
               <p className="mt-1 text-sm text-slate-600">Preview real seeded storefront output before signup.</p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)]">
-              <ShieldCheck className="h-5 w-5 text-cyan-700" />
+            <div className="group rounded-[1.5rem] border border-slate-950/10 bg-white/78 p-5 shadow-[0_14px_50px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <ShieldCheck className="h-5 w-5 text-cyan-700 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12" />
               <p className="mt-4 text-2xl font-bold text-slate-950">Safer</p>
               <p className="mt-1 text-sm text-slate-600">Theme direction, trust sections, and conversion defaults move together.</p>
             </div>
@@ -152,8 +152,8 @@ export default function TemplatesPage() {
 
               <div className="grid gap-5 xl:grid-cols-2">
                 {cards.map((card) => (
-                  <article key={card.id} className="overflow-hidden rounded-[2rem] border border-slate-950/10 bg-white/88 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
-                    <div className="border-b border-slate-950/8 px-6 py-5">
+                  <article key={card.id} className="group/card overflow-hidden rounded-[2rem] border border-slate-950/10 bg-white/88 shadow-[0_24px_80px_rgba(15,23,42,0.08)] transition-all duration-500 hover:-translate-y-1 hover:border-slate-950/20 hover:shadow-[0_32px_96px_rgba(15,23,42,0.12)]">
+                    <div className="border-b border-slate-950/8 px-6 py-5 transition-colors duration-500 group-hover/card:bg-slate-50/50">
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">{card.group}</p>
@@ -201,11 +201,11 @@ export default function TemplatesPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-3 px-6 pb-6">
-                      <Link href={`/templates/${card.id}`} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
+                      <Link href={`/templates/${card.id}`} className="group/btn inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 active:scale-95">
                         Preview
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Link>
-                      <Link href={`/signup?blueprint=${encodeURIComponent(card.id)}`} className="inline-flex items-center gap-2 rounded-full border border-slate-950/10 px-4 py-2 text-sm font-semibold text-slate-700">
+                      <Link href={`/signup?blueprint=${encodeURIComponent(card.id)}`} className="inline-flex items-center gap-2 rounded-full border border-slate-950/10 bg-white/50 px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-white hover:border-slate-950/30 hover:shadow-sm">
                         Use this template
                       </Link>
                     </div>

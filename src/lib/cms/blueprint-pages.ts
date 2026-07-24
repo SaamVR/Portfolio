@@ -11,6 +11,15 @@ const pageBlueprintAliasMap: Record<string, string> = {
   policy: "policy",
 };
 
+const shopEligibleCatalogModes = new Set([
+  "multi_product",
+  "menu",
+  "digital_download",
+  "multi_vendor",
+  "pre_order",
+  "inquiry_only",
+]);
+
 function isStorePageBlockType(value: string): value is StorePageBlock["type"] {
   return [
     "hero",
@@ -61,6 +70,51 @@ function buildHomepageFromBlueprint(blueprint: StoreBlueprintDefinition): StoreP
   };
 }
 
+function shouldIncludeShopPage(blueprint: StoreBlueprintDefinition) {
+  return blueprint.businessFamily === "commerce"
+    && blueprint.catalogMode !== "single_product"
+    && shopEligibleCatalogModes.has(blueprint.catalogMode);
+}
+
+function buildShopPageFromBlueprint(blueprint: StoreBlueprintDefinition): StorePage {
+  const helperBlock = createDefaultBlock("rich-text", 0) as Extract<StorePageBlock, { type: "rich-text" }>;
+
+  return {
+    id: crypto.randomUUID(),
+    slug: "/shop",
+    title: blueprint.catalogMode === "menu" ? "Menu" : "Shop",
+    seoTitle: blueprint.catalogMode === "menu" ? `Menu | ${blueprint.name}` : `Shop | ${blueprint.name}`,
+    seoDescription: blueprint.catalogMode === "menu"
+      ? "Browse available menu items and current offers."
+      : "Browse products, collections, and current offers.",
+    isHomepage: false,
+    blocks: [
+      {
+        ...helperBlock,
+        isVisible: false,
+        props: {
+          ...helperBlock.props,
+          eyebrow: blueprint.catalogMode === "menu" ? "Menu" : "Shop",
+          title: blueprint.catalogMode === "menu" ? "Browse the menu" : "Browse the catalog",
+          body: "This storefront uses the dedicated shop route for product browsing. Keep this page in the template graph so navigation and Basic Mode understand the shopping flow.",
+          align: "left",
+        },
+      },
+    ],
+  };
+}
+
+export function ensureRequiredStoreFlowPages(
+  pages: StorePage[],
+  blueprint: StoreBlueprintDefinition,
+): StorePage[] {
+  if (!shouldIncludeShopPage(blueprint) || pages.some((page) => page.slug === "/shop")) {
+    return pages;
+  }
+
+  return [...pages, buildShopPageFromBlueprint(blueprint)];
+}
+
 function mapRecommendedPageToBlueprintId(
   pageId: string,
   pageBlueprints: CmsPageBlueprint[],
@@ -95,5 +149,5 @@ export function instantiateStorePagesFromBlueprint(
     }
   }
 
-  return pages;
+  return ensureRequiredStoreFlowPages(pages, blueprint);
 }

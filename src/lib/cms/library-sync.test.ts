@@ -10,7 +10,7 @@ describe("cms library sync seeds", () => {
   it("builds seed rows for every fallback blueprint", () => {
     const rows = buildStoreBlueprintSeedRows();
 
-    expect(rows.some((row) => row.id === "gadgets")).toBe(true);
+    expect(rows.some((row) => row.id === "electronics")).toBe(true);
     expect(rows.some((row) => row.id === "crafts")).toBe(true);
     expect(rows.some((row) => row.id === "single-product")).toBe(true);
     expect(rows.some((row) => row.id === "inquiry-catalog")).toBe(true);

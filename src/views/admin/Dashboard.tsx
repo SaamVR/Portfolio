@@ -717,7 +717,7 @@ const Dashboard = () => {
             { label: "Manage Products", to: "/admin/products", icon: Package },
             { label: "View Orders", to: "/admin/orders", icon: ShoppingCart },
             { label: "Onboarding", to: "/admin/onboarding", icon: PanelsTopLeft },
-            { label: "Basic Editing", to: buildPageBuilderPath("basic"), icon: PanelsTopLeft, adminOnly: true },
+            { label: "Basic Editing", to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: PanelsTopLeft, adminOnly: true },
             { label: "Site Settings", to: "/admin/site-settings", icon: TrendingUp, adminOnly: true },
           ]
             .filter((a) => !a.adminOnly || role === "admin")

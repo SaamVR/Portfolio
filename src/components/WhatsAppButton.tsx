@@ -9,7 +9,9 @@ interface WhatsAppSettings {
 
 const WhatsAppButton = () => {
   const currentStore = useOptionalStore();
-  const { data: ws } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
+  const preloadedSettings = currentStore?.siteSettings?.whatsapp_support as WhatsAppSettings | undefined;
+  const { data: fetchedSettings } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
+  const ws = fetchedSettings ?? preloadedSettings;
 
   if (!ws?.enabled || !ws?.number) return null;
 
@@ -20,6 +22,7 @@ const WhatsAppButton = () => {
   return (
     <a
       href={href}
+      data-testid="storefront-whatsapp-button"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"

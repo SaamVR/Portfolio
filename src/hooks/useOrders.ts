@@ -182,6 +182,8 @@ export function useUpdateOrderStatus() {
     onSuccess: (_data, variables) => {
       if (variables.storeId) {
         queryClient.invalidateQueries({ queryKey: ["admin-orders", variables.storeId] });
+        queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["products", variables.storeId] });
       }
     },
   });

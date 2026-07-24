@@ -1,17 +1,20 @@
 import { Link } from "@/lib/react-router-dom-shim";
 import { Minus, Plus, Trash2, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import { useCart } from "@/context/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { storefrontPath } from "@/lib/slug";
 
 interface DeliverySettings {
   enabled: boolean;
   free_threshold: number;
   delivery_fee: number;
+  delivery_fee_outside?: number;
 }
 
 const Cart = () => {
@@ -25,21 +28,28 @@ const Cart = () => {
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const cartItems = items.filter((item) => (item.storeId ?? cartStoreId) === cartStoreId);
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const { data: deliveryData, isLoading: deliveryLoading } = useSiteSettings<DeliverySettings>("delivery_settings", cartStoreId);
+  const preloadedDeliverySettings =
+    currentStore?.id === cartStoreId ? (currentStore?.siteSettings?.delivery_settings as DeliverySettings | undefined) : undefined;
+  const { data: fetchedDeliveryData, isLoading: isDeliverySettingsLoading } = useSiteSettings<DeliverySettings>("delivery_settings", cartStoreId);
+  const deliveryData = fetchedDeliveryData ?? preloadedDeliverySettings;
+  const deliveryLoading = isDeliverySettingsLoading && !preloadedDeliverySettings;
+  const digitalOnlyCart = isDigitalOnlyCart(cartItems);
 
   const deliveryFee = (() => {
+    if (digitalOnlyCart) return 0;
     if (!deliveryData) return 80;
     if (!deliveryData.enabled) return 0;
     return totalPrice >= deliveryData.free_threshold ? 0 : deliveryData.delivery_fee;
   })();
 
   const grandTotal = totalPrice + deliveryFee;
-  const isFreeDelivery = deliveryData?.enabled && totalPrice >= (deliveryData?.free_threshold ?? 2000);
+  const isFreeDelivery = !digitalOnlyCart && deliveryData?.enabled && totalPrice >= (deliveryData?.free_threshold ?? 2000);
   const amountToFreeDelivery = deliveryData ? Math.max(0, deliveryData.free_threshold - totalPrice) : 0;
+  const LayoutWrapper = cartStoreId ? StorefrontLayout : Layout;
 
   if (!cartStoreId && items.length > 0) {
     return (
-      <Layout>
+      <LayoutWrapper>
         <SEOHead title="Cart" description="Review your shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="max-w-md text-center">
@@ -55,13 +65,13 @@ const Cart = () => {
             </Link>
           </div>
         </div>
-      </Layout>
+      </LayoutWrapper>
     );
   }
 
   if (cartItems.length === 0) {
     return (
-      <Layout>
+      <LayoutWrapper>
         <SEOHead title="Cart" description="Review your shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="text-center">
@@ -75,12 +85,12 @@ const Cart = () => {
             </Link>
           </div>
         </div>
-      </Layout>
+      </LayoutWrapper>
     );
   }
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead title="Cart" description="Review your shopping cart." noindex />
       <div className="container mx-auto px-4 py-12">
         <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">Your Cart</h1>
@@ -97,7 +107,9 @@ const Cart = () => {
                 <div className="flex flex-1 flex-col justify-between">
                   <div>
                     <h3 className="font-heading text-sm font-semibold text-foreground">{item.name}</h3>
-                    <p className="text-xs text-muted-foreground">Size: {item.size}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {digitalOnlyCart ? "License" : "Size"}: {getCartVariantDisplayLabel(item.size)}
+                    </p>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -139,24 +151,33 @@ const Cart = () => {
                 <span>BDT {totalPrice}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>Delivery</span>
+                <span>{digitalOnlyCart ? "Digital delivery" : "Delivery"}</span>
                 {deliveryLoading ? (
                   <Skeleton className="h-4 w-12" />
+                ) : digitalOnlyCart ? (
+                  <span data-testid="cart-delivery-total" className="font-medium text-primary">Included</span>
                 ) : isFreeDelivery ? (
-                  <span className="font-medium text-primary">Free</span>
+                  <span data-testid="cart-delivery-total" className="font-medium text-primary">Free</span>
                 ) : (
-                  <span>BDT {deliveryFee}</span>
+                  <span data-testid="cart-delivery-total">BDT {deliveryFee}</span>
                 )}
               </div>
 
-              {!deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
+              {!digitalOnlyCart && !deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
                 <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>Add <strong>BDT {amountToFreeDelivery}</strong> more for free delivery!</span>
                 </div>
               )}
 
-              {!deliveryLoading && isFreeDelivery && (
+              {digitalOnlyCart && (
+                <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                  <Truck className="h-3.5 w-3.5 shrink-0" />
+                  <span>This cart contains digital products only, so no physical shipping fee is added.</span>
+                </div>
+              )}
+
+              {!digitalOnlyCart && !deliveryLoading && isFreeDelivery && (
                 <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="h-3.5 w-3.5 shrink-0" />
                   <span>You qualify for free delivery!</span>
@@ -166,7 +187,7 @@ const Cart = () => {
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                   <span>Total</span>
-                  {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span>BDT {grandTotal}</span>}
+                  {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span data-testid="cart-grand-total">BDT {grandTotal}</span>}
                 </div>
               </div>
             </div>
@@ -185,7 +206,7 @@ const Cart = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

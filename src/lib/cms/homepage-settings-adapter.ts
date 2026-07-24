@@ -125,11 +125,13 @@ function adaptBlockFromLegacySettings(
             }),
       };
     case "promo-banner":
+      const promoVisible = shouldForce
+        ? (settings.promo_banner?.enabled ?? block.isVisible)
+        : block.isVisible;
       return {
         ...block,
-        isVisible: shouldForce
-          ? (settings.promo_banner?.enabled ?? block.isVisible)
-          : block.isVisible,
+        isVisible: promoVisible,
+        visible: promoVisible,
         props: shouldForce
           ? overwriteDefinedBlockProps(block.props, {
               title: settings.promo_banner?.title,

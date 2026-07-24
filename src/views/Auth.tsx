@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
@@ -41,6 +42,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const accountPath = storefrontPath("/account", currentStore?.slug);
   const nextPath = searchParams.get("next") || accountPath;
+  const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
 
   useEffect(() => {
     if (searchParams.get("mode") === "signup") {
@@ -161,16 +163,16 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <LayoutWrapper>
         <div className="flex min-h-[70vh] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      </LayoutWrapper>
     );
   }
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead title={mode === "login" ? "Customer Login" : "Create Customer Account"} description="Sign in or create a customer account." noindex />
       <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
@@ -283,7 +285,7 @@ const Auth = () => {
           </p>
         </div>
       </div>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

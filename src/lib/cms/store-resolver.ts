@@ -4,17 +4,43 @@ import {
   DEFAULT_STORE_LOCALE,
   createDefaultStore,
 } from "@/lib/cms/default-store";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
+import { ensureRequiredStoreFlowPages, instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { isSubscriptionLive } from "@/lib/billing/plans";
+
+const STORE_SETTING_KEYS_TO_PRELOAD = [
+  "announcement_bar",
+  "brand_settings",
+  "categories_custom_data",
+  "contact_page",
+  "countdown_timer",
+  "delivery_settings",
+  "exit_intent",
+  "faq_entries",
+  "footer",
+  "hero_section",
+  "promo_banner",
+  "home_featured",
+  "home_categories",
+  "loyalty_settings",
+  "navigation",
+  "payment_settings",
+  "shop_page",
+  "storefront_profile",
+  "theme_customization",
+  "whatsapp_support",
+  "upsells",
+  "about_page",
+] as const;
 
 interface StoreRow {
   id: string;
@@ -158,7 +184,20 @@ export function buildResolvedStoreFromRecords(
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
   pageBlueprints: CmsPageBlueprint[] = [],
 ): Store {
-  const blueprint = blueprintOverride ?? resolveStoreBlueprint(businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog");
+  const rawSiteSettings = siteSettings.reduce<Record<string, unknown>>((settings, setting) => {
+    settings[setting.key] = setting.value;
+    return settings;
+  }, {});
+  const initialStorefrontProfile = typeof rawSiteSettings.storefront_profile === "object" && rawSiteSettings.storefront_profile
+    ? rawSiteSettings.storefront_profile as Record<string, unknown>
+    : {};
+  const blueprint = blueprintOverride ?? resolveStoreBlueprint(
+    (typeof initialStorefrontProfile.template_id === "string" ? initialStorefrontProfile.template_id : null)
+      ?? (typeof initialStorefrontProfile.blueprint_id === "string" ? initialStorefrontProfile.blueprint_id : null)
+      ?? businessProfile?.blueprint_id
+      ?? store.store_type
+      ?? "general-catalog",
+  );
   const fallbackTheme = resolveThemePackageById(
     theme?.theme_package_id,
     themePackages,
@@ -189,6 +228,23 @@ export function buildResolvedStoreFromRecords(
       .filter((page): page is StorePage => Boolean(page)),
     siteSettings,
   );
+  const resolvedSiteSettings = rawSiteSettings;
+  const storefrontProfile = typeof resolvedSiteSettings.storefront_profile === "object" && resolvedSiteSettings.storefront_profile
+    ? resolvedSiteSettings.storefront_profile as Record<string, unknown>
+    : {};
+  resolvedSiteSettings.storefront_profile = {
+    ...storefrontProfile,
+    template_id: resolveStorefrontTemplateId(storefrontProfile.template_id, {
+      blueprintId: blueprint.id,
+      productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+    }),
+    blueprint_id: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : blueprint.id,
+  };
+
+  const resolvedPages = ensureRequiredStoreFlowPages(
+    mappedPages.length > 0 ? mappedPages : fallbackPages,
+    blueprint,
+  );
 
   return storeSchema.parse({
     id: store.id,
@@ -210,7 +266,8 @@ export function buildResolvedStoreFromRecords(
       customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
       customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
-    pages: mappedPages.length > 0 ? mappedPages : fallbackPages,
+    pages: resolvedPages,
+    siteSettings: resolvedSiteSettings,
   });
 }
 
@@ -286,7 +343,36 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
   return store;
 }
 
-export async function getStoreBySlug(slug: string): Promise<Store | null> {
+export async function validatePreviewToken(storeId: string, previewToken?: string | null): Promise<boolean> {
+  if (!storeId || !previewToken) return false;
+
+  const supabase = getStoreResolverClient();
+  if (!supabase) return false;
+
+  const { data: tokenRow, error } = await supabase
+    .from("store_preview_tokens")
+    .select("store_id, expires_at")
+    .eq("id", previewToken)
+    .maybeSingle();
+
+  if (error || !tokenRow) return false;
+
+  const row = tokenRow as { store_id: string; expires_at: string };
+
+  // Ensure token's store_id strictly matches the store being requested
+  if (row.store_id !== storeId) {
+    return false;
+  }
+
+  // Ensure token has not expired
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function getStoreBySlug(slug: string, previewToken?: string | null): Promise<Store | null> {
   const supabase = getStoreResolverClient();
 
   if (!supabase) {
@@ -303,13 +389,17 @@ export async function getStoreBySlug(slug: string): Promise<Store | null> {
     return null;
   }
 
-  const { data: subscription } = await supabase
-    .from("store_subscriptions")
-    .select("status, trial_ends_at")
-    .eq("store_id", store.id)
-    .maybeSingle();
-  if (!canAccessStorefrontStore(store as Pick<StoreRow, "is_published">, (subscription as StoreSubscriptionRow | null) ?? null)) {
-    return null;
+  const isValidToken = await validatePreviewToken(store.id, previewToken);
+
+  if (!isValidToken) {
+    const { data: subscription } = await supabase
+      .from("store_subscriptions")
+      .select("status, trial_ends_at")
+      .eq("store_id", store.id)
+      .maybeSingle();
+    if (!canAccessStorefrontStore(store as Pick<StoreRow, "is_published">, (subscription as StoreSubscriptionRow | null) ?? null)) {
+      return null;
+    }
   }
 
   return await getStoreById(store.id);
@@ -359,7 +449,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .from("site_settings")
       .select("key, value")
       .eq("store_id", storeId)
-      .in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
+      .in("key", STORE_SETTING_KEYS_TO_PRELOAD),
     loadThemePackages(supabase, storeId),
     loadPageBlueprints(supabase),
   ]);

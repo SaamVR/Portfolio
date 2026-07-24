@@ -7,11 +7,14 @@ import { buildStorePageMetadata } from "@/lib/cms/store-metadata";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeSlug: string; pageSlug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { storeSlug, pageSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const { preview } = await searchParams;
+  const store = await getStoreBySlug(storeSlug, preview);
   const page = store ? getPageBySlug(store, `/${pageSlug}`) : null;
 
   if (!store || !page) {
@@ -23,11 +26,14 @@ export async function generateMetadata({
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ storeSlug: string; pageSlug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { storeSlug, pageSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const { preview } = await searchParams;
+  const store = await getStoreBySlug(storeSlug, preview);
 
   if (!store) {
     notFound();

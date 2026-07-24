@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2, Link as LinkIcon, Download, Upload, FileJson } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,23 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
-import { cmsBlockTypeOptions, createDefaultBlock } from "@/lib/cms/block-library";
+import { createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStoreBlueprints, resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
 import { loadThemePackages } from "@/lib/theme-packages";
-import { Link, useLocation } from "@/lib/react-router-dom-shim";
+import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
+import { BasicModeWizard } from "./BasicModeWizard";
+import { DomTreeNavigator } from "./DomTreeNavigator";
+import { VisualCssInspector } from "./VisualCssInspector";
+import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
+import { fallbackBlockRegistry, filterBlockRegistryForBlueprint, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -49,6 +56,39 @@ function formatSavedTime(value: Date | null): string {
   return value
     ? value.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : "";
+}
+
+function formatThemeFieldLabel(key: string) {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function buildImportChangeSummary(store: Store, bundle: ThemeExportBundle) {
+  const themeChanges = Object.entries(bundle.theme)
+    .filter(([key, value]) => JSON.stringify(store.theme[key as keyof Store["theme"]]) !== JSON.stringify(value))
+    .map(([key]) => formatThemeFieldLabel(key));
+
+  const pageChanges = (bundle.pages ?? []).map((importedPage) => {
+    const currentPage = store.pages.find((page) => page.slug === importedPage.slug);
+    return {
+      title: currentPage?.title ?? importedPage.title,
+      slug: importedPage.slug,
+      currentBlocks: currentPage?.blocks.length ?? 0,
+      importedBlocks: importedPage.blocks.length,
+      isNewPage: !currentPage,
+    };
+  });
+
+  const layoutReplacementCount = pageChanges.filter((page) => !page.isNewPage).length;
+
+  return {
+    themeChanges,
+    pageChanges,
+    layoutReplacementCount,
+    newPageCount: pageChanges.filter((page) => page.isNewPage).length,
+    hasLayout: pageChanges.length > 0,
+  };
 }
 
 function scrollToLiveEditorSection(sectionId: string) {
@@ -91,7 +131,9 @@ export function StorefrontLiveEditor({
   canManageStore: boolean;
   userId: string | null | undefined;
 }) {
-  const [editorMode, setEditorMode] = useState<"basic" | "advanced">("basic");
+  const [searchParams] = useSearchParams();
+  const [editorMode, setEditorMode] = useState<"basic" | "advanced">(searchParams.get("mode") === "advanced" ? "advanced" : "basic");
+  const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [saving, setSaving] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [insertPosition, setInsertPosition] = useState<"before" | "after">("after");
@@ -100,6 +142,12 @@ export function StorefrontLiveEditor({
   const [isDockMinimized, setIsDockMinimized] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importPreview, setImportPreview] = useState<ThemeExportBundle | null>(null);
+  const [importError, setImportError] = useState("");
+  const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
   const lastLoadedStoreRef = useRef(store);
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
@@ -111,6 +159,23 @@ export function StorefrontLiveEditor({
     () => page.blocks.find((block) => block.id === selectedBlockId) ?? null,
     [page.blocks, selectedBlockId],
   );
+  const importChangeSummary = useMemo(
+    () => (importPreview ? buildImportChangeSummary(store, importPreview) : null),
+    [importPreview, store],
+  );
+  const activeBlueprint = useMemo(() => {
+    const profile = store.siteSettings?.storefront_profile;
+    const inferredBlueprintId = typeof profile === "object" && profile && "blueprint_id" in profile && typeof profile.blueprint_id === "string"
+      ? profile.blueprint_id
+      : typeof profile === "object" && profile && "product_visibility" in profile && profile.product_visibility === "landing_only"
+        ? "landing-page"
+        : undefined;
+    return resolveStoreBlueprint(inferredBlueprintId);
+  }, [store.siteSettings]);
+  const availableBlockRegistry = useMemo(
+    () => filterBlockRegistryForBlueprint(blockRegistry, activeBlueprint),
+    [activeBlueprint, blockRegistry],
+  );
 
   useEffect(() => {
     if (!adminMode) {
@@ -119,12 +184,50 @@ export function StorefrontLiveEditor({
   }, [adminMode, onSelectedBlockChange]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadRegistry = async () => {
+      const registry = await loadBlockRegistry(supabase);
+      if (!cancelled) {
+        setBlockRegistry(registry);
+      }
+    };
+
+    void loadRegistry();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     lastLoadedStoreRef.current = store;
     setPersistedSnapshot(serializeStoreDraft(store));
     setHistory([]);
     setRedoHistory([]);
     setLastSavedAt(null);
   }, [page.id, store.id]);
+
+  useEffect(() => {
+    if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
+      setNextBlockType(availableBlockRegistry[0]?.value ?? "rich-text");
+    }
+  }, [availableBlockRegistry, nextBlockType]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      if (viewport === "mobile") {
+        document.body.style.width = "420px";
+        document.body.style.margin = "0 auto";
+      } else if (viewport === "tablet") {
+        document.body.style.width = "768px";
+        document.body.style.margin = "0 auto";
+      } else {
+        document.body.style.width = "100%";
+        document.body.style.margin = "0";
+      }
+    }
+  }, [viewport]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hasUnsavedChanges) {
@@ -201,6 +304,49 @@ export function StorefrontLiveEditor({
     onAdminModeChange(!adminMode);
   };
 
+  const handleExport = (type: "theme-only" | "theme-and-layout" | "full-store") => {
+    const bundle = generateExportBundle(store, type);
+    downloadExportBundle(bundle, `${store.slug}-${type}.json`);
+    toast.success(`Exported ${type.replace(/-/g, " ")} bundle`);
+  };
+
+  const handleImportAnalyze = () => {
+    if (!importJson.trim()) {
+      setImportError("Please paste a JSON bundle.");
+      return;
+    }
+    const res = parseImportBundle(importJson);
+    if (res.success) {
+      setImportPreview(res.bundle);
+      setImportError("");
+    } else {
+      setImportError(res.error);
+      setImportPreview(null);
+    }
+  };
+
+  const applyImport = () => {
+    if (!importPreview) return;
+    
+    applyStoreChange((current) => {
+      const newStore = { ...current };
+      newStore.theme = { ...newStore.theme, ...importPreview.theme };
+      
+      if (importPreview.pages && importPreview.pages.length > 0) {
+        newStore.pages = newStore.pages.map(p => {
+          const importedPage = importPreview.pages!.find(ip => ip.slug === p.slug);
+          return importedPage ? { ...p, blocks: importedPage.blocks } : p;
+        });
+      }
+      return newStore;
+    });
+    
+    setImportDialogOpen(false);
+    setImportJson("");
+    setImportPreview(null);
+    toast.success("Theme bundle applied");
+  };
+
   const updateStoreThemeToken = (token: string, value: string) => {
     applyStoreChange((current) => ({
       ...current,
@@ -223,6 +369,14 @@ export function StorefrontLiveEditor({
         ...(block.props as Record<string, unknown>),
         [field]: value,
       },
+    } as StorePageBlock)));
+  };
+
+  const updateSelectedBlock = (patch: Partial<StorePageBlock>) => {
+    if (!selectedBlock) return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
+      ...block,
+      ...patch,
     } as StorePageBlock)));
   };
 
@@ -858,17 +1012,48 @@ export function StorefrontLiveEditor({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live Website Editor</p>
-                  <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Saved"}</Badge>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {editorMode === "advanced" ? "Advanced Live Editor" : "Basic Setup Guide"}
+                  </p>
+                <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Saved"}</Badge>
                 </div>
                 <p className="mt-1 truncate text-sm font-semibold text-foreground">{page.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{saveStatusLabel}</p>
               </div>
-              <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
-                <Link to={editorMode === "advanced" ? advancedEditorHref : basicEditorHref}>
-                  {editorMode === "advanced" ? "Open Advanced" : "Open Basic"}
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                {editorMode === "advanced" && (
+                  <div className="flex items-center rounded-full border border-border bg-background p-1">
+                    <Button type="button" size="sm" variant={viewport === "desktop" ? "secondary" : "ghost"} className="h-7 rounded-full px-3 text-xs" onClick={() => setViewport("desktop")}>Desktop</Button>
+                    <Button type="button" size="sm" variant={viewport === "tablet" ? "secondary" : "ghost"} className="h-7 rounded-full px-3 text-xs" onClick={() => setViewport("tablet")}>Tablet</Button>
+                    <Button type="button" size="sm" variant={viewport === "mobile" ? "secondary" : "ghost"} className="h-7 rounded-full px-3 text-xs" onClick={() => setViewport("mobile")}>Mobile</Button>
+                  </div>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" size="sm" variant="outline" className="rounded-full">
+                      <Download className="mr-2 h-4 w-4" />
+                      Theme Engine
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExport("theme-only")}>
+                      <Download className="mr-2 h-4 w-4" /> Export Theme Only
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport("theme-and-layout")}>
+                      <FileJson className="mr-2 h-4 w-4" /> Export Theme & Layout
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setImportDialogOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" /> Import Theme Bundle
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
+                  <Link to={editorMode === "advanced" ? advancedEditorHref : basicEditorHref}>
+                    {editorMode === "advanced" ? "Open Advanced" : "Open Basic"}
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             {hasUnsavedChanges ? (
@@ -888,152 +1073,298 @@ export function StorefrontLiveEditor({
             )}
 
             <div className="mt-4 space-y-4">
-              <div id="live-editor-theme" className="rounded-2xl border border-border p-3 scroll-mt-28">
-                <div className="mb-3 flex items-center gap-2">
-                  <Paintbrush2 className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">Theme tokens</p>
+              {editorMode === "basic" ? (
+                <div className="rounded-2xl border border-border p-4 bg-background">
+                  <BasicModeWizard 
+                    store={store} 
+                    page={page} 
+                    updateBlock={(blockId, patch) => {
+                      applyStoreChange((current) => updateBlock(current, page.id, blockId, (block) => ({
+                        ...block,
+                        props: {
+                          ...(block.props as Record<string, unknown>),
+                          ...patch,
+                        },
+                      } as StorePageBlock)));
+                    }}
+                    updateThemeToken={updateStoreThemeToken}
+                  />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {GUIDED_THEME_TOKENS.map((token) => {
-                    const currentValue = store.theme.customCssVars[token.key] ?? resolvedThemeVars[token.key] ?? "";
-                    return (
-                      <div key={token.key} className="grid gap-2">
-                        <Label>{token.label}</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="color"
-                            value={hslChannelsToHex(currentValue) ?? "#000000"}
-                            onChange={(event) => {
-                              const next = hexToHslChannels(event.target.value);
-                              if (!next) return;
-                              updateStoreThemeToken(token.key, next);
-                            }}
-                            className="h-10 w-16 p-1"
-                          />
-                          <Input value={currentValue} onChange={(event) => updateStoreThemeToken(token.key, event.target.value)} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div id="live-editor-theme" className="rounded-2xl border border-border p-3 scroll-mt-28">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Paintbrush2 className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium text-foreground">Theme tokens</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {GUIDED_THEME_TOKENS.map((token) => {
+                        const currentValue = store.theme.customCssVars[token.key] ?? resolvedThemeVars[token.key] ?? "";
+                        return (
+                          <div key={token.key} className="grid gap-2">
+                            <Label>{token.label}</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="color"
+                                value={hslChannelsToHex(currentValue) ?? "#000000"}
+                                onChange={(event) => {
+                                  const next = hexToHslChannels(event.target.value);
+                                  if (!next) return;
+                                  updateStoreThemeToken(token.key, next);
+                                }}
+                                className="h-10 w-16 p-1"
+                              />
+                              <Input value={currentValue} onChange={(event) => updateStoreThemeToken(token.key, event.target.value)} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <div id="live-editor-selected-block" className="rounded-2xl border border-border p-3 scroll-mt-28">
-                <div className="mb-3 flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">Selected block</p>
-                </div>
-                {!selectedBlock ? (
-                  <p className="text-sm text-muted-foreground">Click a highlighted section on the storefront to edit it here.</p>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{selectedBlock.type}</p>
-                        <Badge variant="outline">{selectedBlock.isVisible ? "Visible" : "Hidden"}</Badge>
-                      </div>
-                      <Switch
-                        checked={selectedBlock.isVisible}
-                        onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked })))}
-                      />
+                  <div id="live-editor-selected-block" className="rounded-2xl border border-border p-3 scroll-mt-28">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Settings2 className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium text-foreground">Selected block</p>
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(-1)} className="justify-start">
-                        <ArrowUp className="h-4 w-4" />
-                        Move up
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(1)} className="justify-start">
-                        <ArrowDown className="h-4 w-4" />
-                        Move down
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()} className="justify-start">
-                        <Copy className="h-4 w-4" />
-                        Duplicate
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => removeSelectedBlock()} className="justify-start">
-                        <Trash2 className="h-4 w-4" />
-                        Remove
-                      </Button>
-                    </div>
-                    {editorMode === "advanced" ? (
-                      <div id="live-editor-advanced-tools" className="grid gap-3 rounded-xl border border-border p-3 scroll-mt-28">
-                        <div>
+                    {!selectedBlock ? (
+                      <p className="text-sm text-muted-foreground">Click a highlighted section on the storefront to edit it here.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <p className="text-sm font-medium text-foreground">Advanced block tools</p>
+                            <p className="text-sm font-medium text-foreground">{selectedBlock.type}</p>
+                            <Badge variant="outline">{selectedBlock.isVisible ? "Visible" : "Hidden"}</Badge>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">Switch block type or insert a new section beside the current block.</p>
+                          <Switch
+                            checked={selectedBlock.isVisible}
+                            onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked })))}
+                          />
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="grid gap-2">
-                            <Label>Switch Block Type</Label>
-                            <Select value={selectedBlock.type} onValueChange={(value) => switchSelectedBlockType(value as StorePageBlock["type"])}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {cmsBlockTypeOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="grid gap-2">
-                            <Label>Insert Position</Label>
-                            <Select value={insertPosition} onValueChange={(value) => setInsertPosition(value as "before" | "after")}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="before">Before selected</SelectItem>
-                                <SelectItem value="after">After selected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                          <div className="grid gap-2">
-                            <Label>Insert Block Type</Label>
-                            <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {cmsBlockTypeOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => insertNewBlock()} className="sm:min-w-[132px]">
-                            <Plus className="h-4 w-4" />
-                            Insert Block
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(-1)} className="justify-start">
+                            <ArrowUp className="h-4 w-4" />
+                            Move up
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => moveSelectedBlock(1)} className="justify-start">
+                            <ArrowDown className="h-4 w-4" />
+                            Move down
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => duplicateSelectedBlock()} className="justify-start">
+                            <Copy className="h-4 w-4" />
+                            Duplicate
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => removeSelectedBlock()} className="justify-start">
+                            <Trash2 className="h-4 w-4" />
+                            Remove
                           </Button>
                         </div>
-                      </div>
-                    ) : null}
-                    {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
-                      <div key={field} className="grid gap-2">
-                        <Label>{field}</Label>
-                        {field === "body" || field.toLowerCase().includes("subtitle") ? (
-                          <Textarea
-                            value={String(selectedBlock.props[field] ?? "")}
-                            onChange={(event) => updateSelectedBlockField(field, event.target.value)}
+                        <div id="live-editor-advanced-tools" className="grid gap-3 rounded-xl border border-border p-3 scroll-mt-28">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <p className="text-sm font-medium text-foreground">Advanced block tools</p>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">Switch block type or insert a new section beside the current block.</p>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                              <Label>Switch Block Type</Label>
+                              <Select value={selectedBlock.type} onValueChange={(value) => switchSelectedBlockType(value as StorePageBlock["type"])}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {availableBlockRegistry.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Insert Position</Label>
+                              <Select value={insertPosition} onValueChange={(value) => setInsertPosition(value as "before" | "after")}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="before">Before selected</SelectItem>
+                                  <SelectItem value="after">After selected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                            <div className="grid gap-2">
+                              <Label>Insert Block Type</Label>
+                              <Select value={nextBlockType} onValueChange={(value) => setNextBlockType(value as StorePageBlock["type"])}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {availableBlockRegistry.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button type="button" size="sm" variant="outline" onClick={() => insertNewBlock()} className="sm:min-w-[132px]">
+                              <Plus className="h-4 w-4" />
+                              Insert Block
+                            </Button>
+                          </div>
+                        </div>
+                        {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
+                          <div key={field} className="grid gap-2">
+                            <div className="flex items-center justify-between">
+                              <Label>{field}</Label>
+                              {editorMode === "advanced" && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Bind to data">
+                                      <LinkIcon className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => updateSelectedBlockField(field, `{{store.name}}`)}>Store Name</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => updateSelectedBlockField(field, `{{store.description}}`)}>Store Description</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => updateSelectedBlockField(field, `{{product.price}}`)}>Product Price</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => updateSelectedBlockField(field, `{{product.inventory_count}}`)}>Inventory Count</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => updateSelectedBlockField(field, `{{customer.name}}`)}>Customer Name</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                            {field === "body" || field.toLowerCase().includes("subtitle") ? (
+                              <Textarea
+                                value={String(selectedBlock.props[field] ?? "")}
+                                onChange={(event) => updateSelectedBlockField(field, event.target.value)}
+                              />
+                            ) : (
+                              <Input
+                                value={String(selectedBlock.props[field] ?? "")}
+                                onChange={(event) => updateSelectedBlockField(field, event.target.value)}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {renderAdvancedControls()}
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <div className="mb-3 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <p className="text-sm font-medium text-foreground">Visual CSS</p>
+                          </div>
+                          <VisualCssInspector 
+                            selectedBlock={selectedBlock} 
+                            updateSelectedBlock={updateSelectedBlock}
+                            updateSelectedBlockProps={updateSelectedBlockProps} 
+                            viewport={viewport}
                           />
-                        ) : (
-                          <Input
-                            value={String(selectedBlock.props[field] ?? "")}
-                            onChange={(event) => updateSelectedBlockField(field, event.target.value)}
-                          />
-                        )}
+                        </div>
                       </div>
-                    ))}
-                    {renderAdvancedControls()}
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
         ) : null}
       </div>
+      {editorMode === "advanced" && (
+        <DomTreeNavigator
+          page={page}
+          selectedBlockId={selectedBlockId}
+          onSelectBlock={onSelectedBlockChange}
+          onMoveBlock={(id, direction) => {
+            const index = page.blocks.findIndex(b => b.id === id);
+            if (index < 0) return;
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= page.blocks.length) return;
+            applyStoreChange((current) => updatePage(current, page.id, (p) => {
+              const newBlocks = [...p.blocks];
+              const temp = newBlocks[index];
+              newBlocks[index] = newBlocks[targetIndex];
+              newBlocks[targetIndex] = temp;
+              return { ...p, blocks: newBlocks.map((b, i) => ({ ...b, sortOrder: i })) };
+            }));
+          }}
+          onToggleVisibility={(id, isVisible) => {
+            applyStoreChange((current) => updateBlock(current, page.id, id, (block) => ({ ...block, isVisible })));
+          }}
+          onRemoveBlock={(id) => {
+            applyStoreChange((current) => updatePage(current, page.id, (p) => ({
+              ...p,
+              blocks: p.blocks.filter((b) => b.id !== id).map((b, i) => ({ ...b, sortOrder: i })),
+            })));
+          }}
+        />
+      )}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Import Theme Bundle</DialogTitle>
+            <DialogDescription>
+              Paste the JSON code of the theme you want to import. This will overwrite current theme settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Textarea 
+              placeholder="Paste JSON here..." 
+              className="h-40 font-mono text-xs"
+              value={importJson}
+              onChange={(e) => setImportJson(e.target.value)}
+            />
+            {importError && (
+              <div className="text-sm text-destructive font-medium">{importError}</div>
+            )}
+            {importPreview && (
+              <div className="rounded-md bg-muted p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">Change summary</p>
+                  <Badge variant="outline">{importPreview.type.replace(/-/g, " ")}</Badge>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Theme changes</p>
+                    <p className="mt-1">
+                      {importChangeSummary?.themeChanges.length
+                        ? importChangeSummary.themeChanges.slice(0, 6).join(", ")
+                        : "No theme differences detected"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Layout changes</p>
+                    {importChangeSummary?.hasLayout ? (
+                      <ul className="mt-1 space-y-1">
+                        {importChangeSummary.pageChanges.slice(0, 4).map((pageChange) => (
+                          <li key={pageChange.slug}>
+                            {pageChange.title}: {pageChange.isNewPage ? "new page" : `${pageChange.currentBlocks} -> ${pageChange.importedBlocks} sections`}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1">No page layout included</p>
+                    )}
+                  </div>
+                  {importChangeSummary?.layoutReplacementCount ? (
+                    <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-100">
+                      Applying this bundle replaces sections on {importChangeSummary.layoutReplacementCount} existing page{importChangeSummary.layoutReplacementCount === 1 ? "" : "s"} in your current draft.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {!importPreview ? (
+              <Button onClick={handleImportAnalyze}>Analyze Bundle</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => { setImportPreview(null); setImportJson(""); setImportError(""); setImportDialogOpen(false); }}>Cancel</Button>
+                <Button onClick={applyImport}>Apply Import</Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

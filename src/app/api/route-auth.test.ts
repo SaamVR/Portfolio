@@ -21,6 +21,10 @@ import {
   POST as billingWebhookPost,
   billingWebhookRouteDeps,
 } from "@/app/api/billing/webhook/route";
+import {
+  POST as deleteStorePost,
+  deleteStoreRouteDeps,
+} from "@/app/api/stores/delete/route";
 
 afterEach(() => {
   mock.restoreAll();
@@ -230,5 +234,40 @@ describe("billing webhook authorization", () => {
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: "Unauthorized" });
     assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+});
+
+describe("store deletion route authorization", () => {
+  test("rejects unauthenticated store deletion requests", async () => {
+    mock.method(deleteStoreRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(deleteStoreRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = await deleteStorePost(
+      jsonRequest("https://example.com/api/stores/delete", "POST", {
+        storeId: "store_1",
+      }),
+    );
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without owner or admin access", async () => {
+    mock.method(deleteStoreRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(deleteStoreRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(deleteStoreRouteDeps, "canManageStore", async () => false);
+
+    const response = await deleteStorePost(
+      jsonRequest("https://example.com/api/stores/delete", "POST", {
+        storeId: "store_1",
+      }),
+    );
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
   });
 });

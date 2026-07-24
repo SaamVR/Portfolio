@@ -7,8 +7,8 @@ import {
 import { createStoreSlug } from "@/lib/slug";
 
 describe("launch templates", () => {
-  it("exposes the three Phase 2 business templates", () => {
-    expect(launchTemplates.map((template) => template.id)).toEqual(["clothing", "food", "general"]);
+  it("exposes the business launch templates", () => {
+    expect(launchTemplates.map((template) => template.id)).toEqual(["clothing", "food", "general", "landing", "gadgets", "crafts"]);
   });
 
   it("creates slug-safe store URLs with the shared slug style", () => {
@@ -16,7 +16,7 @@ describe("launch templates", () => {
     expect(createStoreSlug("")).toBe("my-store");
   });
 
-  it.each<LaunchTemplateId>(["clothing", "food", "general"])("instantiates %s pages with fresh IDs and homepage blocks", (templateId) => {
+  it.each<LaunchTemplateId>(["clothing", "food", "general", "landing", "gadgets", "crafts"])("instantiates %s pages with fresh IDs and homepage blocks", (templateId) => {
     const pages = instantiateLaunchPages(templateId);
     const homepage = pages.find((page) => page.isHomepage);
     const ids = new Set<string>();

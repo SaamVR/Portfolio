@@ -16,12 +16,20 @@ function getTimeKey(storeId?: string | null) {
   return getScopedStorefrontStorageKey("cart-time", storeId);
 }
 
+function getCouponStorageKey(storeId?: string | null) {
+  return getScopedStorefrontStorageKey("cart-coupon", storeId);
+}
+
 function isSameCartLine(item: CartItem, productId: string, size: string, storeId?: string) {
   return (
     item.productId === productId &&
     item.size === size &&
     (item.storeId ?? null) === (storeId ?? null)
   );
+}
+
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
 function loadCart(storeId?: string): CartItem[] {
@@ -38,19 +46,103 @@ function saveCart(items: CartItem[], storeId?: string) {
   localStorage.setItem(getTimeKey(storeId), Date.now().toString());
 }
 
+function getScopedItems(items: CartItem[], storeId?: string | null) {
+  return items.filter((item) => (item.storeId ?? null) === (storeId ?? null));
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const message = record.message;
+    if (typeof message === "string" && message.trim()) return message;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Unknown cart sync error";
+    }
+  }
+  return "Unknown cart sync error";
+}
+
 export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: string }> = ({ children, storeId }) => {
   const expectedCartScope = storeId || GLOBAL_CART_KEY;
-  const [items, setItems] = useState<CartItem[]>(() => loadCart(storeId));
+  const [items, setItems] = useState<CartItem[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    return loadCart(storeId);
+  });
   const [cartScope, setCartScope] = useState(expectedCartScope);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [couponCode, setCouponCodeState] = useState<string | null>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlCoupon = searchParams.get("coupon") || searchParams.get("coupon_code");
+        if (urlCoupon && urlCoupon.trim()) {
+          return urlCoupon.trim().toUpperCase();
+        }
+        return localStorage.getItem(getCouponStorageKey(storeId));
+      }
+    } catch {
+      // Ignore coupon parsing/storage issues and fall back to no coupon.
+    }
+    return null;
+  });
   const { user } = useAuth();
   const hasMerged = React.useRef(false);
   const itemsRef = React.useRef(items);
-  const initialItemsRef = React.useRef(items);
+  const initialItemsRef = React.useRef<CartItem[]>(items);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlCoupon = searchParams.get("coupon") || searchParams.get("coupon_code");
+
+      if (urlCoupon && urlCoupon.trim()) {
+        const clean = urlCoupon.trim().toUpperCase();
+        setCouponCodeState(clean);
+        localStorage.setItem(getCouponStorageKey(storeId), clean);
+      } else {
+        const saved = localStorage.getItem(getCouponStorageKey(storeId));
+        if (saved) setCouponCodeState(saved);
+      }
+    } catch {
+      // Ignore coupon parsing/storage issues and leave current state unchanged.
+    }
+  }, [storeId]);
+
+  const setCouponCode = useCallback((code: string | null) => {
+    const clean = code ? code.trim().toUpperCase() : null;
+    setCouponCodeState(clean);
+    try {
+      if (clean) {
+        localStorage.setItem(getCouponStorageKey(storeId), clean);
+      } else {
+        localStorage.removeItem(getCouponStorageKey(storeId));
+      }
+    } catch {
+      // Ignore localStorage write failures so cart interactions still work in-memory.
+    }
+  }, [storeId]);
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    const nextItems = loadCart(storeId);
+    hasMerged.current = false;
+    initialItemsRef.current = nextItems;
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+    setCartScope(expectedCartScope);
+  }, [expectedCartScope, storeId]);
 
   useEffect(() => {
     if (cartScope === expectedCartScope) return;
@@ -105,6 +197,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
         return;
       }
 
+      if (storeId.startsWith("preview-") || !isValidUUID(storeId)) {
+        hasMerged.current = true;
+        return;
+      }
+
       try {
         // 1. Fetch DB cart items
         const { data: dbCart, error } = await (supabase as any)
@@ -124,7 +221,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
               quantity: item.quantity,
               store_id: item.storeId ?? storeId
             }));
-            await (supabase as any).from("cart_items").upsert(inserts);
+            await (supabase as any).from("cart_items").upsert(inserts, {
+              onConflict: "user_id,product_id,size",
+            });
           }
           hasMerged.current = true;
           return;
@@ -186,14 +285,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
 
     if (!user || !hasMerged.current || !storeId) return;
 
+    if (storeId.startsWith("preview-") || !isValidUUID(storeId)) return;
+
     const syncToDb = async () => {
       try {
-        // Delete all and insert to sync
-        await (supabase as any).from("cart_items").delete().eq("user_id", user.id).eq("store_id", storeId);
-        if (items.length > 0) {
-          const inserts = items
-            .filter((item) => item.storeId || storeId)
-            .map(item => ({
+        const scopedItems = getScopedItems(items, storeId);
+        const scopedProductIds = Array.from(new Set(scopedItems.map((item) => item.productId)));
+        let validProductIds = new Set(scopedProductIds);
+
+        if (scopedProductIds.length > 0) {
+          const { data: existingProducts, error: productsError } = await supabase
+            .from("products")
+            .select("id")
+            .eq("store_id", storeId)
+            .in("id", scopedProductIds);
+
+          if (productsError) throw productsError;
+
+          validProductIds = new Set((existingProducts ?? []).map((product) => product.id));
+        }
+
+        const validScopedItems = scopedItems.filter((item) => validProductIds.has(item.productId));
+        if (validScopedItems.length !== scopedItems.length) {
+          setItems((prev) => prev.filter((item) => (item.storeId ?? null) !== storeId || validProductIds.has(item.productId)));
+        }
+
+        const { error: deleteError } = await (supabase as any)
+          .from("cart_items")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("store_id", storeId);
+        if (deleteError) throw deleteError;
+
+        if (validScopedItems.length > 0) {
+          const inserts = validScopedItems.map(item => ({
             user_id: user.id,
             product_id: item.productId,
             size: item.size,
@@ -201,12 +326,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             store_id: item.storeId ?? storeId
           }));
           if (inserts.length > 0) {
-            const { error } = await (supabase as any).from("cart_items").insert(inserts);
+            const { error } = await (supabase as any).from("cart_items").upsert(inserts, {
+              onConflict: "user_id,product_id,size",
+            });
             if (error) throw error;
           }
         }
       } catch (err) {
-        console.error("Failed to sync cart changes to db:", err);
+        console.error(`Failed to sync cart changes to db: ${getErrorMessage(err)}`, {
+          storeId,
+          userId: user.id,
+          error: err,
+        });
       }
     };
 
@@ -261,9 +392,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen, couponCode, setCouponCode }}>
       {children}
     </CartContext.Provider>
   );
 };
-

@@ -8,9 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import GuestCheckoutModal from "@/components/GuestCheckoutModal";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { storefrontPath } from "@/lib/slug";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { getNormalizedDeliverySettings, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
@@ -24,6 +26,7 @@ const CartDrawer = () => {
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const drawerItems = items.filter((item) => (item.storeId ?? cartStoreId) === cartStoreId);
   const drawerTotal = drawerItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const digitalOnlyCart = isDigitalOnlyCart(drawerItems);
 
   const { data: upsellProducts } = useQuery({
     queryKey: ["upsell-products", cartStoreId],
@@ -42,11 +45,12 @@ const CartDrawer = () => {
   });
 
   const { data: paymentSettings } = usePublicPaymentSettings(isCartOpen ? cartStoreId : null);
-  const { data: deliverySettings } = useSiteSettings<any>("delivery_settings", isCartOpen ? cartStoreId : null);
+  const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", isCartOpen ? cartStoreId : null);
+  const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
   const { data: loyaltySettings } = useSiteSettings<any>("loyalty_settings", isCartOpen ? cartStoreId : null);
   const prepaymentDiscountType = paymentSettings?.prepayment_discount_type;
   const prepaymentDiscountValue = paymentSettings?.prepayment_discount_value;
-  const freeThreshold = deliverySettings?.free_threshold ?? 2000;
+  const freeThreshold = deliverySettings.free_threshold;
 
   // Filter out products already in the cart
   const availableUpsells = upsellProducts?.filter(
@@ -91,7 +95,7 @@ const CartDrawer = () => {
                 <Tag className="h-4 w-4" />
                 {prepaymentDiscountType === "free_delivery" 
                   ? "Choose prepaid checkout for free delivery!" 
-                  : `Choose prepaid checkout to get ${prepaymentDiscountType === "percentage" ? prepaymentDiscountValue + "%" : "a store-currency discount"} off!`}
+                  : `Choose prepaid checkout to get ${prepaymentDiscountType === "percentage" ? `${prepaymentDiscountValue}%` : `BDT ${prepaymentDiscountValue}`} off!`}
               </div>
             )}
 
@@ -120,7 +124,9 @@ const CartDrawer = () => {
                         <div className="flex justify-between">
                           <div>
                             <h3 className="text-sm font-medium text-foreground line-clamp-1">{item.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">Size: {item.size}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {digitalOnlyCart ? "License" : "Size"}: {getCartVariantDisplayLabel(item.size)}
+                            </p>
                           </div>
                           <button onClick={() => removeItem(item.productId, item.size, item.storeId)} className="text-muted-foreground hover:text-destructive">
                             <X className="h-4 w-4" />
@@ -185,18 +191,26 @@ const CartDrawer = () => {
                 {/* Free Shipping Progress Bar */}
                 <div className="mb-4 rounded-md bg-secondary p-3">
                   <div className="mb-2 flex items-center justify-between text-xs font-medium">
-                    {drawerTotal >= freeThreshold ? (
-                      <span className="text-primary font-bold">You've unlocked free shipping.</span>
+                    {digitalOnlyCart ? (
+                      <span className="text-primary font-bold">Digital-only cart. No shipping fee will be added.</span>
+                    ) : deliverySettings.enabled ? (
+                      drawerTotal >= freeThreshold ? (
+                        <span className="text-primary font-bold">You've unlocked free shipping.</span>
+                      ) : (
+                        <span><span className="text-primary font-bold">BDT {freeThreshold - drawerTotal}</span> away from free shipping</span>
+                      )
                     ) : (
-                      <span><span className="text-primary font-bold">BDT {freeThreshold - drawerTotal}</span> away from free shipping</span>
+                      <span>Delivery fees are calculated from this store's current rules at checkout.</span>
                     )}
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-background border border-border/50">
-                    <div 
-                      className={cn("h-full transition-all duration-500 ease-out", drawerTotal >= freeThreshold ? "bg-green-500" : "bg-primary")}
-                      style={{ width: `${Math.min((drawerTotal / freeThreshold) * 100, 100)}%` }}
-                    />
-                  </div>
+                  {!digitalOnlyCart && deliverySettings.enabled ? (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-background border border-border/50">
+                      <div 
+                        className={cn("h-full transition-all duration-500 ease-out", drawerTotal >= freeThreshold ? "bg-green-500" : "bg-primary")}
+                        style={{ width: `${Math.min((drawerTotal / freeThreshold) * 100, 100)}%` }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mb-4 flex items-center justify-between">
@@ -213,7 +227,9 @@ const CartDrawer = () => {
                   </div>
                 )}
 
-                <p className="mb-4 text-xs text-muted-foreground">Shipping and taxes calculated at checkout.</p>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  {digitalOnlyCart ? "Digital delivery details will be confirmed at checkout." : "Shipping and taxes calculated at checkout."}
+                </p>
                 <div className="flex flex-col gap-2">
                   <Link
                     to={storefrontPath("/cart", storeSlug)}

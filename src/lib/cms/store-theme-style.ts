@@ -8,11 +8,7 @@ export function getStoreThemeStyle(
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
 ): CSSProperties {
   const { vars } = resolveStoreThemeVars(theme, themePackages);
-  const style: CSSProperties & Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(vars)) {
-    style[key] = value;
-  }
+  const style: CSSProperties & Record<string, string> = { ...vars };
 
   if (theme.headingFont) {
     style["--font-heading"] = theme.headingFont;

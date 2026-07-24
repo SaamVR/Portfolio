@@ -117,7 +117,7 @@ export async function upsertStoreSubscription(
     trialEndsAt = null,
   } = input;
 
-  return supabaseAdmin.from("store_subscriptions").upsert(
+  const subscriptionWrite = await supabaseAdmin.from("store_subscriptions").upsert(
     {
       store_id: storeId,
       plan_id: planId,
@@ -129,6 +129,21 @@ export async function upsertStoreSubscription(
     },
     { onConflict: "store_id" },
   );
+
+  if (subscriptionWrite.error) {
+    return subscriptionWrite;
+  }
+
+  const storePlanWrite = await supabaseAdmin
+    .from("stores")
+    .update({ plan: planId })
+    .eq("id", storeId);
+
+  if (storePlanWrite.error) {
+    return storePlanWrite;
+  }
+
+  return subscriptionWrite;
 }
 
 export function addMonths(date: Date, months: number) {

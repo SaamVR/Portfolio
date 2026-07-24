@@ -11,10 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
+import {
+  parseCsvText,
+  parseXlsxBuffer,
+  validateImportRow,
+  buildStoreBatchInsertPayload,
+  SAMPLE_TEMPLATE_CSV,
+  type ParsedImportRow,
+} from "@/lib/cms/product-import";
 
 type Product = Tables<"products">;
 
@@ -48,6 +56,86 @@ const AdminProducts = () => {
   const [search, setSearch] = useState("");
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [dbTypes, setDbTypes] = useState<string[]>([]);
+
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ParsedImportRow[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    setImporting(true);
+
+    try {
+      let rawRecords: Record<string, string>[] = [];
+      if (file.name.endsWith(".xlsx")) {
+        const buffer = await file.arrayBuffer();
+        rawRecords = await parseXlsxBuffer(buffer);
+      } else {
+        const text = await file.text();
+        rawRecords = parseCsvText(text);
+      }
+
+      const validated = rawRecords.map((raw, idx) => validateImportRow(raw, idx + 1));
+      setImportRows(validated);
+      if (validated.length === 0) {
+        toast.error("No data rows found in file");
+      }
+    } catch (err) {
+      console.error("Failed to parse import file:", err);
+      toast.error("Failed to read file. Please ensure it is a valid .csv or .xlsx file.");
+      setImportRows([]);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([SAMPLE_TEMPLATE_CSV], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "product_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExecuteImport = async () => {
+    if (!activeStoreId) {
+      toast.error("No active store selected for import");
+      return;
+    }
+
+    const validRows = importRows.filter((r) => r.isValid);
+    if (validRows.length === 0) {
+      toast.error("No valid rows to import");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const payload = buildStoreBatchInsertPayload(validRows, activeStoreId as string);
+      const { error } = await supabase.from("products").insert(payload);
+
+      if (error) throw error;
+
+      toast.success(`Successfully imported ${payload.length} products`);
+      setImportDialogOpen(false);
+      setImportRows([]);
+      setImportFileName("");
+      const productRows = await fetchProducts();
+      setProducts(productRows);
+    } catch (err) {
+      console.error("Failed to bulk import products:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to import products");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const fetchProducts = useCallback(async () => {
     let nextProducts: Product[] = [];
@@ -224,9 +312,19 @@ const AdminProducts = () => {
           <h1 className="font-heading text-3xl font-bold text-foreground">Products</h1>
           <p className="text-sm text-muted-foreground">{products.length} products total</p>
         </div>
-        <Button data-testid="products-add-button" onClick={openNew} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            data-testid="products-bulk-import-button"
+            onClick={() => setImportDialogOpen(true)}
+            className="gap-2"
+          >
+            <Upload className="h-4 w-4" /> Bulk Import
+          </Button>
+          <Button data-testid="products-add-button" onClick={openNew} className="gap-2">
+            <Plus className="h-4 w-4" /> Add Product
+          </Button>
+        </div>
       </div>
 
       <Input
@@ -403,6 +501,120 @@ const AdminProducts = () => {
             <Button data-testid="products-save-button" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {editing ? "Update" : "Add"} Product
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" /> Bulk Product Import
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-4 bg-card/50">
+              <div>
+                <p className="text-sm font-medium text-foreground">Upload File (.csv or .xlsx)</p>
+                <p className="text-xs text-muted-foreground">Select a structured spreadsheet file to preview and import.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2">
+                  <Download className="h-4 w-4" /> Download Template
+                </Button>
+                <Label htmlFor="bulk-file-upload" className="cursor-pointer">
+                  <span className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow hover:bg-primary/90 gap-2">
+                    <Upload className="h-3.5 w-3.5" /> Select File
+                  </span>
+                  <Input
+                    id="bulk-file-upload"
+                    data-testid="bulk-file-input"
+                    type="file"
+                    accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </Label>
+              </div>
+            </div>
+
+            {importFileName ? (
+              <p className="text-xs text-muted-foreground">File: <span className="font-semibold text-foreground">{importFileName}</span></p>
+            ) : null}
+
+            {importRows.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-md border border-border">
+                  <span>Total Rows: <strong className="text-foreground">{importRows.length}</strong></span>
+                  <span className="text-emerald-600 font-semibold">Valid: {importRows.filter((r) => r.isValid).length}</span>
+                  <span className="text-destructive font-semibold">Invalid: {importRows.filter((r) => !r.isValid).length}</span>
+                </div>
+
+                <div className="max-h-[350px] overflow-auto border border-border rounded-lg">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 bg-muted text-muted-foreground font-medium border-b border-border">
+                      <tr>
+                        <th className="p-2.5 w-10">#</th>
+                        <th className="p-2.5 w-24">Status</th>
+                        <th className="p-2.5">Name</th>
+                        <th className="p-2.5">Price</th>
+                        <th className="p-2.5">Category</th>
+                        <th className="p-2.5">Stock</th>
+                        <th className="p-2.5">Validation Errors</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-card">
+                      {importRows.map((row) => (
+                        <tr key={row.rowIndex} className={row.isValid ? "hover:bg-muted/20" : "bg-destructive/5 hover:bg-destructive/10"}>
+                          <td className="p-2.5 text-muted-foreground">{row.rowIndex}</td>
+                          <td className="p-2.5">
+                            {row.isValid ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20 gap-1 text-[10px]">
+                                <CheckCircle2 className="h-3 w-3" /> Valid
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="gap-1 text-[10px]">
+                                <XCircle className="h-3 w-3" /> Invalid
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="p-2.5 font-medium text-foreground max-w-[150px] truncate">{row.name || <span className="text-muted-foreground italic">Empty</span>}</td>
+                          <td className="p-2.5 text-foreground">{row.price > 0 ? `BDT ${row.price}` : <span className="text-destructive font-mono">0</span>}</td>
+                          <td className="p-2.5 text-muted-foreground">{row.category}</td>
+                          <td className="p-2.5 text-muted-foreground">{row.stock}</td>
+                          <td className="p-2.5">
+                            {row.errors.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {row.errors.map((err, i) => (
+                                  <Badge key={i} variant="outline" className="text-[10px] border-destructive/40 text-destructive bg-destructive/5">
+                                    {err}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-emerald-600 text-[11px]">Ready</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+            <Button
+              data-testid="products-execute-import-button"
+              onClick={handleExecuteImport}
+              disabled={importing || importRows.filter((r) => r.isValid).length === 0}
+              className="gap-2"
+            >
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Import {importRows.filter((r) => r.isValid).length} Valid Products
             </Button>
           </DialogFooter>
         </DialogContent>

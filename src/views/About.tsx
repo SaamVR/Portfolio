@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
@@ -15,30 +16,18 @@ interface AboutSettings {
 
 const iconMap: Record<string, React.ElementType> = { Heart, Globe, Leaf };
 
-const defaultValues = [
-  { icon: "Heart", title: "Customer First", desc: "We focus on clarity, responsiveness, and a buying experience that feels straightforward from discovery to delivery." },
-  { icon: "Globe", title: "Built with Care", desc: "Every collection, service, or offer is shaped to reflect the brand clearly and help shoppers understand what makes it worth choosing." },
-  { icon: "Leaf", title: "Steady Growth", desc: "We improve the store thoughtfully over time, with better presentation, better operations, and a stronger customer experience." },
-];
-
 const About = () => {
   const currentStore = useOptionalStore();
   const storeName = currentStore?.name ?? "This Brand";
   const { data: about, isLoading } = useSiteSettings<AboutSettings>("about_page", currentStore?.id);
+  const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
 
   const title = about?.title || `About ${storeName}`;
-  const defaultContent = `${storeName} is built to offer a clearer, more trustworthy buying experience for customers discovering the brand online.
-
-We started with a simple goal: present what we offer in a way that feels useful, honest, and easy to navigate, with clear details, practical support, and checkout options that fit how our customers buy.
-
-As the store grows, we keep refining the experience across product discovery, communication, and delivery so the brand feels consistent from first visit to completed order.
-
-Our promise is simple: thoughtful presentation, dependable service, and a storefront experience designed to make choosing with confidence easier.`;
-  const content = about?.content || defaultContent;
-  const values = about?.values ?? defaultValues;
+  const content = about?.content?.trim() || currentStore?.description || "";
+  const values = (about?.values ?? []).filter((value) => value?.title?.trim() && value?.desc?.trim());
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead
         title={title}
         description={`Learn about ${storeName} and what the brand stands for.`}
@@ -53,15 +42,18 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
               <AnimatedSection>
                 <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">About</p>
                 <h1 className="mb-6 font-heading text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-                {content.split("\n").filter(Boolean).map((para, i) => (
-                  <p key={i} className="mb-4 text-lg leading-relaxed text-muted-foreground">{para}</p>
-                ))}
+                {content
+                  ? content.split("\n").filter(Boolean).map((para, i) => (
+                      <p key={i} className="mb-4 text-lg leading-relaxed text-muted-foreground">{para}</p>
+                    ))
+                  : <p className="text-lg leading-relaxed text-muted-foreground">{storeName} has not published an about story yet.</p>}
               </AnimatedSection>
             )}
           </div>
         </section>
 
-        <section className="border-t border-border py-20">
+        {values.length > 0 ? (
+          <section className="border-t border-border py-20">
           <div className="container mx-auto px-4">
             <AnimatedSection>
               <h2 className="mb-12 text-center font-heading text-3xl font-bold text-foreground">Why Customers Choose {storeName}</h2>
@@ -81,9 +73,10 @@ Our promise is simple: thoughtful presentation, dependable service, and a storef
               })}
             </div>
           </div>
-        </section>
+          </section>
+        ) : null}
       </PageTransition>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

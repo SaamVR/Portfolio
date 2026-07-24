@@ -50,11 +50,12 @@ import {
   MapPin,
   ShoppingBag,
   HelpCircle,
+  GripVertical,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
+import { Link, useLocation, useSearchParams, useNavigate } from "@/lib/react-router-dom-shim";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import {
   DEFAULT_STORE_CURRENCY_CODE,
@@ -62,12 +63,13 @@ import {
   DEFAULT_STORE_LOCALE,
 } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
-import { createRegistryDefaultBlock, fallbackBlockRegistry, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { ensureRequiredStoreFlowPages, instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
+import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForBlueprint, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
@@ -79,8 +81,16 @@ import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBl
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
-import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TemplateGallery } from "./TemplateGallery";
+import { TemplatePublishDialog } from "@/components/admin/TemplatePublishDialog";
+import { BasicModeEditor } from "@/components/storefront/BasicModeEditor";
+import { DomTreeNavigator } from "@/components/storefront/DomTreeNavigator";
+import { VisualCssInspector } from "@/components/storefront/VisualCssInspector";
+import { TiptapRichTextEditor } from "@/components/admin/TiptapRichTextEditor";
+import type { RichTextDoc } from "@/lib/cms/schema";
+import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
 
 type StoreRecord = {
   id: string;
@@ -102,6 +112,13 @@ type ThemeRecord = {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  aesthetic?: Store["theme"]["aesthetic"] | null;
+  radius_scale?: number | null;
+  density_scale?: number | null;
+  effects?: Store["theme"]["effects"] | null;
+  palette_source?: Store["theme"]["paletteSource"] | null;
+  palette_seed?: string | null;
+  schema_version?: number | null;
   custom_css?: string | null;
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
@@ -122,6 +139,12 @@ type BlockRecord = {
   props: Record<string, unknown> | null;
   sort_order: number | null;
   is_visible: boolean | null;
+  entrance_animation?: StorePageBlock["entranceAnimation"] | null;
+  hover_effect?: StorePageBlock["hoverEffect"] | null;
+  effect_override?: boolean | null;
+  layout_variant?: string | null;
+  custom_html?: string | null;
+  custom_css?: string | null;
 };
 
 type BusinessProfileRecord = {
@@ -137,6 +160,21 @@ type RecoverableDraft = {
 };
 
 type BasicGuideStep = "basics" | "homepage" | "product" | "checkout" | "custom" | "launch";
+
+type SmartPolishSummary = {
+  before: {
+    aesthetic: Store["theme"]["aesthetic"] | "unset";
+    headingFont: string;
+    bodyFont: string;
+    intensity: NonNullable<Store["theme"]["effects"]>["intensity"] | "unset";
+  };
+  after: {
+    aesthetic: NonNullable<Store["theme"]["aesthetic"]>;
+    headingFont: string;
+    bodyFont: string;
+    intensity: NonNullable<Store["theme"]["effects"]>["intensity"];
+  };
+};
 
 const STORE_LAYOUT_PACKAGE_SCHEMA = "ecomcms.storefront-layout.v1";
 
@@ -220,6 +258,39 @@ function mapRecordsToStore(
     themePackages,
     theme?.preset_id ?? blueprint.defaultTheme.presetId,
   );
+  const mappedPages = pages
+    .map((page) =>
+      sanitizeStorePage({
+        id: page.id,
+        slug: page.slug,
+        title: page.title,
+        seoTitle: page.seo_title ?? "",
+        seoDescription: page.seo_description ?? "",
+        isHomepage: page.is_homepage ?? false,
+        blocks: blocks
+          .filter((block) => block.page_id === page.id)
+          .map((block) => ({
+            id: block.id,
+            type: block.block_type,
+            sortOrder: block.sort_order ?? 0,
+            isVisible: block.is_visible ?? true,
+            entranceAnimation: block.entrance_animation ?? undefined,
+            hoverEffect: block.hover_effect ?? undefined,
+            effectOverride: block.effect_override ?? undefined,
+            layoutVariant: block.layout_variant ?? undefined,
+            customHtml: block.custom_html ?? undefined,
+            customCss: block.custom_css ?? undefined,
+            props: block.props ?? {},
+          })),
+      }),
+    )
+    .filter((page): page is StorePage => Boolean(page));
+  const resolvedPages = ensureRequiredStoreFlowPages(
+    mappedPages.length > 0
+      ? applyLegacyHomepageSettingsToPages(mappedPages, siteSettings)
+      : instantiateStorePagesFromBlueprint(blueprint, pageBlueprints),
+    blueprint,
+  );
 
   return storeSchema.parse({
     id: store.id,
@@ -237,36 +308,17 @@ function mapRecordsToStore(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
+      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : blueprint.defaultTheme.radiusScale,
+      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : blueprint.defaultTheme.densityScale,
+      aesthetic: theme?.aesthetic ?? (typeof theme?.components?.aesthetic === "string" ? theme.components.aesthetic as Store["theme"]["aesthetic"] : blueprint.defaultTheme.aesthetic),
+      effects: theme?.effects ?? (typeof theme?.components?.effects === "object" && theme.components.effects ? theme.components.effects as Store["theme"]["effects"] : blueprint.defaultTheme.effects),
+      paletteSource: theme?.palette_source ?? blueprint.defaultTheme.paletteSource,
+      paletteSeed: theme?.palette_seed ?? blueprint.defaultTheme.paletteSeed,
+      schemaVersion: theme?.schema_version ?? blueprint.defaultTheme.schemaVersion ?? 1,
       customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
       customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
-    pages:
-      pages.length > 0
-        ? applyLegacyHomepageSettingsToPages(
-            pages
-              .map((page) =>
-                sanitizeStorePage({
-                  id: page.id,
-                  slug: page.slug,
-                  title: page.title,
-                  seoTitle: page.seo_title ?? "",
-                  seoDescription: page.seo_description ?? "",
-                  isHomepage: page.is_homepage ?? false,
-                  blocks: blocks
-                    .filter((block) => block.page_id === page.id)
-                    .map((block) => ({
-                      id: block.id,
-                      type: block.block_type,
-                      sortOrder: block.sort_order ?? 0,
-                      isVisible: block.is_visible ?? true,
-                      props: block.props ?? {},
-                    })),
-                }),
-              )
-              .filter((page): page is StorePage => Boolean(page)),
-            siteSettings,
-          )
-        : instantiateStorePagesFromBlueprint(blueprint, pageBlueprints),
+    pages: resolvedPages,
   });
 }
 
@@ -279,6 +331,7 @@ export default function CmsPagesManager() {
   const { user, role , activeStoreId} = useAuth();
   const { data: entitlements } = useStoreEntitlements(activeStoreId);
   const location = useLocation();
+  const isTemplateGalleryRoute = location.pathname === "/admin/templates";
   const [searchParams] = useSearchParams();
   const [store, setStore] = useState<Store | null>(null);
   const [selectedPageId, setSelectedPageId] = useState("");
@@ -294,8 +347,9 @@ export default function CmsPagesManager() {
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
   const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
   const [activeTemplateId, setActiveTemplateId] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
-  const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
+  const [previewViewport, setPreviewViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
+  const [smartPolishSummary, setSmartPolishSummary] = useState<SmartPolishSummary | null>(null);
   const [revisions, setRevisions] = useState<Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: StorePageBlock[] }>>([]);
   const [loadingRevisions, setLoadingRevisions] = useState(false);
   const [activeAdvancedCodePanel, setActiveAdvancedCodePanel] = useState<AdvancedCodePanel>("page-json");
@@ -312,16 +366,27 @@ export default function CmsPagesManager() {
   const [desktopPreviewMode, setDesktopPreviewMode] = useState<"side" | "below" | "minimized" | "hidden">("side");
   const [desktopPreviewSide, setDesktopPreviewSide] = useState<"left" | "right">("right");
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
+  const [hasCheckedBasicPreview, setHasCheckedBasicPreview] = useState(false);
   const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
-  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info">("pages");
+  const navigate = useNavigate();
+
+  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info" | "gallery">(
+    isTemplateGalleryRoute ? "gallery" : "pages",
+  );
+  const [draggedAdvancedBlockId, setDraggedAdvancedBlockId] = useState<string | null>(null);
   const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
-  const builderMode = location.pathname.includes("/advanced") ? "advanced" : "basic";
+  const builderMode = location.pathname.includes("/advanced")
+    ? "advanced"
+    : location.pathname.includes("/basic")
+      ? "basic"
+      : "manager";
   const isAdvancedEditor = builderMode === "advanced";
+  const isBasicEditor = builderMode === "basic";
   const basicEditorHref = buildPageBuilderPath("basic", {
     pageId: requestedPageId,
     blockId: requestedBlockId || null,
@@ -352,12 +417,7 @@ export default function CmsPagesManager() {
     [activeBlueprint, pageBlueprints],
   );
   const availableBlockRegistry = useMemo(
-    () =>
-      blockRegistry.filter(
-        (block) =>
-          block.compatibleBusinessFamilies.includes(activeBlueprint.businessFamily)
-          && block.requiredCapabilities.every((capability) => activeBlueprint.capabilities.includes(capability)),
-      ),
+    () => filterBlockRegistryForBlueprint(blockRegistry, activeBlueprint),
     [activeBlueprint, blockRegistry],
   );
   const isMissingThemeReference = useMemo(
@@ -465,9 +525,9 @@ export default function CmsPagesManager() {
           .select("blueprint_id, blueprint_version, business_family, catalog_mode")
           .eq("store_id", storeRecord.id)
           .maybeSingle(),
-        supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
+        supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
         supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
-        supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible").eq("store_id", storeRecord.id).order("sort_order"),
+        supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css").eq("store_id", storeRecord.id).order("sort_order"),
         supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
         loadStoreBlueprints(supabase),
         loadPageBlueprints(supabase),
@@ -608,10 +668,13 @@ export default function CmsPagesManager() {
     return () => window.clearTimeout(timeout);
   }, [currentSnapshot, draftStorageKey, hasUnsavedChanges, store]);
 
-  const selectedPage = useMemo(
-    () => store?.pages.find((page) => page.id === selectedPageId) ?? null,
-    [store, selectedPageId],
-  );
+  const selectedPage = useMemo(() => {
+    if (!store) return null;
+    return store.pages.find((page) => page.id === selectedPageId)
+      ?? store.pages.find((page) => page.isHomepage)
+      ?? store.pages[0]
+      ?? null;
+  }, [store, selectedPageId]);
 
   const selectedBlock = useMemo(
     () => selectedPage?.blocks.find((block) => block.id === selectedBlockId) ?? selectedPage?.blocks[0] ?? null,
@@ -623,6 +686,11 @@ export default function CmsPagesManager() {
 
     if (requestedPageId && store.pages.some((page) => page.id === requestedPageId) && requestedPageId !== selectedPageId) {
       setSelectedPageId(requestedPageId);
+      return;
+    }
+
+    if (!store.pages.some((page) => page.id === selectedPageId)) {
+      setSelectedPageId(store.pages.find((page) => page.isHomepage)?.id ?? store.pages[0]?.id ?? "");
     }
 
     setSelectedBlockId(requestedBlockId);
@@ -759,7 +827,21 @@ export default function CmsPagesManager() {
         },
         components: {
           borderRadius: blueprint.defaultTheme.borderRadius,
+          aesthetic: blueprint.defaultTheme.aesthetic,
+          effects: blueprint.defaultTheme.effects,
         },
+        aesthetic: blueprint.defaultTheme.aesthetic ?? "minimal",
+        radius_scale: blueprint.defaultTheme.radiusScale ?? 1,
+        density_scale: blueprint.defaultTheme.densityScale ?? 1,
+        effects: blueprint.defaultTheme.effects ?? {
+          scrollReveals: false,
+          hoverEffects: true,
+          parallax: false,
+          intensity: "medium",
+        },
+        palette_source: blueprint.defaultTheme.paletteSource ?? null,
+        palette_seed: blueprint.defaultTheme.paletteSeed ?? null,
+        schema_version: blueprint.defaultTheme.schemaVersion ?? 1,
         resolved_tokens: {
           light: themePackage.tokens.light,
           dark: themePackage.tokens.dark,
@@ -793,6 +875,12 @@ export default function CmsPagesManager() {
             props: block.props as any,
             sort_order: block.sortOrder,
             is_visible: block.isVisible,
+            entrance_animation: block.entranceAnimation ?? null,
+            hover_effect: block.hoverEffect ?? null,
+            effect_override: block.effectOverride ?? null,
+            layout_variant: block.layoutVariant ?? null,
+            custom_html: block.customHtml ?? null,
+            custom_css: block.customCss ?? null,
           })),
           { onConflict: "id" },
         );
@@ -1022,7 +1110,7 @@ export default function CmsPagesManager() {
   const updateRichTextBlockField = (
     blockId: string,
     field: "eyebrow" | "title" | "body" | "align",
-    value: string,
+    value: string | RichTextDoc,
   ) => {
     updateBlock(blockId, (current) => {
       if (current.type !== "rich-text") {
@@ -1057,6 +1145,135 @@ export default function CmsPagesManager() {
         },
       } as StorePageBlock;
     });
+  };
+
+  const updateAnyBlockProps = (blockId: string, patch: Record<string, unknown>) => {
+    updateBlock(blockId, (current) => ({
+      ...current,
+      props: {
+        ...current.props,
+        ...patch,
+      },
+    } as StorePageBlock));
+  };
+
+  const updateBlockMeta = (blockId: string, patch: Partial<StorePageBlock>) => {
+    updateBlock(blockId, (current) => ({
+      ...current,
+      ...patch,
+    } as StorePageBlock));
+  };
+
+  const reorderBlocks = (startIndex: number, endIndex: number) => {
+    updateSelectedPage((page) => {
+      if (startIndex < 0 || endIndex < 0 || startIndex >= page.blocks.length || endIndex >= page.blocks.length) {
+        return page;
+      }
+
+      const blocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
+      const [movedBlock] = blocks.splice(startIndex, 1);
+      blocks.splice(endIndex, 0, movedBlock);
+
+      return {
+        ...page,
+        blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })),
+      };
+    });
+  };
+
+  const addBlockOfType = (type: StorePageBlock["type"]) => {
+    if (!selectedPage) return;
+
+    const nextBlock = createRegistryDefaultBlock(type, selectedPage.blocks.length);
+    updateSelectedPage((page) => ({
+      ...page,
+      blocks: [...page.blocks, nextBlock],
+    }));
+    setSelectedBlockId(nextBlock.id);
+    toast.success("Section added to this page.");
+  };
+
+  const updateThemeVar = (cssKey: string, hexValue: string) => {
+    const next = hexToHslChannels(hexValue);
+    if (!next || !store) return;
+
+    updateStoreTheme({
+      customCssVars: {
+        ...store.theme.customCssVars,
+        [cssKey]: next,
+      },
+      paletteSource: "manual",
+    });
+  };
+
+  const updateThemeVars = (hexVars: Record<string, string>) => {
+    const nextVars = Object.entries(hexVars).reduce<Record<string, string>>((acc, [key, value]) => {
+      const next = hexToHslChannels(value);
+      if (next) {
+        acc[key] = next;
+      }
+      return acc;
+    }, {});
+
+    if (Object.keys(nextVars).length === 0) return;
+
+    commitStoreChange((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        theme: {
+          ...current.theme,
+          customCssVars: {
+            ...current.theme.customCssVars,
+            ...nextVars,
+          },
+          paletteSource: "generated",
+        },
+      };
+    });
+  };
+
+  const updateThemePackage = (packageId: string) => {
+    if (!store) return;
+
+    const themePackage = resolveThemePackageById(packageId, themePackages, packageId);
+    updateStoreTheme({
+      presetId: themePackage.presetId,
+      themePackageId: themePackage.id,
+      customCssVars: themePackage.tokens[store.theme.mode] ?? {},
+    });
+  };
+
+  const updateThemeMode = (mode: "light" | "dark") => {
+    updateStoreTheme({ mode });
+  };
+
+  const updateFont = (target: "heading" | "body", fontFamily: string) => {
+    updateStoreTheme(target === "heading" ? { headingFont: fontFamily } : { bodyFont: fontFamily });
+  };
+
+  const updateThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
+    updateStoreTheme({ aesthetic });
+  };
+
+  const updateThemeEffect = (
+    effectKey: "scrollReveals" | "hoverEffects" | "parallax" | "intensity",
+    value: boolean | "subtle" | "medium" | "bold",
+  ) => {
+    updateStoreTheme({
+      effects: {
+        scrollReveals: store?.theme.effects?.scrollReveals ?? false,
+        hoverEffects: store?.theme.effects?.hoverEffects ?? true,
+        parallax: store?.theme.effects?.parallax ?? false,
+        intensity: store?.theme.effects?.intensity ?? "medium",
+        [effectKey]: value,
+      },
+    });
+  };
+
+  const selectPage = (pageId: string) => {
+    setSelectedPageId(pageId);
+    setSelectedBlockId("");
   };
 
   const exportStoreLayout = () => {
@@ -1143,6 +1360,68 @@ export default function CmsPagesManager() {
       toast.success("Layout imported. Review it, then save Page Builder changes.");
     } catch (error: any) {
       toast.error(error.message || "Failed to import storefront layout.");
+    }
+  };
+
+  const applyThemeBundle = (bundle: ThemeExportBundle) => {
+    if (!store) return false;
+
+    const changeSummary = [
+      "Theme tokens and typography",
+      bundle.pages?.length ? `${bundle.pages.length} page layout${bundle.pages.length === 1 ? "" : "s"}` : null,
+      bundle.type === "full-store" ? "full-store structure" : null,
+    ].filter(Boolean).join(", ");
+
+    if (!window.confirm(`Apply this ${bundle.type.replace(/-/g, " ")} bundle? It will update: ${changeSummary || "theme settings"}. Review the draft before saving.`)) {
+      return false;
+    }
+
+    if (hasUnsavedChanges && !window.confirm("You already have unsaved Page Builder edits. Continue and merge the imported bundle into this draft?")) {
+      return false;
+    }
+
+    try {
+      const importedPages = (bundle.pages || []).flatMap((page, pageIndex) => {
+        const pageId = crypto.randomUUID();
+        const sanitizedPage = sanitizeStorePage({
+          ...page,
+          id: pageId,
+          isHomepage: Boolean(page.isHomepage),
+          blocks: sanitizeStoreBlocks(page.blocks ?? []).map((block, blockIndex) => ({
+            ...block,
+            id: crypto.randomUUID(),
+            sortOrder: blockIndex,
+          })),
+        });
+
+        return sanitizedPage ? [sanitizedPage] : [];
+      });
+
+      const normalizedPages = importedPages.length > 0 ? importedPages.map((page, index) => ({
+        ...page,
+        isHomepage: index === 0,
+        slug: index === 0 ? "/" : page.slug === "/" ? `/page-${index + 1}` : page.slug,
+      })) : store.pages;
+
+      const candidate = storeSchema.parse({
+        ...store,
+        theme: bundle.theme,
+        pages: normalizedPages,
+      });
+
+      commitStoreChange(candidate);
+      if (importedPages.length > 0) {
+        setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
+      }
+      setSelectedBlockId("");
+      
+      const nextPreviewHref = withStoreId(candidate.pages.find((p) => p.isHomepage)?.slug ?? "/", candidate.id);
+      toast.success("Template applied. Let's customize it!");
+      navigate(nextPreviewHref);
+      return true;
+    } catch (error: any) {
+      toast.error(error.message || "Failed to apply template.");
+      return false;
     }
   };
 
@@ -1235,16 +1514,31 @@ export default function CmsPagesManager() {
     const revision = revisions.find((item) => item.id === revisionId);
     if (!revision) return;
 
-    if (hasUnsavedChanges && !window.confirm("Restore this revision and replace your current unsaved edits?")) {
+    const sanitizedSnapshot = sanitizeStoreBlocks(revision.blocks_snapshot).map((block, index) => ({
+      ...block,
+      sortOrder: index,
+    }));
+    const currentBlocks = selectedPage?.blocks ?? [];
+    const currentTypes = currentBlocks.map((block) => block.type);
+    const revisionTypes = sanitizedSnapshot.map((block) => block.type);
+    const changedTypes = Array.from(new Set(revisionTypes.filter((type, index) => currentTypes[index] !== type)));
+    const summary = [
+      `Restore "${revision.revision_label}"?`,
+      "",
+      `Current sections: ${currentBlocks.length}`,
+      `Revision sections: ${sanitizedSnapshot.length}`,
+      changedTypes.length > 0 ? `Changed block types: ${changedTypes.slice(0, 4).join(", ")}${changedTypes.length > 4 ? ", ..." : ""}` : "Block types match the current page order.",
+      hasUnsavedChanges ? "" : "",
+      hasUnsavedChanges ? "Your current unsaved edits will be replaced." : "This will load the saved snapshot into the editor.",
+    ].filter(Boolean).join("\n");
+
+    if (!window.confirm(summary)) {
       return;
     }
 
     updateSelectedPage((page) => ({
       ...page,
-      blocks: sanitizeStoreBlocks(revision.blocks_snapshot).map((block, index) => ({
-        ...block,
-        sortOrder: index,
-      })),
+      blocks: sanitizedSnapshot,
     }));
 
     toast.success("Revision restored into the editor. Save Page Builder changes to publish it.");
@@ -1382,7 +1676,7 @@ export default function CmsPagesManager() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild className="gap-2">
               <Link to="/admin">
-                <StoreIcon className="h-4 w-4" />
+                <StoreIcon className="h-5 w-5" />
                 Go To Dashboard
               </Link>
             </Button>
@@ -1454,7 +1748,11 @@ export default function CmsPagesManager() {
   const previewHref = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain }, previewPath || "/");
   
   const previewBlocks = selectedPage ? [...selectedPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  const previewFrameClassName = previewViewport === "mobile" ? "mx-auto w-full max-w-[420px]" : "w-full";
+  const previewFrameClassName = previewViewport === "mobile"
+    ? "mx-auto w-full max-w-[420px]"
+    : previewViewport === "tablet"
+      ? "mx-auto w-full max-w-[820px]"
+      : "w-full";
   const visibleBlockCount = selectedPage?.blocks.filter((block) => block.isVisible).length ?? 0;
   const selectedPageNumber = selectedPage ? store.pages.findIndex((page) => page.id === selectedPage.id) + 1 : 0;
   const heroBlock = selectedPage?.blocks.find((block) => block.type === "hero") ?? null;
@@ -1653,6 +1951,7 @@ export default function CmsPagesManager() {
         { id: "page-builder-details", label: "Details" },
         { id: "page-builder-blocks", label: "Blocks" },
         { id: "page-builder-preview", label: "Preview" },
+        { id: "advanced-visual-inspector", label: "Inspector" },
         { id: "advanced-code-panels", label: "Code" },
         { id: "advanced-revisions", label: "Revisions" },
       ]
@@ -1984,12 +2283,18 @@ export default function CmsPagesManager() {
   const openPreviewWorkspace = () => {
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
       setPreviewViewport("mobile");
+      if (builderMode === "basic") setHasCheckedBasicPreview(true);
       setIsMobilePreviewOpen(true);
       return;
     }
 
     setDesktopPreviewMode((current) => (current === "hidden" || current === "minimized" ? "side" : current));
     scrollToBuilderSection("page-builder-preview");
+  };
+  const openBasicPreviewOverlay = (viewport: "desktop" | "tablet" | "mobile" = previewViewport) => {
+    setPreviewViewport(viewport);
+    setHasCheckedBasicPreview(true);
+    setIsMobilePreviewOpen(true);
   };
 
   const copyBuilderText = async (value: string, label: string) => {
@@ -2052,6 +2357,12 @@ export default function CmsPagesManager() {
           type: parsed.type ?? selectedBlock.type,
           sortOrder: selectedBlock.sortOrder,
           isVisible: parsed.isVisible ?? selectedBlock.isVisible,
+          entranceAnimation: parsed.entranceAnimation ?? selectedBlock.entranceAnimation,
+          hoverEffect: parsed.hoverEffect ?? selectedBlock.hoverEffect,
+          effectOverride: parsed.effectOverride ?? selectedBlock.effectOverride,
+          layoutVariant: parsed.layoutVariant ?? selectedBlock.layoutVariant,
+          customHtml: parsed.customHtml ?? selectedBlock.customHtml,
+          customCss: parsed.customCss ?? selectedBlock.customCss,
           props: parsed.props ?? selectedBlock.props,
         } as StorePageBlock,
       ]);
@@ -2065,6 +2376,8 @@ export default function CmsPagesManager() {
         ...sanitizedBlock,
         id: selectedBlock.id,
         sortOrder: selectedBlock.sortOrder,
+        customHtml: parsed.customHtml ?? sanitizedBlock.customHtml,
+        customCss: parsed.customCss ?? sanitizedBlock.customCss,
       }));
       toast.success("Applied selected block JSON.");
     } catch (error: any) {
@@ -2077,15 +2390,19 @@ export default function CmsPagesManager() {
     toast.success("Applied custom theme CSS to the local draft.");
   };
 
-  const previewCanvas = (
+  const renderPreviewCanvas = (options?: { fullHeight?: boolean; interactive?: boolean }) => {
+    const interactive = options?.interactive ?? true;
+    const fullHeight = options?.fullHeight ?? false;
+
+    return (
     <StoreProvider store={store}>
       <StoreThemeScope theme={store.theme}>
-        <div className={previewFrameClassName}>
+        <div className={cn(previewFrameClassName, "[&_.animate-blur-in]:!opacity-100 [&_.animate-blur-in]:!blur-none [&_.animate-blur-in]:!filter-none [&_.animate-fade-in]:!opacity-100 [&_.animate-slide-up]:!opacity-100")}>
           <div className="overflow-hidden rounded-xl border border-border bg-background">
             <div className="border-b border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
               {selectedPage?.title ?? "Preview"}
             </div>
-            <div className={cn("overflow-y-auto", previewViewport === "mobile" ? "max-h-[70vh]" : "max-h-[720px]")}>
+            <div className={cn("overflow-y-auto", fullHeight ? "max-h-none" : previewViewport === "mobile" ? "max-h-[70vh]" : "max-h-[720px]")}>
               {previewBlocks.length > 0 ? (
                 previewBlocks.map((block, index) => {
                   const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
@@ -2095,95 +2412,60 @@ export default function CmsPagesManager() {
                     <div
                       key={block.id}
                       id={`cms-preview-block-${block.id}`}
-                      role="button"
-                      tabIndex={0}
+                      role={interactive ? "button" : undefined}
+                      tabIndex={interactive ? 0 : undefined}
                       onKeyDown={(e) => {
+                        if (!interactive) return;
                         if (e.key === "Enter" || e.key === " ") {
                           setSelectedBlockId(block.id);
                         }
                       }}
-                      onClick={() => setSelectedBlockId(block.id)}
+                      onClick={() => interactive && setSelectedBlockId(block.id)}
                       className={cn(
-                        "group relative block w-full cursor-pointer text-left transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        isFocused && "bg-primary/5",
+                        "group relative block w-full text-left transition-colors",
+                        interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        interactive && isFocused && "bg-primary/5",
                       )}
                     >
-                      <div
-                        className={cn(
-                          "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-lg border bg-background/90 px-3 py-2 opacity-0 shadow-sm backdrop-blur transition-opacity",
-                          "group-hover:opacity-100 group-focus-visible:opacity-100",
-                          isFocused ? "border-primary/40 opacity-100" : "border-border/80",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-foreground">
-                            {index + 1}. {blockMeta?.label ?? block.type}
-                          </p>
-                          <p className="truncate text-[11px] text-muted-foreground">{block.type}</p>
+                      {interactive ? (
+                        <div
+                          className={cn(
+                            "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-lg border bg-background/90 px-3 py-2 opacity-0 shadow-sm backdrop-blur transition-opacity",
+                            "group-hover:opacity-100 group-focus-visible:opacity-100",
+                            isFocused ? "border-primary/40 opacity-100" : "border-border/80",
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-foreground">
+                              {index + 1}. {blockMeta?.label ?? block.type}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">{block.type}</p>
+                          </div>
+                          <Badge variant={isFocused ? "secondary" : "outline"}>
+                            {isFocused ? "Editing" : "Select"}
+                          </Badge>
                         </div>
-                        <Badge variant={isFocused ? "secondary" : "outline"}>
-                          {isFocused ? "Editing" : "Select"}
-                        </Badge>
-                      </div>
-                      <div
-                        className={cn(
-                          "absolute inset-x-3 bottom-3 z-20 flex flex-wrap justify-end gap-2 opacity-0 transition-opacity",
-                          "group-hover:opacity-100 group-focus-visible:opacity-100",
-                          isFocused && "opacity-100",
-                        )}
-                      >
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={isFocused ? "secondary" : "outline"}
-                          className="h-8"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedBlockId(block.id);
-                          }}
+                      ) : null}
+                      {interactive ? (
+                        <div
+                          className={cn(
+                            "absolute inset-x-3 bottom-3 z-20 flex flex-wrap justify-end gap-2 opacity-0 transition-opacity",
+                            "group-hover:opacity-100 group-focus-visible:opacity-100",
+                            isFocused && "opacity-100",
+                          )}
                         >
-                          {isFocused ? "Focused" : "Edit"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 bg-background/95"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }));
-                          }}
-                        >
-                          {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 bg-background/95"
-                          disabled={index === 0}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            moveBlock(block.id, -1);
-                          }}
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 bg-background/95"
-                          disabled={index === previewBlocks.length - 1}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            moveBlock(block.id, 1);
-                          }}
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                        {isAdvancedEditor ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isFocused ? "secondary" : "outline"}
+                            className="h-8"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedBlockId(block.id);
+                            }}
+                          >
+                            {isFocused ? "Focused" : "Edit"}
+                          </Button>
                           <Button
                             type="button"
                             size="icon"
@@ -2191,28 +2473,68 @@ export default function CmsPagesManager() {
                             className="h-8 w-8 bg-background/95"
                             onClick={(event) => {
                               event.stopPropagation();
-                              duplicateBlock(block.id);
+                              updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }));
                             }}
                           >
-                            <Copy className="h-4 w-4" />
+                            {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                           </Button>
-                        ) : null}
-                        {isAdvancedEditor ? (
                           <Button
                             type="button"
                             size="icon"
                             variant="outline"
-                            className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
+                            className="h-8 w-8 bg-background/95"
+                            disabled={index === 0}
                             onClick={(event) => {
                               event.stopPropagation();
-                              removeBlock(block.id);
+                              moveBlock(block.id, -1);
                             }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <ArrowUp className="h-4 w-4" />
                           </Button>
-                        ) : null}
-                      </div>
-                      <div className={cn("transition-all", isFocused && "ring-2 ring-inset ring-primary/30")}>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 bg-background/95"
+                            disabled={index === previewBlocks.length - 1}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              moveBlock(block.id, 1);
+                            }}
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                          {isAdvancedEditor ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              className="h-8 w-8 bg-background/95"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                duplicateBlock(block.id);
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                          {isAdvancedEditor ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeBlock(block.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className={cn("transition-all", interactive && isFocused && "ring-2 ring-inset ring-primary/30")}>
                         <StorefrontBlockRenderer block={block} />
                       </div>
                     </div>
@@ -2226,10 +2548,259 @@ export default function CmsPagesManager() {
         </div>
       </StoreThemeScope>
     </StoreProvider>
-  );
+    );
+  };
+  const previewCanvas = renderPreviewCanvas();
+  const cleanPreviewCanvas = renderPreviewCanvas({ fullHeight: true, interactive: false });
+
+  if (workspaceTab === "gallery") {
+    return (
+      <TemplateGallery
+        store={store}
+        applyThemeBundle={applyThemeBundle}
+      />
+    );
+  }
+
+  if (isBasicEditor && !selectedPage) {
+    return (
+      <AdminRecoveryPanel
+        title="Opening Basic Editor"
+        description="Basic mode is preparing the first editable page for this store."
+        loadingLabel="Finding the homepage and storefront sections."
+        retryLabel="Reload Basic Editor"
+        onRetry={() => void loadStore()}
+      />
+    );
+  }
+
+  if (isBasicEditor && selectedPage) {
+    const vibeOptions: Array<{ label: string; aesthetic: NonNullable<Store["theme"]["aesthetic"]>; heading: string; body: string }> = [
+      { label: "Minimal", aesthetic: "minimal", heading: "Inter", body: "Inter" },
+      { label: "Glass", aesthetic: "glassmorphism", heading: "Poppins", body: "Inter" },
+      { label: "Fluid", aesthetic: "fluid", heading: "Raleway", body: "Nunito" },
+      { label: "Cubic", aesthetic: "brutalist", heading: "Oswald", body: "Lato" },
+      { label: "Editorial", aesthetic: "editorial", heading: "Playfair Display", body: "Source Sans 3" },
+      { label: "Luxury", aesthetic: "dark-luxury", heading: "Playfair Display", body: "Inter" },
+      { label: "Pop", aesthetic: "playful-pop", heading: "Montserrat", body: "Nunito" },
+    ];
+
+    const applySmartPolish = () => {
+      const nextVibe = vibeOptions[Math.floor(Math.random() * vibeOptions.length)];
+      const beforeSummary: SmartPolishSummary["before"] = {
+        aesthetic: store.theme.aesthetic ?? "unset",
+        headingFont: store.theme.headingFont ?? "Default heading",
+        bodyFont: store.theme.bodyFont ?? "Default body",
+        intensity: store.theme.effects?.intensity ?? "unset",
+      };
+      updateThemeAesthetic(nextVibe.aesthetic);
+      updateFont("heading", nextVibe.heading);
+      updateFont("body", nextVibe.body);
+      updateThemeEffect("scrollReveals", true);
+      updateThemeEffect("hoverEffects", true);
+      updateThemeEffect("intensity", nextVibe.aesthetic === "minimal" ? "subtle" : "medium");
+      updateStoreTheme({
+        radiusScale: nextVibe.aesthetic === "brutalist" ? 0.1 : nextVibe.aesthetic === "playful-pop" ? 0.9 : 0.55,
+        densityScale: nextVibe.aesthetic === "editorial" ? 0.75 : 0.5,
+        paletteSource: "generated",
+        paletteSeed: `${nextVibe.aesthetic}-${Date.now()}`,
+      });
+      setRevisionLabel(`Smart Polish checkpoint - ${nextVibe.label}`);
+      setSmartPolishSummary({
+        before: beforeSummary,
+        after: {
+          aesthetic: nextVibe.aesthetic,
+          headingFont: nextVibe.heading,
+          bodyFont: nextVibe.body,
+          intensity: nextVibe.aesthetic === "minimal" ? "subtle" : "medium",
+        },
+      });
+      toast.success("Smart Polish applied. Review the preview before saving.");
+    };
+
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-background">
+        <div className="sticky top-0 z-30 border-b border-border/70 bg-background/95 px-3 py-3 backdrop-blur-xl sm:px-4">
+          <div className="mx-auto flex max-w-[1800px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={store.isPublished ? "default" : "secondary"}>{store.isPublished ? "Published" : "Draft"}</Badge>
+                <Badge variant={hasUnsavedChanges ? "secondary" : "outline"}>{hasUnsavedChanges ? "Unsaved changes" : "Saved"}</Badge>
+                <Badge variant="outline">Basic Mode</Badge>
+                {lastDraftSavedAt ? <Badge variant="outline" className="hidden sm:inline-flex">Autosaved {lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</Badge> : null}
+              </div>
+              <h1 className="mt-2 truncate text-xl font-semibold text-foreground md:text-2xl">Basic Editor: {store.name}</h1>
+              <p className="mt-1 hidden text-sm text-muted-foreground sm:block">Simple first glance, powerful underneath: guided setup, layout control, theme polish, and live preview.</p>
+            </div>
+            <div className="hidden flex-wrap items-center gap-2 sm:flex">
+              <Button variant="outline" onClick={undoStoreChange} disabled={undoStack.length === 0} className="gap-2">
+                <Undo2 className="h-4 w-4" />
+                Undo
+              </Button>
+              <Button variant="outline" onClick={redoStoreChange} disabled={redoStack.length === 0} className="gap-2">
+                <Redo2 className="h-4 w-4" />
+                Redo
+              </Button>
+              <Button variant="outline" asChild className="gap-2">
+                <Link to={advancedEditorHref}>
+                  <Code2 className="h-4 w-4" />
+                  Advanced
+                </Link>
+              </Button>
+              <Button onClick={() => void saveAll()} disabled={saving} className="gap-2">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto grid max-w-[1800px] gap-4 p-3 pb-36 sm:p-4 sm:pb-32 xl:grid-cols-[460px_minmax(0,1fr)] xl:pb-4">
+          <aside className="min-h-[calc(100dvh-8rem)] overflow-hidden rounded-lg border border-border bg-card shadow-sm xl:min-h-[calc(100vh-8rem)]">
+            <div className="flex h-full min-h-[calc(100dvh-8rem)] flex-col pb-20 xl:min-h-[calc(100vh-8rem)] xl:pb-0">
+              <div className="border-b border-border bg-muted/20 p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Quick Polish</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Improve spacing, type, motion, and style direction in one pass.</p>
+                  </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={applySmartPolish} className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Polish
+                  </Button>
+                </div>
+                {smartPolishSummary ? (
+                  <div className="mt-3 rounded-lg border border-border bg-background/80 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Smart Polish Applied</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {smartPolishSummary.before.aesthetic} moved to {smartPolishSummary.after.aesthetic}, with {smartPolishSummary.after.headingFont} / {smartPolishSummary.after.bodyFont}.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+              <BasicModeEditor
+                store={store}
+                page={selectedPage}
+                allPages={store.pages}
+                updateBlockProps={updateAnyBlockProps}
+                updateBlockMeta={updateBlockMeta}
+                reorderBlocks={reorderBlocks}
+                updateThemeVar={updateThemeVar}
+                updateThemeVars={updateThemeVars}
+                updateThemePackage={updateThemePackage}
+                updateThemeMode={updateThemeMode}
+                updateFont={updateFont}
+                updateThemeAesthetic={updateThemeAesthetic}
+                updateThemeEffect={updateThemeEffect}
+                selectPage={selectPage}
+                addBlockOfType={addBlockOfType}
+                removeBlock={removeBlock}
+                duplicateBlock={duplicateBlock}
+                previewChecked={hasCheckedBasicPreview}
+                availableBlocks={availableBlockRegistry}
+              />
+            </div>
+          </aside>
+
+          <main className="hidden min-h-[calc(100vh-8rem)] rounded-lg border border-border bg-card/70 p-4 shadow-sm xl:block">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Live Preview</p>
+                <p className="mt-1 text-xs text-muted-foreground">Click a section in the preview to focus it. Use Full Screen for a clean customer-eye check.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center rounded-lg border border-border p-1">
+                  <Button type="button" size="icon" variant={previewViewport === "desktop" ? "secondary" : "ghost"} className="h-8 w-8" onClick={() => setPreviewViewport("desktop")} title="Desktop preview">
+                    <Monitor className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant={previewViewport === "tablet" ? "secondary" : "ghost"} className="h-8 w-8" onClick={() => setPreviewViewport("tablet")} title="Tablet preview">
+                    <PanelsTopLeft className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" size="icon" variant={previewViewport === "mobile" ? "secondary" : "ghost"} className="h-8 w-8" onClick={() => {
+                    setPreviewViewport("mobile");
+                    setHasCheckedBasicPreview(true);
+                  }} title="Mobile preview">
+                    <Smartphone className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => openBasicPreviewOverlay(previewViewport)} className="gap-2">
+                  <Eye className="h-4 w-4" />
+                  Full Screen
+                </Button>
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <a href={previewHref} target="_blank" rel="noreferrer">Open Store</a>
+                </Button>
+              </div>
+            </div>
+            {previewCanvas}
+          </main>
+        </div>
+
+        <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center px-3 xl:hidden">
+          <div className="pointer-events-auto flex w-full max-w-[360px] items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-2xl backdrop-blur-xl">
+            <Button type="button" variant="outline" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => openBasicPreviewOverlay("mobile")} title="Preview" data-testid="basic-mobile-preview-button">
+              <Eye className="h-4 w-4" />
+              Preview
+            </Button>
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={undoStoreChange} disabled={undoStack.length === 0} title="Undo">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <Button type="button" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => void saveAll()} disabled={saving} title="Save">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved"}
+            </Button>
+          </div>
+        </div>
+
+        <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
+          <SheetContent side="bottom" className="inset-0 h-[100dvh] max-h-[100dvh] w-screen overflow-y-auto border-0 p-0 duration-0 data-[state=open]:duration-0 data-[state=open]:slide-in-from-bottom-0" data-testid="basic-preview-overlay">
+            <SheetHeader className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-3 text-left backdrop-blur-xl sm:px-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <SheetTitle>Full Screen Preview</SheetTitle>
+                  <SheetDescription className="truncate">{selectedPage.title} rendered with current Basic Mode draft.</SheetDescription>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-full" onClick={() => setIsMobilePreviewOpen(false)}>
+                  Close
+                </Button>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "desktop" ? "secondary" : "outline"} onClick={() => setPreviewViewport("desktop")} data-testid="basic-preview-device-desktop" data-active={previewViewport === "desktop"}>
+                  <Monitor className="h-4 w-4" />
+                  <span className="text-xs">Desktop</span>
+                </Button>
+                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "tablet" ? "secondary" : "outline"} onClick={() => setPreviewViewport("tablet")} data-testid="basic-preview-device-tablet" data-active={previewViewport === "tablet"}>
+                  <PanelsTopLeft className="h-4 w-4" />
+                  <span className="text-xs">Tablet</span>
+                </Button>
+                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "mobile" ? "secondary" : "outline"} onClick={() => setPreviewViewport("mobile")} data-testid="basic-preview-device-mobile" data-active={previewViewport === "mobile"}>
+                  <Smartphone className="h-4 w-4" />
+                  <span className="text-xs">Mobile</span>
+                </Button>
+              </div>
+            </SheetHeader>
+            <div className="p-3 sm:p-4">{cleanPreviewCanvas}</div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {isAdvancedEditor && selectedPage ? (
+        <DomTreeNavigator
+          page={selectedPage}
+          selectedBlockId={selectedBlockId}
+          onSelectBlock={setSelectedBlockId}
+          onMoveBlock={moveBlock}
+          onToggleVisibility={(blockId, isVisible) => updateBlockMeta(blockId, { isVisible })}
+          onRemoveBlock={removeBlock}
+        />
+      ) : null}
       <div className="rounded-lg border border-border bg-card/70 p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 space-y-3">
@@ -2241,20 +2812,20 @@ export default function CmsPagesManager() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-normal text-foreground">
-                  {isAdvancedEditor ? "Advanced Editing" : "Basic Editing"}
+                  {isAdvancedEditor ? "Advanced Editing" : "Page Builder"}
                 </h1>
                 <Badge variant={isAdvancedEditor ? "secondary" : "outline"}>
-                  {isAdvancedEditor ? "Full workspace" : "Merchant-safe workspace"}
+                  {isAdvancedEditor ? "Full workspace" : "Storefront manager"}
                 </Badge>
               </div>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                 {isAdvancedEditor
                   ? `Manage storefront pages, templates, structure, revisions, and deep block controls for ${store.name}.`
-                  : `Update storefront content, theme tokens, visibility, and page details for ${store.name} with simpler navigation.`}
+                  : `Manage storefront pages, templates, revisions, and launch tools for ${store.name}.`}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant={isAdvancedEditor ? "outline" : "secondary"} size="sm" className="rounded-full">
+              <Button asChild variant="outline" size="sm" className="rounded-full">
                 <Link to={basicEditorHref}>Basic Editing</Link>
               </Button>
               <Button asChild variant={isAdvancedEditor ? "secondary" : "outline"} size="sm" className="rounded-full">
@@ -2284,7 +2855,7 @@ export default function CmsPagesManager() {
                 <p className="mt-1 truncate text-sm font-semibold text-foreground">{store.slug}</p>
               </div>
             </div>
-            {!isAdvancedEditor ? (
+            {isBasicEditor ? (
               <div className="rounded-2xl border border-border/80 bg-background/70 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -2405,10 +2976,20 @@ export default function CmsPagesManager() {
               <span className="hidden sm:inline">Open Preview</span>
             </Button>
             {isAdvancedEditor ? (
-              <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Export Layout</span>
-              </Button>
+              <>
+                <Button variant="outline" onClick={exportStoreLayout} className="gap-2 px-3">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export Layout</span>
+                </Button>
+                {store && (
+                  <TemplatePublishDialog store={store}>
+                    <Button variant="outline" className="gap-2 px-3 text-purple-600 hover:text-purple-700" data-testid="open-template-publish-dialog">
+                      <Rocket className="h-4 w-4" />
+                      <span className="hidden sm:inline">Publish Template</span>
+                    </Button>
+                  </TemplatePublishDialog>
+                )}
+              </>
             ) : null}
             {isAdvancedEditor ? (
               <Button variant="outline" onClick={() => layoutImportInputRef.current?.click()} className="gap-2 px-3">
@@ -2430,12 +3011,13 @@ export default function CmsPagesManager() {
               { value: "store", label: "Store" },
               { value: "theme", label: "Theme" },
               { value: "pages", label: "Pages" },
+              { value: "gallery", label: "Templates" },
             ].map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => {
-                  setWorkspaceTab(tab.value as "store" | "theme" | "pages");
+                  setWorkspaceTab(tab.value as "store" | "theme" | "pages" | "gallery");
                   setIsMobileSettingsOpen(true);
                   scrollToBuilderSection("page-builder-workspace");
                 }}
@@ -2712,11 +3294,11 @@ export default function CmsPagesManager() {
                   </div>
                   <div className="grid gap-3 rounded-lg border border-border p-4">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Guided theme overrides</p>
-                      <p className="text-xs text-muted-foreground">Override the selected package without affecting any other store.</p>
+                      <p className="text-sm font-medium text-foreground">Basic Color Customizer</p>
+                      <p className="text-xs text-muted-foreground">Customize primary, accent, and background brand colors saved to store customCssVars.</p>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {GUIDED_THEME_TOKENS.map((token) => {
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {BASIC_THEME_TOKENS.map((token) => {
                         const resolvedVars = resolveStoreThemeVars(store.theme, themePackages).vars;
                         const currentValue = store.theme.customCssVars[token.key] ?? resolvedVars[token.key] ?? "";
 
@@ -2726,10 +3308,9 @@ export default function CmsPagesManager() {
                             <div className="flex items-center gap-2">
                               <Input
                                 type="color"
-                                value={hslChannelsToHex(currentValue) ?? "#000000"}
+                                value={hslChannelsToHex(currentValue) ?? (currentValue.startsWith("#") ? currentValue : "#000000")}
                                 onChange={(event) => {
-                                  const next = hexToHslChannels(event.target.value);
-                                  if (!next) return;
+                                  const next = hexToHslChannels(event.target.value) ?? event.target.value;
                                   updateStoreTheme({
                                     customCssVars: {
                                       ...store.theme.customCssVars,
@@ -2737,7 +3318,7 @@ export default function CmsPagesManager() {
                                     },
                                   });
                                 }}
-                                className="h-10 w-16 p-1"
+                                className="h-10 w-16 p-1 cursor-pointer"
                               />
                               <Input
                                 value={currentValue}
@@ -3034,6 +3615,23 @@ export default function CmsPagesManager() {
                       placeholder={isAdvancedEditor ? "Homepage cleanup, seasonal refresh, trust update..." : "Optional note for this content pass"}
                       onChange={(e) => setRevisionLabel(e.target.value)}
                     />
+                    <div className="flex flex-wrap gap-2">
+                      {["Before major edit", "Mobile polish checkpoint", "Launch-ready checkpoint"].map((label) => (
+                        <Button
+                          key={label}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setRevisionLabel(label)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      The next save creates a named checkpoint in Revision History using this label.
+                    </p>
                   </div>
                   {selectedPage.isHomepage ? (
                     <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
@@ -3167,534 +3765,22 @@ export default function CmsPagesManager() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {!isAdvancedEditor ? (
-                    <div className="space-y-4">
-                      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Wand2 className="h-4 w-4 text-primary" />
-                              <p className="text-sm font-semibold text-foreground">Guided Basic Editing</p>
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {activeBasicStepMeta.description} Basic mode is meant to feel more like a merchant setup assistant than block editing.
-                            </p>
-                          </div>
-                          <Badge variant="secondary">{basicGuideSteps.findIndex((step) => step.id === basicGuideStep) + 1}/{basicGuideSteps.length}</Badge>
-                        </div>
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                          {basicGuideSteps.map((step) => (
-                            <button
-                              key={step.id}
-                              type="button"
-                              onClick={() => {
-                                setBasicGuideStep(step.id);
-                                scrollToBuilderSection(step.sectionId);
-                              }}
-                              className={cn(
-                                "rounded-xl border px-3 py-3 text-left transition-colors",
-                                basicGuideStep === step.id
-                                  ? "border-primary/30 bg-background text-foreground shadow-sm"
-                                  : "border-transparent bg-background/70 text-muted-foreground hover:border-primary/20",
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium">{step.title}</p>
-                                {basicStepCompletion[step.id] ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" /> : <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />}
-                              </div>
-                              <p className="mt-1 text-[11px] leading-4">{step.description}</p>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-4 rounded-2xl border border-border/60 bg-background/80 p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">{activeBasicStepMeta.title}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{basicStepRecommendations[basicGuideStep]}</p>
-                          </div>
-                          <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"}>
-                            {basicStepCompletion[basicGuideStep] ? "Ready" : "Needs attention"}
-                          </Badge>
-                        </div>
-                        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
-                          <div className="rounded-xl border border-border bg-background/75 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Step objective</p>
-                            <p className="mt-2 text-sm font-medium text-foreground">{activeBasicStepMeta.title}</p>
-                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                              {basicStepRecommendations[basicGuideStep]}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-border bg-background/75 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recommended actions</p>
-                            <div className="mt-2 space-y-2">
-                              {basicStepActionLabels[basicGuideStep].map((item) => (
-                                <div key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                                  <span>{item}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                    <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-border py-24 text-center">
+                      <div className="rounded-full bg-primary/10 p-4">
+                        <LayoutTemplate className="h-8 w-8 text-primary" />
                       </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-foreground">Guided Store Setup</h3>
+                        <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+                          Basic editing is now available directly on your live storefront. Open the Basic Editor to get started.
+                        </p>
                       </div>
-                      {basicGuideStep === "basics" ? (
-                      <div id="basic-step-basics" className="grid gap-4 md:grid-cols-2 scroll-mt-28">
-                        <div className="rounded-xl border border-border p-4 md:col-span-2">
-                          <p className="text-sm font-semibold text-foreground">Store Basics</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Start with the essentials merchants expect first: identity, publishing, and where the main homepage experience lives.</p>
-                          <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="grid gap-2">
-                              <Label>Store Name</Label>
-                              <Input value={store.name} onChange={(e) => commitStoreChange({ ...store, name: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Store Slug</Label>
-                              <Input value={store.slug} readOnly />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Homepage</Label>
-                              <Input value={homepagePage?.title ?? "No homepage selected"} readOnly />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Store Published</Label>
-                              <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
-                                <span className="text-sm text-foreground">{store.isPublished ? "Published" : "Draft"}</span>
-                                <Switch checked={store.isPublished} onCheckedChange={(checked) => commitStoreChange({ ...store, isPublished: checked })} />
-                              </div>
-                            </div>
-                            <div className="grid gap-2 md:col-span-2">
-                              <Label>Store Description</Label>
-                              <Textarea rows={4} value={store.description} onChange={(e) => commitStoreChange({ ...store, description: e.target.value })} />
-                            </div>
-                          </div>
-                          <div className="mt-4 flex justify-end">
-                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("homepage")}>
-                              Next Step
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      ) : renderCollapsedBasicStep("basics")}
-                      {basicGuideStep === "homepage" ? (
-                      <div id="basic-step-homepage" className="space-y-4 scroll-mt-28">
-                        {homepagePage ? (
-                          <>
-                            {selectedPage?.id !== homepagePage.id ? (
-                              <div className="rounded-xl border border-border/80 bg-background/80 p-4">
-                                <p className="text-sm font-medium text-foreground">You are currently viewing {selectedPage?.title}.</p>
-                                <p className="mt-1 text-xs text-muted-foreground">Switch to the homepage to edit the main storefront story in Basic mode.</p>
-                                <Button type="button" variant="outline" size="sm" className="mt-3 rounded-full" onClick={() => openPageAndStep(homepagePage.id, "homepage")}>
-                                  Switch to Homepage
-                                </Button>
-                              </div>
-                            ) : null}
-                            <div className="grid gap-4 md:grid-cols-2">
-                              {homepageHeroBlock ? (
-                                <div className="rounded-xl border border-border p-4 md:col-span-2">
-                                  <p className="text-sm font-semibold text-foreground">Hero</p>
-                                  <p className="mt-1 text-xs text-muted-foreground">Lead with one promise, one CTA, and media that helps shoppers understand the offer instantly.</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Headline</Label>
-                                      <Input value={homepageHeroProps.title ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { title: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Highlight Text</Label>
-                                      <Input value={homepageHeroProps.highlight ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { highlight: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Description</Label>
-                                      <Textarea rows={4} value={homepageHeroProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { subtitle: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                      <div className="grid gap-2">
-                                        <Label>Primary Button</Label>
-                                        <Input value={homepageHeroProps.ctaText ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { ctaText: e.target.value })} />
-                                      </div>
-                                      <div className="grid gap-2">
-                                        <Label>Primary Link</Label>
-                                        <Input value={homepageHeroProps.ctaLink ?? ""} onChange={(e) => updateBlockProps(homepageHeroBlock.id, "hero", { ctaLink: e.target.value })} />
-                                      </div>
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Hero Media</Label>
-                                      <CloudinaryUpload
-                                        value={homepageHeroProps.mediaUrl ?? ""}
-                                        onChange={(url) => updateBlockProps(homepageHeroBlock.id, "hero", { mediaUrl: url })}
-                                        onSelectAsset={(asset) => {
-                                          if (!asset) return;
-                                          updateBlockProps(homepageHeroBlock.id, "hero", { mediaType: asset.resourceType });
-                                        }}
-                                        folder="hero"
-                                        accept="image/*,video/*"
-                                        label="Upload hero media"
-                                        resourceType="auto"
-                                        storeId={store.id}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {homepagePromoBlock ? (
-                                <div className="rounded-xl border border-border p-4">
-                                  <p className="text-sm font-semibold text-foreground">Promotion</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Promo Title</Label>
-                                      <Input value={homepagePromoProps.title ?? ""} onChange={(e) => updateBlockProps(homepagePromoBlock.id, "promo-banner", { title: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Promo Message</Label>
-                                      <Textarea rows={4} value={homepagePromoProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepagePromoBlock.id, "promo-banner", { subtitle: e.target.value })} />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {homepageFeaturedProductsBlock ? (
-                                <div className="rounded-xl border border-border p-4">
-                                  <p className="text-sm font-semibold text-foreground">Featured Products</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Section Title</Label>
-                                      <Input value={homepageFeaturedProps.title ?? ""} onChange={(e) => updateBlockProps(homepageFeaturedProductsBlock.id, "featured-products", { title: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Tagline</Label>
-                                      <Input value={homepageFeaturedProps.tagline ?? ""} onChange={(e) => updateBlockProps(homepageFeaturedProductsBlock.id, "featured-products", { tagline: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Product Count</Label>
-                                      <Input type="number" min={1} max={24} value={String(homepageFeaturedProps.limit ?? 6)} onChange={(e) => updateFeaturedProductLimit(homepageFeaturedProductsBlock.id, Number(e.target.value || 6))} />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {homepageFaqBlock ? (
-                                <div className="rounded-xl border border-border p-4 md:col-span-2">
-                                  <p className="text-sm font-semibold text-foreground">FAQ</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Heading</Label>
-                                      <Input value={homepageFaqProps.title ?? ""} onChange={(e) => updateBlockProps(homepageFaqBlock.id, "faq-accordion", { title: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-3 rounded-lg border border-border p-3">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <p className="text-sm font-medium text-foreground">Questions</p>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: [...(homepageFaqProps.faqs ?? []), { q: "", a: "" }] })}>
-                                          <Plus className="h-4 w-4" />
-                                          Add FAQ
-                                        </Button>
-                                      </div>
-                                      {((homepageFaqProps.faqs ?? [])).map((faq, index) => (
-                                        <div key={`${faq.q}-${index}`} className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                          <Input value={faq.q ?? ""} placeholder={`Question ${index + 1}`} onChange={(e) => {
-                                            const next = [...(homepageFaqProps.faqs ?? [])];
-                                            next[index] = { ...(next[index] ?? { q: "", a: "" }), q: e.target.value };
-                                            updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: next });
-                                          }} />
-                                          <Textarea rows={3} value={faq.a ?? ""} placeholder="Answer" onChange={(e) => {
-                                            const next = [...(homepageFaqProps.faqs ?? [])];
-                                            next[index] = { ...(next[index] ?? { q: "", a: "" }), a: e.target.value };
-                                            updateBlockProps(homepageFaqBlock.id, "faq-accordion", { faqs: next });
-                                          }} />
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {homepageSocialFeedBlock ? (
-                                <div className="rounded-xl border border-border p-4">
-                                  <p className="text-sm font-semibold text-foreground">Social Feed</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Title</Label>
-                                      <Input value={homepageSocialProps.title ?? ""} onChange={(e) => updateBlockProps(homepageSocialFeedBlock.id, "social-feed", { title: e.target.value })} />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label>Subtitle</Label>
-                                      <Input value={homepageSocialProps.subtitle ?? ""} onChange={(e) => updateBlockProps(homepageSocialFeedBlock.id, "social-feed", { subtitle: e.target.value })} />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {homepageTrustBlock ? (
-                                <div className="rounded-xl border border-border p-4">
-                                  <p className="text-sm font-semibold text-foreground">Trust Section</p>
-                                  <div className="mt-4 grid gap-3">
-                                    <div className="grid gap-2">
-                                      <Label>Heading</Label>
-                                      <Input value={homepageTrustProps.title ?? ""} onChange={(e) => updateBlockProps(homepageTrustBlock.id, "trust-badges", { title: e.target.value })} />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="flex flex-wrap justify-between gap-2">
-                              <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("basics")}>
-                                <ChevronLeft className="h-4 w-4" />
-                                Back
-                              </Button>
-                              <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("product")}>
-                                Next Step
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
-                            <p className="text-sm font-medium text-foreground">No homepage is ready yet.</p>
-                            <p className="mt-1 text-xs text-muted-foreground">Create or assign a homepage in Advanced Editing, then return here for guided setup.</p>
-                          </div>
-                        )}
-                      </div>
-                      ) : renderCollapsedBasicStep("homepage")}
-                      {basicGuideStep === "product" ? (
-                      <div id="basic-step-product" className="space-y-4 scroll-mt-28">
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Product Page Story</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Guide shoppers from browsing into confidence without touching raw block structure.</p>
-                          {productStoryPages.length > 0 ? (
-                            <>
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {productStoryPages.map((page) => (
-                                  <Button key={page.id} type="button" size="sm" variant={selectedProductPage?.id === page.id ? "secondary" : "outline"} className="rounded-full" onClick={() => openPageAndStep(page.id, "product")}>
-                                    {page.title}
-                                  </Button>
-                                ))}
-                              </div>
-                              {selectedProductPage ? (
-                                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                  <div className="grid gap-2">
-                                    <Label>Page Title</Label>
-                                    <Input value={selectedPage?.id === selectedProductPage.id ? selectedPage.title : selectedProductPage.title} onChange={(e) => updateSelectedPage((page) => ({ ...page, title: e.target.value }))} />
-                                  </div>
-                                  <div className="grid gap-2">
-                                    <Label>Page Slug</Label>
-                                    <Input value={selectedProductPage.slug} readOnly />
-                                  </div>
-                                  <div className="grid gap-2 md:col-span-2">
-                                    <Label>SEO Title</Label>
-                                    <Input value={selectedPage?.id === selectedProductPage.id ? selectedPage.seoTitle ?? "" : selectedProductPage.seoTitle ?? ""} onChange={(e) => updateSelectedPage((page) => ({ ...page, seoTitle: e.target.value }))} />
-                                  </div>
-                                  <div className="grid gap-2 md:col-span-2">
-                                    <Label>SEO Description</Label>
-                                    <Textarea rows={3} value={selectedPage?.id === selectedProductPage.id ? selectedPage.seoDescription ?? "" : selectedProductPage.seoDescription ?? ""} onChange={(e) => updateSelectedPage((page) => ({ ...page, seoDescription: e.target.value }))} />
-                                  </div>
-                                  {productRichTextBlock ? (
-                                    <div className="grid gap-2 md:col-span-2 rounded-xl border border-border/70 p-3">
-                                      <Label>Story Section Title</Label>
-                                      <Input value={productRichTextProps.title ?? ""} onChange={(e) => updateBlockProps(productRichTextBlock.id, "rich-text", { title: e.target.value })} />
-                                      <Label>Story Section Copy</Label>
-                                      <Textarea rows={5} value={productRichTextProps.body ?? ""} onChange={(e) => updateBlockProps(productRichTextBlock.id, "rich-text", { body: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                  {productTrustBlock ? (
-                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                      <Label>Trust Heading</Label>
-                                      <Input value={productTrustProps.title ?? ""} onChange={(e) => updateBlockProps(productTrustBlock.id, "trust-badges", { title: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                  {productFaqBlock ? (
-                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                      <Label>FAQ Heading</Label>
-                                      <Input value={productFaqProps.title ?? ""} onChange={(e) => updateBlockProps(productFaqBlock.id, "faq-accordion", { title: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </>
-                          ) : (
-                            <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
-                              <p className="text-sm font-medium text-foreground">No product-focused pages yet.</p>
-                              <p className="mt-1 text-xs text-muted-foreground">Open Advanced Editing to add a catalog, collection, or product-story page first.</p>
-                              <Button asChild type="button" variant="outline" size="sm" className="mt-3 rounded-full">
-                                <Link to={advancedEditorHref}>Open Advanced Editing</Link>
-                              </Button>
-                            </div>
-                          )}
-                          <div className="mt-4 flex flex-wrap justify-between gap-2">
-                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("homepage")}>
-                              <ChevronLeft className="h-4 w-4" />
-                              Back
-                            </Button>
-                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("checkout")}>
-                              Next Step
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      ) : renderCollapsedBasicStep("product")}
-                      {basicGuideStep === "checkout" ? (
-                      <div id="basic-step-checkout" className="space-y-4 rounded-xl border border-border p-4 scroll-mt-28">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">Checkout Trust</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Customers decide whether to finish the order here. Keep payment, delivery, policy, and support expectations clear.</p>
-                        </div>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          {[
-                            { title: "Payment Settings", detail: "Manage enabled payment methods and checkout confidence.", actionLabel: "Open Payment Settings", action: () => { window.location.href = checkoutSettingsHref; } },
-                            { title: "Delivery Settings", detail: "Clarify delivery fees, timing, and fulfillment rules.", actionLabel: "Open Delivery Settings", action: () => { window.location.href = shippingSettingsHref; } },
-                            { title: "Support Settings", detail: "Make help channels visible before customers hesitate.", actionLabel: "Open Support Settings", action: () => { window.location.href = supportSettingsHref; } },
-                            { title: "Policy Content", detail: "Keep refund, exchange, and policy guidance easy to find.", actionLabel: "Open FAQ / Policy", action: () => { window.location.href = faqSettingsHref; } },
-                          ].map((item) => (
-                            <div key={item.title} className="rounded-xl border border-border/70 bg-background/80 p-4">
-                              <p className="text-sm font-medium text-foreground">{item.title}</p>
-                              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
-                              <Button type="button" variant="outline" size="sm" className="mt-4 rounded-full" onClick={item.action}>
-                                {item.actionLabel}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex flex-wrap justify-between gap-2">
-                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("product")}>
-                            <ChevronLeft className="h-4 w-4" />
-                            Back
-                          </Button>
-                          <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("custom")}>
-                            Next Step
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      ) : renderCollapsedBasicStep("checkout")}
-                      {basicGuideStep === "custom" ? (
-                      <div id="basic-step-custom" className="space-y-4 scroll-mt-28">
-                        <div className="rounded-xl border border-border p-4">
-                          <p className="text-sm font-semibold text-foreground">Custom Pages</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Use supporting pages for FAQs, brand story, policy, and reassurance without dropping into block lists.</p>
-                          {customContentPages.length > 0 ? (
-                            <>
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {customContentPages.map((page) => (
-                                  <Button key={page.id} type="button" size="sm" variant={selectedCustomContentPage?.id === page.id ? "secondary" : "outline"} className="rounded-full" onClick={() => openPageAndStep(page.id, "custom")}>
-                                    {page.title}
-                                  </Button>
-                                ))}
-                              </div>
-                              {selectedCustomContentPage ? (
-                                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                  <div className="grid gap-2">
-                                    <Label>Page Title</Label>
-                                    <Input value={selectedPage?.id === selectedCustomContentPage.id ? selectedPage.title : selectedCustomContentPage.title} onChange={(e) => updateSelectedPage((page) => ({ ...page, title: e.target.value }))} />
-                                  </div>
-                                  <div className="grid gap-2">
-                                    <Label>Page Slug</Label>
-                                    <Input value={selectedCustomContentPage.slug} readOnly />
-                                  </div>
-                                  {customRichTextBlock ? (
-                                    <div className="grid gap-2 md:col-span-2 rounded-xl border border-border/70 p-3">
-                                      <Label>Page Heading</Label>
-                                      <Input value={customRichTextProps.title ?? ""} onChange={(e) => updateBlockProps(customRichTextBlock.id, "rich-text", { title: e.target.value })} />
-                                      <Label>Page Body</Label>
-                                      <Textarea rows={6} value={customRichTextProps.body ?? ""} onChange={(e) => updateBlockProps(customRichTextBlock.id, "rich-text", { body: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                  {customFaqBlock ? (
-                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                      <Label>FAQ Heading</Label>
-                                      <Input value={customFaqProps.title ?? ""} onChange={(e) => updateBlockProps(customFaqBlock.id, "faq-accordion", { title: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                  {customTrustBlock ? (
-                                    <div className="grid gap-2 rounded-xl border border-border/70 p-3">
-                                      <Label>Trust Heading</Label>
-                                      <Input value={customTrustProps.title ?? ""} onChange={(e) => updateBlockProps(customTrustBlock.id, "trust-badges", { title: e.target.value })} />
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </>
-                          ) : (
-                            <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
-                              <p className="text-sm font-medium text-foreground">No custom pages are available yet.</p>
-                              <p className="mt-1 text-xs text-muted-foreground">Add an About, FAQ, or policy page in Advanced Editing first, then return here for guided copy updates.</p>
-                            </div>
-                          )}
-                          <div className="mt-4 flex flex-wrap justify-between gap-2">
-                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("checkout")}>
-                              <ChevronLeft className="h-4 w-4" />
-                              Back
-                            </Button>
-                            <Button type="button" size="sm" className="gap-2 rounded-full" onClick={() => openBasicStep("launch")}>
-                              Next Step
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      ) : renderCollapsedBasicStep("custom")}
-                      {basicGuideStep === "launch" ? (
-                      <div id="basic-step-launch" className="space-y-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 scroll-mt-28">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Preview & Publish</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Preview the live storefront, save confidently, and only open Advanced Editing when you truly need structure or code-level controls.
-                          </p>
-                        </div>
-                        <div className="grid gap-3 lg:grid-cols-3">
-                          {[
-                            {
-                              title: "Message check",
-                              ready: Boolean(homepageHeroProps.title && homepageHeroProps.ctaText),
-                              detail: "Your headline and CTA should tell shoppers what to do next immediately.",
-                            },
-                            {
-                              title: "Trust check",
-                              ready: Boolean(
-                                ((homepageFaqProps.faqs ?? []).length > 0)
-                                || Boolean(homepageTrustProps.title)
-                                || Boolean(homepageTestimonialsProps.title),
-                              ),
-                              detail: "Make sure support answers, proof, or trust cues appear before customers hesitate.",
-                            },
-                            {
-                              title: "Publish check",
-                              ready: Boolean(store.isPublished && !hasUnsavedChanges),
-                              detail: "Go live after preview when the page feels coherent on mobile and desktop.",
-                            },
-                          ].map((item) => (
-                            <div key={item.title} className="rounded-xl border border-border/70 bg-background/80 p-3">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={item.ready ? "outline" : "secondary"}>{item.ready ? "Ready" : "Review"}</Badge>
-                                <p className="text-sm font-medium text-foreground">{item.title}</p>
-                              </div>
-                              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Status: {basicStatusLabel}</div>
-                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Undo and redo are always available from the dock.</div>
-                          <div className="rounded-xl border border-border/70 bg-background/80 p-3 text-xs text-muted-foreground">Need templates, raw JSON, CSS, or structure changes? Use Advanced.</div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={openPreviewWorkspace}>
-                            <Eye className="h-4 w-4" />
-                            Preview storefront
-                          </Button>
-                          <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="gap-2 rounded-full">
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Save changes
-                          </Button>
-                          <Button asChild type="button" variant="outline" size="sm" className="rounded-full">
-                            <Link to={advancedEditorHref}>Open Advanced Editing</Link>
-                          </Button>
-                        </div>
-                        <div className="flex justify-start">
-                          <Button type="button" variant="outline" size="sm" className="gap-2 rounded-full" onClick={() => {
-                            setBasicGuideStep("custom");
-                            scrollToBuilderSection("basic-step-custom");
-                          }}>
-                            <ChevronLeft className="h-4 w-4" />
-                            Back
-                          </Button>
-                        </div>
-                      </div>
-                      ) : renderCollapsedBasicStep("launch")}
+                      <Button asChild size="lg" className="gap-2 rounded-full mt-4">
+                        <Link to={basicEditorHref}>
+                          <Wand2 className="h-5 w-5" />
+                          Launch Basic Editor
+                        </Link>
+                      </Button>
                     </div>
                   ) : null}
                   {isAdvancedEditor ? (
@@ -3762,13 +3848,36 @@ export default function CmsPagesManager() {
                       <div
                         key={block.id}
                         id={`cms-block-${block.id}`}
-                        className={`rounded-xl border bg-card/60 p-4 transition-colors ${
-                          isFocused ? "border-primary bg-primary/5 shadow-sm" : "border-border"
-                        }`}
+                        draggable
+                        onDragStart={(event) => {
+                          setDraggedAdvancedBlockId(block.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", block.id);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const sourceId = draggedAdvancedBlockId ?? event.dataTransfer.getData("text/plain");
+                          const startIndex = selectedPage.blocks.findIndex((item) => item.id === sourceId);
+                          if (startIndex !== -1 && startIndex !== index) {
+                            reorderBlocks(startIndex, index);
+                          }
+                          setDraggedAdvancedBlockId(null);
+                        }}
+                        onDragEnd={() => setDraggedAdvancedBlockId(null)}
+                        className={cn(
+                          "rounded-xl border bg-card/60 p-4 transition-colors",
+                          isFocused ? "border-primary bg-primary/5 shadow-sm" : "border-border",
+                          draggedAdvancedBlockId === block.id && "border-primary bg-primary/5 opacity-70",
+                        )}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
+                              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
                               <LayoutTemplate className="h-4 w-4 text-primary" />
                               <p className="text-sm font-semibold text-foreground">{blockMeta?.label ?? block.type}</p>
                               <Badge variant="outline">#{index + 1}</Badge>
@@ -4069,7 +4178,10 @@ export default function CmsPagesManager() {
                               </div>
                               <div className="grid gap-2 md:col-span-2">
                                 <Label>Body</Label>
-                                <Textarea rows={5} value={block.props.body ?? ""} onChange={(e) => updateRichTextBlockField(block.id, "body", e.target.value)} />
+                                <TiptapRichTextEditor
+                                  value={block.props.body as RichTextDoc | string}
+                                  onChange={(doc) => updateRichTextBlockField(block.id, "body", doc)}
+                                />
                               </div>
                               <div className="grid gap-2 md:max-w-[240px]">
                                 <Label>Alignment</Label>
@@ -4327,6 +4439,62 @@ export default function CmsPagesManager() {
               ) : null}
 
               {isAdvancedEditor ? (
+                <Card id="advanced-visual-inspector" className="border-border scroll-mt-36">
+                  <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Visual CSS Inspector</CardTitle>
+                      <CardDescription>
+                        Fine-tune the selected block visually. Breakpoint controls write scoped overrides without changing the Basic Mode content.
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center rounded-lg border border-border p-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={previewViewport === "desktop" ? "secondary" : "ghost"}
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setPreviewViewport("desktop")}
+                      >
+                        Desktop
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={previewViewport === "tablet" ? "secondary" : "ghost"}
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setPreviewViewport("tablet")}
+                      >
+                        Tablet
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={previewViewport === "mobile" ? "secondary" : "ghost"}
+                        className="h-8 rounded-md px-3 text-xs"
+                        onClick={() => setPreviewViewport("mobile")}
+                      >
+                        Mobile
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <VisualCssInspector
+                      selectedBlock={selectedBlock}
+                      viewport={previewViewport}
+                      updateSelectedBlock={(patch) => {
+                        if (!selectedBlock) return;
+                        updateBlockMeta(selectedBlock.id, patch);
+                      }}
+                      updateSelectedBlockProps={(patch) => {
+                        if (!selectedBlock) return;
+                        updateAnyBlockProps(selectedBlock.id, patch);
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {isAdvancedEditor ? (
                 <Card className="border-border">
                   <div id="advanced-code-panels" />
                   <CardHeader>
@@ -4481,6 +4649,9 @@ export default function CmsPagesManager() {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {sanitizeStoreBlocks(revision.blocks_snapshot).length} section{sanitizeStoreBlocks(revision.blocks_snapshot).length === 1 ? "" : "s"} saved
                           </p>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => restoreRevision(revision.id)}>
@@ -4785,6 +4956,18 @@ export default function CmsPagesManager() {
                   >
                     <p className="text-sm font-medium text-foreground">Create from blueprint</p>
                     <p className="mt-1 text-xs text-muted-foreground">Start with a recommended structure, then customize blocks.</p>
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceTab("gallery");
+                    }}
+                    className="col-span-full rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary/20"
+                  >
+                    <p className="text-sm font-medium text-primary-foreground">Browse Template Gallery</p>
+                    <p className="mt-1 text-xs text-primary/80">Explore pre-built designs and preview them with your store data.</p>
                   </button>
                 </div>
                 <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">

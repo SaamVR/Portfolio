@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { MediaLibraryAsset } from "@/lib/media-library";
+import { optimizeCloudinaryUrl } from "@/lib/cms/cloudinary-responsive";
 
 type UploadMediaAssetOptions = {
   file: File;
@@ -196,7 +197,7 @@ async function uploadToCloudinary({
 
   return {
     id: crypto.randomUUID(),
-    url: result.secure_url,
+    url: result.resource_type === "video" ? result.secure_url : optimizeCloudinaryUrl(result.secure_url, "w_800,q_auto,f_webp"),
     resourceType: result.resource_type === "video" ? "video" : "image",
     folder: folder || "cms",
     width: typeof result.width === "number" ? result.width : undefined,

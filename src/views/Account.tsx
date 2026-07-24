@@ -2,6 +2,7 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { useState } from "react";
 import { Navigate, Link } from "@/lib/react-router-dom-shim";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { useAuth } from "@/hooks/auth-context";
@@ -31,6 +32,7 @@ import { cn } from "@/lib/utils";
 import ProductCard from "@/components/ProductCard";
 import { useProductsByIds } from "@/hooks/useProducts";
 import { useCart } from "@/context/useCart";
+import { getCartVariantDisplayLabel } from "@/lib/digital-cart";
 import { productUrl, storefrontPath } from "@/lib/slug";
 
 interface Address {
@@ -181,7 +183,7 @@ const ReviewSheet = ({
                 {productName}
               </SheetTitle>
               {sizePurchased && (
-                <p className="text-xs text-muted-foreground">Size: {sizePurchased}</p>
+                <p className="text-xs text-muted-foreground">Option: {getCartVariantDisplayLabel(sizePurchased)}</p>
               )}
             </div>
           </div>
@@ -405,6 +407,7 @@ const Account = () => {
   const { addItem } = useCart();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>("orders");
+  const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 
   const handleReorder = (orderItems: any[]) => {
     orderItems.forEach((item) => {
@@ -550,18 +553,28 @@ const Account = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <LayoutWrapper>
         <div className="flex min-h-[70vh] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      </LayoutWrapper>
     );
   }
 
-  if (!user) return <Navigate to={`/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`} replace />;
+  if (!user) {
+    return (
+      <Navigate
+        to={storefrontPath(
+          `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`,
+          currentStore?.slug,
+        )}
+        replace
+      />
+    );
+  }
   if (!storeId) {
     return (
-      <Layout>
+      <LayoutWrapper>
         <SEOHead title="My Account" description="Manage your account, orders, and addresses." noindex />
         <PageTransition>
           <div className="container mx-auto max-w-3xl px-4 py-12">
@@ -576,7 +589,7 @@ const Account = () => {
             </Card>
           </div>
         </PageTransition>
-      </Layout>
+      </LayoutWrapper>
     );
   }
 
@@ -612,7 +625,7 @@ const Account = () => {
   };
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead title="My Account" description="Manage your account, orders, and addresses." noindex />
       <PageTransition>
         <div className="container mx-auto max-w-4xl px-4 py-8 sm:py-12">
@@ -713,7 +726,7 @@ const Account = () => {
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-foreground">
                                     {item.name} × {item.quantity}{" "}
-                                    <span className="text-muted-foreground">({item.size})</span>
+                                    <span className="text-muted-foreground">({getCartVariantDisplayLabel(item.size)})</span>
                                   </span>
                                   <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
                                 </div>
@@ -757,7 +770,7 @@ const Account = () => {
                                               productName: item.name,
                                               productImage: item.image,
                                               orderId: order.id,
-                                              sizePurchased: item.size,
+                                              sizePurchased: getCartVariantDisplayLabel(item.size),
                                             })
                                           }
                                         >
@@ -1009,7 +1022,7 @@ const Account = () => {
           onSubmitted={() => setReviewSheet(null)}
         />
       )}
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

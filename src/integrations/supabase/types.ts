@@ -12,8 +12,69 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      block_registry_entries: {
+        Row: {
+          block_type: string
+          compatible_business_families: Json
+          created_at: string
+          description: string
+          is_active: boolean
+          label: string
+          layer: string
+          required_capabilities: Json
+          updated_at: string
+        }
+        Insert: {
+          block_type: string
+          compatible_business_families?: Json
+          created_at?: string
+          description?: string
+          is_active?: boolean
+          label: string
+          layer?: string
+          required_capabilities?: Json
+          updated_at?: string
+        }
+        Update: {
+          block_type?: string
+          compatible_business_families?: Json
+          created_at?: string
+          description?: string
+          is_active?: boolean
+          label?: string
+          layer?: string
+          required_capabilities?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -59,41 +120,177 @@ export type Database = {
           },
         ]
       }
-      block_registry_entries: {
+      cms_marketplace_templates: {
         Row: {
-          block_type: string
-          compatible_business_families: Json
+          bundle_json: Json
+          aesthetic: string | null
+          best_for: string[]
+          category: string
+          cover_image: string | null
           created_at: string
-          description: string
-          is_active: boolean
-          label: string
-          layer: string
-          required_capabilities: Json
+          creator_id: string | null
+          description: string | null
+          id: string
+          install_count: number
+          mobile_ready: boolean
+          price: number
+          preview_asset_urls: string[]
+          pricing_mode: string
+          rating_count: number
+          rating_avg: number | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          safety_findings: Json
+          safety_status: string
+          status: string
+          submitted_at: string | null
+          tags: string[]
+          title: string
           updated_at: string
         }
         Insert: {
-          block_type: string
-          compatible_business_families?: Json
+          bundle_json: Json
+          aesthetic?: string | null
+          best_for?: string[]
+          category?: string
+          cover_image?: string | null
           created_at?: string
-          description?: string
-          is_active?: boolean
-          label: string
-          layer?: string
-          required_capabilities?: Json
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          install_count?: number
+          mobile_ready?: boolean
+          price?: number
+          preview_asset_urls?: string[]
+          pricing_mode?: string
+          rating_count?: number
+          rating_avg?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_findings?: Json
+          safety_status?: string
+          status?: string
+          submitted_at?: string | null
+          tags?: string[]
+          title: string
           updated_at?: string
         }
         Update: {
-          block_type?: string
-          compatible_business_families?: Json
+          bundle_json?: Json
+          aesthetic?: string | null
+          best_for?: string[]
+          category?: string
+          cover_image?: string | null
           created_at?: string
-          description?: string
-          is_active?: boolean
-          label?: string
-          layer?: string
-          required_capabilities?: Json
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          install_count?: number
+          mobile_ready?: boolean
+          price?: number
+          preview_asset_urls?: string[]
+          pricing_mode?: string
+          rating_count?: number
+          rating_avg?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_findings?: Json
+          safety_status?: string
+          status?: string
+          submitted_at?: string | null
+          tags?: string[]
+          title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_marketplace_templates_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_marketplace_template_installs: {
+        Row: {
+          created_at: string
+          id: string
+          installed_by: string | null
+          store_id: string | null
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          installed_by?: string | null
+          store_id?: string | null
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          installed_by?: string | null
+          store_id?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_marketplace_template_installs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "cms_marketplace_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_marketplace_template_installs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cms_marketplace_template_reviews: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          review_text: string | null
+          reviewer_id: string | null
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          review_text?: string | null
+          reviewer_id?: string | null
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          review_text?: string | null
+          reviewer_id?: string | null
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_marketplace_template_reviews_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "cms_marketplace_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_features: {
         Row: {
@@ -172,6 +369,8 @@ export type Database = {
       }
       cms_plans: {
         Row: {
+          annual_discount_percentage: number
+          annual_price: number | null
           contact_only: boolean
           created_at: string
           currency_code: string
@@ -187,6 +386,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annual_discount_percentage?: number
+          annual_price?: number | null
           contact_only?: boolean
           created_at?: string
           currency_code?: string
@@ -202,6 +403,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annual_discount_percentage?: number
+          annual_price?: number | null
           contact_only?: boolean
           created_at?: string
           currency_code?: string
@@ -299,42 +502,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      page_blueprints: {
-        Row: {
-          business_family: string
-          catalog_modes: Json
-          created_at: string
-          description: string
-          id: string
-          is_active: boolean
-          name: string
-          page_payload: Json
-          updated_at: string
-        }
-        Insert: {
-          business_family?: string
-          catalog_modes?: Json
-          created_at?: string
-          description?: string
-          id: string
-          is_active?: boolean
-          name: string
-          page_payload?: Json
-          updated_at?: string
-        }
-        Update: {
-          business_family?: string
-          catalog_modes?: Json
-          created_at?: string
-          description?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          page_payload?: Json
-          updated_at?: string
-        }
-        Relationships: []
       }
       coupon_codes: {
         Row: {
@@ -595,6 +762,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      page_blueprints: {
+        Row: {
+          business_family: string
+          catalog_modes: Json
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          page_payload: Json
+          schema_version: number
+          updated_at: string
+        }
+        Insert: {
+          business_family?: string
+          catalog_modes?: Json
+          created_at?: string
+          description?: string
+          id: string
+          is_active?: boolean
+          name: string
+          page_payload?: Json
+          schema_version?: number
+          updated_at?: string
+        }
+        Update: {
+          business_family?: string
+          catalog_modes?: Json
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          page_payload?: Json
+          schema_version?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       product_categories: {
         Row: {
@@ -969,6 +1175,181 @@ export type Database = {
           },
         ]
       }
+      store_blueprints: {
+        Row: {
+          business_family: string
+          catalog_mode: string
+          created_at: string
+          default_site_settings: Json
+          default_theme: Json
+          description: string
+          group_name: string
+          hero_payload: Json
+          id: string
+          is_active: boolean
+          legacy_template_id: string | null
+          name: string
+          onboarding_schema: Json
+          recommended_block_set: Json
+          recommended_page_set: Json
+          required_capabilities: Json
+          schema_version: number
+          short_name: string
+          store_description: string
+          updated_at: string
+        }
+        Insert: {
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          default_site_settings?: Json
+          default_theme?: Json
+          description?: string
+          group_name?: string
+          hero_payload?: Json
+          id: string
+          is_active?: boolean
+          legacy_template_id?: string | null
+          name: string
+          onboarding_schema?: Json
+          recommended_block_set?: Json
+          recommended_page_set?: Json
+          required_capabilities?: Json
+          schema_version?: number
+          short_name: string
+          store_description?: string
+          updated_at?: string
+        }
+        Update: {
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          default_site_settings?: Json
+          default_theme?: Json
+          description?: string
+          group_name?: string
+          hero_payload?: Json
+          id?: string
+          is_active?: boolean
+          legacy_template_id?: string | null
+          name?: string
+          onboarding_schema?: Json
+          recommended_block_set?: Json
+          recommended_page_set?: Json
+          required_capabilities?: Json
+          schema_version?: number
+          short_name?: string
+          store_description?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      store_business_profiles: {
+        Row: {
+          blueprint_id: string | null
+          blueprint_version: number | null
+          business_family: string
+          catalog_mode: string
+          created_at: string
+          enabled_modules: Json
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          blueprint_id?: string | null
+          blueprint_version?: number | null
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          enabled_modules?: Json
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          blueprint_id?: string | null
+          blueprint_version?: number | null
+          business_family?: string
+          catalog_mode?: string
+          created_at?: string
+          enabled_modules?: Json
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_business_profiles_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_domains: {
+        Row: {
+          activated_at: string | null
+          configured_by: string | null
+          created_at: string
+          dns_records: Json
+          hostname: string
+          id: string
+          is_primary: boolean
+          is_www_domain: boolean
+          last_checked_at: string | null
+          last_vercel_error: Json | null
+          status: string
+          store_id: string
+          updated_at: string
+          vercel_misconfigured: boolean
+          vercel_verified: boolean
+          verification_records: Json
+        }
+        Insert: {
+          activated_at?: string | null
+          configured_by?: string | null
+          created_at?: string
+          dns_records?: Json
+          hostname: string
+          id?: string
+          is_primary?: boolean
+          is_www_domain?: boolean
+          last_checked_at?: string | null
+          last_vercel_error?: Json | null
+          status?: string
+          store_id: string
+          updated_at?: string
+          vercel_misconfigured?: boolean
+          vercel_verified?: boolean
+          verification_records?: Json
+        }
+        Update: {
+          activated_at?: string | null
+          configured_by?: string | null
+          created_at?: string
+          dns_records?: Json
+          hostname?: string
+          id?: string
+          is_primary?: boolean
+          is_www_domain?: boolean
+          last_checked_at?: string | null
+          last_vercel_error?: Json | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+          vercel_misconfigured?: boolean
+          vercel_verified?: boolean
+          verification_records?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_domains_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_feature_overrides: {
         Row: {
           created_at: string
@@ -1020,6 +1401,7 @@ export type Database = {
       store_invoices: {
         Row: {
           amount: number
+          billing_interval: string
           billing_period_end: string | null
           billing_period_start: string | null
           created_at: string
@@ -1036,6 +1418,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          billing_interval?: string
           billing_period_end?: string | null
           billing_period_start?: string | null
           created_at?: string
@@ -1052,6 +1435,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billing_interval?: string
           billing_period_end?: string | null
           billing_period_start?: string | null
           created_at?: string
@@ -1230,77 +1614,18 @@ export type Database = {
           },
         ]
       }
-      store_domains: {
-        Row: {
-          activated_at: string | null
-          configured_by: string | null
-          created_at: string
-          dns_records: Json
-          hostname: string
-          id: string
-          is_primary: boolean
-          is_www_domain: boolean
-          last_checked_at: string | null
-          last_vercel_error: Json | null
-          status: string
-          store_id: string
-          updated_at: string
-          verification_records: Json
-          vercel_misconfigured: boolean
-          vercel_verified: boolean
-        }
-        Insert: {
-          activated_at?: string | null
-          configured_by?: string | null
-          created_at?: string
-          dns_records?: Json
-          hostname: string
-          id?: string
-          is_primary?: boolean
-          is_www_domain?: boolean
-          last_checked_at?: string | null
-          last_vercel_error?: Json | null
-          status?: string
-          store_id: string
-          updated_at?: string
-          verification_records?: Json
-          vercel_misconfigured?: boolean
-          vercel_verified?: boolean
-        }
-        Update: {
-          activated_at?: string | null
-          configured_by?: string | null
-          created_at?: string
-          dns_records?: Json
-          hostname?: string
-          id?: string
-          is_primary?: boolean
-          is_www_domain?: boolean
-          last_checked_at?: string | null
-          last_vercel_error?: Json | null
-          status?: string
-          store_id?: string
-          updated_at?: string
-          verification_records?: Json
-          vercel_misconfigured?: boolean
-          vercel_verified?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "store_domains_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       store_page_blocks: {
         Row: {
           block_type: string
           created_at: string
+          custom_css: string | null
+          custom_html: string | null
+          effect_override: boolean | null
+          entrance_animation: string | null
+          hover_effect: string | null
           id: string
           is_visible: boolean
+          layout_variant: string | null
           page_id: string
           props: Json
           sort_order: number
@@ -1310,8 +1635,14 @@ export type Database = {
         Insert: {
           block_type: string
           created_at?: string
+          custom_css?: string | null
+          custom_html?: string | null
+          effect_override?: boolean | null
+          entrance_animation?: string | null
+          hover_effect?: string | null
           id?: string
           is_visible?: boolean
+          layout_variant?: string | null
           page_id: string
           props?: Json
           sort_order?: number
@@ -1321,8 +1652,14 @@ export type Database = {
         Update: {
           block_type?: string
           created_at?: string
+          custom_css?: string | null
+          custom_html?: string | null
+          effect_override?: boolean | null
+          entrance_animation?: string | null
+          hover_effect?: string | null
           id?: string
           is_visible?: boolean
+          layout_variant?: string | null
           page_id?: string
           props?: Json
           sort_order?: number
@@ -1545,58 +1882,24 @@ export type Database = {
           },
         ]
       }
-      store_business_profiles: {
-        Row: {
-          blueprint_id: string | null
-          blueprint_version: number | null
-          business_family: string
-          catalog_mode: string
-          created_at: string
-          enabled_modules: Json
-          store_id: string
-          updated_at: string
-        }
-        Insert: {
-          blueprint_id?: string | null
-          blueprint_version?: number | null
-          business_family?: string
-          catalog_mode?: string
-          created_at?: string
-          enabled_modules?: Json
-          store_id: string
-          updated_at?: string
-        }
-        Update: {
-          blueprint_id?: string | null
-          blueprint_version?: number | null
-          business_family?: string
-          catalog_mode?: string
-          created_at?: string
-          enabled_modules?: Json
-          store_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "store_business_profiles_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: true
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       store_themes: {
         Row: {
+          aesthetic: string
           colors: Json
           components: Json
           created_at: string
           custom_css: string | null
+          density_scale: number
+          effects: Json
           id: string
           mode: string
           overrides: Json
+          palette_seed: string | null
+          palette_source: string | null
           preset_id: string
+          radius_scale: number
           resolved_tokens: Json
+          schema_version: number
           store_id: string
           theme_package_id: string | null
           theme_package_version: number | null
@@ -1604,15 +1907,22 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aesthetic?: string
           colors?: Json
           components?: Json
           created_at?: string
           custom_css?: string | null
+          density_scale?: number
+          effects?: Json
           id?: string
           mode?: string
           overrides?: Json
+          palette_seed?: string | null
+          palette_source?: string | null
           preset_id?: string
+          radius_scale?: number
           resolved_tokens?: Json
+          schema_version?: number
           store_id: string
           theme_package_id?: string | null
           theme_package_version?: number | null
@@ -1620,16 +1930,23 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aesthetic?: string
           colors?: Json
           components?: Json
           created_at?: string
           custom_css?: string | null
+          density_scale?: number
+          effects?: Json
           id?: string
           mode?: string
           overrides?: Json
+          palette_seed?: string | null
+          palette_source?: string | null
           preset_id?: string
+          radius_scale?: number
           resolved_tokens?: Json
-          store_id: string
+          schema_version?: number
+          store_id?: string
           theme_package_id?: string | null
           theme_package_version?: number | null
           typography?: Json
@@ -1637,17 +1954,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "store_themes_theme_package_id_fkey"
-            columns: ["theme_package_id"]
-            isOneToOne: false
-            referencedRelation: "theme_packages"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "store_themes_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: true
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_themes_theme_package_id_fkey"
+            columns: ["theme_package_id"]
+            isOneToOne: false
+            referencedRelation: "theme_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -1705,72 +2022,6 @@ export type Database = {
           plan?: string
           slug?: string
           store_type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      store_blueprints: {
-        Row: {
-          business_family: string
-          catalog_mode: string
-          created_at: string
-          default_site_settings: Json
-          default_theme: Json
-          description: string
-          group_name: string
-          hero_payload: Json
-          id: string
-          is_active: boolean
-          legacy_template_id: string | null
-          name: string
-          onboarding_schema: Json
-          recommended_block_set: Json
-          recommended_page_set: Json
-          required_capabilities: Json
-          short_name: string
-          store_description: string
-          updated_at: string
-        }
-        Insert: {
-          business_family?: string
-          catalog_mode?: string
-          created_at?: string
-          default_site_settings?: Json
-          default_theme?: Json
-          description?: string
-          group_name?: string
-          hero_payload?: Json
-          id: string
-          is_active?: boolean
-          legacy_template_id?: string | null
-          name: string
-          onboarding_schema?: Json
-          recommended_block_set?: Json
-          recommended_page_set?: Json
-          required_capabilities?: Json
-          short_name: string
-          store_description?: string
-          updated_at?: string
-        }
-        Update: {
-          business_family?: string
-          catalog_mode?: string
-          created_at?: string
-          default_site_settings?: Json
-          default_theme?: Json
-          description?: string
-          group_name?: string
-          hero_payload?: Json
-          id?: string
-          is_active?: boolean
-          legacy_template_id?: string | null
-          name?: string
-          onboarding_schema?: Json
-          recommended_block_set?: Json
-          recommended_page_set?: Json
-          required_capabilities?: Json
-          short_name?: string
-          store_description?: string
           updated_at?: string
         }
         Relationships: []
@@ -2016,6 +2267,10 @@ export type Database = {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
+      sync_store_custom_domain_from_domains: {
+        Args: { _store_id: string }
+        Returns: undefined
+      }
       validate_coupon:
         | { Args: { _code: string; _order_total: number }; Returns: Json }
         | {
@@ -2158,6 +2413,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "co_admin"],

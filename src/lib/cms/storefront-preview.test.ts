@@ -6,7 +6,7 @@ test("buildBlueprintPreviewStore creates a published preview seeded from bluepri
   const store = buildBlueprintPreviewStore("clothing");
 
   assert.equal(store.isPublished, true);
-  assert.equal(store.slug, "clothing");
+  assert.equal(store.slug, "fashion");
   assert.ok(store.pages.length > 0);
   assert.equal(store.pages[0]?.isHomepage, true);
 });

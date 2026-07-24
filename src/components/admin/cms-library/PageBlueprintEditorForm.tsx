@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { PageBlueprintBlockEditor } from "@/components/admin/cms-library/PageBlueprintBlockEditor";
+import { getCatalogModeLabel } from "@/lib/cms/storefront-compat";
 
 type PageBlueprintEditorFormProps = {
   form: Record<string, string | boolean>;
@@ -108,7 +109,7 @@ export function PageBlueprintEditorForm({
                 checked={selectedCatalogModes.includes(mode)}
                 onCheckedChange={(checked) => onToggleStringArrayField("catalog_modes", mode, checked === true)}
               />
-              <span>{mode.replace(/_/g, " ")}</span>
+              <span>{getCatalogModeLabel(mode as Parameters<typeof getCatalogModeLabel>[0])}</span>
             </label>
           ))}
         </div>

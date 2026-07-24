@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import { useAuth } from "@/hooks/auth-context";
-import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
-import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
 import { StorefrontLiveEditor } from "@/components/storefront/StorefrontLiveEditor";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
-import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTemplateRenderer";
 import type { Store, StorePage } from "@/lib/cms/schema";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
 
 export function StorefrontPage({
   store,
@@ -19,7 +17,8 @@ export function StorefrontPage({
   page: StorePage;
 }) {
   const { canManageStore, user } = useAuth();
-  const [adminMode, setAdminMode] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [adminMode, setAdminMode] = useState(searchParams.get("admin") === "true");
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [editableStore, setEditableStore] = useState(store);
   const editablePage = useMemo(
@@ -37,28 +36,15 @@ export function StorefrontPage({
     <StoreProvider store={editableStore}>
       <StoreThemeScope theme={editableStore.theme}>
         <div data-testid="storefront-page" data-store-slug={editableStore.slug}>
-          <StorefrontLayout>
-            {blocks.map((block, index) => (
-              <div
-                key={block.id}
-                onClick={() => {
-                  if (canManageStorefront && adminMode) {
-                    setSelectedBlockId(block.id);
-                  }
-                }}
-                className={cn(
-                  "relative transition-shadow",
-                  canManageStorefront && adminMode && "cursor-pointer ring-1 ring-inset ring-primary/20 hover:ring-primary/40",
-                  selectedBlockId === block.id && "ring-2 ring-primary/50",
-                )}
-              >
-                {canManageStorefront && adminMode ? (
-                  <StorefrontAdminMode pageId={editablePage.id} block={block} index={index} />
-                ) : null}
-                <StorefrontBlockRenderer block={block} />
-              </div>
-            ))}
-          </StorefrontLayout>
+          <StorefrontTemplateRenderer
+            store={editableStore}
+            page={editablePage}
+            blocks={blocks}
+            adminMode={adminMode}
+            selectedBlockId={selectedBlockId}
+            canManageStorefront={canManageStorefront}
+            onSelectBlock={setSelectedBlockId}
+          />
         </div>
         {canManageStorefront ? (
           <StorefrontLiveEditor

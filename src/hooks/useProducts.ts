@@ -53,11 +53,22 @@ function mapDBProduct(p: DBProduct): Product {
 export function useProducts(explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
+  const shouldUseStorefrontApi = currentStore?.id === storeId;
 
   return useQuery({
     queryKey: ["products", storeId],
     queryFn: async () => {
       try {
+        if (shouldUseStorefrontApi && storeId) {
+          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}`);
+          if (!response.ok) {
+            throw new Error(`Storefront products request failed: ${response.status}`);
+          }
+
+          const data = (await response.json()) as DBProduct[];
+          return data.map(mapDBProduct);
+        }
+
         const { data, error } = await supabase
           .from("products")
           .select("*")
@@ -79,6 +90,7 @@ export function useProducts(explicitStoreId?: string | null) {
 export function useProduct(id: string | undefined, explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
+  const shouldUseStorefrontApi = currentStore?.id === storeId;
 
   return useQuery({
     queryKey: ["product", storeId, id],
@@ -89,6 +101,16 @@ export function useProduct(id: string | undefined, explicitStoreId?: string | nu
         return null;
       }
       try {
+        if (shouldUseStorefrontApi && storeId) {
+          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&id=${encodeURIComponent(id)}`);
+          if (!response.ok) {
+            throw new Error(`Storefront product request failed: ${response.status}`);
+          }
+
+          const data = (await response.json()) as DBProduct[];
+          return data[0] ? mapDBProduct(data[0]) : null;
+        }
+
         const { data, error } = await supabase
           .from("products")
           .select("*")
@@ -109,6 +131,7 @@ export function useProduct(id: string | undefined, explicitStoreId?: string | nu
 export function useProductsByIds(ids: string[], explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
+  const shouldUseStorefrontApi = currentStore?.id === storeId;
 
   return useQuery({
     queryKey: ["products", storeId, "by-ids", ids.join(",")],
@@ -119,6 +142,16 @@ export function useProductsByIds(ids: string[], explicitStoreId?: string | null)
       const localProducts: any[] = [];
       if (!dbIds.length) return localProducts;
       try {
+        if (shouldUseStorefrontApi && storeId) {
+          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&ids=${encodeURIComponent(dbIds.join(","))}`);
+          if (!response.ok) {
+            throw new Error(`Storefront products-by-ids request failed: ${response.status}`);
+          }
+
+          const data = (await response.json()) as DBProduct[];
+          return data.map(mapDBProduct);
+        }
+
         const { data, error } = await supabase
           .from("products")
           .select("*")
@@ -143,11 +176,22 @@ export function useProductsByIds(ids: string[], explicitStoreId?: string | null)
 export function useFeaturedProducts(explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
+  const shouldUseStorefrontApi = currentStore?.id === storeId;
 
   return useQuery({
     queryKey: ["products", storeId, "featured"],
     queryFn: async () => {
       try {
+        if (shouldUseStorefrontApi && storeId) {
+          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&featured=1`);
+          if (!response.ok) {
+            throw new Error(`Storefront featured products request failed: ${response.status}`);
+          }
+
+          const data = (await response.json()) as DBProduct[];
+          return data.map(mapDBProduct);
+        }
+
         const { data, error } = await supabase
           .from("products")
           .select("*")

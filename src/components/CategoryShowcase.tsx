@@ -9,6 +9,7 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
+import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 
 const fallbackCategories = [
   { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
@@ -24,6 +25,9 @@ interface CategoryShowcaseProps {
     disableLegacyFallback?: boolean;
     tagline?: string;
     title?: string;
+    layoutVariant?: "cards" | "carousel" | "masonry" | "compact-list" | string;
+    source?: "auto" | "categories" | "types" | string;
+    limit?: number;
   };
 }
 
@@ -56,10 +60,13 @@ const getTaglineForType = (typeName: string) => {
 const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
-  const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_categories", storeId);
+  const { data: settings } = useSiteSettings<{ tagline?: string; title?: string; fallback_image_url?: string }>("home_categories", storeId);
   const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
+  const layoutVariant = overrides?.layoutVariant ?? "cards";
+  const source = overrides?.source ?? "auto";
+  const limit = overrides?.limit;
   const { data: dbCategories = [] } = useProductCategories(storeId);
   const [dbTypes, setDbTypes] = useState<any[]>([]);
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
@@ -83,8 +90,46 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     loadTypes();
   }, [storeId]);
 
-  const categoriesToRender =
-    dbCategories.length > 0
+  const categoryItems =
+    dbCategories.map((category) => {
+      const custom = customData?.types?.[category.name] ?? {};
+      return {
+        label: category.name,
+        type: category.name,
+        tagline: custom.tagline || "Explore this category",
+        image_url: custom.image_url ?? null,
+        icon: FolderTree,
+        filterKey: "category" as const,
+      };
+    });
+  const typeItems = dbTypes.map((t) => {
+    const custom = customData?.types?.[t.name] ?? {};
+    return {
+      label: t.name,
+      type: t.name,
+      tagline: custom.tagline || getTaglineForType(t.name),
+      image_url: custom.image_url ?? null,
+      icon: getIconForType(t.name),
+      filterKey: "type" as const,
+    };
+  });
+  const fallbackItems = fallbackCategories.map((cat) => {
+    const custom = customData?.types?.[cat.type] ?? {};
+    return {
+      label: cat.label,
+      type: cat.type,
+      tagline: custom.tagline || cat.tagline,
+      image_url: custom.image_url ?? null,
+      icon: cat.icon,
+      filterKey: cat.filterKey,
+    };
+  });
+  const categoriesToRender = (
+    source === "categories"
+      ? categoryItems.length > 0 ? categoryItems : fallbackItems
+      : source === "types"
+      ? typeItems.length > 0 ? typeItems : fallbackItems
+      : categoryItems.length > 0
       ? dbCategories.map((category) => {
           const custom = customData?.types?.[category.name] ?? {};
           return {
@@ -96,7 +141,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             filterKey: "category" as const,
           };
         })
-      : dbTypes.length > 0
+      : typeItems.length > 0
       ? dbTypes.map((t) => {
           const custom = customData?.types?.[t.name] ?? {};
           return {
@@ -108,17 +153,8 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             filterKey: "type" as const,
           };
         })
-      : fallbackCategories.map((cat) => {
-          const custom = customData?.types?.[cat.type] ?? {};
-          return {
-            label: cat.label,
-            type: cat.type,
-            tagline: custom.tagline || cat.tagline,
-            image_url: custom.image_url ?? null,
-            icon: cat.icon,
-            filterKey: cat.filterKey,
-          };
-        });
+      : fallbackItems
+  ).slice(0, limit || undefined);
 
   return (
     <section className="py-24">
@@ -130,21 +166,52 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
           </div>
         </AnimatedSection>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div
+          className={
+            layoutVariant === "carousel"
+              ? "flex gap-4 overflow-x-auto pb-3"
+              : layoutVariant === "masonry"
+                ? "columns-2 gap-4 sm:columns-3 lg:columns-4"
+                : layoutVariant === "compact-list"
+                  ? "mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
+                  : "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+          }
+        >
           {categoriesToRender.map((cat, i) => {
             const Icon = cat.icon;
             return (
-              <AnimatedSection key={cat.type} delay={i * 80} animation="blur">
+              <AnimatedSection key={cat.type} delay={i * 80} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
                 <Link
                   to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
-                  className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 text-center smooth-hover hover:border-primary/40 hover:-translate-y-1 hover:premium-shadow"
+                  className={[
+                    "group border border-border bg-card smooth-hover hover:border-primary/40 hover:premium-shadow",
+                    layoutVariant === "compact-list"
+                      ? "flex items-center gap-4 rounded-lg p-4 text-left hover:-translate-y-0"
+                      : layoutVariant === "carousel"
+                        ? "flex min-w-[220px] flex-col items-center gap-3 rounded-xl p-6 text-center hover:-translate-y-1"
+                        : layoutVariant === "masonry"
+                          ? "flex min-h-[190px] flex-col items-start justify-end gap-3 rounded-lg p-5 text-left hover:-translate-y-1"
+                          : "flex flex-col items-center gap-3 rounded-xl p-6 text-center hover:-translate-y-1",
+                  ].filter(Boolean).join(" ")}
                 >
                   {cat.image_url ? (
-                    <div className="relative overflow-hidden h-14 w-14 rounded-full border-2 border-border group-hover:border-primary smooth-hover group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]">
-                      <img src={cat.image_url} alt={cat.label} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className={[
+                      "relative overflow-hidden border-2 border-border group-hover:border-primary smooth-hover group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
+                      layoutVariant === "masonry" ? "h-28 w-full rounded-lg" : "h-14 w-14 rounded-full",
+                    ].filter(Boolean).join(" ")}>
+                      <SafeStorefrontImage
+                        src={cat.image_url}
+                        fallbackSrc={settings?.fallback_image_url ?? null}
+                        fill
+                        alt={cat.label}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
                     </div>
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]">
+                    <div className={[
+                      "flex shrink-0 items-center justify-center bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
+                      layoutVariant === "masonry" ? "h-12 w-12 rounded-lg" : "h-14 w-14 rounded-full",
+                    ].filter(Boolean).join(" ")}>
                       <Icon className="h-5 w-5" />
                     </div>
                   )}

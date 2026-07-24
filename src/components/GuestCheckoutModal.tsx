@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { storefrontPath } from "@/lib/slug";
+import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 
 interface GuestCheckoutModalProps {
   open: boolean;
@@ -41,8 +42,8 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
   const checkoutItems = items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
-  const { data: deliverySettingsData } = useSiteSettings("delivery_settings", checkoutStoreId);
-  const deliverySettings = deliverySettingsData as any;
+  const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
+  const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -71,9 +72,16 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
     ? deliverySettings.secondary_zone_label.trim()
     : "Extended delivery zone";
 
-  const baseDeliveryFee = location === "dhaka" ? (deliverySettings?.delivery_fee || 80) : (deliverySettings?.delivery_fee_outside || 150);
-  const deliveryFee = deliverySettings?.enabled && checkoutSubtotal < (deliverySettings?.free_threshold || 2000) ? baseDeliveryFee : 0;
-  const grandTotal = checkoutSubtotal + deliveryFee - discountAmount;
+  const pricing = getStorefrontPricing({
+    subtotal: checkoutSubtotal,
+    couponDiscount: discountAmount,
+    deliverySettings,
+    paymentSettings,
+    paymentMethod: paymentMethod === "prepaid" ? paymentGateway : "cod",
+    location: location === "outside" ? "secondary" : "primary",
+  });
+  const deliveryFee = pricing.deliveryFee;
+  const grandTotal = pricing.grandTotal;
 
   useEffect(() => {
     if (open) {
@@ -229,7 +237,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
         })),
         subtotal: checkoutSubtotal,
         delivery_fee: deliveryFee,
-        discount_amount: discountAmount,
+        discount_amount: pricing.couponDiscount + pricing.orderDiscountAmount,
         coupon_code: discountApplied ? discountCode : null,
         total: grandTotal,
         customer_name: formData.name,
@@ -237,9 +245,10 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
         shipping_address: formData.address,
         shipping_city: location === "dhaka" ? primaryZoneLabel : secondaryZoneLabel,
         payment_method: paymentMethod === "prepaid" ? paymentGateway : "cod",
-        notes: formData.note + 
-              (isBkashGateway ? " | Payment: bKash PGW (Automated)" : (paymentMethod === "prepaid" ? ` | TrxID: ${trxId}` : "")) + 
-              (discountApplied ? ` | Coupon: ${discountCode}` : "")
+        notes: formData.note
+          + (isBkashGateway ? " | Payment: bKash PGW (Automated)" : (paymentMethod === "prepaid" ? ` | TrxID: ${trxId}` : ""))
+          + (discountApplied ? ` | Coupon: ${discountCode}` : "")
+          + (pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel ? ` | ${pricing.paymentDiscountLabel}: -BDT ${pricing.paymentDiscount}` : "")
       });
 
       if (isBkashGateway) {
@@ -277,7 +286,8 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
       
     } catch (err) {
       console.error(err);
-      toast.error("Failed to process order. Please try again.");
+      const message = err instanceof Error ? err.message : "Failed to process order. Please try again.";
+      toast.error(message);
       setLoading(false);
     }
   };
@@ -377,7 +387,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                     >
                       <span className="font-semibold text-sm">{primaryZoneLabel}</span>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee || 80}`}
+                        {pricing.qualifiesForThresholdFreeDelivery ? "Free" : `BDT ${deliverySettings.delivery_fee}`}
                       </p>
                     </div>
                     <div 
@@ -389,7 +399,7 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                     >
                       <span className="font-semibold text-sm">{secondaryZoneLabel}</span>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {deliverySettings?.enabled && checkoutSubtotal >= (deliverySettings?.free_threshold || 2000) ? "Free" : `BDT ${deliverySettings?.delivery_fee_outside || 150}`}
+                        {pricing.qualifiesForThresholdFreeDelivery ? "Free" : `BDT ${deliverySettings.delivery_fee_outside}`}
                       </p>
                     </div>
                   </div>
@@ -483,6 +493,20 @@ export default function GuestCheckoutModal({ open, onOpenChange }: GuestCheckout
                       <span>Discount ({discountCode.toUpperCase()})</span>
                       <span>-BDT {discountAmount}</span>
                     </div>
+                  )}
+                  {pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel && (
+                    <div className="flex items-center justify-between text-sm text-primary">
+                      <span>{pricing.paymentDiscountLabel}</span>
+                      <span>-BDT {pricing.paymentDiscount}</span>
+                    </div>
+                  )}
+                  {deliveryFee > 0 && deliverySettings.enabled && pricing.amountToFreeDelivery > 0 && (
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      Add BDT {pricing.amountToFreeDelivery} more for free delivery.
+                    </p>
+                  )}
+                  {pricing.qualifiesForPrepaidFreeDelivery && (
+                    <p className="mb-4 text-xs text-primary">Prepaid checkout unlocked free delivery for this order.</p>
                   )}
                   <div className="flex items-center justify-between mb-6 border-t border-border pt-4">
                     <span className="font-medium text-foreground">Total to Pay</span>

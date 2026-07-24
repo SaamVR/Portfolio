@@ -99,9 +99,16 @@ BEGIN
     END IF;
 
     UPDATE public.products
-    SET stock = stock - _line.quantity
+    SET stock = stock - _line.quantity,
+        is_available = CASE WHEN stock - _line.quantity <= 0 THEN false ELSE is_available END,
+        updated_at = now()
     WHERE id = _product.id
-      AND store_id = _store_id;
+      AND store_id = _store_id
+      AND stock >= _line.quantity;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'insufficient stock for %', _product.name USING ERRCODE = '22023';
+    END IF;
 
     _subtotal := _subtotal + (_product.price * _line.quantity);
     _normalized_items := _normalized_items || jsonb_build_array(jsonb_build_object(
@@ -210,3 +217,42 @@ $$;
 
 REVOKE ALL ON FUNCTION public.create_store_order_with_stock(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_store_order_with_stock(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.handle_order_cancellation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  _line record;
+BEGIN
+  IF NEW.status = 'cancelled' AND (OLD.status IS DISTINCT FROM 'cancelled') THEN
+    IF jsonb_typeof(NEW.items) = 'array' THEN
+      FOR _line IN
+        SELECT
+          (item.value->>'productId')::uuid AS product_id,
+          (item.value->>'quantity')::integer AS quantity
+        FROM jsonb_array_elements(NEW.items) AS item(value)
+      LOOP
+        IF _line.product_id IS NOT NULL AND _line.quantity IS NOT NULL AND _line.quantity > 0 THEN
+          UPDATE public.products
+          SET stock = stock + _line.quantity,
+              is_available = CASE WHEN stock + _line.quantity > 0 THEN true ELSE is_available END,
+              updated_at = now()
+          WHERE id = _line.product_id
+            AND store_id = NEW.store_id;
+        END IF;
+      END LOOP;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_order_cancellation ON public.orders;
+CREATE TRIGGER trg_order_cancellation
+  AFTER UPDATE OF status ON public.orders
+  FOR EACH ROW
+  WHEN (NEW.status = 'cancelled' AND OLD.status IS DISTINCT FROM 'cancelled')
+  EXECUTE FUNCTION public.handle_order_cancellation();

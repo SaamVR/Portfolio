@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { DownloadAccessPanel } from "@/components/storefront/digital-downloads/DownloadAccessPanel";
+import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
+import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -23,12 +26,6 @@ const checkoutSchema = z.object({
   paymentMethod: z.enum(["bkash", "bkash_manual", "nagad", "cod"]),
   trxId: z.string().trim().max(50).optional(),
 });
-
-interface DeliverySettings {
-  enabled: boolean;
-  free_threshold: number;
-  delivery_fee: number;
-}
 
 interface CouponResult {
   id: string;
@@ -60,7 +57,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const storeName = currentStore?.name ?? "this store";
 
   const navigate = useNavigate();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, clearCart, couponCode, setCouponCode } = useCart();
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
@@ -68,9 +65,10 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const hasMixedStoreItems = cartStoreIds.length > 1;
   const checkoutItems = items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const digitalOnlyCheckout = isDigitalOnlyCart(checkoutItems);
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
-  const { data: deliverySettingsData } = useSiteSettings<DeliverySettings>("delivery_settings", checkoutStoreId);
-  const deliverySettings = deliverySettingsData ?? { enabled: true, free_threshold: 2000, delivery_fee: 80 };
+  const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
+  const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [form, setForm] = useState({
@@ -83,18 +81,55 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [orderRequestKey, setOrderRequestKey] = useState(createCheckoutRequestKey);
-
-  // Coupon state
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
-    if (checkoutItems.length === 0) {
+    if (checkoutItems.length === 0 && !isRedirecting) {
       navigate(storefrontPath("/cart", storeSlug));
     }
-  }, [checkoutItems.length, navigate, storeSlug]);
+  }, [checkoutItems.length, isRedirecting, navigate, storeSlug]);
+
+  // Auto-apply pre-filled coupon code at checkout using server-side RPC validation
+  useEffect(() => {
+    if (!couponCode || appliedCoupon || couponLoading || hasMixedStoreItems || !checkoutStoreId || checkoutSubtotal <= 0) {
+      return;
+    }
+
+    setCouponInput(couponCode);
+
+    const autoValidate = async () => {
+      setCouponLoading(true);
+      setCouponError("");
+
+      const { data, error } = await supabase.rpc("validate_coupon" as any, {
+        _code: couponCode.trim(),
+        _order_total: checkoutSubtotal,
+        _store_id: checkoutStoreId,
+      });
+
+      setCouponLoading(false);
+
+      if (error || !data) {
+        setCouponError("Invalid or expired coupon code.");
+        return;
+      }
+
+      const result = data as unknown as { error?: string } & CouponResult;
+
+      if (result.error) {
+        setCouponError(result.error);
+        return;
+      }
+
+      setAppliedCoupon(result as CouponResult);
+      toast.success(`Coupon "${result.code}" applied!`);
+    };
+
+    autoValidate();
+  }, [couponCode, checkoutSubtotal, checkoutStoreId, appliedCoupon, couponLoading, hasMixedStoreItems]);
 
   if (!checkoutStoreId) {
     return (
@@ -122,20 +157,23 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     return null;
   }
 
-  // Delivery fee calculation
-  const deliveryFee =
-    deliverySettings.enabled && checkoutSubtotal < deliverySettings.free_threshold
-      ? deliverySettings.delivery_fee
-      : 0;
-
-  // Coupon discount
   const couponDiscount = appliedCoupon
     ? appliedCoupon.discount_type === "percentage"
       ? Math.round((checkoutSubtotal * appliedCoupon.discount_value) / 100)
       : appliedCoupon.discount_value
     : 0;
-
-  const grandTotal = checkoutSubtotal - couponDiscount + deliveryFee;
+  const pricing = getStorefrontPricing({
+    subtotal: checkoutSubtotal,
+    couponDiscount,
+    deliverySettings,
+    paymentSettings,
+    paymentMethod: form.paymentMethod,
+    location: "primary",
+  });
+  const deliveryFee = digitalOnlyCheckout ? 0 : pricing.deliveryFee;
+  const grandTotal = digitalOnlyCheckout
+    ? Math.max(0, checkoutSubtotal - couponDiscount - pricing.orderDiscountAmount - pricing.paymentDiscount)
+    : pricing.grandTotal;
 
   const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
   const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual" || form.paymentMethod === "nagad";
@@ -162,6 +200,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       return;
     }
     setCouponError("");
+    setCouponLoading(true);
 
     const { data, error } = await supabase.rpc("validate_coupon" as any, {
       _code: couponInput.trim(),
@@ -191,6 +230,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     setAppliedCoupon(null);
     setCouponInput("");
     setCouponError("");
+    setCouponCode(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,7 +239,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       toast.error("Please checkout one store at a time.");
       return;
     }
-    const result = checkoutSchema.safeParse(form);
+    const result = checkoutSchema.safeParse({
+      ...form,
+      address: digitalOnlyCheckout ? (form.address.trim() || "Digital delivery") : form.address,
+      city: digitalOnlyCheckout ? (form.city.trim() || "Digital") : form.city,
+    });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -229,6 +273,15 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       }
       
       if (appliedCoupon) notesParts.push(`Coupon: ${appliedCoupon.code} (-BDT ${couponDiscount})`);
+      if (pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel) {
+        notesParts.push(`${pricing.paymentDiscountLabel}: -BDT ${pricing.paymentDiscount}`);
+      }
+      if (digitalOnlyCheckout) {
+        notesParts.push("Digital order: no physical shipping");
+      }
+
+      const shippingAddress = digitalOnlyCheckout ? (form.address.trim() || "Digital delivery") : form.address;
+      const shippingCity = digitalOnlyCheckout ? (form.city.trim() || "Digital") : form.city;
 
       const order = await createOrder.mutateAsync({
         idempotencyKey: orderRequestKey,
@@ -244,14 +297,14 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         })),
         subtotal: checkoutSubtotal,
         delivery_fee: deliveryFee,
-        discount_amount: couponDiscount,
+        discount_amount: pricing.couponDiscount + pricing.orderDiscountAmount,
         coupon_code: appliedCoupon?.code ?? null,
         total: grandTotal,
         customer_name: form.name,
         customer_phone: form.phone,
         customer_email: user?.email,
-        shipping_address: form.address,
-        shipping_city: form.city,
+        shipping_address: shippingAddress,
+        shipping_city: shippingCity,
         payment_method: form.paymentMethod,
         notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
@@ -287,10 +340,12 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       } else {
         toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
       }
+      setIsRedirecting(true);
       clearCart(checkoutStoreId);
       navigate(storefrontPath(`/order-success?order=${encodeURIComponent(order.order_number)}`, storeSlug));
-    } catch {
-      toast.error("Failed to place order. Please try again.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      toast.error(message);
     }
   };
 
@@ -299,7 +354,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const LayoutWrapper = explicitStoreId ? StorefrontLayout : Layout;
+  const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
 
   return (
     <LayoutWrapper>
@@ -317,13 +372,19 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Delivery Details */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Delivery Details</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{digitalOnlyCheckout ? "Customer Details" : "Delivery Details"}</h2>
             <div className="space-y-4">
               {[
                 { key: "name", label: "Full Name", placeholder: "e.g. Hasan Mahmud" },
                 { key: "phone", label: "Phone Number", placeholder: "01XXXXXXXXX" },
-                { key: "address", label: "Delivery Address", placeholder: "House, Road, Area" },
-                { key: "city", label: "City", placeholder: "City or delivery area" },
+                ...(
+                  digitalOnlyCheckout
+                    ? []
+                    : [
+                        { key: "address", label: "Delivery Address", placeholder: "House, Road, Area" },
+                        { key: "city", label: "City", placeholder: "City or delivery area" },
+                      ]
+                ),
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label className="mb-1 block text-sm font-medium text-foreground">{label}</label>
@@ -337,6 +398,10 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   {errors[key] && <p className="mt-1 text-xs text-destructive">{errors[key]}</p>}
                 </div>
               ))}
+
+              {digitalOnlyCheckout ? (
+                <DownloadAccessPanel compact />
+              ) : null}
             </div>
           </div>
 
@@ -347,7 +412,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               {checkoutItems.map((item) => (
                 <div key={`${item.productId}-${item.size}`} className="flex justify-between text-sm">
                   <span className="text-foreground">
-                    {item.name} x {item.quantity} <span className="text-muted-foreground">({item.size})</span>
+                    {item.name} x {item.quantity} <span className="text-muted-foreground">({getCartVariantDisplayLabel(item.size)})</span>
                   </span>
                   <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
                 </div>
@@ -497,16 +562,28 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                 <span>-BDT {couponDiscount}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Delivery</span>
+              <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{digitalOnlyCheckout ? "Digital delivery" : "Delivery"}</span>
               <span className={deliveryFee === 0 ? "text-primary" : ""}>
-                {deliveryFee === 0 ? "Free" : `BDT ${deliveryFee}`}
+                {digitalOnlyCheckout ? "Included" : deliveryFee === 0 ? "Free" : `BDT ${deliveryFee}`}
               </span>
             </div>
-            {deliveryFee === 0 && deliverySettings.enabled && checkoutSubtotal < deliverySettings.free_threshold && (
+            {pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel && (
+              <div className="flex justify-between text-sm text-primary">
+                <span>{pricing.paymentDiscountLabel}</span>
+                <span>-BDT {pricing.paymentDiscount}</span>
+              </div>
+            )}
+            {!digitalOnlyCheckout && deliveryFee > 0 && deliverySettings.enabled && pricing.amountToFreeDelivery > 0 && (
               <p className="text-xs text-muted-foreground">
-                Add BDT {deliverySettings.free_threshold - checkoutSubtotal} more for free delivery
+                Add BDT {pricing.amountToFreeDelivery} more for free delivery
               </p>
+            )}
+            {!digitalOnlyCheckout && pricing.qualifiesForThresholdFreeDelivery && (
+              <p className="text-xs text-primary">You qualify for free delivery.</p>
+            )}
+            {!digitalOnlyCheckout && pricing.qualifiesForPrepaidFreeDelivery && (
+              <p className="text-xs text-primary">Prepaid checkout unlocked free delivery for this order.</p>
             )}
             <div className="border-t border-border pt-3">
               <div className="flex justify-between font-heading text-lg font-bold text-foreground">

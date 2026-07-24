@@ -30,12 +30,16 @@ describe("product slugs", () => {
       value: {
         location: {
           pathname: "/shop",
+          hostname: "merchant-noir.ezcomo.shop",
         },
       },
       configurable: true,
     });
 
     expect(storefrontPath("/cart", "merchant-noir")).toBe("/cart");
+    expect(storefrontPath("/contact", "merchant-noir")).toBe("/contact");
+    expect(storefrontPath("/faq", "merchant-noir")).toBe("/faq");
+    expect(storefrontPath("/auth?next=%2Faccount", "merchant-noir")).toBe("/auth?next=%2Faccount");
     expect(productUrl("launch-tshirt-black", "Premium Cotton T-Shirt - Black", "merchant-noir")).toBe(
       "/product/premium-cotton-t-shirt-black--launch-tshirt-black",
     );
@@ -53,13 +57,40 @@ describe("product slugs", () => {
       value: {
         location: {
           pathname: "/admin",
+          hostname: "localhost",
         },
       },
       configurable: true,
     });
 
     expect(storefrontPath("/cart", "merchant-noir")).toBe("/stores/merchant-noir/cart");
+    expect(storefrontPath("/contact", "merchant-noir")).toBe("/stores/merchant-noir/contact");
+    expect(storefrontPath("/faq", "merchant-noir")).toBe("/stores/merchant-noir/faq");
+    expect(storefrontPath("/auth?next=%2Fstores%2Fmerchant-noir%2Faccount", "merchant-noir")).toBe(
+      "/stores/merchant-noir/auth?next=%2Fstores%2Fmerchant-noir%2Faccount",
+    );
     expect(storePageUrl("merchant-noir", "/about")).toBe("/stores/merchant-noir/about");
+
+    Object.defineProperty(globalThis, "window", {
+      value: originalWindow,
+      configurable: true,
+    });
+  });
+
+  it("keeps using /stores fallback paths when a platform-host storefront page is loaded at a shared path", () => {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: {
+        location: {
+          pathname: "/contact",
+          hostname: "localhost",
+        },
+      },
+      configurable: true,
+    });
+
+    expect(storefrontPath("/", "merchant-noir")).toBe("/stores/merchant-noir");
+    expect(storefrontPath("/shop", "merchant-noir")).toBe("/stores/merchant-noir/shop");
 
     Object.defineProperty(globalThis, "window", {
       value: originalWindow,

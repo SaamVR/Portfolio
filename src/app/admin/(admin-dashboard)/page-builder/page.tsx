@@ -1,20 +1,14 @@
 "use client";
 
 import React, { Suspense } from "react";
-import PageComponent from "@/views/admin/CmsPagesManager";
-import { AdminFeatureGate } from "@/components/admin/AdminFeatureGate";
 import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
+import { Navigate } from "@/lib/react-router-dom-shim";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 
 export default function Page() {
   return (
     <Suspense fallback={<AdminRouteFallback label="Loading page builder" />}>
-      <AdminFeatureGate
-        featureKey="cms_pages"
-        title="Page Builder"
-        description="This store package does not currently include the storefront page builder."
-      >
-        <PageComponent />
-      </AdminFeatureGate>
+      <Navigate to={buildPageBuilderPath("basic")} replace />
     </Suspense>
   );
 }

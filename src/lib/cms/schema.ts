@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseLegacyStringToDoc } from "./rich-text-adapter";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
@@ -7,15 +8,40 @@ export const storeThemeSchema = z.object({
   headingFont: z.string().optional(),
   bodyFont: z.string().optional(),
   borderRadius: z.string().optional(),
+  radiusScale: z.number().min(0).max(1).optional(),
+  densityScale: z.number().min(0).max(1).optional(),
+  aesthetic: z.enum(["minimal", "glassmorphism", "fluid", "brutalist", "neumorphism", "editorial", "retro", "artisan", "dark-luxury", "playful-pop"]).optional(),
+  effects: z.object({
+    scrollReveals: z.boolean().default(false),
+    hoverEffects: z.boolean().default(true),
+    parallax: z.boolean().default(false),
+    intensity: z.enum(["subtle", "medium", "bold"]).default("medium"),
+  }).optional(),
+  paletteSource: z.enum(["manual", "generated"]).optional(),
+  paletteSeed: z.string().optional(),
   customCssVars: z.record(z.string(), z.string()).default({}),
   customCss: z.string().optional(),
+  globalHeadInjection: z.string().optional(),
+  globalBodyInjection: z.string().optional(),
+  schemaVersion: z.number().optional(),
 });
 
-const countdownBlockSchema = z.object({
+const baseBlockFields = {
   id: z.string(),
-  type: z.literal("countdown"),
   isVisible: z.boolean().default(true),
+  visible: z.boolean().default(true),
   sortOrder: z.number().int().nonnegative(),
+  entranceAnimation: z.enum(["none", "fade", "slide-up", "zoom", "stagger"]).optional(),
+  hoverEffect: z.enum(["none", "lift", "zoom", "glow"]).optional(),
+  effectOverride: z.boolean().optional(),
+  layoutVariant: z.string().optional(),
+  customHtml: z.string().optional(),
+  customCss: z.string().optional(),
+};
+
+const countdownBlockSchema = z.object({
+  ...baseBlockFields,
+  type: z.literal("countdown"),
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -27,10 +53,8 @@ const countdownBlockSchema = z.object({
 });
 
 const heroBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("hero"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     anchorId: z.string().optional(),
     tagline: z.string().optional(),
@@ -49,10 +73,8 @@ const heroBlockSchema = z.object({
 });
 
 const promoBannerBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("promo-banner"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -70,56 +92,81 @@ const promoBannerBlockSchema = z.object({
 });
 
 const categoryShowcaseBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("category-showcase"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     tagline: z.string().optional(),
     title: z.string().optional(),
+    source: z.enum(["auto", "categories", "types"]).optional(),
+    limit: z.number().int().positive().max(24).optional(),
   }).default({}),
 });
 
 const featuredProductsBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("featured-products"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     limit: z.number().int().positive().max(24).default(6),
     title: z.string().optional(),
     tagline: z.string().optional(),
+    source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
+    category: z.string().optional(),
+    productType: z.string().optional(),
   }).default({}),
 });
 
 const recentlyViewedBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("recently-viewed"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
   }).default({}),
 });
 
+export const richTextNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.object({
+    type: z.string(),
+    text: z.string().optional(),
+    attrs: z.record(z.string(), z.unknown()).optional(),
+    marks: z
+      .array(
+        z.object({
+          type: z.string(),
+          attrs: z.record(z.string(), z.unknown()).optional(),
+        }),
+      )
+      .optional(),
+    content: z.array(richTextNodeSchema).optional(),
+  }),
+);
+
+export const richTextDocSchema = z.object({
+  type: z.literal("doc"),
+  content: z.array(richTextNodeSchema).default([]),
+});
+
+export type RichTextNode = z.infer<typeof richTextNodeSchema>;
+export type RichTextDoc = z.infer<typeof richTextDocSchema>;
+
+const richTextBodySchema = z.union([
+  richTextDocSchema,
+  z.string(),
+]);
+
 const richTextBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("rich-text"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     eyebrow: z.string().optional(),
     title: z.string().min(1),
-    body: z.string().min(1),
+    body: richTextBodySchema,
     align: z.enum(["left", "center"]).default("center"),
   }),
 });
 
 const socialFeedBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("social-feed"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -128,10 +175,8 @@ const socialFeedBlockSchema = z.object({
 });
 
 const videoReelBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("video-reel"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     videoUrl: z.string().optional(),
     title: z.string().optional(),
@@ -141,10 +186,8 @@ const videoReelBlockSchema = z.object({
 });
 
 const faqAccordionBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("faq-accordion"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -156,10 +199,8 @@ const faqAccordionBlockSchema = z.object({
 });
 
 const trustBadgesBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("trust-badges"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
     badges: z.array(z.object({
@@ -171,10 +212,8 @@ const trustBadgesBlockSchema = z.object({
 });
 
 const testimonialsBlockSchema = z.object({
-  id: z.string(),
+  ...baseBlockFields,
   type: z.literal("testimonials"),
-  isVisible: z.boolean().default(true),
-  sortOrder: z.number().int().nonnegative(),
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -231,6 +270,7 @@ export const storeSchema = z.object({
   isPublished: z.boolean().default(false),
   theme: storeThemeSchema,
   pages: z.array(storePageSchema).min(1),
+  siteSettings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type StoreTheme = z.infer<typeof storeThemeSchema>;

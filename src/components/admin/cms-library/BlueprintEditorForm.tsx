@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
+import { getCatalogModeLabel } from "@/lib/cms/storefront-compat";
 
 type OnboardingStep = {
   id: string;
@@ -132,7 +133,7 @@ export function BlueprintEditorForm({
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {catalogModeOptions.map((option) => (
-                <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                <SelectItem key={option} value={option}>{getCatalogModeLabel(option as Parameters<typeof getCatalogModeLabel>[0])}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -371,7 +372,7 @@ export function BlueprintEditorForm({
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {productVisibilityOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option.replace(/_/g, " ")}</SelectItem>
+                        <SelectItem key={option} value={option}>{getCatalogModeLabel(option as Parameters<typeof getCatalogModeLabel>[0])}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

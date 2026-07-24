@@ -20,6 +20,8 @@ export interface CartContextType {
   totalPrice: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  couponCode: string | null;
+  setCouponCode: (code: string | null) => void;
 }
 
 export const CartContext = createContext<CartContextType | undefined>(undefined);

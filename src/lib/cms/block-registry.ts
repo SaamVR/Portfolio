@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDefaultBlock, cmsBlockTypeOptions } from "@/lib/cms/block-library";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { StoreBusinessFamily } from "@/lib/cms/store-blueprints";
+import type { StoreBlueprintDefinition, StoreBusinessFamily } from "@/lib/cms/store-blueprints";
 
 export interface CmsBlockRegistryItem {
   value: StorePageBlock["type"];
@@ -99,6 +99,20 @@ export function getCmsBlockRegistryItem(
   registry: CmsBlockRegistryItem[] = fallbackBlockRegistry,
 ) {
   return registry.find((item) => item.value === type) ?? fallbackBlockRegistry.find((item) => item.value === type) ?? fallbackBlockRegistry[0];
+}
+
+export function filterBlockRegistryForBlueprint(
+  registry: CmsBlockRegistryItem[],
+  blueprint: Pick<StoreBlueprintDefinition, "businessFamily" | "capabilities" | "recommendedBlockSet">,
+) {
+  const recommendedBlockSet = new Set(blueprint.recommendedBlockSet);
+
+  return registry.filter(
+    (block) =>
+      block.compatibleBusinessFamilies.includes(blueprint.businessFamily)
+      && block.requiredCapabilities.every((capability) => blueprint.capabilities.includes(capability))
+      && (recommendedBlockSet.size === 0 || recommendedBlockSet.has(block.value)),
+  );
 }
 
 export function createRegistryDefaultBlock(type: StorePageBlock["type"], sortOrder: number) {

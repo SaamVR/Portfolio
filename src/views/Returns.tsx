@@ -1,4 +1,6 @@
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
+import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import SEOHead from "@/components/SEOHead";
 import { RefreshCcw, ShieldCheck, Clock, CheckCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -8,8 +10,31 @@ const Returns = () => {
   const currentStore = useOptionalStore();
   const storeName = currentStore?.name ?? "our store";
   const returnWindowLabel = `${storeName}'s current return and exchange window`;
+  const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
+  const policyPage = currentStore?.pages.find((page) => page.slug === "/returns" || page.slug === "/policy");
+  const policyBlocks = policyPage ? [...policyPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
+
+  if (policyPage && policyBlocks.length > 0) {
+    return (
+      <LayoutWrapper>
+        <SEOHead
+          title={policyPage.seoTitle || policyPage.title}
+          description={policyPage.seoDescription || `${storeName}'s return, exchange, and refund guidelines.`}
+          canonical={absoluteStoreUrl(currentStore, "/returns")}
+        />
+        <div className="py-8">
+          {policyBlocks.map((block) => (
+            <div key={block.id}>
+              <StorefrontBlockRenderer block={block} />
+            </div>
+          ))}
+        </div>
+      </LayoutWrapper>
+    );
+  }
+
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead 
         title="Returns & Exchanges" 
         description={`${storeName}'s return, exchange, and refund guidelines.`} 
@@ -124,7 +149,7 @@ const Returns = () => {
           </section>
         </div>
       </div>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

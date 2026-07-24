@@ -5,7 +5,7 @@ import { getPreferredRequestHost, normalizeRequestHost } from "@/lib/platform/re
 
 export function shouldTryLocalStoreSlugFallback(hostname?: string | null, resolvedStoreId?: string | null) {
   const normalizedHost = normalizeRequestHost(hostname);
-  return (resolvedStoreId === DEFAULT_STORE_ID || !resolvedStoreId)
+  return resolvedStoreId === DEFAULT_STORE_ID
     && (normalizedHost === "localhost" || normalizedHost === "127.0.0.1");
 }
 

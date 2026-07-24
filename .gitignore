@@ -42,3 +42,10 @@ supabase/.temp/
 
 # Local Codex config
 .codex/config.toml
+
+# Temp artifacts and archives
+*.rar
+backups/
+test-results/
+tmp/
+

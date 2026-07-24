@@ -1,6 +1,8 @@
+import { getCmsRootDomain, getPlatformSiteUrl, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+
 /**
  * Generate a URL-friendly slug from a product name.
- * e.g. "Premium Cotton T-Shirt" → "premium-cotton-t-shirt"
+ * e.g. "Premium Cotton T-Shirt" -> "premium-cotton-t-shirt"
  */
 export function slugify(text: string): string {
   return text
@@ -20,13 +22,34 @@ function getEncodedStoreSlug(storeSlug?: string | null) {
   return storeSlug ? encodeURIComponent(storeSlug) : null;
 }
 
+function normalizeHost(value?: string | null) {
+  if (!value) return null;
+  return value
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .split(":")[0]
+    .trim()
+    .toLowerCase() || null;
+}
+
+function isLocalHost(hostname?: string | null) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 function isPlatformAppPath(pathname: string) {
   return pathname === "/"
     || pathname.startsWith("/admin")
     || pathname.startsWith("/cms-admin")
     || pathname.startsWith("/signup")
-    || pathname.startsWith("/auth")
     || pathname.startsWith("/merchant-signup");
+}
+
+function isExternalOrSpecialPath(path: string) {
+  return /^(https?:)?\/\//i.test(path)
+    || path.startsWith("#")
+    || path.startsWith("mailto:")
+    || path.startsWith("tel:")
+    || path.startsWith("javascript:");
 }
 
 export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
@@ -36,11 +59,34 @@ export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
   }
 
   const pathname = window.location.pathname || "/";
+  const hostname = normalizeHost(window.location.hostname || window.location.host);
+
   if (pathname === `/stores/${encodedStoreSlug}` || pathname.startsWith(`/stores/${encodedStoreSlug}/`)) {
     return false;
   }
 
-  return !isPlatformAppPath(pathname);
+  if (!hostname || isLocalHost(hostname) || isPlatformAppPath(pathname)) {
+    return false;
+  }
+
+  const storeSubdomainBaseDomain = normalizeHost(getStoreSubdomainBaseDomain());
+  if (storeSubdomainBaseDomain && hostname === `${encodedStoreSlug}.${storeSubdomainBaseDomain}`) {
+    return true;
+  }
+
+  const platformHosts = new Set(
+    [
+      normalizeHost(getCmsRootDomain()),
+      normalizeHost(getPlatformSiteUrl()),
+      storeSubdomainBaseDomain,
+    ].filter((value): value is string => Boolean(value)),
+  );
+
+  if (platformHosts.has(hostname)) {
+    return false;
+  }
+
+  return true;
 }
 
 function buildStorefrontScopedPath(path: string, storeSlug?: string | null) {
@@ -82,29 +128,19 @@ export function storePageUrl(storeSlug: string, pageSlug: string): string {
 }
 
 export function storefrontPath(path: string, storeSlug?: string | null): string {
-  if (!storeSlug) {
+  if (!storeSlug || isExternalOrSpecialPath(path)) {
     return path;
   }
 
   const [pathnamePart, queryPart] = path.split("?");
   const pathname = pathnamePart.startsWith("/") ? pathnamePart : `/${pathnamePart}`;
   const query = queryPart ? `?${queryPart}` : "";
-  if (
-    pathname === "/"
-    || pathname === "/shop"
-    || pathname.startsWith("/product/")
-    || pathname === "/checkout"
-    || pathname === "/order-success"
-    || pathname === "/contact"
-    || pathname === "/cart"
-    || pathname === "/wishlist"
-    || pathname === "/account"
-    || pathname === "/track-order"
-  ) {
-    return buildStorefrontScopedPath(`${pathname}${query}`, storeSlug);
+
+  if (pathname !== "/" && isPlatformAppPath(pathname)) {
+    return `${pathname}${query}`;
   }
 
-  return path;
+  return buildStorefrontScopedPath(`${pathname}${query}`, storeSlug);
 }
 
 export const isUuid = (value: string) =>
@@ -123,7 +159,6 @@ export function extractIdFromSlug(slugId: string): string {
     return decoded.slice(delimiterIndex + 2);
   }
 
-  // UUID is 36 chars (8-4-4-4-12)
   if (decoded.length >= 36) {
     const possibleId = decoded.slice(-36);
     if (isUuid(possibleId)) {
@@ -140,6 +175,5 @@ export function extractIdFromSlug(slugId: string): string {
     return decoded.slice(legacyLaunchIndex + 1);
   }
 
-  // Fallback: return as-is (backwards compat for old bookmarked links)
   return decoded;
 }

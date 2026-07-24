@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { TiptapRichTextEditor } from "@/components/admin/TiptapRichTextEditor";
+import type { RichTextDoc } from "@/lib/cms/schema";
 
 type PageBlueprintBlockEditorProps = {
   block: Record<string, unknown>;
@@ -241,7 +243,10 @@ export function PageBlueprintBlockEditor({
           </div>
           <div className="grid gap-2">
             <Label>Body</Label>
-            <Textarea rows={5} value={String(props.body ?? "")} onChange={(event) => onUpdateBlockProps(index, { body: event.target.value })} />
+            <TiptapRichTextEditor
+              value={props.body as RichTextDoc | string}
+              onChange={(doc) => onUpdateBlockProps(index, { body: doc })}
+            />
           </div>
           <div className="grid gap-2">
             <Label>Alignment</Label>

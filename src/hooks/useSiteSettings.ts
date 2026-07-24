@@ -2,14 +2,30 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 export function useSiteSettings<T = any>(key: string, explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
+  const scopedStoreSettings = currentStore?.siteSettings as Record<string, T | undefined> | undefined;
+  const hasScopedValue = currentStore?.id === storeId && scopedStoreSettings && key in scopedStoreSettings;
+  const scopedValue = hasScopedValue ? (scopedStoreSettings?.[key] ?? null) : null;
 
   return useQuery({
     queryKey: ["site_settings", storeId, key],
     queryFn: async () => {
       if (!storeId) return null;
+
+      if (hasScopedValue) {
+        return scopedValue as T | null;
+      }
+
+      if (!isValidUUID(storeId)) {
+        return null;
+      }
+
       try {
         const { data, error } = await supabase
           .from("site_settings")
@@ -28,5 +44,3 @@ export function useSiteSettings<T = any>(key: string, explicitStoreId?: string |
     enabled: !!storeId,
   });
 }
-
-

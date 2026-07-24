@@ -1,10 +1,12 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { Package, Search, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react";
 import type { Order } from "@/hooks/useOrders";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -25,6 +27,7 @@ const TrackOrder = () => {
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +65,7 @@ const TrackOrder = () => {
   const isCancelled = order?.status === "cancelled";
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead
         title={`Track Your Order | ${storeName}`}
         description={`Enter your order number to see real-time status updates for your ${storeName} order.`}
@@ -196,7 +199,7 @@ const TrackOrder = () => {
                     <div key={index} className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">Size: {item.size} - Qty: {item.quantity}</p>
+                        <p className="text-xs text-muted-foreground">Option: {getCartVariantDisplayLabel(item.size)} - Qty: {item.quantity}</p>
                       </div>
                       <p className="text-sm font-semibold text-foreground">BDT {item.price * item.quantity}</p>
                     </div>
@@ -209,7 +212,8 @@ const TrackOrder = () => {
                   <span>Subtotal</span><span>BDT {order.subtotal}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Delivery</span><span>BDT {order.delivery_fee}</span>
+                  <span>{isDigitalOnlyCart(order.items ?? []) ? "Digital delivery" : "Delivery"}</span>
+                  <span>{isDigitalOnlyCart(order.items ?? []) ? "Included" : `BDT ${order.delivery_fee}`}</span>
                 </div>
                 <div className="mt-2 flex justify-between border-t border-border pt-2 font-bold text-foreground">
                   <span>Total</span><span>BDT {order.total}</span>
@@ -223,7 +227,7 @@ const TrackOrder = () => {
           )}
         </div>
       </section>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

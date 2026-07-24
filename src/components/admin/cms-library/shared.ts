@@ -1,6 +1,7 @@
 import { fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
 import { fallbackPageBlueprints } from "@/lib/cms/page-blueprints";
 import { fallbackBlockRegistry } from "@/lib/cms/block-registry";
+import { allStoreBusinessFamilies, allStoreCatalogModes, storefrontProductVisibilityModes } from "@/lib/cms/storefront-compat";
 
 export type BlueprintRow = {
   id: string;
@@ -126,12 +127,12 @@ export function findBlueprintRowsUsingThemePackage(data: LibraryData, themeId: s
   });
 }
 
-export const businessFamilyOptions = ["commerce", "booking", "listing", "service"] as const;
-export const catalogModeOptions = ["single_product", "multi_product", "menu", "inquiry_only"] as const;
-export const legacyTemplateOptions = ["clothing", "food", "general"] as const;
+export const businessFamilyOptions = allStoreBusinessFamilies;
+export const catalogModeOptions = allStoreCatalogModes;
+export const legacyTemplateOptions = ["clothing", "food", "general", "landing", "gadgets", "crafts"] as const;
 export const blockLayerOptions = ["core", "commerce", "extension"] as const;
 export const onboardingStepOptions = ["blueprint", "brand", "content", "catalog", "theme", "payments", "launch"] as const;
-export const productVisibilityOptions = ["catalog", "single_product", "menu", "inquiry_only"] as const;
+export const productVisibilityOptions = storefrontProductVisibilityModes;
 export const checkoutModeOptions = ["standard", "whatsapp", "inquiry"] as const;
 export const prepaymentDiscountTypeOptions = ["none", "free_delivery", "percentage", "fixed"] as const;
 export const themeSourceTypeOptions = ["system", "admin_shared", "merchant_private", "merchant_submitted"] as const;

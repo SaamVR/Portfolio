@@ -17,6 +17,10 @@ import {
   GET as billingBkashCallbackGet,
   billingBkashCallbackRouteDeps,
 } from "@/app/api/billing/bkash-callback/route";
+import {
+  POST as deleteStorePost,
+  deleteStoreRouteDeps,
+} from "@/app/api/stores/delete/route";
 
 afterEach(() => {
   mock.restoreAll();
@@ -119,9 +123,11 @@ function createCheckoutAdminMock(plan: { id: string; monthly_price: number; curr
 
 function createSubscriptionAdminMock(plan: { id: string; monthly_price: number; is_active?: boolean }) {
   const upserts: Array<{ payload: Record<string, unknown>; options: Record<string, unknown> }> = [];
+  const storeUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
 
   return {
     upserts,
+    storeUpdates,
     client: {
       from(table: string) {
         if (table === "cms_plans") {
@@ -154,6 +160,21 @@ function createSubscriptionAdminMock(plan: { id: string; monthly_price: number; 
           };
         }
 
+        if (table === "stores") {
+          return {
+            update(payload: Record<string, unknown>) {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  storeUpdates.push({ payload, filters: [...filters] });
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
         throw new Error(`Unexpected table ${table}`);
       },
     },
@@ -163,15 +184,52 @@ function createSubscriptionAdminMock(plan: { id: string; monthly_price: number; 
 function createDomainAdminMock(options?: { existingDomainStoreId?: string | null }) {
   const domainUpserts: Array<Record<string, unknown>> = [];
   const domainUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const storeUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const deletedDomains: Array<{ storeId: string; hostnames: string[] }> = [];
   const domains = new Map<string, Record<string, unknown>>();
 
   return {
     domainUpserts,
     domainUpdates,
+    storeUpdates,
     deletedDomains,
     client: {
       from(table: string) {
+        if (table === "store_subscriptions") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({
+                      data: {
+                        plan_id: "pro",
+                        status: "active",
+                        trial_ends_at: null,
+                        cms_plans: { name: "Pro", monthly_price: 3990, annual_price: null },
+                      },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "cms_plan_features") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return this;
+                },
+                maybeSingle: async () => ({ data: { enabled: true }, error: null }),
+              };
+            },
+          };
+        }
+
         if (table === "store_domains") {
           return {
             select() {
@@ -302,8 +360,22 @@ function createDomainAdminMock(options?: { existingDomainStoreId?: string | null
               return {
                 eq() {
                   return {
-                    maybeSingle: async () => ({ data: null, error: null }),
+                    maybeSingle: async () => ({ data: { slug: "store-1" }, error: null }),
                   };
+                },
+              };
+            },
+            update(payload: Record<string, unknown>) {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  return this;
+                },
+                in(column: string, values: string[]) {
+                  filters.push([`in:${column}`, values.join(",")]);
+                  storeUpdates.push({ payload, filters: [...filters] });
+                  return Promise.resolve({ error: null });
                 },
               };
             },
@@ -327,10 +399,12 @@ function createBkashCallbackAdminMock(invoice: {
 } | null) {
   const invoiceUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const subscriptionUpserts: Array<{ payload: Record<string, unknown>; options: Record<string, unknown> }> = [];
+  const storeUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
 
   return {
     invoiceUpdates,
     subscriptionUpserts,
+    storeUpdates,
     client: {
       from(table: string) {
         if (table === "store_invoices") {
@@ -374,6 +448,140 @@ function createBkashCallbackAdminMock(invoice: {
           return {
             upsert(payload: Record<string, unknown>, options: Record<string, unknown>) {
               subscriptionUpserts.push({ payload, options });
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        if (table === "stores") {
+          return {
+            update(payload: Record<string, unknown>) {
+              const filters: Array<[string, string]> = [];
+              return {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  storeUpdates.push({ payload, filters: [...filters] });
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table ${table}`);
+      },
+    },
+  };
+}
+
+function createDeleteStoreAdminMock(options?: {
+  platformRole?: "admin" | null;
+  store?: { id: string; owner_id: string; name: string; slug: string } | null;
+  ownerCanCreateStore?: boolean | null;
+  remainingOwnedStoreCount?: number;
+}) {
+  const deletionRecords: Array<Record<string, unknown>> = [];
+  const accountStatusUpserts: Array<{ payload: Record<string, unknown>; options: Record<string, unknown> }> = [];
+  const deletedStoreIds: string[] = [];
+
+  const store = options?.store ?? {
+    id: "store_1",
+    owner_id: "owner_1",
+    name: "Demo Store",
+    slug: "demo-store",
+  };
+
+  return {
+    deletionRecords,
+    accountStatusUpserts,
+    deletedStoreIds,
+    client: {
+      from(table: string) {
+        if (table === "user_roles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    eq() {
+                      return {
+                        maybeSingle: async () => ({
+                          data: options?.platformRole ? { role: options.platformRole } : null,
+                          error: null,
+                        }),
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "stores") {
+          return {
+            select(_columns?: string, config?: { count?: "exact"; head?: boolean }) {
+              if (config?.head) {
+                return {
+                  eq() {
+                    return Promise.resolve({
+                      count: options?.remainingOwnedStoreCount ?? 0,
+                      error: null,
+                    });
+                  },
+                };
+              }
+
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({
+                      data: store,
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+            delete() {
+              return {
+                eq(_column: string, value: string) {
+                  deletedStoreIds.push(value);
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "merchant_account_statuses") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({
+                      data:
+                        options?.ownerCanCreateStore === undefined
+                          ? null
+                          : { can_create_store: options.ownerCanCreateStore },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+            upsert(payload: Record<string, unknown>, optionsArg: Record<string, unknown>) {
+              accountStatusUpserts.push({ payload, options: optionsArg });
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        if (table === "store_deletion_records") {
+          return {
+            insert(payload: Record<string, unknown>) {
+              deletionRecords.push(payload);
               return Promise.resolve({ error: null });
             },
           };
@@ -514,6 +722,12 @@ describe("billing subscription side effects", () => {
         options: { onConflict: "store_id" },
       },
     ]);
+    assert.deepEqual(admin.storeUpdates, [
+      {
+        payload: { plan: "basic" },
+        filters: [["id", "store_1"]],
+      },
+    ]);
   });
 
   test("writes the exact cancelled subscription payload for cancel actions", async () => {
@@ -545,6 +759,16 @@ describe("billing subscription side effects", () => {
           trial_ends_at: null,
         },
         options: { onConflict: "store_id" },
+      },
+    ]);
+    assert.deepEqual(admin.storeUpdates, [
+      {
+        payload: { plan: "advanced" },
+        filters: [["id", "store_1"]],
+      },
+      {
+        payload: { custom_domain: null },
+        filters: [["id", "store_1"]],
       },
     ]);
   });
@@ -642,7 +866,9 @@ describe("domain route side effects", () => {
     );
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { success: true });
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.domainAccess.allowed, true);
     assert.deepEqual(admin.deletedDomains, [
       {
         storeId: "store_1",
@@ -847,5 +1073,140 @@ describe("bKash callback context integrity", () => {
         options: { onConflict: "store_id" },
       },
     ]);
+    assert.deepEqual(admin.storeUpdates, [
+      {
+        payload: { plan: "growth" },
+        filters: [["id", "store_1"]],
+      },
+    ]);
+  });
+});
+
+describe("store deletion side effects", () => {
+  test("writes a merchant self-delete record and reports when the owner has no sites left", async () => {
+    const admin = createDeleteStoreAdminMock({
+      platformRole: null,
+      ownerCanCreateStore: true,
+      remainingOwnedStoreCount: 0,
+    });
+
+    mock.method(deleteStoreRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
+    mock.method(deleteStoreRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(deleteStoreRouteDeps, "canManageStore", async () => true);
+    mock.method(deleteStoreRouteDeps, "now", () => FIXED_NOW);
+
+    const response = await deleteStorePost(
+      jsonRequest("https://example.com/api/stores/delete", "POST", {
+        storeId: "store_1",
+        note: "Closing this project",
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true,
+      deletedAllOwnedStores: true,
+      ownerUserId: "owner_1",
+      banned: false,
+      deletedStoreId: "store_1",
+    });
+    assert.deepEqual(admin.deletionRecords, [
+      {
+        deleted_store_id: "store_1",
+        owner_user_id: "owner_1",
+        store_name: "Demo Store",
+        store_slug: "demo-store",
+        deletion_source: "merchant_self_delete",
+        merchant_visible_reason: "Closing this project",
+        admin_note: "Closing this project",
+        deleted_by_user_id: "owner_1",
+        owner_can_create_store: true,
+        created_at: FIXED_NOW.toISOString(),
+      },
+    ]);
+    assert.deepEqual(admin.deletedStoreIds, ["store_1"]);
+    assert.equal(admin.accountStatusUpserts.length, 0);
+  });
+
+  test("requires an admin note before a platform delete can proceed", async () => {
+    const admin = createDeleteStoreAdminMock({
+      platformRole: "admin",
+    });
+
+    mock.method(deleteStoreRouteDeps, "getAuthenticatedUser", async () => ({ id: "platform_admin_1" }) as never);
+    mock.method(deleteStoreRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(deleteStoreRouteDeps, "canManageStore", async () => true);
+
+    const response = await deleteStorePost(
+      jsonRequest("https://example.com/api/stores/delete", "POST", {
+        storeId: "store_1",
+        note: "   ",
+      }),
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: "Deletion note is required for platform admins",
+    });
+    assert.equal(admin.deletionRecords.length, 0);
+    assert.equal(admin.deletedStoreIds.length, 0);
+  });
+
+  test("records a platform delete and blocks future site creation when requested", async () => {
+    const admin = createDeleteStoreAdminMock({
+      platformRole: "admin",
+      ownerCanCreateStore: true,
+      remainingOwnedStoreCount: 0,
+    });
+
+    mock.method(deleteStoreRouteDeps, "getAuthenticatedUser", async () => ({ id: "platform_admin_1" }) as never);
+    mock.method(deleteStoreRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(deleteStoreRouteDeps, "canManageStore", async () => true);
+    mock.method(deleteStoreRouteDeps, "now", () => FIXED_NOW);
+
+    const response = await deleteStorePost(
+      jsonRequest("https://example.com/api/stores/delete", "POST", {
+        storeId: "store_1",
+        note: "Repeated policy violations",
+        banMerchant: true,
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true,
+      deletedAllOwnedStores: true,
+      ownerUserId: "owner_1",
+      banned: true,
+      deletedStoreId: "store_1",
+    });
+    assert.deepEqual(admin.deletionRecords, [
+      {
+        deleted_store_id: "store_1",
+        owner_user_id: "owner_1",
+        store_name: "Demo Store",
+        store_slug: "demo-store",
+        deletion_source: "platform_admin_delete",
+        merchant_visible_reason: "Repeated policy violations",
+        admin_note: "Repeated policy violations",
+        deleted_by_user_id: "platform_admin_1",
+        owner_can_create_store: false,
+        created_at: FIXED_NOW.toISOString(),
+      },
+    ]);
+    assert.deepEqual(admin.accountStatusUpserts, [
+      {
+        payload: {
+          user_id: "owner_1",
+          can_create_store: false,
+          status_note: "Repeated policy violations",
+          banned_at: FIXED_NOW.toISOString(),
+          restored_at: null,
+          updated_by: "platform_admin_1",
+        },
+        options: { onConflict: "user_id" },
+      },
+    ]);
+    assert.deepEqual(admin.deletedStoreIds, ["store_1"]);
   });
 });

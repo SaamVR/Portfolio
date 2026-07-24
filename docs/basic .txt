@@ -1,0 +1,27 @@
+Basic Editor Plan.md
+ can you make the editor plan more detailed and functional to edit all the store templates of our site with two version for web and for mobile with user friendly layout and easy navigatio so user with low technical knowledge fully customize the site to their liking
+
+also can you tell me how we can improve our current templates and what new ones we should add so thaeople can make any type of ecom site of any category and style or service based site page, or single product page or just a high conversion landing page 
+
+with many templates to choose from and with customization options for every part of it 
+
+recommend more templates and layouts with preview to choose from and versatile usecase 
+
+effect tab giving ading effects to different sections
+theme page: (brainstorm)
+
+in Basic Mode: its simplified minimalist page and setup and guided assistence wizard that'll be very basic at first glance but very powerful, with color,font,theme opions and aesthetic like glass morph, cubic, fluid (just random thaughts, you fill it up with the exissting aesthetics for web designs that are visually attractive also trendy), arrangeing and rearranging layout and layout options to choose from (like product per page, saide bar left right or such with skeleton preview info based guidance
+...please brainstorm more ideas to make it simple and easy but robust and powerful and customizable
+
+ Basic with two layout design, for web the preview will be right side where the input firlds ar left and in preview tab option for full screen and mobile and tab version toggle
+
+in mobile it'll be more simplified with floating button for preview undo redo autosave! where prevew will load a full page showing the preview with a cross button to close and go back to edits
+
+
+in Advanced mode however we can edit with freedom with lots of control like editing code or anything to give it powerful access and navigation! please brainstorm how we can make it powerful to make the site customization very powerful 
+
+
+also a feature export import customized templates and themes and also a templates sector where we can publish more templates with more robust designs
+
+
+please ad your creative touch to the whole idea as well

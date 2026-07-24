@@ -8,12 +8,15 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 import CartDrawer from "@/components/CartDrawer";
 import ExitIntentPopup from "@/components/ExitIntentPopup";
 import CookieConsent from "@/components/CookieConsent";
+import { CouponBanner } from "@/components/CouponBanner";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontBaseTextSize } from "@/lib/storefront-theme-customization";
+import { useOptionalStore } from "@/components/storefront/store-context";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [announcementVisible, setAnnouncementVisible] = useState(true);
-  const { data: themeCustomization } = useStorefrontThemeCustomization();
+  const currentStore = useOptionalStore();
+  const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
 
   const handleVisibilityChange = useCallback((visible: boolean) => {
     setAnnouncementVisible(visible);
@@ -24,6 +27,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       className="min-h-screen bg-background"
       style={{ fontSize: getStorefrontBaseTextSize(themeCustomization?.text_size) }}
     >
+      <CouponBanner />
       <AnnouncementBar onVisibilityChange={handleVisibilityChange} />
       <Navbar announcementVisible={announcementVisible} />
       <CartDrawer />

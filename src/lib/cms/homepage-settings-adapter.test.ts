@@ -16,6 +16,7 @@ describe("homepage settings adapter", () => {
         type: "hero",
         sortOrder: 0,
         isVisible: true,
+        visible: true,
         props: {},
       },
       {
@@ -23,6 +24,7 @@ describe("homepage settings adapter", () => {
         type: "featured-products",
         sortOrder: 1,
         isVisible: true,
+        visible: true,
         props: {
           limit: 6,
         },
@@ -32,6 +34,7 @@ describe("homepage settings adapter", () => {
         type: "promo-banner",
         sortOrder: 2,
         isVisible: true,
+        visible: true,
         props: {
           title: "Keep mine",
         },
@@ -70,6 +73,7 @@ describe("homepage settings adapter", () => {
 
     expect(page.blocks[2]?.type).toBe("promo-banner");
     expect(page.blocks[2]?.isVisible).toBe(true);
+    expect(page.blocks[2]?.visible).toBe(true);
     expect(page.blocks[2]?.props).toEqual({
       title: "Keep mine",
       subtitle: "Legacy subtitle",
@@ -93,6 +97,7 @@ describe("homepage settings adapter", () => {
     });
     expect(updatedPromo.type).toBe("promo-banner");
     expect(updatedPromo.isVisible).toBe(false);
+    expect(updatedPromo.visible).toBe(false);
     expect(updatedPromo.props).toEqual({
       title: "Keep mine",
       subtitle: "Updated promo",

@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
@@ -18,26 +19,15 @@ interface FAQEntry {
   a: string;
 }
 
-const defaultFaqs: FAQEntry[] = [
-  { q: "How long does delivery take?", a: "Delivery timelines depend on the shipping zone and the fulfillment method chosen for the order. The latest estimate is usually shown during checkout or in the order confirmation." },
-  { q: "What payment methods do you accept?", a: "Available payment methods are shown during checkout and may include online payment, manual transfer, or cash on delivery depending on the store configuration." },
-  { q: "How much is delivery?", a: "Shipping or delivery fees are calculated based on the current store rules and appear before the order is placed." },
-  { q: "Can I update an order after placing it?", a: "If the order has not been processed yet, contact the store as soon as possible. Change requests usually depend on fulfillment status and item availability." },
-  { q: "What is your return policy?", a: "Return and exchange eligibility depends on the store policy for the product type, order condition, and return window. Check the store policy page or contact support for the latest details." },
-  { q: "How can I track my order?", a: "Use the Track Order page or the order confirmation details provided after purchase. Some orders may also receive shipping or status updates directly from the store." },
-  { q: "How do I get help before buying?", a: "If you need help choosing, sizing, availability details, or clarification before ordering, use the contact or support options listed on the storefront." },
-  { q: "What happens if an item becomes unavailable?", a: "If something becomes unavailable after purchase, the store may contact the customer with replacement, delay, or refund options depending on the order status." },
-];
-
 const FAQ = () => {
   const currentStore = useOptionalStore();
   const storeName = currentStore?.name ?? "this store";
   const { data: faqs, isLoading } = useSiteSettings<FAQEntry[]>("faq_entries", currentStore?.id);
-
-  const entries = faqs && faqs.length > 0 ? faqs : defaultFaqs;
+  const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
+  const entries = faqs?.filter((entry) => entry?.q?.trim() && entry?.a?.trim()) ?? [];
 
   return (
-    <Layout>
+    <LayoutWrapper>
       <SEOHead
         title={`FAQ | ${storeName}`}
         description={`Frequently asked questions about ${storeName} orders, delivery, payments, and returns.`}
@@ -63,7 +53,7 @@ const FAQ = () => {
 
             {isLoading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : (
+            ) : entries.length > 0 ? (
               <AnimatedSection delay={100}>
                 <Accordion type="single" collapsible className="w-full">
                   {entries.map((faq, i) => (
@@ -78,11 +68,20 @@ const FAQ = () => {
                   ))}
                 </Accordion>
               </AnimatedSection>
+            ) : (
+              <AnimatedSection delay={100}>
+                <div className="rounded-3xl border border-dashed border-border bg-card/60 px-6 py-10 text-center">
+                  <h2 className="font-heading text-2xl font-semibold text-foreground">FAQs coming soon</h2>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {storeName} has not published FAQ entries yet. Customers can still use the contact page for questions.
+                  </p>
+                </div>
+              </AnimatedSection>
             )}
           </div>
         </section>
       </PageTransition>
-    </Layout>
+    </LayoutWrapper>
   );
 };
 

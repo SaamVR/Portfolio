@@ -30,6 +30,7 @@ import {
   ExternalLink,
   FilePlus2,
   FileText,
+  LayoutTemplate,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
 
 type SidebarLink = {
   to: string;
@@ -60,7 +62,14 @@ type StorePageNavRow = {
 type ActiveStoreMeta = {
   slug: string;
   custom_domain?: string | null;
+  store_type?: string | null;
+  blueprint_id?: string | null;
 };
+
+function shouldShowVirtualShopPage(meta?: ActiveStoreMeta | null) {
+  const blueprint = resolveStoreBlueprint(meta?.blueprint_id ?? meta?.store_type ?? "general-catalog");
+  return blueprint.businessFamily === "commerce" && blueprint.catalogMode !== "single_product";
+}
 
 function inferPagePlacement(page: StorePageNavRow) {
   if (page.is_homepage || page.slug === "/") return "Homepage / main navigation";
@@ -134,14 +143,33 @@ const AdminSidebar = () => {
       if (!activeStoreId) return null as ActiveStoreMeta | null;
       const { data, error } = await supabase
         .from("stores")
-        .select("slug, custom_domain")
+        .select("slug, custom_domain, store_type")
         .eq("id", activeStoreId as string)
         .maybeSingle();
       if (error) throw error;
-      return (data as ActiveStoreMeta | null) ?? null;
+      const { data: profile } = await supabase
+        .from("store_business_profiles")
+        .select("blueprint_id")
+        .eq("store_id", activeStoreId as string)
+        .maybeSingle();
+      return {
+        ...((data as ActiveStoreMeta | null) ?? { slug: "" }),
+        blueprint_id: (profile as { blueprint_id?: string | null } | null)?.blueprint_id ?? null,
+      };
     },
     enabled: Boolean(activeStoreId) && cmsEnabled,
   });
+  const sidebarStorePages = shouldShowVirtualShopPage(activeStoreMeta) && !storePages.some((page) => page.slug === "/shop")
+    ? [
+        ...storePages,
+        {
+          id: "virtual-shop",
+          title: "Shop",
+          slug: "/shop",
+          is_homepage: false,
+        } satisfies StorePageNavRow,
+      ]
+    : storePages;
   const navSections: Array<{ title: string; links: SidebarLink[] }> = [
     {
       title: "Operations",
@@ -160,8 +188,9 @@ const AdminSidebar = () => {
       links: [
         { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
         { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-        { to: buildPageBuilderPath("basic"), icon: SquarePen, label: "Basic Editing", show: cmsEnabled, match: ["/admin/page-builder", "/admin/page-builder/basic"] },
-        { to: buildPageBuilderPath("advanced"), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled, match: ["/admin/page-builder/advanced"] },
+        { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Editing", show: cmsEnabled, match: ["/admin/page-builder", "/admin/page-builder/basic"] },
+        { to: buildPageBuilderPath("advanced", { storeId: activeStoreId }), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled, match: ["/admin/page-builder/advanced"] },
+        { to: "/admin/templates", icon: LayoutTemplate, label: "Template Gallery", show: cmsEnabled },
         { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
         { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
         { to: withStoreId("/admin/site-settings?tab=domain", activeStoreId), icon: Globe, label: "Domains", show: isAdmin, match: ["/admin/site-settings"] },
@@ -262,7 +291,7 @@ const AdminSidebar = () => {
                 New Page
               </Link>
             </div>
-            {storePages.length > 0 ? storePages.map((page) => (
+            {sidebarStorePages.length > 0 ? sidebarStorePages.map((page) => (
               <div key={page.id} className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
                 <div className="flex items-start gap-2">
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -275,7 +304,7 @@ const AdminSidebar = () => {
                     <p className="mt-1 text-[10px] text-muted-foreground">{inferPagePlacement(page)}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Link
-                        to={buildPageBuilderPath("basic", { storeId: activeStoreId, pageId: page.id })}
+                        to={buildPageBuilderPath("basic", { storeId: activeStoreId, pageId: page.id === "virtual-shop" ? null : page.id })}
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
                       >
                         Edit

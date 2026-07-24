@@ -13,7 +13,7 @@ type StoreCreationEligibility = {
 };
 
 export function useStoreCreationEligibility() {
-  const { activeStoreId, storeMemberships } = useAuth();
+  const { activeStoreId, storeMemberships, user } = useAuth();
 
   const ownerStoreIds = useMemo(
     () =>
@@ -29,9 +29,27 @@ export function useStoreCreationEligibility() {
   );
 
   return useQuery({
-    queryKey: ["store-creation-eligibility", activeStoreId, ownerStoreIds.join(",")],
-    enabled: ownerStoreIds.length === 0 || Boolean(activeStoreId),
+    queryKey: ["store-creation-eligibility", user?.id ?? "", activeStoreId, ownerStoreIds.join(",")],
+    enabled: Boolean(user),
     queryFn: async (): Promise<StoreCreationEligibility> => {
+      const { data: accountStatus } = await (supabase as any)
+        .from("merchant_account_statuses")
+        .select("can_create_store, status_note")
+        .eq("user_id", user?.id as string)
+        .maybeSingle();
+
+      if (accountStatus?.can_create_store === false) {
+        return {
+          allowed: false,
+          ownedStoreCount: ownerStoreIds.length,
+          storeLimit: null,
+          subscriptionStatus: null,
+          reason: typeof accountStatus?.status_note === "string" && accountStatus.status_note.trim()
+            ? accountStatus.status_note
+            : "Your account cannot create new stores right now. Contact support for a review.",
+        };
+      }
+
       if (ownerStoreIds.length === 0) {
         return {
           allowed: true,
