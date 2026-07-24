@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
-import { getRenderableSizeOptions, shouldShowSizeOptions } from "@/lib/cms/storefront-product-presentation";
+import { getDisplayableProductType, getRenderableSizeOptions, shouldShowSizeOptions } from "@/lib/cms/storefront-product-presentation";
 
 interface ProductQuickViewProps {
   product: Product | null;
@@ -28,6 +28,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
   const { cardVariant, specs } = presentation;
   const sizeOptions = getRenderableSizeOptions(product, specs, cardVariant);
   const requiresSizeSelection = shouldShowSizeOptions(product, specs, cardVariant);
+  const displayType = getDisplayableProductType(product.type);
 
   const handleAddToCart = () => {
     if (requiresSizeSelection && !selectedSize) {
@@ -56,23 +57,29 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
           <div className="relative aspect-square overflow-hidden bg-secondary">
             <img
               src={product.image}
-              alt={`${product.name} in ${product.colors[0]}`}
-              className="h-full w-full object-cover"
+              alt={product.name}
+              className="h-full w-full object-contain p-4"
             />
             {product.featured && (
               <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
                 Featured
               </span>
             )}
-            <span className="absolute right-3 top-3 rounded-sm bg-background/70 backdrop-blur-sm px-2 py-1 text-xs font-medium text-muted-foreground">
-              {product.type}
-            </span>
+            {displayType ? (
+              <span className="absolute right-3 top-3 rounded-sm bg-background/70 backdrop-blur-sm px-2 py-1 text-xs font-medium text-muted-foreground">
+                {displayType}
+              </span>
+            ) : null}
           </div>
 
           {/* Details */}
           <div className="flex flex-col justify-between p-6">
             <div>
-              <p className="mb-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.category}</p>
+              {getDisplayableProductType(product.category) || displayType ? (
+                <p className="mb-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  {getDisplayableProductType(product.category) || displayType}
+                </p>
+              ) : null}
               <h2 className="mb-2 font-heading text-2xl font-bold text-foreground">{product.name}</h2>
               <p className="mb-4 font-heading text-2xl font-bold text-primary">৳{product.price}</p>
               <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{product.description}</p>

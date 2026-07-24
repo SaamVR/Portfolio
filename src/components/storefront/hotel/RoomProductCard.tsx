@@ -8,6 +8,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
 import { productUrl, storefrontPath } from "@/lib/slug";
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -104,7 +105,7 @@ export function RoomProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground truncate min-w-0">
-          {product.category || product.type || "Room"}
+          {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Room"}
         </p>
 
         <ProductCardTitle href={url}>

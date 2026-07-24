@@ -17,6 +17,8 @@ import {
   ProductCardActions,
 } from "@/components/storefront/product/ProductCardFoundation";
 
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
+
 type ReviewStats = {
   count: number;
   average: number;
@@ -58,7 +60,8 @@ export function buildTechnicalSpecs(product: Product) {
   }
 
   if (specs.length < 3) {
-    specs.push(`${product.type || product.category} ready for daily use`);
+    const label = getDisplayableProductType(product.type) || getDisplayableProductType(product.category) || "Electronics";
+    specs.push(`${label} ready for daily use`);
   }
 
   return specs.slice(0, 3);
@@ -94,7 +97,7 @@ export function ElectronicsProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground truncate min-w-0">
-          {product.type || product.category}
+          {getDisplayableProductType(product.type) || getDisplayableProductType(product.category) || "Electronics"}
         </p>
 
         <ProductCardTitle href={url}>

@@ -29,6 +29,7 @@ import {
   getInstantDownloadInfo,
 } from "@/components/storefront/digital-downloads/digital-download-utils";
 import {
+  getDisplayableProductType,
   getRenderableColorOptions,
   getRenderableSizeOptions,
   shouldShowColorOptions,
@@ -174,7 +175,7 @@ function ProductVariantSelector({
   if (options.length === 0) return null;
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold uppercase tracking-wider text-foreground">{label}</p>
+      <p className="text-sm font-semibold text-foreground">{label}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -182,9 +183,9 @@ function ProductVariantSelector({
             type="button"
             onClick={() => onChange(option)}
             className={cn(
-              "rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+              "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
               value === option
-                ? "border-primary bg-primary text-primary-foreground"
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
             )}
           >
@@ -277,8 +278,8 @@ function ProductDetailsShell({
   side: React.ReactNode;
 }) {
   return (
-    <div className="space-y-16">
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
+    <div className="space-y-12">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12 items-start">
         <div className="space-y-10 lg:col-span-7">
           <ProductImageGallery images={product.images} alt={product.name} />
           <div className="space-y-8 rounded-3xl border border-border/80 bg-card/40 p-6 md:p-8">
@@ -392,7 +393,7 @@ function GenericProductDetailsContent({
       case "electronics":
         return [
           { icon: <ShieldCheck className="h-4 w-4" />, label: "Warranty", value: getString(specs, ["warranty", "warranty_period"], "Merchant warranty information") },
-          { icon: <Sparkles className="h-4 w-4" />, label: "Compatibility", value: getString(specs, ["compatibility", "supported_devices"], product.type || product.category) },
+          { icon: <Sparkles className="h-4 w-4" />, label: "Compatibility", value: getString(specs, ["compatibility", "supported_devices"], getDisplayableProductType(product.type) || product.category) },
         ];
       case "food":
         return [
@@ -402,7 +403,7 @@ function GenericProductDetailsContent({
       case "crafts":
         return [
           { icon: <MapPin className="h-4 w-4" />, label: "Origin", value: getString(specs, ["origin", "region", "artisan"], product.category || "Artisan made") },
-          { icon: <ShieldCheck className="h-4 w-4" />, label: "Material", value: getString(specs, ["material"], product.type || "Merchant-listed material") },
+          { icon: <ShieldCheck className="h-4 w-4" />, label: "Material", value: getString(specs, ["material"], getDisplayableProductType(product.type) || "Merchant-listed material") },
         ];
       case "inquiry":
         return [
@@ -435,11 +436,13 @@ function GenericProductDetailsContent({
           { icon: <MapPin className="h-4 w-4" />, label: "Address", value: getString(specs, ["address", "location", "city"], "Location shared by merchant") },
           { icon: <Ruler className="h-4 w-4" />, label: "Area", value: `${getNumber(specs, ["area_sqft", "sqft"], Math.max(product.stock || 950, 750)).toLocaleString()} sqft` },
         ];
-      default:
+      default: {
+        const displayType = getDisplayableProductType(product.type);
         return [
           { icon: <Sparkles className="h-4 w-4" />, label: "Category", value: product.category || "Product" },
-          { icon: <ShieldCheck className="h-4 w-4" />, label: "Type", value: product.type || "Catalog item" },
+          ...(displayType ? [{ icon: <ShieldCheck className="h-4 w-4" />, label: "Type", value: displayType }] : []),
         ];
+      }
     }
   })();
 
@@ -495,7 +498,7 @@ function GenericProductDetailsContent({
           <>
             <ProductDescription title="Benefits and suitability" body={product.description} />
             <ProductMetaList items={[
-              { icon: <Sparkles className="h-4 w-4" />, label: "Skin concerns", value: getString(specs, ["skin_concerns", "concerns"], product.category || "Merchant-specified concerns") },
+              { icon: <Sparkles className="h-4 w-4" />, label: "Skin concerns", value: getString(specs, ["skin_concerns", "concerns"], getDisplayableProductType(product.category) || "Merchant-specified concerns") },
               { icon: <ShieldCheck className="h-4 w-4" />, label: "How to use", value: getString(specs, ["how_to_use"], "Use as directed by the merchant.") },
             ]} />
           </>
@@ -618,7 +621,11 @@ function GenericProductDetailsContent({
   const side = (
     <>
       <div className="space-y-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.category}</p>
+        {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) ? (
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {getDisplayableProductType(product.category) || getDisplayableProductType(product.type)}
+          </p>
+        ) : null}
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <h1 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{product.name}</h1>
@@ -644,8 +651,8 @@ function GenericProductDetailsContent({
 
       {showColorSelector || showSizeSelector ? (
         <>
-          {showColorSelector ? <ProductVariantSelector label="Color" options={colorOptions} value={selectedColor} onChange={setSelectedColor} /> : null}
-          {showSizeSelector ? <ProductVariantSelector label="Size / Option" options={sizeOptions} value={selectedSize} onChange={setSelectedSize} /> : null}
+          {showColorSelector ? <ProductVariantSelector label={getString(specs, ["color_label", "color_title"], "Color")} options={colorOptions} value={selectedColor} onChange={setSelectedColor} /> : null}
+          {showSizeSelector ? <ProductVariantSelector label={getString(specs, ["size_label", "size_title"], "Size / Option")} options={sizeOptions} value={selectedSize} onChange={setSelectedSize} /> : null}
         </>
       ) : null}
 

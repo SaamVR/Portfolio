@@ -25,8 +25,13 @@ import { buildShopOptions, filterAndSortProducts, type ShopSortOption } from "@/
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { resolveShopPageVariant, type ShopPageVariant } from "@/lib/cms/storefront-shop-presentation";
 import {
+  getDisplayableProductType,
   getProductPresentationSpecs,
+  getRenderableColorOptions,
+  getRenderableSizeOptions,
+  isPhysicalDeliveryKeyword,
   resolveProductCardVariant,
+  resolveProductDetailVariant,
   type ProductPresentationSpecs,
 } from "@/lib/cms/storefront-product-presentation";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
@@ -145,17 +150,24 @@ function buildProductContexts(products: Product[], metadata: TemplateSeedCatalog
 
 function getContextValue(context: ProductContext, key: string) {
   const { product, specs, brand, rating } = context;
+  const presentationVariant = resolveProductDetailVariant({
+    productType: typeof specs.product_type === "string" ? specs.product_type : product.type,
+    displayVariant: typeof specs.detail_variant === "string" ? specs.detail_variant : null,
+    metadata: specs,
+  });
   switch (key) {
     case "category":
-    case "menu_category":
-      return [product.category];
+    case "menu_category": {
+      const displayCategory = getDisplayableProductType(product.category);
+      return displayCategory ? [displayCategory] : [];
+    }
     case "collection":
       return getStringArray(specs, "collection", "collection_name", "style_collection");
     case "size":
-      return product.sizes;
+      return getRenderableSizeOptions(product, specs, presentationVariant);
     case "color":
     case "shade":
-      return [...product.colors, ...getStringArray(specs, "shade", "shades")];
+      return getRenderableColorOptions(product, specs, presentationVariant);
     case "fabric":
       return getStringArray(specs, "fabric", "material");
     case "fit":
@@ -164,8 +176,10 @@ function getContextValue(context: ProductContext, key: string) {
     case "service_type":
     case "asset_type":
     case "property_type":
-    case "room_type":
-      return [getString(specs, "product_type") || product.type].filter(Boolean);
+    case "room_type": {
+      const displayType = getDisplayableProductType(getString(specs, "product_type") || product.type);
+      return displayType ? [displayType] : [];
+    }
     case "skin_type":
       return getStringArray(specs, "skin_type");
     case "skin_concern":

@@ -7,6 +7,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -65,7 +66,7 @@ export function ServiceProductCard({
     <ProductCardShell>
       <ProductCardMedia src={product.image} alt={product.name} href={url} aspect="4/3" fit="cover">
         <ProductCardBadgeLayer
-          badge={product.badge || product.category || "Featured"}
+          badge={product.badge || getDisplayableProductType(product.category) || "Featured"}
           isInWishlist={isInWishlist(product.id)}
           onToggleWishlist={() => toggleItem(product.id)}
           wishlistLabel={product.name}
@@ -74,7 +75,7 @@ export function ServiceProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary truncate min-w-0">
-          {product.type || "Service package"}
+          {getDisplayableProductType(product.type) || getDisplayableProductType(product.category) || "Service package"}
         </p>
 
         <ProductCardTitle href={url}>

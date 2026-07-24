@@ -8,6 +8,7 @@ import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -68,7 +69,7 @@ export function GeneralCatalogProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground truncate min-w-0">
-          {product.category || product.type || "Catalog"}
+          {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Catalog"}
         </p>
 
         <ProductCardTitle href={url}>

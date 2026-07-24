@@ -268,6 +268,27 @@ function getStringListFromSpecs(specs: ProductPresentationSpecs, keys: string[])
   return [];
 }
 
+export function isPhysicalDeliveryKeyword(value?: string | null): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase().replace(/[-_]+/g, " ");
+  return (
+    normalized === "physical" ||
+    normalized === "physical delivery" ||
+    normalized === "physical_delivery" ||
+    normalized === "physical product" ||
+    normalized === "physical item" ||
+    normalized.includes("physical delivery") ||
+    normalized.includes("physical_delivery") ||
+    normalized.startsWith("physical")
+  );
+}
+
+export function getDisplayableProductType(productType?: string | null): string | null {
+  if (!productType) return null;
+  if (isPhysicalDeliveryKeyword(productType)) return null;
+  return productType.trim();
+}
+
 function isApparelLikeProduct(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
   if (variant === "fashion") return true;
   const productType = `${specs.product_type ?? product.type ?? ""}`.toLowerCase();
@@ -278,9 +299,45 @@ function isApparelLikeProduct(product: Product, specs: ProductPresentationSpecs,
 export function getRenderableColorOptions(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
   const seededColors = getStringListFromSpecs(specs, ["color", "colors", "shade", "shades"]);
   const productColors = normalizedOptions(product.colors);
-  const colors = [...new Set([...seededColors, ...productColors])];
+  const colors = [...new Set([...seededColors, ...productColors])].filter((value) => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    if (isPhysicalDeliveryKeyword(trimmed)) return false;
+    const lower = trimmed.toLowerCase();
+    if (
+      [
+        "default",
+        "n/a",
+        "na",
+        "none",
+        "standard",
+        "one color",
+        "no color",
+        "color",
+        "colors",
+        "physical",
+        "1",
+        "0",
+        "size",
+        "sizes",
+      ].includes(lower)
+    ) {
+      return false;
+    }
+    if (/^\d+\s*(ml|g|oz|kg|lb|cl|l)$/i.test(lower)) return false;
+    return true;
+  });
   if (colors.length === 0) return [];
-  if (variant === "food" || variant === "service" || variant === "booking" || variant === "subscription" || variant === "digital" || variant === "hotel_room" || variant === "property" || variant === "inquiry") {
+  if (
+    variant === "food" ||
+    variant === "service" ||
+    variant === "booking" ||
+    variant === "subscription" ||
+    variant === "digital" ||
+    variant === "hotel_room" ||
+    variant === "property" ||
+    variant === "inquiry"
+  ) {
     return [];
   }
   return colors;
@@ -289,7 +346,33 @@ export function getRenderableColorOptions(product: Product, specs: ProductPresen
 export function getRenderableSizeOptions(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
   const seededSizes = getStringListFromSpecs(specs, ["size", "sizes", "volume", "portion_sizes", "serving_sizes"]);
   const productSizes = normalizedOptions(product.sizes);
-  const sizes = [...new Set([...seededSizes, ...productSizes])].filter((value) => value.toLowerCase() !== "default");
+  const sizes = [...new Set([...seededSizes, ...productSizes])].filter((value) => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    if (isPhysicalDeliveryKeyword(trimmed)) return false;
+    const lower = trimmed.toLowerCase();
+    if (
+      [
+        "default",
+        "n/a",
+        "na",
+        "none",
+        "standard",
+        "one size",
+        "no size",
+        "size",
+        "sizes",
+        "physical",
+        "1",
+        "0",
+        "color",
+        "colors",
+      ].includes(lower)
+    ) {
+      return false;
+    }
+    return true;
+  });
   if (sizes.length === 0) return [];
   if (variant === "property" || variant === "hotel_room" || variant === "subscription" || variant === "digital" || variant === "inquiry") {
     return [];

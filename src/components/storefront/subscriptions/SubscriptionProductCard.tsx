@@ -10,6 +10,7 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
 import { SubscriptionDurationSelector, type SubscriptionDurationOption } from "@/components/storefront/subscriptions/SubscriptionDurationSelector";
 import { SubscriptionPlanSelector, type SubscriptionPlanOption } from "@/components/storefront/subscriptions/SubscriptionPlanSelector";
 import {
@@ -150,7 +151,7 @@ export function SubscriptionProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary truncate min-w-0">
-          {product.category || product.type || "Subscription"}
+          {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Subscription"}
         </p>
 
         <ProductCardTitle href={url}>

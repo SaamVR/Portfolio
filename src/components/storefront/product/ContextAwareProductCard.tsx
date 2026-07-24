@@ -23,7 +23,7 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import type { ProductCardVariant } from "@/lib/cms/storefront-product-presentation";
-import { getRenderableColorOptions, getRenderableSizeOptions } from "@/lib/cms/storefront-product-presentation";
+import { getDisplayableProductType, getRenderableColorOptions, getRenderableSizeOptions } from "@/lib/cms/storefront-product-presentation";
 
 function formatPrice(product: Product) {
   return `BDT ${product.price.toLocaleString()}`;
@@ -80,7 +80,7 @@ function FashionProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground truncate min-w-0">
-          {product.category || "Collection"}
+          {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Collection"}
         </p>
 
         <ProductCardTitle href={url}>

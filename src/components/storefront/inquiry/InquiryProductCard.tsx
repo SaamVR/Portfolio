@@ -7,6 +7,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -73,7 +74,7 @@ export function InquiryProductCard({
 
       <ProductCardContent>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground truncate min-w-0">
-          {product.type || product.category || "Wholesale"}
+          {getDisplayableProductType(product.type) || getDisplayableProductType(product.category) || "Wholesale"}
         </p>
 
         <ProductCardTitle href={url}>
