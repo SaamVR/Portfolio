@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { PlatformBroadcastBanner } from "./PlatformBroadcastBanner";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
   { path: "/admin/launch", label: "Dashboard", description: "Store overview, launch checklist, and key alerts" },
@@ -432,6 +433,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             isCmsWorkspace ? "max-w-[1560px]" : "max-w-6xl",
           )}
         >
+          <PlatformBroadcastBanner className="mb-4" />
           {children}
         </div>
       </main>

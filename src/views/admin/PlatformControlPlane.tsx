@@ -48,6 +48,7 @@ import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { cn } from "@/lib/utils";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { PlanTemplateMatrixCard } from "@/components/admin/PlanTemplateMatrixCard";
+import { PlatformSystemSettingsCard } from "@/components/admin/PlatformSystemSettingsCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -2214,7 +2215,12 @@ export default function PlatformControlPlane() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="health">
+        <TabsContent value="health" className="space-y-6">
+          <PlatformSystemSettingsCard
+            canModify={permissions.canModifyFeatureMatrix}
+            currentUser={{ id: user?.id, email: user?.email, role: platformRole }}
+          />
+
           <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border">
               <CardHeader>
