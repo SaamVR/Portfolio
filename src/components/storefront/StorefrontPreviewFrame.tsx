@@ -52,6 +52,23 @@ function clonePreviewStyles(targetDocument: Document) {
   });
 }
 
+function resolveAnchorHref(targetDocument: Document, anchor: HTMLAnchorElement) {
+  const rawHref = anchor.getAttribute("href");
+  if (!rawHref || rawHref.startsWith("#") || rawHref.startsWith("mailto:") || rawHref.startsWith("tel:") || rawHref.startsWith("javascript:")) {
+    return null;
+  }
+
+  try {
+    return new URL(rawHref, window.location.origin).toString();
+  } catch {
+    try {
+      return new URL(rawHref, targetDocument.baseURI || window.location.href).toString();
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function StorefrontPreviewFrame({
   viewport,
   children,
@@ -83,6 +100,40 @@ export function StorefrontPreviewFrame({
     clonePreviewStyles(targetDocument);
     setMountNode(targetDocument.getElementById("storefront-preview-root") as HTMLDivElement | null);
   }, [viewport]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const targetDocument = iframe?.contentDocument;
+    const targetWindow = iframe?.contentWindow;
+    if (!targetDocument || !targetWindow) return;
+
+    const handleClick = (event: MouseEvent) => {
+      const eventTarget = event.target;
+      if (!(eventTarget instanceof Node)) return;
+      const anchor = eventTarget instanceof Element ? eventTarget.closest("a[href]") : null;
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+
+      const resolvedHref = resolveAnchorHref(targetDocument, anchor);
+      if (!resolvedHref) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      targetWindow.location.href = resolvedHref;
+    };
+
+    const handleSubmit = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    targetDocument.addEventListener("click", handleClick, true);
+    targetDocument.addEventListener("submit", handleSubmit, true);
+
+    return () => {
+      targetDocument.removeEventListener("click", handleClick, true);
+      targetDocument.removeEventListener("submit", handleSubmit, true);
+    };
+  }, [mountNode]);
 
   useEffect(() => {
     const shell = shellRef.current;

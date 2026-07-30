@@ -25,6 +25,7 @@ import {
   Share2,
   Sparkles,
   Truck,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MerchantPreviewChecklist } from "@/components/admin/MerchantPreviewChecklist";
@@ -858,13 +859,6 @@ export default function OnboardingWizard() {
       setActiveStoreId(requestedStoreId);
     }
   }, [contextStoreId, requestedStoreId, setActiveStoreId]);
-
-  useEffect(() => {
-    if (!requestedStepId) return;
-    if (requestedStepIndex !== activeIndex) {
-      setActiveIndex(requestedStepIndex);
-    }
-  }, [activeIndex, requestedStepId, requestedStepIndex]);
 
   useEffect(() => {
     setActiveIndex(requestedStepIndex);
@@ -2565,7 +2559,7 @@ export default function OnboardingWizard() {
                 <Maximize2 className="h-4 w-4" />
               </Button>
               <Button type="button" size="icon" variant="outline" onClick={() => setPreviewMode("closed")}>
-                <ChevronsLeft className="h-4 w-4" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -2607,7 +2601,7 @@ export default function OnboardingWizard() {
               <p className="text-xs text-muted-foreground">{onboardingContext.labels.previewDescription}</p>
             </div>
             <Button type="button" size="icon" variant="outline" onClick={() => setPreviewMode("closed")}>
-              <Minimize2 className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>
