@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { PlanTemplateMatrixCard } from "@/components/admin/PlanTemplateMatrixCard";
 import { PlatformSystemSettingsCard } from "@/components/admin/PlatformSystemSettingsCard";
+import { PlatformFinancialMetricsCard } from "@/components/admin/PlatformFinancialMetricsCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1919,6 +1920,12 @@ export default function PlatformControlPlane() {
         </TabsContent>
 
         <TabsContent value="subscriptions" className="space-y-6">
+          <PlatformFinancialMetricsCard
+            plans={data.plans}
+            storeSummaries={summaries}
+            invoices={invoices}
+          />
+
           {/* Quick Operational Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
             <div>
