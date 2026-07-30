@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/auth-context";
 import { 
   DropdownMenu, 
@@ -28,13 +29,13 @@ export default function StoreSwitcher({ mobile = false }: { mobile?: boolean }) 
     queryKey: ["user-stores", storeIds],
     queryFn: async () => {
       if (storeIds.length === 0) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("stores")
         .select("id, name, slug")
         .in("id", storeIds)
         .order("name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as Pick<Tables<"stores">, "id" | "name" | "slug">[];
     },
     enabled: storeIds.length > 0,
   });

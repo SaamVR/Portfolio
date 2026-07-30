@@ -7,6 +7,7 @@ import { useProductTypes } from "@/hooks/useProductTypes";
 import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { storefrontPath } from "@/lib/slug";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
@@ -43,6 +44,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
   const currentStore = useOptionalStore();
+  const { trackEvent } = useStorefrontAnalytics();
   const storeId = currentStore?.id;
   const historyKey = getScopedStorefrontStorageKey("search-history", storeId);
   const [history, setHistory] = useState<string[]>(() => getSearchHistory(historyKey));
@@ -115,19 +117,39 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     (e: React.FormEvent) => {
       e.preventDefault();
       if (query.trim()) {
+        const cleanQuery = query.trim();
         saveSearchHistory(historyKey, query.trim());
         setHistory(getSearchHistory(historyKey));
-        navigate(storefrontPath(`/shop?q=${encodeURIComponent(query.trim())}`, currentStore?.slug));
+        trackEvent({
+          eventName: "search",
+          eventCategory: "discovery",
+          searchQuery: cleanQuery,
+          metadata: {
+            resultsCount: filtered.length,
+            source: "search_bar_submit",
+          },
+        });
+        navigate(storefrontPath(`/shop?q=${encodeURIComponent(cleanQuery)}`, currentStore?.slug));
         setQuery("");
         setOpen(false);
         onClose?.();
       }
     },
-    [currentStore?.slug, historyKey, navigate, onClose, query]
+    [currentStore?.slug, filtered.length, historyKey, navigate, onClose, query, trackEvent]
   );
 
   const handleSelect = (product: { id: string; name: string }) => {
     if (query.trim()) {
+      trackEvent({
+        eventName: "search_result_click",
+        eventCategory: "discovery",
+        searchQuery: query.trim(),
+        productId: product.id,
+        metadata: {
+          productName: product.name,
+          source: "search_bar_results",
+        },
+      });
       saveSearchHistory(historyKey, query.trim());
       setHistory(getSearchHistory(historyKey));
     }
@@ -139,6 +161,16 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 
   const handleCategoryClick = (typeValue: string) => {
     const isDynamicProductType = dynamicProductTypes.some((type: any) => type.name === typeValue);
+    trackEvent({
+      eventName: "tag_click",
+      eventCategory: "discovery",
+      searchQuery: query.trim() || undefined,
+      metadata: {
+        tag: typeValue,
+        tagType: isDynamicProductType ? "product_type" : "category",
+        source: "search_bar_chip",
+      },
+    });
     navigate(
       storefrontPath(
         isDynamicProductType
@@ -153,6 +185,14 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   };
 
   const handleHistoryClick = (term: string) => {
+    trackEvent({
+      eventName: "search",
+      eventCategory: "discovery",
+      searchQuery: term,
+      metadata: {
+        source: "search_history",
+      },
+    });
     navigate(storefrontPath(`/shop?q=${encodeURIComponent(term)}`, currentStore?.slug));
     setQuery("");
     setOpen(false);

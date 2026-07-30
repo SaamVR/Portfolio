@@ -1,0 +1,116 @@
+export const courierProviders = ["pathao", "steadfast", "redx", "ecourier", "paperfly", "manual"] as const;
+export type CourierProvider = typeof courierProviders[number];
+
+export const courierConnectionStatuses = ["draft", "connected", "disabled"] as const;
+export type CourierConnectionStatus = typeof courierConnectionStatuses[number];
+
+export const shipmentStatuses = [
+  "pending",
+  "prepared",
+  "booked",
+  "picked_up",
+  "in_transit",
+  "delivered",
+  "failed",
+  "returned",
+  "cancelled",
+] as const;
+export type ShipmentStatus = typeof shipmentStatuses[number];
+
+export type CourierSettingsSummary = {
+  zoneLabel?: string | null;
+  serviceAreaName?: string | null;
+  baseUrl?: string | null;
+  merchantStoreId?: number | null;
+  merchantOrderPrefix?: string | null;
+  deliveryType?: number | null;
+  itemType?: number | null;
+  defaultItemWeightKg?: number | null;
+  specialInstruction?: string | null;
+  externalMerchantCode?: string | null;
+  pickupContactName?: string | null;
+  pickupContactPhone?: string | null;
+  pickupAddress?: string | null;
+  returnContactName?: string | null;
+  returnContactPhone?: string | null;
+  returnAddress?: string | null;
+  sandboxMode?: boolean;
+  note?: string | null;
+  hasAccessToken?: boolean;
+  hasApiKey?: boolean;
+  hasSecretKey?: boolean;
+};
+
+export type CourierConnectionRecord = {
+  id: string;
+  storeId: string;
+  provider: CourierProvider;
+  connectionKey: string;
+  zoneLabel: string | null;
+  serviceAreaName: string | null;
+  status: CourierConnectionStatus;
+  displayName: string | null;
+  supportsCod: boolean;
+  supportsCityDelivery: boolean;
+  settingsSummary: CourierSettingsSummary;
+  lastSyncAt: string | null;
+  lastError: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShipmentSummary = {
+  id: string;
+  order_id: string;
+  provider: CourierProvider;
+  courier_connection_id?: string | null;
+  courier_connection_label?: string | null;
+  zone_label?: string | null;
+  service_area_name?: string | null;
+  status: ShipmentStatus;
+  tracking_number: string | null;
+  consignment_id: string | null;
+  created_at: string;
+  delivered_at: string | null;
+};
+
+export function getCourierProviderLabel(provider: CourierProvider) {
+  switch (provider) {
+    case "pathao":
+      return "Pathao";
+    case "steadfast":
+      return "Steadfast";
+    case "redx":
+      return "REDX";
+    case "ecourier":
+      return "eCourier";
+    case "paperfly":
+      return "Paperfly";
+    case "manual":
+      return "Manual / Phone booking";
+    default:
+      return provider;
+  }
+}
+
+export function formatCourierConnectionLabel(input: {
+  provider: CourierProvider;
+  displayName?: string | null;
+  zoneLabel?: string | null;
+  serviceAreaName?: string | null;
+}) {
+  const displayName = input.displayName?.trim() || getCourierProviderLabel(input.provider);
+  const zoneLabel = input.zoneLabel?.trim() || "";
+  const serviceAreaName = input.serviceAreaName?.trim() || "";
+  const details = [zoneLabel, serviceAreaName].filter(Boolean);
+
+  if (details.length === 0) return displayName;
+  if (details.length === 1 && details[0] === displayName) return displayName;
+
+  const detailText = details.join(" / ");
+  return detailText === displayName ? displayName : `${displayName} - ${detailText}`;
+}
+
+export function formatCourierStatusLabel(value: string) {
+  return value.replace(/_/g, " ");
+}

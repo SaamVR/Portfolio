@@ -52,7 +52,7 @@ export function getCartVariantDisplayLabel(value: string | null | undefined) {
   }
 
   return digital.formats.length > 0
-    ? `${digital.license} license • ${digital.formats.join(", ")}`
+    ? `${digital.license} license - ${digital.formats.join(", ")}`
     : `${digital.license} license`;
 }
 

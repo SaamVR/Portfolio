@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPreferredRequestHost } from "@/lib/platform/request-host";
+import { getEzcomoRequestHostname } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 export function normalizeHost(host?: string | null) {
@@ -130,10 +130,7 @@ export function getTenantRewritePath(storeSlug: string, pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  const hostname = getPreferredRequestHost({
-    host: request.headers.get("host"),
-    forwardedHost: request.headers.get("x-forwarded-host"),
-  });
+  const hostname = getEzcomoRequestHostname(request);
   if (!hostname) {
     return NextResponse.next();
   }

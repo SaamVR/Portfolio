@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,9 @@ type AdminRecoveryPanelProps = {
   onSecondary?: () => void;
   fullHeight?: boolean;
   timeoutMs?: number;
+  countdownSeconds?: number;
+  autoRetry?: boolean;
+  statusHint?: string;
 };
 
 export default function AdminRecoveryPanel({
@@ -27,13 +30,45 @@ export default function AdminRecoveryPanel({
   onSecondary,
   fullHeight = false,
   timeoutMs = 4000,
+  countdownSeconds = 12,
+  autoRetry = false,
+  statusHint,
 }: AdminRecoveryPanelProps) {
   const [showActions, setShowActions] = useState(false);
+  const [countdown, setCountdown] = useState(countdownSeconds);
+  const autoRetriedRef = useRef(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setShowActions(true), timeoutMs);
     return () => window.clearTimeout(timeout);
   }, [timeoutMs]);
+
+  useEffect(() => {
+    setCountdown(countdownSeconds);
+    autoRetriedRef.current = false;
+  }, [countdownSeconds, title, description]);
+
+  useEffect(() => {
+    if (!showActions || countdownSeconds <= 0) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setCountdown((current) => {
+        if (current <= 1) {
+          window.clearInterval(interval);
+          if (autoRetry && onRetry && !autoRetriedRef.current) {
+            autoRetriedRef.current = true;
+            void onRetry();
+          }
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [autoRetry, countdownSeconds, onRetry, showActions]);
 
   return (
     <div className={fullHeight ? "flex min-h-screen items-center justify-center bg-background px-6" : "py-8"}>
@@ -51,18 +86,28 @@ export default function AdminRecoveryPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{loadingLabel}</p>
+          {statusHint ? <p className="text-xs text-muted-foreground">{statusHint}</p> : null}
           {showActions ? (
-            <div className="flex flex-col gap-3 sm:flex-row">
-              {onRetry ? (
-                <Button type="button" onClick={onRetry} className="gap-2">
-                  {retryLabel}
-                </Button>
-              ) : null}
-              {onSecondary && secondaryLabel ? (
-                <Button type="button" variant="outline" onClick={onSecondary}>
-                  {secondaryLabel}
-                </Button>
-              ) : null}
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {countdown > 0
+                  ? `Automatic retry ${autoRetry ? "starts" : "is available"} in ${countdown}s.`
+                  : autoRetry
+                    ? "Automatic retry started. You can still retry again manually."
+                    : "Automatic retry window has opened. You can retry now."}
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {onRetry ? (
+                  <Button type="button" onClick={onRetry} className="gap-2">
+                    {retryLabel}
+                  </Button>
+                ) : null}
+                {onSecondary && secondaryLabel ? (
+                  <Button type="button" variant="outline" onClick={onSecondary}>
+                    {secondaryLabel}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </CardContent>

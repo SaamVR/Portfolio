@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import { toast } from "sonner";
 import { Star, Check, X, MessageSquare, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -198,13 +199,16 @@ const Reviews = () => {
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-20 text-center">
-          <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground/20" />
-          <p className="font-heading text-lg font-semibold text-foreground">No reviews yet</p>
-          <p className="text-sm text-muted-foreground">
-            {filterTab === "pending" ? "No reviews awaiting moderation." : "Reviews will appear here once customers submit them."}
-          </p>
-        </div>
+        <AdminEmptyState
+          icon={MessageSquare}
+          title={filterTab === "pending" ? "No reviews awaiting moderation" : "No reviews yet"}
+          description={filterTab === "pending" ? "You are caught up. Any newly submitted reviews will show here for moderation." : "Reviews will appear here once customers start submitting feedback after real orders."}
+          helper={filterTab === "pending" ? "This is the ideal calm state before or after launch." : "Once the first orders are fulfilled, this screen becomes the trust-management queue for the storefront."}
+          actions={activeStoreId ? [
+            { label: "Open orders", href: `/admin/orders?storeId=${encodeURIComponent(activeStoreId)}` },
+            { label: "Open launch readiness", href: `/admin/launch?storeId=${encodeURIComponent(activeStoreId)}`, variant: "outline" },
+          ] : []}
+        />
       ) : (
         <div className="space-y-4">
           {filtered.map((review) => (

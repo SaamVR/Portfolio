@@ -14,6 +14,8 @@ interface ExitIntentSettings {
   offer_text?: string;
   discount_amount?: string;
   discount_code?: string;
+  trigger_top_tolerance?: number;
+  min_seconds_on_page?: number;
 }
 
 export default function ExitIntentPopup() {
@@ -28,34 +30,47 @@ export default function ExitIntentPopup() {
   const exitIntent = fetchedExitIntent ?? {};
 
   useEffect(() => {
-    // Only run if enabled
-    if (exitIntent.enabled === false) return;
-    
-    // Check if already shown in this session
+    if (exitIntent.enabled !== true) return;
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
     if (sessionStorage.getItem(sessionStorageKey)) return;
 
-    const handleMouseLeave = (e: MouseEvent) => {
-      // Trigger when mouse moves up towards the address bar
-      if (e.clientY <= 0 || e.clientX <= 0 || (e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
-        setIsVisible(true);
-        sessionStorage.setItem(sessionStorageKey, "true");
-        // Remove listener after triggering
-        document.removeEventListener("mouseleave", handleMouseLeave);
+    const triggerTopTolerance = Math.min(Math.max(Number(exitIntent.trigger_top_tolerance) || 12, 0), 80);
+    const minTimeOnPageMs = Math.max(Number(exitIntent.min_seconds_on_page) || 10, 0) * 1000;
+    const enteredViewportRef = { current: false };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (event.clientY > triggerTopTolerance + 24) {
+        enteredViewportRef.current = true;
       }
     };
 
-    // Add a slight delay before attaching the listener to avoid instant popups
+    const handleMouseLeave = (e: MouseEvent) => {
+      const leavingDocument = !e.relatedTarget;
+      const leavingFromTopEdge = e.clientY <= triggerTopTolerance;
+      const startedInsideViewport = enteredViewportRef.current;
+
+      if (!leavingDocument || !leavingFromTopEdge || !startedInsideViewport) return;
+
+      setIsVisible(true);
+      sessionStorage.setItem(sessionStorageKey, "true");
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("mousemove", handleMouseMove);
+    };
+
     const timer = setTimeout(() => {
+      document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseleave", handleMouseLeave);
-    }, 3000);
+    }, minTimeOnPageMs);
 
     return () => {
       clearTimeout(timer);
+      document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [exitIntent.enabled, sessionStorageKey]);
+  }, [exitIntent.enabled, exitIntent.min_seconds_on_page, exitIntent.trigger_top_tolerance, sessionStorageKey]);
 
-  if (!isVisible || exitIntent.enabled === false) return null;
+  if (!isVisible || exitIntent.enabled !== true) return null;
   const discountCode = typeof exitIntent.discount_code === "string" ? exitIntent.discount_code.trim() : "";
 
   const handleCopy = () => {

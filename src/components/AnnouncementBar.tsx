@@ -27,9 +27,7 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
     : DEFAULT_MESSAGES;
   const bgColor = settings?.bg_color ?? "";
 
-  const [dismissed, setDismissed] = useState(() => 
-    typeof window !== "undefined" ? sessionStorage.getItem(dismissedStorageKey) === "true" : false
-  );
+  const [dismissed, setDismissed] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fade, setFade] = useState(true);
 

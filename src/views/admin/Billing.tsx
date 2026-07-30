@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,22 +32,35 @@ import {
   getPlanTrialDays,
   getRemainingTrialDays,
   isContactOnlyPlan,
+  type PlanCatalogRecord,
   type BillingInterval,
 } from "@/lib/billing/plans";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
+
+type BillingPlan = PlanCatalogRecord;
+type BillingInvoice = Tables<"store_invoices">;
+type BillingSubscription = Tables<"store_subscriptions"> & {
+  cms_plans: BillingPlan | null;
+};
+
+function isManualInvoice(invoice: BillingInvoice) {
+  return invoice.payment_method === "bkash_manual" || invoice.provider === "bkash_manual";
+}
 
 export default function Billing() {
-  const { activeStoreId, role } = useAuth();
+  const { activeStoreId, role, platformRole, storeRole } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [actionPlanId, setActionPlanId] = useState<string | null>(null);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<any | null>(null);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<BillingPlan | null>(null);
   const [selectedBillingInterval, setSelectedBillingInterval] = useState<BillingInterval>("monthly");
   const [paymentMode, setPaymentMode] = useState<"choose" | "automated" | "manual">("choose");
   const [trxId, setTrxId] = useState("");
   const [submittingManualPayment, setSubmittingManualPayment] = useState(false);
+  const ownerOnly = storeRole === "owner" || platformRole === "admin";
 
   const platformManualBkashNumber = process.env.NEXT_PUBLIC_PLATFORM_BKASH_NUMBER || "01700-000000";
 
@@ -84,47 +98,69 @@ export default function Billing() {
     queryKey: ["admin-billing-subscription", activeStoreId],
     queryFn: async () => {
       if (!activeStoreId) return null;
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("store_subscriptions")
         .select("*, cms_plans(*)")
         .eq("store_id", activeStoreId)
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      return (data as BillingSubscription | null) ?? null;
     },
     enabled: !!activeStoreId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery({
     queryKey: ["admin-billing-invoices", activeStoreId],
     queryFn: async () => {
       if (!activeStoreId) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("store_invoices")
         .select("*")
         .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data as BillingInvoice[] | null) ?? [];
     },
     enabled: !!activeStoreId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ["admin-billing-plans"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("cms_plans")
         .select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, is_active, sort_order, trial_days, contact_only")
         .eq("is_active", true)
         .order("sort_order");
 
       if (error) throw error;
-      return data || [];
+      return (data as BillingPlan[] | null) ?? [];
     },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
+
+  if (!ownerOnly) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>Billing is owner-only</CardTitle>
+          <CardDescription>
+            Billing, plan changes, and payment credentials stay limited to the store owner or platform operators.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button variant="outline" onClick={() => router.push("/admin")}>Back to dashboard</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (role !== "admin") {
     return (
@@ -151,7 +187,7 @@ export default function Billing() {
     ]);
   };
 
-  const handleInitiatePayment = (plan: any, billingInterval: BillingInterval = "monthly") => {
+  const handleInitiatePayment = (plan: BillingPlan, billingInterval: BillingInterval = "monthly") => {
     setSelectedPlanForPayment(plan);
     setSelectedBillingInterval(billingInterval);
     setPaymentMode("choose");
@@ -195,7 +231,7 @@ export default function Billing() {
     }
   };
 
-  const handleSelectPlan = async (plan: any) => {
+  const handleSelectPlan = async (plan: BillingPlan) => {
     try {
       if (!activeStoreId) {
         throw new Error("No active store selected");
@@ -253,22 +289,25 @@ export default function Billing() {
       if (!activeStoreId || !selectedPlanForPayment) {
         throw new Error("No active store or plan selected");
       }
+      const token = await getAccessToken();
+      const res = await fetch("/api/billing/manual-invoice", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          storeId: activeStoreId,
+          planId: selectedPlanForPayment.id,
+          billingInterval: selectedBillingInterval,
+          transactionId: trxId.trim(),
+        }),
+      });
 
-      const { error } = await supabase
-        .from("store_invoices")
-        .insert({
-          store_id: activeStoreId,
-          plan_id: selectedPlanForPayment.id,
-          amount: getPlanPrice(selectedPlanForPayment, selectedBillingInterval),
-          billing_interval: selectedBillingInterval,
-          currency: "BDT",
-          status: "pending",
-          provider: "bkash_manual",
-          payment_method: "bkash_manual",
-          provider_invoice_id: trxId.trim(),
-        });
-
-      if (error) throw error;
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to submit manual payment");
+      }
 
       toast.success("Manual payment request submitted! An admin will verify the payment shortly.");
       setPaymentDialogOpen(false);
@@ -288,12 +327,23 @@ export default function Billing() {
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
   const remainingTrialDays = getRemainingTrialDays(trialEndsAt);
-  const confirmedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "paid");
-  const pendingInvoices = (invoices || []).filter((invoice: any) => invoice.status === "pending");
-  const failedInvoices = (invoices || []).filter((invoice: any) => invoice.status === "failed");
+  const confirmedInvoices = (invoices || []).filter((invoice) => invoice.status === "paid");
+  const pendingInvoices = (invoices || []).filter((invoice) => invoice.status === "pending");
+  const failedInvoices = (invoices || []).filter((invoice) => invoice.status === "failed");
   const customDomainsUnlocked = canUseCustomDomains(subscription, subscription?.cms_plans, true);
+  const pendingManualReview = pendingInvoices.filter(isManualInvoice);
+  const statusSummary =
+    status === "active"
+      ? "Your store has commercial access and billing is in good standing."
+      : status === "trialing"
+        ? "Your store is active on trial. Choose a paid package before trial access ends."
+        : status === "past_due"
+          ? "Billing needs attention before full commercial access can continue."
+          : status === "cancelled"
+            ? "This subscription is cancelled and may need reactivation before launch."
+            : "Review your current billing state before launch.";
 
-  const formatInvoiceMethod = (invoice: any) => {
+  const formatInvoiceMethod = (invoice: BillingInvoice) => {
     if (invoice.payment_method === "bkash_manual") return "Manual bKash";
     if (invoice.payment_method === "bkash") return "bKash Checkout";
     if (typeof invoice.payment_method === "string" && invoice.payment_method.trim()) {
@@ -305,12 +355,12 @@ export default function Billing() {
     return "Platform billing";
   };
 
-  const getInvoiceDisplayDate = (invoice: any) => {
+  const getInvoiceDisplayDate = (invoice: BillingInvoice) => {
     if (invoice.status === "paid" && invoice.paid_at) return invoice.paid_at;
     return invoice.created_at;
   };
 
-  const renderInvoiceRow = (invoice: any) => {
+  const renderInvoiceRow = (invoice: BillingInvoice) => {
     const displayDate = getInvoiceDisplayDate(invoice);
     const billingStart = invoice.billing_period_start || (invoice.status === "paid" ? invoice.paid_at : null);
     return (
@@ -365,17 +415,134 @@ export default function Billing() {
     }
   };
 
+  const nextAction = pendingManualReview.length > 0
+    ? {
+        title: "Manual payment submitted",
+        description:
+          pendingManualReview.length === 1
+            ? "Your latest bKash send-money reference is waiting for operator review. Billing access updates after the transaction is verified."
+            : `${pendingManualReview.length} manual payment requests are waiting for operator review. The newest valid transaction will control activation.`,
+        cta: "Review payment history",
+        onClick: () => document.getElementById("billing-history")?.scrollIntoView({ behavior: "smooth" }),
+      }
+    : status === "past_due"
+      ? {
+          title: "Billing needs attention",
+          description: "This store is currently past due. Complete a payment to restore healthy commercial status before launch.",
+          cta: "Resolve billing now",
+          onClick: () => subscription?.cms_plans ? handleInitiatePayment(subscription.cms_plans) : document.getElementById("available-plans")?.scrollIntoView({ behavior: "smooth" }),
+        }
+      : status === "trialing"
+        ? {
+            title: "Trial is active",
+            description: trialEndsAt
+              ? `Trial access is active until ${format(new Date(trialEndsAt), "PPP")}. Pick a paid package before that date to avoid launch interruption.`
+              : "Trial access is active. Pick a paid package before launch so the store does not slip into billing review later.",
+            cta: "Choose a paid plan",
+            onClick: () => document.getElementById("available-plans")?.scrollIntoView({ behavior: "smooth" }),
+          }
+        : status === "cancelled"
+          ? {
+              title: "Subscription is cancelled",
+              description: "Re-activate billing before launch if this store still needs paid package access like custom domains and active commercial coverage.",
+              cta: "View available plans",
+              onClick: () => document.getElementById("available-plans")?.scrollIntoView({ behavior: "smooth" }),
+            }
+          : null;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Billing & Plans</h2>
-          <p className="text-muted-foreground">Manage your subscription and billing history.</p>
+          <p className="text-muted-foreground">See this store&apos;s package, payment state, and launch readiness at a glance.</p>
         </div>
       </div>
 
+      {nextAction ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">{nextAction.title}</p>
+              <p className="text-sm text-muted-foreground">{nextAction.description}</p>
+            </div>
+            <Button type="button" onClick={nextAction.onClick} className="md:min-w-52">
+              {nextAction.cta}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-border bg-card/80">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              Billing status
+            </CardTitle>
+            <CardDescription>{statusSummary}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Current package</span>
+              <span className="font-medium text-foreground">{planName}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Status</span>
+              <div>{getStatusBadge(status)}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/80">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Zap className="h-4 w-4 text-primary" />
+              Access window
+            </CardTitle>
+            <CardDescription>Know when your current access changes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Trial</span>
+              <span className="font-medium text-foreground">
+                {trialEndsAt
+                  ? `${format(new Date(trialEndsAt), "PPP")}${remainingTrialDays != null ? ` (${remainingTrialDays} day${remainingTrialDays === 1 ? "" : "s"} left)` : ""}`
+                  : "Not on trial"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Next billing</span>
+              <span className="font-medium text-foreground">{currentPeriodEndsAt ? format(new Date(currentPeriodEndsAt), "PPP") : "Not scheduled yet"}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/80">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CreditCard className="h-4 w-4 text-primary" />
+              Commerce access
+            </CardTitle>
+            <CardDescription>Quick checks before launch.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Custom domains</span>
+              <span className="font-medium text-foreground">{customDomainsUnlocked ? "Included" : "Not included yet"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Pending reviews</span>
+              <span className="font-medium text-foreground">
+                {pendingManualReview.length > 0 ? `${pendingManualReview.length} awaiting review` : "None"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-border bg-card">
+        <Card id="billing-history" className="border-border bg-card">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -420,7 +587,17 @@ export default function Billing() {
           </CardContent>
           <CardFooter className="bg-muted/50 border-t border-border flex flex-col gap-3 items-stretch">
             {status === "past_due" || status === "trialing" ? (
-              <Button onClick={() => handleInitiatePayment(subscription?.cms_plans)} className="w-full" disabled={Boolean(actionPlanId)}>
+              <Button
+                onClick={() => {
+                  if (subscription?.cms_plans) {
+                    handleInitiatePayment(subscription.cms_plans);
+                    return;
+                  }
+                  document.getElementById("available-plans")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full"
+                disabled={Boolean(actionPlanId)}
+              >
                 <CreditCard className="mr-2 h-4 w-4" />
                 Pay Now ({formatPlanPrice(subscription?.cms_plans)})
               </Button>
@@ -440,6 +617,13 @@ export default function Billing() {
             <CardDescription>Past payments, payment methods, and verification status.</CardDescription>
           </CardHeader>
           <CardContent>
+            {pendingManualReview.length > 0 ? (
+              <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-200">
+                {pendingManualReview.length === 1
+                  ? "You have 1 manual payment waiting for review. The plan will activate after support verifies the transaction."
+                  : `You have ${pendingManualReview.length} manual payments waiting for review. The plan will activate after support verifies the latest valid transaction.`}
+              </div>
+            ) : null}
             {invoicesLoading ? (
               <div className="py-4 text-center text-sm text-muted-foreground">Loading history...</div>
             ) : invoices && invoices.length > 0 ? (
@@ -451,30 +635,43 @@ export default function Billing() {
                 </TabsList>
                 <TabsContent value="confirmed" className="space-y-4">
                   {confirmedInvoices.length > 0 ? confirmedInvoices.map(renderInvoiceRow) : (
-                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
-                      <p className="text-sm text-muted-foreground">No confirmed payments yet.</p>
-                    </div>
+                    <AdminEmptyState
+                      icon={CheckCircle2}
+                      title="No confirmed payments yet"
+                      description="Your successful charges and verified manual payments will appear here."
+                      compact
+                    />
                   )}
                 </TabsContent>
                 <TabsContent value="pending" className="space-y-4">
                   {pendingInvoices.length > 0 ? pendingInvoices.map(renderInvoiceRow) : (
-                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
-                      <p className="text-sm text-muted-foreground">No pending payment requests.</p>
-                    </div>
+                    <AdminEmptyState
+                      icon={AlertCircle}
+                      title="No pending payment requests"
+                      description="If you submit a manual payment or a checkout stays unverified, it will show here."
+                      compact
+                    />
                   )}
                 </TabsContent>
                 <TabsContent value="failed" className="space-y-4">
                   {failedInvoices.length > 0 ? failedInvoices.map(renderInvoiceRow) : (
-                    <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
-                      <p className="text-sm text-muted-foreground">No failed payments.</p>
-                    </div>
+                    <AdminEmptyState
+                      icon={AlertCircle}
+                      title="No failed payments"
+                      description="If a payment attempt fails, you will see it here with the payment method used."
+                      compact
+                    />
                   )}
                 </TabsContent>
               </Tabs>
             ) : (
-              <div className="py-8 text-center border rounded-lg border-dashed border-border bg-muted/20">
-                <p className="text-sm text-muted-foreground">No payment history available.</p>
-              </div>
+              <AdminEmptyState
+                icon={History}
+                title="No payment history yet"
+                description="This store has not completed a billing event yet."
+                helper="Once a trial converts, an invoice is created, or a manual payment is submitted, it will appear here."
+                compact
+              />
             )}
           </CardContent>
         </Card>
@@ -483,14 +680,14 @@ export default function Billing() {
       <Card id="available-plans" className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-lg">Available Plans</CardTitle>
-          <CardDescription>Choose a package for this store. Paid packages start checkout before activation.</CardDescription>
+          <CardDescription>Choose the package that matches this store&apos;s launch needs. Paid packages start checkout before activation.</CardDescription>
         </CardHeader>
         <CardContent>
           {plansLoading || subLoading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Loading plans...</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
-              {(plans || []).map((plan: any) => {
+              {(plans || []).map((plan) => {
                 const isCurrent = plan.id === currentPlanId;
                 const isContactPlan = isContactOnlyPlan(plan);
                 const isBusy = actionPlanId === plan.id;

@@ -90,47 +90,32 @@ serve(async (req) => {
       throw new Error("Order context is required to execute tenant-scoped bKash payment");
     }
 
-    // Fetch tenant-scoped payment credentials first, then fall back to global settings during migration.
-    let settingsQuery = supabaseClient
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'payment_settings')
-      .limit(1)
-
-    if (resolvedStoreId) {
-      settingsQuery = settingsQuery.eq('store_id', resolvedStoreId)
-    } else {
-      settingsQuery = settingsQuery.is('store_id', null)
+    if (!resolvedStoreId) {
+      throw new Error("Store context is required to initialize tenant-scoped bKash payment")
     }
 
-    let { data: settingsRows, error: settingsError } = await settingsQuery
+    const { data: connection, error: connectionError } = await supabaseClient
+      .from('store_payment_connections_secure')
+      .select('status, public_metadata, secret_payload')
+      .eq('store_id', resolvedStoreId)
+      .eq('provider', 'bkash')
+      .maybeSingle()
 
-    if ((!settingsRows || settingsRows.length === 0) && resolvedStoreId) {
-      const fallback = await supabaseClient
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'payment_settings')
-        .is('store_id', null)
-        .limit(1)
-      settingsRows = fallback.data
-      settingsError = fallback.error
+    if (connectionError) {
+      throw new Error("Could not load payment connection")
     }
 
-    const siteSettings = settingsRows?.[0]
-    if (settingsError || !siteSettings) {
-      throw new Error("Could not load payment settings")
-    }
-
-    const settings = siteSettings.value as any;
+    const settings = (connection?.secret_payload ?? {}) as any;
+    const metadata = (connection?.public_metadata ?? {}) as any;
     const bkashConfig: BkashConfig = {
-      app_key: settings.bkash_app_key,
-      app_secret: settings.bkash_app_secret,
-      username: settings.bkash_username,
-      password: settings.bkash_password,
-      is_live: settings.bkash_is_live === true
+      app_key: settings.app_key,
+      app_secret: settings.app_secret,
+      username: settings.username,
+      password: settings.password,
+      is_live: metadata.is_live === true
     }
 
-    if (!bkashConfig.app_key || !bkashConfig.username) {
+    if (connection?.status !== 'connected' || !bkashConfig.app_key || !bkashConfig.app_secret || !bkashConfig.username || !bkashConfig.password) {
       throw new Error("bKash API credentials are not configured in the dashboard")
     }
 

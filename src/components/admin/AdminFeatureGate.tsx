@@ -21,7 +21,7 @@ export function AdminFeatureGate({
   description: string;
   children: ReactNode;
 }) {
-  const { platformRole, activeStoreId, loading } = useAuth();
+  const { platformRole, activeStoreId, loading, authRecovery } = useAuth();
   const { data, isLoading } = useStoreEntitlements(activeStoreId);
 
   if (platformRole === "admin") {
@@ -32,10 +32,18 @@ export function AdminFeatureGate({
     return (
       <AdminRecoveryPanel
         title={title}
-        description="The store package permissions are still being restored."
+        description={
+          authRecovery.reason === "offline"
+            ? "The store package permissions cannot refresh while this device is offline."
+            : authRecovery.reason === "permission_timeout"
+              ? "The store package permission check took too long."
+              : "The store package permissions are still being restored."
+        }
         loadingLabel="Checking feature access for the active store."
         retryLabel="Refresh dashboard"
         onRetry={() => window.location.reload()}
+        autoRetry
+        statusHint={authRecovery.detail ?? undefined}
       />
     );
   }
@@ -52,11 +60,16 @@ export function AdminFeatureGate({
           <Lock className="h-4 w-4 text-primary" />
           {title} is not enabled for this store
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription>
+          {description} Upgrade the store package or contact support if you need help choosing the right setup.
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-3">
         <Button asChild>
           <Link to="/admin/billing">View Packages</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/contact">Contact Support</Link>
         </Button>
       </CardContent>
     </Card>

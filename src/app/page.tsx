@@ -5,7 +5,7 @@ import { StorefrontPage } from "@/components/storefront/StorefrontPage";
 import { getRequestStore } from "@/lib/cms/request-store";
 import { getHomepage, isLocalStorefrontHostname } from "@/lib/cms/store-resolver";
 import { buildStorePageMetadata } from "@/lib/cms/store-metadata";
-import { getPreferredRequestHost } from "@/lib/platform/request-host";
+import { getEzcomoRequestHostname, getPreferredRequestHost } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 function isPlatformHost(hostname?: string | null) {
@@ -24,10 +24,7 @@ function isPlatformHost(hostname?: string | null) {
 
 export async function generateMetadata() {
   const requestHeaders = await headers();
-  const requestHost = getPreferredRequestHost({
-    host: requestHeaders.get("host"),
-    forwardedHost: requestHeaders.get("x-forwarded-host"),
-  });
+  const requestHost = getEzcomoRequestHostname({ headers: requestHeaders });
   if (isPlatformHost(requestHost)) {
     return {};
   }
@@ -44,10 +41,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const requestHeaders = await headers();
-  const requestHost = getPreferredRequestHost({
-    host: requestHeaders.get("host"),
-    forwardedHost: requestHeaders.get("x-forwarded-host"),
-  });
+  const requestHost = getEzcomoRequestHostname({ headers: requestHeaders });
 
   if (!isPlatformHost(requestHost)) {
     const store = await getRequestStore();

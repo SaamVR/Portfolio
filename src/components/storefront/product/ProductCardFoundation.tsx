@@ -58,7 +58,7 @@ export function ProductCardMedia({
 
   return (
     <div className={cn("relative w-full shrink-0 overflow-hidden bg-muted/30 dark:bg-secondary/40", aspectClasses[aspect], className)}>
-      <Link href={href} className="block h-full w-full" aria-label={`View ${alt}`}>
+      <Link href={href} className="relative block h-full w-full" aria-label={`View ${alt}`}>
         {!loaded ? <div className="absolute inset-0 animate-pulse bg-muted/50" /> : null}
         <SafeStorefrontImage
           src={src}

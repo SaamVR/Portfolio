@@ -51,7 +51,8 @@ create or replace function pg_temp.assert_actor_access(
   expected_category_rows integer,
   expected_type_rows integer,
   expected_theme_rows integer,
-  expected_invoice_rows integer
+  expected_invoice_rows integer,
+  expected_subscription_rows integer
 )
 returns void
 language plpgsql
@@ -118,6 +119,63 @@ begin
   where id = invoice_id;
   get diagnostics affected = row_count;
   perform pg_temp.assert_true(affected = expected_invoice_rows, format('%s store_invoices update mismatch', label));
+
+  select count(*) into actual_count
+  from public.store_subscriptions
+  where store_subscriptions.store_id = '20000000-0000-4000-8000-000000000001';
+  perform pg_temp.assert_true(
+    actual_count = expected_subscription_rows,
+    format('%s store_subscriptions select mismatch', label)
+  );
+end;
+$$;
+
+create or replace function pg_temp.assert_subscription_mutations_denied(
+  test_user uuid,
+  label text
+)
+returns void
+language plpgsql
+as $$
+declare
+  target_store_id constant uuid := '20000000-0000-4000-8000-000000000001';
+begin
+  perform pg_temp.set_authenticated_user(test_user);
+
+  begin
+    update public.store_subscriptions
+    set plan_id = 'rls-smoke-upgrade-plan'
+    where store_id = target_store_id;
+    raise exception '% unexpectedly self-upgraded a subscription', label;
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_subscriptions
+    set status = 'active'
+    where store_id = target_store_id;
+    raise exception '% unexpectedly reactivated a subscription', label;
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_subscriptions
+    set current_period_ends_at = now() + interval '1 year'
+    where store_id = target_store_id;
+    raise exception '% unexpectedly extended a billing period', label;
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    delete from public.store_subscriptions
+    where store_id = target_store_id;
+    raise exception '% unexpectedly deleted a subscription', label;
+  exception
+    when insufficient_privilege then null;
+  end;
 end;
 $$;
 
@@ -145,7 +203,9 @@ insert into public.user_roles (user_id, role)
 values ('10000000-0000-4000-8000-000000000006', 'admin');
 
 insert into public.cms_plans (id, name, description, monthly_price, currency_code, is_active, sort_order)
-values ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999)
+values
+  ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999),
+  ('rls-smoke-upgrade-plan', 'RLS Smoke Upgrade Plan', 'Unauthorized upgrade target.', 1000, 'BDT', true, 1000)
 on conflict (id) do nothing;
 
 insert into public.stores (
@@ -304,6 +364,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
+  1,
   1
 );
 
@@ -311,6 +372,7 @@ select pg_temp.assert_actor_access(
   '10000000-0000-4000-8000-000000000002',
   'store_admin',
   true,
+  1,
   1,
   1,
   1,
@@ -332,6 +394,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
+  1,
   1
 );
 
@@ -346,13 +409,15 @@ select pg_temp.assert_actor_access(
   0,
   0,
   0,
-  0
+  0,
+  1
 );
 
 select pg_temp.assert_actor_access(
   '10000000-0000-4000-8000-000000000005',
   'outsider',
   false,
+  0,
   0,
   0,
   0,
@@ -374,7 +439,23 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
+  1,
   1
+);
+
+select pg_temp.assert_subscription_mutations_denied(
+  '10000000-0000-4000-8000-000000000001',
+  'owner'
+);
+
+select pg_temp.assert_subscription_mutations_denied(
+  '10000000-0000-4000-8000-000000000002',
+  'store_admin'
+);
+
+select pg_temp.assert_subscription_mutations_denied(
+  '10000000-0000-4000-8000-000000000006',
+  'platform_admin_client'
 );
 
 select 'RLS smoke checks passed' as result;

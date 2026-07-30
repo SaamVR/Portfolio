@@ -137,7 +137,14 @@ export function DeleteStoreDialog({
 
         <div className="space-y-4">
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
-            Type <span className="font-semibold text-foreground">{storeName}</span> to confirm this delete action.
+            <p>
+              Type <span className="font-semibold text-foreground">{storeName}</span> to confirm this delete action.
+            </p>
+            <p className="mt-2">
+              {isPlatformMode
+                ? "Recovery is handled through platform support review only. Merchants cannot restore this site from their dashboard after deletion."
+                : "This action removes the site immediately. If you later need the decision reviewed, support will use the deletion history rather than a self-serve undo."}
+            </p>
           </div>
 
           <div className="grid gap-2">

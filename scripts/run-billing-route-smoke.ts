@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import nextEnv from "@next/env";
 import {
   POST as checkoutPost,
   billingCheckoutRouteDeps,
@@ -13,6 +16,10 @@ import {
   canManageStore as realCanManageStore,
   getRequiredEnv,
 } from "../src/lib/api/supabase-route.ts";
+
+const { loadEnvConfig } = nextEnv;
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+loadEnvConfig(repoRoot);
 
 function requireSupabaseAdmin() {
   return createClient(

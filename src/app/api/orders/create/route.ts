@@ -3,6 +3,7 @@ import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase
 import { rateLimit } from "@/lib/rate-limit";
 import { triggerWhatsAppOrderNotify } from "@/lib/cms/whatsapp-order-notify";
 import { normalizeOrderItems } from "@/lib/cms/order-input";
+import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allowedPaymentMethods = new Set(["bkash", "bkash_manual", "nagad", "cod"]);
@@ -24,6 +25,10 @@ function readMoney(value: unknown) {
   const amount = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(amount)) return 0;
   return Math.max(0, Math.round(amount));
+}
+
+function safeRecord(value: unknown) {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
 }
 
 function mapOrderError(message: string) {
@@ -74,6 +79,23 @@ export async function POST(req: Request) {
     const items = normalizeOrderItems(body?.items);
     const user = await getAuthenticatedUser(req);
     const supabaseAdmin = getSupabaseAdminClient();
+    const [{ data: store }, { data: storefrontSetting }] = await Promise.all([
+      supabaseAdmin
+        .from("stores")
+        .select("name")
+        .eq("id", storeId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("site_settings")
+        .select("value")
+        .eq("store_id", storeId)
+        .eq("key", "storefront_profile")
+        .maybeSingle(),
+    ]);
+    const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
+      ? storefrontSetting.value as Record<string, unknown>
+      : null;
+    const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
 
     const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock", {
       _store_id: storeId,
@@ -107,6 +129,14 @@ export async function POST(req: Request) {
       store_id: storeId,
       order_id: order.id,
       order_number: order.order_number,
+      store_name: typeof store?.name === "string" ? store.name : undefined,
+      order_label: orderExperience.labels.trackActionLabel === "Track Order" ? "Order Number" : "Request Number",
+      customer_label: orderExperience.labels.detailsTitle,
+      items_label: orderExperience.labels.summaryTitle,
+      total_label: orderExperience.labels.totalLabel,
+      address_label: orderExperience.labels.addressSummaryLabel,
+      option_label: orderExperience.labels.optionLabel,
+      merchant_notification_title: orderExperience.labels.merchantNotificationTitle,
       customer_name: customerName,
       customer_phone: customerPhone,
       shipping_address: shippingAddress,
@@ -114,6 +144,123 @@ export async function POST(req: Request) {
       total: Number(order.total ?? 0),
       items: order.items || items,
     });
+
+    const orderItems = Array.isArray(order.items) ? order.items : items;
+    const productRevenueWeight = orderItems.reduce((sum: number, item: any) => {
+      const quantity = Number(item?.quantity ?? 0);
+      const unitPrice = Number(item?.price ?? item?.unit_price ?? item?.sale_price ?? 0);
+      if (Number.isFinite(unitPrice) && unitPrice > 0) {
+        return sum + (Math.max(quantity, 0) * unitPrice);
+      }
+      return sum + Math.max(quantity, 0);
+    }, 0);
+    const purchaseEventRows = [
+      {
+        store_id: storeId,
+        customer_id: user?.id ?? null,
+        order_id: order.id,
+        event_name: "purchase",
+        event_category: "commerce",
+        page_type: "order_success",
+        order_number: order.order_number,
+        quantity: orderItems.reduce((sum: number, item: any) => sum + Number(item?.quantity ?? 0), 0),
+        value: Number(order.total ?? 0),
+        currency_code: "BDT",
+        search_query: null,
+        metadata: {
+          payment_method: paymentMethod,
+          customer_name: customerName,
+          shipping_city: shippingCity,
+          items: orderItems,
+        },
+        user_agent: req.headers.get("user-agent"),
+      },
+      ...orderItems.map((item: any) => {
+        const quantity = Math.max(1, Number(item?.quantity ?? 1));
+        const unitPrice = Number(item?.price ?? item?.unit_price ?? item?.sale_price ?? 0);
+        const metadata = safeRecord(item);
+        const weightedValue = Number(order.total ?? 0) > 0
+          ? (
+            productRevenueWeight > 0
+              ? Number(order.total ?? 0) * (
+                  (Number.isFinite(unitPrice) && unitPrice > 0 ? quantity * unitPrice : quantity) / productRevenueWeight
+                )
+              : 0
+          )
+          : 0;
+
+        return {
+          store_id: storeId,
+          customer_id: user?.id ?? null,
+          order_id: order.id,
+          product_id: readText(item?.product_id ?? item?.productId, 80),
+          event_name: "purchase_item",
+          event_category: "commerce",
+          page_type: "order_success",
+          order_number: order.order_number,
+          quantity,
+          value: Math.round(weightedValue),
+          currency_code: "BDT",
+          search_query: null,
+          metadata: {
+            productName: readText(item?.name ?? item?.product_name ?? item?.title, 180),
+            variant: readText(item?.size ?? item?.variant ?? "", 120),
+            unit_price: Number.isFinite(unitPrice) ? unitPrice : null,
+            ...metadata,
+          },
+          user_agent: req.headers.get("user-agent"),
+        };
+      }).filter((row) => row.product_id),
+    ];
+
+    void (supabaseAdmin as any).from("store_analytics_events").insert(purchaseEventRows);
+    void (supabaseAdmin as any).from("store_revenue_events").insert({
+      store_id: storeId,
+      order_id: order.id,
+      customer_id: user?.id ?? null,
+      event_type: "sale",
+      gross_amount: Number(order.total ?? 0),
+      refund_amount: 0,
+      net_amount: Number(order.total ?? 0),
+      currency_code: "BDT",
+      payment_method: paymentMethod,
+      status: typeof order.status === "string" ? order.status : "pending",
+      attribution_source: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.source, 120) || null,
+      attribution_medium: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.medium, 120) || null,
+      attribution_campaign: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.campaign, 160) || null,
+      metadata: {
+        order_number: order.order_number,
+        item_count: orderItems.reduce((sum: number, item: any) => sum + Number(item?.quantity ?? 0), 0),
+      },
+    });
+
+    if (customerPhone || customerEmail) {
+      const recoveryLeadQuery = (supabaseAdmin as any)
+        .from("store_cart_recovery_leads")
+        .select("id, recovered_revenue")
+        .eq("store_id", storeId)
+        .in("status", ["active", "abandoned", "contacted"])
+        .order("updated_at", { ascending: false })
+        .limit(1);
+
+      const { data: matchingRecoveryLead } = customerPhone
+        ? await recoveryLeadQuery.eq("contact_phone", customerPhone).maybeSingle()
+        : await recoveryLeadQuery.eq("contact_email", customerEmail).maybeSingle();
+
+      if (matchingRecoveryLead?.id) {
+        void (supabaseAdmin as any)
+          .from("store_cart_recovery_leads")
+          .update({
+            status: "recovered",
+            recovery_stage: "recovered",
+            recovered_order_id: order.id,
+            recovered_revenue: Number(order.total ?? 0),
+            last_activity_at: new Date().toISOString(),
+          })
+          .eq("id", matchingRecoveryLead.id)
+          .eq("store_id", storeId);
+      }
+    }
 
     return NextResponse.json({ order });
   } catch (error) {

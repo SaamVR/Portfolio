@@ -8,6 +8,18 @@ export type StoreMembership = {
   storeId: string;
   role: NonNullable<StoreRole>;
 };
+export type AuthRecoveryReason =
+  | "ready"
+  | "restoring"
+  | "offline"
+  | "permission_timeout"
+  | "no_store"
+  | "session_expired";
+export type AuthRecoveryState = {
+  reason: AuthRecoveryReason;
+  usingCachedAccess: boolean;
+  detail?: string | null;
+};
 
 export interface AuthContextType {
   user: User | null;
@@ -18,6 +30,7 @@ export interface AuthContextType {
   storeMemberships: StoreMembership[];
   activeStoreId: string | null;
   loading: boolean;
+  authRecovery: AuthRecoveryState;
   canManageStore: (storeId: string) => boolean;
   signOut: () => Promise<void>;
   refreshRole: () => Promise<void>;
@@ -33,6 +46,11 @@ export const AuthContext = createContext<AuthContextType>({
   storeMemberships: [],
   activeStoreId: null,
   loading: true,
+  authRecovery: {
+    reason: "restoring",
+    usingCachedAccess: false,
+    detail: null,
+  },
   canManageStore: () => false,
   signOut: async () => {},
   refreshRole: async () => {},

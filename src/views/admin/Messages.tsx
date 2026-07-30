@@ -6,6 +6,7 @@ import { Mail, MailOpen, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -107,11 +108,16 @@ const Messages = () => {
           ))}
         </div>
       ) : messages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-20 text-center">
-          <Mail className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <p className="font-heading text-lg font-semibold text-foreground">No messages yet</p>
-          <p className="text-sm text-muted-foreground">Customer contact form submissions will appear here.</p>
-        </div>
+        <AdminEmptyState
+          icon={Mail}
+          title="No messages yet"
+          description="Customer contact form submissions will appear here once shoppers start reaching out."
+          helper="A published contact page, support email, or WhatsApp link usually helps the first real conversations start sooner."
+          actions={activeStoreId ? [
+            { label: "Open site settings", href: `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}&tab=contact` },
+            { label: "Preview store", href: `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId)}&guide=continue`, variant: "outline" },
+          ] : []}
+        />
       ) : (
         <div className="space-y-2">
           {messages.map((msg) => (

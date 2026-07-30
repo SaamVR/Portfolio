@@ -30,7 +30,7 @@ import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
-import { applyTemplateDemoContentToPages, buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
+import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
 import { isTemplateSeedMetadata, reseedTemplateCatalog, unseedTemplateCatalog } from "@/lib/cms/template-seed-management";
 import {
   buildThemePackageExport,
@@ -41,20 +41,39 @@ import {
   parseThemePackageImport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
-import { buildBlueprintSiteSettingsEntries, resolveStoreBlueprint, type StoreBusinessFamily, type StoreCatalogMode } from "@/lib/cms/store-blueprints";
-import { isSettingsTabCompatible } from "@/lib/cms/storefront-compat";
+import { resolveStoreBlueprint, type StoreBusinessFamily, type StoreCatalogMode } from "@/lib/cms/store-blueprints";
+import { isSettingsTabCompatible, supportsDedicatedShopPage, supportsTransactionalCheckout } from "@/lib/cms/storefront-compat";
 import {
   getAvailableSettingsTabs,
+  getMobilePinnedSettingsTabs,
   isLegacySettingsTab,
-  mobilePinnedSettingTabs,
   resolveStorefrontSettingsContext,
   validSettingTabs,
   type SettingsTabOption,
 } from "@/lib/cms/site-settings-tabs";
-import { getStorefrontTemplateDefinition, resolveSeedBlueprintIdForTemplate, storefrontTemplateOptions, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import {
+  buildStorefrontTemplateSiteSettingsEntries,
+  getStorefrontTemplateDefinition,
+  resolveStorefrontTemplateProfile,
+  storefrontTemplateOptions,
+  type StorefrontTemplateId,
+} from "@/lib/cms/storefront-templates";
 import { resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import type { Store } from "@/lib/cms/schema";
 import type { Json } from "@/integrations/supabase/types";
+import { normalizeAnalyticsSettings } from "@/lib/analytics/storefront-analytics";
+import type { StorePage, StorePageBlock } from "@/lib/cms/schema";
+import {
+  collectMerchantWideSettings,
+  collectTemplateScopedSettings,
+  normalizeTemplatePageSnapshots,
+  normalizeTemplateSettingsArchive,
+  TEMPLATE_PAGE_SNAPSHOTS_KEY,
+  TEMPLATE_SETTINGS_ARCHIVE_KEY,
+  templateScopedSettingKeys,
+  updateTemplatePageSnapshots,
+  updateTemplateSettingsArchive,
+} from "@/lib/cms/template-site-settings-registry";
 
 type StoreThemeSettingsRow = {
   preset_id: string;
@@ -74,6 +93,35 @@ type StoreBusinessProfileSettingsRow = {
   business_family?: StoreBusinessFamily | null;
   catalog_mode?: StoreCatalogMode | null;
 };
+
+type BkashConnectionSummary = {
+  provider: "bkash";
+  configured: boolean;
+  status: "draft" | "connected" | "revoked";
+  metadata: {
+    environment: "sandbox" | "live";
+    label: string;
+    appKeyHint: string | null;
+    usernameHint: string | null;
+  };
+  updatedAt: string | null;
+  revokedAt: string | null;
+};
+
+const paymentSecretKeys = new Set([
+  "bkash_app_key",
+  "bkash_app_secret",
+  "bkash_username",
+  "bkash_password",
+  "bkash_is_live",
+]);
+
+function scrubPaymentSettings(value: unknown) {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(([key]) => !paymentSecretKeys.has(key)),
+  );
+}
 
 const headingFontOptions = {
   inter: "Inter, sans-serif",
@@ -118,6 +166,84 @@ function resolveThemeFontControlValue(
   return matched?.[0] ?? (value in options ? value : fallbackKey);
 }
 
+type SnapshotPageRow = {
+  id: string;
+  slug: string;
+  title: string;
+  seo_title: string | null;
+  seo_description: string | null;
+  is_homepage: boolean | null;
+};
+
+type SnapshotBlockRow = {
+  id: string;
+  page_id: string;
+  block_type: StorePageBlock["type"];
+  props: Record<string, unknown> | null;
+  sort_order: number | null;
+  is_visible: boolean | null;
+  entrance_animation: StorePageBlock["entranceAnimation"] | null;
+  hover_effect: StorePageBlock["hoverEffect"] | null;
+  effect_override: boolean | null;
+  layout_variant: string | null;
+  custom_html: string | null;
+  custom_css: string | null;
+};
+
+async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
+  const [{ data: pages, error: pageError }, { data: blocks, error: blockError }] = await Promise.all([
+    supabase
+      .from("store_pages")
+      .select("id, slug, title, seo_title, seo_description, is_homepage")
+      .eq("store_id", storeId)
+      .order("is_homepage", { ascending: false })
+      .order("slug"),
+    supabase
+      .from("store_page_blocks")
+      .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css")
+      .eq("store_id", storeId)
+      .order("sort_order"),
+  ]);
+
+  if (pageError) {
+    throw pageError;
+  }
+
+  if (blockError) {
+    throw blockError;
+  }
+
+  const blocksByPageId = new Map<string, SnapshotBlockRow[]>();
+  ((blocks as SnapshotBlockRow[] | null) ?? []).forEach((block) => {
+    const pageBlocks = blocksByPageId.get(block.page_id) ?? [];
+    pageBlocks.push(block);
+    blocksByPageId.set(block.page_id, pageBlocks);
+  });
+
+  return ((pages as SnapshotPageRow[] | null) ?? []).map((page) => ({
+    id: page.id,
+    slug: page.slug,
+    title: page.title,
+    seoTitle: page.seo_title ?? undefined,
+    seoDescription: page.seo_description ?? undefined,
+    isHomepage: Boolean(page.is_homepage),
+    blocks: (blocksByPageId.get(page.id) ?? []).map((block, index) => ({
+      id: block.id,
+      type: block.block_type,
+      props: (block.props ?? {}) as StorePageBlock["props"],
+      sortOrder: typeof block.sort_order === "number" ? block.sort_order : index,
+      isVisible: block.is_visible !== false,
+      visible: block.is_visible !== false,
+      entranceAnimation: block.entrance_animation ?? undefined,
+      hoverEffect: block.hover_effect ?? undefined,
+      effectOverride: block.effect_override ?? undefined,
+      layoutVariant: block.layout_variant ?? undefined,
+      customHtml: block.custom_html ?? undefined,
+      customCss: block.custom_css ?? undefined,
+    })) as StorePageBlock[],
+  }));
+}
+
 type HomepagePageRow = {
   id: string;
 };
@@ -137,22 +263,6 @@ const homepageSyncKeys = new Set<LegacyHomepageSettingKey>([
   "home_categories",
 ]);
 
-const templateScopedSettingsToPreserve = [
-  "announcement_bar",
-  "brand_seo",
-  "payment_settings",
-  "delivery_settings",
-  "notification_settings",
-  "whatsapp_support",
-  "loyalty_settings",
-  "contact_page",
-  "about_page",
-  "faq_entries",
-  "footer",
-  "navigation",
-  "shop_page",
-] as const;
-
 const SiteSettings = () => {
   const { role, session, activeStoreId, loading: authLoading, refreshRole, setActiveStoreId, signOut } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
@@ -171,6 +281,14 @@ const SiteSettings = () => {
   const [tabQuery, setTabQuery] = useState("");
   const [showMobileAllTabs, setShowMobileAllTabs] = useState(false);
   const [showMobileLegacyTabs, setShowMobileLegacyTabs] = useState(false);
+  const [appliedTemplateId, setAppliedTemplateId] = useState<StorefrontTemplateId | null>(null);
+  const [bkashConnectionDraft, setBkashConnectionDraft] = useState({
+    appKey: "",
+    appSecret: "",
+    username: "",
+    password: "",
+    isLive: false,
+  });
   const pageBuilderEnabled = getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
   const LegacyHomepageNotice = ({ title }: { title: string }) => (
     <Card className="border-amber-500/30 bg-amber-500/5">
@@ -185,7 +303,7 @@ const SiteSettings = () => {
           <Button asChild variant="outline" className="gap-2">
             <Link to={buildPageBuilderPath("basic")}>
               <PanelsTopLeft className="h-4 w-4" />
-              Open Basic Editing
+              Edit Storefront
             </Link>
           </Button>
         ) : (
@@ -228,9 +346,14 @@ const SiteSettings = () => {
 
         const map: Record<string, any> = {};
         settingsData?.forEach((row) => {
-          map[row.key] = row.value;
+          map[row.key] = row.key === "payment_settings" ? scrubPaymentSettings(row.value) : row.value;
         });
         setSettings(map);
+        const loadedStorefrontProfile = typeof map.storefront_profile === "object" && map.storefront_profile
+          ? map.storefront_profile as Record<string, unknown>
+          : null;
+        const loadedTemplateProfile = resolveStorefrontTemplateProfile(loadedStorefrontProfile?.template_id);
+        setAppliedTemplateId(loadedTemplateProfile.templateId);
       } catch (error) {
         console.error("Failed to load site settings:", error);
         toast.error("Failed to refresh site settings. Please try again.");
@@ -248,6 +371,7 @@ const SiteSettings = () => {
     setThemePackages(fallbackThemePackages);
     setLoading(Boolean(activeStoreId));
     setSaving(null);
+    setAppliedTemplateId(null);
   }, [activeStoreId]);
 
   const { data: themeData } = useQuery({
@@ -293,17 +417,39 @@ const SiteSettings = () => {
     },
     enabled: Boolean(activeStoreId),
   });
-  const blueprintProfile = resolveStoreBlueprint(businessProfileData?.blueprint_id ?? "general-catalog");
-  const activeBusinessFamily = businessProfileData?.business_family ?? blueprintProfile.businessFamily;
-  const activeCatalogMode = businessProfileData?.catalog_mode ?? blueprintProfile.catalogMode;
+  const storefrontProfileValue = typeof settings.storefront_profile === "object" && settings.storefront_profile
+    ? settings.storefront_profile as Record<string, unknown>
+    : undefined;
+  const resolvedTemplateProfile = useMemo(
+    () => resolveStorefrontTemplateProfile(
+      storefrontProfileValue?.template_id,
+      {
+        blueprintId: businessProfileData?.blueprint_id ?? (typeof storefrontProfileValue?.blueprint_id === "string" ? storefrontProfileValue.blueprint_id : null),
+        productVisibility: typeof storefrontProfileValue?.product_visibility === "string" ? storefrontProfileValue.product_visibility : null,
+      },
+    ),
+    [businessProfileData?.blueprint_id, storefrontProfileValue],
+  );
+  const compatibilityBlueprint = resolveStoreBlueprint(resolvedTemplateProfile.seedBlueprintId);
+  const activeBusinessFamily = businessProfileData?.business_family ?? resolvedTemplateProfile.businessFamily;
+  const activeCatalogMode = businessProfileData?.catalog_mode ?? resolvedTemplateProfile.catalogMode;
   const storefrontContext = useMemo(
     () => resolveStorefrontSettingsContext(activeBusinessFamily, activeCatalogMode),
     [activeBusinessFamily, activeCatalogMode],
   );
-  const activeTemplateId = (settings.storefront_profile?.template_id as StorefrontTemplateId | undefined)
-    ?? (blueprintProfile.defaultSiteSettings.storefront_profile as Record<string, unknown> | undefined)?.template_id as StorefrontTemplateId | undefined
-    ?? "fashion";
+  const activeTemplateId = resolvedTemplateProfile.templateId;
   const activeTemplateDefinition = getStorefrontTemplateDefinition(activeTemplateId);
+  const hasDedicatedShopPage = supportsDedicatedShopPage(activeBusinessFamily, activeCatalogMode);
+  const hasTransactionalCheckout = supportsTransactionalCheckout(activeBusinessFamily, activeCatalogMode);
+  const supportsWishlistControls = ["fashion", "beauty", "electronics", "crafts", "general-catalog", "subscriptions", "digital-downloads"].includes(activeTemplateId);
+  const supportsCartControls = hasTransactionalCheckout && activeTemplateId !== "hotel" && activeTemplateId !== "real-estate";
+  const supportsSearchControls = activeTemplateId !== "single-product";
+  const supportsSizeControls = activeTemplateId === "fashion" || activeTemplateId === "single-product";
+  const supportsColorControls = activeTemplateId === "fashion" || activeTemplateId === "beauty" || activeTemplateId === "crafts";
+  const supportsPriceFilterControls = hasDedicatedShopPage && activeTemplateId !== "booking" && activeTemplateId !== "service";
+  const supportsSaleFilterControls = supportsPriceFilterControls && activeTemplateId !== "food";
+  const supportsMapControls = ["service", "booking", "hotel", "real-estate", "landing"].includes(activeTemplateId);
+  const supportsNewsletterControls = !["inquiry-catalog", "single-product"].includes(activeTemplateId);
   const availableTabOptions = useMemo<SettingsTabOption[]>(
     () => getAvailableSettingsTabs({
       businessFamily: activeBusinessFamily,
@@ -324,7 +470,7 @@ const SiteSettings = () => {
   const handleTabChange = (value: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.set("tab", value);
-    setSearchParams(nextSearchParams);
+    setSearchParams(nextSearchParams, { replace: true, preventScrollReset: true });
     setShowMobileAllTabs(false);
     setShowMobileLegacyTabs(false);
   };
@@ -334,8 +480,13 @@ const SiteSettings = () => {
       t.keywords.toLowerCase().includes(tabQuery.toLowerCase()) ||
       t.category.toLowerCase().includes(tabQuery.toLowerCase())
   );
-  const mobileQuickTabs = availableTabOptions.filter((tab) => mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]));
-  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedSettingTabs.includes(tab.value as (typeof mobilePinnedSettingTabs)[number]) && !isLegacySettingsTab(tab.value));
+  const mobilePinnedTabs = getMobilePinnedSettingsTabs({
+    businessFamily: activeBusinessFamily,
+    catalogMode: activeCatalogMode,
+    templateId: activeTemplateId,
+  });
+  const mobileQuickTabs = availableTabOptions.filter((tab) => mobilePinnedTabs.includes(tab.value));
+  const mobileVisibleTabs = filteredTabs.filter((tab) => !mobilePinnedTabs.includes(tab.value) && !isLegacySettingsTab(tab.value));
   const mobileLegacyTabs = filteredTabs.filter((tab) => isLegacySettingsTab(tab.value));
 
   useEffect(() => {
@@ -345,7 +496,7 @@ const SiteSettings = () => {
 
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.set("tab", activeTab);
-    setSearchParams(nextSearchParams);
+    setSearchParams(nextSearchParams, { replace: true, preventScrollReset: true });
   }, [activeTab, normalizedActiveTab, searchParams, setSearchParams]);
 
   const { data: notificationEvents, isLoading: notificationEventsLoading } = useQuery({
@@ -363,6 +514,80 @@ const SiteSettings = () => {
     },
     enabled: Boolean(activeStoreId) && activeTab === "notifications",
   });
+
+  const { data: bkashConnection, refetch: refetchBkashConnection, isLoading: bkashConnectionLoading } = useQuery({
+    queryKey: ["payment-connection", "bkash", activeStoreId],
+    queryFn: async (): Promise<BkashConnectionSummary> => {
+      const token = session?.access_token;
+      if (!activeStoreId || !token) {
+        throw new Error("Please sign in again before loading bKash connection status.");
+      }
+
+      const response = await fetch(`/api/payment-connections/bkash?storeId=${encodeURIComponent(activeStoreId)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load bKash connection status");
+      }
+      return data.connection as BkashConnectionSummary;
+    },
+    enabled: Boolean(activeStoreId && session?.access_token && activeTab === "payment"),
+  });
+
+  const saveBkashConnection = async (rotate = false) => {
+    if (!activeStoreId || !session?.access_token) return;
+
+    setSaving(rotate ? "bkash_connection_rotate" : "bkash_connection");
+    try {
+      const response = await fetch("/api/payment-connections/bkash", {
+        method: rotate ? "PATCH" : "PUT",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          storeId: activeStoreId,
+          settings: bkashConnectionDraft,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to save bKash connection");
+      }
+      setBkashConnectionDraft({ appKey: "", appSecret: "", username: "", password: "", isLive: bkashConnectionDraft.isLive });
+      await refetchBkashConnection();
+      queryClient.invalidateQueries({ queryKey: ["public_payment_settings", activeStoreId] });
+      toast.success(rotate ? "bKash credentials rotated" : "bKash gateway connected");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to save bKash connection");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const revokeBkashConnection = async () => {
+    if (!activeStoreId || !session?.access_token) return;
+
+    setSaving("bkash_connection_revoke");
+    try {
+      const response = await fetch(`/api/payment-connections/bkash?storeId=${encodeURIComponent(activeStoreId)}`, {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to revoke bKash connection");
+      }
+      await refetchBkashConnection();
+      queryClient.invalidateQueries({ queryKey: ["public_payment_settings", activeStoreId] });
+      toast.success("bKash gateway revoked");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to revoke bKash connection");
+    } finally {
+      setSaving(null);
+    }
+  };
 
   const activeThemeId = themeData?.theme_package_id ?? themeData?.preset_id ?? "default";
   const [localThemeId, setLocalThemeId] = useState(activeThemeId);
@@ -495,9 +720,35 @@ const SiteSettings = () => {
 
     setSaving(key);
     try {
+      const settingValue = key === "payment_settings"
+        ? scrubPaymentSettings(settings[key])
+        : (settings[key] ?? {});
+      const upsertRows: Array<{ store_id: string; key: string; value: Json }> = [
+        { store_id: activeStoreId, key, value: settingValue as Json },
+      ];
+
+      if (templateScopedSettingKeys.includes(key as (typeof templateScopedSettingKeys)[number])) {
+        const currentArchive = normalizeTemplateSettingsArchive(settings[TEMPLATE_SETTINGS_ARCHIVE_KEY]);
+        const nextArchive = updateTemplateSettingsArchive(
+          currentArchive,
+          activeTemplateId,
+          { [key]: settingValue as Json } as Partial<Record<(typeof templateScopedSettingKeys)[number], Json>>,
+        );
+        upsertRows.push({
+          store_id: activeStoreId,
+          key: TEMPLATE_SETTINGS_ARCHIVE_KEY,
+          value: nextArchive as Json,
+        });
+        setSettings((prev) => ({
+          ...prev,
+          ...(key === "payment_settings" ? { payment_settings: settingValue } : {}),
+          [TEMPLATE_SETTINGS_ARCHIVE_KEY]: nextArchive,
+        }));
+      }
+
       const { error } = await supabase
         .from("site_settings")
-        .upsert({ store_id: activeStoreId, key, value: settings[key] ?? {} }, { onConflict: "store_id,key" });
+        .upsert(upsertRows, { onConflict: "store_id,key" });
       if (error) throw error;
 
       if (homepageSyncKeys.has(key as LegacyHomepageSettingKey)) {
@@ -508,6 +759,9 @@ const SiteSettings = () => {
         }
       }
 
+      if (key === "payment_settings") {
+        setSettings((prev) => ({ ...prev, payment_settings: settingValue }));
+      }
       toast.success(`${key.replace(/_/g, " ")} updated`);
       queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId, key] });
     } catch (error: any) {
@@ -534,6 +788,7 @@ const SiteSettings = () => {
       [key]: { ...prev[key], [field]: value },
     }));
   };
+  const analyticsSettings = normalizeAnalyticsSettings(settings.analytics_tracking);
 
   const applyTemplateToStorefront = async () => {
     if (!activeStoreId || !session?.user) {
@@ -544,12 +799,12 @@ const SiteSettings = () => {
     setApplyingTemplate(true);
 
     try {
-      const seedBlueprintId = resolveSeedBlueprintIdForTemplate(activeTemplateId);
-      const selectedBlueprint = resolveStoreBlueprint(seedBlueprintId);
+      const templateProfile = resolveStorefrontTemplateProfile(activeTemplateId);
+      const selectedBlueprint = resolveStoreBlueprint(templateProfile.seedBlueprintId);
       const themePackage = resolveThemePackageById(
-        selectedBlueprint.defaultTheme.presetId,
+        templateProfile.seedDefinition.defaultTheme.presetId,
         themePackages,
-        selectedBlueprint.defaultTheme.presetId,
+        templateProfile.seedDefinition.defaultTheme.presetId,
       );
 
       const { data: storeRow, error: storeError } = await supabase
@@ -561,48 +816,63 @@ const SiteSettings = () => {
       if (storeError || !storeRow) {
         throw storeError ?? new Error("Store not found.");
       }
-
-      const catalogSeed = buildTemplateCatalogSeedRows(activeStoreId, activeTemplateId);
-      const seededPages = applyTemplateDemoContentToPages(
-        instantiateStorePagesFromBlueprint(selectedBlueprint),
-        activeTemplateId,
+      const templateSettingsArchive = normalizeTemplateSettingsArchive(settings[TEMPLATE_SETTINGS_ARCHIVE_KEY]);
+      const templatePageSnapshots = normalizeTemplatePageSnapshots(settings[TEMPLATE_PAGE_SNAPSHOTS_KEY]);
+      const previouslyAppliedTemplateId = appliedTemplateId ?? activeTemplateId;
+      const currentPagesSnapshot = await loadStorePagesSnapshot(activeStoreId);
+      const nextTemplateSettingsArchive = updateTemplateSettingsArchive(
+        templateSettingsArchive,
+        previouslyAppliedTemplateId,
+        collectTemplateScopedSettings(settings),
       );
+      const nextTemplatePageSnapshots = updateTemplatePageSnapshots(
+        templatePageSnapshots,
+        previouslyAppliedTemplateId,
+        currentPagesSnapshot,
+      );
+      const restoredPages = nextTemplatePageSnapshots[activeTemplateId];
+      const seededPages = restoredPages && restoredPages.length > 0
+        ? restoredPages
+        : applyTemplateDemoContentToPages(
+            instantiateStorePagesFromBlueprint(selectedBlueprint),
+            activeTemplateId,
+          );
       const nextStorefrontProfile = {
         ...(settings.storefront_profile ?? {}),
-        ...(selectedBlueprint.defaultSiteSettings.storefront_profile as Record<string, Json> | undefined ?? {}),
-        blueprint_id: selectedBlueprint.id,
+        ...(templateProfile.seedDefinition.defaultSiteSettings.storefront_profile as Record<string, Json> | undefined ?? {}),
+        blueprint_id: templateProfile.seedBlueprintId,
         template_id: activeTemplateId,
       } satisfies Record<string, Json>;
 
       const storePayload: Store = {
         id: storeRow.id,
-        name: storeRow.name ?? selectedBlueprint.name,
+        name: storeRow.name ?? templateProfile.seedDefinition.name,
         slug: storeRow.slug,
         logoUrl: storeRow.logo_url ?? undefined,
         customDomain: storeRow.custom_domain ?? undefined,
-        description: storeRow.description ?? selectedBlueprint.storeDescription,
+        description: storeRow.description ?? templateProfile.seedDefinition.storeDescription,
         currencyCode: storeRow.currency_code ?? "BDT",
         locale: storeRow.locale ?? "en-BD",
         isPublished: Boolean(storeRow.is_published),
         theme: {
           presetId: themePackage.presetId,
           themePackageId: themePackage.id,
-          mode: selectedBlueprint.defaultTheme.mode,
-          aesthetic: selectedBlueprint.defaultTheme.aesthetic ?? "minimal",
-          effects: selectedBlueprint.defaultTheme.effects ?? {
+          mode: templateProfile.seedDefinition.defaultTheme.mode,
+          aesthetic: templateProfile.seedDefinition.defaultTheme.aesthetic ?? "minimal",
+          effects: templateProfile.seedDefinition.defaultTheme.effects ?? {
             scrollReveals: false,
             hoverEffects: true,
             parallax: false,
             intensity: "medium",
           },
-          headingFont: selectedBlueprint.defaultTheme.headingFont,
-          bodyFont: selectedBlueprint.defaultTheme.bodyFont,
-          borderRadius: selectedBlueprint.defaultTheme.borderRadius,
-          radiusScale: selectedBlueprint.defaultTheme.radiusScale,
-          densityScale: selectedBlueprint.defaultTheme.densityScale,
-          paletteSource: selectedBlueprint.defaultTheme.paletteSource,
-          paletteSeed: selectedBlueprint.defaultTheme.paletteSeed,
-          schemaVersion: selectedBlueprint.defaultTheme.schemaVersion,
+          headingFont: templateProfile.seedDefinition.defaultTheme.headingFont,
+          bodyFont: templateProfile.seedDefinition.defaultTheme.bodyFont,
+          borderRadius: templateProfile.seedDefinition.defaultTheme.borderRadius,
+          radiusScale: templateProfile.seedDefinition.defaultTheme.radiusScale,
+          densityScale: templateProfile.seedDefinition.defaultTheme.densityScale,
+          paletteSource: templateProfile.seedDefinition.defaultTheme.paletteSource,
+          paletteSeed: templateProfile.seedDefinition.defaultTheme.paletteSeed,
+          schemaVersion: templateProfile.seedDefinition.defaultTheme.schemaVersion,
           customCssVars: {},
           customCss: themePackage.customCss ?? undefined,
         },
@@ -621,25 +891,20 @@ const SiteSettings = () => {
         throw persistResult.error;
       }
 
-      const blueprintSettings = Object.fromEntries(
-        buildBlueprintSiteSettingsEntries(selectedBlueprint).map((entry) => [entry.key, entry.value]),
+      const templateSettings = Object.fromEntries(
+        buildStorefrontTemplateSiteSettingsEntries(templateProfile.seedDefinition).map((entry) => [entry.key, entry.value]),
       ) as Record<string, Json>;
-
-      const preservedSettings = templateScopedSettingsToPreserve.reduce<Record<string, Json>>((accumulator, key) => {
-        const value = settings[key];
-        if (value !== undefined) {
-          accumulator[key] = value as Json;
-        }
-        return accumulator;
-      }, {});
+      const merchantWideSettings = collectMerchantWideSettings(settings as Record<string, unknown>);
+      const restoredTemplateScopedSettings = nextTemplateSettingsArchive[activeTemplateId] ?? {};
 
       const currentSeedMetadata = isTemplateSeedMetadata(settings.catalog_seed_metadata)
         ? settings.catalog_seed_metadata
         : null;
 
       const mergedTemplateSettings = {
-        ...blueprintSettings,
-        ...preservedSettings,
+        ...templateSettings,
+        ...merchantWideSettings,
+        ...restoredTemplateScopedSettings,
       };
 
       const reseededCatalog = await reseedTemplateCatalog(supabase as any, activeStoreId, activeTemplateId, currentSeedMetadata);
@@ -651,9 +916,29 @@ const SiteSettings = () => {
         services_seed: (reseededCatalog.siteSettings as any)?.services_seed ?? ([] as Json),
       };
 
+      const { error: businessProfileError } = await supabase
+        .from("store_business_profiles")
+        .upsert(
+          {
+            store_id: activeStoreId,
+            blueprint_id: templateProfile.seedBlueprintId,
+            blueprint_version: 1,
+            business_family: templateProfile.businessFamily,
+            catalog_mode: templateProfile.catalogMode,
+            enabled_modules: templateProfile.seedDefinition.capabilities,
+          },
+          { onConflict: "store_id" },
+        );
+
+      if (businessProfileError) {
+        throw businessProfileError;
+      }
+
       const siteSettingsRows = Object.entries({
         ...mergedTemplateSettings,
         ...nextSeedSettings,
+        [TEMPLATE_SETTINGS_ARCHIVE_KEY]: nextTemplateSettingsArchive as Json,
+        [TEMPLATE_PAGE_SNAPSHOTS_KEY]: nextTemplatePageSnapshots as Json,
       }).map(([key, value]) => ({
         store_id: activeStoreId,
         key,
@@ -670,12 +955,16 @@ const SiteSettings = () => {
 
       setSettings((prev) => ({
         ...prev,
-        ...blueprintSettings,
+        ...templateSettings,
         ...(reseededCatalog.siteSettings as Record<string, Json>),
-        ...preservedSettings,
+        ...merchantWideSettings,
+        ...restoredTemplateScopedSettings,
         ...nextSeedSettings,
+        [TEMPLATE_SETTINGS_ARCHIVE_KEY]: nextTemplateSettingsArchive,
+        [TEMPLATE_PAGE_SNAPSHOTS_KEY]: nextTemplatePageSnapshots,
         storefront_profile: nextStorefrontProfile,
       }));
+      setAppliedTemplateId(activeTemplateId);
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["site_settings"] }),
@@ -1177,7 +1466,7 @@ const SiteSettings = () => {
               </div>
               <div className="rounded-xl border border-border bg-background/40 p-4">
                 <p className="text-sm font-medium text-foreground">Finish setup faster</p>
-                <p className="mt-1 text-xs text-muted-foreground">Onboarding is still the quickest place to create a store or complete first-run setup.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Guided Setup is still the quickest place to create a store or complete first-run setup.</p>
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -1207,7 +1496,7 @@ const SiteSettings = () => {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-heading text-2xl font-bold text-foreground md:text-3xl">Site Settings</h1>
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-              {blueprintProfile.shortName} · {activeCatalogMode.replaceAll("_", " ")}
+              {activeTemplateDefinition.label} · {activeCatalogMode.replaceAll("_", " ")}
             </span>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary md:hidden">
               {availableTabOptions.find((tab) => tab.value === activeTab)?.label ?? "Settings"}
@@ -1226,7 +1515,7 @@ const SiteSettings = () => {
           ) : null}
           {hasBlueprintVersionUpdate ? (
             <p className="mt-2 text-sm text-sky-600">
-              This store was created from an older blueprint snapshot. Updating store configuration will refresh blueprint-owned profile metadata for the current blueprint generation.
+              This store still carries older compatibility metadata. Saving template configuration will refresh the storefront profile for the current template system.
             </p>
           ) : null}
         </div>
@@ -1268,7 +1557,7 @@ const SiteSettings = () => {
         <div className="rounded-xl border border-border bg-card/60 p-4">
           <p className="text-sm font-medium text-foreground">Active storefront profile</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {blueprintProfile.name} is running as a {activeBusinessFamily} storefront with a {activeCatalogMode.replaceAll("_", " ")} experience.
+            {activeTemplateDefinition.label} is running as a {activeBusinessFamily} storefront with a {activeCatalogMode.replaceAll("_", " ")} experience.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card/60 p-4">
@@ -1278,7 +1567,7 @@ const SiteSettings = () => {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card/60 p-4">
-          <p className="text-sm font-medium text-foreground">Copy follows the blueprint</p>
+          <p className="text-sm font-medium text-foreground">Copy follows the active template</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Labels and section hints adapt to the active storefront profile so editors see {storefrontContext.pageLabel.toLowerCase()} language instead of generic catalog wording.
           </p>
@@ -1326,6 +1615,8 @@ const SiteSettings = () => {
                 <p>Image ratio: {activeTemplateDefinition.presentation.imageRatio}</p>
                 <p>Spacing: {activeTemplateDefinition.presentation.spacingDensity}</p>
                 <p>Typography: {activeTemplateDefinition.presentation.typographyScale}</p>
+                <p>Compatibility page seed: {compatibilityBlueprint.shortName}</p>
+                <p>Business family: {resolvedTemplateProfile.businessFamily}</p>
               </div>
             </div>
           </div>
@@ -1868,28 +2159,89 @@ const SiteSettings = () => {
               <div id="payment-gateway" className="space-y-4 scroll-mt-36 rounded-xl border border-border p-3">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Automated Payment Gateway (bKash API)</h3>
-                  <p className="text-xs text-muted-foreground">Enter your bKash PGW credentials here. Leave blank to use manual Send Money verification.</p>
+                  <p className="text-xs text-muted-foreground">Credentials are stored server-side only. This page shows connection status and masked hints, never saved secret values.</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                  {bkashConnectionLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading bKash connection...
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {bkashConnection?.configured ? "bKash gateway connected" : "bKash gateway not connected"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Environment: {bkashConnection?.metadata.environment ?? "sandbox"}
+                          {bkashConnection?.metadata.appKeyHint ? ` · App key ${bkashConnection.metadata.appKeyHint}` : ""}
+                          {bkashConnection?.metadata.usernameHint ? ` · User ${bkashConnection.metadata.usernameHint}` : ""}
+                        </p>
+                      </div>
+                      {bkashConnection?.configured ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void revokeBkashConnection()}
+                          disabled={saving === "bkash_connection_revoke"}
+                        >
+                          {saving === "bkash_connection_revoke" ? "Revoking..." : "Revoke"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                  <div>
+                    <Label>Use live bKash environment</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">Keep this off while testing sandbox credentials.</p>
+                  </div>
+                  <Switch
+                    checked={bkashConnectionDraft.isLive}
+                    onCheckedChange={(checked) => setBkashConnectionDraft((prev) => ({ ...prev, isLive: checked }))}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>App Key</Label>
-                  <Input type="password" value={settings.payment_settings?.bkash_app_key ?? ""} onChange={(e) => update("payment_settings", "bkash_app_key", e.target.value)} placeholder="Enter App Key" />
+                  <Input type="password" value={bkashConnectionDraft.appKey} onChange={(e) => setBkashConnectionDraft((prev) => ({ ...prev, appKey: e.target.value }))} placeholder="Enter App Key" autoComplete="new-password" />
                 </div>
                 <div className="grid gap-2">
                   <Label>App Secret</Label>
-                  <Input type="password" value={settings.payment_settings?.bkash_app_secret ?? ""} onChange={(e) => update("payment_settings", "bkash_app_secret", e.target.value)} placeholder="Enter App Secret" />
+                  <Input type="password" value={bkashConnectionDraft.appSecret} onChange={(e) => setBkashConnectionDraft((prev) => ({ ...prev, appSecret: e.target.value }))} placeholder="Enter App Secret" autoComplete="new-password" />
                 </div>
                 <div className="grid gap-2">
                   <Label>Username</Label>
-                  <Input value={settings.payment_settings?.bkash_username ?? ""} onChange={(e) => update("payment_settings", "bkash_username", e.target.value)} placeholder="Enter Username" />
+                  <Input value={bkashConnectionDraft.username} onChange={(e) => setBkashConnectionDraft((prev) => ({ ...prev, username: e.target.value }))} placeholder="Enter Username" autoComplete="off" />
                 </div>
                 <div className="grid gap-2">
                   <Label>Password</Label>
-                  <Input type="password" value={settings.payment_settings?.bkash_password ?? ""} onChange={(e) => update("payment_settings", "bkash_password", e.target.value)} placeholder="Enter Password" />
+                  <Input type="password" value={bkashConnectionDraft.password} onChange={(e) => setBkashConnectionDraft((prev) => ({ ...prev, password: e.target.value }))} placeholder="Enter Password" autoComplete="new-password" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => void saveBkashConnection(false)}
+                    disabled={saving === "bkash_connection"}
+                    className="gap-2"
+                  >
+                    {saving === "bkash_connection" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save secure connection
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void saveBkashConnection(true)}
+                    disabled={saving === "bkash_connection_rotate" || !bkashConnection?.configured}
+                  >
+                    {saving === "bkash_connection_rotate" ? "Rotating..." : "Rotate credentials"}
+                  </Button>
                 </div>
               </div>
 
               <SaveButton settingKey="payment_settings" />
-              <StickySectionSaveBar settingKey="payment_settings" title="Payment settings" hint="Save methods, incentives, and gateway credentials." />
+              <StickySectionSaveBar settingKey="payment_settings" title="Payment settings" hint="Save methods and checkout incentives." />
           </MobileSectionShell>
         </TabsContent>
 
@@ -1966,6 +2318,7 @@ const SiteSettings = () => {
                   <Switch checked={settings.exit_intent?.enabled ?? false} onCheckedChange={(v) => update("exit_intent", "enabled", v)} />
                   <Label>Enable Exit-Intent Popup</Label>
                 </div>
+                <p className="text-xs text-muted-foreground">Off by default. Turn it on only if you want the storefront to show a last-chance offer when desktop visitors move toward closing the tab.</p>
                 <div className="grid gap-2">
                   <Label>Popup Title</Label>
                     <Input value={settings.exit_intent?.title ?? ""} onChange={(e) => update("exit_intent", "title", e.target.value)} placeholder="Optional popup headline" />
@@ -1982,6 +2335,30 @@ const SiteSettings = () => {
                   <div className="grid gap-2">
                     <Label>Discount Code</Label>
                       <Input value={settings.exit_intent?.discount_code ?? ""} onChange={(e) => update("exit_intent", "discount_code", e.target.value)} placeholder="Optional promo code" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Trigger Delay (seconds)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={settings.exit_intent?.min_seconds_on_page ?? 10}
+                      onChange={(e) => update("exit_intent", "min_seconds_on_page", Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">Wait this long before the popup can appear so it does not interrupt people immediately.</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Top Edge Tolerance (px)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={80}
+                      value={settings.exit_intent?.trigger_top_tolerance ?? 12}
+                      onChange={(e) => update("exit_intent", "trigger_top_tolerance", Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">Only trigger when the cursor leaves near the very top edge, not from the sides or bottom.</p>
                   </div>
                 </div>
                 
@@ -2187,24 +2564,26 @@ const SiteSettings = () => {
                 <Label>Response time text</Label>
                 <Textarea value={settings.contact_page?.response_time_text ?? ""} onChange={(e) => update("contact_page", "response_time_text", e.target.value)} placeholder="Usually within 1 business day." />
               </div>
-              <div className="border-t border-border pt-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.contact_page?.map_enabled ?? false} onCheckedChange={(v) => update("contact_page", "map_enabled", v)} />
-                  <Label>Show map on contact page</Label>
-                </div>
-                {settings.contact_page?.map_enabled && (
-                  <div className="grid gap-2">
-                    <Label>Google Maps Embed URL</Label>
-                    <Input value={settings.contact_page?.map_embed_url ?? ""} onChange={(e) => update("contact_page", "map_embed_url", e.target.value)} placeholder="https://www.google.com/maps/embed?pb=..." />
-                    <p className="text-xs text-muted-foreground">Go to Google Maps, choose Share, then Embed a map, and copy the <code className="bg-secondary px-1 rounded">src</code> URL.</p>
-                    {settings.contact_page?.map_embed_url && (
-                      <div className="mt-2 overflow-hidden rounded-lg border border-border">
-                        <iframe src={settings.contact_page.map_embed_url} width="100%" height="200" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Map preview" />
-                      </div>
-                    )}
+              {supportsMapControls ? (
+                <div className="border-t border-border pt-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.contact_page?.map_enabled ?? false} onCheckedChange={(v) => update("contact_page", "map_enabled", v)} />
+                    <Label>Show map on contact page</Label>
                   </div>
-                )}
-              </div>
+                  {settings.contact_page?.map_enabled && (
+                    <div className="grid gap-2">
+                      <Label>Google Maps Embed URL</Label>
+                      <Input value={settings.contact_page?.map_embed_url ?? ""} onChange={(e) => update("contact_page", "map_embed_url", e.target.value)} placeholder="https://www.google.com/maps/embed?pb=..." />
+                      <p className="text-xs text-muted-foreground">Go to Google Maps, choose Share, then Embed a map, and copy the <code className="bg-secondary px-1 rounded">src</code> URL.</p>
+                      {settings.contact_page?.map_embed_url && (
+                        <div className="mt-2 overflow-hidden rounded-lg border border-border">
+                          <iframe src={settings.contact_page.map_embed_url} width="100%" height="200" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Map preview" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
               <SaveButton settingKey="contact_page" />
               <StickySectionSaveBar settingKey="contact_page" title="Contact page" hint="Save inquiry details and map visibility." />
           </MobileSectionShell>
@@ -2272,35 +2651,39 @@ const SiteSettings = () => {
                 ))}
               </div>
 
-              <div id="navigation-shop" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
-                <h3 className="text-sm font-semibold text-foreground">{storefrontContext.pageLabel} Feature Card</h3>
-                <p className="text-xs text-muted-foreground">
-                  Use this spotlight area to guide visitors toward the main place they should {storefrontContext.browseVerb} on this storefront.
-                </p>
-                <div className="grid gap-2">
-                  <Label>Primary Link Label</Label>
-                  <Input value={settings.navigation?.shop_label ?? ""} placeholder={storefrontContext.pageLabel.replace(" Page", "")} onChange={(e) => update("navigation", "shop_label", e.target.value)} />
+              {hasDedicatedShopPage ? (
+                <div id="navigation-shop" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                  <h3 className="text-sm font-semibold text-foreground">{storefrontContext.pageLabel} Feature Card</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Use this spotlight area to guide visitors toward the main place they should {storefrontContext.browseVerb} on this storefront.
+                  </p>
+                  <div className="grid gap-2">
+                    <Label>Primary Link Label</Label>
+                    <Input value={settings.navigation?.shop_label ?? ""} placeholder={storefrontContext.pageLabel.replace(" Page", "")} onChange={(e) => update("navigation", "shop_label", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Feature Title</Label>
+                    <Input value={settings.navigation?.shop_feature_title ?? ""} placeholder={`${storefrontContext.pageLabel.replace(" Page", "")} Highlights`} onChange={(e) => update("navigation", "shop_feature_title", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Feature Subtitle</Label>
+                    <Textarea value={settings.navigation?.shop_feature_subtitle ?? ""} placeholder={`Explain what visitors should ${storefrontContext.browseVerb} first.`} onChange={(e) => update("navigation", "shop_feature_subtitle", e.target.value)} rows={2} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Feature Image URL</Label>
+                    <Input value={settings.navigation?.shop_feature_image ?? ""} placeholder="https://..." onChange={(e) => update("navigation", "shop_feature_image", e.target.value)} />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Feature Title</Label>
-                  <Input value={settings.navigation?.shop_feature_title ?? ""} placeholder={`${storefrontContext.pageLabel.replace(" Page", "")} Highlights`} onChange={(e) => update("navigation", "shop_feature_title", e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Feature Subtitle</Label>
-                  <Textarea value={settings.navigation?.shop_feature_subtitle ?? ""} placeholder={`Explain what visitors should ${storefrontContext.browseVerb} first.`} onChange={(e) => update("navigation", "shop_feature_subtitle", e.target.value)} rows={2} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Feature Image URL</Label>
-                  <Input value={settings.navigation?.shop_feature_image ?? ""} placeholder="https://..." onChange={(e) => update("navigation", "shop_feature_image", e.target.value)} />
-                </div>
-              </div>
+              ) : null}
 
               <div id="navigation-visibility" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Visibility</h3>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.navigation?.show_search ?? true} onCheckedChange={(v) => update("navigation", "show_search", v)} />
-                  <Label>Show desktop search</Label>
-                </div>
+                {supportsSearchControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.navigation?.show_search ?? true} onCheckedChange={(v) => update("navigation", "show_search", v)} />
+                    <Label>Show desktop search</Label>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-2">
                   <Switch checked={settings.navigation?.show_theme_toggle ?? true} onCheckedChange={(v) => update("navigation", "show_theme_toggle", v)} />
                   <Label>Show theme toggle</Label>
@@ -2309,14 +2692,18 @@ const SiteSettings = () => {
                   <Switch checked={settings.navigation?.show_account ?? true} onCheckedChange={(v) => update("navigation", "show_account", v)} />
                   <Label>Show account entry</Label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.navigation?.show_wishlist ?? true} onCheckedChange={(v) => update("navigation", "show_wishlist", v)} />
-                  <Label>Show wishlist entry</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.navigation?.show_cart ?? true} onCheckedChange={(v) => update("navigation", "show_cart", v)} />
-                  <Label>Show cart entry</Label>
-                </div>
+                {supportsWishlistControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.navigation?.show_wishlist ?? true} onCheckedChange={(v) => update("navigation", "show_wishlist", v)} />
+                    <Label>Show wishlist entry</Label>
+                  </div>
+                ) : null}
+                {supportsCartControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.navigation?.show_cart ?? true} onCheckedChange={(v) => update("navigation", "show_cart", v)} />
+                    <Label>Show cart entry</Label>
+                  </div>
+                ) : null}
               </div>
 
               <SaveButton settingKey="navigation" />
@@ -2346,14 +2733,18 @@ const SiteSettings = () => {
                   <Label>Description</Label>
                   <Textarea value={settings.shop_page?.description ?? ""} placeholder={`Describe which ${storefrontContext.itemLabelPlural} visitors can ${storefrontContext.browseVerb} here.`} onChange={(e) => update("shop_page", "description", e.target.value)} rows={2} />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Search Placeholder</Label>
-                  <Input value={settings.shop_page?.search_placeholder ?? ""} placeholder={`Search ${storefrontContext.itemLabelPlural}...`} onChange={(e) => update("shop_page", "search_placeholder", e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Size Guide Button Label</Label>
-                  <Input value={settings.shop_page?.size_guide_label ?? ""} placeholder="Size Guide" onChange={(e) => update("shop_page", "size_guide_label", e.target.value)} />
-                </div>
+                {supportsSearchControls ? (
+                  <div className="grid gap-2">
+                    <Label>Search Placeholder</Label>
+                    <Input value={settings.shop_page?.search_placeholder ?? ""} placeholder={`Search ${storefrontContext.itemLabelPlural}...`} onChange={(e) => update("shop_page", "search_placeholder", e.target.value)} />
+                  </div>
+                ) : null}
+                {supportsSizeControls ? (
+                  <div className="grid gap-2">
+                    <Label>Size Guide Button Label</Label>
+                    <Input value={settings.shop_page?.size_guide_label ?? ""} placeholder="Size Guide" onChange={(e) => update("shop_page", "size_guide_label", e.target.value)} />
+                  </div>
+                ) : null}
               </div>
 
               <div id="shop-page-states" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
@@ -2374,26 +2765,36 @@ const SiteSettings = () => {
 
               <div id="shop-page-filters" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
                 <h3 className="text-sm font-semibold text-foreground">Filter Visibility</h3>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.shop_page?.show_sale_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_sale_filter", v)} />
-                  <Label>Show sale filter</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.shop_page?.show_price_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_price_filter", v)} />
-                  <Label>Show price filter</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.shop_page?.show_size_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_size_filter", v)} />
-                  <Label>Show size filter</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.shop_page?.show_color_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_color_filter", v)} />
-                  <Label>Show color filter</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={settings.shop_page?.show_size_guide ?? true} onCheckedChange={(v) => update("shop_page", "show_size_guide", v)} />
-                  <Label>Show size guide button</Label>
-                </div>
+                {supportsSaleFilterControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.shop_page?.show_sale_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_sale_filter", v)} />
+                    <Label>Show sale filter</Label>
+                  </div>
+                ) : null}
+                {supportsPriceFilterControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.shop_page?.show_price_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_price_filter", v)} />
+                    <Label>Show price filter</Label>
+                  </div>
+                ) : null}
+                {supportsSizeControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.shop_page?.show_size_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_size_filter", v)} />
+                    <Label>Show size filter</Label>
+                  </div>
+                ) : null}
+                {supportsColorControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.shop_page?.show_color_filter ?? true} onCheckedChange={(v) => update("shop_page", "show_color_filter", v)} />
+                    <Label>Show color filter</Label>
+                  </div>
+                ) : null}
+                {supportsSizeControls ? (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={settings.shop_page?.show_size_guide ?? true} onCheckedChange={(v) => update("shop_page", "show_size_guide", v)} />
+                    <Label>Show size guide button</Label>
+                  </div>
+                ) : null}
               </div>
 
               <SaveButton settingKey="shop_page" />
@@ -2406,7 +2807,7 @@ const SiteSettings = () => {
           <MobileSectionShell title="Footer Settings" description="Footer sections are denser on mobile and keep save affordances within reach.">
               <MobileSectionJumper items={[
                 { id: "footer-brand", label: "Brand" },
-                { id: "footer-newsletter", label: "Newsletter" },
+                ...(supportsNewsletterControls ? [{ id: "footer-newsletter", label: "Newsletter" }] : []),
                 { id: "footer-company-links", label: "Company" },
                 { id: "footer-extra-links", label: "Extra Links" },
                 { id: "footer-order", label: "Order" },
@@ -2426,21 +2827,23 @@ const SiteSettings = () => {
               </div>
 
               {/* Newsletter */}
-              <div id="footer-newsletter" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
-                <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
-                <div className="grid gap-2">
-                  <Label>Heading</Label>
-                  <Input value={settings.footer?.newsletter_heading ?? ""} placeholder="Optional heading for updates or announcements" onChange={(e) => update("footer", "newsletter_heading", e.target.value)} />
+              {supportsNewsletterControls ? (
+                <div id="footer-newsletter" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                  <h3 className="text-sm font-semibold text-foreground">Newsletter</h3>
+                  <div className="grid gap-2">
+                    <Label>Heading</Label>
+                    <Input value={settings.footer?.newsletter_heading ?? ""} placeholder="Optional heading for updates or announcements" onChange={(e) => update("footer", "newsletter_heading", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Description</Label>
+                    <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Optional note for updates, launches, or announcements." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Subscribed Message</Label>
+                    <Input value={settings.footer?.newsletter_subscribed ?? ""} placeholder="You're subscribed!" onChange={(e) => update("footer", "newsletter_subscribed", e.target.value)} />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Description</Label>
-                  <Input value={settings.footer?.newsletter_description ?? ""} placeholder="Optional note for updates, launches, or announcements." onChange={(e) => update("footer", "newsletter_description", e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Subscribed Message</Label>
-                  <Input value={settings.footer?.newsletter_subscribed ?? ""} placeholder="You're subscribed!" onChange={(e) => update("footer", "newsletter_subscribed", e.target.value)} />
-                </div>
-              </div>
+              ) : null}
 
               {/* Company Links */}
               <div id="footer-company-links" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
@@ -2583,6 +2986,78 @@ const SiteSettings = () => {
           </MobileSectionShell>
         </TabsContent>
 
+        <TabsContent value="analytics">
+          <MobileSectionShell title="Analytics & Pixels" description="Connect GA4 and Meta Pixel while keeping merchant-owned storefront analytics inside your own platform too.">
+              <MobileSectionJumper items={[
+                { id: "analytics-first-party", label: "First-party" },
+                { id: "analytics-ga4", label: "GA4" },
+                { id: "analytics-meta", label: "Meta Pixel" },
+                { id: "analytics-coverage", label: "Coverage" },
+              ]} />
+
+              <div id="analytics-first-party" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">First-party merchant analytics</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Capture visitor traffic, page views, search intent, product discovery, wishlist usage, cart behavior, checkout starts, and completed purchases into your own analytics table.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={analyticsSettings.firstPartyEnabled !== false} onCheckedChange={(value) => update("analytics_tracking", "firstPartyEnabled", value)} />
+                  <Label>Enable first-party analytics</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={analyticsSettings.trackTrafficSources !== false} onCheckedChange={(value) => update("analytics_tracking", "trackTrafficSources", value)} />
+                  <Label>Capture traffic source and UTM details</Label>
+                </div>
+              </div>
+
+              <div id="analytics-ga4" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Google Analytics 4</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Use a Measurement ID like <code>G-XXXXXXXXXX</code>. We send page views, item views, search, add-to-cart, checkout, and purchase events.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={analyticsSettings.ga4Enabled === true} onCheckedChange={(value) => update("analytics_tracking", "ga4Enabled", value)} />
+                  <Label>Enable GA4</Label>
+                </div>
+                <div className="grid gap-2">
+                  <Label>GA4 Measurement ID</Label>
+                  <Input value={analyticsSettings.ga4MeasurementId ?? ""} placeholder="G-XXXXXXXXXX" onChange={(event) => update("analytics_tracking", "ga4MeasurementId", event.target.value.toUpperCase())} />
+                </div>
+              </div>
+
+              <div id="analytics-meta" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Meta Pixel</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Use your numeric Pixel ID. We send PageView, ViewContent, Search, AddToCart, AddToWishlist, InitiateCheckout, and Purchase.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={analyticsSettings.metaPixelEnabled === true} onCheckedChange={(value) => update("analytics_tracking", "metaPixelEnabled", value)} />
+                  <Label>Enable Meta Pixel</Label>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Meta Pixel ID</Label>
+                  <Input value={analyticsSettings.metaPixelId ?? ""} placeholder="123456789012345" onChange={(event) => update("analytics_tracking", "metaPixelId", event.target.value.replace(/\\D/g, ""))} />
+                </div>
+              </div>
+
+              <div id="analytics-coverage" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Tracked storefront coverage</h3>
+                  <p className="text-xs text-muted-foreground">This implementation prioritizes the events that matter to sellers and merchants most: traffic origin, search demand, product interest, wishlist intent, cart friction, checkout intent, and purchases.</p>
+                </div>
+                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                  <div className="rounded-lg border border-border p-3">Page visits: shop, product, cart, checkout, wishlist, account, track order, and order success.</div>
+                  <div className="rounded-lg border border-border p-3">Attribution: direct, referral, UTM source, medium, campaign, term, content, plus common ad click IDs.</div>
+                  <div className="rounded-lg border border-border p-3">Discovery intent: search keywords, result clicks, category and type tag clicks, and shop filter-driven discovery.</div>
+                  <div className="rounded-lg border border-border p-3">Commerce actions: add to cart, remove from cart, quantity changes, clear cart, begin checkout, and purchase.</div>
+                </div>
+              </div>
+
+              <SaveButton settingKey="analytics_tracking" />
+              <StickySectionSaveBar settingKey="analytics_tracking" title="Analytics settings" hint="Save first-party analytics, GA4, and Meta Pixel settings." />
+          </MobileSectionShell>
+        </TabsContent>
+
         <TabsContent value="page_builder">
           <Card className="border-border">
             <CardHeader>
@@ -2602,7 +3077,7 @@ const SiteSettings = () => {
                 <Button asChild className="gap-2">
                   <Link to={buildPageBuilderPath("basic")}>
                     <PanelsTopLeft className="h-4 w-4" />
-                    Open Basic Editing
+                    Edit Storefront
                   </Link>
                 </Button>
               ) : null}
@@ -2741,5 +3216,6 @@ const SiteSettings = () => {
 };
 
 export default SiteSettings;
+
 
 

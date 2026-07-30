@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback, useRef, ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
-import { AuthContext, type AppRole, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
+import type { Tables } from "@/integrations/supabase/types";
+import { AuthContext, type AppRole, type AuthRecoveryState, type PlatformRole, type StoreMembership, type StoreRole } from "@/hooks/auth-context";
 
 const ACTIVE_STORE_STORAGE_KEY = "commerce-engine-active-store-id";
 const ACCESS_CACHE_STORAGE_KEY = "commerce-engine-access-cache";
@@ -17,9 +18,8 @@ type ResolvedAccessState = {
   nextRole: AppRole;
 };
 
-type OwnedStoreAccessRow = {
-  id: string;
-};
+type MembershipAccessRow = Pick<Tables<"store_memberships">, "role" | "store_id">;
+type OwnedStoreAccessRow = Pick<Tables<"stores">, "id">;
 
 type CachedAccessState = ResolvedAccessState & {
   userId: string;
@@ -94,6 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [storeMemberships, setStoreMemberships] = useState<StoreMembership[]>([]);
   const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authRecovery, setAuthRecovery] = useState<AuthRecoveryState>({
+    reason: "restoring",
+    usingCachedAccess: false,
+    detail: null,
+  });
   const mountedRef = useRef(true);
   const userIdRef = useRef<string | null>(null);
   const permissionRequestIdRef = useRef(0);
@@ -131,6 +136,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(resolved.nextRole);
   }, [setActiveStoreId]);
 
+  const setRecoveryState = useCallback((nextState: SetStateAction<AuthRecoveryState>) => {
+    setAuthRecovery(nextState);
+  }, []);
+
   const fetchRole = useCallback(async (userId: string): Promise<ResolvedAccessState> => {
     const [
       { data: platformRole, error: platformRoleError },
@@ -144,12 +153,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .select("role")
             .eq("user_id", userId)
             .maybeSingle(),
-          (supabase as any)
+          supabase
             .from("store_memberships")
             .select("role, store_id")
             .eq("user_id", userId)
             .order("created_at", { ascending: true }),
-          (supabase as any)
+          supabase
             .from("stores")
             .select("id")
             .eq("owner_id", userId)
@@ -163,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (membershipsError) throw membershipsError;
     if (ownedStoresError) throw ownedStoresError;
 
-    const membershipRows = ((memberships ?? []) as Array<{ role: StoreRole; store_id: string }>).filter(
+    const membershipRows = ((memberships ?? []) as MembershipAccessRow[]).filter(
       (membership): membership is { role: NonNullable<StoreRole>; store_id: string } => Boolean(membership.role && membership.store_id),
     );
     const ownedStoreRows = ((ownedStores ?? []) as OwnedStoreAccessRow[]).filter((store): store is OwnedStoreAccessRow => Boolean(store.id));
@@ -224,8 +233,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoreRole(null);
     setStoreMemberships([]);
     setActiveStoreId(null);
+    setRecoveryState({
+      reason: "restoring",
+      usingCachedAccess: false,
+      detail: null,
+    });
     clearCachedAccessState();
-  }, [cancelPendingSessionClear, setActiveStoreId]);
+  }, [cancelPendingSessionClear, setActiveStoreId, setRecoveryState]);
 
   const resolvePermissions = useCallback(
     async (
@@ -259,6 +273,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         applyResolvedAccessState(resolved);
         writeCachedAccessState(nextUserId, resolved);
+        setRecoveryState({
+          reason: resolved.nextRole || resolved.memberships.length > 0 || resolved.nextPlatformRole ? "ready" : "no_store",
+          usingCachedAccess: false,
+          detail: resolved.nextRole || resolved.memberships.length > 0 || resolved.nextPlatformRole
+            ? null
+            : "Your account is signed in, but no store workspace is assigned yet.",
+        });
       } catch (error) {
         const message = getErrorMessage(error);
         const isTimeout = message.includes("Timed out while refreshing account permissions");
@@ -270,6 +291,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Auth permission refresh error:", error);
         }
 
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        setRecoveryState({
+          reason: offline ? "offline" : "permission_timeout",
+          usingCachedAccess: preserveExistingOnError && Boolean(resolvedAccessStateRef.current),
+          detail: offline
+            ? "Reconnect to the internet to finish restoring dashboard access."
+            : message || "The dashboard took too long to restore account permissions.",
+        });
+
         if (!preserveExistingOnError || !nextUserId) {
           clearAccessState();
         }
@@ -280,7 +310,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     },
-    [applyResolvedAccessState, clearAccessState, fetchRole],
+    [applyResolvedAccessState, clearAccessState, fetchRole, setRecoveryState],
   );
 
   const refreshRole = useCallback(async () => {
@@ -303,6 +333,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userIdRef.current = nextUserId;
           if (cachedAccess) {
             applyResolvedAccessState(cachedAccess);
+            setRecoveryState({
+              reason: "ready",
+              usingCachedAccess: true,
+              detail: "Using your last known dashboard access while permissions revalidate.",
+            });
             setLoading(false);
           }
         }
@@ -346,6 +381,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (event === "TOKEN_REFRESHED" && isSameUser) {
             if (!resolvedAccessStateRef.current && cachedAccess) {
               applyResolvedAccessState(cachedAccess);
+              setRecoveryState({
+                reason: "ready",
+                usingCachedAccess: true,
+                detail: "Using your last known dashboard access while permissions refresh.",
+              });
               if (mountedRef.current) setLoading(false);
             }
             return;
@@ -354,6 +394,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!isSameUser) {
             if (cachedAccess) {
               applyResolvedAccessState(cachedAccess);
+              setRecoveryState({
+                reason: "ready",
+                usingCachedAccess: true,
+                detail: "Using your last known dashboard access while permissions refresh.",
+              });
               if (mountedRef.current) setLoading(false);
             } else {
               clearAccessState();
@@ -378,6 +423,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             userIdRef.current = null;
             setSession(null);
             setUser(null);
+            setRecoveryState({
+              reason: "session_expired",
+              usingCachedAccess: false,
+              detail: "Your admin session expired. Please sign in again.",
+            });
             setLoading(false);
           }, SESSION_CLEAR_GRACE_MS);
         }
@@ -414,11 +464,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       refreshVisiblePermissions();
     };
 
+    const handleOnline = () => {
+      setRecoveryState((current) => current.reason === "offline"
+        ? { reason: "restoring", usingCachedAccess: current.usingCachedAccess, detail: "Connection restored. Retrying dashboard access." }
+        : current);
+      refreshVisiblePermissions();
+    };
+
+    const handleOffline = () => {
+      setRecoveryState((current) => ({
+        reason: "offline",
+        usingCachedAccess: current.usingCachedAccess,
+        detail: "Dashboard permissions cannot refresh while this device is offline.",
+      }));
+    };
+
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", handleVisibilityChange);
     }
     if (typeof window !== "undefined") {
       window.addEventListener("focus", handleWindowFocus);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
     }
 
     return () => {
@@ -430,9 +497,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (typeof window !== "undefined") {
         window.removeEventListener("focus", handleWindowFocus);
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
       }
     };
-  }, [applyResolvedAccessState, cancelPendingSessionClear, clearAccessState, resolvePermissions]);
+  }, [applyResolvedAccessState, cancelPendingSessionClear, clearAccessState, resolvePermissions, setRecoveryState]);
 
   const signOut = async () => {
     cancelPendingSessionClear();
@@ -457,7 +526,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <AuthContext.Provider value={{ user, session, role, platformRole, storeRole, storeMemberships, activeStoreId, loading, canManageStore, signOut, refreshRole, setActiveStoreId }}>
+    <AuthContext.Provider value={{ user, session, role, platformRole, storeRole, storeMemberships, activeStoreId, loading, authRecovery, canManageStore, signOut, refreshRole, setActiveStoreId }}>
       {children}
     </AuthContext.Provider>
   );

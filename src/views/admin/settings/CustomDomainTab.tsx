@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Copy, Globe, Loader2, RefreshCcw, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
@@ -28,6 +28,8 @@ type StoreDomain = {
   isActive: boolean;
   vercelVerified: boolean;
   vercelMisconfigured: boolean;
+  cloudflareHostnameStatus?: string | null;
+  cloudflareSslStatus?: string | null;
   configuredBy: string | null;
   verificationRecords: DomainRecordInstruction[];
   dnsRecords: DomainRecordInstruction[];
@@ -72,6 +74,45 @@ function labelForStatus(status: string) {
   }
 }
 
+function summarizeDomainError(message?: string | null, hostname?: string) {
+  const safeHost = hostname?.trim() || "This domain";
+  const normalized = message?.trim() || "";
+
+  if (!normalized) {
+    return `${safeHost} still needs DNS and SSL verification before it can replace the platform storefront link.`;
+  }
+
+  if (/vercel|project domain not found|changed env vars recently/i.test(normalized)) {
+    return `${safeHost} still needs a fresh DNS and hostname check. Keep the platform storefront link live, recheck the DNS records, and try Check Connection again.`;
+  }
+
+  return normalized;
+}
+
+function explainDomainState(domain: StoreDomain) {
+  if (domain.isActive) {
+    return "Custom hostname and SSL are both active. This domain is ready to serve live traffic.";
+  }
+
+  if (domain.lastError?.message) {
+    return summarizeDomainError(domain.lastError.message, domain.hostname);
+  }
+
+  if (domain.cloudflareHostnameStatus !== "active") {
+    return "Cloudflare has not finished hostname ownership and routing verification yet. Recheck after your DNS records finish propagating.";
+  }
+
+  if (domain.cloudflareSslStatus !== "active") {
+    return "Hostname is provisioned, but SSL is still being issued or validated. Keep the platform subdomain live until SSL turns active.";
+  }
+
+  if (domain.status === "misconfigured" || domain.vercelMisconfigured) {
+    return "A DNS record is still pointing somewhere else or proxying is interfering with the CNAME target. Remove conflicting records and keep the hostname DNS only.";
+  }
+
+  return "This domain is still moving through verification. Recheck after DNS propagation finishes.";
+}
+
 export const CustomDomainTab = () => {
   const { activeStoreId } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
@@ -96,20 +137,11 @@ export const CustomDomainTab = () => {
     try {
       const host = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
       if (!host || !host.includes(".")) return [];
-      
+
       const parts = host.split(".");
-      const isApex = parts.length === 2;
-      const isWww = parts[0] === "www" && parts.length === 3;
-      
       const records: { type: string, name: string, value: string }[] = [];
-      
-      if (isApex || isWww) {
-        records.push({ type: "A", name: "@", value: "76.76.21.21" });
-        records.push({ type: "CNAME", name: "www", value: "cname.vercel-dns.com" });
-      } else {
-        const name = parts.slice(0, -2).join(".");
-        records.push({ type: "CNAME", name, value: "cname.vercel-dns.com" });
-      }
+      const name = parts.length >= 3 ? parts.slice(0, -2).join(".") : "www";
+      records.push({ type: "CNAME", name, value: "customers.ezcomo.shop" });
       return records;
     } catch {
       return [];
@@ -130,7 +162,7 @@ export const CustomDomainTab = () => {
     "/",
   );
 
-  async function fetchDomainState() {
+  const fetchDomainState = useCallback(async () => {
     if (!activeStoreId) {
       setStoreSlug("");
       setPlatformDomainFromServer("");
@@ -175,11 +207,11 @@ export const CustomDomainTab = () => {
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeStoreId]);
 
   useEffect(() => {
     void fetchDomainState();
-  }, [activeStoreId]);
+  }, [fetchDomainState]);
 
   async function withAuthHeaders() {
     const session = await supabase.auth.getSession();
@@ -397,7 +429,7 @@ export const CustomDomainTab = () => {
             <p className="text-sm font-semibold text-foreground">What you need to do</p>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
               <li>Keep your current platform subdomain live during setup.</li>
-              <li>Enter the domain you want to connect, such as `example.com` or `www.example.com`.</li>
+              <li>Enter the CNAME host you want to connect, such as `www.example.com`.</li>
               <li>Add the exact DNS records shown below in your registrar or DNS provider.</li>
               <li>Come back here and press `Check Connection` until the domain becomes active.</li>
             </ol>
@@ -409,8 +441,9 @@ export const CustomDomainTab = () => {
               Before adding the domain:
               <ul className="mt-2 list-disc pl-5">
                 <li>Use a domain you control at your registrar or DNS provider.</li>
-                <li>Add the domain here first so we can fetch the exact records Vercel expects.</li>
+                <li>Add the `www` host here first so we can provision the Cloudflare custom hostname.</li>
                 <li>After that, copy the records shown below and create them in your DNS dashboard.</li>
+                <li>Redirect the apex domain to `www` at your registrar or DNS provider if you need `example.com` traffic.</li>
               </ul>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -418,7 +451,7 @@ export const CustomDomainTab = () => {
                 id="custom-domain-input"
                 value={domainInput}
                 onChange={(event) => setDomainInput(event.target.value)}
-                placeholder="example.com or www.example.com"
+                placeholder="www.example.com"
               />
               <Button type="button" onClick={() => void addDomain()} disabled={saving || !domainInput.trim()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -426,7 +459,7 @@ export const CustomDomainTab = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              You can paste a full URL. We normalize it on the server, reject platform or localhost domains, and fetch the exact DNS values from Vercel.
+              You can paste a full URL. We normalize it on the server, reject platform, localhost, apex, and IP domains, then provision the exact Cloudflare hostname.
             </p>
             {previewRecords.length > 0 && (
               <div className="mt-4 space-y-3">
@@ -470,6 +503,7 @@ export const CustomDomainTab = () => {
 
       {domains.map((domain) => {
         const records = [...domain.verificationRecords, ...domain.dnsRecords];
+        const domainExplanation = explainDomainState(domain);
         return (
           <Card key={domain.id} className="border-border bg-card">
             <CardHeader className="gap-3">
@@ -483,7 +517,7 @@ export const CustomDomainTab = () => {
                   <CardDescription className="mt-1">
                     {domain.isActive
                       ? "Connected and serving traffic."
-                      : "Keep the platform domain live until verification and DNS both pass."}
+                      : "Keep the platform storefront link live until hostname verification, DNS, and SSL all pass."}
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -523,28 +557,32 @@ export const CustomDomainTab = () => {
                 <div className="rounded-lg border border-border p-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Verification</p>
                   <p className="mt-2 text-sm text-foreground">
-                    {domain.vercelVerified ? "Ownership verified" : "Ownership or TXT verification still pending"}
+                    {domain.cloudflareHostnameStatus === "active" ? "Hostname active" : "Hostname still pending"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">DNS status</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">SSL status</p>
                   <p className="mt-2 text-sm text-foreground">
-                    {domain.vercelMisconfigured ? "DNS still needs changes" : "DNS looks correct"}
+                    {domain.cloudflareSslStatus === "active" ? "SSL active" : "SSL still pending"}
                   </p>
                 </div>
+              </div>
+
+              <div className={`rounded-lg border p-4 text-sm ${domain.isActive ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700" : "border-amber-500/20 bg-amber-500/10 text-amber-700"}`}>
+                {domainExplanation}
               </div>
 
               {domain.lastError?.message ? (
                 <div className="flex gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
                   <AlertCircle className="mt-0.5 h-4 w-4" />
-                  <span>{domain.lastError.message}</span>
+                  <span>{summarizeDomainError(domain.lastError.message, domain.hostname)}</span>
                 </div>
               ) : null}
 
               {domain.isActive ? (
                 <div className="flex gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-700">
                   <CheckCircle2 className="mt-0.5 h-4 w-4" />
-                  <span>This domain is active. SSL is handled by Vercel once the configuration is complete.</span>
+                  <span>This domain is active. Cloudflare has activated both the hostname and SSL certificate.</span>
                 </div>
               ) : null}
 
@@ -562,7 +600,7 @@ export const CustomDomainTab = () => {
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
-                      Add these records exactly as shown at your domain provider. If the same host already has an old A or CNAME record pointing elsewhere, remove or replace that conflicting record.
+                      Add these records exactly as shown at your domain provider. Set the record to DNS only. If the same host already has an old A or CNAME record pointing elsewhere, remove or replace that conflicting record.
                     </div>
                     {records.map((record, index) => (
                       <div key={`${record.type}-${record.name}-${index}`} className="rounded-xl border border-border p-4">
@@ -586,6 +624,12 @@ export const CustomDomainTab = () => {
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Value</p>
                             <p className="mt-1 break-all font-mono text-sm">{record.value}</p>
                           </div>
+                          {record.type === "CNAME" ? (
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Proxy</p>
+                              <p className="mt-1 font-mono text-sm">DNS only</p>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     ))}
@@ -595,8 +639,27 @@ export const CustomDomainTab = () => {
 
               <Separator />
 
+              <div className="grid gap-3 rounded-xl border border-border bg-secondary/20 p-4 text-sm text-muted-foreground md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide">Primary-domain behavior</p>
+                  <p className="mt-2">
+                    {domain.isPrimary
+                      ? "This is the primary storefront domain. Keep marketing links, canonical URLs, and paid traffic pointed here."
+                      : "If you make this domain primary later, the storefront should treat it as the canonical live destination and keep the platform subdomain as fallback only."}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide">Apex redirect strategy</p>
+                  <p className="mt-2">
+                    {domain.isWwwDomain
+                      ? "Keep the apex domain redirected to this www host with a permanent redirect at your registrar or DNS provider."
+                      : "Use a www-style hostname for activation whenever possible, then redirect the apex root to that primary host permanently."}
+                  </p>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <span>Primary URL stays on `www` by default when both apex and `www` are connected.</span>
+                <span>Use a CNAME host such as `www`; apex redirects should be configured at your DNS provider.</span>
                 <span>Last checked: {domain.lastCheckedAt ? new Date(domain.lastCheckedAt).toLocaleString() : "Not checked yet"}</span>
               </div>
             </CardContent>

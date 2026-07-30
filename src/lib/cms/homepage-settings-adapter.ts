@@ -124,7 +124,7 @@ function adaptBlockFromLegacySettings(
               overlayOpacity: settings.hero_section?.overlay_opacity,
             }),
       };
-    case "promo-banner":
+    case "promo-banner": {
       const promoVisible = shouldForce
         ? (settings.promo_banner?.enabled ?? block.isVisible)
         : block.isVisible;
@@ -162,6 +162,7 @@ function adaptBlockFromLegacySettings(
               cardOpacity: settings.promo_banner?.card_opacity,
             }),
       };
+    }
     case "featured-products":
       return {
         ...block,

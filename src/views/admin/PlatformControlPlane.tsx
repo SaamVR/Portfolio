@@ -26,7 +26,6 @@ import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
-import { getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +45,12 @@ import {
   type StorePlatformSummary,
 } from "@/lib/platform/admin-analytics";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import StoreAnalyticsReport from "@/components/admin/StoreAnalyticsReport";
+import { buildAnalyticsReport, buildAnalyticsStoreSummaries, type AnalyticsReportEvent } from "@/lib/analytics/report";
+import { downloadAnalyticsCsv } from "@/lib/analytics/export";
+import { getAnalyticsPresetLabel, resolveAnalyticsDateRange, type AnalyticsDatePreset } from "@/lib/analytics/date-range";
+import StoreBackupManager from "@/components/admin/StoreBackupManager";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
 
 type PlanRow = {
   id: string;
@@ -110,6 +115,7 @@ type PlatformData = {
   reviews: Array<{ id: string; store_id: string; status: string | null }>;
   emailEvents: Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>;
   invoices: any[];
+  analyticsEvents: AnalyticsReportEvent[];
 };
 
 export default function PlatformControlPlane() {
@@ -123,6 +129,11 @@ export default function PlatformControlPlane() {
   const [exceptionScopeStoreId, setExceptionScopeStoreId] = useState<string>("global");
   const [exceptionNote, setExceptionNote] = useState("");
   const [lifecycleAction, setLifecycleAction] = useState<(typeof LIFECYCLE_ACTIONS)[number]["value"]>("scan");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [analyticsDatePreset, setAnalyticsDatePreset] = useState<AnalyticsDatePreset>("last_30_days");
+  const [analyticsCustomStart, setAnalyticsCustomStart] = useState("");
+  const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState("");
+  const [billingReviewActionId, setBillingReviewActionId] = useState<string | null>(null);
 
   // Plan creation / editing state
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
@@ -182,6 +193,8 @@ export default function PlatformControlPlane() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["platform-control-plane"],
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
     queryFn: async (): Promise<PlatformData> => {
       const [
         { data: features },
@@ -202,12 +215,13 @@ export default function PlatformControlPlane() {
         { data: reviews },
         { data: emailEvents },
         { data: invoices },
+        { data: analyticsEvents },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
         (supabase as any).from("cms_plans").select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, trial_days, contact_only, sort_order, is_active").order("sort_order"),
         (supabase as any).from("cms_plan_features").select("plan_id, feature_key, enabled"),
         (supabase as any).from("stores").select("id, owner_id, name, slug, custom_domain, is_published, updated_at").order("name"),
-        (supabase as any).from("store_subscriptions").select("store_id, plan_id, status"),
+        (supabase as any).from("store_subscriptions").select("store_id, plan_id, status, trial_ends_at"),
         (supabase as any).from("store_feature_overrides").select("*"),
         (supabase as any).from("user_email_feature_overrides").select("*").order("created_at", { ascending: false }),
         (supabase as any).from("store_lifecycle_states").select("*").order("updated_at", { ascending: false }),
@@ -221,6 +235,12 @@ export default function PlatformControlPlane() {
         (supabase as any).from("product_reviews").select("id, store_id, status"),
         (supabase as any).from("email_events").select("id, store_id, status, template_name, recipient, created_at").order("created_at", { ascending: false }).limit(50),
         (supabase as any).from("store_invoices").select("*, stores(name, slug)").order("created_at", { ascending: false }),
+        (supabase as any)
+          .from("store_analytics_events")
+          .select("store_id, event_name, visitor_id, session_id, traffic_source, traffic_medium, traffic_campaign, search_query, product_id, value, quantity, metadata, page_type, page_path, event_timestamp")
+          .gte("event_timestamp", new Date(Date.now() - (1000 * 60 * 60 * 24 * 30)).toISOString())
+          .order("event_timestamp", { ascending: false })
+          .limit(10000),
       ]);
 
       return {
@@ -242,6 +262,7 @@ export default function PlatformControlPlane() {
         reviews: (reviews ?? []) as Array<{ id: string; store_id: string; status: string | null }>,
         emailEvents: (emailEvents ?? []) as Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>,
         invoices: (invoices ?? []) as any[],
+        analyticsEvents: (analyticsEvents ?? []) as AnalyticsReportEvent[],
       };
     },
     enabled: platformRole === "admin",
@@ -265,6 +286,35 @@ export default function PlatformControlPlane() {
   const overview = useMemo(
     () => buildPlatformOverviewStats(summaries, data ?? { orders: [], products: [], plans: [] }),
     [data, summaries],
+  );
+  const analyticsDateRange = useMemo(
+    () => resolveAnalyticsDateRange(analyticsDatePreset, analyticsCustomStart, analyticsCustomEnd),
+    [analyticsCustomEnd, analyticsCustomStart, analyticsDatePreset],
+  );
+  const analyticsStoreLabels = useMemo(
+    () => Object.fromEntries(summaries.map((store) => [store.id, `${store.name} (/${store.slug})`])),
+    [summaries],
+  );
+  const platformAnalyticsReport = useMemo(
+    () => buildAnalyticsReport(
+      (data?.analyticsEvents ?? []).filter((event) => {
+        const timestamp = event.event_timestamp ? new Date(event.event_timestamp).getTime() : 0;
+        return timestamp >= new Date(analyticsDateRange.startIso).getTime()
+          && timestamp <= new Date(analyticsDateRange.endIso).getTime();
+      }),
+    ),
+    [analyticsDateRange.endIso, analyticsDateRange.startIso, data?.analyticsEvents],
+  );
+  const platformStoreAnalyticsSummaries = useMemo(
+    () => buildAnalyticsStoreSummaries(
+      (data?.analyticsEvents ?? []).filter((event) => {
+        const timestamp = event.event_timestamp ? new Date(event.event_timestamp).getTime() : 0;
+        return timestamp >= new Date(analyticsDateRange.startIso).getTime()
+          && timestamp <= new Date(analyticsDateRange.endIso).getTime();
+      }),
+      analyticsStoreLabels,
+    ),
+    [analyticsDateRange.endIso, analyticsDateRange.startIso, analyticsStoreLabels, data?.analyticsEvents],
   );
 
   useEffect(() => {
@@ -597,58 +647,57 @@ export default function PlatformControlPlane() {
     }
   };
 
-  const approveManualInvoice = async (invoice: any) => {
+  const reviewManualInvoice = async (invoice: any, action: "approve" | "reject") => {
     try {
-      const now = new Date();
-      const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + (invoice.billing_interval === "annual" ? 12 : 1));
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Please sign in again before reviewing billing requests.");
+      }
 
-      const { error: invoiceError } = await (supabase as any)
-        .from("store_invoices")
-        .update({
-          status: "paid",
-          paid_at: now.toISOString(),
-          billing_period_start: now.toISOString(),
-          billing_period_end: periodEnd.toISOString(),
-        })
-        .eq("id", invoice.id);
+      const reviewNote = action === "reject"
+        ? (typeof window !== "undefined"
+          ? window.prompt("Add a short rejection reason for the merchant and operators:", "Transaction could not be verified.")
+          : "Transaction could not be verified.")
+        : (typeof window !== "undefined"
+          ? window.prompt("Optional operator note for this approval:", "")
+          : "");
 
-      if (invoiceError) throw invoiceError;
+      if (action === "reject" && (!reviewNote || !reviewNote.trim())) {
+        toast.error("A rejection reason is required.");
+        return;
+      }
 
-      const supabaseAdmin = getSupabaseAdminClient();
-      const { error: subError } = await upsertStoreSubscription(supabaseAdmin, {
-        storeId: invoice.store_id,
-        planId: invoice.plan_id,
-        status: "active",
-        provider: "bkash_manual",
-        providerSubscriptionId: invoice.provider_invoice_id,
-        currentPeriodEndsAt: periodEnd.toISOString(),
-        trialEndsAt: null,
+      setBillingReviewActionId(invoice.id);
+
+      const response = await fetch("/api/platform/billing/manual-review", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          action,
+          reviewNote: reviewNote?.trim() || undefined,
+        }),
       });
 
-      if (subError) throw subError;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to review the manual payment.");
+      }
 
-      toast.success("Manual bKash invoice approved and subscription activated!");
+      toast.success(
+        action === "approve"
+          ? "Manual bKash invoice approved and subscription activated!"
+          : "Manual bKash invoice rejected.",
+      );
       await refreshAll();
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "Failed to approve payment");
-    }
-  };
-
-  const rejectManualInvoice = async (invoice: any) => {
-    try {
-      const { error } = await (supabase as any)
-        .from("store_invoices")
-        .update({ status: "failed" })
-        .eq("id", invoice.id);
-
-      if (error) throw error;
-      toast.info("Invoice marked as failed.");
-      await refreshAll();
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to reject invoice.");
+      toast.error(err instanceof Error ? err.message : "Failed to review payment");
+    } finally {
+      setBillingReviewActionId(null);
     }
   };
 
@@ -684,6 +733,40 @@ export default function PlatformControlPlane() {
   const nonActiveSubscriptions = summaries.filter((store) => !["active", "trialing"].includes(store.subscriptionStatus));
   const invoices = data.invoices ?? [];
   const pendingManualInvoices = invoices.filter((invoice) => invoice.payment_method === "bkash_manual" && invoice.status === "pending");
+  const operatorFollowUps = [
+    unhealthyStores[0]
+      ? {
+          title: "Store setup quality",
+          detail: `${unhealthyStores.length} store${unhealthyStores.length === 1 ? "" : "s"} still look incomplete from a CMS or launch-readiness perspective.`,
+          targetTab: "health",
+          badge: `${unhealthyStores.length} issue${unhealthyStores.length === 1 ? "" : "s"}`,
+        }
+      : null,
+    nonActiveSubscriptions[0]
+      ? {
+          title: "Billing follow-up",
+          detail: `${nonActiveSubscriptions.length} store${nonActiveSubscriptions.length === 1 ? "" : "s"} are not active or trialing right now.`,
+          targetTab: "subscriptions",
+          badge: `${nonActiveSubscriptions.length} store${nonActiveSubscriptions.length === 1 ? "" : "s"}`,
+        }
+      : null,
+    failingEmailEvents[0]
+      ? {
+          title: "Notification delivery risk",
+          detail: `${failingEmailEvents.length} recent email or notification event${failingEmailEvents.length === 1 ? "" : "s"} did not report success.`,
+          targetTab: "health",
+          badge: `${failingEmailEvents.length} failure${failingEmailEvents.length === 1 ? "" : "s"}`,
+        }
+      : null,
+    pendingManualInvoices[0]
+      ? {
+          title: "Manual payment verification",
+          detail: `${pendingManualInvoices.length} manual bKash verification request${pendingManualInvoices.length === 1 ? "" : "s"} still need review.`,
+          targetTab: "subscriptions",
+          badge: `${pendingManualInvoices.length} pending`,
+        }
+      : null,
+  ].filter(Boolean) as Array<{ title: string; detail: string; targetTab: string; badge: string }>;
 
   return (
     <div className="space-y-6">
@@ -695,9 +778,11 @@ export default function PlatformControlPlane() {
         <Badge variant="outline" className="w-fit">Platform access only</Badge>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 xl:grid-cols-9">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="backups">Backups</TabsTrigger>
           <TabsTrigger value="stores">Merchants</TabsTrigger>
           <TabsTrigger value="plans">Plans</TabsTrigger>
           <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
@@ -723,6 +808,39 @@ export default function PlatformControlPlane() {
               );
             })}
           </div>
+
+          {operatorFollowUps.length > 0 ? (
+            <Card className="border-border bg-card/50">
+              <CardHeader>
+                <CardTitle>Operator Follow-Up Queue</CardTitle>
+                <CardDescription>The fastest platform-level issues to review next.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 lg:grid-cols-2">
+                {operatorFollowUps.map((item) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => setActiveTab(item.targetTab)}
+                    className="rounded-xl border border-border bg-background/50 p-4 text-left transition-colors hover:border-primary/30 hover:bg-background"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                      <Badge variant="outline">{item.badge}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          ) : (
+            <AdminEmptyState
+              icon={Shield}
+              title="Platform follow-up queue is clear"
+              description="No urgent cross-store billing, health, or delivery problems are standing out right now."
+              helper="This is the calm state we want before a broader merchant push."
+              compact
+            />
+          )}
 
           <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border">
@@ -765,9 +883,103 @@ export default function PlatformControlPlane() {
                   <p className="text-sm text-muted-foreground">Email failures</p>
                   <p className="mt-1 text-2xl font-bold text-foreground">{failingEmailEvents.length}</p>
                 </div>
+                <div className="rounded-lg border border-border p-4 sm:col-span-2">
+                  <p className="text-sm text-muted-foreground">Master backup & restore</p>
+                  <p className="mt-1 text-sm text-foreground">Open the platform-wide backup workspace to export or restore any merchant site.</p>
+                  <Button type="button" className="mt-3" onClick={() => setActiveTab("backups")}>
+                    Open Master Backup & Restore
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card className="border-border bg-card/50">
+            <CardHeader>
+              <CardTitle>Analytics Controls</CardTitle>
+              <CardDescription>Filter the platform report by time window and export the current raw analytics view.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {(["today", "last_7_days", "last_30_days", "this_month", "custom"] as AnalyticsDatePreset[]).map((preset) => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    variant={analyticsDatePreset === preset ? "default" : "outline"}
+                    onClick={() => setAnalyticsDatePreset(preset)}
+                  >
+                    {getAnalyticsPresetLabel(preset)}
+                  </Button>
+                ))}
+              </div>
+              {analyticsDatePreset === "custom" ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm text-foreground">
+                    <span>Start date</span>
+                    <input
+                      type="date"
+                      value={analyticsCustomStart}
+                      onChange={(event) => setAnalyticsCustomStart(event.target.value)}
+                      className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm text-foreground">
+                    <span>End date</span>
+                    <input
+                      type="date"
+                      value={analyticsCustomEnd}
+                      onChange={(event) => setAnalyticsCustomEnd(event.target.value)}
+                      className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    />
+                  </label>
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => downloadAnalyticsCsv(
+                  `platform-analytics-${analyticsDatePreset}-${new Date().toISOString().slice(0, 10)}.csv`,
+                  (data.analyticsEvents ?? []).filter((event) => {
+                    const timestamp = event.event_timestamp ? new Date(event.event_timestamp).getTime() : 0;
+                    return timestamp >= new Date(analyticsDateRange.startIso).getTime()
+                      && timestamp <= new Date(analyticsDateRange.endIso).getTime();
+                  }),
+                  analyticsStoreLabels,
+                )}
+                disabled={(data.analyticsEvents ?? []).length === 0}
+              >
+                Export CSV
+              </Button>
+            </CardContent>
+          </Card>
+          {platformAnalyticsReport.sessions === 0 && platformAnalyticsReport.pageViews === 0 && platformAnalyticsReport.purchases === 0 ? (
+            <AdminEmptyState
+              icon={BarChart3}
+              title="No platform analytics data yet"
+              description="Combined storefront analytics have not started filling the current platform window yet."
+              helper="Once merchant stores receive traffic, this view becomes the platform-wide source of truth for discovery, conversion, and purchase behavior."
+            />
+          ) : null}
+          <StoreAnalyticsReport
+            title="Platform Analytics"
+            description={`${getAnalyticsPresetLabel(analyticsDatePreset)} of combined first-party storefront analytics across all merchant sites.`}
+            report={platformAnalyticsReport}
+            storeSummaries={platformStoreAnalyticsSummaries}
+            storeSummaryTitle="Site By Site Breakdown"
+            storeSummaryDescription="Compare traffic, search intent, cart starts, checkout progress, purchases, and revenue across every tracked storefront."
+          />
+        </TabsContent>
+
+        <TabsContent value="backups" className="space-y-6">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle>Master Backup & Restore</CardTitle>
+              <CardDescription>Platform-level export and restore workspace for merchant stores, including analytics-aware snapshots.</CardDescription>
+            </CardHeader>
+          </Card>
+          <StoreBackupManager />
         </TabsContent>
 
         <TabsContent value="stores" className="space-y-6">
@@ -782,7 +994,15 @@ export default function PlatformControlPlane() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {filteredStores.map((store) => (
+                {filteredStores.length === 0 ? (
+                  <AdminEmptyState
+                    icon={Store}
+                    title="No merchants match this search"
+                    description="Try a store name, slug, domain, or lifecycle status to find the merchant you want."
+                    helper="This search looks across the current platform summaries, plans, domains, and store labels."
+                    compact
+                  />
+                ) : filteredStores.map((store) => (
                   <button
                     key={store.id}
                     type="button"
@@ -860,7 +1080,13 @@ export default function PlatformControlPlane() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No store selected.</p>
+                  <AdminEmptyState
+                    icon={Store}
+                    title="No merchant selected"
+                    description="Choose a store from the merchant list to inspect its plan, feature state, and store health."
+                    helper="Once selected, this panel becomes the operator control area for that merchant."
+                    compact
+                  />
                 )}
               </CardContent>
             </Card>
@@ -1024,17 +1250,23 @@ export default function PlatformControlPlane() {
                               <Button
                                 size="sm"
                                 className="bg-green-600 text-white hover:bg-green-700 h-8 px-3"
-                                onClick={() => approveManualInvoice(invoice)}
+                                disabled={billingReviewActionId === invoice.id}
+                                onClick={() => {
+                                  void reviewManualInvoice(invoice, "approve");
+                                }}
                               >
-                                Approve
+                                {billingReviewActionId === invoice.id ? "Working..." : "Approve"}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="border-destructive text-destructive hover:bg-destructive/10 h-8 px-3"
-                                onClick={() => rejectManualInvoice(invoice)}
+                                disabled={billingReviewActionId === invoice.id}
+                                onClick={() => {
+                                  void reviewManualInvoice(invoice, "reject");
+                                }}
                               >
-                                Reject
+                                {billingReviewActionId === invoice.id ? "Working..." : "Reject"}
                               </Button>
                             </div>
                           </td>
@@ -1056,7 +1288,15 @@ export default function PlatformControlPlane() {
                 <CardDescription>Stores with weak or incomplete page-builder setup.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {unhealthyStores.map((store) => (
+                {unhealthyStores.length === 0 ? (
+                  <AdminEmptyState
+                    icon={CheckCircle2}
+                    title="CMS health looks good"
+                    description="No stores currently stand out for missing homepage structure, low block count, or missing custom pages."
+                    helper="This check helps you spot weak merchant setups before those gaps turn into support tickets."
+                    compact
+                  />
+                ) : unhealthyStores.map((store) => (
                   <div key={store.id} className="rounded-lg border border-border p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -1082,7 +1322,15 @@ export default function PlatformControlPlane() {
                 <CardDescription>Recent delivery attempts that did not report success.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {failingEmailEvents.length === 0 ? <p className="text-sm text-muted-foreground">No recent failures found.</p> : null}
+                {failingEmailEvents.length === 0 ? (
+                  <AdminEmptyState
+                    icon={Mail}
+                    title="No recent notification failures"
+                    description="Recent email and notification events are not showing failed outcomes right now."
+                    helper="That does not replace a live smoke test, but it is a healthy platform signal."
+                    compact
+                  />
+                ) : null}
                 {failingEmailEvents.slice(0, 12).map((event) => {
                   const store = summaries.find((item) => item.id === event.store_id);
                   return (
@@ -1231,7 +1479,13 @@ export default function PlatformControlPlane() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {data.lifecycleEvents.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No lifecycle events yet.</div>
+                    <AdminEmptyState
+                      icon={Clock3}
+                      title="No lifecycle events yet"
+                      description="No archive, restore, reminder, or deletion lifecycle actions have been recorded yet."
+                      helper="Once merchant lifecycle actions begin, this becomes the operator audit trail for those decisions."
+                      compact
+                    />
                   ) : null}
                   {data.lifecycleEvents.map((event) => {
                     const store = summaries.find((item) => item.id === event.store_id);
@@ -1258,7 +1512,13 @@ export default function PlatformControlPlane() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {data.emailOverrides.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No email exceptions yet.</div>
+                    <AdminEmptyState
+                      icon={Wand2}
+                      title="No email exceptions yet"
+                      description="No per-email feature grants or revocations have been recorded."
+                      helper="That is usually the healthiest starting point unless you are running a pilot, beta, or support exception."
+                      compact
+                    />
                   ) : null}
                   {data.emailOverrides.map((row) => (
                     <div key={row.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 md:flex-row md:items-center md:justify-between">

@@ -1,4 +1,5 @@
 import { getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
+import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
 
 export type PlatformAnalyticsInput = {
   stores: Array<{
@@ -11,7 +12,12 @@ export type PlatformAnalyticsInput = {
     updated_at?: string | null;
   }>;
   plans: Array<{ id: string; name: string; monthly_price: number | null }>;
-  subscriptions: Array<{ store_id: string; plan_id: string | null; status: string | null }>;
+  subscriptions: Array<{
+    store_id: string;
+    plan_id: string | null;
+    status: string | null;
+    trial_ends_at?: string | null;
+  }>;
   orders: Array<{ store_id: string; status: string; total: number | null }>;
   products: Array<{ store_id: string }>;
   pages: Array<{ store_id: string; slug: string; is_homepage: boolean | null }>;
@@ -70,7 +76,7 @@ export function buildStorePlatformSummaries(input: PlatformAnalyticsInput): Stor
       ...store,
       planId: subscription?.plan_id ?? null,
       planName: plan?.name ?? subscription?.plan_id ?? "No plan",
-      subscriptionStatus: subscription?.status ?? "missing",
+      subscriptionStatus: getEffectiveSubscriptionStatus(subscription) ?? "missing",
       orderTotal: storeOrders.length,
       revenue: storeOrders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + (order.total ?? 0), 0),
       productTotal: storeProducts.length,

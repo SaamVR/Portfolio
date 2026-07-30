@@ -36,6 +36,47 @@ export const SAMPLE_TEMPLATE_CSV = `name,price,original_price,category,type,size
 Premium Cotton T-Shirt,1200,1500,Essentials,T-Shirt,"S, M, L, XL","Black, Navy",50,https://images.unsplash.com/photo-1521572267360-ee0c2909d518,Soft breathable cotton tee,true
 Slim Fit Chino Pants,2500,,Pants,Chino,"30, 32, 34","Beige, Khaki",25,https://images.unsplash.com/photo-1473966968600-fa801b869a1a,Classic stretch chino pants,false`;
 
+type ExportableProductRow = {
+  name: string;
+  price: number;
+  original_price: number | null;
+  category: string | null;
+  type: string | null;
+  sizes: string[] | null;
+  colors: string[] | null;
+  stock: number | null;
+  image_url: string | null;
+  description: string | null;
+  featured: boolean | null;
+};
+
+function escapeCsvCell(value: string | number | boolean | null | undefined) {
+  const stringValue = value == null ? "" : String(value);
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+}
+
+export function buildProductsExportCsv(products: ExportableProductRow[]) {
+  const header = TEMPLATE_COLUMNS.join(",");
+  const rows = products.map((product) => [
+    product.name,
+    product.price,
+    product.original_price ?? "",
+    product.category ?? "",
+    product.type ?? "",
+    (product.sizes ?? []).join(", "),
+    (product.colors ?? []).join(", "),
+    product.stock ?? 0,
+    product.image_url ?? "",
+    product.description ?? "",
+    product.featured ? "true" : "false",
+  ].map(escapeCsvCell).join(","));
+
+  return [header, ...rows].join("\n");
+}
+
 export function parseCsvText(text: string): Record<string, string>[] {
   const lines: string[][] = [];
   let currentRow: string[] = [];

@@ -10,7 +10,10 @@ export function useSiteSettings<T = any>(key: string, explicitStoreId?: string |
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
   const scopedStoreSettings = currentStore?.siteSettings as Record<string, T | undefined> | undefined;
-  const hasScopedValue = currentStore?.id === storeId && scopedStoreSettings && key in scopedStoreSettings;
+  const hasScopedValue = currentStore?.id === storeId
+    && scopedStoreSettings
+    && key in scopedStoreSettings
+    && scopedStoreSettings[key] != null;
   const scopedValue = hasScopedValue ? (scopedStoreSettings?.[key] ?? null) : null;
 
   return useQuery({

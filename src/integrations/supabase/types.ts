@@ -606,42 +606,69 @@ export type Database = {
       email_events: {
         Row: {
           channel: string
+          bounced_at: string | null
           created_at: string
+          dead_lettered_at: string | null
+          delivered_at: string | null
+          delivery_status: string | null
           error: string | null
           id: string
+          last_attempt_at: string | null
           metadata: Json
+          next_retry_at: string | null
           order_id: string | null
+          operator_escalated_at: string | null
+          operator_escalation_reason: string | null
           provider: string | null
           provider_message_id: string | null
           recipient: string | null
+          retry_count: number
           status: string
           store_id: string | null
           template_name: string
         }
         Insert: {
           channel: string
+          bounced_at?: string | null
           created_at?: string
+          dead_lettered_at?: string | null
+          delivered_at?: string | null
+          delivery_status?: string | null
           error?: string | null
           id?: string
+          last_attempt_at?: string | null
           metadata?: Json
+          next_retry_at?: string | null
           order_id?: string | null
+          operator_escalated_at?: string | null
+          operator_escalation_reason?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string | null
+          retry_count?: number
           status: string
           store_id?: string | null
           template_name: string
         }
         Update: {
           channel?: string
+          bounced_at?: string | null
           created_at?: string
+          dead_lettered_at?: string | null
+          delivered_at?: string | null
+          delivery_status?: string | null
           error?: string | null
           id?: string
+          last_attempt_at?: string | null
           metadata?: Json
+          next_retry_at?: string | null
           order_id?: string | null
+          operator_escalated_at?: string | null
+          operator_escalation_reason?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string | null
+          retry_count?: number
           status?: string
           store_id?: string | null
           template_name?: string

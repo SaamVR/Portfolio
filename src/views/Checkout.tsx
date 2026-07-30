@@ -1,6 +1,6 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { ArrowLeft, Phone, Copy, CheckCircle2, Tag, X, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -10,6 +10,7 @@ import { useCart } from "@/context/useCart";
 import { useAuth } from "@/hooks/auth-context";
 import { useCreateOrder } from "@/hooks/useOrders";
 import { supabase } from "@/integrations/supabase/client";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { toast } from "sonner";
 import { z } from "zod";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
@@ -17,6 +18,8 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { DownloadAccessPanel } from "@/components/storefront/digital-downloads/DownloadAccessPanel";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
+import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
+import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -59,6 +62,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const navigate = useNavigate();
   const { items, clearCart, couponCode, setCouponCode } = useCart();
   const { user } = useAuth();
+  const { trackEvent, visitorId, sessionId } = useStorefrontAnalytics();
   const createOrder = useCreateOrder();
   const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
   const checkoutStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : storeId;
@@ -69,6 +73,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
   const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
+  const experience = resolveStorefrontOrderExperience(currentStore, checkoutItems);
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [form, setForm] = useState({
@@ -85,12 +90,79 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
+  const checkoutTrackedRef = useRef("");
 
   useEffect(() => {
     if (checkoutItems.length === 0 && !isRedirecting) {
       navigate(storefrontPath("/cart", storeSlug));
     }
   }, [checkoutItems.length, isRedirecting, navigate, storeSlug]);
+
+  useEffect(() => {
+    if (!checkoutItems.length) return;
+    const snapshot = checkoutItems.map((item) => `${item.productId}:${item.quantity}:${item.size}`).join("|");
+    if (checkoutTrackedRef.current === snapshot) return;
+    checkoutTrackedRef.current = snapshot;
+    trackEvent({
+      eventName: "begin_checkout",
+      eventCategory: "commerce",
+      quantity: checkoutItems.reduce((sum, item) => sum + item.quantity, 0),
+      value: checkoutSubtotal,
+      metadata: {
+        itemCount: checkoutItems.length,
+        productIds: checkoutItems.map((item) => item.productId),
+      },
+    });
+  }, [checkoutItems, checkoutSubtotal, trackEvent]);
+
+  useEffect(() => {
+    if (!checkoutStoreId || checkoutItems.length === 0 || !visitorId || !sessionId) return;
+
+    const consentStatus = readRecoveryConsentStatus(checkoutStoreId);
+    const timer = window.setTimeout(() => {
+      void fetch("/api/cart-recovery/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: checkoutStoreId,
+          visitorId,
+          sessionId,
+          recoveryStage: "checkout",
+          contactCaptureSource: "checkout",
+          contactConsentStatus: consentStatus,
+          cartSnapshot: buildRecoveryCartSnapshot(checkoutItems),
+          cartValue: checkoutSubtotal,
+          itemCount: checkoutItems.reduce((sum, item) => sum + item.quantity, 0),
+          contact: {
+            name: form.name,
+            email: user?.email ?? "",
+            phone: form.phone,
+          },
+          metadata: {
+            city: form.city || null,
+            digitalOnly: digitalOnlyCheckout,
+            paymentMethod: form.paymentMethod,
+            pagePath: typeof window !== "undefined" ? window.location.pathname : "/checkout",
+          },
+        }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    checkoutItems,
+    checkoutStoreId,
+    checkoutSubtotal,
+    digitalOnlyCheckout,
+    form.city,
+    form.name,
+    form.paymentMethod,
+    form.phone,
+    sessionId,
+    user?.email,
+    visitorId,
+  ]);
 
   // Auto-apply pre-filled coupon code at checkout using server-side RPC validation
   useEffect(() => {
@@ -334,6 +406,21 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       }
 
       setOrderRequestKey(createCheckoutRequestKey());
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(`storefront-purchase:${checkoutStoreId}`, JSON.stringify({
+          orderId: order.id,
+          orderNumber: order.order_number,
+          value: order.total ?? grandTotal,
+          currencyCode: currentStore?.currencyCode ?? "BDT",
+          items: checkoutItems.map((item) => ({
+            item_id: item.productId,
+            item_name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            item_variant: item.size,
+          })),
+        }));
+      }
 
       if (isMobilePayment) {
         toast.success("Order placed!", { description: `Your ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment will be verified shortly.` });
@@ -364,25 +451,25 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           onClick={() => navigate(-1)}
           className="mb-8 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Cart
+          <ArrowLeft className="h-4 w-4" /> {experience.labels.checkoutBackLabel}
         </button>
 
-        <h1 className="mb-8 font-heading text-3xl font-bold text-foreground">Checkout</h1>
+        <h1 className="mb-8 font-heading text-3xl font-bold text-foreground">{experience.labels.checkoutTitle}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Delivery Details */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{digitalOnlyCheckout ? "Customer Details" : "Delivery Details"}</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.detailsTitle}</h2>
             <div className="space-y-4">
               {[
-                { key: "name", label: "Full Name", placeholder: "e.g. Hasan Mahmud" },
-                { key: "phone", label: "Phone Number", placeholder: "01XXXXXXXXX" },
+                { key: "name", label: experience.labels.customerNameLabel, placeholder: "e.g. Hasan Mahmud" },
+                { key: "phone", label: experience.labels.phoneLabel, placeholder: "01XXXXXXXXX" },
                 ...(
                   digitalOnlyCheckout
                     ? []
                     : [
-                        { key: "address", label: "Delivery Address", placeholder: "House, Road, Area" },
-                        { key: "city", label: "City", placeholder: "City or delivery area" },
+                        { key: "address", label: experience.labels.addressLabel, placeholder: "House, Road, Area" },
+                        { key: "city", label: experience.labels.cityLabel, placeholder: "City or delivery area" },
                       ]
                 ),
               ].map(({ key, label, placeholder }) => (
@@ -407,12 +494,12 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
           {/* Order summary */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Order Summary</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.summaryTitle}</h2>
             <div className="space-y-2">
               {checkoutItems.map((item) => (
                 <div key={`${item.productId}-${item.size}`} className="flex justify-between text-sm">
                   <span className="text-foreground">
-                    {item.name} x {item.quantity} <span className="text-muted-foreground">({getCartVariantDisplayLabel(item.size)})</span>
+                    {item.name} x {item.quantity} <span className="text-muted-foreground">({experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)})</span>
                   </span>
                   <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
                 </div>
@@ -422,7 +509,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
           {/* Payment Method */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Payment Method</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.paymentTitle}</h2>
             <div className="space-y-3">
               {[
                 ...(hasBkashGateway ? [{ 
@@ -513,7 +600,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
           {/* Coupon Code */}
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">Discount Code</h2>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.couponTitle}</h2>
             {appliedCoupon ? (
               <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -553,7 +640,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           {/* Order Total */}
           <div className="rounded-lg border border-border bg-card p-6 space-y-3">
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Subtotal</span>
+              <span>{experience.labels.subtotalLabel}</span>
               <span>BDT {checkoutSubtotal}</span>
             </div>
             {couponDiscount > 0 && (
@@ -563,9 +650,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               </div>
             )}
               <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{digitalOnlyCheckout ? "Digital delivery" : "Delivery"}</span>
+              <span>{experience.labels.deliveryLabel}</span>
               <span className={deliveryFee === 0 ? "text-primary" : ""}>
-                {digitalOnlyCheckout ? "Included" : deliveryFee === 0 ? "Free" : `BDT ${deliveryFee}`}
+                {digitalOnlyCheckout ? experience.labels.includedFulfillmentLabel : deliveryFee === 0 ? experience.labels.freeDeliveryLabel : `BDT ${deliveryFee}`}
               </span>
             </div>
             {pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel && (
@@ -587,7 +674,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             )}
             <div className="border-t border-border pt-3">
               <div className="flex justify-between font-heading text-lg font-bold text-foreground">
-                <span>Total</span>
+                <span>{experience.labels.totalLabel}</span>
                 <span>BDT {grandTotal}</span>
               </div>
             </div>
@@ -602,7 +689,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
             {createOrder.isPending || isRedirecting
               ? (isRedirecting ? "Redirecting to bKash..." : "Placing Order...")
               : form.paymentMethod === "cod"
-                ? `Place Order - BDT ${grandTotal}`
+                ? `${experience.labels.placeOrderLabel} - BDT ${grandTotal}`
                 : form.paymentMethod === "bkash" && hasBkashGateway
                   ? `Pay BDT ${grandTotal} with bKash`
                   : `Pay BDT ${grandTotal} with ${form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"}`}

@@ -29,4 +29,10 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
+  webServer: {
+    command: "npm.cmd run start",
+    url: baseURL,
+    reuseExistingServer: true,
+    timeout: 120000,
+  },
 });

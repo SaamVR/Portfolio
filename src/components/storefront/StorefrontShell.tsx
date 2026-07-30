@@ -19,23 +19,35 @@ export function StorefrontShell({
   children,
   templateId,
   template,
+  embedded = false,
 }: {
   children: ReactNode;
   templateId: StorefrontTemplateId;
   template: StorefrontTemplateDefinition;
+  embedded?: boolean;
 }) {
+  const content = (
+    <div
+      data-storefront-template={templateId}
+      data-storefront-card-style={template.presentation.cardStyle}
+      data-storefront-density={template.presentation.spacingDensity}
+      data-storefront-image-ratio={template.presentation.imageRatio}
+      data-storefront-typography-scale={template.presentation.typographyScale}
+      data-storefront-embedded-preview={embedded ? "true" : "false"}
+      className={embedded ? "isolate overflow-hidden bg-background" : undefined}
+      style={buildTemplateShellStyle(template)}
+    >
+      {children}
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
   return (
     <Layout>
-      <div
-        data-storefront-template={templateId}
-        data-storefront-card-style={template.presentation.cardStyle}
-        data-storefront-density={template.presentation.spacingDensity}
-        data-storefront-image-ratio={template.presentation.imageRatio}
-        data-storefront-typography-scale={template.presentation.typographyScale}
-        style={buildTemplateShellStyle(template)}
-      >
-        {children}
-      </div>
+      {content}
     </Layout>
   );
 }

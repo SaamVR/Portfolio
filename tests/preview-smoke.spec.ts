@@ -13,6 +13,81 @@ if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   );
 }
 
+async function createPreviewUsers(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  suffix: string,
+) {
+  const email = `preview-smoke-${suffix}@example.com`;
+  const password = `Preview-${suffix}-Pass123!`;
+  const adminEmail = `preview-smoke-admin-${suffix}@example.com`;
+  const adminPassword = `Preview-Admin-${suffix}-Pass123!`;
+
+  const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (createUserError || !createdUser.user) {
+    throw createUserError ?? new Error("Failed to create preview smoke user");
+  }
+
+  const { data: createdAdminUser, error: createAdminUserError } = await supabaseAdmin.auth.admin.createUser({
+    email: adminEmail,
+    password: adminPassword,
+    email_confirm: true,
+  });
+
+  if (createAdminUserError || !createdAdminUser.user) {
+    throw createAdminUserError ?? new Error("Failed to create preview smoke admin user");
+  }
+
+  const { error: adminRoleError } = await supabaseAdmin
+    .from("user_roles")
+    .insert({ user_id: createdAdminUser.user.id, role: "admin" });
+  if (adminRoleError) throw adminRoleError;
+
+  return {
+    email,
+    password,
+    adminEmail,
+    adminPassword,
+    userId: createdUser.user.id,
+    adminUserId: createdAdminUser.user.id,
+  };
+}
+
+async function loginAs(page: Parameters<typeof test>[0]["page"], email: string, password: string) {
+  await page.goto("/admin/login");
+  await page.getByTestId("admin-login-email").fill(email);
+  await page.getByTestId("admin-login-password").fill(password);
+  await page.getByTestId("admin-login-submit").click();
+  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible({ timeout: 15000 });
+}
+
+async function signupPreviewStore(
+  page: Parameters<typeof test>[0]["page"],
+  ownerName: string,
+  storeName: string,
+  storeSlug: string,
+) {
+  await page.goto("/signup");
+  await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
+  await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
+  await page.getByTestId("merchant-signup-store-name").fill(storeName);
+  await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
+  await page.getByTestId("merchant-signup-next").click();
+  await expect(page.getByText("Choose template")).toBeVisible();
+  await page.getByTestId("merchant-signup-submit").click();
+  await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible();
+  const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
+  expect(onboardingHref).toBeTruthy();
+  const onboardingUrl = new URL(onboardingHref ?? "", "http://127.0.0.1:8080");
+  const storeId = onboardingUrl.searchParams.get("storeId");
+  expect(storeId).toBeTruthy();
+  return { storeId: storeId as string };
+}
+
 test("merchant preview smoke: login, signup, onboarding, product create, publish, storefront load", async ({
   page,
 }, testInfo) => {
@@ -40,7 +115,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
   let marketplaceTemplateId: string | null = null;
   let submittedTemplateId: string | null = null;
   let rejectedTemplateId: string | null = null;
-  let productId: string | null = null;
+  let productId: string | null;
 
   try {
     const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
@@ -100,13 +175,18 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
     await page.getByTestId("merchant-signup-store-name").fill(storeName);
     await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
+    await page.getByTestId("merchant-signup-next").click();
+    await expect(page.getByText("Choose template")).toBeVisible();
     await page.getByTestId("merchant-signup-submit").click();
-
-    await page.waitForURL(/\/admin\/onboarding\?storeId=/);
-
-    const onboardingUrl = new URL(page.url());
+    await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible();
+    await expect(page.getByText("Open Onboarding Wizard")).toBeVisible();
+    const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
+    expect(onboardingHref).toBeTruthy();
+    const onboardingUrl = new URL(onboardingHref ?? "", "http://127.0.0.1:8080");
     storeId = onboardingUrl.searchParams.get("storeId");
     expect(storeId).toBeTruthy();
+    await page.getByRole("link", { name: "Open Onboarding Wizard" }).click();
+    await page.waitForURL(new RegExp(`/admin/onboarding\\?storeId=${storeId}`));
 
     await page.goto("/admin/products");
 
@@ -138,7 +218,10 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
       });
     } catch (error) {
       if (failedRequests.length > 0) {
-        throw new Error(`Failed API calls detected:\n${failedRequests.join('\n')}\nOriginal error: ${(error as Error).message}`);
+        throw new Error(
+          `Failed API calls detected:\n${failedRequests.join('\n')}\nOriginal error: ${(error as Error).message}`,
+          { cause: error },
+        );
       }
       throw error;
     }
@@ -163,19 +246,19 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     productId = createdProduct?.id ?? null;
     expect(productId).toBeTruthy();
 
-    await page.goto(`/admin/onboarding?storeId=${storeId}`);
-    for (let index = 0; index < 10; index += 1) {
-      if (await page.getByTestId("onboarding-publish-store").isVisible()) {
-        break;
-      }
-      await page.getByTestId("onboarding-next-step").click();
-    }
+    await page.goto(`/admin/onboarding?storeId=${storeId}&guide=continue&step=launch`);
 
     const publishButton = page.getByTestId("onboarding-publish-store");
     await expect(publishButton).toBeEnabled();
     await publishButton.click();
     await expect(page.getByText("Store is live.")).toBeVisible();
 
+    const { data: publishedStoreRow, error: publishedStoreError } = await supabaseAdmin
+      .from("stores")
+      .select("id, slug, is_published, store_type")
+      .eq("id", storeId as string)
+      .single();
+    if (publishedStoreError) throw publishedStoreError;
     await page.goto(`/stores/${storeSlug}`);
     await expect(page.getByTestId("storefront-page")).toHaveAttribute("data-store-slug", storeSlug);
 
@@ -324,9 +407,9 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/admin/page-builder/basic?storeId=${storeId}`);
-    await expect(page.getByText("Basic Editor:")).toBeVisible({ timeout: 45000 });
+    await expect(page.getByRole("heading", { name: `Guided Editor: ${storeName}` })).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-desktop.png"), fullPage: true });
-    await page.getByTestId("basic-mode-tab-pages").click();
+    await page.getByTestId("basic-mode-tab-pages").last().click();
     await expect(page.getByTestId("basic-flow-settings-panel")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("basic-flow-panel-shop").evaluate((node: HTMLDetailsElement) => {
       node.open = true;
@@ -423,14 +506,14 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await expect(page.getByTestId("cart-grand-total")).toHaveText("BDT 1070");
 
     await page.goto(`/admin/page-builder/basic?storeId=${storeId}`);
-    await expect(page.getByText("Basic Editor:")).toBeVisible({ timeout: 45000 });
-    await page.getByTestId("basic-mode-tab-content").click();
+    await expect(page.getByTestId("basic-mode-tab-content").last()).toBeVisible({ timeout: 45000 });
+    await page.getByTestId("basic-mode-tab-content").last().click();
     await expect(page.getByText("Edit one section at a time")).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-content.png"), fullPage: true });
-    await page.getByTestId("basic-mode-tab-layout").click();
+    await page.getByTestId("basic-mode-tab-layout").last().click();
     await expect(page.getByText("Arrange the page")).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-layout.png"), fullPage: true });
-    await page.getByTestId("basic-mode-tab-theme").click();
+    await page.getByTestId("basic-mode-tab-theme").last().click();
     await expect(page.getByText("Theme Colors")).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-theme.png"), fullPage: true });
 
@@ -446,7 +529,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/admin/page-builder/advanced?storeId=${storeId}`);
-    await expect(page.getByText("Advanced Editing").first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText("Expert Editing").first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText("Visual CSS Inspector")).toBeVisible({ timeout: 45000 });
     await page.getByTestId("open-template-publish-dialog").click();
     await expect(page.getByTestId("template-publish-dialog")).toBeVisible();
@@ -611,6 +694,305 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
       await supabaseAdmin.auth.admin.deleteUser(userId);
     }
 
+    if (adminUserId) {
+      await supabaseAdmin.auth.admin.deleteUser(adminUserId);
+    }
+  }
+});
+
+test("admin hard refresh restores representative routes without getting stuck on access recovery", async ({
+  page,
+}) => {
+  const suffix = randomUUID().slice(0, 8);
+  const ownerName = "Refresh Smoke Owner";
+  const storeName = `Refresh Smoke ${suffix}`;
+  const storeSlug = `refresh-smoke-${suffix}`;
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  let credentials: Awaited<ReturnType<typeof createPreviewUsers>> | null = null;
+  let storeId: string | null = null;
+
+  try {
+    credentials = await createPreviewUsers(supabaseAdmin, `${suffix}-refresh`);
+    await loginAs(page, credentials.email, credentials.password);
+    const signupResult = await signupPreviewStore(page, ownerName, storeName, storeSlug);
+    storeId = signupResult.storeId;
+
+    const representativeRoutes = [
+      { path: `/admin/orders?storeId=${storeId}`, label: "Orders" },
+      { path: `/admin/returns?storeId=${storeId}`, label: "Returns & COD" },
+      { path: `/admin/recovery?storeId=${storeId}`, label: "Recovery automation" },
+      { path: `/admin/analytics?storeId=${storeId}`, label: "Analytics privacy controls" },
+      { path: `/admin/notifications?storeId=${storeId}`, label: "Notifications" },
+      { path: `/admin/site-settings?storeId=${storeId}`, label: "Site Settings" },
+    ];
+
+    for (const route of representativeRoutes) {
+      await page.goto(route.path);
+      await page.reload();
+      await expect(page.getByText(route.label).first()).toBeVisible({ timeout: 45000 });
+      await expect(page.getByText("Restoring dashboard access")).toHaveCount(0);
+    }
+  } finally {
+    if (storeId) {
+      await supabaseAdmin.from("stores").delete().eq("id", storeId);
+    }
+    if (credentials?.userId) {
+      await supabaseAdmin.auth.admin.deleteUser(credentials.userId);
+    }
+    if (credentials?.adminUserId) {
+      await supabaseAdmin.auth.admin.deleteUser(credentials.adminUserId);
+    }
+  }
+});
+
+test("merchant marketplace tail smoke: advanced editor, submit, install, moderate", async ({ page }, testInfo) => {
+  const suffix = randomUUID().slice(0, 8);
+  const ownerName = "Preview Smoke Owner";
+  const storeName = `Preview Tail ${suffix}`;
+  const storeSlug = `preview-tail-${suffix}`;
+  const imageUrl =
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800";
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  let userId: string | null = null;
+  let adminUserId: string | null = null;
+  let storeId: string | null = null;
+  let marketplaceTemplateId: string | null = null;
+  let submittedTemplateId: string | null = null;
+  let rejectedTemplateId: string | null = null;
+  let credentials: Awaited<ReturnType<typeof createPreviewUsers>> | null = null;
+
+  try {
+    credentials = await createPreviewUsers(supabaseAdmin, suffix);
+    userId = credentials.userId;
+    adminUserId = credentials.adminUserId;
+
+    page.on("console", (msg) => console.log("TAIL PAGE CONSOLE:", msg.text()));
+    page.on("pageerror", (err) => console.log("TAIL PAGE ERROR:", err.message));
+
+    await loginAs(page, credentials.email, credentials.password);
+    const signup = await signupPreviewStore(page, ownerName, storeName, storeSlug);
+    storeId = signup.storeId;
+
+    await page.goto(`/admin/onboarding?storeId=${storeId}&guide=continue&step=launch`);
+    await expect(page.getByTestId("onboarding-publish-store")).toBeEnabled();
+    await page.getByTestId("onboarding-publish-store").click();
+    await expect(page.getByText("Store is live.")).toBeVisible();
+
+    const templateBundle = {
+      schemaVersion: 1,
+      type: "theme-and-layout",
+      theme: {
+        presetId: "preview-smoke-marketplace",
+        mode: "light",
+        headingFont: "Inter",
+        bodyFont: "Inter",
+        borderRadius: "0.75rem",
+        aesthetic: "minimal",
+        effects: {
+          scrollReveals: true,
+          hoverEffects: true,
+          parallax: false,
+          intensity: "subtle",
+        },
+        customCssVars: {
+          primary: "222 84% 56%",
+          accent: "18 92% 58%",
+          background: "0 0% 100%",
+          foreground: "222 47% 11%",
+        },
+        schemaVersion: 1,
+      },
+      pages: [
+        {
+          id: `marketplace-page-${suffix}`,
+          slug: "/",
+          title: "Marketplace Smoke Home",
+          seoTitle: "Marketplace Smoke Home",
+          seoDescription: "Marketplace smoke template page",
+          isHomepage: true,
+          blocks: [
+            {
+              id: `marketplace-hero-${suffix}`,
+              type: "hero",
+              sortOrder: 0,
+              isVisible: true,
+              layoutVariant: "centered",
+              props: {
+                title: "Marketplace Smoke Template",
+                subtitle: "A deterministic community template for install smoke coverage.",
+                ctaText: "Shop now",
+                imageUrl,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const { data: marketplaceTemplate, error: marketplaceTemplateError } = await supabaseAdmin
+      .from("cms_marketplace_templates")
+      .insert({
+        title: `Preview Marketplace ${suffix}`,
+        description: "Published template seeded by the preview smoke test.",
+        cover_image: imageUrl,
+        category: "minimal",
+        pricing_mode: "free",
+        price: 0,
+        bundle_json: templateBundle,
+        creator_id: userId,
+        status: "published",
+        safety_status: "passed",
+        safety_findings: [],
+        tags: ["preview-smoke"],
+        best_for: ["qa"],
+        aesthetic: "minimal",
+        preview_asset_urls: [imageUrl],
+        mobile_ready: true,
+      } as any)
+      .select("id")
+      .single();
+    if (marketplaceTemplateError) throw marketplaceTemplateError;
+    marketplaceTemplateId = marketplaceTemplate.id;
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(`/admin/page-builder/advanced?storeId=${storeId}`);
+    await expect(page.getByText("Expert Editing").first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText("Visual CSS Inspector")).toBeVisible({ timeout: 45000 });
+    await page.getByTestId("open-template-publish-dialog").click();
+    await expect(page.getByTestId("template-publish-dialog")).toBeVisible();
+    await page.getByTestId("template-publish-title").fill(`Submitted Marketplace ${suffix}`);
+    await page.getByTestId("template-publish-description").fill("Template submitted through the merchant publish dialog.");
+    await page.getByTestId("template-publish-best-for").fill("qa, storefront");
+    await page.getByTestId("template-publish-tags").fill("preview-smoke, in-review");
+    await page.getByTestId("template-publish-cover-url").fill(imageUrl);
+    await page.getByTestId("template-publish-submit").click();
+
+    await expect.poll(async () => {
+      const { data, error } = await supabaseAdmin
+        .from("cms_marketplace_templates")
+        .select("id, status, safety_status")
+        .eq("creator_id", userId as string)
+        .eq("title", `Submitted Marketplace ${suffix}`)
+        .maybeSingle();
+      if (error) throw error;
+      submittedTemplateId = data?.id ?? null;
+      return data ? `${data.status}:${data.safety_status}` : "missing";
+    }, { timeout: 20000 }).toBe("in_review:passed");
+
+    await page.screenshot({ path: testInfo.outputPath("marketplace-tail-advanced-editor.png"), fullPage: true });
+
+    await page.goto(`/admin/templates?storeId=${storeId}`);
+    await expect(page.getByTestId("template-gallery")).toBeVisible({ timeout: 45000 });
+    await page.getByTestId("template-gallery-community-tab").click();
+    await expect(page.getByTestId(`template-card-${marketplaceTemplateId}`)).toBeVisible({ timeout: 45000 });
+    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();
+    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();
+
+    await expect.poll(async () => {
+      const { count, error } = await supabaseAdmin
+        .from("cms_marketplace_template_installs")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", marketplaceTemplateId as string)
+        .eq("store_id", storeId as string);
+      if (error) throw error;
+      return count ?? 0;
+    }, { timeout: 20000 }).toBe(1);
+
+    const { data: rejectedTemplate, error: rejectedTemplateError } = await supabaseAdmin
+      .from("cms_marketplace_templates")
+      .insert({
+        title: `Rejected Marketplace ${suffix}`,
+        description: "In-review template seeded for reject-button smoke coverage.",
+        cover_image: imageUrl,
+        category: "minimal",
+        pricing_mode: "free",
+        price: 0,
+        bundle_json: templateBundle,
+        creator_id: userId,
+        status: "in_review",
+        safety_status: "passed",
+        safety_findings: [],
+        tags: ["preview-smoke", "reject"],
+        best_for: ["qa"],
+        aesthetic: "minimal",
+        preview_asset_urls: [imageUrl],
+        mobile_ready: true,
+      } as any)
+      .select("id")
+      .single();
+    if (rejectedTemplateError) throw rejectedTemplateError;
+    rejectedTemplateId = rejectedTemplate.id;
+
+    const { error: adminMembershipError } = await supabaseAdmin
+      .from("store_memberships")
+      .insert({ store_id: storeId, user_id: adminUserId, role: "admin" } as any);
+    if (adminMembershipError) throw adminMembershipError;
+
+    await page.evaluate(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    await loginAs(page, credentials.adminEmail, credentials.adminPassword);
+    await expect(page.getByText("CMS Admin").first()).toBeVisible({ timeout: 15000 });
+
+    await page.goto(`/admin/templates?storeId=${storeId}`);
+    await expect(page.getByTestId("template-gallery")).toBeVisible({ timeout: 45000 });
+    await page.getByTestId("template-gallery-community-tab").click();
+    await expect(page.getByTestId(`template-card-${submittedTemplateId}`)).toBeVisible({ timeout: 45000 });
+    await page.getByTestId(`template-card-${submittedTemplateId}`).hover();
+    await page.getByTestId(`template-approve-${submittedTemplateId}`).click();
+    await expect(page.getByTestId(`template-card-${rejectedTemplateId}`)).toBeVisible({ timeout: 45000 });
+    await page.getByTestId(`template-card-${rejectedTemplateId}`).hover();
+    await page.getByTestId(`template-reject-${rejectedTemplateId}`).click();
+
+    await expect.poll(async () => {
+      const { data, error } = await supabaseAdmin
+        .from("cms_marketplace_templates")
+        .select("status, reviewed_by")
+        .eq("id", submittedTemplateId as string)
+        .single();
+      if (error) throw error;
+      return `${data.status}:${data.reviewed_by === adminUserId}`;
+    }, { timeout: 20000 }).toBe("published:true");
+
+    await expect.poll(async () => {
+      const { data, error } = await supabaseAdmin
+        .from("cms_marketplace_templates")
+        .select("status, reviewed_by, rejection_reason")
+        .eq("id", rejectedTemplateId as string)
+        .single();
+      if (error) throw error;
+      return `${data.status}:${data.reviewed_by === adminUserId}:${Boolean(data.rejection_reason)}`;
+    }, { timeout: 20000 }).toBe("rejected:true:true");
+  } finally {
+    if (rejectedTemplateId) {
+      await supabaseAdmin.from("cms_marketplace_templates").delete().eq("id", rejectedTemplateId);
+    }
+    if (submittedTemplateId) {
+      await supabaseAdmin.from("cms_marketplace_templates").delete().eq("id", submittedTemplateId);
+    }
+    if (marketplaceTemplateId) {
+      await supabaseAdmin.from("cms_marketplace_templates").delete().eq("id", marketplaceTemplateId);
+    }
+    if (storeId) {
+      await supabaseAdmin.from("stores").delete().eq("id", storeId);
+    }
+    if (userId) {
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+    }
     if (adminUserId) {
       await supabaseAdmin.auth.admin.deleteUser(adminUserId);
     }

@@ -126,6 +126,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           src={mediaUrl}
           fallbackSrc={legacyHero?.image_url ?? null}
           fill
+          priority
           alt="Storefront hero media"
           className={`${className} transition-transform duration-100`}
           style={{ transform: `translateY(${scrollY}px) scale(1.08)` }}

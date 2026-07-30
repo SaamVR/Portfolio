@@ -11,11 +11,13 @@ export function VisualCssInspector({
   updateSelectedBlock,
   updateSelectedBlockProps,
   viewport = "desktop",
+  allowCodeEditing = false,
 }: {
   selectedBlock: StorePageBlock | null;
   updateSelectedBlock?: (patch: Partial<StorePageBlock>) => void;
   updateSelectedBlockProps: (props: Record<string, unknown>) => void;
   viewport?: "desktop" | "tablet" | "mobile";
+  allowCodeEditing?: boolean;
 }) {
   if (!selectedBlock) {
     return (
@@ -264,28 +266,30 @@ export function VisualCssInspector({
             {renderTextInput("Left", "left", "e.g. 0")}
           </div>
         </TabsContent>
-        <TabsContent value="code" className="space-y-4 pt-4">
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">Custom HTML Injection</Label>
-              <Textarea
-                className="min-h-[80px] font-mono text-xs"
-                placeholder="<div>...</div>"
-                value={selectedBlock.customHtml || ""}
-                onChange={(e) => updateSelectedBlock?.({ customHtml: e.target.value })}
-              />
+        {allowCodeEditing ? (
+          <TabsContent value="code" className="space-y-4 pt-4">
+            <div className="grid gap-3">
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">Custom HTML Injection</Label>
+                <Textarea
+                  className="min-h-[80px] font-mono text-xs"
+                  placeholder="<div>...</div>"
+                  value={selectedBlock.customHtml || ""}
+                  onChange={(e) => updateSelectedBlock?.({ customHtml: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">Custom CSS</Label>
+                <Textarea
+                  className="min-h-[80px] font-mono text-xs"
+                  placeholder=".block { ... }"
+                  value={selectedBlock.customCss || ""}
+                  onChange={(e) => updateSelectedBlock?.({ customCss: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">Custom CSS</Label>
-              <Textarea
-                className="min-h-[80px] font-mono text-xs"
-                placeholder=".block { ... }"
-                value={selectedBlock.customCss || ""}
-                onChange={(e) => updateSelectedBlock?.({ customCss: e.target.value })}
-              />
-            </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );

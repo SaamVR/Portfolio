@@ -4,18 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev -H 127.0.0.1 -p 8080",
+    "dev": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev --webpack -H 127.0.0.1 -p 8080",
+    "dev:turbopack": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev -H 127.0.0.1 -p 8080",
     "build": "next build",
     "start": "next start -p 8080",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "test:watch": "tsx --test --watch \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
-    "test:preview": "npx playwright@1.51.1 test -c playwright.preview.config.ts",
+    "test:preview": "playwright test -c playwright.preview.config.ts",
     "sync:cms-library": "tsx scripts/sync-cms-library.ts",
-    "test:db": "npm run test:db:rls && npm run test:db:billing",
+    "test:db": "npm run test:db:rls && npm run test:db:subscription-jwt && npm run test:db:billing && npm run test:db:billing-consistency",
     "test:db:rls": "node scripts/run-rls-smoke.mjs",
-    "test:db:billing": "tsx scripts/run-billing-route-smoke.ts"
+    "test:db:subscription-jwt": "tsx scripts/run-subscription-owner-jwt-smoke.ts",
+    "test:db:billing": "tsx scripts/run-billing-route-smoke.ts",
+    "test:db:billing-consistency": "node scripts/run-billing-consistency.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.18",
@@ -62,11 +65,12 @@
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.462.0",
-    "next": "^16.2.9",
+    "next": "^16.2.12",
     "next-themes": "^0.4.6",
-    "react": "^19.2.7",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.8",
     "react-day-picker": "^10.0.1",
-    "react-dom": "^19.2.7",
+    "react-dom": "^19.2.8",
     "react-hook-form": "^7.61.1",
     "react-resizable-panels": "^2.1.9",
     "recharts": "^2.15.4",
@@ -79,8 +83,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@eslint/js": "^9.32.0",
-    "@playwright/test": "^1.51.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
@@ -89,15 +93,24 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.21",
     "cross-env": "^10.1.0",
-    "eslint": "^9.32.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "globals": "^15.15.0",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.8.0",
     "jsdom": "^20.0.3",
-    "playwright": "^1.51.1",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
+    "playwright": "^1.62.0",
+    "postcss": "^8.5.23",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.20.6",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.38.0"
+    "typescript-eslint": "^8.65.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.23",
+      "sharp": "0.35.2"
+    },
+    "js-yaml": "4.3.0",
+    "protobufjs": "7.6.5",
+    "sucrase": "3.35.1"
   }
 }

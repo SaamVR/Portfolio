@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "@/lib/react-router-dom-shim";
 import { ArrowUpDown, Filter, Grid2X2, LayoutList, Loader2, Map as MapIcon, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
@@ -19,6 +19,7 @@ import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/lib/storefront-theme-customization";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { buildShopOptions, filterAndSortProducts, type ShopSortOption } from "@/lib/shop-filters";
@@ -920,6 +921,7 @@ function PropertyListingsPage(props: RenderProps) {
 
 export default function ContextAwareShopPage({ explicitStoreId }: { explicitStoreId?: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { trackEvent } = useStorefrontAnalytics();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -982,12 +984,127 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   }, [activeSort, baseFilteredProducts, contexts, filterDefinitions, searchParams]);
 
   const filteredProducts = filteredContexts.map((context) => context.product);
+  const analyticsSnapshotRef = useRef("");
+  const quickViewSnapshotRef = useRef("");
 
   const searchParamSnapshot = searchParams.toString();
 
   useEffect(() => {
     setDisplayCount(perPage);
   }, [perPage, query, activeType, activeCategory, activeSort, saleOnly, minPrice, maxPrice, searchParamSnapshot]);
+
+  useEffect(() => {
+    if (analyticsSnapshotRef.current === searchParamSnapshot) return;
+    analyticsSnapshotRef.current = searchParamSnapshot;
+
+    if (query.trim()) {
+      trackEvent({
+        eventName: "search",
+        eventCategory: "discovery",
+        searchQuery: query.trim(),
+        metadata: {
+          resultsCount: filteredProducts.length,
+          activeType,
+          activeCategory,
+          sort: activeSort,
+          source: "shop_page",
+        },
+      });
+    }
+
+    if (activeType !== "All") {
+      trackEvent({
+        eventName: "tag_click",
+        eventCategory: "discovery",
+        metadata: {
+          tag: activeType,
+          tagType: "product_type",
+          source: "shop_page_filter",
+        },
+      });
+    }
+
+    if (activeCategory !== "All") {
+      trackEvent({
+        eventName: "tag_click",
+        eventCategory: "discovery",
+        metadata: {
+          tag: activeCategory,
+          tagType: "category",
+          source: "shop_page_filter",
+        },
+      });
+    }
+
+    const activeFilters = [
+      activeType !== "All" ? `type:${activeType}` : "",
+      activeCategory !== "All" ? `category:${activeCategory}` : "",
+      saleOnly ? "sale:1" : "",
+      minPrice ? `min:${minPrice}` : "",
+      maxPrice ? `max:${maxPrice}` : "",
+      ...filterDefinitions.flatMap((filter) => {
+        const value = searchParams.get(filter.key);
+        return value ? [`${filter.key}:${value}`] : [];
+      }),
+    ].filter(Boolean);
+
+    if (activeFilters.length > 0) {
+      trackEvent({
+        eventName: "filter_used",
+        eventCategory: "discovery",
+        metadata: {
+          filters: activeFilters,
+          resultsCount: filteredProducts.length,
+          source: "shop_page",
+        },
+      });
+    }
+
+    if (activeSort !== "newest") {
+      trackEvent({
+        eventName: "sort_changed",
+        eventCategory: "discovery",
+        metadata: {
+          sort: activeSort,
+          resultsCount: filteredProducts.length,
+          source: "shop_page",
+        },
+      });
+    }
+  }, [
+    activeCategory,
+    activeSort,
+    activeType,
+    filterDefinitions,
+    filteredProducts.length,
+    maxPrice,
+    minPrice,
+    query,
+    saleOnly,
+    searchParams,
+    searchParamSnapshot,
+    trackEvent,
+  ]);
+
+  useEffect(() => {
+    if (!quickViewOpen || !quickViewProduct) return;
+    const snapshot = `${quickViewProduct.id}:${quickViewOpen}`;
+    if (quickViewSnapshotRef.current === snapshot) return;
+    quickViewSnapshotRef.current = snapshot;
+
+    trackEvent({
+      eventName: "quick_view_open",
+      eventCategory: "engagement",
+      productId: quickViewProduct.id,
+      value: quickViewProduct.price,
+      metadata: {
+        productName: quickViewProduct.name,
+        category: quickViewProduct.category,
+        productType: quickViewProduct.type,
+        source: "shop_page",
+      },
+    });
+  }, [quickViewOpen, quickViewProduct, trackEvent]);
 
   const updateParams = (next: URLSearchParams) => setSearchParams(next);
   const setSingleParam = (key: string, value: string | null) => updateParams(setParam(searchParams, key, value));

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { WishlistContext } from "@/context/wishlist-context";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
@@ -13,10 +13,10 @@ function readWishlist(storageKey: string) {
 }
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode; storeId?: string | null }> = ({ children, storeId }) => {
-  const pathname = usePathname();
+  const { trackEvent } = useStorefrontAnalytics();
   const storageKey = useMemo(
     () => getScopedStorefrontStorageKey("wishlist", storeId),
-    [pathname, storeId],
+    [storeId],
   );
   const [items, setItems] = useState<string[]>(() => (typeof window === "undefined" ? [] : readWishlist(storageKey)));
 
@@ -36,7 +36,13 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode; storeId?: s
       localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
-  }, [storageKey]);
+    trackEvent({
+      eventName: "add_to_wishlist",
+      eventCategory: "engagement",
+      productId,
+      metadata: { storeId },
+    });
+  }, [storageKey, storeId, trackEvent]);
 
   const removeItem = useCallback((productId: string) => {
     setItems((prev) => {
@@ -44,9 +50,16 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode; storeId?: s
       localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
-  }, [storageKey]);
+    trackEvent({
+      eventName: "remove_from_wishlist",
+      eventCategory: "engagement",
+      productId,
+      metadata: { storeId },
+    });
+  }, [storageKey, storeId, trackEvent]);
 
   const toggleItem = useCallback((productId: string) => {
+    const removing = items.includes(productId);
     setItems((prev) => {
       const next = prev.includes(productId)
         ? prev.filter((id) => id !== productId)
@@ -54,7 +67,13 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode; storeId?: s
       localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
-  }, [storageKey]);
+    trackEvent({
+      eventName: removing ? "remove_from_wishlist" : "add_to_wishlist",
+      eventCategory: "engagement",
+      productId,
+      metadata: { storeId },
+    });
+  }, [items, storageKey, storeId, trackEvent]);
 
   const isInWishlist = useCallback((productId: string) => items.includes(productId), [items]);
 

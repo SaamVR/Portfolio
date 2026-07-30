@@ -268,6 +268,41 @@ function getStringListFromSpecs(specs: ProductPresentationSpecs, keys: string[])
   return [];
 }
 
+export function getStructuredSpecEntries(
+  specs: ProductPresentationSpecs,
+  keys: string[],
+): Array<{ label: string; value: string }> {
+  for (const key of keys) {
+    const value = specs[key];
+    if (typeof value === "string" && value.trim()) {
+      return [{ label: "Details", value: value.trim() }];
+    }
+    if (Array.isArray(value)) {
+      return value
+        .map((item, index) => ({ label: `Specification ${index + 1}`, value: String(item).trim() }))
+        .filter((item) => item.value);
+    }
+    if (value && typeof value === "object") {
+      return Object.entries(value as Record<string, unknown>)
+        .map(([entryKey, entryValue]) => ({
+          label: entryKey
+            .replace(/[_-]+/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase()),
+          value: Array.isArray(entryValue)
+            ? entryValue.map((item) => String(item).trim()).filter(Boolean).join(", ")
+            : typeof entryValue === "string"
+              ? entryValue.trim()
+              : typeof entryValue === "number" || typeof entryValue === "boolean"
+                ? String(entryValue)
+                : "",
+        }))
+        .filter((item) => item.value);
+    }
+  }
+
+  return [];
+}
+
 export function isPhysicalDeliveryKeyword(value?: string | null): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase().replace(/[-_]+/g, " ");

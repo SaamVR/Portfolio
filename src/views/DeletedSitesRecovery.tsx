@@ -158,7 +158,7 @@ export default function DeletedSitesRecovery() {
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="font-heading text-3xl">We’re sorry your site is no longer available.</CardTitle>
+                  <CardTitle className="font-heading text-3xl">We&apos;re sorry your site is no longer available.</CardTitle>
                   <CardDescription className="mt-2 text-sm leading-6">
                     Your storefront was removed from the workspace. The details below explain the latest removal and what you can do next.
                   </CardDescription>
@@ -224,12 +224,17 @@ export default function DeletedSitesRecovery() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {canCreateAnotherSite ? (
-                    <Button asChild className="w-full gap-2">
-                      <Link to="/signup">
-                        Create Another Site
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
+                    <div className="space-y-3">
+                      <Button asChild className="w-full gap-2">
+                        <Link to="/signup">
+                          Create Another Site
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Starting a new site does not remove your previous deletion record. Support can still review the earlier decision if needed.
+                      </p>
+                    </div>
                   ) : (
                     <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
                       {restrictionNote ?? "Your account cannot create new stores right now. Please contact support for a review."}

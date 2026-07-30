@@ -2,11 +2,12 @@ import { useAuth } from "@/hooks/auth-context";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Loader2, Tag, ToggleLeft, ToggleRight, Pencil, X, Check } from "lucide-react";
+import { Plus, Trash2, Loader2, Tag, ToggleLeft, ToggleRight, Pencil, X, Check, Copy, Sparkles, CalendarClock, TicketPercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -31,6 +32,48 @@ const emptyCoupon = {
   max_uses: "",
   expires_at: "",
 };
+
+const couponPresets = [
+  {
+    id: "flash-sale",
+    label: "Flash sale",
+    helper: "10% off with a same-day expiry window.",
+    values: {
+      code: "FLASH10",
+      discount_type: "percentage" as const,
+      discount_value: 10,
+      min_order: 0,
+      max_uses: "",
+      expires_at: new Date().toISOString().slice(0, 10),
+    },
+  },
+  {
+    id: "first-order",
+    label: "First order push",
+    helper: "Fixed discount for new-customer campaigns.",
+    values: {
+      code: "WELCOME100",
+      discount_type: "fixed" as const,
+      discount_value: 100,
+      min_order: 1000,
+      max_uses: "100",
+      expires_at: "",
+    },
+  },
+  {
+    id: "weekend",
+    label: "Weekend promo",
+    helper: "15% off with light urgency and a minimum basket.",
+    values: {
+      code: "WEEKEND15",
+      discount_type: "percentage" as const,
+      discount_value: 15,
+      min_order: 1500,
+      max_uses: "",
+      expires_at: "",
+    },
+  },
+];
 
 const Coupons = () => {
   const { activeStoreId } = useAuth();
@@ -58,6 +101,27 @@ const Coupons = () => {
     setEditId(null);
     setForm(emptyCoupon);
   }, [activeStoreId]);
+
+  const copyCouponCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success(`Coupon ${code} copied`);
+  };
+
+  const applyPreset = (preset: typeof couponPresets[number]) => {
+    setForm(preset.values);
+    setShowForm(true);
+    setEditId(null);
+  };
+
+  const activeCoupons = coupons.filter((coupon) => coupon.is_active);
+  const endingSoonCount = activeCoupons.filter((coupon) => {
+    if (!coupon.expires_at) return false;
+    const expiresAt = new Date(coupon.expires_at).getTime();
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    return expiresAt >= now && expiresAt <= now + sevenDays;
+  }).length;
+  const totalRedemptions = coupons.reduce((sum, coupon) => sum + (coupon.uses_count || 0), 0);
 
   const createCoupon = useMutation({
     mutationFn: async () => {
@@ -145,7 +209,7 @@ const Coupons = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Coupons</h1>
-          <p className="text-sm text-muted-foreground">Create and manage discount codes for your store</p>
+          <p className="text-sm text-muted-foreground">Create discount campaigns, quick flash-sale offers, and launch-ready promo codes for this store.</p>
         </div>
         {!showForm && (
           <Button onClick={() => setShowForm(true)} className="gap-2">
@@ -154,12 +218,85 @@ const Coupons = () => {
         )}
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tag className="h-4 w-4 text-primary" />
+              Active campaigns
+            </CardTitle>
+            <CardDescription>Coupons customers can use right now.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold text-foreground">{activeCoupons.length}</CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Ending soon
+            </CardTitle>
+            <CardDescription>Active coupons expiring within the next 7 days.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold text-foreground">{endingSoonCount}</CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TicketPercent className="h-4 w-4 text-primary" />
+              Total redemptions
+            </CardTitle>
+            <CardDescription>How many times customers have already used your coupons.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold text-foreground">{totalRedemptions}</CardContent>
+        </Card>
+      </div>
+
+      {!showForm ? (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Quick growth presets
+            </CardTitle>
+            <CardDescription>Start from a proven campaign shape, then fine-tune the values for this merchant.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            {couponPresets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className="rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <p className="font-medium text-foreground">{preset.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{preset.helper}</p>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Create / Edit Form */}
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-6">
           <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">
             {editId ? "Edit Coupon" : "New Coupon"}
           </h2>
+          {!editId ? (
+            <div className="mb-4 grid gap-3 md:grid-cols-3">
+              {couponPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyPreset(preset)}
+                  className="rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <p className="text-sm font-medium text-foreground">{preset.label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{preset.helper}</p>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label>Coupon Code *</Label>
@@ -264,9 +401,14 @@ const Coupons = () => {
             {coupons.map((c) => (
               <div key={c.id} className="rounded-xl border border-border bg-card p-4 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-semibold text-sm text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg border border-border/80">
-                    {c.code}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-semibold text-sm text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg border border-border/80">
+                      {c.code}
+                    </span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   <span className="text-primary font-bold text-sm">
                     {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
                   </span>
@@ -380,6 +522,9 @@ const Coupons = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(c)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>

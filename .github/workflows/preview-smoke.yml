@@ -76,7 +76,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Install Playwright browser
-        run: npx playwright@1.51.1 install --with-deps chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Start Next app
         shell: bash

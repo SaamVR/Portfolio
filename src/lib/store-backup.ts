@@ -14,13 +14,19 @@ export const storeBackupMediaFileSchema = z.object({
 });
 
 export const storeBackupPackageSchema = z.object({
-  version: z.literal("2026-07-02"),
+  version: z.enum(["2026-07-02", "2026-07-26"]),
   exportedAt: z.string(),
   source: z.object({
     storeId: z.string(),
     storeSlug: z.string(),
     storeName: z.string(),
   }),
+  metadata: z.object({
+    includedOperationalData: z.boolean().optional(),
+    includedAccessData: z.boolean().optional(),
+    includedMediaFiles: z.boolean().optional(),
+    tableKeys: z.array(z.string()).optional(),
+  }).optional(),
   data: z.record(z.string(), z.unknown()),
   mediaFiles: z.array(storeBackupMediaFileSchema).default([]),
 });

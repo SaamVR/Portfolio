@@ -1,4 +1,4 @@
-import { threadbdSeedData } from "../../../docs/seeds/threadbd_all_template_seed_data_local_assets";
+import { threadbdSeedData } from "./threadbd-local-seed-data.js";
 
 type FixtureCategory = {
   id: string;

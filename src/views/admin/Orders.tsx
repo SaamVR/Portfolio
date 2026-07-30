@@ -1,16 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Package, Printer } from "lucide-react";
+import { Eye, Package, Printer, Truck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
 import { useAllOrders, useUpdateOrderStatus, type Order } from "@/hooks/useOrders";
+import { useBookCourierShipment, useCourierConnections, useOrderShipments } from "@/hooks/useCouriers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCourierConnectionLabel, getCourierProviderLabel, type CourierProvider } from "@/lib/couriers/shared";
+import { Link } from "@/lib/react-router-dom-shim";
 
 const STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
@@ -25,9 +29,13 @@ const statusColors: Record<string, string> = {
 
 const formatCurrency = (amount: number) => `BDT ${amount.toLocaleString("en-BD")}`;
 
-const AdminOrders = () => {
+export default function AdminOrders() {
   const { activeStoreId } = useAuth();
   const { data: orders, isLoading } = useAllOrders(activeStoreId);
+  const { data: courierConnections = [] } = useCourierConnections(activeStoreId);
+  const { data: shipments = [] } = useOrderShipments(activeStoreId);
+  const bookCourierShipment = useBookCourierShipment(activeStoreId);
+
   const { data: activeStore } = useQuery({
     queryKey: ["admin-orders-store", activeStoreId],
     queryFn: async () => {
@@ -42,16 +50,46 @@ const AdminOrders = () => {
     },
     enabled: !!activeStoreId,
   });
+
   const updateStatus = useUpdateOrderStatus();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [bookingOrder, setBookingOrder] = useState<Order | null>(null);
+  const [bookingConnectionId, setBookingConnectionId] = useState("");
+  const [bookingWeight, setBookingWeight] = useState("0.5");
+  const [bookingQuantity, setBookingQuantity] = useState("1");
+  const [bookingDescription, setBookingDescription] = useState("");
+  const [bookingInstruction, setBookingInstruction] = useState("");
+  const [bookingAmountToCollect, setBookingAmountToCollect] = useState("0");
+  const [bookingShippingFee, setBookingShippingFee] = useState("0");
 
   useEffect(() => {
     setSearch("");
     setFilterStatus("all");
     setViewOrder(null);
+    setBookingOrder(null);
+    setBookingConnectionId("");
   }, [activeStoreId]);
+
+  const connectedCouriers = useMemo(
+    () => courierConnections.filter((connection) => connection.status === "connected"),
+    [courierConnections],
+  );
+  const selectedBookingConnection = useMemo(
+    () => connectedCouriers.find((connection) => connection.id === bookingConnectionId) ?? null,
+    [bookingConnectionId, connectedCouriers],
+  );
+
+  const shipmentsByOrder = useMemo(() => {
+    const map = new Map<string, typeof shipments>();
+    shipments.forEach((shipment) => {
+      const current = map.get(shipment.order_id) ?? [];
+      current.push(shipment);
+      map.set(shipment.order_id, current);
+    });
+    return map;
+  }, [shipments]);
 
   const filtered = (orders || []).filter((o) => {
     const matchesSearch =
@@ -68,6 +106,46 @@ const AdminOrders = () => {
       { orderId, status, storeId: activeStoreId ?? undefined },
       { onSuccess: () => toast.success(`Order updated to ${status}`) },
     );
+  };
+
+  const openBookingDialog = (order: Order) => {
+    const itemQuantity = order.items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0);
+    const itemDescription = order.items.map((item) => item.name).filter(Boolean).slice(0, 3).join(", ");
+    setBookingOrder(order);
+    setBookingConnectionId(connectedCouriers[0]?.id ?? "");
+    setBookingWeight("0.5");
+    setBookingQuantity(String(itemQuantity || 1));
+    setBookingDescription(itemDescription || `Order ${order.order_number}`);
+    setBookingInstruction("");
+    setBookingAmountToCollect(/cod/i.test(order.payment_method) ? String(order.total) : "0");
+    setBookingShippingFee(String(order.delivery_fee));
+  };
+
+  const submitBooking = async () => {
+    if (!bookingOrder || !bookingConnectionId) {
+      toast.error("Choose a courier connection first.");
+      return;
+    }
+
+    try {
+      await bookCourierShipment.mutateAsync({
+        orderId: bookingOrder.id,
+        connectionId: bookingConnectionId,
+        booking: {
+          itemWeightKg: Number(bookingWeight),
+          itemQuantity: Number(bookingQuantity),
+          itemDescription: bookingDescription,
+          specialInstruction: bookingInstruction,
+          amountToCollect: Number(bookingAmountToCollect),
+          shippingFee: Number(bookingShippingFee),
+        },
+      });
+      toast.success("Courier booking created.");
+      setBookingOrder(null);
+      setBookingConnectionId("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create courier booking.");
+    }
   };
 
   const handlePrintInvoice = (order: Order) => {
@@ -156,18 +234,18 @@ const AdminOrders = () => {
             </tbody>
           </table>
           ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${order.notes}</div>` : ""}
-          <script>
-            window.onload = () => {
-              window.print();
-              setTimeout(() => window.close(), 500);
-            };
-          </script>
         </body>
       </html>
     `;
 
     printWindow.document.write(html);
     printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+      window.setTimeout(() => {
+        printWindow.close();
+      }, 500);
+    };
   };
 
   return (
@@ -215,6 +293,7 @@ const AdminOrders = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-9 w-[140px]" />
+                    <Skeleton className="h-9 w-24" />
                     <Skeleton className="h-9 w-9" />
                   </div>
                 </div>
@@ -234,11 +313,16 @@ const AdminOrders = () => {
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-heading text-sm font-bold text-foreground">{order.order_number}</p>
                       <Badge className={statusColors[order.status] || "bg-secondary"}>
                         {order.status}
                       </Badge>
+                      {(shipmentsByOrder.get(order.id) ?? []).slice(0, 1).map((shipment) => (
+                        <Badge key={shipment.id} variant="outline">
+                          {(shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider))} {shipment.status}
+                        </Badge>
+                      ))}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {order.customer_name} - {order.customer_phone}
@@ -247,7 +331,7 @@ const AdminOrders = () => {
                       {new Date(order.created_at).toLocaleDateString()} - {order.items.length} item(s) - {formatCurrency(order.total)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Select
                       value={order.status}
                       onValueChange={(v) => handleStatusChange(order.id, v)}
@@ -263,6 +347,16 @@ const AdminOrders = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => openBookingDialog(order)}
+                      disabled={connectedCouriers.length === 0}
+                    >
+                      <Truck className="h-4 w-4" />
+                      Book courier
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setViewOrder(order)}>
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -296,11 +390,12 @@ const AdminOrders = () => {
                   <p className="text-xs text-muted-foreground">{viewOrder.shipping_city}</p>
                 </div>
               </div>
+
               <div className="space-y-2 border-t border-border pt-3">
                 <p className="text-sm font-medium text-foreground">Items</p>
                 {viewOrder.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span>{item.name} × {item.quantity} ({item.size})</span>
+                    <span>{item.name} x {item.quantity} ({item.size})</span>
                     <span>{formatCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))}
@@ -309,27 +404,148 @@ const AdminOrders = () => {
                   <span>{formatCurrency(viewOrder.total)}</span>
                 </div>
               </div>
+
               <div className="text-xs text-muted-foreground">
-                Payment: {viewOrder.payment_method.toUpperCase()} ·{" "}
-                Placed: {new Date(viewOrder.created_at).toLocaleString()}
+                Payment: {viewOrder.payment_method.toUpperCase()} - Placed: {new Date(viewOrder.created_at).toLocaleString()}
               </div>
+
+              {(shipmentsByOrder.get(viewOrder.id) ?? []).length > 0 ? (
+                <div className="rounded-md border border-border bg-background/60 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Courier bookings</p>
+                  <div className="space-y-2">
+                    {(shipmentsByOrder.get(viewOrder.id) ?? []).map((shipment) => (
+                      <div key={shipment.id} className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="outline">
+                          {shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider)}
+                        </Badge>
+                        <Badge variant="secondary">{shipment.status}</Badge>
+                        <span className="text-muted-foreground">{shipment.tracking_number || shipment.consignment_id || "Tracking pending"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {viewOrder.notes && (
                 <div className="mt-4 rounded-md border border-border bg-secondary/50 p-3">
                   <p className="mb-1 text-xs font-semibold text-foreground">Customer Notes / TrxID:</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{viewOrder.notes}</p>
                 </div>
               )}
+
               <div className="flex justify-end pt-4">
-                <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">
-                  <Printer className="h-4 w-4" /> Print Invoice
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => openBookingDialog(viewOrder)} className="gap-2" disabled={connectedCouriers.length === 0}>
+                    <Truck className="h-4 w-4" /> Book Courier
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link to={`/admin/returns?orderId=${encodeURIComponent(viewOrder.id)}`}>Returns & COD</Link>
+                  </Button>
+                  <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">
+                    <Printer className="h-4 w-4" /> Print Invoice
+                  </Button>
+                </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!bookingOrder} onOpenChange={(open) => !open && setBookingOrder(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Book courier for {bookingOrder?.order_number}</DialogTitle>
+          </DialogHeader>
+          {bookingOrder ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-background/60 p-4 text-sm">
+                <p className="font-medium text-foreground">{bookingOrder.customer_name}</p>
+                <p className="text-muted-foreground">{bookingOrder.customer_phone}</p>
+                <p className="text-muted-foreground">{bookingOrder.shipping_address}, {bookingOrder.shipping_city}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-connection">Courier connection</Label>
+                <Select value={bookingConnectionId} onValueChange={setBookingConnectionId}>
+                  <SelectTrigger id="booking-connection">
+                    <SelectValue placeholder="Choose a connected courier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {connectedCouriers.map((connection) => (
+                      <SelectItem key={connection.id} value={connection.id}>
+                        {formatCourierConnectionLabel({
+                          provider: connection.provider,
+                          displayName: connection.displayName,
+                          zoneLabel: connection.settingsSummary.zoneLabel,
+                          serviceAreaName: connection.settingsSummary.serviceAreaName,
+                        })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedBookingConnection ? (
+                  <p className="text-xs text-muted-foreground">
+                    Booking through {formatCourierConnectionLabel({
+                      provider: selectedBookingConnection.provider,
+                      displayName: selectedBookingConnection.displayName,
+                      zoneLabel: selectedBookingConnection.settingsSummary.zoneLabel,
+                      serviceAreaName: selectedBookingConnection.settingsSummary.serviceAreaName,
+                    })}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="booking-weight">Item weight (kg)</Label>
+                  <Input id="booking-weight" value={bookingWeight} onChange={(event) => setBookingWeight(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="booking-quantity">Item quantity</Label>
+                  <Input id="booking-quantity" value={bookingQuantity} onChange={(event) => setBookingQuantity(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="booking-collect">Amount to collect</Label>
+                  <Input id="booking-collect" value={bookingAmountToCollect} onChange={(event) => setBookingAmountToCollect(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="booking-fee">Shipping fee</Label>
+                  <Input id="booking-fee" value={bookingShippingFee} onChange={(event) => setBookingShippingFee(event.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-description">Item description</Label>
+                <Input id="booking-description" value={bookingDescription} onChange={(event) => setBookingDescription(event.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-instruction">Special instruction</Label>
+                <Input id="booking-instruction" value={bookingInstruction} onChange={(event) => setBookingInstruction(event.target.value)} placeholder="Optional delivery note" />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setBookingOrder(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={() => void submitBooking()} disabled={bookCourierShipment.isPending || connectedCouriers.length === 0}>
+                  {bookCourierShipment.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Booking...
+                    </>
+                  ) : (
+                    <>
+                      <Truck className="mr-2 h-4 w-4" />
+                      Create booking
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
-
-export default AdminOrders;
+}

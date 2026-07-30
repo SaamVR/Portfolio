@@ -20,6 +20,7 @@ import {
   parseXlsxBuffer,
   validateImportRow,
   buildStoreBatchInsertPayload,
+  buildProductsExportCsv,
   SAMPLE_TEMPLATE_CSV,
   type ParsedImportRow,
 } from "@/lib/cms/product-import";
@@ -102,6 +103,25 @@ const AdminProducts = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportCatalog = () => {
+    if (products.length === 0) {
+      toast.error("There are no products to export yet.");
+      return;
+    }
+
+    const csv = buildProductsExportCsv(products);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `products-export-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Catalog export downloaded.");
   };
 
   const handleExecuteImport = async () => {
@@ -304,15 +324,26 @@ const AdminProducts = () => {
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+  const featuredCount = products.filter((product) => product.featured).length;
+  const lowOrOutOfStockCount = products.filter((product) => (product.stock ?? 0) <= 0).length;
+  const readyToSellCount = products.filter((product) => (product.stock ?? 0) > 0 && product.is_available !== false).length;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Products</h1>
-          <p className="text-sm text-muted-foreground">{products.length} products total</p>
+          <p className="text-sm text-muted-foreground">Manage your catalog, import inventory in bulk, and export the live product list when the merchant needs it.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            data-testid="products-export-button"
+            onClick={handleExportCatalog}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
           <Button
             variant="outline"
             data-testid="products-bulk-import-button"
@@ -325,6 +356,29 @@ const AdminProducts = () => {
             <Plus className="h-4 w-4" /> Add Product
           </Button>
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Catalog size</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold text-foreground">{products.length}</CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Ready to sell</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold text-foreground">{readyToSellCount}</CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Featured / out of stock</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm font-medium text-foreground">
+            <span className="text-2xl">{featuredCount}</span> featured · <span className="text-2xl">{lowOrOutOfStockCount}</span> out
+          </CardContent>
+        </Card>
       </div>
 
       <Input
@@ -543,6 +597,10 @@ const AdminProducts = () => {
             {importFileName ? (
               <p className="text-xs text-muted-foreground">File: <span className="font-semibold text-foreground">{importFileName}</span></p>
             ) : null}
+
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+              Use the template if the merchant is starting fresh. Export CSV first if they want to edit the current live catalog and re-import in the same shape.
+            </div>
 
             {importRows.length > 0 ? (
               <div className="space-y-3">

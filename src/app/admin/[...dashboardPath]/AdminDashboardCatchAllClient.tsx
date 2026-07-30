@@ -8,6 +8,14 @@ import MediaLibraryManager from "@/components/admin/MediaLibraryManager";
 import OnboardingWizard from "@/components/admin/OnboardingWizard";
 import StoreBackupManager from "@/components/admin/StoreBackupManager";
 import Billing from "@/views/admin/Billing";
+import AnalyticsPage from "@/views/admin/Analytics";
+import LaunchReadinessPage from "@/views/admin/LaunchReadiness";
+import NotificationsCenterPage from "@/views/admin/NotificationsCenter";
+import OperationsDiagnosticsPage from "@/views/admin/OperationsDiagnostics";
+import CouriersPage from "@/views/admin/Couriers";
+import BlogManager from "@/views/admin/BlogManager";
+import QrCodeGeneratorPage from "@/views/admin/QrCodeGenerator";
+import CartRecoveryPage from "@/views/admin/CartRecovery";
 import Categories from "@/views/admin/Categories";
 import Coupons from "@/views/admin/Coupons";
 import CmsPagesManager from "@/views/admin/CmsPagesManager";
@@ -16,6 +24,7 @@ import Messages from "@/views/admin/Messages";
 import Orders from "@/views/admin/Orders";
 import PlatformControlPlane from "@/views/admin/PlatformControlPlane";
 import Products from "@/views/admin/Products";
+import ReturnsOperationsPage from "@/views/admin/ReturnsOperations";
 import Reviews from "@/views/admin/Reviews";
 import SiteSettings from "@/views/admin/SiteSettings";
 import Users from "@/views/admin/Users";
@@ -37,6 +46,12 @@ function AdminDashboardRoute({ route }: { route: string }) {
       );
     case "billing":
       return <Billing />;
+    case "analytics":
+      return <AnalyticsPage />;
+    case "blog":
+      return <BlogManager />;
+    case "launch":
+      return <LaunchReadinessPage />;
     case "categories":
       return <Categories />;
     case "cms":
@@ -53,7 +68,15 @@ function AdminDashboardRoute({ route }: { route: string }) {
     case "coupons":
       return <Coupons />;
     case "invite-codes":
-      return <InviteCodes />;
+      return (
+        <AdminFeatureGate
+          featureKey="staff_management"
+          title="Team Access"
+          description="This store package does not currently include staff invitations and seat management."
+        >
+          <InviteCodes />
+        </AdminFeatureGate>
+      );
     case "media":
       return (
         <AdminFeatureGate
@@ -66,10 +89,22 @@ function AdminDashboardRoute({ route }: { route: string }) {
       );
     case "messages":
       return <Messages />;
+    case "notifications":
+      return <NotificationsCenterPage />;
     case "onboarding":
       return <OnboardingWizard />;
     case "orders":
       return <Orders />;
+    case "returns":
+      return <ReturnsOperationsPage />;
+    case "qr":
+      return <QrCodeGeneratorPage />;
+    case "recovery":
+      return <CartRecoveryPage />;
+    case "diagnostics":
+      return <OperationsDiagnosticsPage />;
+    case "couriers":
+      return <CouriersPage />;
     case "platform":
       return <PlatformControlPlane />;
     case "products":

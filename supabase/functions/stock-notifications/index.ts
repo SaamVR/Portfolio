@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("SUPABASE_URL_OVERRIDE");
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS") ?? "";
 const DEFAULT_FROM_EMAIL = Deno.env.get("STOCK_EMAIL_FROM") || "Commerce Engine <hello@example.com>";
 
 const corsHeaders = {
@@ -11,14 +12,67 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function getTrustedMachineKeys() {
+  const trustedKeys = new Set<string>();
+  if (SUPABASE_SERVICE_ROLE_KEY) {
+    trustedKeys.add(SUPABASE_SERVICE_ROLE_KEY);
+  }
+
+  if (SUPABASE_SECRET_KEYS) {
+    try {
+      const parsedKeys = JSON.parse(SUPABASE_SECRET_KEYS) as Record<string, string>;
+      for (const key of Object.values(parsedKeys)) {
+        if (key) trustedKeys.add(key);
+      }
+    } catch (error) {
+      console.error("[Auth] Failed to parse SUPABASE_SECRET_KEYS:", error);
+    }
+  }
+
+  return trustedKeys;
+}
+
+function getSupabaseAdminKey() {
+  const trustedKeys = getTrustedMachineKeys();
+  return trustedKeys.values().next().value ?? "";
+}
+
+function isTrustedServiceRequest(req: Request) {
+  const apiKey = req.headers.get("apikey");
+  const authorization = req.headers.get("authorization");
+  const trustedKeys = getTrustedMachineKeys();
+
+  if (apiKey && trustedKeys.has(apiKey)) {
+    return true;
+  }
+
+  if (authorization?.startsWith("Bearer ")) {
+    return trustedKeys.has(authorization.slice("Bearer ".length));
+  }
+
+  return false;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  if (!isTrustedServiceRequest(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdminKey = getSupabaseAdminKey();
+    if (!SUPABASE_URL || !supabaseAdminKey) {
+      throw new Error("Supabase admin credentials are not configured");
+    }
+
+    const supabase = createClient(SUPABASE_URL, supabaseAdminKey);
     const { record, old_record } = await req.json();
 
     // Check if this was triggered by a webhook (product update)

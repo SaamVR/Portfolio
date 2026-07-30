@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { hasCompleteBkashSecrets } from "@/lib/payments/merchant-connections";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,6 +17,10 @@ function asNumber(value: unknown, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+export const storePaymentSettingsRouteDeps = {
+  getSupabaseAdminClient,
+};
+
 export async function GET(req: Request) {
   const storeId = new URL(req.url).searchParams.get("storeId")?.trim() ?? "";
 
@@ -24,7 +29,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const supabaseAdmin = getSupabaseAdminClient();
+    const supabaseAdmin = storePaymentSettingsRouteDeps.getSupabaseAdminClient();
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")
       .select("id, is_published")
@@ -36,16 +41,26 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const [{ data, error }, { data: connection, error: connectionError }] = await Promise.all([
+      supabaseAdmin
       .from("site_settings")
       .select("value")
       .eq("store_id", storeId)
       .eq("key", "payment_settings")
-      .maybeSingle();
+        .maybeSingle(),
+      (supabaseAdmin as any)
+        .from("store_payment_connections_secure")
+        .select("status, secret_payload")
+        .eq("store_id", storeId)
+        .eq("provider", "bkash")
+        .maybeSingle(),
+    ]);
 
     if (error) throw error;
+    if (connectionError) throw connectionError;
 
     const value = (data?.value ?? {}) as Record<string, unknown>;
+    const bkashGatewayEnabled = connection?.status === "connected" && hasCompleteBkashSecrets(connection.secret_payload);
     return NextResponse.json({
       bkash_enabled: asBoolean(value.bkash_enabled),
       nagad_enabled: asBoolean(value.nagad_enabled),
@@ -55,7 +70,7 @@ export async function GET(req: Request) {
       prepaid_badge_text: asString(value.prepaid_badge_text, ""),
       prepayment_discount_type: asString(value.prepayment_discount_type, "none"),
       prepayment_discount_value: asNumber(value.prepayment_discount_value),
-      bkash_gateway_enabled: Boolean(asString(value.bkash_app_key) && asString(value.bkash_username)),
+      bkash_gateway_enabled: bkashGatewayEnabled,
     });
   } catch (error) {
     console.error("Public payment settings error:", error);

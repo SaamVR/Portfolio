@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 const sqlFile = path.join(repoRoot, "supabase", "migrations", "rls_smoke_can_manage_store.sql");
+const sqlFileArg = path.relative(repoRoot, sqlFile);
 
 const databaseUrl =
   process.env.SUPABASE_DB_URL ||
@@ -19,26 +20,40 @@ if (!existsSync(sqlFile)) {
   process.exit(1);
 }
 
-if (!databaseUrl) {
-  console.error(
-    "Missing database connection string. Set SUPABASE_DB_URL, DATABASE_URL, POSTGRES_URL, or POSTGRES_PRISMA_URL.",
-  );
-  process.exit(1);
-}
-
-const result = spawnSync(
-  "psql",
-  ["-v", "ON_ERROR_STOP=1", "-f", sqlFile, databaseUrl],
-  {
-    cwd: repoRoot,
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  },
-);
+const result = databaseUrl
+  ? spawnSync(
+      process.platform === "win32" ? "psql.exe" : "psql",
+      ["-v", "ON_ERROR_STOP=1", "-f", sqlFile, databaseUrl],
+      {
+        cwd: repoRoot,
+        stdio: "inherit",
+      },
+    )
+  : process.platform === "win32"
+    ? spawnSync(
+        "cmd.exe",
+        ["/d", "/s", "/c", `supabase.cmd db query --linked --file ${sqlFileArg}`],
+        {
+          cwd: repoRoot,
+          stdio: "inherit",
+        },
+      )
+    : spawnSync(
+        "supabase",
+        ["db", "query", "--linked", "--file", sqlFileArg],
+        {
+          cwd: repoRoot,
+          stdio: "inherit",
+        },
+      );
 
 if (result.error) {
   if (result.error.code === "ENOENT") {
-    console.error("psql was not found on PATH. Install PostgreSQL client tools or add psql to PATH.");
+    console.error(
+      databaseUrl
+        ? "psql was not found on PATH. Install PostgreSQL client tools or add psql to PATH."
+        : "supabase CLI was not found on PATH.",
+    );
   } else {
     console.error(result.error.message);
   }

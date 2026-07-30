@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Clock3, Download, FileText, Heart, MapPin, Minus, MonitorSmartphone, MoveRight, Phone, Plus, Ruler, ShieldCheck, ShoppingBag, Sparkles, Star, Users } from "lucide-react";
 import ProductImageGallery from "@/components/ProductImageGallery";
 import ProductReviews from "@/components/ProductReviews";
 import RelatedProducts from "@/components/RelatedProducts";
 import SizeGuide from "@/components/SizeGuide";
 import SocialShare from "@/components/SocialShare";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import type { Product } from "@/data/products";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
@@ -32,11 +33,20 @@ import {
   getDisplayableProductType,
   getRenderableColorOptions,
   getRenderableSizeOptions,
+  getStructuredSpecEntries,
   shouldShowColorOptions,
   shouldShowSizeGuide,
   shouldShowSizeOptions,
   type ProductDetailVariant,
 } from "@/lib/cms/storefront-product-presentation";
+
+type DetailLayoutMode = "media" | "story" | "specs";
+
+type DetailSection = {
+  title: string;
+  body: string;
+  items?: Array<{ icon?: React.ReactNode; label: string; value: string }>;
+};
 
 function getString(specs: Record<string, unknown>, keys: string[], fallback = "") {
   for (const key of keys) {
@@ -66,6 +76,22 @@ function getStringArray(specs: Record<string, unknown>, keys: string[]) {
     }
   }
   return [];
+}
+
+function getOptionalNumber(specs: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = specs[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number.parseFloat(value.replace(/[^\d.]/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
+function withValue<T extends { value: string }>(items: T[]) {
+  return items.filter((item) => item.value.trim());
 }
 
 function ProductBadge({ badge }: { badge?: string | null }) {
@@ -129,6 +155,32 @@ function ProductMetaList({
   );
 }
 
+function ProductMetaTable({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ label: string; value: string }>;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="space-y-4">
+      <h2 className="font-heading text-2xl font-bold text-foreground">{title}</h2>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card/30">
+        <div className="divide-y divide-border/70">
+          {items.map((item) => (
+            <div key={`${item.label}-${item.value}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start">
+              <p className="text-sm font-semibold text-foreground">{item.label}</p>
+              <p className="text-sm leading-7 text-muted-foreground">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ProductDescription({
   title,
   body,
@@ -141,6 +193,26 @@ function ProductDescription({
       <h2 className="font-heading text-2xl font-bold text-foreground">{title}</h2>
       <p className="leading-8 text-muted-foreground">{body}</p>
     </section>
+  );
+}
+
+function ProductSections({
+  sections,
+}: {
+  sections: DetailSection[];
+}) {
+  const visibleSections = sections.filter((section) => section.body.trim() || (section.items?.length ?? 0) > 0);
+  if (visibleSections.length === 0) return null;
+
+  return (
+    <>
+      {visibleSections.map((section) => (
+        <section key={section.title} className="space-y-4">
+          {section.body.trim() ? <ProductDescription title={section.title} body={section.body} /> : <h2 className="font-heading text-2xl font-bold text-foreground">{section.title}</h2>}
+          {section.items?.length ? <ProductMetaList items={section.items} /> : null}
+        </section>
+      ))}
+    </>
   );
 }
 
@@ -272,21 +344,31 @@ function ProductDetailsShell({
   product,
   children,
   side,
+  mode = "media",
 }: {
   product: Product;
   children: React.ReactNode;
   side: React.ReactNode;
+  mode?: DetailLayoutMode;
 }) {
+  const leadSpan = mode === "media" ? "lg:col-span-8" : mode === "story" ? "lg:col-span-6" : "lg:col-span-5";
+  const sideSpan = mode === "media" ? "lg:col-span-4" : mode === "story" ? "lg:col-span-6" : "lg:col-span-7";
+  const detailCardClass = mode === "story"
+    ? "space-y-8 rounded-3xl border border-border/80 bg-card/40 p-6 md:p-8"
+    : mode === "specs"
+      ? "space-y-8"
+      : "space-y-8 rounded-3xl border border-border/80 bg-card/40 p-6 md:p-8";
+
   return (
     <div className="space-y-12">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12 items-start">
-        <div className="space-y-10 lg:col-span-7">
+        <div className={cn("space-y-10", leadSpan)}>
           <ProductImageGallery images={product.images} alt={product.name} />
-          <div className="space-y-8 rounded-3xl border border-border/80 bg-card/40 p-6 md:p-8">
+          <div className={detailCardClass}>
             {children}
           </div>
         </div>
-        <div className="lg:col-span-5">
+        <div className={sideSpan}>
           <div className="sticky top-24 space-y-6 rounded-3xl border border-border bg-card/80 p-6 md:p-8 shadow-sm backdrop-blur-sm">
             {side}
           </div>
@@ -306,6 +388,7 @@ function GenericProductDetailsContent({
   const currentStore = useOptionalStore();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
+  const { trackEvent } = useStorefrontAnalytics();
   const { specs } = useStoreProductPresentation(product);
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] || "");
   const [selectedColor, setSelectedColor] = useState(product.colors[0] || "");
@@ -337,6 +420,31 @@ function GenericProductDetailsContent({
       : product.price * quantity;
   const contactHref = storefrontPath("/contact", currentStore?.slug);
   const wishlisted = isInWishlist(product.id);
+  const technicalSpecItems = getStructuredSpecEntries(specs, ["technical_specs", "specifications"]);
+  const featureItems = getStringArray(specs, ["features", "benefits", "included_items"]).map((value, index) => ({
+    label: `Feature ${index + 1}`,
+    value,
+  }));
+  const trackedViewRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (trackedViewRef.current === product.id) return;
+    trackedViewRef.current = product.id;
+    const timeout = window.setTimeout(() => {
+      trackEvent({
+        eventName: "view_item",
+        eventCategory: "commerce",
+        productId: product.id,
+        value: product.price,
+        metadata: {
+          productName: product.name,
+          category: product.category,
+          productType: product.type,
+        },
+      });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [product.category, product.id, product.name, product.price, product.type, trackEvent]);
 
   const addToCartLabel = variant === "food"
     ? "Add"
@@ -391,51 +499,51 @@ function GenericProductDetailsContent({
   const metaItems = (() => {
     switch (variant) {
       case "electronics":
-        return [
+        return withValue([
           { icon: <ShieldCheck className="h-4 w-4" />, label: "Warranty", value: getString(specs, ["warranty", "warranty_period"], "Merchant warranty information") },
-          { icon: <Sparkles className="h-4 w-4" />, label: "Compatibility", value: getString(specs, ["compatibility", "supported_devices"], getDisplayableProductType(product.type) || product.category) },
-        ];
+          { icon: <Sparkles className="h-4 w-4" />, label: "Compatibility", value: getString(specs, ["compatibility", "supported_devices"], "") },
+        ]);
       case "food":
-        return [
-          { icon: <Clock3 className="h-4 w-4" />, label: "Preparation time", value: getString(specs, ["prep_time", "preparation_time"], "25-35 minutes") },
-          { icon: <FileText className="h-4 w-4" />, label: "Ingredients", value: getString(specs, ["ingredients"], product.description.split(".")[0] || "Merchant-managed recipe details") },
-        ];
+        return withValue([
+          { icon: <Clock3 className="h-4 w-4" />, label: "Preparation time", value: getString(specs, ["prep_time", "preparation_time"], "") },
+          { icon: <FileText className="h-4 w-4" />, label: "Ingredients", value: getString(specs, ["ingredients"], "") },
+        ]);
       case "crafts":
-        return [
-          { icon: <MapPin className="h-4 w-4" />, label: "Origin", value: getString(specs, ["origin", "region", "artisan"], product.category || "Artisan made") },
+        return withValue([
+          { icon: <MapPin className="h-4 w-4" />, label: "Origin", value: getString(specs, ["origin", "region", "artisan"], "") },
           { icon: <ShieldCheck className="h-4 w-4" />, label: "Material", value: getString(specs, ["material"], getDisplayableProductType(product.type) || "Merchant-listed material") },
-        ];
+        ]);
       case "inquiry":
-        return [
-          { icon: <ShoppingBag className="h-4 w-4" />, label: "MOQ", value: `${getNumber(specs, ["moq"], Math.max(12, Math.min(product.stock || 24, 100)))} units` },
-          { icon: <Sparkles className="h-4 w-4" />, label: "Branding", value: getString(specs, ["branding_options"], "Ask the merchant about available branding options") },
-        ];
+        return withValue([
+          { icon: <ShoppingBag className="h-4 w-4" />, label: "MOQ", value: getOptionalNumber(specs, ["moq"]) !== null ? `${getOptionalNumber(specs, ["moq"])} units` : "" },
+          { icon: <Sparkles className="h-4 w-4" />, label: "Branding", value: getString(specs, ["branding_options"], "") },
+        ]);
       case "service":
       case "booking":
-        return [
-          { icon: <Clock3 className="h-4 w-4" />, label: "Duration", value: getString(specs, ["duration", "duration_minutes"], `${Math.max(product.sizes.length * 15, 45)} minutes`) },
-          { icon: <Users className="h-4 w-4" />, label: "Availability", value: getString(specs, ["availability", "staff_availability"], "Merchant-managed availability") },
-        ];
+        return withValue([
+          { icon: <Clock3 className="h-4 w-4" />, label: "Duration", value: getString(specs, ["duration", "duration_minutes"], "") },
+          { icon: <Users className="h-4 w-4" />, label: "Availability", value: getString(specs, ["availability", "staff_availability"], "") },
+        ]);
       case "subscription":
-        return [
+        return withValue([
           { icon: <MonitorSmartphone className="h-4 w-4" />, label: "Supported devices", value: getString(specs, ["supported_devices"], "Web and mobile supported") },
           { icon: <ShieldCheck className="h-4 w-4" />, label: "Region", value: getString(specs, ["region"], "Region restrictions may apply") },
-        ];
+        ]);
       case "digital":
-        return [
+        return withValue([
           { icon: <Download className="h-4 w-4" />, label: "Formats", value: getDigitalFormats(product).join(", ") },
           { icon: <MonitorSmartphone className="h-4 w-4" />, label: "Software", value: getDigitalCompatibility(product).join(", ") },
-        ];
+        ]);
       case "hotel_room":
-        return [
-          { icon: <Users className="h-4 w-4" />, label: "Occupancy", value: `${getNumber(specs, ["capacity", "guest_capacity", "guests"], Math.max(2, product.sizes.length || 2))} guests` },
-          { icon: <Ruler className="h-4 w-4" />, label: "Room size", value: getString(specs, ["room_size_sqm", "room_size_sqft"], "Spacious room layout") },
-        ];
+        return withValue([
+          { icon: <Users className="h-4 w-4" />, label: "Occupancy", value: getOptionalNumber(specs, ["capacity", "guest_capacity", "guests"]) !== null ? `${getOptionalNumber(specs, ["capacity", "guest_capacity", "guests"])} guests` : "" },
+          { icon: <Ruler className="h-4 w-4" />, label: "Room size", value: getString(specs, ["room_size", "room_size_sqm", "room_size_sqft"], "") },
+        ]);
       case "property":
-        return [
-          { icon: <MapPin className="h-4 w-4" />, label: "Address", value: getString(specs, ["address", "location", "city"], "Location shared by merchant") },
-          { icon: <Ruler className="h-4 w-4" />, label: "Area", value: `${getNumber(specs, ["area_sqft", "sqft"], Math.max(product.stock || 950, 750)).toLocaleString()} sqft` },
-        ];
+        return withValue([
+          { icon: <MapPin className="h-4 w-4" />, label: "Address", value: getString(specs, ["address", "location", "city"], "") },
+          { icon: <Ruler className="h-4 w-4" />, label: "Area", value: getString(specs, ["property_area", "area_sqft", "sqft"], "") },
+        ]);
       default: {
         const displayType = getDisplayableProductType(product.type);
         return [
@@ -481,140 +589,176 @@ function GenericProductDetailsContent({
     }
   })();
 
-  const detailBody = (() => {
+  const layoutMode: DetailLayoutMode = (() => {
     switch (variant) {
       case "fashion":
-        return (
-          <>
-            <ProductDescription title="Fit, fabric, and feel" body={product.description} />
-            <ProductMetaList items={[
-              ...(sizeOptions.length > 0 ? [{ icon: <Ruler className="h-4 w-4" />, label: "Sizes", value: sizeOptions.join(", ") }] : []),
-              ...(colorOptions.length > 0 ? [{ icon: <Sparkles className="h-4 w-4" />, label: "Colors", value: colorOptions.join(", ") }] : []),
-            ]} />
-          </>
-        );
       case "beauty":
-        return (
-          <>
-            <ProductDescription title="Benefits and suitability" body={product.description} />
-            <ProductMetaList items={[
-              { icon: <Sparkles className="h-4 w-4" />, label: "Skin concerns", value: getString(specs, ["skin_concerns", "concerns"], getDisplayableProductType(product.category) || "Merchant-specified concerns") },
-              { icon: <ShieldCheck className="h-4 w-4" />, label: "How to use", value: getString(specs, ["how_to_use"], "Use as directed by the merchant.") },
-            ]} />
-          </>
-        );
-      case "electronics":
-        return (
-          <>
-            <ProductDescription title="Technical overview" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <FileText className="h-4 w-4" />, label: "Box contents", value: getString(specs, ["box_contents"], "See merchant listing for included accessories") },
-            ]} />
-          </>
-        );
-      case "food":
-        return (
-          <>
-            <ProductDescription title="Ingredients and flavor" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <ShieldCheck className="h-4 w-4" />, label: "Allergy info", value: getString(specs, ["allergy_info"], "Contact the merchant for allergy guidance") },
-            ]} />
-          </>
-        );
       case "crafts":
-        return (
-          <>
-            <ProductDescription title="Craft story" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <ShieldCheck className="h-4 w-4" />, label: "Care", value: getString(specs, ["care_instructions"], "Follow merchant care instructions for this handmade piece") },
-            ]} />
-          </>
-        );
-      case "inquiry":
-        return (
-          <>
-            <ProductDescription title="Specifications and wholesale details" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <Clock3 className="h-4 w-4" />, label: "Lead time", value: getString(specs, ["lead_time", "production_lead_time"], "Production lead time shared by merchant") },
-            ]} />
-          </>
-        );
+      case "single_product":
+      case "food":
+        return "media";
       case "service":
       case "booking":
-        return (
-          <>
-            <ProductDescription title="What's included" body={product.description} />
-            <ProductMetaList items={[
+      case "subscription":
+        return "story";
+      case "electronics":
+      case "inquiry":
+      case "digital":
+      case "hotel_room":
+      case "property":
+        return "specs";
+      default:
+        return technicalSpecItems.length >= 3 ? "specs" : "media";
+    }
+  })();
+
+  const primarySpecTableItems = (() => {
+    switch (variant) {
+      case "electronics":
+        return withValue([
+          { label: "Warranty", value: getString(specs, ["warranty", "warranty_period"], "Merchant warranty information") },
+          { label: "Compatibility", value: getString(specs, ["compatibility", "supported_devices"], "") },
+          ...technicalSpecItems,
+        ]);
+      case "inquiry":
+        return withValue([
+          { label: "MOQ", value: getOptionalNumber(specs, ["moq"]) !== null ? `${getOptionalNumber(specs, ["moq"])} units` : "" },
+          { label: "Branding options", value: getString(specs, ["branding_options"], "") },
+          { label: "Lead time", value: getString(specs, ["lead_time", "production_lead_time"], "") },
+          ...technicalSpecItems,
+        ]);
+      case "digital":
+        return [
+          { label: "Formats", value: getDigitalFormats(product).join(", ") || "Merchant-managed file formats" },
+          { label: "Software compatibility", value: getDigitalCompatibility(product).join(", ") || "Compatibility shared by merchant" },
+          { label: "File size", value: getDigitalFileSize(product) },
+          { label: "Included files", value: `${getIncludedFileCount(product)} files` },
+          { label: "Access", value: getInstantDownloadInfo(product) },
+        ];
+      case "hotel_room":
+        return withValue([
+          { label: "Occupancy", value: getOptionalNumber(specs, ["capacity", "guest_capacity", "guests"]) !== null ? `${getOptionalNumber(specs, ["capacity", "guest_capacity", "guests"])} guests` : "" },
+          { label: "Room size", value: getString(specs, ["room_size", "room_size_sqm", "room_size_sqft"], "") },
+          { label: "Bed type", value: getString(specs, ["bed_type"], "") },
+          { label: "Amenities", value: getStringArray(specs, ["amenities", "features"]).join(", ") },
+        ]);
+      case "property":
+        return withValue([
+          { label: "Address", value: getString(specs, ["address", "location", "city"], "") },
+          { label: "Listing type", value: getString(specs, ["listing_type"], "") },
+          { label: "Area", value: getString(specs, ["property_area", "area_sqft", "sqft"], "") },
+          { label: "Bedrooms", value: getOptionalNumber(specs, ["beds", "bedrooms"]) !== null ? String(getOptionalNumber(specs, ["beds", "bedrooms"])) : "" },
+          { label: "Bathrooms", value: getOptionalNumber(specs, ["baths", "bathrooms"]) !== null ? String(getOptionalNumber(specs, ["baths", "bathrooms"])) : "" },
+        ]);
+      default:
+        return technicalSpecItems;
+    }
+  })().filter((item) => item.value.trim());
+
+  const detailSections = (() => {
+    switch (variant) {
+      case "fashion":
+        return [{
+          title: "Fit, fabric, and feel",
+          body: product.description,
+          items: [
+              ...(sizeOptions.length > 0 ? [{ icon: <Ruler className="h-4 w-4" />, label: "Sizes", value: sizeOptions.join(", ") }] : []),
+              ...(colorOptions.length > 0 ? [{ icon: <Sparkles className="h-4 w-4" />, label: "Colors", value: colorOptions.join(", ") }] : []),
+          ],
+        }];
+      case "beauty":
+        return [{
+          title: "Benefits and suitability",
+          body: product.description,
+          items: [
+              { icon: <Sparkles className="h-4 w-4" />, label: "Skin concerns", value: getString(specs, ["skin_concerns", "concerns"], getDisplayableProductType(product.category) || "Merchant-specified concerns") },
+              { icon: <ShieldCheck className="h-4 w-4" />, label: "How to use", value: getString(specs, ["how_to_use"], "Use as directed by the merchant.") },
+            ],
+        }];
+      case "electronics":
+        return [
+          { title: "Technical overview", body: product.description },
+          {
+            title: "What is included",
+            body: "",
+            items: [
+              { icon: <FileText className="h-4 w-4" />, label: "Box contents", value: getString(specs, ["box_contents"], "See merchant listing for included accessories") },
+              ...featureItems.map((item) => ({ icon: <Sparkles className="h-4 w-4" />, label: item.label, value: item.value })),
+            ],
+          },
+        ];
+      case "food":
+        return [{
+          title: "Ingredients and flavor",
+          body: product.description,
+          items: [
+              ...metaItems,
+              { icon: <ShieldCheck className="h-4 w-4" />, label: "Allergy info", value: getString(specs, ["allergy_info"], "Contact the merchant for allergy guidance") },
+            ],
+        }];
+      case "crafts":
+        return [{
+          title: "Craft story",
+          body: product.description,
+          items: [
+              ...metaItems,
+              { icon: <ShieldCheck className="h-4 w-4" />, label: "Care", value: getString(specs, ["care_instructions"], "Follow merchant care instructions for this handmade piece") },
+            ],
+        }];
+      case "inquiry":
+        return [{ title: "Specifications and wholesale details", body: product.description }];
+      case "service":
+      case "booking":
+        return [{
+          title: "What's included",
+          body: product.description,
+          items: [
               ...metaItems,
               { icon: <CalendarDays className="h-4 w-4" />, label: "Packages", value: getString(specs, ["packages", "included_items"], "Packages and scope confirmed with the merchant") },
-            ]} />
-          </>
-        );
+            ],
+        }];
       case "subscription":
-        return (
-          <>
-            <ProductDescription title="Included features" body={product.description} />
-            <ProductMetaList items={[
+        return [
+          {
+            title: "Included features",
+            body: product.description,
+            items: [
               ...metaItems,
               { icon: <Clock3 className="h-4 w-4" />, label: "Activation", value: getString(specs, ["activation_time"], "Merchant-managed activation after checkout") },
               { icon: <FileText className="h-4 w-4" />, label: "Renewal", value: getString(specs, ["renewal_policy"], "See store policies for renewal and cancellation details") },
-            ]} />
-          </>
-        );
+            ],
+          },
+        ];
       case "digital":
-        return (
-          <>
-            <ProductDescription title="Download details" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <Download className="h-4 w-4" />, label: "File size", value: getDigitalFileSize(product) },
-              { icon: <FileText className="h-4 w-4" />, label: "Included files", value: `${getIncludedFileCount(product)} files` },
-            ]} />
-          </>
-        );
+        return [{ title: "Download details", body: product.description }];
       case "hotel_room":
-        return (
-          <>
-            <ProductDescription title="Room details" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <ShieldCheck className="h-4 w-4" />, label: "Amenities", value: getStringArray(specs, ["amenities", "features"]).join(", ") || "Merchant-listed room amenities" },
+        return [
+          { title: "Room details", body: product.description },
+          {
+            title: "Stay policies",
+            body: "",
+            items: [
               { icon: <CalendarDays className="h-4 w-4" />, label: "Cancellation", value: getString(specs, ["cancellation_policy"], "Contact the property for cancellation details") },
-            ]} />
-          </>
-        );
+            ],
+          },
+        ];
       case "property":
-        return (
-          <>
-            <ProductDescription title="Property overview" body={product.description} />
-            <ProductMetaList items={[
-              ...metaItems,
-              { icon: <Users className="h-4 w-4" />, label: "Bedrooms", value: String(getNumber(specs, ["beds", "bedrooms"], Math.max(1, product.sizes.length || 3))) },
-              { icon: <Users className="h-4 w-4" />, label: "Bathrooms", value: String(getNumber(specs, ["baths", "bathrooms"], Math.max(1, product.colors.length || 2))) },
-            ]} />
-          </>
-        );
+        return [{ title: "Property overview", body: product.description }];
       case "single_product":
-        return (
-          <>
-            <ProductDescription title="Feature story" body={product.description} />
-            <ProductMetaList items={[
+        return [{
+          title: "Feature story",
+          body: product.description,
+          items: [
               { icon: <Sparkles className="h-4 w-4" />, label: "Launch status", value: getString(specs, ["launch_status"], "Limited release") },
               { icon: <Clock3 className="h-4 w-4" />, label: "Urgency", value: getString(specs, ["countdown", "preorder"], "Available while the launch window remains open") },
-            ]} />
-          </>
-        );
+            ],
+        }];
       default:
-        return (
-          <>
-            <ProductDescription title="Description" body={product.description} />
-            <ProductMetaList items={metaItems} />
-          </>
-        );
+        return [{
+          title: "Description",
+          body: product.description,
+          items: metaItems,
+        }];
     }
   })();
 
@@ -770,8 +914,14 @@ function GenericProductDetailsContent({
 
   return (
     <>
-      <ProductDetailsShell product={product} side={side}>
-        {detailBody}
+      <ProductDetailsShell product={product} side={side} mode={layoutMode}>
+        {layoutMode === "specs" && primarySpecTableItems.length > 0 ? (
+          <ProductMetaTable title="Key details" items={primarySpecTableItems} />
+        ) : null}
+        <ProductSections sections={detailSections} />
+        {layoutMode !== "specs" && technicalSpecItems.length > 0 ? (
+          <ProductMetaTable title="Specifications" items={technicalSpecItems} />
+        ) : null}
         <ProductPolicies lines={policies} />
       </ProductDetailsShell>
       <ProductReviews productId={product.id} />

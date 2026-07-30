@@ -10,6 +10,8 @@ import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-car
 import { Package, Search, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react";
 import type { Order } from "@/hooks/useOrders";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 
 const STATUS_STEPS = [
   { key: "pending", label: "Order Placed", icon: Clock },
@@ -27,6 +29,8 @@ const TrackOrder = () => {
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const { trackEvent } = useStorefrontAnalytics();
+  const experience = resolveStorefrontOrderExperience(currentStore, order?.items);
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -35,6 +39,15 @@ const TrackOrder = () => {
     const trimmedPhone = phone.trim();
 
     if (!trimmed || !trimmedPhone || !storeId) return;
+
+    trackEvent({
+      eventName: "track_order_search",
+      eventCategory: "support",
+      orderNumber: trimmed,
+      metadata: {
+        source: "track_order_page",
+      },
+    });
 
     setLoading(true);
     setOrder(null);
@@ -52,9 +65,30 @@ const TrackOrder = () => {
 
     if (error || !data) {
       setNotFound(true);
+      trackEvent({
+        eventName: "track_order_result",
+        eventCategory: "support",
+        orderNumber: trimmed,
+        metadata: {
+          source: "track_order_page",
+          success: false,
+        },
+      });
       return;
     }
 
+    trackEvent({
+      eventName: "track_order_result",
+      eventCategory: "support",
+      orderId: data.id,
+      orderNumber: trimmed,
+      value: Number(data.total ?? 0),
+      metadata: {
+        source: "track_order_page",
+        success: true,
+        status: data.status,
+      },
+    });
     setOrder(data as unknown as Order);
   };
 
@@ -78,9 +112,9 @@ const TrackOrder = () => {
             <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
               <Package className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="font-heading text-3xl font-bold text-foreground">Track Your Order</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground">{experience.labels.trackTitle}</h1>
             <p className="mt-2 text-muted-foreground">
-              Enter the order number and phone number used at checkout to see the latest status from {storeName}.
+              {experience.labels.trackDescription} {storeName}.
             </p>
           </div>
 
@@ -122,7 +156,7 @@ const TrackOrder = () => {
               <XCircle className="mx-auto mb-2 h-8 w-8 text-destructive" />
               <p className="font-semibold text-foreground">Order not found</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Double-check the order number and phone number from your confirmation message, then try again.
+                {experience.labels.trackHelper}
               </p>
             </div>
           )}
@@ -199,7 +233,7 @@ const TrackOrder = () => {
                     <div key={index} className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">Option: {getCartVariantDisplayLabel(item.size)} - Qty: {item.quantity}</p>
+                        <p className="text-xs text-muted-foreground">{experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)} - {experience.labels.quantityLabel}: {item.quantity}</p>
                       </div>
                       <p className="text-sm font-semibold text-foreground">BDT {item.price * item.quantity}</p>
                     </div>
@@ -209,19 +243,19 @@ const TrackOrder = () => {
 
               <div className="rounded-lg bg-secondary/40 p-4">
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Subtotal</span><span>BDT {order.subtotal}</span>
+                  <span>{experience.labels.subtotalLabel}</span><span>BDT {order.subtotal}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{isDigitalOnlyCart(order.items ?? []) ? "Digital delivery" : "Delivery"}</span>
-                  <span>{isDigitalOnlyCart(order.items ?? []) ? "Included" : `BDT ${order.delivery_fee}`}</span>
+                  <span>{experience.labels.deliveryLabel}</span>
+                  <span>{isDigitalOnlyCart(order.items ?? []) ? experience.labels.includedFulfillmentLabel : `BDT ${order.delivery_fee}`}</span>
                 </div>
                 <div className="mt-2 flex justify-between border-t border-border pt-2 font-bold text-foreground">
-                  <span>Total</span><span>BDT {order.total}</span>
+                  <span>{experience.labels.totalLabel}</span><span>BDT {order.total}</span>
                 </div>
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Payment: <span className="font-medium capitalize text-foreground">{order.payment_method.replace("_", " ")}</span>
+                {experience.labels.paymentSummaryLabel}: <span className="font-medium capitalize text-foreground">{order.payment_method.replace("_", " ")}</span>
               </p>
             </div>
           )}

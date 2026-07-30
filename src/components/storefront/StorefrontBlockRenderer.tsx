@@ -14,6 +14,7 @@ import { AlertTriangle, BadgeCheck, CreditCard, Headset, Instagram, Play, Shield
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { sanitizeStoreBlockCustomCss, sanitizeStoreBlockCustomHtml } from "@/lib/cms/validation";
 import { storefrontPath } from "@/lib/slug";
 
 function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
@@ -485,6 +486,8 @@ export function StorefrontBlockRenderer({
 
   const customCss = (block.props as any).customCss as Record<string, string> | undefined;
   const blockClass = `custom-block-${block.id}`;
+  const safeCustomHtml = sanitizeStoreBlockCustomHtml(block.customHtml);
+  const safeCustomCss = sanitizeStoreBlockCustomCss(block.customCss);
 
   const renderCustomCss = () => {
     let styleString = "";
@@ -516,8 +519,8 @@ export function StorefrontBlockRenderer({
       }
     }
 
-    if (block.customCss) {
-      styleString += `\n${block.customCss}`;
+    if (safeCustomCss) {
+      styleString += `\n${safeCustomCss}`;
     }
     
     if (!styleString) return null;
@@ -529,7 +532,7 @@ export function StorefrontBlockRenderer({
       {renderCustomCss()}
       <div className={`w-full transition-all duration-200 ${blockClass}`}>
         {renderBlock()}
-        {block.customHtml && <div dangerouslySetInnerHTML={{ __html: block.customHtml }} />}
+        {safeCustomHtml ? <div dangerouslySetInnerHTML={{ __html: safeCustomHtml }} /> : null}
       </div>
     </ErrorBoundary>
   );

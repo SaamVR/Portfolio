@@ -39,7 +39,11 @@ const AdminLogin = () => {
   }, [searchParams]);
   const isSetupRoute = location.pathname === "/admin/setup";
   const showingPlatformSetup = isSetupRoute || mode === "setup";
-  const postLoginPath = platformRole === "admin" ? "/cms-admin" : "/admin";
+  const returnPath = useMemo(() => {
+    const candidate = searchParams.get("next");
+    return candidate && candidate.startsWith("/") ? candidate : null;
+  }, [searchParams]);
+  const postLoginPath = returnPath || (platformRole === "admin" ? "/cms-admin" : "/admin");
 
   const setMode = (nextMode: "setup" | "invite") => {
     const next = new URLSearchParams(searchParams);

@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Package,
   Settings,
-  PanelsTopLeft,
   SquarePen,
   SlidersHorizontal,
   Globe,
@@ -31,6 +30,14 @@ import {
   FilePlus2,
   FileText,
   LayoutTemplate,
+  LineChart,
+  Store,
+  BellRing,
+  HeartPulse,
+  QrCode,
+  NotebookPen,
+  Undo2,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,6 +48,7 @@ import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
+import { getAdminNavigationSections } from "@/lib/admin/admin-navigation";
 
 type SidebarLink = {
   to: string;
@@ -66,6 +74,9 @@ type ActiveStoreMeta = {
   blueprint_id?: string | null;
 };
 
+const isRouteActive = (pathname: string, target: string) =>
+  target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
+
 function shouldShowVirtualShopPage(meta?: ActiveStoreMeta | null) {
   const blueprint = resolveStoreBlueprint(meta?.blueprint_id ?? meta?.store_type ?? "general-catalog");
   return blueprint.businessFamily === "commerce" && blueprint.catalogMode !== "single_product";
@@ -80,11 +91,12 @@ function inferPagePlacement(page: StorePageNavRow) {
   return "Custom page";
 }
 
-const AdminSidebar = () => {
-  const { role, platformRole, user, signOut , activeStoreId} = useAuth();
+const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
+  const { role, platformRole, storeRole, user, signOut , activeStoreId} = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
   const isPlatformAdmin = platformRole === "admin";
+  const isOwner = storeRole === "owner" || isPlatformAdmin;
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const supportUrl = getSupportUrl();
   const supportIsExternal = isExternalSupportUrl(supportUrl);
@@ -103,6 +115,8 @@ const AdminSidebar = () => {
     },
     enabled: Boolean(activeStoreId),
     refetchInterval: 30000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch pending reviews count
@@ -119,6 +133,8 @@ const AdminSidebar = () => {
     },
     enabled: Boolean(activeStoreId),
     refetchInterval: 30000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);
@@ -170,44 +186,24 @@ const AdminSidebar = () => {
         } satisfies StorePageNavRow,
       ]
     : storePages;
-  const navSections: Array<{ title: string; links: SidebarLink[] }> = [
-    {
-      title: "Operations",
-      links: [
-        { to: "/admin", icon: LayoutDashboard, label: "Dashboard", show: true },
-        { to: "/admin/products", icon: Package, label: "Products", show: true },
-        { to: "/admin/orders", icon: ShoppingCart, label: "Orders", show: true },
-        { to: "/admin/messages", icon: Mail, label: "Messages", show: true, badge: unreadCount },
-        { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
-        { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
-        { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
-      ],
-    },
-    {
-      title: "Storefront",
-      links: [
-        { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
-        { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-        { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Editing", show: cmsEnabled, match: ["/admin/page-builder", "/admin/page-builder/basic"] },
-        { to: buildPageBuilderPath("advanced", { storeId: activeStoreId }), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled, match: ["/admin/page-builder/advanced"] },
-        { to: "/admin/templates", icon: LayoutTemplate, label: "Template Gallery", show: cmsEnabled },
-        { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
-        { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
-        { to: withStoreId("/admin/site-settings?tab=domain", activeStoreId), icon: Globe, label: "Domains", show: isAdmin, match: ["/admin/site-settings"] },
-        { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
-      ],
-    },
-    {
-      title: "Admin",
-      links: [
-        { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
-        { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
-        { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
-        { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
-        { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
-      ],
-    },
-  ];
+  const advancedEditingEnabled = cmsEnabled && getFeatureEnabled(entitlementData?.featureMap, "advanced_page_builder", false);
+  const backupEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false);
+  const mediaEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false);
+  const navSections = getAdminNavigationSections({
+    activeStoreId,
+    cmsEnabled,
+    advancedEditingEnabled,
+    backupEnabled,
+    mediaEnabled,
+    isAdmin,
+    isOwner,
+    isPlatformAdmin,
+    compact,
+    unreadCount,
+    pendingReviewsCount,
+    supportUrl,
+    supportIsExternal,
+  });
 
   return (
     <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
@@ -216,7 +212,7 @@ const AdminSidebar = () => {
           Store<span className="text-primary">Admin</span>
         </Link>
         <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          {isAdmin ? "Owner" : "Staff"}
+          {isOwner ? "Owner" : isAdmin ? "Admin" : "Staff"}
         </span>
       </div>
 
@@ -233,7 +229,7 @@ const AdminSidebar = () => {
               {visibleLinks.map((link) => {
                 const active = link.external
                   ? false
-                  : (link.match ?? [link.to]).some((match) => location.pathname === match || location.pathname.startsWith(`${match}/`));
+                  : (link.match ?? [link.to]).some((match) => isRouteActive(location.pathname, match.split("?")[0] || match));
 
                 return (
                   <div key={link.to}>
@@ -277,7 +273,7 @@ const AdminSidebar = () => {
           );
         })}
 
-        {cmsEnabled ? (
+        {cmsEnabled && !compact ? (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2 px-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -329,7 +325,7 @@ const AdminSidebar = () => {
               </div>
             )) : (
               <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-                No pages found yet. Open Advanced Editing to create your first custom page.
+                No custom pages yet. Use Expert Editing only when you need pages beyond the homepage and template sections.
               </div>
             )}
           </div>

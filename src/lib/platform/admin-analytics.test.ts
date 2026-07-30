@@ -67,4 +67,17 @@ describe("platform admin analytics", () => {
     expect(overview.platformGmv).toBe(1900);
     expect(overview.lifecycleRisk).toBe(1);
   });
+
+  it("uses the shared effective-status contract for expired trials", () => {
+    const summaries = buildStorePlatformSummaries({
+      ...input,
+      subscriptions: input.subscriptions.map((subscription) =>
+        subscription.store_id === "store-b"
+          ? { ...subscription, trial_ends_at: "2020-01-01T00:00:00.000Z" }
+          : subscription,
+      ),
+    });
+
+    expect(summaries.find((store) => store.id === "store-b")?.subscriptionStatus).toBe("past_due");
+  });
 });

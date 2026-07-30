@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   Package,
-  PanelsTopLeft,
   SquarePen,
   SlidersHorizontal,
   ShoppingCart,
@@ -22,7 +21,6 @@ import {
   LogOut,
   ArrowLeft,
   Menu,
-  Rocket,
   WandSparkles,
   Images,
   HardDriveDownload,
@@ -30,6 +28,17 @@ import {
   CreditCard,
   HelpCircle,
   Search,
+  LineChart,
+  Store,
+  Globe,
+  Rocket,
+  LayoutTemplate,
+  BellRing,
+  HeartPulse,
+  NotebookPen,
+  QrCode,
+  Undo2,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,12 +56,26 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import StoreSwitcher from "./StoreSwitcher";
+import { getAdminNavigationItems } from "@/lib/admin/admin-navigation";
 
 type AdminMobileNavProps = {
   onOpenCommand: () => void;
+  compact?: boolean;
 };
 
-const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
+type NavLinkItem = {
+  to: string;
+  icon: any;
+  label: string;
+  badge?: number;
+  show?: boolean;
+  external?: boolean;
+};
+
+const isRouteActive = (pathname: string, target: string) =>
+  target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
+
+const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps) => {
   const { role, platformRole, user, signOut , activeStoreId} = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
@@ -95,46 +118,40 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
     refetchInterval: 30000,
   });
 
-  const dockLinks = [
-    { to: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/admin/products", icon: Package, label: "Products" },
-    { to: "/admin/orders", icon: ShoppingCart, label: "Orders" },
-    { to: "/admin/messages", icon: Mail, label: "Messages", badge: unreadCount },
-  ];
+  const advancedEditingEnabled = cmsEnabled && getFeatureEnabled(entitlementData?.featureMap, "advanced_page_builder", false);
+  const backupEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false);
+  const mediaEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false);
 
-  const quickLinks = [
-    { to: "/admin/site-settings", icon: Settings, label: "Settings", show: isAdmin },
-    { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Settings", show: isAdmin },
-    { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-    { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Edit", show: cmsEnabled },
-  ];
+  const allNavItems = getAdminNavigationItems({
+    activeStoreId,
+    cmsEnabled,
+    advancedEditingEnabled,
+    backupEnabled,
+    mediaEnabled,
+    isAdmin,
+    isOwner: isAdmin || isPlatformAdmin,
+    isPlatformAdmin,
+    compact,
+    unreadCount,
+    pendingReviewsCount,
+    supportUrl,
+    supportIsExternal,
+  });
 
-  const commerceLinks = [
-    { to: "/admin/reviews", icon: MessageSquare, label: "Reviews", show: true, badge: pendingReviewsCount },
-    { to: "/admin/coupons", icon: Tag, label: "Coupons", show: true },
-    { to: "/admin/categories", icon: FolderTree, label: "Categories & Types", show: isAdmin },
-    { to: "/admin/billing", icon: CreditCard, label: "Billing & Plan", show: isAdmin },
-  ];
+  const dockLinks: NavLinkItem[] = allNavItems.filter((item) =>
+    ["/admin", "/admin/products", "/admin/orders", buildPageBuilderPath("basic", { storeId: activeStoreId })].includes(item.to),
+  );
 
-  const storefrontLinks = [
-    { to: withStoreId("/admin/site-settings", activeStoreId), icon: Rocket, label: "Store Settings", show: isAdmin },
-    { to: "/admin/onboarding", icon: WandSparkles, label: "Onboarding", show: isAdmin },
-    { to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: SquarePen, label: "Basic Editing", show: cmsEnabled },
-    { to: buildPageBuilderPath("advanced", { storeId: activeStoreId }), icon: SlidersHorizontal, label: "Advanced Editing", show: cmsEnabled },
-    { to: "/admin/media", icon: Images, label: "Media Library", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false) },
-    { to: "/admin/backup", icon: HardDriveDownload, label: "Backup & Import", show: isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false) },
-    { to: "/admin/site-settings", icon: Settings, label: "Site Settings", show: isAdmin },
-  ];
+  const quickLinks: NavLinkItem[] = allNavItems.filter((item) =>
+    ["/admin/launch", "/admin/onboarding", withStoreId("/admin/site-settings", activeStoreId), withStoreId("/admin/site-settings?tab=payment", activeStoreId), "/admin/analytics", "/admin/recovery"].includes(item.to),
+  );
 
-  const adminLinks = [
-    { to: "/admin/invite-codes", icon: KeyRound, label: "Invite Codes", show: isAdmin },
-    { to: "/admin/users", icon: Users, label: "Users", show: isAdmin },
-    { to: "/cms-admin", icon: Shield, label: "CMS Admin", show: isPlatformAdmin },
-    { to: supportUrl, icon: HelpCircle, label: "Help & Support", show: true, external: supportIsExternal },
-  ];
+  const commerceLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "daily_operations" && item.to !== "/admin");
+  const storefrontLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "storefront");
+  const adminLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "platform_settings");
 
-  const renderLinkCard = (link: { to: string; icon: any; label: string; external?: boolean; badge?: number }) => {
-    const active = !link.external && location.pathname === link.to;
+  const renderLinkCard = (link: NavLinkItem) => {
+    const active = !link.external && isRouteActive(location.pathname, link.to.split("?")[0] || link.to);
     const Icon = link.icon;
     return link.external ? (
       <a
@@ -154,6 +171,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
     ) : (
       <Link
         to={link.to}
+        onClick={() => setIsOpen(false)}
         className={cn(
           "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-200",
           active
@@ -177,8 +195,8 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
       {/* Sticky Bottom Dock */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/92 px-3 py-2 backdrop-blur-xl md:hidden pb-safe">
         <div className="flex items-center justify-around">
-          {dockLinks.map((link) => {
-            const active = location.pathname === link.to;
+          {dockLinks.filter((link) => link.show !== false).map((link) => {
+            const active = isRouteActive(location.pathname, link.to.split("?")[0] || link.to);
             const Icon = link.icon;
             return (
               <Link
@@ -190,7 +208,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 )}
               >
                 <Icon className="h-4.5 w-4.5" />
-                <span>{link.label === "Dashboard" ? "Home" : link.label === "Products" ? "Catalog" : link.label === "Messages" ? "Inbox" : link.label}</span>
+                <span>{link.label === "Dashboard" ? "Home" : link.label === "Products" ? "Catalog" : link.label}</span>
                 {link.badge !== undefined && link.badge > 0 && (
                   <span className="absolute -top-0.5 right-2.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                     {link.badge > 99 ? "99+" : link.badge}
@@ -266,7 +284,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Commerce Tools</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Run Store</p>
                   <div className="space-y-2">
                     {commerceLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>
@@ -277,7 +295,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Storefront Setup</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Edit Site</p>
                   <div className="space-y-2">
                     {storefrontLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>
@@ -288,7 +306,7 @@ const AdminMobileNav = ({ onOpenCommand }: AdminMobileNavProps) => {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">People And Access</p>
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Settings</p>
                   <div className="space-y-2">
                     {adminLinks.filter((link) => link.show).map((link) => (
                       <SheetClose asChild key={link.to}>

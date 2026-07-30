@@ -34,6 +34,7 @@ import { useProductsByIds } from "@/hooks/useProducts";
 import { useCart } from "@/context/useCart";
 import { getCartVariantDisplayLabel } from "@/lib/digital-cart";
 import { productUrl, storefrontPath } from "@/lib/slug";
+import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 
 interface Address {
   id: string;
@@ -183,7 +184,7 @@ const ReviewSheet = ({
                 {productName}
               </SheetTitle>
               {sizePurchased && (
-                <p className="text-xs text-muted-foreground">Option: {getCartVariantDisplayLabel(sizePurchased)}</p>
+                <p className="text-xs text-muted-foreground">{resolveStorefrontOrderExperience(currentStore).labels.optionLabel}: {getCartVariantDisplayLabel(sizePurchased)}</p>
               )}
             </div>
           </div>
@@ -401,6 +402,7 @@ const Account = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
   const storeName = currentStore?.name ?? "this store";
+  const experience = resolveStorefrontOrderExperience(currentStore);
   const { user, loading, signOut } = useAuth();
   const { data: orders, isLoading: ordersLoading } = useMyOrders(storeId);
   const { items: wishlistIds } = useWishlist();
@@ -691,10 +693,10 @@ const Account = () => {
               ) : !orders?.length ? (
                 <div className="py-12 text-center">
                   <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
-                  <p className="font-heading text-lg font-semibold text-foreground">No orders yet</p>
+                  <p className="font-heading text-lg font-semibold text-foreground">{experience.labels.orderListEmptyTitle}</p>
                   <p className="text-sm text-muted-foreground mb-4">Orders you place with {storeName} will appear here.</p>
                   <Button asChild variant="outline">
-                    <Link to={storefrontPath("/shop", currentStore?.slug)}>Start Shopping</Link>
+                    <Link to={storefrontPath("/shop", currentStore?.slug)}>{experience.labels.browseLabel}</Link>
                   </Button>
                 </div>
               ) : (
@@ -774,7 +776,7 @@ const Account = () => {
                                             })
                                           }
                                         >
-                                          Write a Review
+                                          {experience.labels.reviewPromptLabel}
                                         </Button>
                                       </>
                                     )}
@@ -784,7 +786,7 @@ const Account = () => {
                             );
                           })}
                           <div className="border-t border-border pt-3 flex items-center justify-between font-heading font-bold text-foreground">
-                            <span>Total: BDT {order.total}</span>
+                            <span>{experience.labels.totalLabel}: BDT {order.total}</span>
                             {isDelivered && (
                               <Button
                                 size="sm"
@@ -792,7 +794,7 @@ const Account = () => {
                                 className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-semibold"
                                 onClick={() => handleReorder(order.items)}
                               >
-                                <ShoppingBag className="h-3.5 w-3.5" /> Reorder
+                                <ShoppingBag className="h-3.5 w-3.5" /> {experience.labels.reorderLabel}
                               </Button>
                             )}
                           </div>

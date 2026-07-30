@@ -27,6 +27,7 @@ import {
   WandSparkles,
   Eye,
   Settings2,
+  HardDriveDownload,
 } from "lucide-react";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -36,6 +37,8 @@ import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { toast } from "sonner";
 import { getEffectiveSubscriptionStatus, getPlanTrialDays, getRemainingTrialDays } from "@/lib/billing/plans";
+import StoreActivityTimeline from "@/components/admin/StoreActivityTimeline";
+import AdminEmptyState from "@/components/admin/AdminEmptyState";
 
 interface OrderRow {
   id: string;
@@ -70,6 +73,14 @@ interface DashboardPlanNotice {
   remainingTrialDays?: number | null;
 }
 
+interface AnalyticsEventRow {
+  event_name: string;
+  visitor_id?: string | null;
+  session_id?: string | null;
+  traffic_source?: string | null;
+  search_query?: string | null;
+}
+
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
   pending_payment: "bg-orange-500/10 text-orange-600 border-orange-500/30",
@@ -93,6 +104,18 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [planNotice, setPlanNotice] = useState<DashboardPlanNotice | null>(null);
+  const [storefrontAnalytics, setStorefrontAnalytics] = useState({
+    visitors: 0,
+    sessions: 0,
+    pageViews: 0,
+    productViews: 0,
+    addToCart: 0,
+    wishlistAdds: 0,
+    checkoutStarts: 0,
+    purchases: 0,
+  });
+  const [topSources, setTopSources] = useState<Array<{ label: string; value: number }>>([]);
+  const [topSearches, setTopSearches] = useState<Array<{ label: string; value: number }>>([]);
   const [trialPlanDismissed, setTrialPlanDismissed] = useState(false);
   const [setupCoachDismissed, setSetupCoachDismissed] = useState(false);
   const [storeHealth, setStoreHealth] = useState<StoreReadinessState>({
@@ -110,6 +133,9 @@ const Dashboard = () => {
       setChartData([]);
       setStatusData([]);
       setPlanNotice(null);
+      setStorefrontAnalytics({ visitors: 0, sessions: 0, pageViews: 0, productViews: 0, addToCart: 0, wishlistAdds: 0, checkoutStarts: 0, purchases: 0 });
+      setTopSources([]);
+      setTopSearches([]);
       setStoreHealth({ score: 0, items: [] });
       return;
     }
@@ -127,6 +153,7 @@ const Dashboard = () => {
           { data: siteSettingsRows },
           { data: subscription },
           { data: plans },
+          { data: analyticsEvents },
           { count: unreadMessages },
           { count: pendingReviews },
         ] = await Promise.all([
@@ -138,6 +165,7 @@ const Dashboard = () => {
           supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "whatsapp_support", "contact_page"]),
           supabase.from("store_subscriptions").select("plan_id, status, trial_ends_at").eq("store_id", activeStoreId as string).maybeSingle(),
           supabase.from("cms_plans").select("id, name, description, monthly_price, trial_days").eq("is_active", true).order("sort_order"),
+          (supabase as any).from("store_analytics_events").select("event_name, visitor_id, session_id, traffic_source, search_query").eq("store_id", activeStoreId as string).gte("event_timestamp", new Date(Date.now() - (1000 * 60 * 60 * 24 * 30)).toISOString()).limit(3000),
           supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("is_read", false),
           supabase.from("product_reviews").select("*", { count: "exact", head: true }).eq("store_id", activeStoreId as string).eq("status", "pending"),
         ]);
@@ -223,6 +251,39 @@ const Dashboard = () => {
           unreadMessages: unreadMessages ?? 0,
           pendingReviews: pendingReviews ?? 0,
         });
+        const analyticsRows = (analyticsEvents ?? []) as AnalyticsEventRow[];
+        const sourceCounts = new Map<string, number>();
+        const searchCounts = new Map<string, number>();
+        analyticsRows.forEach((event) => {
+          const source = (event.traffic_source || "direct").trim() || "direct";
+          sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
+          const search = event.search_query?.trim().toLowerCase();
+          if (search) {
+            searchCounts.set(search, (searchCounts.get(search) ?? 0) + 1);
+          }
+        });
+        setStorefrontAnalytics({
+          visitors: new Set(analyticsRows.map((event) => event.visitor_id).filter(Boolean)).size,
+          sessions: new Set(analyticsRows.map((event) => event.session_id).filter(Boolean)).size,
+          pageViews: analyticsRows.filter((event) => event.event_name === "page_view").length,
+          productViews: analyticsRows.filter((event) => event.event_name === "view_item").length,
+          addToCart: analyticsRows.filter((event) => event.event_name === "add_to_cart").length,
+          wishlistAdds: analyticsRows.filter((event) => event.event_name === "add_to_wishlist").length,
+          checkoutStarts: analyticsRows.filter((event) => event.event_name === "begin_checkout").length,
+          purchases: analyticsRows.filter((event) => event.event_name === "purchase").length,
+        });
+        setTopSources(
+          [...sourceCounts.entries()]
+            .sort((left, right) => right[1] - left[1])
+            .slice(0, 5)
+            .map(([label, value]) => ({ label, value })),
+        );
+        setTopSearches(
+          [...searchCounts.entries()]
+            .sort((left, right) => right[1] - left[1])
+            .slice(0, 5)
+            .map(([label, value]) => ({ label, value })),
+        );
         const paymentConfigured = Boolean(
           paymentSettings?.cod_enabled ||
           paymentSettings?.bkash_enabled ||
@@ -314,8 +375,8 @@ const Dashboard = () => {
       label: "Complete onboarding review",
       done: storeHealth.score >= 20,
       href: `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId ?? "")}`,
-      action: "Review your store basics, launch copy, and starter setup flow.",
-      cta: "Open onboarding",
+      action: "Review your store basics, launch copy, and guided setup progress.",
+      cta: "Open guided setup",
       icon: WandSparkles,
     },
     {
@@ -324,7 +385,7 @@ const Dashboard = () => {
       done: pageStats.visibleHomepageBlocks >= 3,
       href: buildPageBuilderPath("basic", { storeId: activeStoreId }),
       action: "Guide shoppers through hero, trust, FAQ, and key selling sections.",
-      cta: "Open Basic Editing",
+      cta: "Edit storefront",
       icon: PanelsTopLeft,
     },
     {
@@ -347,6 +408,88 @@ const Dashboard = () => {
     },
   ];
   const nextWizardStep = setupWizardSteps.find((step) => !step.done) ?? null;
+  const merchantWorkspaces = [
+    {
+      label: "Edit storefront",
+      description: "Update homepage sections, hero content, and selling blocks without digging through technical settings.",
+      to: buildPageBuilderPath("basic", { storeId: activeStoreId }),
+      icon: PanelsTopLeft,
+      show: role === "admin",
+    },
+    {
+      label: "Store profile",
+      description: "Manage branding, contact details, business info, and key site identity settings.",
+      to: withStoreId("/admin/site-settings", activeStoreId),
+      icon: Settings2,
+      show: role === "admin",
+    },
+    {
+      label: "Payments and checkout",
+      description: "Set payment methods, delivery expectations, and launch-critical purchase settings.",
+      to: withStoreId("/admin/site-settings?tab=payment", activeStoreId),
+      icon: CreditCard,
+      show: role === "admin",
+    },
+  ].filter((workspace) => workspace.show);
+
+  const quickActions = [
+    {
+      label: "Launch readiness",
+      description: "See blockers, refinements, and go-live confidence in one checklist.",
+      to: "/admin/launch",
+      icon: Sparkles,
+      show: role === "admin",
+    },
+    {
+      label: "Notification center",
+      description: "Review recent sends, failures, and enabled receipt or alert channels.",
+      to: "/admin/notifications",
+      icon: Mail,
+      show: role === "admin",
+    },
+    {
+      label: "Diagnostics",
+      description: "Check domain, billing, payment, and operator health without digging around.",
+      to: "/admin/diagnostics",
+      icon: Settings2,
+      show: role === "admin",
+    },
+    {
+      label: "Manage products",
+      description: "Add products, prices, inventory, variants, and category metadata.",
+      to: "/admin/products",
+      icon: Package,
+      show: true,
+    },
+    {
+      label: "Process orders",
+      description: "Review incoming orders, update statuses, and track category-specific order flows.",
+      to: "/admin/orders",
+      icon: ShoppingCart,
+      show: true,
+    },
+    {
+      label: "View messages",
+      description: "Respond to customer questions and follow up on contact or inquiry leads.",
+      to: "/admin/messages",
+      icon: Mail,
+      show: true,
+    },
+    {
+      label: "Reopen onboarding",
+      description: "Use guided setup again when you want help polishing launch details.",
+      to: "/admin/onboarding",
+      icon: WandSparkles,
+      show: role === "admin",
+    },
+    {
+      label: "More tools",
+      description: "Open deeper editing and recovery tools only when the guided path is not enough.",
+      to: "/admin/site-settings",
+      icon: HardDriveDownload,
+      show: role === "admin",
+    },
+  ].filter((action) => action.show);
 
   const statCards = [
     { title: "Total Orders", value: orderStats.total, icon: ShoppingCart, color: "text-primary" },
@@ -385,7 +528,7 @@ const Dashboard = () => {
               <div>
                 <CardTitle>Select or Create a Store</CardTitle>
                 <CardDescription>
-                  The dashboard, Page Builder, and Site Settings all respond to the active store in the header switcher.
+                  The dashboard, storefront editor, and Site Settings all respond to the active store in the header switcher.
                 </CardDescription>
               </div>
             </div>
@@ -398,7 +541,7 @@ const Dashboard = () => {
               </div>
               <div className="rounded-xl border border-border bg-background/40 p-4">
                 <p className="text-sm font-medium text-foreground">Create a new store</p>
-                <p className="mt-1 text-xs text-muted-foreground">Onboarding seeds the store profile, blueprint, starter pages, and plan-aware defaults.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Guided Setup prepares the store profile, template defaults, starter pages, and launch-ready basics.</p>
               </div>
               <div className="rounded-xl border border-border bg-background/40 p-4">
                 <p className="text-sm font-medium text-foreground">Return here for operations</p>
@@ -424,7 +567,7 @@ const Dashboard = () => {
       <div>
         <h1 className="font-heading text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground">
-          {role === "admin" ? "Full business overview and analytics" : "Product management access"}
+          {role === "admin" ? "Daily store operations, storefront editing, and launch health in one place." : "Product management access"}
         </p>
       </div>
 
@@ -621,8 +764,92 @@ const Dashboard = () => {
               </div>
             </div>
           ))}
-        </CardContent>
+      </CardContent>
       </Card>
+
+      {merchantWorkspaces.length > 0 ? (
+        <Card className="border-border bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Merchant Workspace</CardTitle>
+            <CardDescription>The most important places for editing and managing the site without extra admin noise.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-3">
+            {merchantWorkspaces.map((workspace) => (
+              <Link
+                key={workspace.label}
+                to={workspace.to}
+                className="rounded-xl border border-border bg-background/50 p-5 transition-colors hover:border-primary/40 hover:bg-background"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <workspace.icon className="h-5 w-5" />
+                </div>
+                <p className="mt-4 text-sm font-semibold text-foreground">{workspace.label}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{workspace.description}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                  Open <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="col-span-2 border-border bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Storefront Analytics</CardTitle>
+            <CardDescription>Last 30 days of storefront behavior from visitors and shoppers.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-4">
+            {[
+              { label: "Visitors", value: storefrontAnalytics.visitors },
+              { label: "Sessions", value: storefrontAnalytics.sessions },
+              { label: "Page Views", value: storefrontAnalytics.pageViews },
+              { label: "Product Views", value: storefrontAnalytics.productViews },
+              { label: "Add to Cart", value: storefrontAnalytics.addToCart },
+              { label: "Wishlist Adds", value: storefrontAnalytics.wishlistAdds },
+              { label: "Checkout Starts", value: storefrontAnalytics.checkoutStarts },
+              { label: "Purchases", value: storefrontAnalytics.purchases },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-border bg-background/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                <p className="mt-2 font-heading text-2xl font-bold text-foreground">{item.value}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Discovery Signals</CardTitle>
+            <CardDescription>Where visitors came from and what they searched.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Traffic Sources</p>
+              <div className="space-y-2">
+                {topSources.length > 0 ? topSources.map((source) => (
+                  <div key={source.label} className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">{source.label}</span>
+                    <span className="text-muted-foreground">{source.value}</span>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">No traffic-source data yet.</p>}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Searches</p>
+              <div className="space-y-2">
+                {topSearches.length > 0 ? topSearches.map((search) => (
+                  <div key={search.label} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-foreground">{search.label}</span>
+                    <span className="text-muted-foreground">{search.value}</span>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">No storefront search data yet.</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Analytics Charts */}
       {advancedAnalyticsEnabled ? (
@@ -712,70 +939,81 @@ const Dashboard = () => {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Quick actions */}
         <div className="grid gap-4 lg:col-span-1">
-          <h2 className="font-heading text-xl font-bold text-foreground">Quick Actions</h2>
-          {[
-            { label: "Manage Products", to: "/admin/products", icon: Package },
-            { label: "View Orders", to: "/admin/orders", icon: ShoppingCart },
-            { label: "Onboarding", to: "/admin/onboarding", icon: PanelsTopLeft },
-            { label: "Basic Editing", to: buildPageBuilderPath("basic", { storeId: activeStoreId }), icon: PanelsTopLeft, adminOnly: true },
-            { label: "Site Settings", to: "/admin/site-settings", icon: TrendingUp, adminOnly: true },
-          ]
-            .filter((a) => !a.adminOnly || role === "admin")
-            .map((action) => (
+          <div>
+            <h2 className="font-heading text-xl font-bold text-foreground">Quick Actions</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Shortcuts for the tasks merchants usually need during the day.</p>
+          </div>
+          {quickActions.map((action) => (
               <Link
                 key={action.to}
                 to={action.to}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card/50 backdrop-blur-sm p-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary hover:border-primary/30"
+                className="flex items-start gap-3 rounded-lg border border-border bg-card/50 p-4 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/60"
               >
                 <div className="p-2 rounded-md bg-primary/10">
                   <action.icon className="h-4 w-4 text-primary" />
                 </div>
-                {action.label}
+                <div className="min-w-0 flex-1">
+                  <p>{action.label}</p>
+                  <p className="mt-1 text-xs font-normal leading-5 text-muted-foreground">{action.description}</p>
+                </div>
                 <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
               </Link>
             ))}
         </div>
 
-        {/* Recent orders */}
-        <Card className="col-span-2 border-border bg-card/50 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xl">Recent Orders</CardTitle>
-            <Link to="/admin/orders" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentOrders.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No orders yet</p>
-            ) : (
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm font-bold text-foreground">
-                          {order.order_number}
-                        </span>
-                        <Badge variant="outline" className={statusColors[order.status] || "border-border text-muted-foreground"}>
-                          {order.status}
-                        </Badge>
+        <div className="col-span-2 grid gap-6">
+          <StoreActivityTimeline storeId={activeStoreId} />
+
+          <Card className="border-border bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl">Recent Orders</CardTitle>
+              <Link to="/admin/orders" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {recentOrders.length === 0 ? (
+                <AdminEmptyState
+                  icon={ShoppingCart}
+                  title="No orders yet"
+                  description="This store has not recorded its first order yet."
+                  helper="Once shoppers begin placing orders, this becomes the fastest place to see new purchase activity."
+                  actions={[
+                    { label: "Open launch readiness", href: `/admin/launch?storeId=${encodeURIComponent(activeStoreId)}` },
+                    { label: "Open storefront editor", href: buildPageBuilderPath("basic", { storeId: activeStoreId }), variant: "outline" },
+                  ]}
+                  compact
+                />
+              ) : (
+                <div className="space-y-3">
+                  {recentOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-bold text-foreground">
+                            {order.order_number}
+                          </span>
+                          <Badge variant="outline" className={statusColors[order.status] || "border-border text-muted-foreground"}>
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{order.customer_name}</span> - {formatDate(order.created_at)}
+                        </p>
                       </div>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{order.customer_name}</span> - {formatDate(order.created_at)}
-                      </p>
+                      <span className="ml-4 whitespace-nowrap font-heading text-lg font-bold text-primary">
+                        BDT {order.total}
+                      </span>
                     </div>
-                    <span className="ml-4 whitespace-nowrap font-heading text-lg font-bold text-primary">
-                      BDT {order.total}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

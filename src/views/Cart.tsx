@@ -1,4 +1,5 @@
 import { Link } from "@/lib/react-router-dom-shim";
+import { useEffect, useRef } from "react";
 import { Minus, Plus, Trash2, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -9,6 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { storefrontPath } from "@/lib/slug";
+import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
+import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 
 interface DeliverySettings {
   enabled: boolean;
@@ -34,6 +38,9 @@ const Cart = () => {
   const deliveryData = fetchedDeliveryData ?? preloadedDeliverySettings;
   const deliveryLoading = isDeliverySettingsLoading && !preloadedDeliverySettings;
   const digitalOnlyCart = isDigitalOnlyCart(cartItems);
+  const experience = resolveStorefrontOrderExperience(currentStore, cartItems);
+  const { trackEvent, visitorId, sessionId } = useStorefrontAnalytics();
+  const trackedCartViewRef = useRef("");
 
   const deliveryFee = (() => {
     if (digitalOnlyCart) return 0;
@@ -46,6 +53,54 @@ const Cart = () => {
   const isFreeDelivery = !digitalOnlyCart && deliveryData?.enabled && totalPrice >= (deliveryData?.free_threshold ?? 2000);
   const amountToFreeDelivery = deliveryData ? Math.max(0, deliveryData.free_threshold - totalPrice) : 0;
   const LayoutWrapper = cartStoreId ? StorefrontLayout : Layout;
+
+  useEffect(() => {
+    if (!cartStoreId || cartItems.length === 0) return;
+    const snapshot = cartItems.map((item) => `${item.productId}:${item.quantity}:${item.size}`).join("|");
+    if (trackedCartViewRef.current === snapshot) return;
+    trackedCartViewRef.current = snapshot;
+
+    trackEvent({
+      eventName: "view_cart",
+      eventCategory: "commerce",
+      quantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+      value: grandTotal,
+      metadata: {
+        productIds: cartItems.map((item) => item.productId),
+        itemCount: cartItems.length,
+        storeId: cartStoreId,
+      },
+    });
+  }, [cartItems, cartStoreId, grandTotal, trackEvent]);
+
+  useEffect(() => {
+    if (!cartStoreId || cartItems.length === 0 || !visitorId || !sessionId) return;
+
+    const timer = window.setTimeout(() => {
+      void fetch("/api/cart-recovery/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: cartStoreId,
+          visitorId,
+          sessionId,
+          recoveryStage: "cart",
+          contactCaptureSource: "cart",
+          contactConsentStatus: readRecoveryConsentStatus(cartStoreId),
+          cartSnapshot: buildRecoveryCartSnapshot(cartItems),
+          cartValue: grandTotal,
+          itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+          metadata: {
+            storeSlug: currentStoreSlug ?? null,
+            pagePath: typeof window !== "undefined" ? window.location.pathname : "/cart",
+          },
+        }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [cartItems, cartStoreId, currentStoreSlug, grandTotal, sessionId, visitorId]);
 
   if (!cartStoreId && items.length > 0) {
     return (
@@ -75,13 +130,13 @@ const Cart = () => {
         <SEOHead title="Cart" description="Review your shopping cart." noindex />
         <div className="flex min-h-[70vh] items-center justify-center">
           <div className="text-center">
-            <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">Your cart is empty</h1>
-            <p className="mb-8 text-muted-foreground">Browse {currentStoreName} and save a few items to get started.</p>
+            <h1 className="mb-4 font-heading text-2xl font-bold text-foreground">{experience.labels.cartEmptyTitle}</h1>
+            <p className="mb-8 text-muted-foreground">Browse {currentStoreName} and {experience.labels.cartEmptyDescription.toLowerCase()}</p>
             <Link
               to={storefrontPath("/shop", currentStoreSlug)}
               className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
-              Browse Shop
+              {experience.labels.browseLabel}
             </Link>
           </div>
         </div>
@@ -93,7 +148,7 @@ const Cart = () => {
     <LayoutWrapper>
       <SEOHead title="Cart" description="Review your shopping cart." noindex />
       <div className="container mx-auto px-4 py-12">
-        <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">Your Cart</h1>
+        <h1 className="mb-10 font-heading text-3xl font-bold text-foreground">{experience.labels.cartTitle}</h1>
         {hasMixedStoreItems ? (
           <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
             Your browser currently has items from more than one store. This page is showing only the active storefront items for a safe checkout.
@@ -108,7 +163,7 @@ const Cart = () => {
                   <div>
                     <h3 className="font-heading text-sm font-semibold text-foreground">{item.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                      {digitalOnlyCart ? "License" : "Size"}: {getCartVariantDisplayLabel(item.size)}
+                      {experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)}
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
@@ -144,20 +199,20 @@ const Cart = () => {
           </div>
 
           <div className="h-fit rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-6 font-heading text-lg font-bold text-foreground">Order Summary</h2>
+            <h2 className="mb-6 font-heading text-lg font-bold text-foreground">{experience.labels.summaryTitle}</h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
+                <span>{experience.labels.subtotalLabel}</span>
                 <span>BDT {totalPrice}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>{digitalOnlyCart ? "Digital delivery" : "Delivery"}</span>
+                <span>{experience.labels.deliveryLabel}</span>
                 {deliveryLoading ? (
                   <Skeleton className="h-4 w-12" />
                 ) : digitalOnlyCart ? (
-                  <span data-testid="cart-delivery-total" className="font-medium text-primary">Included</span>
+                  <span data-testid="cart-delivery-total" className="font-medium text-primary">{experience.labels.includedFulfillmentLabel}</span>
                 ) : isFreeDelivery ? (
-                  <span data-testid="cart-delivery-total" className="font-medium text-primary">Free</span>
+                  <span data-testid="cart-delivery-total" className="font-medium text-primary">{experience.labels.freeDeliveryLabel}</span>
                 ) : (
                   <span data-testid="cart-delivery-total">BDT {deliveryFee}</span>
                 )}
@@ -166,7 +221,7 @@ const Cart = () => {
               {!digitalOnlyCart && !deliveryLoading && deliveryData?.enabled && !isFreeDelivery && amountToFreeDelivery > 0 && (
                 <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                   <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Add <strong>BDT {amountToFreeDelivery}</strong> more for free delivery!</span>
+                  <span>Add <strong>BDT {amountToFreeDelivery}</strong> more for free delivery.</span>
                 </div>
               )}
 
@@ -184,9 +239,9 @@ const Cart = () => {
                 </div>
               )}
 
-              <div className="border-t border-border pt-3">
+                <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
-                  <span>Total</span>
+                  <span>{experience.labels.totalLabel}</span>
                   {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span data-testid="cart-grand-total">BDT {grandTotal}</span>}
                 </div>
               </div>
@@ -195,13 +250,13 @@ const Cart = () => {
               to={storefrontPath("/checkout", currentStoreSlug)}
               className="mt-6 block w-full rounded-md bg-primary py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
             >
-              Proceed to Checkout
+              {experience.labels.checkoutTitle}
             </Link>
             <Link
               to={storefrontPath("/shop", currentStoreSlug)}
               className="mt-3 block w-full rounded-md border border-border py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
             >
-              Continue Shopping
+              {experience.labels.continueBrowsingLabel}
             </Link>
           </div>
         </div>

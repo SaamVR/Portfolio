@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +21,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections, type BasicFlowSectionId } from "@/lib/cms/storefront-editor-registry";
+import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -33,6 +36,7 @@ interface BasicModeEditorProps {
   updateThemePackage: (packageId: string) => void;
   updateThemeMode: (mode: "light" | "dark") => void;
   updateFont: (target: "heading" | "body", fontFamily: string) => void;
+  updateThemeScale: (target: "radius" | "density", value: number) => void;
   updateThemeAesthetic: (aesthetic: "minimal" | "glassmorphism" | "fluid" | "brutalist" | "neumorphism" | "editorial" | "retro" | "artisan" | "dark-luxury" | "playful-pop") => void;
   updateThemeEffect: (effectKey: "scrollReveals" | "hoverEffects" | "parallax" | "intensity", value: any) => void;
   selectPage: (pageId: string) => void;
@@ -66,28 +70,6 @@ const vibeCards: Array<{
   { id: "playful-pop", label: "Pop", detail: "Bright, cheerful, energetic.", heading: "Montserrat", body: "Nunito", swatches: ["#EC4899", "#38BDF8", "#FFF7FB"] },
 ];
 
-const layoutVariantOptions: Record<string, Array<{ id: string; label: string; guidance: string }>> = {
-  hero: [
-    { id: "full-bleed", label: "Full Bleed", guidance: "Best when one strong image should sell the first impression." },
-    { id: "split", label: "Split", guidance: "Best when copy and product media need equal attention." },
-    { id: "centered", label: "Centered", guidance: "Best for simple premium brands with one focused CTA." },
-    { id: "editorial", label: "Editorial", guidance: "Best for fashion, lookbooks, and story-led stores." },
-  ],
-  "featured-products": [
-    { id: "2-col", label: "2 Columns", guidance: "Best for premium products that need bigger cards." },
-    { id: "3-col", label: "3 Columns", guidance: "Best balanced grid for most stores." },
-    { id: "4-col", label: "4 Columns", guidance: "Best for larger catalogs and quick scanning." },
-    { id: "3-col-sidebar-left", label: "Left Filters", guidance: "Best when shoppers need categories or filters visible." },
-    { id: "3-col-sidebar-right", label: "Right Filters", guidance: "Best when product cards should stay visually first." },
-  ],
-  "category-showcase": [
-    { id: "cards", label: "Cards", guidance: "Best for clear category discovery." },
-    { id: "carousel", label: "Carousel", guidance: "Best when mobile browsing matters most." },
-    { id: "masonry", label: "Masonry", guidance: "Best for visual brands with varied photos." },
-    { id: "compact-list", label: "Compact List", guidance: "Best when categories are practical, not visual." },
-  ],
-};
-
 const storeFlowSlugs = new Set(["/shop", "/product", "/cart", "/checkout", "/account", "/wishlist", "/order-success", "/track-order"]);
 const systemSlugs = new Set(["/admin", "/auth", "/bkash", "/cms-admin"]);
 
@@ -105,6 +87,19 @@ function getPageGroup(page: StorePage): "content" | "store-flow" | "system" {
 
 function BlockSkeletonPreview({ type, variant }: { type: string; variant?: string }) {
   if (type === "hero" && variant) {
+    if (variant === "full-bleed") {
+      return (
+        <div className="relative h-full w-full overflow-hidden rounded-sm bg-muted-foreground/15">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          <div className="absolute inset-x-2 bottom-2 flex flex-col gap-1">
+            <div className="h-2 w-3/5 rounded-sm bg-background/80" />
+            <div className="h-1.5 w-2/5 rounded-sm bg-background/60" />
+            <div className="mt-1 h-2 w-1/4 rounded-sm bg-primary/45" />
+          </div>
+        </div>
+      );
+    }
+
     if (variant === "split") {
       return (
         <div className="grid h-full w-full grid-cols-2 gap-1 p-2">
@@ -148,8 +143,9 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
       <div className={`grid h-full flex-1 gap-1 ${columns === 2 ? "grid-cols-2" : columns === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
         {Array.from({ length: columns }).map((_, index) => (
           <div key={index} className="flex flex-col gap-1">
-            <div className="h-4 rounded-sm bg-muted-foreground/20" />
+            <div className="h-5 rounded-sm bg-muted-foreground/20" />
             <div className="h-1 rounded-sm bg-muted-foreground/30" />
+            <div className="h-1 w-2/3 rounded-sm bg-primary/20" />
           </div>
         ))}
       </div>
@@ -214,7 +210,10 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
     case "promo-banner":
       return (
         <div className="w-full h-full flex items-center justify-center p-2">
-          <div className="w-full h-4 bg-primary/20 rounded-sm border border-primary/30"></div>
+          <div className="flex w-full items-center justify-between gap-2 rounded-sm border border-primary/30 bg-primary/15 px-2 py-1.5">
+            <div className="h-1.5 w-2/3 rounded-sm bg-primary/25" />
+            <div className="h-3 w-10 rounded-full bg-background/80" />
+          </div>
         </div>
       );
     case "featured-products":
@@ -238,6 +237,78 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
           <div className="w-4/6 h-1.5 bg-muted-foreground/20 rounded-sm"></div>
         </div>
       );
+    case "trust-badges":
+      return (
+        <div className="grid h-full w-full grid-cols-3 gap-1 p-2">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="flex flex-col items-center justify-center gap-1 rounded-sm bg-muted-foreground/10 p-1.5">
+              <div className="h-3 w-3 rounded-full bg-primary/25" />
+              <div className="h-1 w-8 rounded-sm bg-muted-foreground/30" />
+            </div>
+          ))}
+        </div>
+      );
+    case "testimonials":
+      return (
+        <div className="grid h-full w-full grid-cols-2 gap-1 p-2">
+          {[1, 2].map((item) => (
+            <div key={item} className="rounded-sm bg-muted-foreground/10 p-1.5">
+              <div className="mb-1 flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <div key={star} className="h-1 w-1 rounded-full bg-primary/25" />
+                ))}
+              </div>
+              <div className="h-1.5 w-full rounded-sm bg-muted-foreground/25" />
+              <div className="mt-1 h-1.5 w-4/5 rounded-sm bg-muted-foreground/20" />
+              <div className="mt-2 h-1 w-1/3 rounded-sm bg-primary/20" />
+            </div>
+          ))}
+        </div>
+      );
+    case "countdown":
+      return (
+        <div className="flex h-full w-full flex-col justify-center gap-2 p-2">
+          <div className="h-2 w-2/3 rounded-sm bg-muted-foreground/30" />
+          <div className="grid grid-cols-4 gap-1">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="rounded-sm bg-primary/15 p-1.5">
+                <div className="h-2 rounded-sm bg-primary/25" />
+                <div className="mt-1 h-1 rounded-sm bg-muted-foreground/20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "social-feed":
+      return (
+        <div className="grid h-full w-full grid-cols-3 gap-1 p-2">
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <div key={item} className="rounded-sm bg-muted-foreground/20" />
+          ))}
+        </div>
+      );
+    case "video-reel":
+      return (
+        <div className="relative h-full w-full p-2">
+          <div className="h-full rounded-sm bg-muted-foreground/20" />
+          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background/85 shadow-sm">
+              <div className="ml-0.5 h-0 w-0 border-y-[5px] border-y-transparent border-l-[8px] border-l-primary/70" />
+            </div>
+          </div>
+        </div>
+      );
+    case "recently-viewed":
+      return (
+        <div className="flex h-full w-full gap-1 p-2">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="min-w-0 flex-1 rounded-sm bg-muted-foreground/15 p-1">
+              <div className="h-4 rounded-sm bg-muted-foreground/20" />
+              <div className="mt-1 h-1 rounded-sm bg-muted-foreground/25" />
+            </div>
+          ))}
+        </div>
+      );
     default:
       return (
         <div className="w-full h-full border-2 border-dashed border-muted-foreground/20 rounded-md flex flex-col gap-1 items-center justify-center">
@@ -245,6 +316,56 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
         </div>
       );
   }
+}
+
+function getVariantFocusLabel(type: string, variantId: string) {
+  if (type === "hero") {
+    switch (variantId) {
+      case "full-bleed":
+        return "Image-led";
+      case "split":
+        return "Balanced";
+      case "centered":
+        return "Message-led";
+      case "editorial":
+        return "Story-led";
+      default:
+        return "Guided";
+    }
+  }
+
+  if (type === "featured-products") {
+    switch (variantId) {
+      case "2-col":
+        return "Premium";
+      case "3-col":
+        return "Balanced";
+      case "4-col":
+        return "Dense";
+      case "3-col-sidebar-left":
+      case "3-col-sidebar-right":
+        return "Filter-ready";
+      default:
+        return "Catalog";
+    }
+  }
+
+  if (type === "category-showcase") {
+    switch (variantId) {
+      case "cards":
+        return "Clear";
+      case "carousel":
+        return "Swipe";
+      case "masonry":
+        return "Visual";
+      case "compact-list":
+        return "Practical";
+      default:
+        return "Guide";
+    }
+  }
+
+  return "Layout";
 }
 
 type StoreFlowSettings = {
@@ -318,7 +439,7 @@ const defaultFlowSettings: StoreFlowSettings = {
   },
 };
 
-function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
+function BasicStoreFlowSettingsPanel({ storeId, templateId }: { storeId: string; templateId: StorefrontTemplateId }) {
   const queryClient = useQueryClient();
   const { data: storefrontProfile } = useSiteSettings<StoreFlowSettings["storefront_profile"]>("storefront_profile", storeId);
   const { data: paymentSettings } = useSiteSettings<StoreFlowSettings["payment_settings"]>("payment_settings", storeId);
@@ -328,6 +449,10 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
   const [settings, setSettings] = useState<StoreFlowSettings>(defaultFlowSettings);
   const [saving, setSaving] = useState<keyof StoreFlowSettings | null>(null);
   const dirtySettingKeysRef = useRef<Set<keyof StoreFlowSettings>>(new Set());
+  const flowSections = resolveBasicFlowSections(templateId);
+  const sectionLookup = new Map<BasicFlowSectionId, ReturnType<typeof resolveBasicFlowSections>[number]>(
+    flowSections.map((section) => [section.id, section]),
+  );
 
   useEffect(() => {
     setSettings((current) => {
@@ -363,6 +488,9 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
       ...current,
       [key]: {
         ...current[key],
+        ...(key === "delivery_settings" && field !== "enabled"
+          ? { enabled: true }
+          : {}),
         [field]: value,
       },
     }));
@@ -403,16 +531,18 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
   return (
     <div data-testid="basic-flow-settings-panel" className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
       <div>
-        <p className="text-sm font-semibold text-foreground">Store Flow Settings</p>
+        <p className="text-sm font-semibold text-foreground">Shopping Experience Settings</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Manage the shopping pages that Basic Mode should guide, not block-edit: Shop, Product Detail, Cart, Checkout, and Account/support.
+          Adjust the buying experience here without editing technical page structure: shop, product page, cart, checkout, and support.
         </p>
       </div>
 
       <div className="grid gap-3">
+        {sectionLookup.get("catalog")?.visible ? (
         <details data-testid="basic-flow-panel-shop" className="rounded-lg border border-border bg-card p-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Shop and Product Detail</summary>
+          <summary className="cursor-pointer text-sm font-medium text-foreground">{sectionLookup.get("catalog")?.title}</summary>
           <div className="mt-4 grid gap-3">
+            <p className="text-xs leading-5 text-muted-foreground">{sectionLookup.get("catalog")?.description}</p>
             <div className="grid gap-1.5">
               <Label>Product Visibility</Label>
               <select
@@ -449,10 +579,13 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
             </div>
           </div>
         </details>
+        ) : null}
 
+        {sectionLookup.get("delivery")?.visible ? (
         <details data-testid="basic-flow-panel-delivery" className="rounded-lg border border-border bg-card p-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Cart and Delivery</summary>
+          <summary className="cursor-pointer text-sm font-medium text-foreground">{sectionLookup.get("delivery")?.title}</summary>
           <div className="mt-4 grid gap-3">
+            <p className="text-xs leading-5 text-muted-foreground">{sectionLookup.get("delivery")?.description}</p>
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
               <Label>Enable delivery fee</Label>
               <Switch
@@ -514,10 +647,13 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
             <SaveFlowButton settingKey="delivery_settings" />
           </div>
         </details>
+        ) : null}
 
+        {sectionLookup.get("checkout")?.visible ? (
         <details data-testid="basic-flow-panel-checkout" className="rounded-lg border border-border bg-card p-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Checkout and Payment</summary>
+          <summary className="cursor-pointer text-sm font-medium text-foreground">{sectionLookup.get("checkout")?.title}</summary>
           <div className="mt-4 grid gap-3">
+            <p className="text-xs leading-5 text-muted-foreground">{sectionLookup.get("checkout")?.description}</p>
             <div className="grid gap-1.5">
               <Label>Checkout Mode</Label>
               <select
@@ -582,10 +718,13 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
             </div>
           </div>
         </details>
+        ) : null}
 
+        {sectionLookup.get("support")?.visible ? (
         <details data-testid="basic-flow-panel-support" className="rounded-lg border border-border bg-card p-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Account and Support</summary>
+          <summary className="cursor-pointer text-sm font-medium text-foreground">{sectionLookup.get("support")?.title}</summary>
           <div className="mt-4 grid gap-3">
+            <p className="text-xs leading-5 text-muted-foreground">{sectionLookup.get("support")?.description}</p>
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
               <Label>Show WhatsApp support button</Label>
               <Switch
@@ -615,6 +754,7 @@ function BasicStoreFlowSettingsPanel({ storeId }: { storeId: string }) {
             <SaveFlowButton settingKey="whatsapp_support" />
           </div>
         </details>
+        ) : null}
       </div>
     </div>
   );
@@ -632,6 +772,7 @@ export function BasicModeEditor({
   updateThemePackage,
   updateThemeMode,
   updateFont,
+  updateThemeScale,
   updateThemeAesthetic,
   updateThemeEffect,
   selectPage,
@@ -650,6 +791,18 @@ export function BasicModeEditor({
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingTheme, setIsGeneratingTheme] = useState(false);
+  const storefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings?.storefront_profile
+    ? store.siteSettings.storefront_profile as Record<string, unknown>
+    : {};
+  const templateId = resolveStorefrontTemplateId(
+    storefrontProfile.template_id,
+    {
+      blueprintId: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+      productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+    },
+  );
+  const pageType = resolveBasicEditorPageType(page.slug);
+  const starterLayouts = getBasicStarterLayouts(templateId, pageType);
 
   const generateAITheme = async () => {
     if (!aiPrompt.trim()) return;
@@ -712,6 +865,8 @@ export function BasicModeEditor({
   const bgHex = hslChannelsToHex(bgHsl) ?? "#ffffff";
   const fgHsl = vars["--foreground"] ?? "0 0% 0%";
   const fgHex = hslChannelsToHex(fgHsl) ?? "#000000";
+  const radiusScale = store.theme.radiusScale ?? 0.55;
+  const densityScale = store.theme.densityScale ?? 0.5;
   const activeVibe = vibeCards.find((vibe) => vibe.id === store.theme.aesthetic);
   const effectState = {
     scrollReveals: store.theme.effects?.scrollReveals ?? false,
@@ -744,6 +899,12 @@ export function BasicModeEditor({
   ];
   const featuredThemePresets = themePresets.slice(0, 6);
   const extraThemePresets = themePresets.slice(6);
+  const recommendedPaletteSets = [
+    { id: "balanced-brand", label: "Balanced Brand", detail: "Safe, clean contrast for most stores.", primary: "#1f7a52", accent: "#d48a1f", background: "#f8fafc", foreground: "#0f172a" },
+    { id: "soft-editorial", label: "Soft Editorial", detail: "Calmer, warmer storefront feel.", primary: "#7c4f3a", accent: "#d39d6a", background: "#f7f2eb", foreground: "#1f2937" },
+    { id: "premium-contrast", label: "Premium Contrast", detail: "Stronger CTA separation for conversion-first pages.", primary: "#111827", accent: "#c28b2c", background: "#fffdf8", foreground: "#111827" },
+    { id: "fresh-bright", label: "Fresh & Bright", detail: "Lighter, energetic look for food, beauty, and promos.", primary: "#0f766e", accent: "#fb7185", background: "#f8fffe", foreground: "#164e63" },
+  ];
   const renderThemePresetCard = (preset: (typeof themePresets)[number]) => {
     const isSelected = store.theme.presetId === preset.id;
 
@@ -876,6 +1037,43 @@ export function BasicModeEditor({
               </div>
             ) : null}
 
+            {starterLayouts.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Recommended page direction</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Start with one of these paths for this {pageType === "homepage" ? "home" : pageType} page, then refine it step by step.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
+                    {templateId}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {starterLayouts.slice(0, 2).map((layout) => (
+                    <button
+                      key={layout.id}
+                      type="button"
+                      onClick={() => setActiveSection(layout.sectionFocus)}
+                      className="rounded-xl border border-border bg-muted/20 p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{layout.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-foreground/80">{layout.summary}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                          {layout.sectionFocus === "pages" ? "Flow" : layout.sectionFocus === "layout" ? "Layout" : layout.sectionFocus === "theme" ? "Theme" : "Content"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{layout.bestFor}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid gap-2">
               {startCards.map((item, index) => (
                 <button
@@ -909,8 +1107,8 @@ export function BasicModeEditor({
             <div className="hidden rounded-xl border border-border bg-muted/20 p-3 sm:block">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Launch Confidence</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{completed} of {readiness.length} basics are in place. Use this as a quick gut check, not a blocker.</p>
+                  <p className="text-sm font-semibold text-foreground">Quick Launch Check</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{completed} of {readiness.length} basics are in place. Use this as a simple confidence check, not a test.</p>
                 </div>
                 <span className="text-sm font-bold text-primary">{Math.round((completed / readiness.length) * 100)}%</span>
               </div>
@@ -993,7 +1191,7 @@ export function BasicModeEditor({
                   </div>
                 </div>
               ))}
-              <BasicStoreFlowSettingsPanel storeId={store.id} />
+              <BasicStoreFlowSettingsPanel storeId={store.id} templateId={templateId} />
             </div>
           </div>
         );
@@ -1001,7 +1199,7 @@ export function BasicModeEditor({
       case "layout": {
         const focusedLayoutBlock = page.blocks.find((block) => block.id === focusedLayoutBlockId) ?? page.blocks[0] ?? null;
         const focusedLayoutIndex = focusedLayoutBlock ? page.blocks.findIndex((block) => block.id === focusedLayoutBlock.id) : -1;
-        const focusedLayoutOptions = focusedLayoutBlock ? layoutVariantOptions[focusedLayoutBlock.type] ?? [] : [];
+        const focusedLayoutOptions = focusedLayoutBlock ? getBasicLayoutVariantOptions(templateId, focusedLayoutBlock.type) : [];
 
         return (
           <div className="space-y-4">
@@ -1044,6 +1242,27 @@ export function BasicModeEditor({
                 </Dialog>
               </div>
             </div>
+            {starterLayouts.length > 0 ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Recommended composition</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {starterLayouts.slice(0, 2).map((layout, index) => (
+                    <div key={layout.id} className={cn("rounded-xl border p-3", index === 0 ? "border-primary/40 bg-background/90" : "border-border bg-background/70")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">{layout.title}</p>
+                        {index === 0 ? (
+                          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                            Recommended
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-foreground/80">{layout.summary}</p>
+                      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{layout.bestFor}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-muted/20 p-2">
               {["Choose sections", "Reorder the story", "Pick layout style"].map((label, index) => (
                 <span key={label} className="rounded-full bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -1190,22 +1409,40 @@ export function BasicModeEditor({
                       type="button"
                       onClick={() => updateBlockMeta(focusedLayoutBlock.id, { layoutVariant: option.id })}
                       className={cn(
-                        "rounded-lg border p-2 text-left transition-colors",
+                        "rounded-xl border p-2.5 text-left transition-colors",
                         focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
-                      <div className="aspect-video rounded-md border border-border/70 bg-muted/30">
+                      <div className="relative aspect-video rounded-lg border border-border/70 bg-muted/30">
                         <BlockSkeletonPreview type={focusedLayoutBlock.type} variant={option.id} />
+                        <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
+                          <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
+                            {getVariantFocusLabel(focusedLayoutBlock.type, option.id)}
+                          </span>
+                          {option.recommended ? (
+                            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
+                              Recommended
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-foreground">{option.label}</p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-foreground">{option.label}</p>
+                        {focusedLayoutBlock.layoutVariant === option.id ? (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Active</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[11px] font-medium leading-4 text-foreground/80">
+                        {option.previewSummary ?? option.guidance}
+                      </p>
                       <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{option.guidance}</p>
                     </button>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-border bg-background/70 p-4 text-xs leading-5 text-muted-foreground">
-                  This section keeps a simple default layout. Use Content to edit its copy, or duplicate it if you want to test another version.
-                </div>
+                This section keeps a simple default layout. Use Content to edit the message, or duplicate it if you want to try another version.
+              </div>
               )}
             </div>
           </div>
@@ -1308,13 +1545,36 @@ export function BasicModeEditor({
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                Add a section from Layout first, then Basic Mode will show friendly controls and guidance here.
+                Add a section from Layout first, then Guided Editing will show friendly controls and guidance here.
               </p>
             )}
           </div>
         );
       }
       case "theme":
+        {
+          const getLuminance = (hex: string) => {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            const a = [r, g, b].map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+            return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+          };
+          const getContrast = (hex1: string, hex2: string) => {
+            try {
+              const lum1 = getLuminance(hex1);
+              const lum2 = getLuminance(hex2);
+              const brightest = Math.max(lum1, lum2);
+              const darkest = Math.min(lum1, lum2);
+              return (brightest + 0.05) / (darkest + 0.05);
+            } catch {
+              return 4.5;
+            }
+          };
+          const primaryContrast = getContrast(primaryHex, bgHex);
+          const foregroundContrast = getContrast(fgHex, bgHex);
+          const isPrimaryLowContrast = primaryContrast < 4.5;
+          const isForegroundLowContrast = foregroundContrast < 4.5;
         return (
           <div className="space-y-10">
             <div className="space-y-6">
@@ -1354,8 +1614,8 @@ export function BasicModeEditor({
                     )}
                   >
                     <div className="flex h-10 overflow-hidden rounded-lg border border-border/70">
-                      {vibe.swatches.map((swatch) => (
-                        <span key={swatch} className="flex-1" style={{ backgroundColor: swatch }} />
+                      {vibe.swatches.map((swatch, index) => (
+                        <span key={`${vibe.id}-${swatch}-${index}`} className="flex-1" style={{ backgroundColor: swatch }} />
                       ))}
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-2">
@@ -1414,6 +1674,73 @@ export function BasicModeEditor({
                 </div>
               </div>
 
+              <div className="rounded-xl border border-border bg-muted/20 p-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Spacing and shape</h4>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Adjust how rounded and spacious the storefront feels without changing layout structure.
+                  </p>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {[
+                    { id: "compact-sharp", label: "Compact & Sharp", detail: "Tighter cards and crisp corners.", radius: 0.18, density: 0.25 },
+                    { id: "balanced", label: "Balanced", detail: "Safe starting point for most stores.", radius: 0.55, density: 0.5 },
+                    { id: "soft-airy", label: "Soft & Airy", detail: "More breathing room and softer shapes.", radius: 0.82, density: 0.78 },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        updateThemeScale("radius", option.radius);
+                        updateThemeScale("density", option.density);
+                      }}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5",
+                        Math.abs(radiusScale - option.radius) < 0.05 && Math.abs(densityScale - option.density) < 0.05
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-card",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">{option.label}</p>
+                        {Math.abs(radiusScale - option.radius) < 0.05 && Math.abs(densityScale - option.density) < 0.05 ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{option.detail}</p>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Corner softness</Label>
+                      <span className="text-xs text-muted-foreground">{Math.round(radiusScale * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round(radiusScale * 100)}
+                      onChange={(event) => updateThemeScale("radius", Number(event.target.value) / 100)}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Spacing density</Label>
+                      <span className="text-xs text-muted-foreground">{Math.round(densityScale * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round(densityScale * 100)}
+                      onChange={(event) => updateThemeScale("density", Number(event.target.value) / 100)}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Theme Colors</h3>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -1445,6 +1772,34 @@ export function BasicModeEditor({
                     <TabsTrigger value="custom" className="flex-1">Custom Palette</TabsTrigger>
                   </TabsList>
                   <TabsContent value="gallery" className="mt-4 space-y-4">
+                    <div className="rounded-xl border border-border bg-muted/20 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Recommended quick palettes</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {recommendedPaletteSets.map((palette) => (
+                          <button
+                            key={palette.id}
+                            type="button"
+                            onClick={() => updateThemeVars({
+                              "--primary": palette.primary,
+                              "--accent": palette.accent,
+                              "--background": palette.background,
+                              "--foreground": palette.foreground,
+                              "--card": palette.background,
+                              "--card-foreground": palette.foreground,
+                            })}
+                            className="rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                          >
+                            <div className="flex h-10 overflow-hidden rounded-lg border border-border/60">
+                              {[palette.background, palette.primary, palette.accent, palette.foreground].map((swatch, index) => (
+                                <span key={`${palette.id}-${swatch}-${index}`} className="flex-1" style={{ backgroundColor: swatch }} />
+                              ))}
+                            </div>
+                            <p className="mt-3 text-sm font-semibold text-foreground">{palette.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">{palette.detail}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {featuredThemePresets.map(renderThemePresetCard)}
                     </div>
@@ -1509,42 +1864,44 @@ export function BasicModeEditor({
                       />
                     </div>
                     
-                    {(() => {
-                      const getLuminance = (hex: string) => {
-                        const r = parseInt(hex.slice(1, 3), 16) / 255;
-                        const g = parseInt(hex.slice(3, 5), 16) / 255;
-                        const b = parseInt(hex.slice(5, 7), 16) / 255;
-                        const a = [r, g, b].map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
-                        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-                      };
-                      const getContrast = (hex1: string, hex2: string) => {
-                        try {
-                          const lum1 = getLuminance(hex1);
-                          const lum2 = getLuminance(hex2);
-                          const brightest = Math.max(lum1, lum2);
-                          const darkest = Math.min(lum1, lum2);
-                          return (brightest + 0.05) / (darkest + 0.05);
-                        } catch(e) { return 4.5; }
-                      };
-                      const contrast = getContrast(primaryHex, bgHex);
-                      const isLowContrast = contrast < 4.5;
-
-                      if (!isLowContrast) return null;
-                      return (
-                        <div className="flex items-start gap-2 p-3 mt-4 text-sm rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                          <AlertTriangle className="h-5 w-5 shrink-0" />
-                          <p>
-                            <strong>Quick readability tip:</strong> Your brand color may blend into the background. Try making it {getLuminance(bgHex) > 0.5 ? "darker" : "lighter"} so buttons and links stand out.
+                    <div className="rounded-xl border border-border bg-muted/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Readability check</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use this as a quick confidence check before saving.</p>
+                        </div>
+                        <Badge variant={isPrimaryLowContrast || isForegroundLowContrast ? "secondary" : "outline"}>
+                          {isPrimaryLowContrast || isForegroundLowContrast ? "Needs review" : "Looks good"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-lg border border-border bg-card p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Primary on background</p>
+                          <p className="mt-2 text-sm font-semibold text-foreground">{primaryContrast.toFixed(1)}:1</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {isPrimaryLowContrast
+                              ? `Brand color may blend into the page. Try making it ${getLuminance(bgHex) > 0.5 ? "darker" : "lighter"} or choose a stronger preset.`
+                              : "Buttons and key highlights should stand out well enough."}
                           </p>
                         </div>
-                      );
-                    })()}
+                        <div className="rounded-lg border border-border bg-card p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Text on background</p>
+                          <p className="mt-2 text-sm font-semibold text-foreground">{foregroundContrast.toFixed(1)}:1</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {isForegroundLowContrast
+                              ? `Main text may be hard to read. Try making text ${getLuminance(bgHex) > 0.5 ? "darker" : "lighter"} for safer reading.`
+                              : "Main reading contrast looks healthy for most shoppers."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
             </div>
           </div>
         );
+        }
       case "effects":
         return (
           <div className="space-y-8">
@@ -1585,6 +1942,33 @@ export function BasicModeEditor({
                   </button>
                 ))}
               </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Effect preview</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {effectCards.map((effect) => (
+                    <div key={`${effect.key}-preview`} className="rounded-xl border border-border bg-card p-3">
+                      <div
+                        className={cn(
+                          "flex h-24 items-end rounded-lg border border-border/70 bg-gradient-to-br from-background to-muted/50 p-3 transition-all duration-300",
+                          effect.key === "hoverEffects" && effect.enabled && "hover:-translate-y-1 hover:shadow-lg",
+                          effect.key === "parallax" && effect.enabled && "bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_55%),linear-gradient(to_bottom_right,var(--tw-gradient-stops))]",
+                          effect.key === "scrollReveals" && effect.enabled && "animate-pulse",
+                        )}
+                      >
+                        <div className="space-y-1">
+                          <div className="h-2 w-16 rounded-full bg-primary/30" />
+                          <div className="h-1.5 w-24 rounded-full bg-muted-foreground/25" />
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-foreground">{effect.label}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                        {effect.enabled ? "Currently active on the storefront theme." : "Currently off for a calmer storefront feel."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <Separator />
@@ -1612,6 +1996,13 @@ export function BasicModeEditor({
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <p className="text-sm font-semibold text-foreground">Section-level control</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                If one section should animate differently, open that section in Content and use the `Override Global Effects` toggle there. This keeps motion flexible without making the whole store harder to manage.
+              </p>
             </div>
           </div>
         );
@@ -1710,7 +2101,7 @@ export function BasicModeEditor({
                   </Button>
                 ) : (
                   <p className="mt-3 rounded-lg border border-border bg-background/80 p-3 text-xs text-muted-foreground">
-                    This item is outside Basic Mode so merchants do not have to manage technical setup here.
+                    This item is outside Guided Editing so merchants do not have to manage technical setup here.
                   </p>
                 )}
               </div>
@@ -1764,17 +2155,46 @@ export function BasicModeEditor({
   };
 
   const navItems = [
-    { id: "start", icon: Wand2, label: "Start" },
-    { id: "pages", icon: FileText, label: "Pages" },
-    { id: "layout", icon: Layers, label: "Layout" },
-    { id: "content", icon: LayoutTemplate, label: "Content" },
-    { id: "theme", icon: Palette, label: "Theme" },
-    { id: "effects", icon: Sparkles, label: "Effects" },
-    { id: "fonts", icon: Type, label: "Font" },
-    { id: "launch", icon: Rocket, label: "Launch" },
+    { id: "start", icon: Wand2, label: "Start Here", shortLabel: "Start", group: "Plan", hint: "See the next best task." },
+    { id: "pages", icon: FileText, label: "Pages & Shopping", shortLabel: "Pages", group: "Structure", hint: "Choose pages and buying flow." },
+    { id: "layout", icon: Layers, label: "Arrange Sections", shortLabel: "Layout", group: "Structure", hint: "Show, hide, and reorder sections." },
+    { id: "content", icon: LayoutTemplate, label: "Edit Content", shortLabel: "Content", group: "Content", hint: "Change text, offers, and section copy." },
+    { id: "theme", icon: Palette, label: "Brand Style", shortLabel: "Theme", group: "Style", hint: "Choose colors and visual direction." },
+    { id: "effects", icon: Sparkles, label: "Motion", shortLabel: "Effects", group: "Style", hint: "Add polish and subtle interactions." },
+    { id: "fonts", icon: Type, label: "Fonts", shortLabel: "Fonts", group: "Style", hint: "Pick the store voice and readability." },
+    { id: "launch", icon: Rocket, label: "Launch Check", shortLabel: "Launch", group: "Finish", hint: "Preview, review, and publish confidently." },
   ] as const;
   const activeNavIndex = Math.max(0, navItems.findIndex((item) => item.id === activeSection));
   const activeNavItem = navItems[activeNavIndex] ?? navItems[0];
+  const previousNavItem = activeNavIndex > 0 ? navItems[activeNavIndex - 1] : null;
+  const nextNavItem = activeNavIndex < navItems.length - 1 ? navItems[activeNavIndex + 1] : null;
+  const navGroups = [
+    {
+      id: "plan",
+      title: "Plan",
+      items: navItems.filter((item) => item.group === "Plan"),
+    },
+    {
+      id: "structure",
+      title: "Build",
+      items: navItems.filter((item) => item.group === "Structure"),
+    },
+    {
+      id: "content",
+      title: "Write",
+      items: navItems.filter((item) => item.group === "Content"),
+    },
+    {
+      id: "style",
+      title: "Style",
+      items: navItems.filter((item) => item.group === "Style"),
+    },
+    {
+      id: "finish",
+      title: "Finish",
+      items: navItems.filter((item) => item.group === "Finish"),
+    },
+  ];
 
   return (
     <div className="flex h-full w-full flex-col bg-card text-card-foreground">
@@ -1785,6 +2205,7 @@ export function BasicModeEditor({
               Task {activeNavIndex + 1} of {navItems.length}
             </p>
             <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{activeNavItem.label}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{activeNavItem.hint}</p>
           </div>
           <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
             <div
@@ -1793,24 +2214,92 @@ export function BasicModeEditor({
             />
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-1 sm:flex sm:overflow-x-auto sm:pb-1">
-        {navItems.map((item) => (
-          <Button
-            key={item.id}
-            data-testid={`basic-mode-tab-${item.id}`}
-            variant={activeSection === item.id ? "secondary" : "ghost"}
-            size="sm"
-            className={cn(
-              "h-9 min-w-0 shrink-0 gap-1.5 rounded-full px-2 text-xs sm:snap-start sm:gap-2 sm:px-3 sm:text-sm",
-              activeSection === item.id ? "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" : "text-muted-foreground",
-            )}
-            onClick={() => setActiveSection(item.id)}
-            title={item.label}
-          >
-            <item.icon className="h-4 w-4" />
-            <span className="sr-only sm:not-sr-only">{item.label}</span>
-          </Button>
-        ))}
+        <div className="space-y-2 sm:hidden">
+          <div className="rounded-2xl border border-border/70 bg-background/80 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-full px-3 text-xs"
+                disabled={!previousNavItem}
+                onClick={() => previousNavItem && setActiveSection(previousNavItem.id)}
+              >
+                <ArrowUp className="mr-1 h-3.5 w-3.5 rotate-[-90deg]" />
+                Back
+              </Button>
+              <div className="min-w-0 text-center">
+                <p className="truncate text-xs font-medium text-muted-foreground">{activeNavItem.group}</p>
+                <p className="truncate text-sm font-semibold text-foreground">{activeNavItem.shortLabel}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 rounded-full px-3 text-xs"
+                disabled={!nextNavItem}
+                onClick={() => nextNavItem && setActiveSection(nextNavItem.id)}
+              >
+                Next
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={`basic-mode-tab-${item.id}`}
+                onClick={() => setActiveSection(item.id)}
+                className={cn(
+                  "min-w-[120px] snap-start rounded-2xl border px-3 py-2 text-left transition-colors",
+                  activeSection === item.id
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-background/70",
+                )}
+                title={item.label}
+              >
+                <div className="flex items-center gap-2">
+                  <item.icon className={cn("h-4 w-4 shrink-0", activeSection === item.id ? "text-primary" : "text-muted-foreground")} />
+                  <div className="min-w-0">
+                    <p className={cn("truncate text-sm font-medium", activeSection === item.id ? "text-foreground" : "text-muted-foreground")}>{item.shortLabel}</p>
+                    <p className="truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{item.group}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="hidden gap-3 sm:grid">
+          {navGroups.map((group) => (
+            <div key={group.id} className="rounded-2xl border border-border/70 bg-background/70 p-2">
+              <div className="mb-2 px-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{group.title}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {group.items.map((item) => (
+                  <Button
+                    key={item.id}
+                    data-testid={`basic-mode-tab-${item.id}`}
+                    variant={activeSection === item.id ? "secondary" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "h-auto min-w-0 shrink-0 items-start gap-2 rounded-2xl px-3 py-2 text-left",
+                      activeSection === item.id ? "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" : "text-muted-foreground",
+                    )}
+                    onClick={() => setActiveSection(item.id)}
+                    title={item.label}
+                  >
+                    <item.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{item.label}</span>
+                      <span className="block text-[11px] leading-4 text-muted-foreground">{item.hint}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       

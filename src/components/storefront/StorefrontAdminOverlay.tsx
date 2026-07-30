@@ -30,7 +30,7 @@ export function StorefrontAdminOverlay({
         <div className="pointer-events-auto rounded-lg border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Page Builder Mode</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Store Editing</p>
               <p className="truncate text-sm font-semibold text-foreground">{pageTitle}</p>
             </div>
             <Badge variant="secondary">Live</Badge>
@@ -43,11 +43,11 @@ export function StorefrontAdminOverlay({
             <Button asChild type="button" size="sm" variant="outline">
               <Link to={basicEditorHref}>
                 <FilePenLine className="h-4 w-4" />
-                Basic Editing
+                Guided Editing
               </Link>
             </Button>
             <Button asChild type="button" size="sm" variant="outline">
-              <Link to={advancedEditorHref}>Advanced Editing</Link>
+              <Link to={advancedEditorHref}>Expert Editing</Link>
             </Button>
           </div>
         </div>
@@ -59,12 +59,12 @@ export function StorefrontAdminOverlay({
             {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={basicEditorHref} aria-label="Edit page in basic editing workspace">
+            <Link to={basicEditorHref} aria-label="Edit page in guided editing workspace">
               <SquarePen className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild type="button" size="icon" variant="ghost">
-            <Link to={advancedEditorHref} aria-label="Open advanced editing workspace">
+            <Link to={advancedEditorHref} aria-label="Open expert editing workspace">
               <ExternalLink className="h-4 w-4" />
             </Link>
           </Button>

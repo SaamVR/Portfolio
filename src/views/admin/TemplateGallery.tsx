@@ -11,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPageBlueprints } from "@/lib/cms/page-blueprints";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
@@ -25,6 +24,13 @@ import { cn } from "@/lib/utils";
 import { defaultStore } from "@/lib/cms/default-store";
 import { useAuth } from "@/hooks/auth-context";
 import {
+  getStorefrontTemplateDefinition,
+  getStorefrontTemplateSeedDefinition,
+  storefrontTemplateOptions,
+  type StorefrontTemplateId,
+} from "@/lib/cms/storefront-templates";
+import { getStorefrontTemplateReferenceImage } from "@/lib/cms/storefront-template-reference-images";
+import {
   createBuiltInBundle,
   createBuiltInCardBundle,
   getCommunityPreviewAsset,
@@ -32,7 +38,7 @@ import {
   type TemplatePreviewViewport,
 } from "@/lib/cms/template-gallery-preview";
 
-const CATEGORIES = ["All", "commerce", "services", "portfolio", "booking", "informational", "minimal", "bold", "luxury", "playful", "editorial"];
+const CATEGORIES = ["All", ...Array.from(new Set(storefrontTemplateOptions.map((option) => getStorefrontTemplateSeedDefinition(option.value).group)))];
 
 type PreviewState = {
   kind: "built-in" | "community";
@@ -44,8 +50,20 @@ type PreviewState = {
   previewAssets?: string[];
 };
 
-function getTemplateCategory(blueprint: CmsPageBlueprint): string {
-  return blueprint.businessFamily || "commerce";
+type BuiltInTemplateItem = {
+  id: StorefrontTemplateId;
+  name: string;
+  description: string;
+  category: string;
+  aesthetic: string;
+  mobileReady: boolean;
+  capabilities: string[];
+  catalogMode: string;
+  referenceImage: string;
+};
+
+function getTemplateCategory(templateId: StorefrontTemplateId): string {
+  return getStorefrontTemplateSeedDefinition(templateId).group;
 }
 
 function getPreviewWidthClass(viewport: TemplatePreviewViewport) {
@@ -113,6 +131,25 @@ export function TemplateGallery({
   const [previewViewport, setPreviewViewport] = useState<TemplatePreviewViewport>("desktop");
   const [moderatingTemplateId, setModeratingTemplateId] = useState<string | null>(null);
   const { platformRole } = useAuth();
+  const builtInTemplates = useMemo<BuiltInTemplateItem[]>(
+    () =>
+      storefrontTemplateOptions.map((option) => {
+        const templateDefinition = getStorefrontTemplateDefinition(option.value);
+        const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
+        return {
+          id: option.value,
+          name: option.label,
+          description: option.description,
+          category: seedDefinition.group,
+          aesthetic: seedDefinition.defaultTheme.aesthetic || "template",
+          mobileReady: true,
+          capabilities: seedDefinition.capabilities,
+          catalogMode: seedDefinition.catalogMode,
+          referenceImage: getStorefrontTemplateReferenceImage(option.value),
+        };
+      }),
+    [],
+  );
 
   const { data: blueprints = [], isLoading: isLoadingBlueprints } = useQuery({
     queryKey: ["page-blueprints"],
@@ -141,14 +178,14 @@ export function TemplateGallery({
   });
 
   const filteredBuiltIn = useMemo(() => {
-    return blueprints.filter(tpl => {
-      const matchesSearch = tpl.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            tpl.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const category = getTemplateCategory(tpl);
+    return builtInTemplates.filter((tpl) => {
+      const matchesSearch = tpl.name.toLowerCase().includes(searchQuery.toLowerCase())
+        || tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const category = tpl.category;
       const matchesCategory = activeCategory === "All" || category === activeCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [blueprints, searchQuery, activeCategory]);
+  }, [activeCategory, builtInTemplates, searchQuery]);
 
   const filteredCommunity = useMemo(() => {
     return communityTemplates.filter((tpl: any) => {
@@ -161,15 +198,16 @@ export function TemplateGallery({
   }, [communityTemplates, searchQuery, activeCategory]);
 
   const handlePreviewBuiltIn = (templateId: string) => {
-    const selectedTemplate = blueprints.find((template) => template.id === templateId);
+    const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
     if (!selectedTemplate) return;
         setPreviewState({
           kind: "built-in",
           id: templateId,
           name: selectedTemplate.name,
-          category: getTemplateCategory(selectedTemplate),
+          category: selectedTemplate.category,
           bundle: createBuiltInBundle(templateId, blueprints, store),
           mobileReady: true,
+          previewAssets: [selectedTemplate.referenceImage],
         });
   };
 
@@ -180,7 +218,7 @@ export function TemplateGallery({
     }
     try {
       setApplyingTemplateId(templateId);
-      const selectedTemplate = blueprints.find((template) => template.id === templateId);
+      const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
       const bundle = createBuiltInBundle(templateId, blueprints, store);
       const applied = applyThemeBundle(bundle);
       if (applied === false) return;
@@ -376,13 +414,13 @@ export function TemplateGallery({
               const isBuiltIn = activeTab === "built-in";
               const id = item.id;
               const name = isBuiltIn ? item.name : item.title;
-              const category = isBuiltIn ? getTemplateCategory(item) : (item.category || "commerce");
+              const category = isBuiltIn ? item.category : (item.category || "commerce");
               const rating = isBuiltIn ? "4.8" : (item.rating_avg ? Number(item.rating_avg).toFixed(1) : "New");
               const downloads = isBuiltIn ? (id.length * 123) + 400 : Number(item.install_count ?? 0);
               const isPremium = !isBuiltIn && item.pricing_mode === "premium";
               const status = isBuiltIn ? "published" : item.status ?? "draft";
-              const mobileReady = isBuiltIn || item.mobile_ready !== false;
-              const aesthetic = isBuiltIn ? "guided" : (item.aesthetic || "custom");
+              const mobileReady = isBuiltIn ? item.mobileReady : item.mobile_ready !== false;
+              const aesthetic = isBuiltIn ? item.aesthetic : (item.aesthetic || "custom");
               const builtInCardBundle = isBuiltIn
                 ? (previewWithData ? createBuiltInBundle(id, blueprints, store) : createBuiltInCardBundle(id, blueprints, store))
                 : null;
@@ -391,8 +429,14 @@ export function TemplateGallery({
               return (
               <div key={id} className="group flex flex-col rounded-xl border bg-card text-card-foreground overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50" data-testid={`template-card-${id}`}>
                 <div className="relative aspect-video bg-muted overflow-hidden">
-                  {isBuiltIn && builtInCardBundle ? (
+                  {isBuiltIn && previewWithData && builtInCardBundle ? (
                     <TemplatePreviewCanvas bundle={builtInCardBundle} viewport="desktop" />
+                  ) : isBuiltIn && item.referenceImage ? (
+                    <img
+                      src={item.referenceImage}
+                      alt={name}
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                    />
                   ) : communityPreviewAsset ? (
                     <img 
                       src={communityPreviewAsset} 
@@ -463,9 +507,12 @@ export function TemplateGallery({
                     </span>
                   </div>
                   
-                  {isBuiltIn && item.catalogModes && (
+                  {isBuiltIn && item.capabilities && (
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {item.catalogModes.map((tag: string) => (
+                      <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                        {item.catalogMode.replace('_', ' ')}
+                      </span>
+                      {item.capabilities.slice(0, 3).map((tag: string) => (
                         <span key={tag} className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
                           {tag.replace('_', ' ')}
                         </span>

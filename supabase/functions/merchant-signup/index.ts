@@ -781,7 +781,8 @@ Deno.serve(async (req) => {
     }
 
     const effectivePlan = inheritedPlanRecord;
-    if (effectivePlan?.contact_only) {
+    const blocksDirectSignup = Boolean(effectivePlan?.contact_only) && !isAdditionalStoreFlow;
+    if (blocksDirectSignup) {
       return new Response(JSON.stringify({ error: "This plan is activated through support. Please contact support to continue." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -870,7 +871,7 @@ Deno.serve(async (req) => {
         ...themeSeed,
       }, { onConflict: "store_id" }),
       siteSettingRows.length > 0
-        ? supabaseAdmin.from("site_settings").upsert(siteSettingRows, { onConflict: "store_id,key" })
+        ? supabaseAdmin.from("site_settings").insert(siteSettingRows)
         : Promise.resolve({ error: null }),
     ]);
 
@@ -926,7 +927,7 @@ Deno.serve(async (req) => {
         ? supabaseAdmin.from("product_categories").upsert(catalogSeed.categoryRows, { onConflict: "id" })
         : Promise.resolve({ error: null }),
       catalogSeed.productTypeRows.length > 0
-        ? supabaseAdmin.from("product_types").upsert(catalogSeed.productTypeRows, { onConflict: "store_id,name" })
+        ? supabaseAdmin.from("product_types").insert(catalogSeed.productTypeRows)
         : Promise.resolve({ error: null }),
       catalogSeed.productRows.length > 0
         ? supabaseAdmin.from("products").upsert(catalogSeed.productRows, { onConflict: "id" })

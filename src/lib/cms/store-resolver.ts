@@ -11,7 +11,8 @@ import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
-import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
+import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
@@ -191,19 +192,25 @@ export function buildResolvedStoreFromRecords(
   const initialStorefrontProfile = typeof rawSiteSettings.storefront_profile === "object" && rawSiteSettings.storefront_profile
     ? rawSiteSettings.storefront_profile as Record<string, unknown>
     : {};
-  const blueprint = blueprintOverride ?? resolveStoreBlueprint(
-    (typeof initialStorefrontProfile.template_id === "string" ? initialStorefrontProfile.template_id : null)
-      ?? (typeof initialStorefrontProfile.blueprint_id === "string" ? initialStorefrontProfile.blueprint_id : null)
+  const templateProfile = resolveStorefrontTemplateProfile(initialStorefrontProfile.template_id, {
+    blueprintId: (typeof initialStorefrontProfile.blueprint_id === "string" ? initialStorefrontProfile.blueprint_id : null)
       ?? businessProfile?.blueprint_id
       ?? store.store_type
       ?? "general-catalog",
-  );
+    productVisibility: typeof initialStorefrontProfile.product_visibility === "string"
+      ? initialStorefrontProfile.product_visibility
+      : null,
+  });
+  const blueprint = blueprintOverride ?? resolveStoreBlueprint(templateProfile.seedBlueprintId);
+  const seedDefinition = blueprintOverride ?? templateProfile.seedDefinition;
   const fallbackTheme = resolveThemePackageById(
     theme?.theme_package_id,
     themePackages,
-    theme?.preset_id ?? blueprint.defaultTheme.presetId,
+    theme?.preset_id ?? seedDefinition.defaultTheme.presetId,
   );
-  const fallbackPages = instantiateStorePagesFromBlueprint(blueprint, pageBlueprints);
+  const fallbackPages = blueprintOverride
+    ? instantiateStorePagesFromBlueprint(blueprintOverride, pageBlueprints)
+    : instantiateStorePagesFromTemplate(templateProfile, pageBlueprints);
   const mappedPages = applyLegacyHomepageSettingsToPages(
     pages
       .map((page) =>
@@ -252,18 +259,18 @@ export function buildResolvedStoreFromRecords(
     slug: store.slug,
     logoUrl: store.logo_url ?? undefined,
     customDomain: store.custom_domain ?? undefined,
-    description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
+    description: store.description ?? seedDefinition.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
     locale: store.locale ?? DEFAULT_STORE_LOCALE,
     isPublished: store.is_published ?? false,
     theme: {
       presetId: theme?.preset_id ?? fallbackTheme.presetId,
       themePackageId: theme?.theme_package_id ?? fallbackTheme.id,
-      mode: theme?.mode ?? blueprint.defaultTheme.mode,
-      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
-      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
-      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
-      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
+      mode: theme?.mode ?? seedDefinition.defaultTheme.mode,
+      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? seedDefinition.defaultTheme.headingFont),
+      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? seedDefinition.defaultTheme.bodyFont),
+      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? seedDefinition.defaultTheme.borderRadius),
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? seedDefinition.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? seedDefinition.defaultTheme.mode],
       customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
     pages: resolvedPages,
@@ -277,6 +284,14 @@ export function canAccessStorefrontStore(
 ) {
   if (!store) {
     return false;
+  }
+
+  if (!store.is_published) {
+    return isSubscriptionLive(subscription ?? null);
+  }
+
+  if (!subscription) {
+    return true;
   }
 
   return isSubscriptionLive(subscription ?? null);

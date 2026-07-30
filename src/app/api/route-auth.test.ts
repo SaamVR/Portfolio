@@ -9,6 +9,10 @@ import {
   billingSubscriptionRouteDeps,
 } from "@/app/api/billing/subscription/route";
 import {
+  POST as billingManualInvoicePost,
+  billingManualInvoiceRouteDeps,
+} from "@/app/api/billing/manual-invoice/route";
+import {
   POST as domainsPost,
   DELETE as domainsDelete,
   domainRouteDeps,
@@ -25,6 +29,33 @@ import {
   POST as deleteStorePost,
   deleteStoreRouteDeps,
 } from "@/app/api/stores/delete/route";
+import {
+  GET as courierConnectionsGet,
+  POST as courierConnectionsPost,
+  courierConnectionsRouteDeps,
+} from "@/app/api/couriers/connections/route";
+import {
+  GET as courierShipmentsGet,
+  courierShipmentsRouteDeps,
+} from "@/app/api/couriers/shipments/route";
+import {
+  POST as courierBookPost,
+  courierBookingRouteDeps,
+} from "@/app/api/couriers/book/route";
+import {
+  GET as bkashConnectionGet,
+  PUT as bkashConnectionPut,
+  bkashPaymentConnectionRouteDeps,
+} from "@/app/api/payment-connections/bkash/route";
+import {
+  GET as notificationPreviewGet,
+  POST as notificationTestPost,
+  notificationTestRouteDeps,
+} from "@/app/api/notifications/test/route";
+import {
+  POST as notificationRetryPost,
+  notificationRetryRouteDeps,
+} from "@/app/api/notifications/retry/route";
 
 afterEach(() => {
   mock.restoreAll();
@@ -125,6 +156,53 @@ describe("billing subscription route authorization", () => {
       jsonRequest("https://example.com/api/billing/subscription", "PATCH", {
         storeId: "store_1",
         planId: "basic",
+      }),
+    );
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("manual billing invoice route authorization", () => {
+  test("rejects unauthenticated manual invoice submissions before creating a service-role client", async () => {
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(
+      billingManualInvoiceRouteDeps,
+      "getSupabaseAdminClient",
+      () => {
+        throw new Error("should not create admin client");
+      },
+    );
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1",
+        planId: "plan_1",
+        transactionId: "trx_1",
+      }),
+    );
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without owner/admin access from submitting manual invoices", async () => {
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(billingManualInvoiceRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(
+      billingManualInvoiceRouteDeps,
+      "canManageStore",
+      async () => false,
+    );
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1",
+        planId: "plan_1",
+        transactionId: "trx_1",
       }),
     );
 
@@ -265,6 +343,224 @@ describe("store deletion route authorization", () => {
         storeId: "store_1",
       }),
     );
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("courier connections route authorization", () => {
+  test("rejects unauthenticated courier connection reads before creating a service-role client", async () => {
+    mock.method(courierConnectionsRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(courierConnectionsRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await courierConnectionsGet(
+      new Request("https://example.com/api/couriers/connections?storeId=store_1"),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without courier-management access from saving connections", async () => {
+    mock.method(courierConnectionsRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(courierConnectionsRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(courierConnectionsRouteDeps, "canManageStore", async () => false);
+
+    const response = (await courierConnectionsPost(
+      jsonRequest("https://example.com/api/couriers/connections", "POST", {
+        storeId: "store_1",
+        provider: "pathao",
+      }),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("merchant bKash payment connection route authorization", () => {
+  test("rejects unauthenticated payment connection reads before creating a service-role client", async () => {
+    mock.method(bkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(bkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await bkashConnectionGet(
+      new Request("https://example.com/api/payment-connections/bkash?storeId=store_1"),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without owner/admin access from saving payment secrets", async () => {
+    mock.method(bkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(bkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(bkashPaymentConnectionRouteDeps, "canManageStore", async () => false);
+
+    const response = (await bkashConnectionPut(
+      jsonRequest("https://example.com/api/payment-connections/bkash", "PUT", {
+        storeId: "store_1",
+        settings: {
+          appKey: "app-key",
+          appSecret: "secret",
+          username: "merchant",
+          password: "password",
+        },
+      }),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("courier shipments route authorization", () => {
+  test("rejects unauthenticated shipment reads before creating a service-role client", async () => {
+    mock.method(courierShipmentsRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(courierShipmentsRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await courierShipmentsGet(
+      new Request("https://example.com/api/couriers/shipments?storeId=store_1"),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated non-managers from reading shipment activity", async () => {
+    mock.method(courierShipmentsRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(courierShipmentsRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(courierShipmentsRouteDeps, "canManageStore", async () => false);
+
+    const response = (await courierShipmentsGet(
+      new Request("https://example.com/api/couriers/shipments?storeId=store_1"),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("courier booking route authorization", () => {
+  test("rejects unauthenticated courier bookings before creating a service-role client", async () => {
+    mock.method(courierBookingRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(courierBookingRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await courierBookPost(
+      jsonRequest("https://example.com/api/couriers/book", "POST", {
+        storeId: "store_1",
+        orderId: "order_1",
+        connectionId: "connection_1",
+      }),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without order-management access from booking couriers", async () => {
+    mock.method(courierBookingRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(courierBookingRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(courierBookingRouteDeps, "canManageStore", async () => false);
+
+    const response = (await courierBookPost(
+      jsonRequest("https://example.com/api/couriers/book", "POST", {
+        storeId: "store_1",
+        orderId: "order_1",
+        connectionId: "connection_1",
+      }),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("notification preview and test route authorization", () => {
+  test("rejects unauthenticated notification preview requests", async () => {
+    mock.method(notificationTestRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(notificationTestRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await notificationPreviewGet(
+      new Request("https://example.com/api/notifications/test?storeId=store_1"),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without store access from sending notification tests", async () => {
+    mock.method(notificationTestRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(notificationTestRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(notificationTestRouteDeps, "canManageStore", async () => false);
+    const fetchMock = mock.method(notificationTestRouteDeps, "fetch", async () => {
+      throw new Error("should not hit send-email");
+    });
+
+    const response = (await notificationTestPost(
+      jsonRequest("https://example.com/api/notifications/test", "POST", {
+        storeId: "store_1",
+        templateName: "merchant-order-alert",
+      }),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(canManageStoreMock.mock.callCount(), 1);
+    assert.equal(fetchMock.mock.callCount(), 0);
+  });
+});
+
+describe("notification retry route authorization", () => {
+  test("rejects unauthenticated retry requests", async () => {
+    mock.method(notificationRetryRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(notificationRetryRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await notificationRetryPost(
+      jsonRequest("https://example.com/api/notifications/retry", "POST", {
+        storeId: "store_1",
+        action: "run_due",
+      }),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without store access from processing retries", async () => {
+    mock.method(notificationRetryRouteDeps, "getAuthenticatedUser", async () => ({ id: "viewer_1" }) as never);
+    mock.method(notificationRetryRouteDeps, "getSupabaseAdminClient", () => ({} as never));
+    const canManageStoreMock = mock.method(notificationRetryRouteDeps, "canManageStore", async () => false);
+
+    const response = (await notificationRetryPost(
+      jsonRequest("https://example.com/api/notifications/retry", "POST", {
+        storeId: "store_1",
+        action: "run_due",
+      }),
+    ))!;
 
     assert.equal(response.status, 403);
     assert.deepEqual(await response.json(), { error: "Forbidden" });

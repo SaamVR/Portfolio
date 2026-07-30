@@ -57,17 +57,7 @@ const Footer = () => {
   const currentStore = useOptionalStore();
   const subscribedStorageKey = getScopedStorefrontStorageKey("newsletter-subscribed", currentStore?.id);
   const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem(subscribedStorageKey) === "true";
-      } catch {
-        return false;
-      }
-    }
-
-    return false;
-  });
+  const [subscribed, setSubscribed] = useState(false);
   const [error, setError] = useState("");
   const { data: footer } = useSiteSettings<FooterSettings>("footer", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);

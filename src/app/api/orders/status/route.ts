@@ -50,7 +50,7 @@ export async function PATCH(req: Request) {
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
-      .select("id, store_id, status")
+      .select("id, store_id, status, total, payment_method, user_id")
       .eq("id", orderId)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -74,6 +74,24 @@ export async function PATCH(req: Request) {
       .eq("store_id", storeId);
 
     if (updateError) throw updateError;
+
+    if (status === "cancelled") {
+      void (supabaseAdmin as any).from("store_revenue_events").insert({
+        store_id: storeId,
+        order_id: orderId,
+        customer_id: order.user_id ?? null,
+        event_type: "cancellation",
+        gross_amount: Number(order.total ?? 0),
+        refund_amount: Number(order.total ?? 0),
+        net_amount: 0,
+        currency_code: "BDT",
+        payment_method: order.payment_method ?? null,
+        status,
+        metadata: {
+          previous_status: order.status,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, status });
   } catch (error) {

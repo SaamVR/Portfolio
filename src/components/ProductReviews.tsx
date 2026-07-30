@@ -105,17 +105,17 @@ const ProductReviews = ({ productId }: { productId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
+  const reviewProductIds = isUuid(productId) ? [productId] : [];
 
   // Fetch real approved reviews from the public view (excludes user_id and order_id)
   const { data: dbReviews = [] } = useQuery({
-    queryKey: ["product-reviews", productId, storeId],
+    queryKey: ["product-reviews", productId, storeId, reviewProductIds.join(",")],
     queryFn: async () => {
-      if (!isUuid(productId)) return [];
+      if (reviewProductIds.length === 0) return [];
       const { data, error } = await supabase
         .from("public_product_reviews" as any)
         .select("id, author_name, rating, created_at, review_text, size_purchased, admin_reply, image_url")
-        .eq("store_id", storeId as string)
-        .eq("product_id", productId)
+        .in("product_id", reviewProductIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as unknown) as Array<{
@@ -129,7 +129,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
         image_url: string | null;
       }>;
     },
-    enabled: !!productId && !!storeId,
+    enabled: !!storeId && reviewProductIds.length > 0,
   });
 
   const realReviews: Review[] = dbReviews.map((r) => ({

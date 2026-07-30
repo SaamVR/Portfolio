@@ -76,6 +76,7 @@ export function StorefrontTemplateRenderer({
   selectedBlockId,
   canManageStorefront,
   onSelectBlock,
+  embedded = false,
 }: {
   store: Store;
   page: StorePage;
@@ -84,6 +85,7 @@ export function StorefrontTemplateRenderer({
   selectedBlockId: string | null;
   canManageStorefront: boolean;
   onSelectBlock: (blockId: string) => void;
+  embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
   const blocksToRender = sortBlocksForTemplate(blocks, template);
@@ -145,7 +147,7 @@ export function StorefrontTemplateRenderer({
     );
 
   return (
-    <StorefrontShell templateId={templateId} template={template}>
+    <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
       {renderedBlocks}
     </StorefrontShell>
   );

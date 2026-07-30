@@ -28,11 +28,11 @@ describe("whatsapp-order-notify edge function helper", () => {
 
     expect(message.includes("*Order Number:* #10042")).toBe(true);
     expect(message.includes("*Customer:* Tanvir Hossain (01711223344)")).toBe(true);
-    expect(message.includes("• 1x Premium Panjabi (L) - ৳2500")).toBe(true);
-    expect(message.includes("• 1x Cotton Pajama (L) - ৳950")).toBe(true);
-    expect(message.includes("*Total:* ৳3450")).toBe(true);
+    expect(message.includes("- 1x Premium Panjabi [Option: L] - BDT 2500")).toBe(true);
+    expect(message.includes("- 1x Cotton Pajama [Option: L] - BDT 950")).toBe(true);
+    expect(message.includes("*Total:* BDT 3450")).toBe(true);
     expect(message.includes("*Delivery Address:* Flat 4B, House 12, Road 5, Dhanmondi, Dhaka")).toBe(true);
-    expect(message.includes(`🔗 *Admin Link:* ${adminLink}`)).toBe(true);
+    expect(message.includes(`*Admin Link:* ${adminLink}`)).toBe(true);
   });
 
   it("generates wa.me click-to-chat URL with sanitized recipient digits", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -22,7 +22,7 @@ const BkashCallback = () => {
   const orderId = searchParams.get("order_id");
   const storeId = searchParams.get("store_id");
 
-  const resolveStoreSlug = async () => {
+  const resolveStoreSlug = useCallback(async () => {
     if (!storeId) return undefined;
 
     const { data } = await supabase
@@ -32,7 +32,7 @@ const BkashCallback = () => {
       .maybeSingle();
 
     return data?.slug ?? undefined;
-  };
+  }, [storeId]);
 
   useEffect(() => {
     if (executeCalled.current) return;
@@ -93,7 +93,7 @@ const BkashCallback = () => {
     };
 
     executePayment();
-  }, [paymentID, callbackStatus, orderId, storeId, navigate]);
+  }, [paymentID, callbackStatus, orderId, storeId, navigate, resolveStoreSlug]);
 
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 

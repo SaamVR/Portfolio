@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useProducts } from "@/hooks/useProducts";
 import { productUrl } from "@/lib/slug";
@@ -9,13 +10,15 @@ const RecentlyViewed = ({ title = "Recently Viewed" }: { title?: string }) => {
   const currentStore = useOptionalStore();
   const recentlyViewedKey = getScopedStorefrontStorageKey("recently-viewed", currentStore?.id);
   const { data: products = [] } = useProducts(currentStore?.id);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
 
-  let recentIds: string[] = [];
-  if (typeof window !== "undefined") {
+  useEffect(() => {
     try {
-      recentIds = JSON.parse(localStorage.getItem(recentlyViewedKey) || "[]");
-    } catch { /* ignore */ }
-  }
+      setRecentIds(JSON.parse(localStorage.getItem(recentlyViewedKey) || "[]"));
+    } catch {
+      setRecentIds([]);
+    }
+  }, [recentlyViewedKey]);
 
   const recentProducts = recentIds
     .map((id) => products.find((p) => p.id === id))

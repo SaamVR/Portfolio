@@ -62,8 +62,9 @@ import {
   DEFAULT_STORE_DESCRIPTION,
   DEFAULT_STORE_LOCALE,
 } from "@/lib/cms/default-store";
+import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { ensureRequiredStoreFlowPages, instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
+import { ensureRequiredStoreFlowPages } from "@/lib/cms/blueprint-pages";
 import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForBlueprint, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
@@ -72,12 +73,15 @@ import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
+import { StorefrontPreviewFrame } from "@/components/storefront/StorefrontPreviewFrame";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
-import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTemplateRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
-import { sanitizeStoreBlocks, sanitizeStorePage, validateStoreForPersistence } from "@/lib/cms/validation";
+import { sanitizeStoreBlocks, sanitizeStorePage, sanitizeStoreThemeCustomCss, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import { fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
+import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
@@ -228,7 +232,7 @@ function cloneHomepageBlocksForBlueprint(
   blueprintId: string,
   pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): StorePageBlock[] {
-  const seededPages = instantiateStorePagesFromBlueprint(blueprintId, pageBlueprints);
+  const seededPages = instantiateStorePagesFromTemplate(blueprintId, pageBlueprints, { blueprintId });
   const homepage = seededPages.find((page) => page.isHomepage) ?? createDefaultCmsPage(0);
 
   return homepage.blocks.map((block, index) => ({
@@ -249,14 +253,26 @@ function mapRecordsToStore(
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
   pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): Store {
-  const blueprint = resolveStoreBlueprint(
-    businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog",
-    blueprints,
-  );
+  const rawSiteSettings = siteSettings.reduce<Record<string, unknown>>((settings, setting) => {
+    settings[setting.key] = setting.value;
+    return settings;
+  }, {});
+  const storefrontProfile = typeof rawSiteSettings.storefront_profile === "object" && rawSiteSettings.storefront_profile
+    ? rawSiteSettings.storefront_profile as Record<string, unknown>
+    : {};
+  const templateProfile = resolveStorefrontTemplateProfile(storefrontProfile.template_id, {
+    blueprintId: typeof storefrontProfile.blueprint_id === "string"
+      ? storefrontProfile.blueprint_id
+      : businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog",
+    productVisibility: typeof storefrontProfile.product_visibility === "string"
+      ? storefrontProfile.product_visibility
+      : null,
+  });
+  const blueprint = resolveStoreBlueprint(templateProfile.seedBlueprintId, blueprints);
   const fallbackTheme = resolveThemePackageById(
     theme?.theme_package_id,
     themePackages,
-    theme?.preset_id ?? blueprint.defaultTheme.presetId,
+    theme?.preset_id ?? templateProfile.seedDefinition.defaultTheme.presetId,
   );
   const mappedPages = pages
     .map((page) =>
@@ -288,7 +304,7 @@ function mapRecordsToStore(
   const resolvedPages = ensureRequiredStoreFlowPages(
     mappedPages.length > 0
       ? applyLegacyHomepageSettingsToPages(mappedPages, siteSettings)
-      : instantiateStorePagesFromBlueprint(blueprint, pageBlueprints),
+      : instantiateStorePagesFromTemplate(templateProfile, pageBlueprints),
     blueprint,
   );
 
@@ -297,25 +313,25 @@ function mapRecordsToStore(
     name: store.name,
     slug: store.slug,
     customDomain: store.custom_domain ?? undefined,
-    description: store.description ?? blueprint.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
+    description: store.description ?? templateProfile.seedDefinition.storeDescription ?? DEFAULT_STORE_DESCRIPTION,
     currencyCode: store.currency_code ?? DEFAULT_STORE_CURRENCY_CODE,
     locale: store.locale ?? DEFAULT_STORE_LOCALE,
     isPublished: store.is_published ?? false,
     theme: {
       presetId: theme?.preset_id ?? fallbackTheme.presetId,
       themePackageId: theme?.theme_package_id ?? fallbackTheme.id,
-      mode: theme?.mode ?? blueprint.defaultTheme.mode,
-      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? blueprint.defaultTheme.headingFont),
-      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? blueprint.defaultTheme.bodyFont),
-      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? blueprint.defaultTheme.borderRadius),
-      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : blueprint.defaultTheme.radiusScale,
-      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : blueprint.defaultTheme.densityScale,
-      aesthetic: theme?.aesthetic ?? (typeof theme?.components?.aesthetic === "string" ? theme.components.aesthetic as Store["theme"]["aesthetic"] : blueprint.defaultTheme.aesthetic),
-      effects: theme?.effects ?? (typeof theme?.components?.effects === "object" && theme.components.effects ? theme.components.effects as Store["theme"]["effects"] : blueprint.defaultTheme.effects),
-      paletteSource: theme?.palette_source ?? blueprint.defaultTheme.paletteSource,
-      paletteSeed: theme?.palette_seed ?? blueprint.defaultTheme.paletteSeed,
-      schemaVersion: theme?.schema_version ?? blueprint.defaultTheme.schemaVersion ?? 1,
-      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? blueprint.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? blueprint.defaultTheme.mode],
+      mode: theme?.mode ?? templateProfile.seedDefinition.defaultTheme.mode,
+      headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? templateProfile.seedDefinition.defaultTheme.headingFont),
+      bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? templateProfile.seedDefinition.defaultTheme.bodyFont),
+      borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? templateProfile.seedDefinition.defaultTheme.borderRadius),
+      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : templateProfile.seedDefinition.defaultTheme.radiusScale,
+      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : templateProfile.seedDefinition.defaultTheme.densityScale,
+      aesthetic: theme?.aesthetic ?? (typeof theme?.components?.aesthetic === "string" ? theme.components.aesthetic as Store["theme"]["aesthetic"] : templateProfile.seedDefinition.defaultTheme.aesthetic),
+      effects: theme?.effects ?? (typeof theme?.components?.effects === "object" && theme.components.effects ? theme.components.effects as Store["theme"]["effects"] : templateProfile.seedDefinition.defaultTheme.effects),
+      paletteSource: theme?.palette_source ?? templateProfile.seedDefinition.defaultTheme.paletteSource,
+      paletteSeed: theme?.palette_seed ?? templateProfile.seedDefinition.defaultTheme.paletteSeed,
+      schemaVersion: theme?.schema_version ?? templateProfile.seedDefinition.defaultTheme.schemaVersion ?? 1,
+      customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? templateProfile.seedDefinition.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? templateProfile.seedDefinition.defaultTheme.mode],
       customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
     pages: resolvedPages,
@@ -323,8 +339,8 @@ function mapRecordsToStore(
 }
 
 function getBlueprintBootstrapStoreName(blueprintId: string) {
-  const blueprint = resolveStoreBlueprint(blueprintId);
-  return `${blueprint.shortName} Store`;
+  const templateProfile = resolveStorefrontTemplateProfile(blueprintId, { blueprintId });
+  return `${templateProfile.seedDefinition.shortName} Store`;
 }
 
 export default function CmsPagesManager() {
@@ -528,7 +544,7 @@ export default function CmsPagesManager() {
         supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
         supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
         supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css").eq("store_id", storeRecord.id).order("sort_order"),
-        supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories"]),
+        supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories", "storefront_profile"]),
         loadStoreBlueprints(supabase),
         loadPageBlueprints(supabase),
         loadThemePackages(supabase, storeRecord.id),
@@ -551,7 +567,19 @@ export default function CmsPagesManager() {
       setStoreBlueprints(loadedBlueprints);
       setPageBlueprints(loadedPageBlueprints);
       setThemePackages(loadedThemePackages);
-      setStoreBlueprintId(businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog");
+      const storefrontProfileSetting = (Array.isArray(siteSettingsResponse.data)
+        ? (siteSettingsResponse.data as SiteSettingRecord[]).find((entry) => entry.key === "storefront_profile")?.value
+        : null) as Record<string, unknown> | null;
+      setStoreBlueprintId(
+        resolveStorefrontTemplateProfile(storefrontProfileSetting?.template_id, {
+          blueprintId: typeof storefrontProfileSetting?.blueprint_id === "string"
+            ? storefrontProfileSetting.blueprint_id
+            : businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog",
+          productVisibility: typeof storefrontProfileSetting?.product_visibility === "string"
+            ? storefrontProfileSetting.product_visibility
+            : null,
+        }).seedBlueprintId,
+      );
       setInstalledBlueprintVersion(typeof businessProfile?.blueprint_version === "number" ? businessProfile.blueprint_version : null);
       commitStoreChange(parsedStore, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
@@ -788,9 +816,14 @@ export default function CmsPagesManager() {
 
     setBootstrapping(true);
 
-    const blueprint = resolveStoreBlueprint(storeBlueprintId, storeBlueprints);
-    const seedPages = instantiateStorePagesFromBlueprint(blueprint.id, pageBlueprints);
-    const themePackage = resolveThemePackageById(blueprint.defaultTheme.presetId, themePackages, blueprint.defaultTheme.presetId);
+    const templateProfile = resolveStorefrontTemplateProfile(storeBlueprintId, { blueprintId: storeBlueprintId });
+    const blueprint = resolveStoreBlueprint(templateProfile.seedBlueprintId, storeBlueprints);
+    const seedPages = instantiateStorePagesFromTemplate(templateProfile, pageBlueprints);
+    const themePackage = resolveThemePackageById(
+      templateProfile.seedDefinition.defaultTheme.presetId,
+      themePackages,
+      templateProfile.seedDefinition.defaultTheme.presetId,
+    );
 
     const { error: storeError } = await supabase.from("stores").upsert(
       {
@@ -798,7 +831,7 @@ export default function CmsPagesManager() {
         owner_id: user.id,
         name: store?.name ?? getBlueprintBootstrapStoreName(blueprint.id),
         slug: store?.slug ?? `store-${String(activeStoreId).slice(0, 8)}`,
-        description: blueprint.storeDescription,
+        description: templateProfile.seedDefinition.storeDescription,
         currency_code: "BDT",
         locale: "en-BD",
         is_published: false,
@@ -817,31 +850,31 @@ export default function CmsPagesManager() {
       {
         store_id: activeStoreId as string,
         preset_id: themePackage.presetId,
-        mode: blueprint.defaultTheme.mode,
+        mode: templateProfile.seedDefinition.defaultTheme.mode,
         theme_package_id: themePackage.id,
         theme_package_version: themePackage.version,
-        colors: themePackage.tokens[blueprint.defaultTheme.mode] ?? {},
+        colors: themePackage.tokens[templateProfile.seedDefinition.defaultTheme.mode] ?? {},
         typography: {
-          headingFont: blueprint.defaultTheme.headingFont,
-          bodyFont: blueprint.defaultTheme.bodyFont,
+          headingFont: templateProfile.seedDefinition.defaultTheme.headingFont,
+          bodyFont: templateProfile.seedDefinition.defaultTheme.bodyFont,
         },
         components: {
-          borderRadius: blueprint.defaultTheme.borderRadius,
-          aesthetic: blueprint.defaultTheme.aesthetic,
-          effects: blueprint.defaultTheme.effects,
+          borderRadius: templateProfile.seedDefinition.defaultTheme.borderRadius,
+          aesthetic: templateProfile.seedDefinition.defaultTheme.aesthetic,
+          effects: templateProfile.seedDefinition.defaultTheme.effects,
         },
-        aesthetic: blueprint.defaultTheme.aesthetic ?? "minimal",
-        radius_scale: blueprint.defaultTheme.radiusScale ?? 1,
-        density_scale: blueprint.defaultTheme.densityScale ?? 1,
-        effects: blueprint.defaultTheme.effects ?? {
+        aesthetic: templateProfile.seedDefinition.defaultTheme.aesthetic ?? "minimal",
+        radius_scale: templateProfile.seedDefinition.defaultTheme.radiusScale ?? 1,
+        density_scale: templateProfile.seedDefinition.defaultTheme.densityScale ?? 1,
+        effects: templateProfile.seedDefinition.defaultTheme.effects ?? {
           scrollReveals: false,
           hoverEffects: true,
           parallax: false,
           intensity: "medium",
         },
-        palette_source: blueprint.defaultTheme.paletteSource ?? null,
-        palette_seed: blueprint.defaultTheme.paletteSeed ?? null,
-        schema_version: blueprint.defaultTheme.schemaVersion ?? 1,
+        palette_source: templateProfile.seedDefinition.defaultTheme.paletteSource ?? null,
+        palette_seed: templateProfile.seedDefinition.defaultTheme.paletteSeed ?? null,
+        schema_version: templateProfile.seedDefinition.defaultTheme.schemaVersion ?? 1,
         resolved_tokens: {
           light: themePackage.tokens.light,
           dark: themePackage.tokens.dark,
@@ -890,16 +923,16 @@ export default function CmsPagesManager() {
     await supabase.from("store_business_profiles").upsert(
       {
         store_id: activeStoreId as string,
-        blueprint_id: blueprint.id,
+        blueprint_id: templateProfile.seedBlueprintId,
         blueprint_version: 1,
-        business_family: blueprint.businessFamily,
-        catalog_mode: blueprint.catalogMode,
-        enabled_modules: blueprint.capabilities,
+        business_family: templateProfile.businessFamily,
+        catalog_mode: templateProfile.catalogMode,
+        enabled_modules: templateProfile.seedDefinition.capabilities,
       },
       { onConflict: "store_id" },
     );
 
-    const siteSettingsRows = buildBlueprintSiteSettingsEntries(blueprint).map((entry) => ({
+    const siteSettingsRows = buildStorefrontTemplateSiteSettingsEntries(templateProfile.seedDefinition).map((entry) => ({
       store_id: activeStoreId as string,
       key: entry.key,
       value: entry.value,
@@ -911,7 +944,7 @@ export default function CmsPagesManager() {
         .upsert(siteSettingsRows, { onConflict: "store_id,key" });
 
       if (siteSettingsError) {
-        toast.error("Failed to seed blueprint site settings.");
+        toast.error("Failed to seed template site settings.");
         setBootstrapping(false);
         return;
       }
@@ -1252,6 +1285,11 @@ export default function CmsPagesManager() {
     updateStoreTheme(target === "heading" ? { headingFont: fontFamily } : { bodyFont: fontFamily });
   };
 
+  const updateThemeScale = (target: "radius" | "density", value: number) => {
+    const safeValue = Math.max(0, Math.min(1, value));
+    updateStoreTheme(target === "radius" ? { radiusScale: safeValue } : { densityScale: safeValue });
+  };
+
   const updateThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
     updateStoreTheme({ aesthetic });
   };
@@ -1325,12 +1363,12 @@ export default function CmsPagesManager() {
           ...page,
           id: pageId,
           isHomepage: Boolean(page.isHomepage),
-          blocks: sanitizeStoreBlocks(page.blocks ?? []).map((block, blockIndex) => ({
+          blocks: sanitizeStoreBlocks(page.blocks ?? [], { allowAdvanced: isAdvancedEditor }).map((block, blockIndex) => ({
             ...block,
             id: crypto.randomUUID(),
             sortOrder: blockIndex,
           })),
-        });
+        }, { allowAdvanced: isAdvancedEditor });
 
         return sanitizedPage ? [sanitizedPage] : [];
       });
@@ -1387,12 +1425,12 @@ export default function CmsPagesManager() {
           ...page,
           id: pageId,
           isHomepage: Boolean(page.isHomepage),
-          blocks: sanitizeStoreBlocks(page.blocks ?? []).map((block, blockIndex) => ({
+          blocks: sanitizeStoreBlocks(page.blocks ?? [], { allowAdvanced: isAdvancedEditor }).map((block, blockIndex) => ({
             ...block,
             id: crypto.randomUUID(),
             sortOrder: blockIndex,
           })),
-        });
+        }, { allowAdvanced: isAdvancedEditor });
 
         return sanitizedPage ? [sanitizedPage] : [];
       });
@@ -1415,9 +1453,7 @@ export default function CmsPagesManager() {
       }
       setSelectedBlockId("");
       
-      const nextPreviewHref = withStoreId(candidate.pages.find((p) => p.isHomepage)?.slug ?? "/", candidate.id);
       toast.success("Template applied. Let's customize it!");
-      navigate(nextPreviewHref);
       return true;
     } catch (error: any) {
       toast.error(error.message || "Failed to apply template.");
@@ -1626,6 +1662,43 @@ export default function CmsPagesManager() {
     return null;
   }
 
+  if (isTemplateGalleryRoute && !activeStoreId) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-border bg-card/80 shadow-sm">
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <LayoutTemplate className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>Storefront Templates</CardTitle>
+                <CardDescription>
+                  Browse the live storefront templates first. To apply one, pick or create a store from the switcher or launch flow.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild className="gap-2">
+              <Link to="/signup">
+                <Rocket className="h-4 w-4" />
+                Create Store
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/admin">
+                <StoreIcon className="h-4 w-4" />
+                Go To Dashboard
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <TemplateGallery store={defaultStore} />
+      </div>
+    );
+  }
+
   if (loading && !store) {
     return (
       <AdminRecoveryPanel
@@ -1703,7 +1776,7 @@ export default function CmsPagesManager() {
             <div>
               <CardTitle>Initialize Storefront Workspace</CardTitle>
               <CardDescription>
-                Generate the first page builder snapshot for this store using its blueprint, theme, and page defaults.
+                Generate the first page builder snapshot for this store using its template, theme, and page defaults.
               </CardDescription>
             </div>
           </div>
@@ -1720,7 +1793,7 @@ export default function CmsPagesManager() {
             </div>
             <div className="rounded-xl border border-border bg-background/40 p-4">
               <p className="text-sm font-medium text-foreground">Blueprint-aware</p>
-              <p className="mt-1 text-xs text-muted-foreground">The starter workspace pulls from the current business blueprint and page templates.</p>
+              <p className="mt-1 text-xs text-muted-foreground">The starter workspace pulls from the current storefront template and page templates.</p>
             </div>
             <div className="rounded-xl border border-border bg-background/40 p-4">
               <p className="text-sm font-medium text-foreground">Safe to customize</p>
@@ -1748,11 +1821,6 @@ export default function CmsPagesManager() {
   const previewHref = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain }, previewPath || "/");
   
   const previewBlocks = selectedPage ? [...selectedPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  const previewFrameClassName = previewViewport === "mobile"
-    ? "mx-auto w-full max-w-[420px]"
-    : previewViewport === "tablet"
-      ? "mx-auto w-full max-w-[820px]"
-      : "w-full";
   const visibleBlockCount = selectedPage?.blocks.filter((block) => block.isVisible).length ?? 0;
   const selectedPageNumber = selectedPage ? store.pages.findIndex((page) => page.id === selectedPage.id) + 1 : 0;
   const heroBlock = selectedPage?.blocks.find((block) => block.type === "hero") ?? null;
@@ -1849,6 +1917,35 @@ export default function CmsPagesManager() {
         ? `Autosaved locally at ${lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
         : "Unsaved changes in local draft"
       : "All changes saved";
+  const guidedEditingActionItems = [
+    {
+      id: "undo",
+      label: "Undo",
+      detail: undoStack.length > 0 ? `${undoStack.length} step${undoStack.length === 1 ? "" : "s"} available` : "Nothing to undo",
+      disabled: undoStack.length === 0,
+      action: undoStoreChange,
+      icon: Undo2,
+      variant: "outline" as const,
+    },
+    {
+      id: "redo",
+      label: "Redo",
+      detail: redoStack.length > 0 ? `${redoStack.length} step${redoStack.length === 1 ? "" : "s"} available` : "Nothing to redo",
+      disabled: redoStack.length === 0,
+      action: redoStoreChange,
+      icon: Redo2,
+      variant: "outline" as const,
+    },
+    {
+      id: "save",
+      label: saving ? "Saving..." : hasUnsavedChanges ? "Save now" : "Saved",
+      detail: basicStatusLabel,
+      disabled: saving,
+      action: () => void saveAll(),
+      icon: Save,
+      variant: "default" as const,
+    },
+  ];
   const advancedJsonLabel = selectedBlock ? `${selectedBlock.type}.json` : "selected-block.json";
   const advancedPageJson = selectedPage
     ? JSON.stringify({
@@ -1908,10 +2005,10 @@ export default function CmsPagesManager() {
   const basicStepRecommendations: Record<BasicGuideStep, string> = {
     basics: store.isPublished ? "Store is already live. Double-check the summary before moving on." : "Finish the store summary, then continue to your first impression.",
     homepage: homepageHeroProps.mediaUrl ? "Homepage media is in place. Tighten the headline, campaign, and proof flow next." : "Lead with a strong hero, then support it with products and trust cues.",
-    product: selectedProductPage ? "Refine your main product or catalog page so shoppers can browse with confidence." : "Create or select a product-focused page in Advanced, then return here for guided content setup.",
+    product: selectedProductPage ? "Refine your main product or catalog page so shoppers can browse with confidence." : "Create or select a product-focused page in Expert Editing, then return here for guided content setup.",
     checkout: "Use guided settings for payment, delivery, support, and policy reassurance instead of raw page editing.",
-    custom: selectedCustomContentPage ? "Use custom pages to answer FAQs, tell your story, and reduce hesitation." : "Add About, FAQ, or policy pages in Advanced, then come back here for merchant-safe editing.",
-    launch: hasUnsavedChanges ? "Save the current draft, then preview the page on the live storefront." : "Open preview and do a final merchant-eye pass before you leave Basic Editing.",
+    custom: selectedCustomContentPage ? "Use custom pages to answer FAQs, tell your story, and reduce hesitation." : "Add About, FAQ, or policy pages in Expert Editing, then come back here for merchant-safe editing.",
+    launch: hasUnsavedChanges ? "Save the current draft, then preview the page on the live storefront." : "Open preview and do a final merchant-eye pass before you leave Guided Editing.",
   };
   const nextBasicStep = basicGuideSteps[activeBasicStepIndex + 1] ?? null;
   const basicStepActionLabels: Record<BasicGuideStep, string[]> = {
@@ -2083,7 +2180,7 @@ export default function CmsPagesManager() {
           ? {
               title: "Create a product discovery page",
               detail: "Customers still need a dedicated page for browsing products, collections, or featured offers.",
-              actionLabel: "Open Advanced Editing",
+              actionLabel: "Open Expert Editing",
               action: () => {
                 window.location.href = advancedEditorHref;
               },
@@ -2327,12 +2424,12 @@ export default function CmsPagesManager() {
         seoTitle: parsed.seoTitle ?? selectedPage.seoTitle ?? "",
         seoDescription: parsed.seoDescription ?? selectedPage.seoDescription ?? "",
         isHomepage: Boolean(parsed.isHomepage ?? selectedPage.isHomepage),
-        blocks: sanitizeStoreBlocks(parsed.blocks ?? selectedPage.blocks).map((block, index) => ({
+        blocks: sanitizeStoreBlocks(parsed.blocks ?? selectedPage.blocks, { allowAdvanced: isAdvancedEditor }).map((block, index) => ({
           ...block,
           id: typeof block.id === "string" && block.id.trim() ? block.id : crypto.randomUUID(),
           sortOrder: index,
         })),
-      });
+      }, { allowAdvanced: isAdvancedEditor });
 
       if (!sanitizedPage) {
         throw new Error("The page JSON did not produce a valid page.");
@@ -2365,7 +2462,7 @@ export default function CmsPagesManager() {
           customCss: parsed.customCss ?? selectedBlock.customCss,
           props: parsed.props ?? selectedBlock.props,
         } as StorePageBlock,
-      ]);
+      ], { allowAdvanced: true });
       const sanitizedBlock = sanitizedBlocks[0];
 
       if (!sanitizedBlock) {
@@ -2376,8 +2473,6 @@ export default function CmsPagesManager() {
         ...sanitizedBlock,
         id: selectedBlock.id,
         sortOrder: selectedBlock.sortOrder,
-        customHtml: parsed.customHtml ?? sanitizedBlock.customHtml,
-        customCss: parsed.customCss ?? sanitizedBlock.customCss,
       }));
       toast.success("Applied selected block JSON.");
     } catch (error: any) {
@@ -2386,7 +2481,12 @@ export default function CmsPagesManager() {
   };
 
   const applyAdvancedThemeCss = () => {
-    updateStoreTheme({ customCss: advancedThemeCssDraft });
+    const sanitizedCustomCss = sanitizeStoreThemeCustomCss(advancedThemeCssDraft);
+    if (advancedThemeCssDraft.trim() && !sanitizedCustomCss) {
+      toast.error("Blocked unsupported or unsafe theme CSS rules.");
+      return;
+    }
+    updateStoreTheme({ customCss: sanitizedCustomCss });
     toast.success("Applied custom theme CSS to the local draft.");
   };
 
@@ -2397,154 +2497,29 @@ export default function CmsPagesManager() {
     return (
     <StoreProvider store={store}>
       <StoreThemeScope theme={store.theme}>
-        <div className={cn(previewFrameClassName, "[&_.animate-blur-in]:!opacity-100 [&_.animate-blur-in]:!blur-none [&_.animate-blur-in]:!filter-none [&_.animate-fade-in]:!opacity-100 [&_.animate-slide-up]:!opacity-100")}>
-          <div className="overflow-hidden rounded-xl border border-border bg-background">
-            <div className="border-b border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {selectedPage?.title ?? "Preview"}
-            </div>
-            <div className={cn("overflow-y-auto", fullHeight ? "max-h-none" : previewViewport === "mobile" ? "max-h-[70vh]" : "max-h-[720px]")}>
-              {previewBlocks.length > 0 ? (
-                previewBlocks.map((block, index) => {
-                  const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
-                  const isFocused = selectedBlockId === block.id;
-
-                  return (
-                    <div
-                      key={block.id}
-                      id={`cms-preview-block-${block.id}`}
-                      role={interactive ? "button" : undefined}
-                      tabIndex={interactive ? 0 : undefined}
-                      onKeyDown={(e) => {
-                        if (!interactive) return;
-                        if (e.key === "Enter" || e.key === " ") {
-                          setSelectedBlockId(block.id);
-                        }
-                      }}
-                      onClick={() => interactive && setSelectedBlockId(block.id)}
-                      className={cn(
-                        "group relative block w-full text-left transition-colors",
-                        interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        interactive && isFocused && "bg-primary/5",
-                      )}
-                    >
-                      {interactive ? (
-                        <div
-                          className={cn(
-                            "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-lg border bg-background/90 px-3 py-2 opacity-0 shadow-sm backdrop-blur transition-opacity",
-                            "group-hover:opacity-100 group-focus-visible:opacity-100",
-                            isFocused ? "border-primary/40 opacity-100" : "border-border/80",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-foreground">
-                              {index + 1}. {blockMeta?.label ?? block.type}
-                            </p>
-                            <p className="truncate text-[11px] text-muted-foreground">{block.type}</p>
-                          </div>
-                          <Badge variant={isFocused ? "secondary" : "outline"}>
-                            {isFocused ? "Editing" : "Select"}
-                          </Badge>
-                        </div>
-                      ) : null}
-                      {interactive ? (
-                        <div
-                          className={cn(
-                            "absolute inset-x-3 bottom-3 z-20 flex flex-wrap justify-end gap-2 opacity-0 transition-opacity",
-                            "group-hover:opacity-100 group-focus-visible:opacity-100",
-                            isFocused && "opacity-100",
-                          )}
-                        >
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={isFocused ? "secondary" : "outline"}
-                            className="h-8"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedBlockId(block.id);
-                            }}
-                          >
-                            {isFocused ? "Focused" : "Edit"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 bg-background/95"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }));
-                            }}
-                          >
-                            {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 bg-background/95"
-                            disabled={index === 0}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              moveBlock(block.id, -1);
-                            }}
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 bg-background/95"
-                            disabled={index === previewBlocks.length - 1}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              moveBlock(block.id, 1);
-                            }}
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                          {isAdvancedEditor ? (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8 bg-background/95"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                duplicateBlock(block.id);
-                              }}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                          {isAdvancedEditor ? (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8 bg-background/95 text-destructive hover:text-destructive"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                removeBlock(block.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <div className={cn("transition-all", interactive && isFocused && "ring-2 ring-inset ring-primary/30")}>
-                        <StorefrontBlockRenderer block={block} />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-8 text-sm text-muted-foreground">Add blocks to preview this page.</div>
-              )}
-            </div>
+        <div className="[&_.animate-blur-in]:!opacity-100 [&_.animate-blur-in]:!blur-none [&_.animate-blur-in]:!filter-none [&_.animate-fade-in]:!opacity-100 [&_.animate-slide-up]:!opacity-100">
+          <div className="mb-3 rounded-xl border border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {selectedPage?.title ?? "Preview"}
           </div>
+          {selectedPage ? (
+            <StorefrontPreviewFrame
+              viewport={previewViewport}
+              title={`${selectedPage.title} preview`}
+              className={cn(!fullHeight && "max-h-[720px]")}
+            >
+              <StorefrontTemplateRenderer
+                store={store}
+                page={selectedPage}
+                blocks={previewBlocks}
+                adminMode={interactive}
+                selectedBlockId={selectedBlockId}
+                canManageStorefront={interactive}
+                onSelectBlock={setSelectedBlockId}
+              />
+            </StorefrontPreviewFrame>
+          ) : (
+            <div className="rounded-xl border border-border bg-background p-8 text-sm text-muted-foreground">Add blocks to preview this page.</div>
+          )}
         </div>
       </StoreThemeScope>
     </StoreProvider>
@@ -2626,31 +2601,56 @@ export default function CmsPagesManager() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={store.isPublished ? "default" : "secondary"}>{store.isPublished ? "Published" : "Draft"}</Badge>
                 <Badge variant={hasUnsavedChanges ? "secondary" : "outline"}>{hasUnsavedChanges ? "Unsaved changes" : "Saved"}</Badge>
-                <Badge variant="outline">Basic Mode</Badge>
+                <Badge variant="outline">Guided Editing</Badge>
                 {lastDraftSavedAt ? <Badge variant="outline" className="hidden sm:inline-flex">Autosaved {lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</Badge> : null}
               </div>
-              <h1 className="mt-2 truncate text-xl font-semibold text-foreground md:text-2xl">Basic Editor: {store.name}</h1>
+              <h1 className="mt-2 truncate text-xl font-semibold text-foreground md:text-2xl">Guided Editor: {store.name}</h1>
               <p className="mt-1 hidden text-sm text-muted-foreground sm:block">Simple first glance, powerful underneath: guided setup, layout control, theme polish, and live preview.</p>
             </div>
-            <div className="hidden flex-wrap items-center gap-2 sm:flex">
-              <Button variant="outline" onClick={undoStoreChange} disabled={undoStack.length === 0} className="gap-2">
-                <Undo2 className="h-4 w-4" />
-                Undo
-              </Button>
-              <Button variant="outline" onClick={redoStoreChange} disabled={redoStack.length === 0} className="gap-2">
-                <Redo2 className="h-4 w-4" />
-                Redo
-              </Button>
+            <div className="hidden flex-wrap items-center gap-2 xl:flex">
               <Button variant="outline" asChild className="gap-2">
                 <Link to={advancedEditorHref}>
                   <Code2 className="h-4 w-4" />
-                  Advanced
+                  Expert
                 </Link>
               </Button>
-              <Button onClick={() => void saveAll()} disabled={saving} className="gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save
-              </Button>
+            </div>
+          </div>
+          <div className="mx-auto mt-3 max-w-[1800px]">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
+              <div className="rounded-2xl border border-border bg-card/80 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">Editing safety</p>
+                  <Badge variant={saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline"}>
+                    {saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Up to date"}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{basicStatusLabel}</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Changes are kept locally as you work, then published when you press save.
+                </p>
+              </div>
+              {guidedEditingActionItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  className={cn(
+                    "rounded-2xl border px-4 py-3 text-left transition-colors",
+                    item.variant === "default"
+                      ? "border-primary/30 bg-primary/10 hover:bg-primary/15"
+                      : "border-border bg-card/80 hover:border-primary/30 hover:bg-primary/5",
+                    item.disabled && "cursor-not-allowed opacity-60 hover:border-border hover:bg-card/80",
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <item.icon className={cn("h-4 w-4", item.variant === "default" ? "text-primary" : "text-muted-foreground")} />
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -2690,6 +2690,7 @@ export default function CmsPagesManager() {
                 updateThemePackage={updateThemePackage}
                 updateThemeMode={updateThemeMode}
                 updateFont={updateFont}
+                updateThemeScale={updateThemeScale}
                 updateThemeAesthetic={updateThemeAesthetic}
                 updateThemeEffect={updateThemeEffect}
                 selectPage={selectPage}
@@ -2737,21 +2738,40 @@ export default function CmsPagesManager() {
         </div>
 
         <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center px-3 xl:hidden">
-          <div className="pointer-events-auto flex w-full max-w-[360px] items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-2xl backdrop-blur-xl">
-            <Button type="button" variant="outline" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => openBasicPreviewOverlay("mobile")} title="Preview" data-testid="basic-mobile-preview-button">
-              <Eye className="h-4 w-4" />
-              Preview
-            </Button>
-            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={undoStoreChange} disabled={undoStack.length === 0} title="Undo">
-              <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
-              <Redo2 className="h-4 w-4" />
-            </Button>
-            <Button type="button" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => void saveAll()} disabled={saving} title="Save">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved"}
-            </Button>
+          <div className="pointer-events-auto w-full max-w-[380px] rounded-[1.6rem] border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3 px-2 pb-1.5 pt-0.5">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Mobile Editor Dock</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {saving
+                    ? "Saving your draft..."
+                    : hasUnsavedChanges
+                      ? "Draft changed. Save before leaving."
+                      : lastDraftSavedAt
+                        ? `Saved at ${lastDraftSavedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+                        : "All changes saved."}
+                </p>
+              </div>
+              <Badge variant={saving || hasUnsavedChanges ? "secondary" : "outline"} className="shrink-0 rounded-full px-2 py-0.5 text-[10px]">
+                {saving ? "Saving" : hasUnsavedChanges ? "Draft" : "Saved"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="outline" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => openBasicPreviewOverlay("mobile")} title="Preview" data-testid="basic-mobile-preview-button">
+                <Eye className="h-4 w-4" />
+                Preview
+              </Button>
+              <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={undoStoreChange} disabled={undoStack.length === 0} title="Undo">
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
+                <Redo2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="sm" className="h-10 flex-1 rounded-full gap-1.5 px-2 text-xs" onClick={() => void saveAll()} disabled={saving} title="Save">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved"}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -2812,7 +2832,7 @@ export default function CmsPagesManager() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-normal text-foreground">
-                  {isAdvancedEditor ? "Advanced Editing" : "Page Builder"}
+                  {isAdvancedEditor ? "Expert Editing" : "Storefront Editor"}
                 </h1>
                 <Badge variant={isAdvancedEditor ? "secondary" : "outline"}>
                   {isAdvancedEditor ? "Full workspace" : "Storefront manager"}
@@ -2826,10 +2846,10 @@ export default function CmsPagesManager() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm" className="rounded-full">
-                <Link to={basicEditorHref}>Basic Editing</Link>
+                <Link to={basicEditorHref}>Guided Editing</Link>
               </Button>
               <Button asChild variant={isAdvancedEditor ? "secondary" : "outline"} size="sm" className="rounded-full">
-                <Link to={advancedEditorHref}>Advanced Editing</Link>
+                <Link to={advancedEditorHref}>Expert Editing</Link>
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -3245,7 +3265,7 @@ export default function CmsPagesManager() {
                     ) : null}
                     {hasBlueprintVersionUpdate ? (
                       <p className="mt-2 text-xs text-sky-600">
-                        This store was created from an older blueprint snapshot. Saving Page Builder changes will refresh blueprint-owned store profile metadata for the current blueprint.
+                        This store still carries older compatibility metadata. Saving Page Builder changes will refresh the template-owned storefront profile for the current setup.
                       </p>
                     ) : null}
                   </div>
@@ -3452,20 +3472,20 @@ export default function CmsPagesManager() {
                   <p className="text-sm font-medium text-foreground">Pages & Navigation</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {isAdvancedEditor
-                      ? "Select the page you want to edit, duplicate it, or create a new one from a compatible blueprint."
-                      : "Select a page and update content safely. Structural page creation and replacements stay in Advanced Editing."}
+                      ? "Select the page you want to edit, duplicate it, or create a new one from a compatible template graph."
+                      : "Select a page and update content safely. Structural page creation and replacements stay in Expert Editing."}
                   </p>
                 </div>
                 <div id="pages-library" className="rounded-lg border border-border p-3 scroll-mt-36">
                   <div className="grid gap-3">
                     {!pageBlueprintsEnabled ? (
                       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                        Page blueprints are disabled for this store. New pages will start blank and blueprint replacement is locked.
+                        Page templates are disabled for this store. New pages will start blank and template replacement is locked.
                       </div>
                     ) : null}
                     {!isAdvancedEditor ? (
                       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                        New pages, template swaps, and layout imports live in <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link>.
+                        New pages, template swaps, and layout imports live in <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Expert Editing</Link>.
                       </div>
                     ) : null}
                     <div className="grid gap-2">
@@ -3486,7 +3506,7 @@ export default function CmsPagesManager() {
                         {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Showing templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> blueprint.
+                        Showing page templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> storefront type.
                       </p>
                     </div>
                     {isAdvancedEditor ? (
@@ -3677,14 +3697,14 @@ export default function CmsPagesManager() {
                         {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
                       </p>
                       {!pageBlueprintsEnabled ? (
-                        <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use blueprint-backed page structures here.</p>
+                        <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use template-backed page structures here.</p>
                       ) : null}
                     </div>
                   ) : (
                     <div id="page-template" className="grid gap-2 md:col-span-2 rounded-lg border border-dashed border-border p-4 scroll-mt-36">
                       <p className="text-sm font-medium text-foreground">Need a new layout or template?</p>
                       <p className="text-xs text-muted-foreground">
-                        Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Advanced Editing</Link> for page templates, homepage restructuring, and blueprint-driven layout changes.
+                        Switch to <Link to={advancedEditorHref} className="font-medium text-foreground underline underline-offset-4">Expert Editing</Link> for page templates, homepage restructuring, and deeper layout changes.
                       </p>
                     </div>
                   )}
@@ -3807,7 +3827,7 @@ export default function CmsPagesManager() {
                   ) : null}
                   {isAdvancedEditor && selectedPage.blocks.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                      No blocks yet. Add one to start composing this page for the current blueprint.
+                      No blocks yet. Add one to start composing this page for the current storefront template.
                     </div>
                   ) : null}
 
@@ -4444,7 +4464,7 @@ export default function CmsPagesManager() {
                     <div>
                       <CardTitle className="text-lg">Visual CSS Inspector</CardTitle>
                       <CardDescription>
-                        Fine-tune the selected block visually. Breakpoint controls write scoped overrides without changing the Basic Mode content.
+                        Fine-tune the selected block visually. Breakpoint controls write scoped overrides without changing the Guided Editing content.
                       </CardDescription>
                     </div>
                     <div className="flex items-center rounded-lg border border-border p-1">
@@ -4481,6 +4501,7 @@ export default function CmsPagesManager() {
                     <VisualCssInspector
                       selectedBlock={selectedBlock}
                       viewport={previewViewport}
+                      allowCodeEditing={isAdvancedEditor}
                       updateSelectedBlock={(patch) => {
                         if (!selectedBlock) return;
                         updateBlockMeta(selectedBlock.id, patch);
@@ -4788,7 +4809,7 @@ export default function CmsPagesManager() {
                   <div className="w-[min(320px,calc(100vw-1rem))] rounded-[1.5rem] border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Advanced Editing Dock" : "Basic Editing Dock"}</p>
+                        <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Expert Editing Dock" : "Guided Editing Dock"}</p>
                         <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
                       </div>
                       <Button
@@ -4929,7 +4950,7 @@ export default function CmsPagesManager() {
                 <div className="space-y-2">
                   <p className="text-lg font-semibold text-foreground">Choose a page to start editing</p>
                   <p className="text-sm text-muted-foreground">
-                    Open the Pages workspace, select an existing page, or create a new one from a blueprint to unlock the full editor.
+                    Open the Pages workspace, select an existing page, or create a new one from a template to unlock the full editor.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -4954,7 +4975,7 @@ export default function CmsPagesManager() {
                     }}
                     className="rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
                   >
-                    <p className="text-sm font-medium text-foreground">Create from blueprint</p>
+                    <p className="text-sm font-medium text-foreground">Create from template</p>
                     <p className="mt-1 text-xs text-muted-foreground">Start with a recommended structure, then customize blocks.</p>
                   </button>
                 </div>

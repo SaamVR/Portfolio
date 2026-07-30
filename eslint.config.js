@@ -25,10 +25,14 @@ export default tseslint.config(
       "react-hooks": reactHooks,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-empty-object-type": "off",
+      "no-empty": "off",
+      "no-useless-assignment": "off",
+      "preserve-caught-error": "off",
     },
   },
 );

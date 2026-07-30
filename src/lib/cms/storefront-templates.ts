@@ -141,7 +141,7 @@ const allBlockTypes: readonly StorefrontBlockType[] = [
 ] as const;
 
 const defaultOnboardingSteps: BlueprintOnboardingStep[] = [
-  { id: "blueprint", title: "Blueprint", description: "Pick the site style and launch pattern" },
+  { id: "blueprint", title: "Template", description: "Pick the storefront template and launch pattern" },
   { id: "brand", title: "Brand", description: "Name, logo, slug, and brand summary" },
   { id: "content", title: "Content", description: "Front-page hero copy and media" },
   { id: "catalog", title: "Catalog", description: "Choose how products and buying work" },
@@ -1066,6 +1066,14 @@ export function getStorefrontTemplateSeedDefinition(templateId: StorefrontTempla
   return storefrontTemplateSeedRegistry[templateId];
 }
 
+export type ResolvedStorefrontTemplateProfile = {
+  templateId: StorefrontTemplateId;
+  seedDefinition: StorefrontTemplateSeedDefinition;
+  businessFamily: StoreBusinessFamily;
+  catalogMode: StoreCatalogMode;
+  seedBlueprintId: string;
+};
+
 export function resolveCompatibleTemplateSeedId(
   candidate: unknown,
   options?: {
@@ -1129,6 +1137,25 @@ export function resolveStorefrontTemplateId(
     default:
       return "general-catalog";
   }
+}
+
+export function resolveStorefrontTemplateProfile(
+  candidate: unknown,
+  options?: {
+    blueprintId?: string | null;
+    productVisibility?: string | null;
+  },
+): ResolvedStorefrontTemplateProfile {
+  const templateId = resolveStorefrontTemplateId(candidate, options);
+  const seedDefinition = getStorefrontTemplateSeedDefinition(templateId);
+
+  return {
+    templateId,
+    seedDefinition,
+    businessFamily: seedDefinition.businessFamily,
+    catalogMode: seedDefinition.catalogMode,
+    seedBlueprintId: seedDefinition.id,
+  };
 }
 
 export function resolveSeedBlueprintIdForTemplate(templateId: StorefrontTemplateId): string {

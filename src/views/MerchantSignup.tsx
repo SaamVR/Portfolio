@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Phone, Store, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, LayoutTemplate, Loader2, PanelsTopLeft, Phone, Store, User } from "lucide-react";
 import { slugify } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
@@ -32,7 +32,7 @@ import {
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { cn } from "@/lib/utils";
 
-type SignupStep = "methods" | "verify" | "details";
+type SignupStep = "methods" | "verify" | "details" | "template" | "success";
 
 type SlugAvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 
@@ -74,6 +74,41 @@ function getSignupRootDomain() {
   return "localhost";
 }
 
+function getLaunchSuccessNextAction(templateId: StorefrontTemplateId) {
+  if (templateId === "real-estate") {
+    return {
+      label: "Add First Listing",
+      description: "Create the first property listing with price, location, and listing type.",
+    };
+  }
+
+  if (templateId === "hotel") {
+    return {
+      label: "Add First Room",
+      description: "Create the first room with pricing, occupancy, amenities, and policies.",
+    };
+  }
+
+  if (templateId === "service" || templateId === "booking") {
+    return {
+      label: "Add First Service",
+      description: "Create the first service package so the storefront is ready to book or request.",
+    };
+  }
+
+  if (templateId === "inquiry-catalog") {
+    return {
+      label: "Add First Catalog Item",
+      description: "Create the first inquiry-led item so buyers can request pricing or details.",
+    };
+  }
+
+  return {
+    label: "Add First Product",
+    description: "Create the first product so the storefront is ready for browsing and checkout.",
+  };
+}
+
 export default function MerchantSignup() {
   const { user, loading, refreshRole, setActiveStoreId, activeStoreId } = useAuth();
   const [searchParams] = useSearchParams();
@@ -85,6 +120,11 @@ export default function MerchantSignup() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
+  const [createdStore, setCreatedStore] = useState<{
+    storeId: string;
+    dashboardPath: string;
+    onboardingPath: string;
+  } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
   const [plans, setPlans] = useState<PlanCatalogRecord[]>([
@@ -120,6 +160,10 @@ export default function MerchantSignup() {
     () => getStorefrontTemplateDefinition(form.storefrontTemplateId),
     [form.storefrontTemplateId],
   );
+  const launchNextAction = useMemo(
+    () => getLaunchSuccessNextAction(form.storefrontTemplateId),
+    [form.storefrontTemplateId],
+  );
 
   const siteUrl = useMemo(
     () => absoluteStoreUrl({ slug: form.storeSlug || "your-store" }, "/"),
@@ -128,6 +172,10 @@ export default function MerchantSignup() {
   const signupRootDomain = useMemo(() => getSignupRootDomain(), []);
   const normalizedSlug = form.storeSlug.trim();
   const canSubmitDetails = normalizedSlug.length > 0 && slugState !== "checking" && slugState !== "taken" && slugState !== "invalid";
+  const canContinueToTemplate = canSubmitDetails
+    && (isAdditionalStoreFlow || Boolean(form.name.trim()))
+    && Boolean(form.storeName.trim())
+    && !accountRestriction;
 
   useEffect(() => {
     supabase
@@ -432,6 +480,37 @@ export default function MerchantSignup() {
     }
   };
 
+  const handleContinueToTemplate = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitError(null);
+
+    if ((!isAdditionalStoreFlow && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
+      const message = isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (!canSubmitDetails) {
+      const message = slugState === "taken"
+        ? "That store URL is already taken. Please choose another one."
+        : slugState === "checking"
+          ? "Please wait while we check that store URL."
+          : "Please enter a valid store URL before continuing.";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (accountRestriction) {
+      setSubmitError(accountRestriction);
+      toast.error(accountRestriction);
+      return;
+    }
+
+    setStep("template");
+  };
+
   const handleSubmitDetails = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitError(null);
@@ -475,13 +554,18 @@ export default function MerchantSignup() {
       }
 
       setActiveStoreId(data.store_id);
-      await refreshRole();
+      void refreshRole();
       toast.success(data?.payment_required ? "Workspace created. Complete payment from your dashboard." : "Workspace created. Your storefront is live and the dashboard is ready.");
 
       const dashboardPath = typeof data?.dashboard_path === "string" && data.dashboard_path.trim()
         ? data.dashboard_path
         : `/admin?storeId=${encodeURIComponent(data.store_id)}`;
-      window.location.href = dashboardPath;
+      setCreatedStore({
+        storeId: data.store_id,
+        dashboardPath,
+        onboardingPath: `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}`,
+      });
+      setStep("success");
     } catch (error: any) {
       const rawMessage = await extractSignupErrorMessage(error);
       const message = getFriendlySignupError(rawMessage);
@@ -530,13 +614,21 @@ export default function MerchantSignup() {
             <h2 className="mt-2 font-heading text-2xl font-bold">
               {step === "details"
                 ? isAdditionalStoreFlow ? "Add another store" : "Store details"
+                : step === "template"
+                  ? "Choose template"
+                  : step === "success"
+                    ? "Launch successful"
                 : step === "verify" ? "Verify phone" : "Choose sign-in method"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {step === "details"
                 ? isAdditionalStoreFlow
                   ? "This store will reuse your existing owner account and package limits."
-                  : "Workspace creation happens after this step."
+                  : "Set the site name and domain first."
+                : step === "template"
+                  ? "Pick the storefront template that should launch instantly for this store."
+                  : step === "success"
+                    ? "The store is live. Continue in the dashboard or guided onboarding."
                 : "Sign in first so the workspace has an owner."}
             </p>
           </div>
@@ -597,7 +689,7 @@ export default function MerchantSignup() {
           ) : null}
 
           {step === "details" ? (
-            <form onSubmit={handleSubmitDetails} className="space-y-4">
+            <form onSubmit={handleContinueToTemplate} className="space-y-4">
               {!isAdditionalStoreFlow ? (
                 <div>
                   <Label htmlFor="owner-name">Owner Name</Label>
@@ -662,30 +754,14 @@ export default function MerchantSignup() {
                   </div>
                 )}
               </div>
-              <div>
-                <Label htmlFor="storefront-template">Launch Template</Label>
-                <select
-                  id="storefront-template"
-                  value={form.storefrontTemplateId}
-                  onChange={(event) => update("storefrontTemplateId", event.target.value)}
-                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  {storefrontTemplateOptions.map((template) => (
-                    <option key={template.value} value={template.value}>
-                      {template.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-muted-foreground">{selectedTemplate.description}</p>
-              </div>
               {submitError ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {submitError}
                 </div>
               ) : null}
-              <Button type="submit" data-testid="merchant-signup-submit" disabled={submittingDetails || !canSubmitDetails || Boolean(accountRestriction)} className="h-11 w-full">
-                {submittingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isAdditionalStoreFlow ? "Create Additional Store" : "Create CMS Workspace"}
+              <Button type="submit" data-testid="merchant-signup-next" disabled={!canContinueToTemplate} className="h-11 w-full">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Continue to Templates
               </Button>
               {accountRestriction ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -693,6 +769,111 @@ export default function MerchantSignup() {
                 </div>
               ) : null}
             </form>
+          ) : null}
+
+          {step === "template" ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">{form.storeName || "Your store"}</p>
+                <p className="mt-1">{slugStatusCopy}</p>
+              </div>
+              <div className="grid gap-3">
+                {storefrontTemplateOptions.map((template) => {
+                  const templateId = template.value as StorefrontTemplateId;
+                  const isActive = form.storefrontTemplateId === template.value;
+                  const templateDefinition = getStorefrontTemplateDefinition(templateId);
+                  return (
+                    <button
+                      key={template.value}
+                      type="button"
+                      onClick={() => update("storefrontTemplateId", template.value)}
+                      className={cn(
+                        "rounded-lg border p-4 text-left transition-colors",
+                        isActive ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground">{template.label}</p>
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                              {templateDefinition.presentation.cardStyle}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{template.description}</p>
+                        </div>
+                        {isActive ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <LayoutTemplate className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="rounded-md border border-border bg-card p-4">
+                <p className="text-sm font-medium text-foreground">{selectedTemplate.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{selectedTemplate.description}</p>
+              </div>
+              {submitError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {submitError}
+                </div>
+              ) : null}
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setStep("details")} className="h-11 flex-1">
+                  Back
+                </Button>
+                <Button type="button" data-testid="merchant-signup-submit" onClick={() => {
+                  const syntheticEvent = { preventDefault() {} } as React.FormEvent;
+                  void handleSubmitDetails(syntheticEvent);
+                }} disabled={submittingDetails} className="h-11 flex-[1.4]">
+                  {submittingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isAdditionalStoreFlow ? "Create Additional Store" : "Launch Store"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {step === "success" && createdStore ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
+                  <div>
+                    <p className="font-medium text-foreground">Launch successful</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {form.storeName} is live with the {selectedTemplate.label} storefront template. The merchant can start managing the store now or continue through guided onboarding.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-md border border-border bg-card p-4 text-sm text-muted-foreground">
+                <p><span className="font-medium text-foreground">Store URL:</span> {siteUrl.replace(/^https?:\/\//, "")}</p>
+                <p className="mt-1"><span className="font-medium text-foreground">Template:</span> {selectedTemplate.label}</p>
+              </div>
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">{launchNextAction.label}</p>
+                <p className="mt-1">{launchNextAction.description}</p>
+              </div>
+              <div className="grid gap-3">
+                <Button asChild variant="secondary" className="h-11 w-full">
+                  <Link href={`/admin/products?storeId=${encodeURIComponent(createdStore.storeId)}&action=add`}>
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    {launchNextAction.label}
+                  </Link>
+                </Button>
+                <Button asChild className="h-11 w-full">
+                  <Link href={createdStore.dashboardPath}>
+                    <Store className="mr-2 h-4 w-4" />
+                    Go To Dashboard
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="h-11 w-full">
+                  <Link href={createdStore.onboardingPath}>
+                    <PanelsTopLeft className="mr-2 h-4 w-4" />
+                    Open Onboarding Wizard
+                  </Link>
+                </Button>
+              </div>
+            </div>
           ) : null}
 
           <div id="phone-recaptcha-container" />

@@ -1,8 +1,9 @@
 import { defaultStore } from "@/lib/cms/default-store";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
+import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
+import { isStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 export type TemplatePreviewViewport = "desktop" | "tablet" | "mobile";
 
@@ -25,11 +26,14 @@ export function personalizePreviewPages(pages: StorePage[], store: Store): Store
 }
 
 export function createBuiltInBundle(
-  blueprintId: string,
-  blueprints: CmsPageBlueprint[],
+  templateId: string,
+  pageBlueprints: CmsPageBlueprint[],
   store: Store,
 ): ThemeExportBundle {
-  const pages = personalizePreviewPages(instantiateStorePagesFromBlueprint(blueprintId, blueprints), store);
+  const pages = personalizePreviewPages(
+    instantiateStorePagesFromTemplate(templateId, pageBlueprints, { blueprintId: templateId }),
+    store,
+  );
   return {
     schemaVersion: 1,
     type: "theme-and-layout",
@@ -39,20 +43,19 @@ export function createBuiltInBundle(
 }
 
 export function createBuiltInCardBundle(
-  blueprintId: string,
-  blueprints: CmsPageBlueprint[],
+  templateId: string,
+  pageBlueprints: CmsPageBlueprint[],
   store: Store,
 ): ThemeExportBundle {
-  const hasBlueprint = blueprints.some((item) => item.id === blueprintId);
-  if (!hasBlueprint) {
-    return createBuiltInBundle(blueprintId, blueprints, store);
+  if (!isStorefrontTemplateId(templateId)) {
+    return createBuiltInBundle(templateId, pageBlueprints, store);
   }
 
   return {
     schemaVersion: 1,
     type: "theme-and-layout",
     theme: defaultStore.theme,
-    pages: instantiateStorePagesFromBlueprint(blueprintId, blueprints),
+    pages: instantiateStorePagesFromTemplate(templateId as StorefrontTemplateId, pageBlueprints, { blueprintId: templateId }),
   };
 }
 

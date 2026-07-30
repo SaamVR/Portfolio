@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2, Link as LinkIcon, Download, Upload, FileJson } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2, Link as LinkIcon, Download, Upload, FileJson, Monitor, Smartphone, Tablet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,9 @@ import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim"
 import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { BasicModeWizard } from "./BasicModeWizard";
 import { DomTreeNavigator } from "./DomTreeNavigator";
+import { StoreProvider } from "./StoreProvider";
+import { StoreThemeScope } from "./StoreThemeScope";
+import { StorefrontBlockRenderer } from "./StorefrontBlockRenderer";
 import { VisualCssInspector } from "./VisualCssInspector";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { fallbackBlockRegistry, filterBlockRegistryForBlueprint, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
@@ -140,6 +143,7 @@ export function StorefrontLiveEditor({
   const [history, setHistory] = useState<Store[]>([]);
   const [redoHistory, setRedoHistory] = useState<Store[]>([]);
   const [isDockMinimized, setIsDockMinimized] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   
@@ -206,7 +210,7 @@ export function StorefrontLiveEditor({
     setHistory([]);
     setRedoHistory([]);
     setLastSavedAt(null);
-  }, [page.id, store.id]);
+  }, [page.id, store]);
 
   useEffect(() => {
     if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
@@ -609,6 +613,7 @@ export function StorefrontLiveEditor({
         ? `All live changes saved at ${formatSavedTime(lastSavedAt)}.`
         : "All live changes saved.";
   const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
+  const previewBlocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const renderAdvancedControls = () => {
     if (!selectedBlock || editorMode !== "advanced") {
@@ -916,7 +921,7 @@ export function StorefrontLiveEditor({
       default:
         return (
           <p className="text-xs text-muted-foreground">
-            Advanced mode for this block is still lightweight here. Use Page Builder for deeper structure changes.
+            Expert editing for this block is still lightweight here. Use the full storefront editor for deeper structure changes.
           </p>
         );
     }
@@ -937,6 +942,9 @@ export function StorefrontLiveEditor({
               <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => redoLastChange()} disabled={redoHistory.length === 0} title="Redo live edit">
                 <Redo2 className="h-4 w-4" />
               </Button>
+              <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setIsPreviewOpen(true)} title="Open storefront preview">
+                <Smartphone className="h-4 w-4" />
+              </Button>
               <Button type="button" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges} title={hasUnsavedChanges ? "Save live edits" : "All changes saved"}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               </Button>
@@ -948,7 +956,7 @@ export function StorefrontLiveEditor({
             <div className="flex w-full max-w-[min(320px,calc(100vw-1rem))] flex-col gap-2 rounded-[1.5rem] border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Live Editor Dock</p>
+                  <p className="text-sm font-semibold text-foreground">Quick Edit Panel</p>
                   <p className="truncate text-xs text-muted-foreground">{saveStatusLabel}</p>
                 </div>
                 <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setIsDockMinimized(true)} title="Minimize live editor dock">
@@ -972,13 +980,17 @@ export function StorefrontLiveEditor({
                   <Redo2 className="h-4 w-4" />
                   Redo
                 </Button>
+                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => setIsPreviewOpen(true)}>
+                  <Smartphone className="h-4 w-4" />
+                  Preview
+                </Button>
                 <Select value={editorMode} onValueChange={(value) => setEditorMode(value as "basic" | "advanced")}>
                   <SelectTrigger className="col-span-2 h-9 rounded-full px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="basic">Basic Mode</SelectItem>
-                    <SelectItem value="advanced">Advanced Mode</SelectItem>
+                    <SelectItem value="basic">Guided Editing</SelectItem>
+                    <SelectItem value="advanced">Expert Editing</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button type="button" size="sm" className="col-span-2 justify-start rounded-full" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges}>
@@ -1013,7 +1025,7 @@ export function StorefrontLiveEditor({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    {editorMode === "advanced" ? "Advanced Live Editor" : "Basic Setup Guide"}
+                    {editorMode === "advanced" ? "Expert Live Editor" : "Guided Setup Editor"}
                   </p>
                 <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Saved"}</Badge>
                 </div>
@@ -1032,7 +1044,7 @@ export function StorefrontLiveEditor({
                   <DropdownMenuTrigger asChild>
                     <Button type="button" size="sm" variant="outline" className="rounded-full">
                       <Download className="mr-2 h-4 w-4" />
-                      Theme Engine
+                      Theme Export & Import
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -1050,7 +1062,7 @@ export function StorefrontLiveEditor({
                 </DropdownMenu>
                 <Button asChild type="button" size="sm" variant="outline" className="rounded-full">
                   <Link to={editorMode === "advanced" ? advancedEditorHref : basicEditorHref}>
-                    {editorMode === "advanced" ? "Open Advanced" : "Open Basic"}
+                    {editorMode === "advanced" ? "Open Expert Workspace" : "Open Guided Workspace"}
                   </Link>
                 </Button>
               </div>
@@ -1257,6 +1269,7 @@ export function StorefrontLiveEditor({
                             updateSelectedBlock={updateSelectedBlock}
                             updateSelectedBlockProps={updateSelectedBlockProps} 
                             viewport={viewport}
+                            allowCodeEditing={editorMode === "advanced"}
                           />
                         </div>
                       </div>
@@ -1297,6 +1310,77 @@ export function StorefrontLiveEditor({
           }}
         />
       )}
+      {isPreviewOpen ? (
+        <div className="pointer-events-auto fixed inset-0 z-[90] bg-background/95 backdrop-blur">
+          <div className="flex h-full flex-col">
+            <div className="border-b border-border bg-background/95 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Storefront Preview</p>
+                  <p className="text-xs text-muted-foreground">Preview the page as a merchant-friendly storefront check, then close to keep editing.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={viewport === "desktop" ? "secondary" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setViewport("desktop")}
+                  >
+                    <Monitor className="h-4 w-4" />
+                    Desktop
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={viewport === "tablet" ? "secondary" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setViewport("tablet")}
+                  >
+                    <Tablet className="h-4 w-4" />
+                    Tablet
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={viewport === "mobile" ? "secondary" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setViewport("mobile")}
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Mobile
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" className="rounded-full" onClick={() => setIsPreviewOpen(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              <div className="mx-auto max-w-6xl">
+                <StoreProvider store={store}>
+                  <StoreThemeScope theme={store.theme}>
+                    <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+                      <div className="border-b border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        {page.title}
+                      </div>
+                      <div className="overflow-y-auto">
+                        {previewBlocks.length > 0 ? (
+                          previewBlocks.map((block) => (
+                            <StorefrontBlockRenderer key={block.id} block={block} />
+                          ))
+                        ) : (
+                          <div className="p-8 text-sm text-muted-foreground">This page has no visible sections yet.</div>
+                        )}
+                      </div>
+                    </div>
+                  </StoreThemeScope>
+                </StoreProvider>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>

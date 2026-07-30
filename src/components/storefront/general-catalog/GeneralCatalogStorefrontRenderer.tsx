@@ -184,19 +184,21 @@ export function GeneralCatalogStorefrontRenderer({
   const { data: aboutSettings } = useSiteSettings<AboutSettings>("about_page", activeStore.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", activeStore.id);
   const { data: templateAssets } = useSiteSettings<Record<string, string>>("template_assets_seed", activeStore.id);
+  const reviewProductIds = allProducts.map((product) => product.id);
 
   const { data: approvedReviews = [] } = useQuery({
-    queryKey: ["general-catalog-reviews", activeStore.id],
+    queryKey: ["general-catalog-reviews", activeStore.id, reviewProductIds.join(",")],
     queryFn: async () => {
+      if (reviewProductIds.length === 0) return [];
       const { data, error } = await supabase
         .from("public_product_reviews" as any)
         .select("product_id, rating")
-        .eq("store_id", activeStore.id);
+        .in("product_id", reviewProductIds);
 
       if (error) throw error;
       return ((data ?? []) as unknown) as PublicReviewRow[];
     },
-    enabled: Boolean(activeStore.id),
+    enabled: Boolean(activeStore.id) && reviewProductIds.length > 0,
     staleTime: 120_000,
   });
 

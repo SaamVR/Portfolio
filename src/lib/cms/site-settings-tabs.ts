@@ -19,8 +19,11 @@ export const mobilePinnedSettingTabs = [
   "page_builder",
 ] as const;
 
+const mobilePinnedTabPriority = [...mobilePinnedSettingTabs] as readonly SettingsTabValue[];
+
 export type SettingsTabValue =
   | "brand_seo"
+  | "analytics"
   | "home_sections"
   | "hero"
   | "promo"
@@ -72,6 +75,7 @@ type SettingsTabDefinition = {
 
 export const validSettingTabs = new Set<SettingsTabValue>([
   "brand_seo",
+  "analytics",
   "home_sections",
   "hero",
   "promo",
@@ -214,6 +218,12 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
     category: "Store Identity",
     keywords: "brand title description seo logo highlight name",
     resolveLabel: () => "Brand & SEO",
+  },
+  {
+    value: "analytics",
+    category: "Growth",
+    keywords: "analytics ga4 google analytics meta pixel facebook pixel traffic search wishlist cart checkout purchase conversion",
+    resolveLabel: () => "Analytics & Pixels",
   },
   {
     value: "home_sections",
@@ -379,4 +389,16 @@ export function getAvailableSettingsTabs({
 
 export function isLegacySettingsTab(value: SettingsTabValue) {
   return settingsTabDefinitions.some((definition) => definition.value === value && definition.legacy);
+}
+
+export function getMobilePinnedSettingsTabs(options: {
+  businessFamily: StoreBusinessFamily;
+  catalogMode: StoreCatalogMode;
+  templateId: StorefrontTemplateId;
+}) {
+  const availableValues = new Set(
+    getAvailableSettingsTabs(options).map((tab) => tab.value),
+  );
+
+  return mobilePinnedTabPriority.filter((value) => availableValues.has(value));
 }
