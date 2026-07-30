@@ -50,6 +50,7 @@ import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { PlanTemplateMatrixCard } from "@/components/admin/PlanTemplateMatrixCard";
 import { PlatformSystemSettingsCard } from "@/components/admin/PlatformSystemSettingsCard";
 import { PlatformFinancialMetricsCard } from "@/components/admin/PlatformFinancialMetricsCard";
+import { PlatformSupportInboxCard } from "@/components/admin/PlatformSupportInboxCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1449,6 +1450,7 @@ export default function PlatformControlPlane() {
           <TabsTrigger value="analytics" className="shrink-0">Analytics</TabsTrigger>
           <TabsTrigger value="backups" className="shrink-0">Backups</TabsTrigger>
           <TabsTrigger value="stores" className="shrink-0">Merchants</TabsTrigger>
+          <TabsTrigger value="support" className="shrink-0">Support Inbox</TabsTrigger>
           <TabsTrigger value="plans" className="shrink-0">Plans</TabsTrigger>
           <TabsTrigger value="subscriptions" className="shrink-0">Subscriptions</TabsTrigger>
           <TabsTrigger value="storage" className="shrink-0">Storage Telemetry</TabsTrigger>
@@ -1814,6 +1816,18 @@ export default function PlatformControlPlane() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6">
+          <PlatformSupportInboxCard
+            storeSummaries={summaries}
+            currentUser={{ id: user?.id, email: user?.email, role: platformRole }}
+            onImpersonateStore={(store) => {
+              if (permissions.canImpersonateMerchant) {
+                void handleImpersonateStore(store);
+              }
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="plans">
