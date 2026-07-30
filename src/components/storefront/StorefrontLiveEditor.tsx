@@ -643,6 +643,21 @@ export function StorefrontLiveEditor({
                 </Select>
               </div>
               <div className="grid gap-2">
+                <Label>Image Fit</Label>
+                <Select
+                  value={(selectedBlock.props.mediaFit as "cover" | "contain" | undefined) ?? "cover"}
+                  onValueChange={(value) => updateSelectedBlockProps({ mediaFit: value })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cover">Fill frame</SelectItem>
+                    <SelectItem value="contain">Fit whole image</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
                 <Label>Overlay Opacity</Label>
                 <Input
                   type="number"

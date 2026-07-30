@@ -10,37 +10,41 @@ import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
 import { AdminPreviewStoreButton } from "./AdminPreviewStoreButton";
-import { LayoutDashboard, LineChart, Moon, Rocket, Search, Settings, ShoppingCart, SlidersHorizontal, SquarePen, SquareStack, SunMedium, WandSparkles } from "lucide-react";
+import { Moon, Search, SunMedium } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
-import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 import { useTheme } from "next-themes";
-import { getAdminWorkspaceChips } from "@/lib/admin/admin-navigation";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
-  { path: "/admin/launch", label: "Launch Readiness", description: "Final go-live blockers, warnings, and launch confidence" },
-  { path: "/admin/notifications", label: "Notifications", description: "Delivery health, alert configuration, and recent sends" },
-  { path: "/admin/diagnostics", label: "Diagnostics", description: "Domain, payment, billing, and operator health" },
-  { path: "/admin/recovery", label: "Cart Recovery", description: "Recover signed-in carts and inspect anonymous drop-off signals" },
-  { path: "/admin/page-builder/basic", label: "Guided Editing", description: "Safer storefront content, visibility, and theme edits" },
-  { path: "/admin/page-builder/advanced", label: "Expert Editing", description: "Full page structure, templates, revisions, and deeper block controls" },
-  { path: "/admin/page-builder", label: "Guided Editing", description: "Safer storefront content, visibility, and theme edits" },
-  { path: "/admin/onboarding", label: "Guided Setup", description: "Initial setup, template seeding, and guided launch flow" },
-  { path: "/admin/templates", label: "Templates", description: "Browse storefront templates, preview directions, and apply the right launch pattern" },
-  { path: "/admin/cms", label: "Page Builder", description: "Storefront pages, blocks, and live preview" },
-  { path: "/admin/products", label: "Products", description: "Catalog, stock, and merchandising" },
+  { path: "/admin/launch", label: "Dashboard", description: "Store overview, launch checklist, and key alerts" },
+  { path: "/admin/notifications", label: "Dashboard", description: "Delivery alerts and merchant notifications" },
+  { path: "/admin/diagnostics", label: "Settings", description: "Domain, payment, billing, and store health" },
+  { path: "/admin/marketing", label: "Marketing", description: "Coupons, abandoned cart recovery, and QR codes" },
+  { path: "/admin/recovery", label: "Marketing", description: "Recover abandoned carts and inspect drop-off signals" },
+  { path: "/admin/qr", label: "Marketing", description: "Generate scannable storefront links" },
+  { path: "/admin/coupons", label: "Marketing", description: "Discount codes and campaigns" },
+  { path: "/admin/online-store", label: "Online Store", description: "Design, themes, pages, blog, and media" },
+  { path: "/admin/page-builder/basic", label: "Online Store", description: "Visual storefront editor" },
+  { path: "/admin/page-builder/advanced", label: "Online Store", description: "Advanced page builder" },
+  { path: "/admin/page-builder", label: "Online Store", description: "Visual storefront editor" },
+  { path: "/admin/onboarding", label: "Online Store", description: "Guided setup and launch flow" },
+  { path: "/admin/templates", label: "Online Store", description: "Browse and apply storefront templates" },
+  { path: "/admin/cms", label: "Online Store", description: "Storefront pages and content blocks" },
+  { path: "/admin/blog", label: "Online Store", description: "Blog posts and content marketing" },
+  { path: "/admin/media", label: "Online Store", description: "Images and reusable store assets" },
+  { path: "/admin/products", label: "Products", description: "Catalog, stock, and category management" },
+  { path: "/admin/categories", label: "Products", description: "Category and product type organization" },
   { path: "/admin/orders", label: "Orders", description: "Fulfillment and customer purchases" },
-  { path: "/admin/analytics", label: "Analytics", description: "Traffic, search intent, product interest, and conversion funnel" },
-  { path: "/admin/blog", label: "Blog", description: "Markdown-first articles, SEO posts, and storefront content marketing" },
-  { path: "/admin/qr", label: "QR Codes", description: "Generate scannable storefront links for products, pages, and promos" },
-  { path: "/admin/messages", label: "Messages", description: "Customer contact inbox" },
-  { path: "/admin/reviews", label: "Reviews", description: "Moderation and storefront trust" },
-  { path: "/admin/media", label: "Media Library", description: "Images and reusable storefront assets" },
-  { path: "/admin/site-settings", label: "Site Settings", description: "Brand, SEO, announcements, and domain" },
+  { path: "/admin/returns", label: "Orders", description: "Returns, refunds, and COD settlement" },
+  { path: "/admin/couriers", label: "Orders", description: "Courier connections and shipments" },
+  { path: "/admin/analytics", label: "Analytics", description: "Traffic, sales performance, product interest, and conversion funnel" },
+  { path: "/admin/billing", label: "Billing & Plans", description: "Subscription plan, usage limits, and payment method" },
+  { path: "/admin/customers", label: "Customers & Messages", description: "Customer inbox and product reviews" },
+  { path: "/admin/messages", label: "Customers & Messages", description: "Customer contact inbox" },
+  { path: "/admin/reviews", label: "Customers & Messages", description: "Product review moderation" },
+  { path: "/admin/site-settings", label: "Settings", description: "Brand, payments, domains, and store configuration" },
 ];
 
-const isActiveAdminRoute = (pathname: string, target: string) =>
-  target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const { user, session, role, activeStoreId, loading, authRecovery, refreshRole, signOut } = useAuth();
@@ -60,18 +64,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
   const isGuidedSetupWorkspace = location.pathname === "/admin/onboarding" || location.pathname.startsWith("/admin/onboarding/");
-  const mobileAdminRoutes = getAdminWorkspaceChips({
-    activeStoreId,
-    cmsEnabled: true,
-    advancedEditingEnabled: true,
-    backupEnabled: true,
-    mediaEnabled: true,
-    isAdmin: true,
-    isOwner: true,
-    isPlatformAdmin: role === "admin",
-    supportUrl: "/contact",
-    supportIsExternal: false,
-  });
+
   const { data: deletedStoreHistory } = useQuery({
     queryKey: ["deleted-store-history-redirect", user?.id ?? ""],
     enabled: Boolean(user?.id) && !role,
@@ -220,30 +213,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
         </header>
         <div className={cn("border-b border-border/60 bg-card/40 px-4 py-2.5 md:hidden", isGuidedSetupWorkspace && "hidden")}>
           <div className="space-y-3">
-            <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
-              <div className="flex min-w-max snap-x snap-mandatory items-center gap-2">
-                {mobileAdminRoutes.map((route) => {
-                  const routeTo = route.to.startsWith("/admin/page-builder") ? withStoreId(route.to, activeStoreId) : route.to;
-                  const active = isActiveAdminRoute(location.pathname, route.to);
-                  const Icon = route.icon;
-                  return (
-                    <Link
-                      key={route.to}
-                      to={routeTo}
-                      className={cn(
-                        "inline-flex h-9 snap-start items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors",
-                        active
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border bg-background/90 text-muted-foreground",
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{route.mobileShortLabel ?? route.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+
             <div className="rounded-2xl border border-border bg-background/90 px-3.5 py-3 shadow-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-foreground">{currentWorkspace.label}</p>

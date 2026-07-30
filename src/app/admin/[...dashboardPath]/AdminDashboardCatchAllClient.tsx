@@ -28,12 +28,23 @@ import ReturnsOperationsPage from "@/views/admin/ReturnsOperations";
 import Reviews from "@/views/admin/Reviews";
 import SiteSettings from "@/views/admin/SiteSettings";
 import Users from "@/views/admin/Users";
+import OnlineStoreHub from "@/views/admin/OnlineStoreHub";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/react-router-dom-shim";
 
 function AdminDashboardRoute({ route }: { route: string }) {
   switch (route) {
+    case "online-store":
+      return (
+        <AdminFeatureGate
+          featureKey="cms_pages"
+          title="Online Store"
+          description="This store package does not currently include the storefront visual editor or page manager."
+        >
+          <OnlineStoreHub />
+        </AdminFeatureGate>
+      );
     case "backup":
       return (
         <AdminFeatureGate
@@ -59,12 +70,13 @@ function AdminDashboardRoute({ route }: { route: string }) {
       return (
         <AdminFeatureGate
           featureKey="cms_pages"
-          title="Page Builder"
+          title="Online Store"
           description="This store package does not currently include the storefront page builder."
         >
-          <CmsPagesManager />
+          <OnlineStoreHub />
         </AdminFeatureGate>
       );
+    case "marketing":
     case "coupons":
       return <Coupons />;
     case "invite-codes":
@@ -87,6 +99,7 @@ function AdminDashboardRoute({ route }: { route: string }) {
           <MediaLibraryManager />
         </AdminFeatureGate>
       );
+    case "customers":
     case "messages":
       return <Messages />;
     case "notifications":

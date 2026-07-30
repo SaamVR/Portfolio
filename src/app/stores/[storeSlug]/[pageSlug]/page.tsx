@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { StorefrontPage } from "@/components/storefront/StorefrontPage";
 import { getPageBySlug, getStoreBySlug } from "@/lib/cms/store-resolver";
@@ -23,6 +22,9 @@ export async function generateMetadata({
 
   return buildStorePageMetadata(store, page, `/stores/${encodeURIComponent(store.slug)}/${encodeURIComponent(pageSlug)}`);
 }
+
+// Enable 60-second Incremental Static Regeneration / Edge Caching
+export const revalidate = 60;
 
 export default async function Page({
   params,

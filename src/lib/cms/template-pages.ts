@@ -37,6 +37,8 @@ function isStorePageBlockType(value: string): value is StorePageBlock["type"] {
     "promo-banner",
     "category-showcase",
     "featured-products",
+    "comparison",
+    "recommended-products",
     "recently-viewed",
     "rich-text",
     "social-feed",

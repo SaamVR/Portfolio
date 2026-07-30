@@ -47,6 +47,16 @@ type FeaturedBlockProps = {
   limit?: number;
 };
 
+type ComparisonBlockProps = {
+  title?: string;
+  tagline?: string;
+  source?: "featured-or-all" | "featured" | "all" | "newest" | "category" | "type";
+  category?: string;
+  productType?: string;
+  limit?: number;
+  ctaText?: string;
+};
+
 type CategoryBlockProps = {
   tagline?: string;
   title?: string;
@@ -97,6 +107,10 @@ type DealTimer = {
 
 function getHomepageBlock<TProps extends Record<string, unknown>>(blocks: StorePageBlock[], type: StorePageBlock["type"]) {
   return blocks.find((block) => block.type === type)?.props as TProps | undefined;
+}
+
+function getHomepageSectionBlock(blocks: StorePageBlock[], type: StorePageBlock["type"]) {
+  return blocks.find((block) => block.type === type);
 }
 
 function buildReviewStats(rows: PublicReviewRow[]) {
@@ -274,6 +288,8 @@ export function ElectronicsStorefrontRenderer({
   const categoryBlock = getHomepageBlock<CategoryBlockProps>(blocks, "category-showcase");
   const featuredBlock = getHomepageBlock<FeaturedBlockProps>(blocks, "featured-products");
   const countdownBlock = getHomepageBlock<CountdownBlockProps>(blocks, "countdown");
+  const comparisonSectionBlock = getHomepageSectionBlock(blocks, "comparison");
+  const comparisonBlock = comparisonSectionBlock?.props as ComparisonBlockProps | undefined;
 
   useEffect(() => {
     setDealTimer(resolveDealTimer(countdownBlock?.endDate));
@@ -302,8 +318,29 @@ export function ElectronicsStorefrontRenderer({
     [availableProducts, primaryProducts],
   );
   const comparisonProducts = useMemo(
-    () => (primaryProducts.length >= 2 ? primaryProducts.slice(0, 2) : availableProducts.slice(0, 2)),
-    [availableProducts, primaryProducts],
+    () => {
+      const source = comparisonBlock?.source ?? "featured-or-all";
+      let filtered = [...(featuredProducts.length > 0 ? featuredProducts : availableProducts)];
+
+      if (source === "featured") {
+        filtered = filtered.filter((product) => product.featured);
+      }
+
+      if (source === "category" && comparisonBlock?.category) {
+        filtered = filtered.filter((product) => product.category.toLowerCase() === comparisonBlock.category?.toLowerCase());
+      }
+
+      if (source === "type" && comparisonBlock?.productType) {
+        filtered = filtered.filter((product) => product.type?.toLowerCase() === comparisonBlock.productType?.toLowerCase());
+      }
+
+      if ((source === "featured-or-all" || source === "featured") && filtered.length === 0) {
+        filtered = [...availableProducts];
+      }
+
+      return (filtered.length >= 2 ? filtered : availableProducts).slice(0, Math.min(Math.max(comparisonBlock?.limit ?? 2, 2), 4));
+    },
+    [availableProducts, comparisonBlock?.category, comparisonBlock?.limit, comparisonBlock?.productType, comparisonBlock?.source, featuredProducts],
   );
   const accessoryProducts = useMemo(
     () => filterAccessoryProducts(availableProducts),
@@ -540,11 +577,11 @@ export function ElectronicsStorefrontRenderer({
         </div>
       </section>
 
-      {comparisonProducts.length >= 2 ? (
+      {(comparisonSectionBlock ? comparisonSectionBlock.isVisible !== false : true) && comparisonProducts.length >= 2 ? (
         <section className="mx-auto max-w-[1320px] px-5 py-3 md:px-8 lg:px-10">
           <ElectronicsSectionHeading
-            eyebrow="Compare before you buy"
-            title="Quick product comparison"
+            eyebrow={comparisonBlock?.tagline?.trim() || "Compare before you buy"}
+            title={comparisonBlock?.title?.trim() || "Quick product comparison"}
           />
           <div className="grid gap-5 xl:grid-cols-2">
             {comparisonProducts.map((product) => {
@@ -603,7 +640,7 @@ export function ElectronicsStorefrontRenderer({
                           href={productUrl(product.id, product.name, activeStore.slug)}
                           className="ml-auto inline-flex h-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                         >
-                          View details
+                          {comparisonBlock?.ctaText?.trim() || "View details"}
                         </Link>
                       </div>
                     </div>

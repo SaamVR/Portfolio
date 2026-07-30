@@ -4,61 +4,22 @@ import { useAuth } from "@/hooks/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard,
-  Package,
-  Settings,
-  SquarePen,
-  SlidersHorizontal,
-  Globe,
-  KeyRound,
   LogOut,
   ArrowLeft,
-  Rocket,
-  WandSparkles,
-  Users,
-  ShoppingCart,
-  Mail,
-  Tag,
-  MessageSquare,
-  FolderTree,
-  Images,
-  HardDriveDownload,
-  Shield,
-  CreditCard,
-  HelpCircle,
   ExternalLink,
   FilePlus2,
   FileText,
-  LayoutTemplate,
-  LineChart,
-  Store,
-  BellRing,
-  HeartPulse,
-  QrCode,
-  NotebookPen,
-  Undo2,
-  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
 import { getAdminNavigationSections } from "@/lib/admin/admin-navigation";
-
-type SidebarLink = {
-  to: string;
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  show: boolean;
-  badge?: number;
-  external?: boolean;
-  match?: string[];
-};
 
 type StorePageNavRow = {
   id: string;
@@ -92,7 +53,7 @@ function inferPagePlacement(page: StorePageNavRow) {
 }
 
 const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
-  const { role, platformRole, storeRole, user, signOut , activeStoreId} = useAuth();
+  const { role, platformRole, storeRole, user, signOut, activeStoreId } = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
   const isPlatformAdmin = platformRole === "admin";
@@ -153,6 +114,7 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
     },
     enabled: Boolean(activeStoreId) && cmsEnabled,
   });
+
   const { data: activeStoreMeta } = useQuery({
     queryKey: ["sidebar-active-store-meta", activeStoreId],
     queryFn: async () => {
@@ -175,20 +137,24 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
     },
     enabled: Boolean(activeStoreId) && cmsEnabled,
   });
-  const sidebarStorePages = shouldShowVirtualShopPage(activeStoreMeta) && !storePages.some((page) => page.slug === "/shop")
-    ? [
-        ...storePages,
-        {
-          id: "virtual-shop",
-          title: "Shop",
-          slug: "/shop",
-          is_homepage: false,
-        } satisfies StorePageNavRow,
-      ]
-    : storePages;
+
+  const sidebarStorePages =
+    shouldShowVirtualShopPage(activeStoreMeta) && !storePages.some((page) => page.slug === "/shop")
+      ? [
+          ...storePages,
+          {
+            id: "virtual-shop",
+            title: "Shop",
+            slug: "/shop",
+            is_homepage: false,
+          } satisfies StorePageNavRow,
+        ]
+      : storePages;
+
   const advancedEditingEnabled = cmsEnabled && getFeatureEnabled(entitlementData?.featureMap, "advanced_page_builder", false);
   const backupEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "backup_import", false);
   const mediaEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "media_library", false);
+
   const navSections = getAdminNavigationSections({
     activeStoreId,
     cmsEnabled,
@@ -205,6 +171,16 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
     supportIsExternal,
   });
 
+  const primarySection = navSections.find((s) => s.key === "primary");
+  const secondarySection = navSections.find((s) => s.key === "secondary");
+
+  const isOnlineStoreActive =
+    location.pathname.startsWith("/admin/online-store") ||
+    location.pathname.startsWith("/admin/page-builder") ||
+    location.pathname.startsWith("/admin/templates") ||
+    location.pathname.startsWith("/admin/media") ||
+    location.pathname.startsWith("/admin/blog");
+
   return (
     <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
       <div className="flex h-16 items-center border-b border-border px-6">
@@ -216,122 +192,168 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-5 p-4">
-        {navSections.map((section) => {
-          const visibleLinks = section.links.filter((link) => link.show);
-          if (visibleLinks.length === 0) return null;
+      <nav className="flex flex-1 flex-col justify-between p-4 overflow-y-auto">
+        {/* Primary Top Navigation */}
+        <div className="space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {primarySection?.title ?? "Main Menu"}
+          </p>
+          {primarySection?.links.map((link) => {
+            const active = link.external
+              ? false
+              : (link.match ?? [link.to]).some((match) => isRouteActive(location.pathname, match.split("?")[0] || match));
 
-          return (
-            <div key={section.title} className="space-y-1.5">
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {section.title}
-              </p>
-              {visibleLinks.map((link) => {
-                const active = link.external
-                  ? false
-                  : (link.match ?? [link.to]).some((match) => isRouteActive(location.pathname, match.split("?")[0] || match));
-
-                return (
-                  <div key={link.to}>
-                    {link.external ? (
-                      <a
-                        href={link.to}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                        )}
-                      >
-                        <link.icon className="h-4 w-4" />
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link
-                        to={link.to}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          active
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                        )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        <link.icon className="h-4 w-4" />
-                        <span>{link.label}</span>
-                        {link.badge !== undefined && link.badge > 0 && (
-                          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                            {link.badge > 99 ? "99+" : link.badge}
-                          </span>
-                        )}
-                      </Link>
+            return (
+              <div key={link.to}>
+                {link.external ? (
+                  <a
+                    href={link.to}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary hover:text-foreground",
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    to={link.to}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    <span>{link.label}</span>
+                    {link.badge !== undefined && link.badge > 0 && (
+                      <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                        {link.badge > 99 ? "99+" : link.badge}
+                      </span>
+                    )}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
 
-        {cmsEnabled && !compact ? (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2 px-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Store Pages
-              </p>
-              <Link
-                to={buildPageBuilderPath("advanced", { storeId: activeStoreId })}
-                className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <FilePlus2 className="h-3.5 w-3.5" />
-                New Page
-              </Link>
-            </div>
-            {sidebarStorePages.length > 0 ? sidebarStorePages.map((page) => (
-              <div key={page.id} className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
-                      {page.is_homepage ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Home</span> : null}
-                    </div>
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{page.slug}</p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">{inferPagePlacement(page)}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Link
-                        to={buildPageBuilderPath("basic", { storeId: activeStoreId, pageId: page.id === "virtual-shop" ? null : page.id })}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                      >
-                        Edit
-                      </Link>
-                      {activeStoreMeta?.slug ? (
-                        <a
-                          href={absoluteStoreUrl(
-                            { slug: activeStoreMeta.slug, customDomain: activeStoreMeta.custom_domain ?? null },
-                            page.is_homepage || page.slug === "/" ? "/" : page.slug,
-                          )}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Visit
-                        </a>
-                      ) : null}
+          {/* Contextual Store Pages sub-list when in Online Store */}
+          {cmsEnabled && !compact && isOnlineStoreActive ? (
+            <div className="mt-4 pt-3 border-t border-border/60 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 px-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Store Pages
+                </p>
+                <Link
+                  to={buildPageBuilderPath("advanced", { storeId: activeStoreId })}
+                  className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+                >
+                  <FilePlus2 className="h-3.5 w-3.5" />
+                  New Page
+                </Link>
+              </div>
+              {sidebarStorePages.length > 0 ? (
+                sidebarStorePages.map((page) => (
+                  <div key={page.id} className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
+                    <div className="flex items-start gap-2">
+                      <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
+                          {page.is_homepage ? (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                              Home
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{page.slug}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{inferPagePlacement(page)}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Link
+                            to={buildPageBuilderPath("basic", {
+                              storeId: activeStoreId,
+                              pageId: page.id === "virtual-shop" ? null : page.id,
+                            })}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                          >
+                            Edit
+                          </Link>
+                          {activeStoreMeta?.slug ? (
+                            <a
+                              href={absoluteStoreUrl(
+                                { slug: activeStoreMeta.slug, customDomain: activeStoreMeta.custom_domain ?? null },
+                                page.is_homepage || page.slug === "/" ? "/" : page.slug,
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Visit
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+                  No custom pages yet.
                 </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Secondary Bottom Navigation (Settings & Support) Pinned */}
+        <div className="mt-6 pt-3 border-t border-border space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {secondarySection?.title ?? "Preferences"}
+          </p>
+          {secondarySection?.links.map((link) => {
+            const active = link.external
+              ? false
+              : (link.match ?? [link.to]).some((match) => isRouteActive(location.pathname, match.split("?")[0] || match));
+
+            return (
+              <div key={link.to}>
+                {link.external ? (
+                  <a
+                    href={link.to}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    to={link.to}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    <span>{link.label}</span>
+                  </Link>
+                )}
               </div>
-            )) : (
-              <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-                No custom pages yet. Use Expert Editing only when you need pages beyond the homepage and template sections.
-              </div>
-            )}
-          </div>
-        ) : null}
+            );
+          })}
+        </div>
       </nav>
 
+      {/* User Footer */}
       <div className="border-t border-border p-4 space-y-2">
         <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
         <ChangePasswordDialog />
@@ -352,9 +374,3 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
 };
 
 export default AdminSidebar;
-
-
-
-
-
-

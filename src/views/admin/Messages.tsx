@@ -2,13 +2,16 @@ import { useAuth } from "@/hooks/auth-context";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, MailOpen, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Mail, MailOpen, Trash2, Loader2, RefreshCw, Star, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+import Reviews from "./Reviews";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
 
 interface ContactMessage {
   id: string;
@@ -22,6 +25,8 @@ interface ContactMessage {
 const Messages = () => {
   const { activeStoreId } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "inbox";
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: messages = [], isLoading, refetch } = useQuery({
@@ -76,9 +81,9 @@ const Messages = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Messages</h1>
+          <h1 className="font-heading text-3xl font-bold text-foreground">Customers & Feedback</h1>
           <p className="text-sm text-muted-foreground">
-            Customer inquiries from the contact form
+            Customer inquiries and product ratings
             {unreadCount > 0 && (
               <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                 {unreadCount} unread
@@ -86,114 +91,133 @@ const Messages = () => {
             )}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
+        {activeTab === "inbox" && (
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        )}
       </div>
 
-      {isLoading && messages.length === 0 ? (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-4 w-32" />
+      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
+        <TabsList className="bg-secondary/40 p-1 border border-border">
+          <TabsTrigger value="inbox" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Contact Inbox
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="gap-2">
+            <Star className="h-4 w-4" />
+            Product Reviews
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inbox" className="space-y-4">
+          {isLoading && messages.length === 0 ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-6 w-20" />
+                  </div>
+                  <Skeleton className="h-16 w-full" />
                 </div>
-                <Skeleton className="h-6 w-20" />
-              </div>
-              <Skeleton className="h-16 w-full" />
+              ))}
             </div>
-          ))}
-        </div>
-      ) : messages.length === 0 ? (
-        <AdminEmptyState
-          icon={Mail}
-          title="No messages yet"
-          description="Customer contact form submissions will appear here once shoppers start reaching out."
-          helper="A published contact page, support email, or WhatsApp link usually helps the first real conversations start sooner."
-          actions={activeStoreId ? [
-            { label: "Open site settings", href: `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}&tab=contact` },
-            { label: "Preview store", href: `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId)}&guide=continue`, variant: "outline" },
-          ] : []}
-        />
-      ) : (
-        <div className="space-y-2">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`rounded-lg border transition-all duration-200 ${
-                !msg.is_read ? "border-primary/30 bg-primary/5" : "border-border bg-card"
-              }`}
-            >
-              {/* Header row */}
-              <button
-                className="flex w-full items-center gap-4 p-4 text-left"
-                onClick={() => handleExpand(msg)}
-              >
-                <div className="flex-shrink-0">
-                  {msg.is_read ? (
-                    <MailOpen className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <Mail className="h-5 w-5 text-primary" />
+          ) : messages.length === 0 ? (
+            <AdminEmptyState
+              icon={Mail}
+              title="No messages yet"
+              description="Customer contact form submissions will appear here once shoppers start reaching out."
+              helper="A published contact page, support email, or WhatsApp link usually helps the first real conversations start sooner."
+              actions={activeStoreId ? [
+                { label: "Open site settings", href: `/admin/site-settings?storeId=${encodeURIComponent(activeStoreId)}&tab=contact` },
+                { label: "Preview store", href: `/admin/onboarding?storeId=${encodeURIComponent(activeStoreId)}&guide=continue`, variant: "outline" },
+              ] : []}
+            />
+          ) : (
+            <div className="space-y-2">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`rounded-lg border transition-all duration-200 ${
+                    !msg.is_read ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+                  }`}
+                >
+                  <button
+                    className="flex w-full items-center gap-4 p-4 text-left"
+                    onClick={() => handleExpand(msg)}
+                  >
+                    <div className="flex-shrink-0">
+                      {msg.is_read ? (
+                        <MailOpen className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <Mail className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-heading font-semibold text-foreground">{msg.name}</span>
+                        {!msg.is_read && (
+                          <Badge variant="default" className="h-4 px-1.5 text-[10px]">New</Badge>
+                        )}
+                      </div>
+                      <p className="truncate text-sm text-muted-foreground">{msg.email}</p>
+                      <p className="mt-0.5 truncate text-sm text-foreground/70">{msg.message}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(msg.created_at), "MMM d, yyyy")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(msg.created_at), "h:mm a")}
+                      </p>
+                    </div>
+                  </button>
+
+                  {expanded === msg.id && (
+                    <div className="border-t border-border px-4 pb-4 pt-3">
+                      <div className="mb-3 flex items-center justify-between">
+                        <a
+                          href={`mailto:${msg.email}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          Reply to {msg.email}
+                        </a>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs"
+                            onClick={() => markRead.mutate({ id: msg.id, is_read: !msg.is_read })}
+                            disabled={markRead.isPending}
+                          >
+                            {msg.is_read ? (
+                              <><Mail className="h-3 w-3" /> Mark Unread</>
+                            ) : (
+                              <><MailOpen className="h-3 w-3" /> Mark Read</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="rounded-md border border-border bg-background p-4">
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{msg.message}</p>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-heading font-semibold text-foreground">{msg.name}</span>
-                    {!msg.is_read && (
-                      <Badge variant="default" className="h-4 px-1.5 text-[10px]">New</Badge>
-                    )}
-                  </div>
-                  <p className="truncate text-sm text-muted-foreground">{msg.email}</p>
-                  <p className="mt-0.5 truncate text-sm text-foreground/70">{msg.message}</p>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(msg.created_at), "MMM d, yyyy")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(msg.created_at), "h:mm a")}
-                  </p>
-                </div>
-              </button>
-
-              {/* Expanded content */}
-              {expanded === msg.id && (
-                <div className="border-t border-border px-4 pb-4 pt-3">
-                  <div className="mb-3 flex items-center justify-between">
-                    <a
-                      href={`mailto:${msg.email}`}
-                      className="text-sm font-medium text-primary hover:underline"
-                    >
-                      Reply to {msg.email}
-                    </a>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => markRead.mutate({ id: msg.id, is_read: !msg.is_read })}
-                        disabled={markRead.isPending}
-                      >
-                        {msg.is_read ? (
-                          <><Mail className="h-3 w-3" /> Mark Unread</>
-                        ) : (
-                          <><MailOpen className="h-3 w-3" /> Mark Read</>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-border bg-background p-4">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{msg.message}</p>
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="reviews" className="space-y-4">
+          <Reviews />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

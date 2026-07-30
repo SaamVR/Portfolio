@@ -3,6 +3,7 @@ import {
   supportsLoyaltyAndUpsells,
   supportsTransactionalCheckout,
 } from "@/lib/cms/storefront-compat";
+import { getTemplateFeatureBlockDefinitions } from "@/lib/cms/template-feature-blocks";
 import type {
   StoreBusinessFamily,
   StoreCatalogMode,
@@ -42,6 +43,7 @@ export type SettingsTabValue =
   | "footer"
   | "domain"
   | "notifications"
+  | "template_features"
   | "page_builder";
 
 export type SettingsTabOption = {
@@ -94,6 +96,7 @@ export const validSettingTabs = new Set<SettingsTabValue>([
   "footer",
   "domain",
   "notifications",
+  "template_features",
   "page_builder",
 ]);
 
@@ -346,6 +349,13 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
     category: "Information",
     keywords: "sms email notifications order receipt shipped tracking tracking sms alert email gateway resend greenweb sms api key",
     resolveLabel: () => "Notifications",
+  },
+  {
+    value: "template_features",
+    category: "Storefront",
+    keywords: "template feature custom block comparison special sections template blocks merchandising homepage modules",
+    resolveLabel: () => "Template Features",
+    isVisible: (_businessFamily, _catalogMode, templateId) => getTemplateFeatureBlockDefinitions(templateId).length > 0,
   },
   {
     value: "page_builder",

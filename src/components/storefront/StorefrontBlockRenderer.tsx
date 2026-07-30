@@ -5,17 +5,19 @@ import FeaturedProducts from "@/components/FeaturedProducts";
 import HeroSection from "@/components/HeroSection";
 import PromoBanner from "@/components/PromoBanner";
 import RecentlyViewed from "@/components/RecentlyViewed";
+import { buildTechnicalSpecs } from "@/components/storefront/electronics/ElectronicsProductCard";
 import type { RichTextDoc, RichTextNode, StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontTemplateDefinition } from "@/lib/cms/storefront-templates";
 import { parseLegacyStringToDoc } from "@/lib/cms/rich-text-adapter";
-import React from "react";
+import React, { useMemo } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AlertTriangle, BadgeCheck, CreditCard, Headset, Instagram, Play, ShieldCheck, Star, Truck, Undo2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
 import { sanitizeStoreBlockCustomCss, sanitizeStoreBlockCustomHtml } from "@/lib/cms/validation";
-import { storefrontPath } from "@/lib/slug";
+import { productUrl, storefrontPath } from "@/lib/slug";
 
 function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
   if (!nodes || !Array.isArray(nodes)) return null;
@@ -382,6 +384,108 @@ function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle
   );
 }
 
+function ComparisonBlock({
+  title,
+  tagline,
+  source,
+  category,
+  productType,
+  limit,
+  ctaText,
+}: {
+  title?: string;
+  tagline?: string;
+  source?: "featured-or-all" | "featured" | "all" | "newest" | "category" | "type";
+  category?: string;
+  productType?: string;
+  limit?: number;
+  ctaText?: string;
+}) {
+  const currentStore = useOptionalStore();
+  const storeId = currentStore?.id ?? "";
+  const storeSlug = currentStore?.slug;
+  const { data: allProducts = [] } = useProducts(storeId);
+  const { data: featuredProducts = [] } = useFeaturedProducts(storeId);
+
+  const productsToCompare = useMemo(() => {
+    const availableProducts = allProducts.filter((product) => product.isAvailable !== false);
+    const base = featuredProducts.length > 0 ? featuredProducts : availableProducts;
+    let filtered = [...(base.length > 0 ? base : availableProducts)];
+
+    if (source === "featured") {
+      filtered = filtered.filter((product) => product.featured);
+    }
+
+    if (source === "category" && category) {
+      filtered = filtered.filter((product) => product.category.toLowerCase() === category.toLowerCase());
+    }
+
+    if (source === "type" && productType) {
+      filtered = filtered.filter((product) => product.type?.toLowerCase() === productType.toLowerCase());
+    }
+
+    if ((source === "featured-or-all" || source === "featured") && filtered.length === 0) {
+      filtered = [...availableProducts];
+    }
+
+    return filtered.slice(0, Math.min(Math.max(limit ?? 2, 2), 4));
+  }, [allProducts, category, featuredProducts, limit, productType, source]);
+
+  if (productsToCompare.length < 2) {
+    return null;
+  }
+
+  return (
+    <section className="bg-background py-16 md:py-24">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto mb-10 max-w-3xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{tagline || "Compare before you buy"}</p>
+          <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            {title || "Quick product comparison"}
+          </h2>
+        </div>
+        <div className="mx-auto grid max-w-6xl gap-4 xl:grid-cols-2">
+          {productsToCompare.map((product) => (
+            <article key={product.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+              <div className="grid gap-5 p-5 sm:grid-cols-[220px_1fr]">
+                <div className="flex aspect-[4/3] items-center justify-center rounded-[24px] bg-secondary/40 p-5">
+                  <img src={product.image} alt={product.name} className="h-full w-full object-contain" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      {product.category || product.type || "Product"}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{product.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{product.description}</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {buildTechnicalSpecs(product).map((spec) => (
+                      <div key={spec} className="rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-sm text-muted-foreground">
+                        {spec}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1 text-primary">
+                      <Star className="h-4 w-4 fill-current" />
+                      <span className="text-sm font-semibold text-foreground">Spec-led pick</span>
+                    </div>
+                    <p className="text-[1.35rem] font-bold text-primary">৳{product.price.toLocaleString()}</p>
+                    <Button asChild variant="outline" className="ml-auto">
+                      <Link href={productUrl(product.id, product.name, storeSlug)}>{ctaText || "View details"}</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function StorefrontBlockRenderer({
   block,
   template,
@@ -465,6 +569,21 @@ export function StorefrontBlockRenderer({
             disableLegacyFallback
           />
         );
+      case "recommended-products":
+        return (
+          <FeaturedProducts
+            limit={resolvedProps.limit}
+            title={resolvedProps.title ?? "Products you may like"}
+            tagline={resolvedProps.tagline ?? "More to explore"}
+            source={resolvedProps.source}
+            category={resolvedProps.category}
+            productType={resolvedProps.productType}
+            layoutVariant={blockLayoutVariant}
+            disableLegacyFallback
+          />
+        );
+      case "comparison":
+        return <ComparisonBlock {...resolvedProps} />;
       case "recently-viewed":
         return <RecentlyViewed title={resolvedProps.title} />;
       case "rich-text":

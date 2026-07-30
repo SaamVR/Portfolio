@@ -36,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, Navigate } from "@/lib/react-router-dom-shim";
+import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   buildPlatformOverviewStats,
@@ -129,7 +129,12 @@ export default function PlatformControlPlane() {
   const [exceptionScopeStoreId, setExceptionScopeStoreId] = useState<string>("global");
   const [exceptionNote, setExceptionNote] = useState("");
   const [lifecycleAction, setLifecycleAction] = useState<(typeof LIFECYCLE_ACTIONS)[number]["value"]>("scan");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
   const [analyticsDatePreset, setAnalyticsDatePreset] = useState<AnalyticsDatePreset>("last_30_days");
   const [analyticsCustomStart, setAnalyticsCustomStart] = useState("");
   const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState("");
@@ -779,7 +784,7 @@ export default function PlatformControlPlane() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 xl:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-3 md:hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="backups">Backups</TabsTrigger>

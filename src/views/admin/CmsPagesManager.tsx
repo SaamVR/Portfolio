@@ -2851,6 +2851,12 @@ export default function CmsPagesManager() {
               <Button asChild variant={isAdvancedEditor ? "secondary" : "outline"} size="sm" className="rounded-full">
                 <Link to={advancedEditorHref}>Expert Editing</Link>
               </Button>
+              {!isAdvancedEditor && (
+                <Button size="sm" className="rounded-full gap-1.5" onClick={() => void saveAll()} disabled={saving || !hasUnsavedChanges}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? "Saving..." : hasUnsavedChanges ? "Save Changes" : "Saved"}
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-border bg-background/40 px-3 py-2">
@@ -4366,96 +4372,15 @@ export default function CmsPagesManager() {
               </Card>
 
               {desktopPreviewMode === "below" ? (
-                <Card className="border-border overflow-hidden">
-                <div id="page-builder-preview" />
-                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Live Preview</CardTitle>
-                    <CardDescription>
-                      Current editor state rendered with the storefront theme.
-                      {selectedBlock ? ` Preview is synced to ${selectedBlock.type}.` : ""}
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center rounded-lg border border-border p-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant={previewViewport === "desktop" ? "secondary" : "ghost"}
-                        aria-label="Desktop preview"
-                        title="Desktop preview"
-                        className="h-8 w-8"
-                        onClick={() => setPreviewViewport("desktop")}
-                      >
-                        <Monitor className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant={previewViewport === "mobile" ? "secondary" : "ghost"}
-                        aria-label="Mobile preview"
-                        title="Mobile preview"
-                        className="h-8 w-8"
-                        onClick={() => setPreviewViewport("mobile")}
-                      >
-                        <Smartphone className="h-4 w-4" />
-                      </Button>
+                <div id="page-builder-preview" className="space-y-3 pt-4">
+                  <div className="flex items-center justify-between px-1">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground">Live Preview</h3>
+                      <p className="text-xs text-muted-foreground">Current page layout rendered with your storefront theme.</p>
                     </div>
-                    <div className="flex items-center rounded-lg border border-border p-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={desktopPreviewMode === "below" ? "secondary" : "ghost"}
-                        className="h-8 rounded-md px-3 text-xs"
-                        onClick={() => setDesktopPreviewMode("below")}
-                      >
-                        Below
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 rounded-md px-3 text-xs"
-                        onClick={() => setDesktopPreviewMode("side")}
-                      >
-                        Side
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 rounded-md px-3 text-xs"
-                        onClick={() => {
-                          setDesktopPreviewMode("side");
-                          setDesktopPreviewSide((current) => (current === "right" ? "left" : "right"));
-                        }}
-                      >
-                        Flip Side
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 rounded-md px-3 text-xs"
-                        onClick={() => setDesktopPreviewMode("minimized")}
-                      >
-                        Min
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 rounded-md px-3 text-xs"
-                        onClick={() => setDesktopPreviewMode("hidden")}
-                      >
-                        Hide
-                      </Button>
-                    </div>
-                    <Badge variant="outline">{selectedPage.slug}</Badge>
                   </div>
-                </CardHeader>
-                <CardContent>{previewCanvas}</CardContent>
-              </Card>
+                  {previewCanvas}
+                </div>
               ) : null}
 
               {isAdvancedEditor ? (
@@ -4687,7 +4612,7 @@ export default function CmsPagesManager() {
                 <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                   Custom storefront pages should avoid app-owned slugs like `/shop`, `/product`, `/checkout`, or `/admin`. Local previews can resolve through the configured local store slug when one is set.
                 </div>
-                {desktopPreviewMode === "minimized" ? (
+                {isAdvancedEditor && desktopPreviewMode === "minimized" ? (
                   <div className="hidden lg:flex fixed right-24 top-28 z-30 items-center gap-2 rounded-full border border-border/80 bg-background/95 px-3 py-2 shadow-xl backdrop-blur-xl">
                     <Eye className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium text-foreground">Preview minimized</span>
@@ -4699,192 +4624,30 @@ export default function CmsPagesManager() {
                     </Button>
                   </div>
                 ) : null}
-                {desktopPreviewMode === "side" ? (
+                {isAdvancedEditor && desktopPreviewMode === "side" ? (
                   <div className={cn(
                     "hidden lg:block fixed top-24 z-30 w-[min(460px,calc(100vw-8rem))]",
                     desktopPreviewSide === "right" ? "right-24" : "left-24",
                   )}>
-                    <Card className="overflow-hidden border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl">
-                      <CardHeader className="space-y-3 border-b border-border/70 pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <CardTitle className="text-lg">Live Preview</CardTitle>
-                            <CardDescription>
-                              Floating storefront preview for quicker merchant review without leaving the editor.
-                            </CardDescription>
-                          </div>
-                          <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setDesktopPreviewMode("minimized")}>
+                    <Card className="overflow-hidden border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl">                      <CardHeader className="flex flex-row items-center justify-between border-b border-border/70 py-3 px-4">
+                        <div>
+                          <CardTitle className="text-base font-semibold">Live Preview</CardTitle>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setDesktopPreviewMode("below")}>
+                            Dock Below
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDesktopPreviewMode("minimized")}>
                             <PanelRightClose className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex items-center rounded-lg border border-border p-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant={previewViewport === "desktop" ? "secondary" : "ghost"}
-                              className="h-8 w-8"
-                              onClick={() => setPreviewViewport("desktop")}
-                            >
-                              <Monitor className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant={previewViewport === "mobile" ? "secondary" : "ghost"}
-                              className="h-8 w-8"
-                              onClick={() => setPreviewViewport("mobile")}
-                            >
-                              <Smartphone className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("below")}>
-                            Push Below
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewSide((current) => (current === "right" ? "left" : "right"))}>
-                            Move {desktopPreviewSide === "right" ? "Left" : "Right"}
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setDesktopPreviewMode("hidden")}>
-                            Close
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" asChild className="rounded-full">
-                            <a href={previewHref} target="_blank" rel="noreferrer">
-                              Open Full Tab
-                            </a>
-                          </Button>
-                        </div>
                       </CardHeader>
-                      <CardContent className="max-h-[78vh] overflow-auto p-4">
-                        <div className="mb-4 rounded-xl border border-border/70 bg-background/80 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Preview Checklist</p>
-                            <Badge variant="outline">{previewChecklist.filter((item) => item.done).length}/{previewChecklist.length} ready</Badge>
-                          </div>
-                          <div className="mt-3 grid gap-2">
-                            {previewChecklist.map((item) => (
-                              <div key={item.label} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card/70 px-3 py-2">
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                                  <p className="mt-1 text-[11px] text-muted-foreground">{item.hint}</p>
-                                </div>
-                                <Badge variant={item.done ? "outline" : "secondary"}>{item.done ? "Good" : "Check"}</Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      <CardContent className="max-h-[75vh] overflow-auto p-3">
                         {previewCanvas}
                       </CardContent>
                     </Card>
                   </div>
                 ) : null}
-            </div>
-            <div className="pointer-events-none fixed right-2 top-1/2 z-40 flex -translate-y-1/2 justify-end sm:right-4">
-              <div className="pointer-events-auto flex items-center gap-2">
-                {isActionDockMinimized ? (
-                  <div className="flex flex-col items-end gap-2">
-                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={undoStoreChange} disabled={undoStack.length === 0} title="Undo">
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={redoStoreChange} disabled={redoStack.length === 0} title="Redo">
-                      <Redo2 className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={openPreviewWorkspace} title="Preview">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => void saveAll()} disabled={saving} title="Save">
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10 rounded-full shadow-lg"
-                      onClick={() => setIsActionDockMinimized(false)}
-                      title="Expand dock"
-                    >
-                      <PanelRightOpen className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-[min(320px,calc(100vw-1rem))] rounded-[1.5rem] border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{isAdvancedEditor ? "Expert Editing Dock" : "Guided Editing Dock"}</p>
-                        <p className="truncate text-xs text-muted-foreground">{basicStatusLabel}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 rounded-full"
-                        onClick={() => setIsActionDockMinimized(true)}
-                        title="Minimize dock"
-                      >
-                        <PanelRightClose className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={undoStoreChange} disabled={undoStack.length === 0} className="justify-start rounded-full">
-                        <Undo2 className="h-4 w-4" />
-                        Undo
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={redoStoreChange} disabled={redoStack.length === 0} className="justify-start rounded-full">
-                        <Redo2 className="h-4 w-4" />
-                        Redo
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={openPreviewWorkspace} className="justify-start rounded-full">
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Button>
-                      <Button type="button" size="sm" onClick={() => void saveAll()} disabled={saving} className="justify-start rounded-full">
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Save
-                      </Button>
-                    </div>
-                    <div className="mt-3 grid gap-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Jump To</p>
-                        {!isAdvancedEditor ? (
-                          <Badge variant={basicStepCompletion[basicGuideStep] ? "outline" : "secondary"} className="text-[10px]">
-                            {basicStepCompletion[basicGuideStep] ? "Ready" : "In progress"}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {actionDockTargets.map((target) => (
-                          <Button
-                            key={target.id}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full"
-                            onClick={() => {
-                              if (!isAdvancedEditor) {
-                                const step = basicGuideSteps.find((item) => item.sectionId === target.id);
-                                if (step) {
-                                  setBasicGuideStep(step.id);
-                                }
-                              }
-                              scrollToBuilderSection(target.id);
-                            }}
-                          >
-                            {target.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    {!isAdvancedEditor ? (
-                      <div className="mt-3 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                        Merchant-safe flow with guided steps, local draft autosave, and quick jump links.
-                      </div>
-                    ) : (
-                      <div className="mt-3 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                        Advanced mode keeps block controls, code panels, revisions, and layout workflows within quick reach.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
             <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
               <SheetContent side="bottom" className="h-[92vh] rounded-t-[1.75rem] px-0 pb-0 pt-6 lg:hidden">

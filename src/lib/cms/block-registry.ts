@@ -25,7 +25,7 @@ export const fallbackBlockRegistry: CmsBlockRegistryItem[] = cmsBlockTypeOptions
       ? allBusinessFamilies
       : ["commerce"],
   requiredCapabilities:
-    option.value === "featured-products" || option.value === "recently-viewed" || option.value === "category-showcase"
+    option.value === "featured-products" || option.value === "comparison" || option.value === "recommended-products" || option.value === "recently-viewed" || option.value === "category-showcase"
       ? ["catalog"]
       : [],
 }));

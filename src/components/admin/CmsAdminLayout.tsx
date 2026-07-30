@@ -6,13 +6,21 @@ import { useAuth } from "@/hooks/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/components/admin/ChangePasswordDialog";
-import { ArrowLeft, Building2, LayoutDashboard, Layers3, LogOut, Search, Shield } from "lucide-react";
+import { ArrowLeft, Building2, LayoutDashboard, Layers3, LogOut, Search, Shield, Store, BarChart3, Package, FileText, CreditCard, Clock3 } from "lucide-react";
 import AdminCommandMenu from "@/components/admin/AdminCommandMenu";
 import CmsAdminMobileNav from "@/components/admin/CmsAdminMobileNav";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 
 const cmsAdminLinks = [
-  { to: "/cms-admin", icon: Shield, label: "CMS Control" },
+  { to: "/cms-admin", icon: LayoutDashboard, label: "Overview", tab: "overview" },
+  { to: "/cms-admin?tab=stores", icon: Store, label: "Merchants", tab: "stores" },
+  { to: "/cms-admin?tab=plans", icon: Layers3, label: "Plans & Features", tab: "plans" },
+  { to: "/cms-admin?tab=subscriptions", icon: CreditCard, label: "Subscriptions", tab: "subscriptions" },
+  { to: "/cms-admin?tab=analytics", icon: BarChart3, label: "Platform Analytics", tab: "analytics" },
+  { to: "/cms-admin?tab=lifecycle", icon: Clock3, label: "Lifecycle Management", tab: "lifecycle" },
+  { to: "/cms-admin?tab=health", icon: Shield, label: "CMS Health", tab: "health" },
+  { to: "/cms-admin?tab=backups", icon: Package, label: "Backups", tab: "backups" },
+  { to: "/cms-admin?tab=activity", icon: FileText, label: "Activity Logs", tab: "activity" },
   { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library" },
 ];
 
@@ -92,9 +100,17 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
           </span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-4">
+        <nav className="flex flex-1 flex-col gap-1 p-4 overflow-y-auto">
           {cmsAdminLinks.map((link) => {
-            const active = location.pathname === link.to;
+            const searchParams = new URLSearchParams(location.search);
+            const currentTab = searchParams.get("tab") || "overview";
+            const isLibrary = link.to.startsWith("/cms-admin/libraries");
+            const isLibraryActive = location.pathname.startsWith("/cms-admin/libraries");
+            
+            const active = isLibrary 
+              ? isLibraryActive 
+              : (!isLibraryActive && link.tab === currentTab);
+              
             return (
               <Link
                 key={link.to}

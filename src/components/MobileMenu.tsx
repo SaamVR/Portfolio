@@ -23,14 +23,21 @@ import { ChevronDown } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { buildAutoNavbarItems } from "@/lib/cms/page-listing-preferences";
 
 interface NavigationSettings {
-  primary_links?: Array<{ label?: string; url?: string }>;
+  primary_links?: Array<{ label?: string; url?: string; children?: Array<{ label?: string; url?: string }> }>;
   shop_label?: string;
   show_account?: boolean;
   show_wishlist?: boolean;
   show_cart?: boolean;
 }
+
+type MobileNavLink = {
+  label: string;
+  to: string;
+  children?: Array<{ label: string; to: string }>;
+};
 
 const MobileMenu = () => {
   const { totalItems } = useCart();
@@ -38,6 +45,7 @@ const MobileMenu = () => {
   const { user } = useAuth();
   const location = useLocation();
   const [shopOpen, setShopOpen] = useState(false);
+  const [pageMenuOpen, setPageMenuOpen] = useState<string | null>(null);
   const currentStore = useOptionalStore();
   const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
@@ -70,14 +78,32 @@ const MobileMenu = () => {
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
     { label: "FAQ", to: storefrontPath("/faq", currentStore?.slug) },
   ];
-  const navLinks = navigation?.primary_links?.length
+  const autoPageLinks: MobileNavLink[] = buildAutoNavbarItems(currentStore).map((item) => ({
+    label: item.label,
+    to: storefrontPath(item.url, currentStore?.slug),
+    children: item.children?.map((child) => ({
+      label: child.label,
+      to: storefrontPath(child.url, currentStore?.slug),
+    })),
+  }));
+  const manualNavLinks: MobileNavLink[] = navigation?.primary_links?.length
     ? navigation.primary_links
-      .filter((link): link is { label: string; url: string } => Boolean(link?.label && link?.url))
+      .filter((link): link is { label: string; url: string; children?: Array<{ label?: string; url?: string }> } => Boolean(link?.label && link?.url))
       .map((link) => ({
         label: link.label,
         to: storefrontPath(link.url, currentStore?.slug),
+        children: Array.isArray(link.children)
+          ? link.children.filter((child): child is { label: string; url: string } => Boolean(child?.label && child?.url)).map((child) => ({
+              label: child.label,
+              to: storefrontPath(child.url, currentStore?.slug),
+            }))
+          : undefined,
       }))
     : defaultNavLinks;
+  const navLinks: MobileNavLink[] = [
+    ...manualNavLinks,
+    ...autoPageLinks.filter((link) => !manualNavLinks.some((manualLink) => manualLink.to === link.to)),
+  ];
   const homeLink = navLinks.find((link) => link.to === homePath) ?? { label: "Home", to: homePath };
   const shopLink = navLinks.find((link) => link.to === shopPath);
   const secondaryLinks = navLinks.filter((link) => link.to !== homePath && link.to !== shopPath);
@@ -148,17 +174,37 @@ const MobileMenu = () => {
           ) : null}
 
           {secondaryLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
-                location.pathname === link.to
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-              }`}
-            >
-              {link.label}
-            </Link>
+            link.children?.length ? (
+              <Collapsible key={link.to} open={pageMenuOpen === link.to} onOpenChange={(open) => setPageMenuOpen(open ? link.to : null)}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all">
+                  {link.label}
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${pageMenuOpen === link.to ? "rotate-180 text-primary" : ""}`} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
+                  {link.children.map((child) => (
+                    <Link
+                      key={child.to}
+                      to={child.to}
+                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
+                  location.pathname === link.to
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
           ))}
         </nav>
 

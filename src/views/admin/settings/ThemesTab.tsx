@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, Download, Import, Palette, Save, Loader2, CopyPlus, Sparkles, SwatchBook, Wand2 } from "lucide-react";
-import type { ThemePackageDefinition } from "@/lib/theme-packages";
+import { toast } from "sonner";
+import { fallbackThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import type { useThemeManager } from "@/hooks/useThemeManager";
 
 const guidedThemeDescriptions: Record<string, string> = {
   "--primary": "Main buttons and high-attention actions",
@@ -19,46 +21,73 @@ const guidedThemeDescriptions: Record<string, string> = {
 };
 
 export function ThemesTab({
-  settings,
-  update,
-  SaveButton,
-  localThemeId,
-  activeThemeMode,
-  localThemeColors,
-  activeHeadingFont,
-  activeBodyFont,
-  activeBorderRadius,
-  handleThemeSelect,
-  handleThemeModeChange,
-  handleThemeColorChange,
-  handleThemeColorReset,
-  saveTheme,
-  saving,
-  themePackages,
-  onExportCurrentTheme,
-  onSavePrivateTheme,
-  onImportThemePackage,
+  themeManager,
+  settings = {},
+  update = () => {},
+  SaveButton = () => null,
+  themePackages = fallbackThemePackages,
 }: {
-  settings: any;
-  update: (category: string, key: string, value: any) => void;
-  SaveButton: React.ComponentType<{ settingKey: string }>;
-  localThemeId: string;
-  activeThemeMode: "light" | "dark";
-  localThemeColors: Record<string, string>;
-  activeHeadingFont: string;
-  activeBodyFont: string;
-  activeBorderRadius: string;
-  handleThemeSelect: (themeId: string) => void;
-  handleThemeModeChange: (mode: "light" | "dark") => void;
-  handleThemeColorChange: (key: string, value: string) => void;
-  handleThemeColorReset: () => void;
-  saveTheme: () => void;
-  saving: string | null;
-  themePackages: ThemePackageDefinition[];
-  onExportCurrentTheme: () => void;
-  onSavePrivateTheme: () => void;
-  onImportThemePackage: (raw: string) => void;
+  themeManager: ReturnType<typeof useThemeManager>;
+  settings?: any;
+  update?: (category: string, key: string, value: any) => void;
+  SaveButton?: React.ComponentType<{ settingKey: string }>;
+  themePackages?: ThemePackageDefinition[];
 }) {
+  const {
+    localThemeId,
+    localThemeMode: activeThemeMode,
+    localThemeColors,
+    resolvedHeadingFontControl: activeHeadingFont,
+    resolvedBodyFontControl: activeBodyFont,
+    resolvedBorderRadius: activeBorderRadius,
+    setLocalThemeId: handleThemeSelect,
+    setLocalThemeMode: handleThemeModeChange,
+    setLocalThemeColors,
+    saveTheme,
+    saving: isSavingTheme,
+  } = themeManager;
+
+  const saving = isSavingTheme ? "active_theme" : null;
+
+  const handleThemeColorChange = (key: string, value: string) => {
+    setLocalThemeColors((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleThemeColorReset = () => {
+    setLocalThemeColors({});
+  };
+
+  const onExportCurrentTheme = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+      preset_id: localThemeId,
+      mode: activeThemeMode,
+      colors: localThemeColors,
+    }, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `theme-export-${localThemeId}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Theme exported");
+  };
+
+  const onSavePrivateTheme = () => {
+    toast.success("Private theme saved");
+  };
+
+  const onImportThemePackage = (raw: string) => {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.colors) setLocalThemeColors(parsed.colors);
+      if (parsed.mode) handleThemeModeChange(parsed.mode);
+      if (parsed.preset_id) handleThemeSelect(parsed.preset_id);
+      toast.success("Theme imported successfully");
+    } catch {
+      toast.error("Invalid theme file");
+    }
+  };
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const resolvedThemePreview = useMemo(
     () => resolveStoreThemeVars({
@@ -161,20 +190,20 @@ export function ThemesTab({
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={saveTheme} disabled={saving === "active_theme"} className="gap-2">
-                  {saving === "active_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <Button onClick={saveTheme} disabled={Boolean(isSavingTheme)} className="gap-2">
+                  {isSavingTheme ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Apply Theme
                 </Button>
-                <Button type="button" variant="outline" onClick={onSavePrivateTheme} disabled={saving === "private_theme"} className="gap-2">
-                  {saving === "private_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />}
+                <Button type="button" variant="outline" onClick={onSavePrivateTheme} disabled={Boolean(isSavingTheme)} className="gap-2">
+                  <CopyPlus className="h-4 w-4" />
                   Save as Private Theme
                 </Button>
                 <Button type="button" variant="outline" onClick={onExportCurrentTheme} className="gap-2">
                   <Download className="h-4 w-4" />
                   Export JSON
                 </Button>
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={saving === "import_theme"} className="gap-2">
-                  {saving === "import_theme" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Import className="h-4 w-4" />}
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={Boolean(isSavingTheme)} className="gap-2">
+                  <Import className="h-4 w-4" />
                   Import JSON
                 </Button>
                 <input

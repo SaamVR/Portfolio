@@ -10,19 +10,27 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Eye,
   EyeOff,
+  Filter,
+  Layers,
+  LayoutTemplate,
   Loader2,
   MapPin,
   MessageCircleMore,
   Package,
   Rocket,
   Save,
+  Search,
   Share2,
   Sparkles,
   Truck,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminPreviewStoreButton } from "@/components/admin/AdminPreviewStoreButton";
 import { MerchantPreviewChecklist } from "@/components/admin/MerchantPreviewChecklist";
@@ -68,6 +76,7 @@ import {
   getStorefrontTemplateDefinition,
   resolveStorefrontTemplateProfile,
   storefrontTemplateOptions,
+  type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { resolveOnboardingTemplateBehavior } from "@/lib/cms/onboarding-template-registry";
@@ -788,6 +797,11 @@ export default function OnboardingWizard() {
   const [unseedingTemplateData, setUnseedingTemplateData] = useState(false);
   const [catalogSeedMetadata, setCatalogSeedMetadata] = useState<Record<string, unknown> | null>(null);
   const [completionState, setCompletionState] = useState<LaunchCompletionState | null>(null);
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState<string>("all");
+  const [templateSearchQuery, setTemplateSearchQuery] = useState<string>("");
+  const [previewModalTemplateId, setPreviewModalTemplateId] = useState<StorefrontTemplateId | null>(null);
+  const [templatePage, setTemplatePage] = useState<number>(1);
+  const TEMPLATES_PER_PAGE = 6;
 
   const activeTemplateProfile = useMemo(
     () => resolveStorefrontTemplateProfile(draft.blueprintId, { blueprintId: draft.blueprintId }),
@@ -820,6 +834,67 @@ export default function OnboardingWizard() {
     () => getContentSectionCards(onboardingContext),
     [onboardingContext],
   );
+
+  const filteredTemplateOptions = useMemo(() => {
+    return storefrontTemplateOptions.filter((option) => {
+      const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
+      if (templateCategoryFilter !== "all") {
+        if (templateCategoryFilter === "commerce" && seedDefinition.businessFamily !== "commerce") return false;
+        if (templateCategoryFilter === "booking" && seedDefinition.businessFamily !== "booking" && !seedDefinition.group.includes("Hospitality")) return false;
+        if (templateCategoryFilter === "service" && seedDefinition.businessFamily !== "service" && !seedDefinition.group.includes("Services")) return false;
+        if (templateCategoryFilter === "listing" && seedDefinition.businessFamily !== "listing" && !seedDefinition.group.includes("Real Estate")) return false;
+      }
+      if (templateSearchQuery.trim()) {
+        const query = templateSearchQuery.toLowerCase().trim();
+        const matchesName = option.label.toLowerCase().includes(query);
+        const matchesDesc = option.description.toLowerCase().includes(query);
+        const matchesCatalog = seedDefinition.catalogMode.toLowerCase().includes(query);
+        const matchesFamily = seedDefinition.businessFamily.toLowerCase().includes(query);
+        const matchesGroup = seedDefinition.group.toLowerCase().includes(query);
+        const matchesCapability = seedDefinition.capabilities.some((cap) => cap.toLowerCase().includes(query));
+        return matchesName || matchesDesc || matchesCatalog || matchesFamily || matchesGroup || matchesCapability;
+      }
+      return true;
+    });
+  }, [templateCategoryFilter, templateSearchQuery]);
+
+  const totalTemplatePages = Math.max(1, Math.ceil(filteredTemplateOptions.length / TEMPLATES_PER_PAGE));
+  const paginatedTemplateOptions = useMemo(() => {
+    const start = (templatePage - 1) * TEMPLATES_PER_PAGE;
+    return filteredTemplateOptions.slice(start, start + TEMPLATES_PER_PAGE);
+  }, [filteredTemplateOptions, templatePage]);
+
+  const filteredTemplateGroups = useMemo(() => {
+    const grouped = new Map<string, typeof storefrontTemplateOptions>();
+    for (const option of filteredTemplateOptions) {
+      const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
+      const existing = grouped.get(seedDefinition.group) ?? [];
+      existing.push(option);
+      grouped.set(seedDefinition.group, existing);
+    }
+    return Array.from(grouped.entries());
+  }, [filteredTemplateOptions]);
+
+  const previewModalProfile = useMemo(() => {
+    if (!previewModalTemplateId) return null;
+    return resolveStorefrontTemplateProfile(previewModalTemplateId, { blueprintId: previewModalTemplateId });
+  }, [previewModalTemplateId]);
+
+  const previewModalDraft = useMemo(() => {
+    if (!previewModalTemplateId) return null;
+    return draftFromBlueprint(previewModalTemplateId, themePackages);
+  }, [previewModalTemplateId, themePackages]);
+
+  const previewModalStore = useMemo(() => {
+    if (!previewModalDraft) return null;
+    return buildPreviewStore(previewModalDraft, "preview-modal-store", themePackages, pageBlueprints, blueprints);
+  }, [previewModalDraft, themePackages, pageBlueprints, blueprints]);
+
+  const previewModalHomepage = useMemo(() => {
+    if (!previewModalStore) return null;
+    return previewModalStore.pages.find((page) => page.isHomepage) ?? previewModalStore.pages[0] ?? null;
+  }, [previewModalStore]);
+
   const templateOptionGroups = useMemo(() => {
     const grouped = new Map<string, typeof storefrontTemplateOptions>();
     for (const option of storefrontTemplateOptions) {
@@ -1694,129 +1769,432 @@ export default function OnboardingWizard() {
           </CardHeader>
           <CardContent className="space-y-5">
             {activeStep.id === "blueprint" ? (
-              <div className="grid gap-5">
+              <div className="grid gap-6">
                 {!blueprintEditingEnabled ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                    Template switching is disabled for this store package right now. The current storefront still works, but changing template-driven page defaults is locked.
+                  <div className="rounded-lg border border-dashed border-border bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 shrink-0" />
+                    <span>
+                      Template switching is disabled for this store package right now. The current storefront still works, but changing template-driven page defaults is locked.
+                    </span>
                   </div>
                 ) : null}
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+
+                {/* Active Template Header Banner */}
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-background p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary">{activeTemplateProfile.seedDefinition.name}</Badge>
-                      <Badge variant="outline">{activeTemplateProfile.catalogMode.replace(/_/g, " ")}</Badge>
-                      <Badge variant="outline">{activeTemplateProfile.businessFamily}</Badge>
+                      <Badge className="bg-primary text-primary-foreground font-semibold px-2.5 py-0.5 text-xs">
+                        Active: {activeTemplateProfile.seedDefinition.name}
+                      </Badge>
+                      <Badge variant="outline" className="capitalize bg-background/80 text-xs">
+                        {activeTemplateProfile.catalogMode.replace(/_/g, " ")}
+                      </Badge>
+                      <Badge variant="secondary" className="capitalize text-xs">
+                        {activeTemplateProfile.businessFamily}
+                      </Badge>
                     </div>
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      Pick the storefront direction first. Each template keeps its own page defaults, seeded demo data, and category-aware editing flow.
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button type="button" onClick={() => void seedTemplateDemoData()} disabled={!activeStoreId || seedingTemplateData} className="gap-2">
-                        {seedingTemplateData ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-                        {catalogSeedMetadata ? "Reseed Demo Data" : "Seed Demo Data"}
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => void unseedTemplateDemoData()} disabled={!activeStoreId || unseedingTemplateData || !catalogSeedMetadata} className="gap-2">
-                        {unseedingTemplateData ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
-                        Unseed Demo Data
-                      </Button>
-                    </div>
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      {catalogSeedMetadata
-                        ? "Demo data is currently seeded for this store. Switching templates does not automatically carry old demo catalog items across."
-                        : "No demo catalog is seeded yet for this store."}
+                    <h3 className="text-lg font-bold text-foreground">
+                      {activeTemplateProfile.seedDefinition.name} Template
+                    </h3>
+                  </div>
+
+                  {/* Seed / Unseed Demo Data Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void seedTemplateDemoData()}
+                      disabled={!activeStoreId || seedingTemplateData}
+                      className="gap-1.5 font-medium text-xs h-9"
+                    >
+                      {seedingTemplateData ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Package className="h-3.5 w-3.5" />
+                      )}
+                      {catalogSeedMetadata ? "Reseed Demo Data" : "Seed Demo Data"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void unseedTemplateDemoData()}
+                      disabled={!activeStoreId || unseedingTemplateData || !catalogSeedMetadata}
+                      className="gap-1.5 font-medium text-xs h-9"
+                    >
+                      {unseedingTemplateData ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      )}
+                      Unseed Demo Catalog
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Filter & Search Header */}
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t pt-5">
+                  <div className="space-y-0.5">
+                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <LayoutTemplate className="h-5 w-5 text-primary" /> Store Templates
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Browse {storefrontTemplateOptions.length} specialized store templates designed for high merchant conversion.
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <p className="text-sm font-semibold text-foreground">Template preview</p>
-                    <p className="mt-1 text-xs text-muted-foreground">This is how the selected storefront direction currently looks with your draft data.</p>
-                    <div className="mt-4">
-                      <StorefrontPreviewFrame viewport="mobile" title={`${activeTemplateProfile.seedDefinition.name} mobile preview`}>
-                        {previewHomepage ? (
-                          <StorefrontTemplateRenderer
-                            store={previewStore}
-                            page={previewHomepage}
-                            blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
-                            adminMode={false}
-                            selectedBlockId={null}
-                            canManageStorefront={false}
-                            onSelectBlock={() => {}}
-                          />
-                        ) : null}
-                      </StorefrontPreviewFrame>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Category Filter Pills */}
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 text-xs">
+                      {[
+                        { id: "all", label: "All Templates" },
+                        { id: "commerce", label: "Retail & Shop" },
+                        { id: "service", label: "Services" },
+                        { id: "booking", label: "Booking" },
+                        { id: "listing", label: "Real Estate" },
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setTemplateCategoryFilter(cat.id);
+                            setTemplatePage(1);
+                          }}
+                          className={cn(
+                            "rounded-lg px-3 py-1.5 font-medium transition-all",
+                            templateCategoryFilter === cat.id
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder="Search templates..."
+                        value={templateSearchQuery}
+                        onChange={(e) => {
+                          setTemplateSearchQuery(e.target.value);
+                          setTemplatePage(1);
+                        }}
+                        className="pl-9 h-9 text-xs"
+                      />
                     </div>
                   </div>
                 </div>
-                {templateOptionGroups.map(([groupName, groupedTemplates]) => (
-                  <div key={groupName} className="space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{groupName}</p>
-                      <p className="text-xs text-muted-foreground">{onboardingContext.labels.blueprintHelper}</p>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {groupedTemplates.map((item) => {
+
+                {/* Template Cards Grid (Rows and Columns like Products) */}
+                {filteredTemplateOptions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-12 text-center">
+                    <LayoutTemplate className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
+                    <h4 className="font-semibold text-foreground">No templates match your search</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Try clearing your search or category filter.</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => {
+                        setTemplateCategoryFilter("all");
+                        setTemplateSearchQuery("");
+                        setTemplatePage(1);
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {paginatedTemplateOptions.map((item) => {
                         const seedDefinition = getStorefrontTemplateSeedDefinition(item.value);
                         const referenceImage = getStorefrontTemplateReferenceImage(item.value);
+                        const isCurrentActive = draft.blueprintId === item.value;
+
                         return (
                           <div
                             key={item.value}
-                            role="button"
-                            tabIndex={blueprintEditingEnabled ? 0 : -1}
-                            onClick={() => {
-                              if (!blueprintEditingEnabled) return;
-                              applyBlueprint(item.value);
-                            }}
-                            onKeyDown={(event) => {
-                              if (!blueprintEditingEnabled) return;
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                applyBlueprint(item.value);
-                              }
-                            }}
-                            aria-pressed={draft.blueprintId === item.value}
-                            className={`rounded-lg border p-4 text-left transition-colors ${
-                              draft.blueprintId === item.value ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
-                            } ${!blueprintEditingEnabled ? "cursor-not-allowed opacity-60" : ""}`}
+                            className={cn(
+                              "group relative h-[420px] w-full rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-primary/60",
+                              isCurrentActive
+                                ? "ring-2 ring-primary border-primary shadow-lg"
+                                : "border-border/80 shadow-sm"
+                            )}
                           >
-                            <div className="space-y-4">
-                              <div className="overflow-hidden rounded-xl border border-border/80 bg-background">
-                                <div className="h-40 overflow-hidden bg-muted/20">
-                                  {referenceImage ? (
-                                    <img
-                                      src={referenceImage}
-                                      alt={`${item.label} reference preview`}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                                      Preview coming soon
-                                    </div>
+                            {/* Long Rectangle Site Preview Background */}
+                            <div className="absolute inset-0 h-full w-full bg-muted">
+                              {referenceImage ? (
+                                <img
+                                  src={referenceImage}
+                                  alt={`${item.label} site preview`}
+                                  className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full flex-col items-center justify-center bg-muted/40 p-4 text-center">
+                                  <LayoutTemplate className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                                  <p className="text-xs text-muted-foreground">Preview coming soon</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Top Selected Badge */}
+                            {isCurrentActive && (
+                              <div className="absolute top-3 right-3 z-20">
+                                <Badge className="bg-emerald-600 text-white font-semibold text-xs gap-1 shadow-md border-0 px-3 py-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Selected
+                                </Badge>
+                              </div>
+                            )}
+
+                            {/* White Gradient Overlay from Middle to Bottom */}
+                            <div className="absolute inset-x-0 bottom-0 top-1/3 bg-gradient-to-t from-white via-white/95 via-40% to-transparent dark:from-slate-950 dark:via-slate-950/95 p-5 flex flex-col justify-end space-y-2.5 z-10">
+                              {/* Category & Mode Badges */}
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-semibold uppercase tracking-wider">
+                                  {seedDefinition.businessFamily}
+                                </Badge>
+                                <Badge variant="outline" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-medium capitalize">
+                                  {seedDefinition.catalogMode.replace(/_/g, " ")}
+                                </Badge>
+                              </div>
+
+                              {/* Template Name */}
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="font-bold text-lg text-slate-900 dark:text-white line-clamp-1 group-hover:text-primary transition-colors">
+                                  {item.label}
+                                </h4>
+                                {isCurrentActive ? (
+                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                                ) : null}
+                              </div>
+
+                              {/* Small Details / Description */}
+                              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                                {item.description}
+                              </p>
+
+                              {/* Feature Tags */}
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {seedDefinition.capabilities.slice(0, 3).map((capability) => (
+                                  <span
+                                    key={capability}
+                                    className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:text-slate-300"
+                                  >
+                                    {capability.replace(/_/g, " ")}
+                                  </span>
+                                ))}
+                                {seedDefinition.capabilities.length > 3 && (
+                                  <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
+                                    +{seedDefinition.capabilities.length - 3}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="pt-2 flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant={isCurrentActive ? "default" : "outline"}
+                                  size="sm"
+                                  className={cn(
+                                    "flex-1 h-9 font-semibold text-xs transition-all rounded-xl",
+                                    isCurrentActive
+                                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md border-0"
+                                      : "bg-white/90 dark:bg-slate-900/90 hover:bg-primary hover:text-primary-foreground border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
                                   )}
-                                </div>
-                              </div>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-2">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-medium text-foreground">{item.label}</p>
-                                  <Badge variant="outline">{seedDefinition.catalogMode.replace(/_/g, " ")}</Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                                <div className="flex flex-wrap gap-2 pt-1">
-                                  {seedDefinition.capabilities.map((capability) => (
-                                    <Badge key={capability} variant="secondary" className="text-[11px]">
-                                      {capability.replace(/_/g, " ")}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                                {draft.blueprintId === item.value ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : null}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (blueprintEditingEnabled) applyBlueprint(item.value);
+                                  }}
+                                  disabled={!blueprintEditingEnabled}
+                                >
+                                  {isCurrentActive ? (
+                                    <>
+                                      <CheckCircle2 className="mr-1.5 h-4 w-4" /> Active Template
+                                    </>
+                                  ) : (
+                                    "Select Template"
+                                  )}
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 w-9 p-0 text-xs rounded-xl bg-white/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewModalTemplateId(item.value);
+                                  }}
+                                  title="Preview Template"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                ))}
+
+                    {/* Pagination Controls */}
+                    {filteredTemplateOptions.length > TEMPLATES_PER_PAGE && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-5 mt-4">
+                        <p className="text-xs text-muted-foreground">
+                          Showing <span className="font-semibold text-foreground">{(templatePage - 1) * TEMPLATES_PER_PAGE + 1}</span>–<span className="font-semibold text-foreground">{Math.min(templatePage * TEMPLATES_PER_PAGE, filteredTemplateOptions.length)}</span> of <span className="font-semibold text-foreground">{filteredTemplateOptions.length}</span> templates
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={templatePage <= 1}
+                            onClick={() => setTemplatePage((p) => Math.max(1, p - 1))}
+                            className="h-8 gap-1 text-xs rounded-lg"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                          </Button>
+
+                          <div className="flex items-center gap-1 px-3 text-xs font-semibold text-foreground">
+                            Page {templatePage} of {totalTemplatePages}
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={templatePage >= totalTemplatePages}
+                            onClick={() => setTemplatePage((p) => Math.min(totalTemplatePages, p + 1))}
+                            className="h-8 gap-1 text-xs rounded-lg"
+                          >
+                            Next <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Interactive Live Blueprint Preview Modal */}
+                <Dialog
+                  open={!!previewModalTemplateId}
+                  onOpenChange={(open) => {
+                    if (!open) setPreviewModalTemplateId(null);
+                  }}
+                >
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+                    <DialogHeader>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <Badge className="bg-primary text-primary-foreground capitalize">
+                          {previewModalProfile?.businessFamily}
+                        </Badge>
+                        <Badge variant="outline" className="capitalize">
+                          {previewModalProfile?.catalogMode.replace(/_/g, " ")}
+                        </Badge>
+                      </div>
+                      <DialogTitle className="text-2xl font-bold">
+                        {previewModalProfile?.seedDefinition.name} Blueprint
+                      </DialogTitle>
+                      <DialogDescription>
+                        {previewModalProfile?.seedDefinition.description}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4 grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start">
+                      {/* Left: Template Specs */}
+                      <div className="space-y-4 rounded-xl border p-4 bg-card">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Store Overview</h4>
+                          <p className="text-sm mt-1 text-foreground leading-relaxed">
+                            {previewModalProfile?.seedDefinition.storeDescription}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5 border-t pt-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hero Headline</h4>
+                          <p className="text-sm font-semibold text-foreground">
+                            {previewModalProfile?.seedDefinition.hero.title}{" "}
+                            <span className="text-primary">{previewModalProfile?.seedDefinition.hero.highlight}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {previewModalProfile?.seedDefinition.hero.subtitle}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 border-t pt-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Built-in Capabilities</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {previewModalProfile?.seedDefinition.capabilities.map((cap) => (
+                              <Badge key={cap} variant="secondary" className="text-xs capitalize">
+                                {cap.replace(/_/g, " ")}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 border-t pt-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recommended Pages</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {previewModalProfile?.seedDefinition.recommendedPageSet.map((pg) => (
+                              <Badge key={pg} variant="outline" className="text-xs">
+                                {pg}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Live Interactive Storefront Frame */}
+                      <div className="rounded-xl border p-4 bg-muted/20">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Eye className="h-3.5 w-3.5 text-primary" /> Blueprint Mobile Layout
+                          </p>
+                        </div>
+                        <StorefrontPreviewFrame viewport="mobile" title={`${previewModalProfile?.seedDefinition.name} preview`}>
+                          {previewModalHomepage && previewModalStore ? (
+                            <StorefrontTemplateRenderer
+                              store={previewModalStore}
+                              page={previewModalHomepage}
+                              blocks={[...previewModalHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
+                              adminMode={false}
+                              selectedBlockId={null}
+                              canManageStorefront={false}
+                              onSelectBlock={() => {}}
+                            />
+                          ) : null}
+                        </StorefrontPreviewFrame>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-end gap-3 border-t pt-4">
+                      <Button type="button" variant="outline" onClick={() => setPreviewModalTemplateId(null)}>
+                        Close Preview
+                      </Button>
+                      <Button
+                        type="button"
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                        onClick={() => {
+                          if (previewModalTemplateId && blueprintEditingEnabled) {
+                            applyBlueprint(previewModalTemplateId);
+                            setPreviewModalTemplateId(null);
+                            toast.success(`Applied ${previewModalProfile?.seedDefinition.name} blueprint`);
+                          }
+                        }}
+                        disabled={!blueprintEditingEnabled}
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Apply Blueprint
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             ) : null}
 
@@ -2534,37 +2912,23 @@ export default function OnboardingWizard() {
       </div>
 
       <div className="lg:sticky lg:top-6 lg:h-max">
-        <Card className="overflow-hidden border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Live Preview</CardTitle>
-            <CardDescription>{onboardingContext.labels.previewDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StoreProvider store={previewStore}>
-              <StoreThemeScope theme={previewStore.theme}>
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-border bg-card px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-foreground">{draft.storeName}</p>
-                    <p className="truncate text-xs text-muted-foreground">/{draft.slug}</p>
-                  </div>
-                  <StorefrontPreviewFrame viewport="mobile" title="Onboarding storefront preview">
-                    {previewHomepage ? (
-                      <StorefrontTemplateRenderer
-                        store={previewStore}
-                      page={previewHomepage}
-                      blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
-                      adminMode={false}
-                      selectedBlockId={null}
-                      canManageStorefront={false}
-                      onSelectBlock={() => {}}
-                    />
-                  ) : null}
-                </StorefrontPreviewFrame>
-                </div>
-              </StoreThemeScope>
-            </StoreProvider>
-          </CardContent>
-        </Card>
+        <StoreProvider store={previewStore}>
+          <StoreThemeScope theme={previewStore.theme}>
+            <StorefrontPreviewFrame viewport="mobile" title="Onboarding storefront preview" showToolbar={true}>
+              {previewHomepage ? (
+                <StorefrontTemplateRenderer
+                  store={previewStore}
+                  page={previewHomepage}
+                  blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
+                  adminMode={false}
+                  selectedBlockId={null}
+                  canManageStorefront={false}
+                  onSelectBlock={() => {}}
+                />
+              ) : null}
+            </StorefrontPreviewFrame>
+          </StoreThemeScope>
+        </StoreProvider>
       </div>
     </div>
   );

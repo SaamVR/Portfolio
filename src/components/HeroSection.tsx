@@ -43,6 +43,7 @@ interface HeroSectionProps {
     secondaryCtaLink?: string;
     mediaUrl?: string;
     mediaType?: "image" | "video";
+    mediaFit?: "cover" | "contain";
     overlayColor?: string;
     overlayOpacity?: number;
     layoutVariant?: "full-bleed" | "split" | "centered" | "editorial" | string;
@@ -71,12 +72,14 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
+  const mediaFit = overrides?.mediaFit ?? "cover";
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
   const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
   const layoutVariant = overrides?.layoutVariant ?? "full-bleed";
   const isSplit = layoutVariant === "split";
   const isCentered = layoutVariant === "centered";
   const isEditorial = layoutVariant === "editorial";
+  const useContainedMedia = mediaFit === "contain";
   const trustHighlights = [
     paymentSettings?.cod_enabled !== false
       ? { icon: Truck, label: "Flexible checkout options available" }
@@ -106,31 +109,39 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
 
   const isVideo = mediaType === "video" && mediaUrl;
   const renderMedia = (className: string) => {
+    const mediaTransform = useContainedMedia
+      ? undefined
+      : { transform: `translateY(${scrollY}px) scale(1.08)` };
+
     if (isVideo) {
       return (
-        <video
-          src={mediaUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className={className}
-          style={{ transform: `translateY(${scrollY}px) scale(1.08)` }}
-        />
+        <div className={className}>
+          <video
+            src={mediaUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className={`h-full w-full ${useContainedMedia ? "object-contain" : "object-cover"}`}
+            style={mediaTransform}
+          />
+        </div>
       );
     }
 
     if (mediaUrl) {
       return (
-        <SafeStorefrontImage
-          src={mediaUrl}
-          fallbackSrc={legacyHero?.image_url ?? null}
-          fill
-          priority
-          alt="Storefront hero media"
-          className={`${className} transition-transform duration-100`}
-          style={{ transform: `translateY(${scrollY}px) scale(1.08)` }}
-        />
+        <div className={className}>
+          <SafeStorefrontImage
+            src={mediaUrl}
+            fallbackSrc={legacyHero?.image_url ?? null}
+            fill
+            priority
+            alt="Storefront hero media"
+            className={`${useContainedMedia ? "object-contain" : "object-cover"} transition-transform duration-100`}
+            style={mediaTransform}
+          />
+        </div>
       );
     }
 
@@ -149,7 +160,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     >
       {!isSplit && !isEditorial ? (
         <div className="absolute inset-0">
-          {renderMedia("h-full w-full object-cover")}
+          {renderMedia(`h-full w-full ${useContainedMedia ? "bg-background/90 p-4 md:p-8" : ""}`)}
           <div
             className="absolute inset-0"
             style={{
@@ -254,7 +265,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
               isSplit ? "min-h-[420px] rounded-lg lg:min-h-[620px]" : "order-1 aspect-[4/5] rounded-lg lg:order-2",
             ].filter(Boolean).join(" ")}
           >
-            {renderMedia("absolute inset-0 h-full w-full object-cover")}
+            {renderMedia(`absolute inset-0 h-full w-full ${useContainedMedia ? "bg-muted/20 p-4 md:p-6" : ""}`)}
             <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           </div>
         ) : null}

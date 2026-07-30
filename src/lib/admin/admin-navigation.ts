@@ -1,42 +1,27 @@
 import type { ComponentType } from "react";
 import {
-  BellRing,
+  BarChart2,
   CreditCard,
-  FolderTree,
-  Globe,
-  HardDriveDownload,
-  HeartPulse,
   HelpCircle,
-  Images,
-  KeyRound,
   LayoutDashboard,
-  LayoutTemplate,
-  LineChart,
-  Mail,
-  MessageSquare,
-  NotebookPen,
   Package,
-  QrCode,
   Rocket,
   Settings,
-  Shield,
   ShoppingCart,
-  SlidersHorizontal,
-  SquarePen,
   Store,
-  Tag,
-  Truck,
-  Undo2,
   Users,
-  WandSparkles,
 } from "lucide-react";
-import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
+import { withStoreId } from "@/lib/admin-paths";
+
+
+
+export type AdminNavigationSection = "primary" | "secondary";
 
 export type AdminNavigationItem = {
   to: string;
   icon: ComponentType<{ className?: string }>;
   label: string;
-  section: "daily_operations" | "growth" | "storefront" | "platform_settings";
+  section: AdminNavigationSection | "daily_operations" | "growth" | "storefront" | "platform_settings";
   show: boolean;
   badge?: number;
   external?: boolean;
@@ -61,7 +46,9 @@ export type AdminNavigationContext = {
   supportIsExternal: boolean;
 };
 
-export const adminNavigationSectionLabels: Record<AdminNavigationItem["section"], string> = {
+export const adminNavigationSectionLabels: Record<string, string> = {
+  primary: "Main Menu",
+  secondary: "Preferences",
   daily_operations: "Daily operations",
   growth: "Growth",
   storefront: "Storefront",
@@ -70,271 +57,125 @@ export const adminNavigationSectionLabels: Record<AdminNavigationItem["section"]
 
 export function getAdminNavigationItems(context: AdminNavigationContext): AdminNavigationItem[] {
   const compact = context.compact === true;
+  const totalInboxBadge = (context.unreadCount ?? 0) + (context.pendingReviewsCount ?? 0);
 
   return [
     {
       to: "/admin",
       icon: LayoutDashboard,
       label: "Dashboard",
-      section: "daily_operations",
+      section: "primary",
       show: true,
-      description: "Overview of orders, launch tasks, and current store activity.",
+      match: ["/admin", "/admin/launch", "/admin/notifications", "/admin/diagnostics"],
+      description: "Overview of sales stats, launch readiness, and critical store alerts.",
       mobileShortLabel: "Home",
     },
     {
       to: "/admin/orders",
       icon: ShoppingCart,
       label: "Orders",
-      section: "daily_operations",
+      section: "primary",
       show: !compact,
-      description: "Fulfillment, booking, returns, and customer purchases.",
-    },
-    {
-      to: "/admin/returns",
-      icon: CreditCard,
-      label: "Returns & COD",
-      section: "daily_operations",
-      show: context.isAdmin && !compact,
-      description: "Handle returns, refunds, COD remittance, and courier settlement.",
-    },
-    {
-      to: "/admin/notifications",
-      icon: BellRing,
-      label: "Notifications",
-      section: "daily_operations",
-      show: context.isAdmin && !compact,
-      description: "Delivery health, retries, and merchant alerts.",
-    },
-    {
-      to: "/admin/messages",
-      icon: Mail,
-      label: "Messages",
-      section: "daily_operations",
-      show: !compact,
-      badge: context.unreadCount ?? 0,
-      description: "Customer inbox and inquiry follow-up.",
-    },
-    {
-      to: "/admin/reviews",
-      icon: MessageSquare,
-      label: "Reviews",
-      section: "daily_operations",
-      show: !compact,
-      badge: context.pendingReviewsCount ?? 0,
-      description: "Moderate product reviews and trust signals.",
-    },
-    {
-      to: "/admin/recovery",
-      icon: Undo2,
-      label: "Cart Recovery",
-      section: "daily_operations",
-      show: context.isAdmin && !compact,
-      description: "Recovery queue, automation, and outreach safety.",
-    },
-    {
-      to: "/admin/couriers",
-      icon: Truck,
-      label: "Couriers",
-      section: "daily_operations",
-      show: context.isAdmin && !compact,
-      description: "Connections, zones, booking, and shipments.",
-    },
-    {
-      to: "/admin/launch",
-      icon: Rocket,
-      label: "Launch Readiness",
-      section: "growth",
-      show: context.isAdmin && !compact,
-      description: "Go-live blockers, warnings, and next actions.",
-      mobileShortLabel: "Launch",
-    },
-    {
-      to: "/admin/diagnostics",
-      icon: HeartPulse,
-      label: "Diagnostics",
-      section: "growth",
-      show: context.isAdmin && !compact,
-      description: "Domain, payment, billing, and operator health.",
-    },
-    {
-      to: "/admin/analytics",
-      icon: LineChart,
-      label: "Analytics",
-      section: "growth",
-      show: !compact,
-      description: "Traffic, search intent, funnel, privacy, and anomaly signals.",
-      mobileShortLabel: "Analytics",
-    },
-    {
-      to: "/admin/coupons",
-      icon: Tag,
-      label: "Coupons",
-      section: "growth",
-      show: !compact,
-      description: "Discounts, incentives, and recovery offers.",
-    },
-    {
-      to: "/admin/blog",
-      icon: NotebookPen,
-      label: "Blog",
-      section: "growth",
-      show: context.isAdmin && !compact,
-      description: "Content marketing and SEO posts.",
-    },
-    {
-      to: "/admin/qr",
-      icon: QrCode,
-      label: "QR Codes",
-      section: "growth",
-      show: context.isAdmin && !compact,
-      description: "Scannable product, page, and promo links.",
+      match: ["/admin/orders", "/admin/returns", "/admin/couriers"],
+      description: "Fulfillment, orders list, returns & COD, and shipping couriers.",
+      mobileShortLabel: "Orders",
     },
     {
       to: "/admin/products",
       icon: Package,
       label: "Products",
-      section: "storefront",
+      section: "primary",
       show: !compact,
-      description: "Catalog, stock, and merchandising.",
-      mobileShortLabel: "Catalog",
+      match: ["/admin/products", "/admin/categories"],
+      description: "Product inventory catalog, stock, and category management.",
+      mobileShortLabel: "Products",
     },
     {
-      to: "/admin/categories",
-      icon: FolderTree,
-      label: "Categories & Types",
-      section: "storefront",
-      show: context.isAdmin && !compact,
-      description: "Navigation and collection structure.",
+      to: "/admin/customers",
+      icon: Users,
+      label: "Customers & Messages",
+      section: "primary",
+      show: !compact,
+      badge: totalInboxBadge,
+      match: ["/admin/customers", "/admin/messages", "/admin/reviews"],
+      description: "Central inbox for customer inquiries, reviews, and trust signals.",
+      mobileShortLabel: "Inbox",
     },
     {
-      to: "/admin/onboarding",
-      icon: WandSparkles,
-      label: "Guided Setup",
-      section: "storefront",
-      show: context.isAdmin,
-      description: "Merchant launch flow and setup guidance.",
-      mobileShortLabel: "Setup",
+      to: "/admin/marketing",
+      icon: Rocket,
+      label: "Marketing",
+      section: "primary",
+      show: !compact,
+      match: ["/admin/marketing", "/admin/coupons", "/admin/recovery", "/admin/qr"],
+      description: "Growth tools: coupons, abandoned cart recovery, and QR codes.",
+      mobileShortLabel: "Growth",
     },
     {
-      to: buildPageBuilderPath("basic", { storeId: context.activeStoreId }),
-      icon: SquarePen,
-      label: "Edit Storefront",
-      section: "storefront",
+      to: "/admin/online-store",
+      icon: Store,
+      label: "Online Store",
+      section: "primary",
       show: context.cmsEnabled,
-      match: ["/admin/page-builder", "/admin/page-builder/basic"],
-      description: "Safer content and storefront edits.",
-      mobileShortLabel: "Edit",
+      match: [
+        "/admin/online-store",
+        "/admin/page-builder",
+        "/admin/page-builder/basic",
+        "/admin/page-builder/advanced",
+        "/admin/templates",
+        "/admin/media",
+        "/admin/blog",
+        "/admin/onboarding",
+      ],
+      description: "Customize design, pick themes, manage pages, blog, and media in one place.",
+      mobileShortLabel: "Website",
     },
     {
-      to: "/admin/templates",
-      icon: LayoutTemplate,
-      label: "Templates",
-      section: "storefront",
-      show: context.cmsEnabled,
-      description: "Storefront layouts and starting points.",
-    },
-    {
-      to: "/admin/media",
-      icon: Images,
-      label: "Media Library",
-      section: "storefront",
-      show: context.mediaEnabled && !compact,
-      description: "Reusable image and visual assets.",
+      to: "/admin/analytics",
+      icon: BarChart2,
+      label: "Analytics",
+      section: "primary",
+      show: !compact,
+      match: ["/admin/analytics"],
+      description: "Traffic, sales performance, product interest, and conversion funnel.",
+      mobileShortLabel: "Stats",
     },
     {
       to: withStoreId("/admin/site-settings", context.activeStoreId),
-      icon: Store,
-      label: "Store Profile",
-      section: "storefront",
-      show: context.isAdmin,
-      match: ["/admin/site-settings"],
-      description: "Brand basics, core business info, and shared storefront settings.",
-    },
-    {
-      to: withStoreId("/admin/site-settings?tab=payment", context.activeStoreId),
-      icon: CreditCard,
-      label: "Payments & Checkout",
-      section: "platform_settings",
-      show: context.isOwner,
-      match: ["/admin/site-settings"],
-      description: "Payment setup, checkout controls, and secure connections.",
-    },
-    {
-      to: withStoreId("/admin/site-settings?tab=domain", context.activeStoreId),
-      icon: Globe,
-      label: "Domains",
-      section: "platform_settings",
-      show: context.isOwner && !compact,
-      match: ["/admin/site-settings"],
-      description: "Platform URL, custom domains, and SSL status.",
-    },
-    {
-      to: "/admin/site-settings",
       icon: Settings,
-      label: "All Site Settings",
-      section: "platform_settings",
-      show: context.isAdmin && !compact,
-      description: "Brand, delivery, support, and merchant-wide settings.",
+      label: "Settings",
+      section: "secondary",
+      show: context.isAdmin,
+      match: [
+        "/admin/site-settings",
+        "/admin/billing",
+        "/admin/users",
+        "/admin/backup",
+        "/admin/invite-codes",
+        "/cms-admin",
+      ],
+      description: "Store profile, payments, custom domains, users, and backup.",
       mobileShortLabel: "Settings",
     },
     {
       to: "/admin/billing",
       icon: CreditCard,
-      label: "Billing & Plan",
-      section: "platform_settings",
-      show: context.isOwner && !compact,
-      description: "Subscription, invoices, and operator review state.",
-    },
-    {
-      to: "/admin/users",
-      icon: Users,
-      label: "Users",
-      section: "platform_settings",
-      show: context.isAdmin && !compact,
-      description: "Staff access and store roles.",
-    },
-    {
-      to: buildPageBuilderPath("advanced", { storeId: context.activeStoreId }),
-      icon: SlidersHorizontal,
-      label: "Expert Editing",
-      section: "platform_settings",
-      show: context.advancedEditingEnabled && !compact,
-      match: ["/admin/page-builder/advanced"],
-      description: "Full page structure and deeper editing controls.",
-      mobileShortLabel: "Expert",
-    },
-    {
-      to: "/admin/backup",
-      icon: HardDriveDownload,
-      label: "Backup & Import",
-      section: "platform_settings",
-      show: context.backupEnabled && !compact,
-      description: "Export, restore, and operational recovery.",
-    },
-    {
-      to: "/admin/invite-codes",
-      icon: KeyRound,
-      label: "Invite Codes",
-      section: "platform_settings",
-      show: context.isOwner && !compact,
-      description: "Owner-only team onboarding codes.",
-    },
-    {
-      to: "/cms-admin",
-      icon: Shield,
-      label: "CMS Admin",
-      section: "platform_settings",
-      show: context.isPlatformAdmin && !compact,
-      description: "Platform-wide CMS controls.",
+      label: "Billing & Plans",
+      section: "secondary",
+      show: context.isOwner,
+      match: ["/admin/billing"],
+      description: "Subscription plan, usage limits, and payment method.",
+      mobileShortLabel: "Billing",
     },
     {
       to: context.supportUrl,
       icon: HelpCircle,
       label: "Help & Support",
-      section: "platform_settings",
+      section: "secondary",
       show: true,
       external: context.supportIsExternal,
-      description: "Support and platform help.",
+      description: "Platform documentation and support helpline.",
+      mobileShortLabel: "Help",
     },
   ];
 }
@@ -342,25 +183,16 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
 export function getAdminNavigationSections(context: AdminNavigationContext) {
   const items = getAdminNavigationItems(context);
 
-  return (Object.keys(adminNavigationSectionLabels) as Array<AdminNavigationItem["section"]>).map((sectionKey) => ({
-    key: sectionKey,
-    title: adminNavigationSectionLabels[sectionKey],
-    links: items.filter((item) => item.section === sectionKey && item.show),
-  }));
-}
-
-export function getAdminWorkspaceChips(context: AdminNavigationContext) {
-  return getAdminNavigationItems(context)
-    .filter((item) => item.show && ["daily_operations", "growth", "storefront"].includes(item.section))
-    .filter((item) =>
-      item.to === "/admin"
-      || item.to === "/admin/launch"
-      || item.to === "/admin/analytics"
-      || item.to === withStoreId("/admin/site-settings", context.activeStoreId)
-      || item.to === "/admin/onboarding"
-      || item.to === buildPageBuilderPath("basic", { storeId: context.activeStoreId })
-      || item.to === buildPageBuilderPath("advanced", { storeId: context.activeStoreId })
-      || item.to === "/admin/products"
-      || item.to === "/admin/orders",
-    );
+  return [
+    {
+      key: "primary" as const,
+      title: "Main Menu",
+      links: items.filter((item) => item.section === "primary" && item.show),
+    },
+    {
+      key: "secondary" as const,
+      title: "Preferences",
+      links: items.filter((item) => item.section === "secondary" && item.show),
+    },
+  ];
 }

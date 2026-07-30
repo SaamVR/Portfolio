@@ -15,9 +15,10 @@ import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { buildAutoNavbarItems } from "@/lib/cms/page-listing-preferences";
 
 interface NavigationSettings {
-  primary_links?: Array<{ label?: string; url?: string }>;
+  primary_links?: Array<{ label?: string; url?: string; children?: Array<{ label?: string; url?: string }> }>;
   shop_label?: string;
   shop_feature_title?: string;
   shop_feature_subtitle?: string;
@@ -28,6 +29,13 @@ interface NavigationSettings {
   show_wishlist?: boolean;
   show_cart?: boolean;
 }
+
+type NavbarLink = {
+  label: string;
+  to: string;
+  hasDropdown: boolean;
+  children?: Array<{ label: string; to: string }>;
+};
 
 interface DeliverySettings {
   primary_zone_label?: string;
@@ -105,20 +113,37 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const displayWishlistCount = mounted ? wishlistCount : 0;
   const displayTotalItems = mounted ? totalItems : 0;
   const defaultNavLinks = [
-    { label: "Home", to: storefrontPath("/", currentStore?.slug) },
+    { label: "Home", to: storefrontPath("/", currentStore?.slug), hasDropdown: false },
     { label: "Shop", to: storefrontPath("/shop", currentStore?.slug), hasDropdown: true },
-    { label: "About", to: storefrontPath("/about", currentStore?.slug) },
-    { label: "Contact", to: storefrontPath("/contact", currentStore?.slug) },
-  ];
-  const navLinks = navigation?.primary_links?.length
+    { label: "About", to: storefrontPath("/about", currentStore?.slug), hasDropdown: false },
+    { label: "Contact", to: storefrontPath("/contact", currentStore?.slug), hasDropdown: false },
+  ] satisfies NavbarLink[];
+  const autoPageLinks = buildAutoNavbarItems(currentStore).map((item) => ({
+    label: item.label,
+    to: storefrontPath(item.url, currentStore?.slug),
+    children: item.children?.map((child) => ({
+      label: child.label,
+      to: storefrontPath(child.url, currentStore?.slug),
+    })),
+    hasDropdown: (item.children?.length ?? 0) > 1,
+  }));
+  const manualNavLinks: NavbarLink[] = navigation?.primary_links?.length
     ? navigation.primary_links
-      .filter((link): link is { label: string; url: string } => Boolean(link?.label && link?.url))
+      .filter((link): link is { label: string; url: string; children?: Array<{ label?: string; url?: string }> } => Boolean(link?.label && link?.url))
       .map((link) => ({
         label: link.label,
         to: storefrontPath(link.url, currentStore?.slug),
-        hasDropdown: link.url === "/shop",
+        children: Array.isArray(link.children)
+          ? link.children.filter((child): child is { label: string; url: string } => Boolean(child?.label && child?.url)).map((child) => ({
+              label: child.label,
+              to: storefrontPath(child.url, currentStore?.slug),
+            }))
+          : undefined,
+        hasDropdown: link.url === "/shop" || (Array.isArray(link.children) && link.children.length > 0),
       }))
     : defaultNavLinks;
+  const autoLinkKeys = new Set(autoPageLinks.map((link) => link.to));
+  const navLinks: NavbarLink[] = [...manualNavLinks, ...autoPageLinks.filter((link) => !manualNavLinks.some((manualLink) => manualLink.to === link.to || autoLinkKeys.has(manualLink.to) && manualLink.label === link.label))];
   const shopLabel = navigation?.shop_label?.trim() || "Shop";
   const showSearch = navigation?.show_search ?? true;
   const showThemeToggle = navigation?.show_theme_toggle ?? true;
@@ -186,7 +211,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                   {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
                 </Link>
 
-                {link.hasDropdown && shopDropdownOpen && (
+                {link.hasDropdown && link.to.endsWith("/shop") && shopDropdownOpen && (
                   <div className="absolute left-0 top-full mt-1 w-[640px] pt-1">
                     <div className="grid grid-cols-3 gap-6 rounded-2xl border border-white/15 bg-background/90 backdrop-blur-2xl p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in slide-in-from-top-2 duration-200 ring-1 ring-black/5 dark:ring-white/10">
                       <div>
@@ -260,6 +285,23 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                     </div>
                   </div>
                 )}
+                {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length ? (
+                  <div className="absolute left-0 top-full mt-1 w-64 pt-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+                    <div className="rounded-2xl border border-white/15 bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+                      <div className="flex flex-col gap-1">
+                        {link.children.map((child) => (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                          >
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

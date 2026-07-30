@@ -2,14 +2,18 @@ import { useAuth } from "@/hooks/auth-context";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Loader2, Tag, ToggleLeft, ToggleRight, Pencil, X, Check, Copy, Sparkles, CalendarClock, TicketPercent } from "lucide-react";
+import { Plus, Trash2, Loader2, Tag, ToggleLeft, ToggleRight, Pencil, X, Check, Copy, Sparkles, CalendarClock, TicketPercent, QrCode, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
+import CartRecoveryPage from "./CartRecovery";
+import QrCodeGeneratorPage from "./QrCodeGenerator";
 
 interface CouponCode {
   id: string;
@@ -78,6 +82,9 @@ const couponPresets = [
 const Coupons = () => {
   const { activeStoreId } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "coupons";
+
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyCoupon);
@@ -208,346 +215,369 @@ const Coupons = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Coupons</h1>
-          <p className="text-sm text-muted-foreground">Create discount campaigns, quick flash-sale offers, and launch-ready promo codes for this store.</p>
+          <h1 className="font-heading text-3xl font-bold text-foreground">Marketing & Discounts</h1>
+          <p className="text-sm text-muted-foreground">Create discount campaigns, recover abandoned carts, and generate QR promo codes.</p>
         </div>
-        {!showForm && (
+        {activeTab === "coupons" && !showForm && (
           <Button onClick={() => setShowForm(true)} className="gap-2">
             <Plus className="h-4 w-4" /> New Coupon
           </Button>
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Tag className="h-4 w-4 text-primary" />
-              Active campaigns
-            </CardTitle>
-            <CardDescription>Coupons customers can use right now.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{activeCoupons.length}</CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarClock className="h-4 w-4 text-primary" />
-              Ending soon
-            </CardTitle>
-            <CardDescription>Active coupons expiring within the next 7 days.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{endingSoonCount}</CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TicketPercent className="h-4 w-4 text-primary" />
-              Total redemptions
-            </CardTitle>
-            <CardDescription>How many times customers have already used your coupons.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{totalRedemptions}</CardContent>
-        </Card>
-      </div>
+      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
+        <TabsList className="bg-secondary/40 p-1 border border-border">
+          <TabsTrigger value="coupons" className="gap-2">
+            <Tag className="h-4 w-4" />
+            Discount Coupons
+          </TabsTrigger>
+          <TabsTrigger value="recovery" className="gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            Abandoned Cart Recovery
+          </TabsTrigger>
+          <TabsTrigger value="qr" className="gap-2">
+            <QrCode className="h-4 w-4" />
+            QR Code Generator
+          </TabsTrigger>
+        </TabsList>
 
-      {!showForm ? (
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Quick growth presets
-            </CardTitle>
-            <CardDescription>Start from a proven campaign shape, then fine-tune the values for this merchant.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-3">
-            {couponPresets.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyPreset(preset)}
-                className="rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-              >
-                <p className="font-medium text-foreground">{preset.label}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{preset.helper}</p>
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
+        <TabsContent value="coupons" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Tag className="h-4 w-4 text-primary" />
+                  Active campaigns
+                </CardTitle>
+                <CardDescription>Coupons customers can use right now.</CardDescription>
+              </CardHeader>
+              <CardContent className="text-2xl font-semibold text-foreground">{activeCoupons.length}</CardContent>
+            </Card>
+            <Card className="border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarClock className="h-4 w-4 text-primary" />
+                  Ending soon
+                </CardTitle>
+                <CardDescription>Active coupons expiring within the next 7 days.</CardDescription>
+              </CardHeader>
+              <CardContent className="text-2xl font-semibold text-foreground">{endingSoonCount}</CardContent>
+            </Card>
+            <Card className="border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TicketPercent className="h-4 w-4 text-primary" />
+                  Total redemptions
+                </CardTitle>
+                <CardDescription>How many times customers have already used your coupons.</CardDescription>
+              </CardHeader>
+              <CardContent className="text-2xl font-semibold text-foreground">{totalRedemptions}</CardContent>
+            </Card>
+          </div>
 
-      {/* Create / Edit Form */}
-      {showForm && (
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">
-            {editId ? "Edit Coupon" : "New Coupon"}
-          </h2>
-          {!editId ? (
-            <div className="mb-4 grid gap-3 md:grid-cols-3">
-              {couponPresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => applyPreset(preset)}
-                  className="rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                >
-                  <p className="text-sm font-medium text-foreground">{preset.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{preset.helper}</p>
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>Coupon Code *</Label>
-              <Input
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                placeholder="e.g. SUMMER20"
-                className="font-mono uppercase"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Discount Type</Label>
-              <div className="flex gap-2">
-                {(["percentage", "fixed"] as const).map((type) => (
+          {!showForm ? (
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Quick growth presets
+                </CardTitle>
+                <CardDescription>Start from a proven campaign shape, then fine-tune the values for this merchant.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-3">
+                {couponPresets.map((preset) => (
                   <button
-                    key={type}
+                    key={preset.id}
                     type="button"
-                    onClick={() => setForm({ ...form, discount_type: type })}
-                    className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                      form.discount_type === type
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50"
-                    }`}
+                    onClick={() => applyPreset(preset)}
+                    className="rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                   >
-                    {type === "percentage" ? "% Off" : "BDT Fixed"}
+                    <p className="font-medium text-foreground">{preset.label}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{preset.helper}</p>
                   </button>
                 ))}
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Discount Value *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  {form.discount_type === "percentage" ? "%" : "BDT"}
-                </span>
-                <Input
-                  type="number"
-                  value={form.discount_value}
-                  onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
-                  className="pl-7"
-                  min={0}
-                  max={form.discount_type === "percentage" ? 100 : undefined}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Minimum Order (BDT)</Label>
-              <Input
-                type="number"
-                value={form.min_order}
-                onChange={(e) => setForm({ ...form, min_order: Number(e.target.value) })}
-                placeholder="0 = no minimum"
-                min={0}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Max Uses (optional)</Label>
-              <Input
-                type="number"
-                value={form.max_uses}
-                onChange={(e) => setForm({ ...form, max_uses: e.target.value })}
-                placeholder="Leave blank = unlimited"
-                min={1}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Expiry Date (optional)</Label>
-              <Input
-                type="date"
-                value={form.expires_at}
-                onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex gap-3">
-            <Button onClick={() => createCoupon.mutate()} disabled={!form.code || createCoupon.isPending} className="gap-2">
-              {createCoupon.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              {editId ? "Update" : "Create"} Coupon
-            </Button>
-            <Button variant="outline" onClick={cancelForm} className="gap-2">
-              <X className="h-4 w-4" /> Cancel
-            </Button>
-          </div>
-        </div>
-      )}
+              </CardContent>
+            </Card>
+          ) : null}
 
-      {/* Responsive list/table container */}
-      {isLoading && coupons.length === 0 ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : coupons.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-20 text-center">
-          <Tag className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <p className="font-heading text-lg font-semibold text-foreground">No coupons yet</p>
-          <p className="text-sm text-muted-foreground">Create your first discount code above.</p>
-        </div>
-      ) : (
-        <>
-          {/* Mobile view cards stack */}
-          <div className="space-y-4 md:hidden">
-            {coupons.map((c) => (
-              <div key={c.id} className="rounded-xl border border-border bg-card p-4 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-semibold text-sm text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg border border-border/80">
-                      {c.code}
+          {showForm && (
+            <div className="rounded-lg border border-border bg-card p-6">
+              <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">
+                {editId ? "Edit Coupon" : "New Coupon"}
+              </h2>
+              {!editId ? (
+                <div className="mb-4 grid gap-3 md:grid-cols-3">
+                  {couponPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      className="rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <p className="text-sm font-medium text-foreground">{preset.label}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{preset.helper}</p>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Coupon Code *</Label>
+                  <Input
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                    placeholder="e.g. SUMMER20"
+                    className="font-mono uppercase"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Discount Type</Label>
+                  <div className="flex gap-2">
+                    {(["percentage", "fixed"] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setForm({ ...form, discount_type: type })}
+                        className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                          form.discount_type === type
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {type === "percentage" ? "% Off" : "BDT Fixed"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Discount Value *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      {form.discount_type === "percentage" ? "%" : "BDT"}
                     </span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <span className="text-primary font-bold text-sm">
-                    {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs border-y border-border/50 py-3">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Min. Order</p>
-                    <p className="font-medium text-foreground mt-0.5">{c.min_order > 0 ? `BDT ${c.min_order}` : "None"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Uses</p>
-                    <p className="font-medium text-foreground mt-0.5">{c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Expires</p>
-                    <p className="font-medium text-foreground mt-0.5">{c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</p>
-                    <div className="mt-0.5">
-                      <button
-                        onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
-                        className="flex items-center gap-1.5"
-                      >
-                        {c.is_active ? (
-                          <>
-                            <ToggleRight className="h-5 w-5 text-primary" />
-                            <Badge variant="default" className="text-[9px] px-1 py-0">Active</Badge>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                            <Badge variant="secondary" className="text-[9px] px-1 py-0">Inactive</Badge>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <Input
+                      type="number"
+                      value={form.discount_value}
+                      onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
+                      className="pl-7"
+                      min={0}
+                      max={form.discount_type === "percentage" ? 100 : undefined}
+                    />
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button variant="outline" size="sm" className="gap-1.5 h-8 rounded-lg text-xs" onClick={() => startEdit(c)}>
-                    <Pencil className="h-3 w-3" /> Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="gap-1.5 h-8 rounded-lg text-xs"
-                    onClick={() => {
-                      if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
-                    }}
-                    disabled={deleteCoupon.isPending}
-                  >
-                    <Trash2 className="h-3 w-3" /> Delete
-                  </Button>
+                <div className="grid gap-2">
+                  <Label>Minimum Order (BDT)</Label>
+                  <Input
+                    type="number"
+                    value={form.min_order}
+                    onChange={(e) => setForm({ ...form, min_order: Number(e.target.value) })}
+                    placeholder="0 = no minimum"
+                    min={0}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Max Uses (optional)</Label>
+                  <Input
+                    type="number"
+                    value={form.max_uses}
+                    onChange={(e) => setForm({ ...form, max_uses: e.target.value })}
+                    placeholder="Leave blank = unlimited"
+                    min={1}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Expiry Date (optional)</Label>
+                  <Input
+                    type="date"
+                    value={form.expires_at}
+                    onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="mt-4 flex gap-3">
+                <Button onClick={() => createCoupon.mutate()} disabled={!form.code || createCoupon.isPending} className="gap-2">
+                  {createCoupon.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {editId ? "Update" : "Create"} Coupon
+                </Button>
+                <Button variant="outline" onClick={cancelForm} className="gap-2">
+                  <X className="h-4 w-4" /> Cancel
+                </Button>
+              </div>
+            </div>
+          )}
 
-          {/* Desktop view table */}
-          <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-secondary/50">
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Discount</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Min. Order</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Uses</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Expires</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          {isLoading && coupons.length === 0 ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : coupons.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-20 text-center">
+              <Tag className="mb-4 h-12 w-12 text-muted-foreground/40" />
+              <p className="font-heading text-lg font-semibold text-foreground">No coupons yet</p>
+              <p className="text-sm text-muted-foreground">Create your first discount code above.</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4 md:hidden">
                 {coupons.map((c) => (
-                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono font-semibold text-foreground">{c.code}</span>
-                    </td>
-                    <td className="px-4 py-3 text-primary font-semibold">
-                      {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {c.min_order > 0 ? `BDT ${c.min_order}` : "None"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
-                        className="flex items-center gap-1.5"
-                      >
-                        {c.is_active ? (
-                          <>
-                            <ToggleRight className="h-5 w-5 text-primary" />
-                            <Badge variant="default" className="text-[10px]">Active</Badge>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                            <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
-                          </>
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                  <div key={c.id} className="rounded-xl border border-border bg-card p-4 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-sm text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg border border-border/80">
+                          {c.code}
+                        </span>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(c)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => {
-                            if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
-                          }}
-                          disabled={deleteCoupon.isPending}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                      <span className="text-primary font-bold text-sm">
+                        {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs border-y border-border/50 py-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Min. Order</p>
+                        <p className="font-medium text-foreground mt-0.5">{c.min_order > 0 ? `BDT ${c.min_order}` : "None"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Uses</p>
+                        <p className="font-medium text-foreground mt-0.5">{c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Expires</p>
+                        <p className="font-medium text-foreground mt-0.5">{c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</p>
+                        <div className="mt-0.5">
+                          <button
+                            onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
+                            className="flex items-center gap-1.5"
+                          >
+                            {c.is_active ? (
+                              <>
+                                <ToggleRight className="h-5 w-5 text-primary" />
+                                <Badge variant="default" className="text-[9px] px-1 py-0">Active</Badge>
+                              </>
+                            ) : (
+                              <>
+                                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                                <Badge variant="secondary" className="text-[9px] px-1 py-0">Inactive</Badge>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="gap-1.5 h-8 rounded-lg text-xs" onClick={() => startEdit(c)}>
+                        <Pencil className="h-3 w-3" /> Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="gap-1.5 h-8 rounded-lg text-xs"
+                        onClick={() => {
+                          if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
+                        }}
+                        disabled={deleteCoupon.isPending}
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50">
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Discount</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Min. Order</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Uses</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Expires</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Status</th>
+                      <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coupons.map((c) => (
+                      <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <span className="font-mono font-semibold text-foreground">{c.code}</span>
+                        </td>
+                        <td className="px-4 py-3 text-primary font-semibold">
+                          {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {c.min_order > 0 ? `BDT ${c.min_order}` : "None"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
+                            className="flex items-center gap-1.5"
+                          >
+                            {c.is_active ? (
+                              <>
+                                <ToggleRight className="h-5 w-5 text-primary" />
+                                <Badge variant="default" className="text-[10px]">Active</Badge>
+                              </>
+                            ) : (
+                              <>
+                                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                                <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
+                              </>
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(c)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => {
+                                if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
+                              }}
+                              disabled={deleteCoupon.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="recovery" className="space-y-4">
+          <CartRecoveryPage />
+        </TabsContent>
+
+        <TabsContent value="qr" className="space-y-4">
+          <QrCodeGeneratorPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

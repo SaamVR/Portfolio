@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Package, Printer, Truck, Loader2 } from "lucide-react";
+import { Eye, Package, Printer, Truck, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
+import { useSearchParams, Link } from "@/lib/react-router-dom-shim";
 import { useAllOrders, useUpdateOrderStatus, type Order } from "@/hooks/useOrders";
 import { useBookCourierShipment, useCourierConnections, useOrderShipments } from "@/hooks/useCouriers";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCourierConnectionLabel, getCourierProviderLabel, type CourierProvider } from "@/lib/couriers/shared";
-import { Link } from "@/lib/react-router-dom-shim";
+import ReturnsOperationsPage from "./ReturnsOperations";
+import CouriersPage from "./Couriers";
 
 const STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
@@ -31,6 +34,9 @@ const formatCurrency = (amount: number) => `BDT ${amount.toLocaleString("en-BD")
 
 export default function AdminOrders() {
   const { activeStoreId } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "orders";
+
   const { data: orders, isLoading } = useAllOrders(activeStoreId);
   const { data: courierConnections = [] } = useCourierConnections(activeStoreId);
   const { data: shipments = [] } = useOrderShipments(activeStoreId);
@@ -251,122 +257,149 @@ export default function AdminOrders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-3xl font-bold text-foreground">Orders</h1>
-        <p className="text-sm text-muted-foreground">{orderCount} total orders</p>
+        <h1 className="font-heading text-3xl font-bold text-foreground">Orders & Fulfillment</h1>
+        <p className="text-sm text-muted-foreground">{orderCount} total orders, returns processing, and courier integrations.</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search by order #, name, phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
+        <TabsList className="bg-secondary/40 p-1 border border-border">
+          <TabsTrigger value="orders" className="gap-2">
+            <ShoppingBag className="h-4 w-4" />
+            All Orders
+          </TabsTrigger>
+          <TabsTrigger value="returns" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Returns & COD
+          </TabsTrigger>
+          <TabsTrigger value="couriers" className="gap-2">
+            <Truck className="h-4 w-4" />
+            Couriers & Shipping
+          </TabsTrigger>
+        </TabsList>
 
-      {isLoading && orderCount === 0 ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Card key={i} className="border-border">
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-5 w-16" />
+        <TabsContent value="orders" className="space-y-6">
+          <div className="flex flex-wrap gap-3">
+            <Input
+              placeholder="Search by order #, name, phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm"
+            />
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filter status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading && orderCount === 0 ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Card key={i} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-5 w-16" />
+                        </div>
+                        <Skeleton className="h-3 w-40" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-9 w-[140px]" />
+                        <Skeleton className="h-9 w-24" />
+                        <Skeleton className="h-9 w-9" />
+                      </div>
                     </div>
-                    <Skeleton className="h-3 w-40" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-9 w-[140px]" />
-                    <Skeleton className="h-9 w-24" />
-                    <Skeleton className="h-9 w-9" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <Package className="mb-4 h-12 w-12" />
-          <p>No orders found</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((order) => (
-            <Card key={order.id} className="border-border">
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-heading text-sm font-bold text-foreground">{order.order_number}</p>
-                      <Badge className={statusColors[order.status] || "bg-secondary"}>
-                        {order.status}
-                      </Badge>
-                      {(shipmentsByOrder.get(order.id) ?? []).slice(0, 1).map((shipment) => (
-                        <Badge key={shipment.id} variant="outline">
-                          {(shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider))} {shipment.status}
-                        </Badge>
-                      ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <Package className="mb-4 h-12 w-12" />
+              <p>No orders found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((order) => (
+                <Card key={order.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-heading text-sm font-bold text-foreground">{order.order_number}</p>
+                          <Badge className={statusColors[order.status] || "bg-secondary"}>
+                            {order.status}
+                          </Badge>
+                          {(shipmentsByOrder.get(order.id) ?? []).slice(0, 1).map((shipment) => (
+                            <Badge key={shipment.id} variant="outline">
+                              {(shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider))} {shipment.status}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {order.customer_name} - {order.customer_phone}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString()} - {order.items.length} item(s) - {formatCurrency(order.total)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                          value={order.status}
+                          onValueChange={(v) => handleStatusChange(order.id, v)}
+                        >
+                          <SelectTrigger className="h-9 w-[140px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUSES.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => openBookingDialog(order)}
+                          disabled={connectedCouriers.length === 0}
+                        >
+                          <Truck className="h-4 w-4" />
+                          Book courier
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setViewOrder(order)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {order.customer_name} - {order.customer_phone}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(order.created_at).toLocaleDateString()} - {order.items.length} item(s) - {formatCurrency(order.total)}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                      value={order.status}
-                      onValueChange={(v) => handleStatusChange(order.id, v)}
-                    >
-                      <SelectTrigger className="h-9 w-[140px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s.charAt(0).toUpperCase() + s.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => openBookingDialog(order)}
-                      disabled={connectedCouriers.length === 0}
-                    >
-                      <Truck className="h-4 w-4" />
-                      Book courier
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setViewOrder(order)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="returns" className="space-y-4">
+          <ReturnsOperationsPage />
+        </TabsContent>
+
+        <TabsContent value="couriers" className="space-y-4">
+          <CouriersPage />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
         <DialogContent className="max-w-lg">
@@ -437,9 +470,6 @@ export default function AdminOrders() {
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => openBookingDialog(viewOrder)} className="gap-2" disabled={connectedCouriers.length === 0}>
                     <Truck className="h-4 w-4" /> Book Courier
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link to={`/admin/returns?orderId=${encodeURIComponent(viewOrder.id)}`}>Returns & COD</Link>
                   </Button>
                   <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">
                     <Printer className="h-4 w-4" /> Print Invoice

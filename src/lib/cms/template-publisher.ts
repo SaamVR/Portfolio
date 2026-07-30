@@ -176,9 +176,9 @@ function sanitizeBlock(block: StorePageBlock, blockIndex: number, findings: Temp
     "title", "subtitle", "tagline", "highlight", "eyebrow", "body", "ctaText", "ctaLink",
     "secondaryCtaText", "secondaryCtaLink", "anchorId", "endDate", "badgeText",
     "bgGradient", "bgStyle", "textAlignment", "paddingSize", "align",
-    "overlayColor", "overlayOpacity", "cardOpacity", "limit",
+    "overlayColor", "overlayOpacity", "cardOpacity", "limit", "mediaFit",
     "enableGlow", "enableParticles", "enableOrbs",
-    "faqs", "badges", "reviews", "mediaType",
+    "faqs", "badges", "reviews", "mediaType", "source", "category", "productType", "specLabels",
   ];
   const sourceProps = block.props as Record<string, unknown>;
   const sanitizedProps: Record<string, unknown> = {};

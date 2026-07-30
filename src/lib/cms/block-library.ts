@@ -29,6 +29,8 @@ export const cmsBlockTypeOptions: Array<{
   { value: "promo-banner", label: "Promo Banner", description: "Mid-page promotional section" },
   { value: "category-showcase", label: "Category Showcase", description: "Category grid with icons or images" },
   { value: "featured-products", label: "Featured Products", description: "Featured product grid" },
+  { value: "comparison", label: "Product Comparison", description: "Spec-led product comparison section" },
+  { value: "recommended-products", label: "Products You May Like", description: "Recommendation-style product row for custom pages and follow-up browsing" },
   { value: "recently-viewed", label: "Recently Viewed", description: "Customer history carousel" },
   { value: "rich-text", label: "Rich Text", description: "Simple heading and body content" },
   { value: "social-feed", label: "Social Feed / Gallery", description: "Masonry style image grid" },
@@ -51,6 +53,36 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         visible: true,
         props: {
           limit: 6,
+        },
+      };
+    case "comparison":
+      return {
+        id,
+        type,
+        sortOrder,
+        isVisible: true,
+        visible: true,
+        props: {
+          title: "Quick product comparison",
+          tagline: "Compare before you buy",
+          source: "featured-or-all",
+          limit: 2,
+          specLabels: ["Battery", "Display", "Audio", "Warranty"],
+          ctaText: "View details",
+        },
+      };
+    case "recommended-products":
+      return {
+        id,
+        type,
+        sortOrder,
+        isVisible: true,
+        visible: true,
+        props: {
+          title: "Products you may like",
+          tagline: "More to explore",
+          source: "featured-or-all",
+          limit: 4,
         },
       };
     case "rich-text":

@@ -504,6 +504,15 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
               { key: "ctaLink", label: "Main Button Link" },
               { key: "secondaryCtaText", label: "Second Button Text" },
               { key: "secondaryCtaLink", label: "Second Button Link" },
+              {
+                key: "mediaFit",
+                label: "Image Fit",
+                type: "select",
+                options: [
+                  { label: "Fill frame", value: "cover" },
+                  { label: "Fit whole image", value: "contain" },
+                ],
+              },
             ])}
             <div className="mt-3">
               <MediaField
@@ -538,11 +547,12 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
       );
       break;
     case "featured-products":
+    case "recommended-products":
       editor = (
         <div className="grid gap-4">
           <FieldGroup title="Essentials">
             {renderFields([
-              { key: "title", label: blockCoach.titleOverrides?.title ?? "Section Title" },
+              { key: "title", label: blockCoach.titleOverrides?.title ?? (block.type === "recommended-products" ? "Recommendation Title" : "Section Title") },
               { key: "limit", label: blockCoach.titleOverrides?.limit ?? "Products To Show", type: "number" },
             ])}
           </FieldGroup>
@@ -609,6 +619,88 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
             {renderFields([
               { key: "tagline", label: "Small Label" },
             ])}
+          </DetailsGroup>
+        </div>
+      );
+      break;
+    case "comparison":
+      editor = (
+        <div className="grid gap-4">
+          <FieldGroup title="Essentials">
+            {renderFields([
+              { key: "title", label: blockCoach.titleOverrides?.title ?? "Comparison Title" },
+              { key: "limit", label: blockCoach.titleOverrides?.limit ?? "Products To Compare", type: "number" },
+              { key: "ctaText", label: "Detail Button Text" },
+            ])}
+          </FieldGroup>
+          <DetailsGroup
+            title={templateId === "electronics" ? "Comparison source" : "Product source"}
+            description={templateId === "electronics"
+              ? "Choose which products should appear side by side. Keep them close enough that the comparison helps a real decision."
+              : "Choose which products this comparison should pull from. Keep the set tight so differences stay readable."}
+          >
+            <div className="grid gap-3">
+              {renderFields([
+                {
+                  key: "source",
+                  label: getFeaturedSourceLabel(),
+                  type: "select",
+                  options: getFeaturedSourceOptions(),
+                },
+              ])}
+              {props.source === "category" ? (
+                <Field
+                  blockId={block.id}
+                  config={{
+                    key: "category",
+                    label: templateId === "electronics" ? "Device Category" : "Category",
+                    type: "select",
+                    options: productCategoryOptions.length > 0
+                      ? productCategoryOptions.map((category) => ({ label: category, value: category }))
+                      : [{ label: "No categories yet", value: "" }],
+                  }}
+                  value={props.category}
+                  updateBlockProps={updateBlockProps}
+                />
+              ) : null}
+              {props.source === "type" ? (
+                <Field
+                  blockId={block.id}
+                  config={{
+                    key: "productType",
+                    label: templateId === "electronics" ? "Device Type" : "Product Type",
+                    type: "select",
+                    options: productTypeOptions.length > 0
+                      ? productTypeOptions.map((type) => ({ label: type, value: type }))
+                      : [{ label: "No product types yet", value: "" }],
+                  }}
+                  value={props.productType}
+                  updateBlockProps={updateBlockProps}
+                />
+              ) : null}
+            </div>
+          </DetailsGroup>
+          <DetailsGroup title="Label and spec hints" description="Spec labels help this block stay useful even when product data is uneven.">
+            <div className="grid gap-3">
+              {renderFields([{ key: "tagline", label: "Small Label" }])}
+              <div className="space-y-1.5">
+                <Label className="text-sm">Spec Labels</Label>
+                <Input
+                  value={getStringArray(props.specLabels).join(", ")}
+                  placeholder="Battery, Display, Audio, Warranty"
+                  onChange={(event) => updateBlockProps(block.id, {
+                    specLabels: event.target.value
+                      .split(",")
+                      .map((item) => item.trim())
+                      .filter(Boolean)
+                      .slice(0, 6),
+                  })}
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Use comma-separated short labels. These are optional prompts, not hard requirements.
+                </p>
+              </div>
+            </div>
           </DetailsGroup>
         </div>
       );

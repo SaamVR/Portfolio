@@ -9,6 +9,7 @@ import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
+import { buildAutoFooterLinks } from "@/lib/cms/page-listing-preferences";
 
 const emailSchema = z.string().trim().email("Please enter a valid email");
 
@@ -77,8 +78,9 @@ const Footer = () => {
   const newsletterHeading = footer?.newsletter_heading || "Stay Updated";
   const newsletterDesc = footer?.newsletter_description || "Share updates, launches, offers, or announcements with interested customers.";
   const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
-  const companyLinks = footer?.company_links?.length ? footer.company_links : defaultCompanyLinks;
-  const extraLinks = footer?.extra_links ?? [];
+  const autoFooterLinks = buildAutoFooterLinks(currentStore);
+  const companyLinks = [...(footer?.company_links?.length ? footer.company_links : defaultCompanyLinks), ...autoFooterLinks.company];
+  const extraLinks = [...(footer?.extra_links ?? []), ...autoFooterLinks.extra];
   const extraLinksTitle = footer?.extra_links_title || "Quick Links";
   const sectionOrder = footer?.section_order?.length ? footer.section_order : defaultSectionOrder;
   const paymentText = footer?.payment_text || "Accepted payment methods, delivery terms, and checkout options are shown during the order flow.";

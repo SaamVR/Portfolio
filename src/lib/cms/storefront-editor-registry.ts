@@ -560,6 +560,24 @@ const defaultBlockCoach: Record<StorePageBlock["type"], BasicBlockCoachConfig> =
       limit: "Items To Show",
     },
   },
+  "recommended-products": {
+    tip: "Use this on custom pages, product stories, and support pages when you want a softer recommendation row instead of the main featured catalog.",
+    priorityFields: ["title", "source", "limit"],
+    priorityLabel: "Set the recommendation mix",
+    titleOverrides: {
+      title: "Recommendation Title",
+      limit: "Products To Show",
+    },
+  },
+  comparison: {
+    tip: "Keep comparison focused on a few close alternatives. Too many products weakens the decision.",
+    priorityFields: ["title", "source", "limit"],
+    priorityLabel: "Frame the buying decision",
+    titleOverrides: {
+      title: "Comparison Title",
+      limit: "Products To Compare",
+    },
+  },
   "category-showcase": {
     tip: "Use categories to reduce choice overload and help shoppers find the right path quickly.",
     priorityFields: ["title", "source", "limit"],
@@ -641,6 +659,14 @@ const blockCoachOverrides: Partial<Record<StorefrontTemplateId, Partial<Record<S
       priorityFields: ["title", "source", "limit"],
       titleOverrides: {
         title: "Featured Gadgets Title",
+      },
+    },
+    comparison: {
+      tip: "Use this for two to four close alternatives. Let shoppers scan the important differences quickly.",
+      priorityFields: ["title", "source", "limit"],
+      titleOverrides: {
+        title: "Comparison Section Title",
+        limit: "Devices To Compare",
       },
     },
     "trust-badges": {

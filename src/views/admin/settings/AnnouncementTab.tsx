@@ -8,12 +8,12 @@ import { Plus, Trash2 } from "lucide-react";
 
 export function AnnouncementTab({
   settings,
-  setSettings,
+  setSettings = () => {},
   update,
   SaveButton,
 }: {
   settings: any;
-  setSettings: React.Dispatch<React.SetStateAction<any>>;
+  setSettings?: React.Dispatch<React.SetStateAction<any>>;
   update: (category: string, key: string, value: any) => void;
   SaveButton: React.ComponentType<{ settingKey: string }>;
 }) {

@@ -85,6 +85,14 @@ export interface StorefrontTemplateDefinition {
   description: string;
   rendererKind: "fashion" | "generic";
   presentation: StorefrontTemplatePresentation;
+  supportsMapControls?: boolean;
+  supportsSearchControls?: boolean;
+  supportsWishlistControls?: boolean;
+  supportsNewsletterControls?: boolean;
+  supportsSizeControls?: boolean;
+  supportsSaleFilterControls?: boolean;
+  supportsPriceFilterControls?: boolean;
+  supportsColorControls?: boolean;
 }
 
 export interface StorefrontTemplateSeedDefinition {
@@ -131,6 +139,8 @@ const allBlockTypes: readonly StorefrontBlockType[] = [
   "promo-banner",
   "category-showcase",
   "featured-products",
+  "comparison",
+  "recommended-products",
   "recently-viewed",
   "rich-text",
   "social-feed",
@@ -331,6 +341,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       blockLayoutVariants: {
         hero: "split",
         "featured-products": "4-col",
+        comparison: "tech-spec",
       },
     },
   }),
@@ -600,7 +611,7 @@ export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, Storef
     catalogMode: "multi_product",
     group: "Electronics / Gadgets",
     recommendedPageSet: ["home", "about", "policy"],
-    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "video-reel", "rich-text", "faq-accordion", "trust-badges", "testimonials", "recently-viewed"],
+    recommendedBlockSet: ["hero", "promo-banner", "featured-products", "comparison", "video-reel", "rich-text", "faq-accordion", "trust-badges", "testimonials", "recently-viewed"],
     defaultTheme: {
       presetId: "midnight-blue",
       mode: "dark",

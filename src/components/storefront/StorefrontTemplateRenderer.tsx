@@ -17,6 +17,7 @@ import { SingleProductStorefrontRenderer } from "@/components/storefront/single-
 import { SubscriptionsStorefrontRenderer } from "@/components/storefront/subscriptions/SubscriptionsStorefrontRenderer";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { StorefrontShell } from "@/components/storefront/StorefrontShell";
+import { getSpecializedTemplateConsumedBlocks } from "@/lib/cms/template-renderer-context";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import {
   getStorefrontTemplateDefinition,
@@ -89,7 +90,7 @@ export function StorefrontTemplateRenderer({
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
   const blocksToRender = sortBlocksForTemplate(blocks, template);
-  const blockNodes = blocksToRender.map((block, index) => (
+  const renderBlockNode = (block: StorePageBlock, index: number) => (
     <div
       key={block.id}
       onClick={() => {
@@ -108,7 +109,12 @@ export function StorefrontTemplateRenderer({
       ) : null}
       <StorefrontBlockRenderer block={block} template={template} />
     </div>
-  ));
+  );
+  const blockNodes = blocksToRender.map((block, index) => renderBlockNode(block, index));
+  const consumedBlockTypes = new Set(page.isHomepage ? getSpecializedTemplateConsumedBlocks(templateId) : []);
+  const fallbackBlockNodes = blocksToRender
+    .filter((block) => !consumedBlockTypes.has(block.type))
+    .map((block, index) => renderBlockNode(block, index));
 
   const renderedBlocks = template.rendererKind === "fashion"
     ? blockNodes
@@ -149,6 +155,11 @@ export function StorefrontTemplateRenderer({
   return (
     <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
       {renderedBlocks}
+      {page.isHomepage && template.rendererKind !== "fashion" && fallbackBlockNodes.length > 0 ? (
+        <div data-template-renderer="shared-fallback-blocks">
+          {fallbackBlockNodes}
+        </div>
+      ) : null}
     </StorefrontShell>
   );
 }

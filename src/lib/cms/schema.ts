@@ -67,6 +67,7 @@ const heroBlockSchema = z.object({
     secondaryCtaLink: z.string().optional(),
     mediaUrl: z.string().optional(),
     mediaType: z.enum(["image", "video"]).optional(),
+    mediaFit: z.enum(["cover", "contain"]).optional(),
     overlayColor: z.string().optional(),
     overlayOpacity: z.number().int().min(0).max(100).optional(),
   }).default({}),
@@ -107,6 +108,34 @@ const featuredProductsBlockSchema = z.object({
   type: z.literal("featured-products"),
   props: z.object({
     limit: z.number().int().positive().max(24).default(6),
+    title: z.string().optional(),
+    tagline: z.string().optional(),
+    source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
+    category: z.string().optional(),
+    productType: z.string().optional(),
+  }).default({}),
+});
+
+const comparisonBlockSchema = z.object({
+  ...baseBlockFields,
+  type: z.literal("comparison"),
+  props: z.object({
+    title: z.string().optional(),
+    tagline: z.string().optional(),
+    source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
+    category: z.string().optional(),
+    productType: z.string().optional(),
+    limit: z.number().int().positive().max(4).default(2),
+    specLabels: z.array(z.string().min(1)).max(6).default([]),
+    ctaText: z.string().optional(),
+  }).default({}),
+});
+
+const recommendedProductsBlockSchema = z.object({
+  ...baseBlockFields,
+  type: z.literal("recommended-products"),
+  props: z.object({
+    limit: z.number().int().positive().max(24).default(4),
     title: z.string().optional(),
     tagline: z.string().optional(),
     source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
@@ -231,6 +260,8 @@ export const storePageBlockSchema = z.discriminatedUnion("type", [
   promoBannerBlockSchema,
   categoryShowcaseBlockSchema,
   featuredProductsBlockSchema,
+  comparisonBlockSchema,
+  recommendedProductsBlockSchema,
   recentlyViewedBlockSchema,
   richTextBlockSchema,
   socialFeedBlockSchema,

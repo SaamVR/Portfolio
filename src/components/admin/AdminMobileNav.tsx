@@ -6,39 +6,10 @@ import { useAuth } from "@/hooks/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard,
-  Package,
-  SquarePen,
-  SlidersHorizontal,
-  ShoppingCart,
-  Mail,
-  MessageSquare,
-  Tag,
-  FolderTree,
-  Settings,
-  KeyRound,
-  Users,
   LogOut,
   ArrowLeft,
   Menu,
-  WandSparkles,
-  Images,
-  HardDriveDownload,
-  Shield,
-  CreditCard,
-  HelpCircle,
   Search,
-  LineChart,
-  Store,
-  Globe,
-  Rocket,
-  LayoutTemplate,
-  BellRing,
-  HeartPulse,
-  NotebookPen,
-  QrCode,
-  Undo2,
-  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -53,7 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
+import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import StoreSwitcher from "./StoreSwitcher";
 import { getAdminNavigationItems } from "@/lib/admin/admin-navigation";
@@ -70,13 +41,15 @@ type NavLinkItem = {
   badge?: number;
   show?: boolean;
   external?: boolean;
+  section?: string;
+  mobileShortLabel?: string;
 };
 
 const isRouteActive = (pathname: string, target: string) =>
   target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps) => {
-  const { role, platformRole, user, signOut , activeStoreId} = useAuth();
+  const { role, platformRole, user, signOut, activeStoreId } = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
   const isPlatformAdmin = platformRole === "admin";
@@ -139,16 +112,11 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
   });
 
   const dockLinks: NavLinkItem[] = allNavItems.filter((item) =>
-    ["/admin", "/admin/products", "/admin/orders", buildPageBuilderPath("basic", { storeId: activeStoreId })].includes(item.to),
+    ["/admin", "/admin/orders", "/admin/products", buildPageBuilderPath("basic", { storeId: activeStoreId })].includes(item.to),
   );
 
-  const quickLinks: NavLinkItem[] = allNavItems.filter((item) =>
-    ["/admin/launch", "/admin/onboarding", withStoreId("/admin/site-settings", activeStoreId), withStoreId("/admin/site-settings?tab=payment", activeStoreId), "/admin/analytics", "/admin/recovery"].includes(item.to),
-  );
-
-  const commerceLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "daily_operations" && item.to !== "/admin");
-  const storefrontLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "storefront");
-  const adminLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "platform_settings");
+  const primaryLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "primary");
+  const secondaryLinks: NavLinkItem[] = allNavItems.filter((item) => item.section === "secondary");
 
   const renderLinkCard = (link: NavLinkItem) => {
     const active = !link.external && isRouteActive(location.pathname, link.to.split("?")[0] || link.to);
@@ -162,11 +130,6 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
       >
         <Icon className="h-4 w-4 shrink-0" />
         <span className="truncate">{link.label}</span>
-        {link.badge !== undefined && link.badge > 0 ? (
-          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-            {link.badge > 99 ? "99+" : link.badge}
-          </span>
-        ) : null}
       </a>
     ) : (
       <Link
@@ -175,7 +138,7 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
         className={cn(
           "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-200",
           active
-            ? "border-primary/20 bg-primary/10 text-primary"
+            ? "border-primary/20 bg-primary/10 text-primary font-semibold"
             : "border-transparent bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground",
         )}
       >
@@ -204,11 +167,11 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
                 to={link.to}
                 className={cn(
                   "relative flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-all duration-300",
-                  active ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
+                  active ? "text-primary scale-110 font-bold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Icon className="h-4.5 w-4.5" />
-                <span>{link.label === "Dashboard" ? "Home" : link.label === "Products" ? "Catalog" : link.label}</span>
+                <span>{link.mobileShortLabel ?? link.label}</span>
                 {link.badge !== undefined && link.badge > 0 && (
                   <span className="absolute -top-0.5 right-2.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                     {link.badge > 99 ? "99+" : link.badge}
@@ -224,17 +187,14 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
               <button
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
-                  isOpen && "text-primary scale-110"
+                  isOpen && "text-primary scale-110 font-bold"
                 )}
               >
                 <Menu className="h-4.5 w-4.5" />
                 <span>Menu</span>
-                {(pendingReviewsCount > 0) && (
-                  <span className="absolute top-1.5 right-6 flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                )}
               </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-[2rem] border-t border-border/80 bg-card p-6 shadow-2xl">
+            <SheetContent side="bottom" className="rounded-t-[2rem] border-t border-border/80 bg-card p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
               <SheetHeader className="text-left pb-4 border-b border-border/50">
                 <SheetTitle className="flex items-center gap-3">
                   <span className="font-heading text-xl font-bold text-foreground">
@@ -249,33 +209,21 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
               <div className="space-y-5 py-6">
                 <StoreSwitcher mobile />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      onOpenCommand();
-                    }}
-                    className="flex items-center gap-3 rounded-2xl border border-transparent bg-secondary/40 px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
-                  >
-                    <Search className="h-4 w-4 shrink-0" />
-                    <span>Search</span>
-                  </button>
-                  {quickLinks.filter((link) => link.show).slice(0, 1).map((link) => (
-                    <SheetClose asChild key={link.to}>
-                      {renderLinkCard(link)}
-                    </SheetClose>
-                  ))}
-                  {quickLinks.filter((link) => link.show).slice(1).map((link) => (
-                    <SheetClose asChild key={link.to}>
-                      {renderLinkCard(link)}
-                    </SheetClose>
-                  ))}
-                </div>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenCommand();
+                  }}
+                  className="w-full flex items-center gap-3 rounded-2xl border border-transparent bg-secondary/50 px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground"
+                >
+                  <Search className="h-4 w-4 shrink-0 text-primary" />
+                  <span>Search actions or sectors (Ctrl+K)</span>
+                </button>
 
-                <div className="rounded-2xl border border-border/70 bg-background/80 p-3.5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Current workspace</p>
-                  <div className="mt-3 grid grid-cols-1 gap-2">
-                    {dockLinks.map((link) => (
+                <div className="space-y-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Main Menu</p>
+                  <div className="space-y-2">
+                    {primaryLinks.filter((link) => link.show !== false).map((link) => (
                       <SheetClose asChild key={link.to}>
                         {renderLinkCard(link)}
                       </SheetClose>
@@ -283,32 +231,10 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Run Store</p>
+                <div className="space-y-3 pt-2 border-t border-border/50">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Preferences & Settings</p>
                   <div className="space-y-2">
-                    {commerceLinks.filter((link) => link.show).map((link) => (
-                      <SheetClose asChild key={link.to}>
-                        {renderLinkCard(link)}
-                      </SheetClose>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Edit Site</p>
-                  <div className="space-y-2">
-                    {storefrontLinks.filter((link) => link.show).map((link) => (
-                      <SheetClose asChild key={link.to}>
-                        {renderLinkCard(link)}
-                      </SheetClose>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Settings</p>
-                  <div className="space-y-2">
-                    {adminLinks.filter((link) => link.show).map((link) => (
+                    {secondaryLinks.filter((link) => link.show !== false).map((link) => (
                       <SheetClose asChild key={link.to}>
                         {renderLinkCard(link)}
                       </SheetClose>
@@ -355,5 +281,3 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
 };
 
 export default AdminMobileNav;
-
-

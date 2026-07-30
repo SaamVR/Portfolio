@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, LayoutTemplate, Star, Download, Wand2, Loader2, Globe, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Search, LayoutTemplate, Star, Download, Wand2, Loader2, Globe, Monitor, Smartphone, Tablet, ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { StorefrontPreviewFrame } from "@/components/storefront/StorefrontPreviewFrame";
 import { toast } from "sonner";
 import { Eye } from "lucide-react";
 import { fetchMarketplaceTemplate, type ThemeExportBundle } from "@/lib/cms/theme-export-import";
@@ -103,7 +104,7 @@ function TemplatePreviewCanvas({
   }
 
   return (
-    <div className={cn("absolute inset-0 overflow-hidden bg-background", className)}>
+    <div className={cn("absolute inset-0 overflow-hidden bg-background pointer-events-none select-none", className)}>
       <StoreThemeScope theme={bundle.theme}>
         <div className={cn("origin-top-left bg-background", canvasClass)}>
           {previewBlocks.map((block) => (
@@ -315,8 +316,17 @@ export function TemplateGallery({
     }
   };
 
+  const [page, setPage] = useState<number>(1);
+  const TEMPLATES_PER_PAGE = 8;
+
   const isLoading = activeTab === "built-in" ? isLoadingBlueprints : isLoadingCommunity;
   const displayItems = activeTab === "built-in" ? filteredBuiltIn : filteredCommunity;
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / TEMPLATES_PER_PAGE));
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * TEMPLATES_PER_PAGE;
+    return displayItems.slice(start, start + TEMPLATES_PER_PAGE);
+  }, [displayItems, page]);
+
   const previewPages = previewState?.bundle.pages ?? [];
   const previewBlocks = previewPages[0]?.blocks ?? [];
   const previewAssetFallback = previewState?.kind === "community"
@@ -345,7 +355,14 @@ export function TemplateGallery({
           </div>
           
           <div className="flex flex-col sm:flex-row w-full md:w-auto items-start sm:items-center gap-4">
-            <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-[300px]">
+            <Tabs
+              value={activeTab}
+              onValueChange={(val: any) => {
+                setActiveTab(val);
+                setPage(1);
+              }}
+              className="w-[300px]"
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="built-in"><LayoutTemplate className="mr-2 h-4 w-4" /> Built-In</TabsTrigger>
                 <TabsTrigger value="community" data-testid="template-gallery-community-tab"><Globe className="mr-2 h-4 w-4" /> Community</TabsTrigger>
@@ -375,7 +392,10 @@ export function TemplateGallery({
               placeholder="Search templates..." 
               className="pl-8"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <ScrollArea className="w-full pb-2 whitespace-nowrap">
@@ -385,7 +405,10 @@ export function TemplateGallery({
                   key={category}
                   variant={activeCategory === category ? "default" : "secondary"}
                   className="rounded-full"
-                  onClick={() => setActiveCategory(category)}
+                  onClick={() => {
+                    setActiveCategory(category);
+                    setPage(1);
+                  }}
                 >
                   {category}
                 </Button>
@@ -409,158 +432,197 @@ export function TemplateGallery({
             <p className="text-muted-foreground mt-1">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayItems.map((item: any) => {
-              const isBuiltIn = activeTab === "built-in";
-              const id = item.id;
-              const name = isBuiltIn ? item.name : item.title;
-              const category = isBuiltIn ? item.category : (item.category || "commerce");
-              const rating = isBuiltIn ? "4.8" : (item.rating_avg ? Number(item.rating_avg).toFixed(1) : "New");
-              const downloads = isBuiltIn ? (id.length * 123) + 400 : Number(item.install_count ?? 0);
-              const isPremium = !isBuiltIn && item.pricing_mode === "premium";
-              const status = isBuiltIn ? "published" : item.status ?? "draft";
-              const mobileReady = isBuiltIn ? item.mobileReady : item.mobile_ready !== false;
-              const aesthetic = isBuiltIn ? item.aesthetic : (item.aesthetic || "custom");
-              const builtInCardBundle = isBuiltIn
-                ? (previewWithData ? createBuiltInBundle(id, blueprints, store) : createBuiltInCardBundle(id, blueprints, store))
-                : null;
-              const communityPreviewAsset = !isBuiltIn ? getCommunityPreviewAsset(item, "desktop") : "";
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {paginatedItems.map((item: any) => {
+                const isBuiltIn = activeTab === "built-in";
+                const id = item.id;
+                const name = isBuiltIn ? item.name : item.title;
+                const category = isBuiltIn ? item.category : (item.category || "commerce");
+                const rating = isBuiltIn ? "4.8" : (item.rating_avg ? Number(item.rating_avg).toFixed(1) : "New");
+                const downloads = isBuiltIn ? (id.length * 123) + 400 : Number(item.install_count ?? 0);
+                const isPremium = !isBuiltIn && item.pricing_mode === "premium";
+                const status = isBuiltIn ? "published" : item.status ?? "draft";
+                const mobileReady = isBuiltIn ? item.mobileReady : item.mobile_ready !== false;
+                const aesthetic = isBuiltIn ? item.aesthetic : (item.aesthetic || "custom");
+                const builtInCardBundle = isBuiltIn
+                  ? (previewWithData ? createBuiltInBundle(id, blueprints, store) : createBuiltInCardBundle(id, blueprints, store))
+                  : null;
+                const communityPreviewAsset = !isBuiltIn ? getCommunityPreviewAsset(item, "desktop") : "";
 
-              return (
-              <div key={id} className="group flex flex-col rounded-xl border bg-card text-card-foreground overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50" data-testid={`template-card-${id}`}>
-                <div className="relative aspect-video bg-muted overflow-hidden">
-                  {isBuiltIn && previewWithData && builtInCardBundle ? (
-                    <TemplatePreviewCanvas bundle={builtInCardBundle} viewport="desktop" />
-                  ) : isBuiltIn && item.referenceImage ? (
-                    <img
-                      src={item.referenceImage}
-                      alt={name}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : communityPreviewAsset ? (
-                    <img 
-                      src={communityPreviewAsset} 
-                      alt={name} 
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-background p-5 text-center">
-                      <LayoutTemplate className="h-8 w-8 text-primary/60" />
-                      <p className="mt-3 text-sm font-semibold text-foreground">Preview asset coming soon</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Open the template preview to inspect the live layout before applying it.
-                      </p>
+                return (
+                <div key={id} className="group flex flex-col rounded-xl border bg-card text-card-foreground overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50" data-testid={`template-card-${id}`}>
+                  <div className="relative aspect-video bg-muted overflow-hidden">
+                    {isBuiltIn && previewWithData && builtInCardBundle ? (
+                      <TemplatePreviewCanvas bundle={builtInCardBundle} viewport="desktop" />
+                    ) : isBuiltIn && item.referenceImage ? (
+                      <img
+                        src={item.referenceImage}
+                        alt={name}
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : communityPreviewAsset ? (
+                      <img 
+                        src={communityPreviewAsset} 
+                        alt={name} 
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-background p-5 text-center">
+                        <LayoutTemplate className="h-8 w-8 text-primary/60" />
+                        <p className="mt-3 text-sm font-semibold text-foreground">Preview asset coming soon</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Open the template preview to inspect the live layout before applying it.
+                        </p>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center gap-2 p-4">
+                       <Button
+                         variant="secondary"
+                         className="w-full gap-2"
+                         data-testid={`template-preview-${id}`}
+                         onClick={() => isBuiltIn ? handlePreviewBuiltIn(id) : handlePreviewCommunity(item)}
+                         disabled={applyingTemplateId === id}
+                       >
+                         Preview <Eye className="h-4 w-4" />
+                       </Button>
+                       <Button 
+                          className="w-full gap-2" 
+                          data-testid={`template-apply-${id}`}
+                          onClick={() => isBuiltIn ? handleApplyBuiltIn(id) : handleApplyCommunity(id)} 
+                          disabled={applyingTemplateId === id}
+                       >
+                         {applyingTemplateId === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
+                         Apply
+                       </Button>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center gap-2 p-4">
-                     <Button
-                       variant="secondary"
-                       className="w-full gap-2"
-                       data-testid={`template-preview-${id}`}
-                       onClick={() => isBuiltIn ? handlePreviewBuiltIn(id) : handlePreviewCommunity(item)}
-                       disabled={applyingTemplateId === id}
-                     >
-                       Preview <Eye className="h-4 w-4" />
-                     </Button>
-                     <Button 
-                        className="w-full gap-2" 
-                        data-testid={`template-apply-${id}`}
-                        onClick={() => isBuiltIn ? handleApplyBuiltIn(id) : handleApplyCommunity(id)} 
-                        disabled={applyingTemplateId === id}
-                     >
-                       {applyingTemplateId === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
-                       Apply
-                     </Button>
-                  </div>
-                    <Badge className="absolute top-3 left-3 bg-background/80 backdrop-blur-md text-foreground hover:bg-background/90 capitalize">
-                    {category}
-                  </Badge>
-                  <div className="absolute right-3 top-3 flex gap-2">
-                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-md capitalize text-foreground">
-                      {String(aesthetic).replace("-", " ")}
+                      <Badge className="absolute top-3 left-3 bg-background/80 backdrop-blur-md text-foreground hover:bg-background/90 capitalize">
+                      {category}
                     </Badge>
-                    <Badge className={mobileReady ? "bg-primary/90 text-primary-foreground" : "bg-background/80 text-foreground"}>
-                      {mobileReady ? "mobile ready" : "desktop first"}
-                    </Badge>
-                  </div>
-                  {!isBuiltIn && (
-                    <Badge variant={status === "published" ? "default" : "secondary"} className="absolute bottom-3 left-3 capitalize">
-                      {String(status).replace("_", " ")}
-                    </Badge>
-                  )}
-                  {isPremium && (
-                    <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
-                      ${item.price}
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="p-4 flex flex-col flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg line-clamp-1">{name}</h3>
-                  </div>
-                  <div className="mb-3 grid grid-cols-3 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    <span className="rounded bg-secondary px-2 py-1 capitalize">{category}</span>
-                    <span className="rounded bg-secondary px-2 py-1 capitalize">{String(aesthetic).replace("-", " ")}</span>
-                    <span className={mobileReady ? "rounded bg-primary/10 px-2 py-1 text-primary" : "rounded bg-secondary px-2 py-1"}>
-                      {mobileReady ? "mobile" : "desktop"}
-                    </span>
+                    <div className="absolute right-3 top-3 flex gap-2">
+                      <Badge variant="secondary" className="bg-background/80 backdrop-blur-md capitalize text-foreground">
+                        {String(aesthetic).replace("-", " ")}
+                      </Badge>
+                      <Badge className={mobileReady ? "bg-primary/90 text-primary-foreground" : "bg-background/80 text-foreground"}>
+                        {mobileReady ? "mobile ready" : "desktop first"}
+                      </Badge>
+                    </div>
+                    {!isBuiltIn && (
+                      <Badge variant={status === "published" ? "default" : "secondary"} className="absolute bottom-3 left-3 capitalize">
+                        {String(status).replace("_", " ")}
+                      </Badge>
+                    )}
+                    {isPremium && (
+                      <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
+                        ${item.price}
+                      </Badge>
+                    )}
                   </div>
                   
-                  {isBuiltIn && item.capabilities && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                        {item.catalogMode.replace('_', ' ')}
+                  <div className="p-4 flex flex-col flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg line-clamp-1">{name}</h3>
+                    </div>
+                    <div className="mb-3 grid grid-cols-3 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="rounded bg-secondary px-2 py-1 capitalize">{category}</span>
+                      <span className="rounded bg-secondary px-2 py-1 capitalize">{String(aesthetic).replace("-", " ")}</span>
+                      <span className={mobileReady ? "rounded bg-primary/10 px-2 py-1 text-primary" : "rounded bg-secondary px-2 py-1"}>
+                        {mobileReady ? "mobile" : "desktop"}
                       </span>
-                      {item.capabilities.slice(0, 3).map((tag: string) => (
-                        <span key={tag} className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                          {tag.replace('_', ' ')}
-                        </span>
-                      ))}
                     </div>
-                  )}
-                  {!isBuiltIn && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{item.description}</p>
-                  )}
-                  {!isBuiltIn && (
-                    <div className="mb-4 flex flex-wrap gap-1">
-                      {(item.best_for ?? []).slice(0, 3).map((tag: string) => (
-                        <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-secondary-foreground">
-                          {tag}
+                    
+                    {isBuiltIn && item.capabilities && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                          {item.catalogMode.replace('_', ' ')}
                         </span>
-                      ))}
-                      {mobileReady ? (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
-                          mobile ready
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
+                        {item.capabilities.slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                            {tag.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {!isBuiltIn && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{item.description}</p>
+                    )}
+                    {!isBuiltIn && (
+                      <div className="mb-4 flex flex-wrap gap-1">
+                        {(item.best_for ?? []).slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-secondary-foreground">
+                            {tag}
+                          </span>
+                        ))}
+                        {mobileReady ? (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
+                            mobile ready
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
 
-                  <div className="mt-auto pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      <span className="font-medium text-foreground">{rating}</span>
-                      {!isBuiltIn && item.rating_count ? <span>({item.rating_count})</span> : null}
+                    <div className="mt-auto pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        <span className="font-medium text-foreground">{rating}</span>
+                        {!isBuiltIn && item.rating_count ? <span>({item.rating_count})</span> : null}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Download className="h-4 w-4" />
+                        <span>{downloads.toLocaleString()}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Download className="h-4 w-4" />
-                      <span>{downloads.toLocaleString()}</span>
-                    </div>
+                    {!isBuiltIn && platformRole === "admin" && status === "in_review" ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button type="button" size="sm" data-testid={`template-approve-${id}`} onClick={() => handleModerateTemplate(id, "published")} disabled={moderatingTemplateId === id || item.safety_status !== "passed"}>
+                          Approve
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" data-testid={`template-reject-${id}`} onClick={() => handleModerateTemplate(id, "rejected")} disabled={moderatingTemplateId === id}>
+                          Reject
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
-                  {!isBuiltIn && platformRole === "admin" && status === "in_review" ? (
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button type="button" size="sm" data-testid={`template-approve-${id}`} onClick={() => handleModerateTemplate(id, "published")} disabled={moderatingTemplateId === id || item.safety_status !== "passed"}>
-                        Approve
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" data-testid={`template-reject-${id}`} onClick={() => handleModerateTemplate(id, "rejected")} disabled={moderatingTemplateId === id}>
-                        Reject
-                      </Button>
-                    </div>
-                  ) : null}
+                </div>
+              )})}
+            </div>
+
+            {/* Pagination Controls Footer */}
+            {displayItems.length > TEMPLATES_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-5 mt-6">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-semibold text-foreground">{(page - 1) * TEMPLATES_PER_PAGE + 1}</span>–<span className="font-semibold text-foreground">{Math.min(page * TEMPLATES_PER_PAGE, displayItems.length)}</span> of <span className="font-semibold text-foreground">{displayItems.length}</span> templates
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="h-8 gap-1 text-xs rounded-lg"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1 px-3 text-xs font-semibold text-foreground">
+                    Page {page} of {totalPages}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="h-8 gap-1 text-xs rounded-lg"
+                  >
+                    Next <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
-            )})}
+            )}
           </div>
         )}
       </div>
@@ -585,29 +647,7 @@ export function TemplateGallery({
                   </div>
                 ) : null}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex rounded-lg border border-border p-1">
-                  {[
-                    { id: "desktop", label: "Desktop", icon: Monitor },
-                    { id: "tablet", label: "Tablet", icon: Tablet },
-                    { id: "mobile", label: "Mobile", icon: Smartphone },
-                  ].map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <Button
-                        key={option.id}
-                        type="button"
-                        size="sm"
-                        variant={previewViewport === option.id ? "secondary" : "ghost"}
-                        className="gap-2"
-                        onClick={() => setPreviewViewport(option.id as TemplatePreviewViewport)}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="hidden sm:inline">{option.label}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   onClick={() => {
@@ -633,7 +673,12 @@ export function TemplateGallery({
             </div>
           </DialogHeader>
           <div className="overflow-y-auto bg-muted/30 p-4">
-            <div className={cn("mx-auto overflow-hidden rounded-xl border bg-background shadow-sm transition-all", getPreviewWidthClass(previewViewport))}>
+            <StorefrontPreviewFrame
+              viewport={previewViewport}
+              onViewportChange={(v) => setPreviewViewport(v as TemplatePreviewViewport)}
+              showToolbar={true}
+              title={`${previewState?.name ?? "Template"} preview`}
+            >
               {previewBlocks.length > 0 && previewState ? (
                 <StoreThemeScope theme={previewState.bundle.theme}>
                   <div className="min-h-[620px] bg-background">
@@ -657,7 +702,7 @@ export function TemplateGallery({
                   <p className="mt-1 text-xs text-muted-foreground">Theme-only templates can still be applied to your current layout.</p>
                 </div>
               )}
-            </div>
+            </StorefrontPreviewFrame>
           </div>
         </DialogContent>
       </Dialog>
