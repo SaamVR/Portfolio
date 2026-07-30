@@ -92,7 +92,6 @@ import {
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
 import type { Json } from "@/integrations/supabase/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface DraftState {
   storeName: string;
@@ -803,15 +802,12 @@ export default function OnboardingWizard() {
   const [unseedingTemplateData, setUnseedingTemplateData] = useState(false);
   const [catalogSeedMetadata, setCatalogSeedMetadata] = useState<Record<string, unknown> | null>(null);
   const [completionState, setCompletionState] = useState<LaunchCompletionState | null>(null);
-<<<<<<< HEAD
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState<string>("all");
   const [templateSearchQuery, setTemplateSearchQuery] = useState<string>("");
   const [previewModalTemplateId, setPreviewModalTemplateId] = useState<StorefrontTemplateId | null>(null);
   const [templatePage, setTemplatePage] = useState<number>(1);
   const TEMPLATES_PER_PAGE = 6;
-=======
   const [previewMode, setPreviewMode] = useState<PreviewDockMode>("closed");
->>>>>>> b07174b296201c25d187b5b0f4c7fef4521b3414
 
   const activeTemplateProfile = useMemo(
     () => resolveStorefrontTemplateProfile(draft.blueprintId, { blueprintId: draft.blueprintId }),
@@ -1792,15 +1788,8 @@ export default function OnboardingWizard() {
                     </span>
                   </div>
                 ) : null}
-<<<<<<< HEAD
-
-                {/* Active Template Header Banner */}
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-background p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-=======
                 <div className="grid gap-4">
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
->>>>>>> b07174b296201c25d187b5b0f4c7fef4521b3414
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge className="bg-primary text-primary-foreground font-semibold px-2.5 py-0.5 text-xs">
                         Active: {activeTemplateProfile.seedDefinition.name}
@@ -1861,8 +1850,6 @@ export default function OnboardingWizard() {
                       Browse {storefrontTemplateOptions.length} specialized store templates designed for high merchant conversion.
                     </p>
                   </div>
-<<<<<<< HEAD
-
                   <div className="flex flex-wrap items-center gap-3">
                     {/* Category Filter Pills */}
                     <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 text-xs">
@@ -1907,8 +1894,6 @@ export default function OnboardingWizard() {
                       />
                     </div>
                   </div>
-=======
->>>>>>> b07174b296201c25d187b5b0f4c7fef4521b3414
                 </div>
 
                 {/* Template Cards Grid (Rows and Columns like Products) */}
@@ -2954,28 +2939,6 @@ export default function OnboardingWizard() {
       </Button>
     </div>
 
-<<<<<<< HEAD
-      <div className="lg:sticky lg:top-6 lg:h-max">
-        <StoreProvider store={previewStore}>
-          <StoreThemeScope theme={previewStore.theme}>
-            <StorefrontPreviewFrame viewport="mobile" title="Onboarding storefront preview" showToolbar={true}>
-              {previewHomepage ? (
-                <StorefrontTemplateRenderer
-                  store={previewStore}
-                  page={previewHomepage}
-                  blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
-                  adminMode={false}
-                  selectedBlockId={null}
-                  canManageStorefront={false}
-                  onSelectBlock={() => {}}
-                />
-              ) : null}
-            </StorefrontPreviewFrame>
-          </StoreThemeScope>
-        </StoreProvider>
-      </div>
-    </div>
-=======
     {previewMode === "half" ? (
       <div className="fixed inset-y-0 right-0 z-50 w-full border-l border-border bg-background shadow-2xl sm:w-[min(50vw,720px)]">
         <div className="flex h-full flex-col">
@@ -3063,6 +3026,5 @@ export default function OnboardingWizard() {
       </DialogContent>
     </Dialog>
     </>
->>>>>>> b07174b296201c25d187b5b0f4c7fef4521b3414
   );
 }

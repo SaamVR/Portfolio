@@ -333,7 +333,6 @@ const AdminProducts = () => {
 
   return (
     <div className="space-y-6">
-<<<<<<< HEAD
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Products & Catalog</h1>
@@ -350,74 +349,6 @@ const AdminProducts = () => {
             <Button data-testid="products-add-button" onClick={openNew} className="gap-2 text-xs">
               <Plus className="h-4 w-4" /> Add Product
             </Button>
-=======
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-bold text-foreground">Products</h1>
-          <p className="text-sm text-muted-foreground">Manage your catalog, import inventory in bulk, and export the live product list when the merchant needs it.</p>
-        </div>
-        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto lg:grid-cols-3 lg:justify-end">
-          <Button
-            variant="outline"
-            data-testid="products-export-button"
-            onClick={handleExportCatalog}
-            className="h-11 justify-center gap-2"
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            data-testid="products-bulk-import-button"
-            onClick={() => setImportDialogOpen(true)}
-            className="h-11 justify-center gap-2"
-          >
-            <Upload className="h-4 w-4" /> Bulk Import
-          </Button>
-          <Button data-testid="products-add-button" onClick={openNew} className="h-11 justify-center gap-2">
-            <Plus className="h-4 w-4" /> Add Product
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Catalog size</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{products.length}</CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Ready to sell</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{readyToSellCount}</CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Featured / out of stock</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm font-medium text-foreground">
-            <span className="text-2xl">{featuredCount}</span> featured · <span className="text-2xl">{lowOrOutOfStockCount}</span> out
-          </CardContent>
-        </Card>
-      </div>
-
-      <Input
-        data-testid="products-search"
-        placeholder="Search products..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-sm"
-      />
-                      {loading && products.length === 0 ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center px-4 rounded-xl border border-dashed border-border bg-card/50 mt-8">
-          <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-            <Package className="h-10 w-10 text-primary" />
->>>>>>> b07174b296201c25d187b5b0f4c7fef4521b3414
           </div>
         )}
       </div>

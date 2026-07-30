@@ -10,11 +10,10 @@ import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
 import { AdminPreviewStoreButton } from "./AdminPreviewStoreButton";
-import { Moon, Search, SunMedium } from "lucide-react";
+import { Moon, Search, SunMedium, LayoutDashboard, ShoppingCart, SquarePen, LineChart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 import { useTheme } from "next-themes";
-import { getAdminWorkspaceChips } from "@/lib/admin/admin-navigation";
 import { Button } from "@/components/ui/button";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
