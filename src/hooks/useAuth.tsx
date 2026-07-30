@@ -209,11 +209,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let nextRole: AppRole = null;
 
     if (nextPlatformRole) {
-      nextRole = nextPlatformRole;
-    } else if (nextStoreRole === "owner" || nextStoreRole === "admin") {
-      nextRole = "admin";
-    } else if (nextStoreRole === "editor" || nextStoreRole === "viewer") {
-      nextRole = "co_admin";
+      if (["super_admin", "admin", "billing_admin", "support_agent"].includes(nextPlatformRole)) {
+        nextRole = "admin";
+      } else if (nextPlatformRole === "co_admin") {
+        nextRole = "co_admin";
+      }
     }
 
     return {
@@ -515,7 +515,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const canManageStore = useCallback(
     (storeId: string) => {
       if (!storeId) return false;
-      if (platformRole === "admin") return true;
+      if (platformRole && ["super_admin", "admin", "billing_admin", "support_agent"].includes(platformRole)) return true;
       return storeMemberships.some(
         (membership) =>
           membership.storeId === storeId &&

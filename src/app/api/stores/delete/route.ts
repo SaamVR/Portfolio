@@ -4,6 +4,7 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { logPlatformAuditAction } from "@/lib/platform/audit-logger";
 
 type MerchantAccountStatusRow = {
   can_create_store?: boolean | null;
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .eq("role", "admin")
+        .in("role", ["admin", "super_admin", "billing_admin", "support_agent"])
         .maybeSingle(),
       supabaseAdmin
         .from("stores")
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
-    const isPlatformAdmin = platformRole?.role === "admin";
+    const isPlatformAdmin = Boolean(platformRole?.role && ["admin", "super_admin"].includes(platformRole.role));
     if (isPlatformAdmin && !normalizedNote) {
       return NextResponse.json({ error: "Deletion note is required for platform admins" }, { status: 400 });
     }
@@ -134,6 +135,23 @@ export async function POST(req: Request) {
     if (deleteError) {
       throw deleteError;
     }
+
+    await logPlatformAuditAction(supabaseAdmin, {
+      actorId: user.id,
+      actorEmail: user.email,
+      actorRole: platformRole?.role || "store_owner",
+      action: "delete_store",
+      targetType: "store",
+      targetId: store.id,
+      details: {
+        store_name: store.name,
+        store_slug: store.slug,
+        owner_id: ownerUserId,
+        banned_merchant: shouldBanMerchant,
+        admin_note: normalizedNote || null,
+        deletion_source: isPlatformAdmin ? "platform_admin_delete" : "merchant_self_delete",
+      },
+    });
 
     const remainingOwnedStores = ownerUserId
       ? await supabaseAdmin

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +61,7 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<"choose" | "automated" | "manual">("choose");
   const [trxId, setTrxId] = useState("");
   const [submittingManualPayment, setSubmittingManualPayment] = useState(false);
-  const ownerOnly = storeRole === "owner" || platformRole === "admin";
+  const ownerOnly = storeRole === "owner" || isPlatformRole(platformRole);
 
   const platformManualBkashNumber = process.env.NEXT_PUBLIC_PLATFORM_BKASH_NUMBER || "01700-000000";
 

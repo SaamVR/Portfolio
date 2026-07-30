@@ -78,11 +78,11 @@ export async function canManageStore(
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .eq("role", "admin")
+      .in("role", ["admin", "super_admin", "billing_admin", "support_agent"])
       .maybeSingle(),
   ]);
 
-  if (platformRole?.role === "admin") {
+  if (platformRole?.role) {
     return true;
   }
 

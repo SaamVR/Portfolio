@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Loader2, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ export function AdminFeatureGate({
   const { platformRole, activeStoreId, loading, authRecovery } = useAuth();
   const { data, isLoading } = useStoreEntitlements(activeStoreId);
 
-  if (platformRole === "admin") {
+  if (isPlatformRole(platformRole)) {
     return <>{children}</>;
   }
 

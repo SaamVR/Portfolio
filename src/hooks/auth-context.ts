@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole = "admin" | "co_admin" | null;
 export type StoreRole = "owner" | "admin" | "editor" | "viewer" | null;
-export type PlatformRole = "admin" | "co_admin" | null;
+export type PlatformRole = "super_admin" | "admin" | "billing_admin" | "support_agent" | "co_admin" | null;
 export type StoreMembership = {
   storeId: string;
   role: NonNullable<StoreRole>;

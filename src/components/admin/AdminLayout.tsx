@@ -10,7 +10,8 @@ import AdminMobileNav from "./AdminMobileNav";
 import AdminCommandMenu from "./AdminCommandMenu";
 import StoreSwitcher from "./StoreSwitcher";
 import { AdminPreviewStoreButton } from "./AdminPreviewStoreButton";
-import { Moon, Search, SunMedium, LayoutDashboard, ShoppingCart, SquarePen, LineChart, Settings } from "lucide-react";
+import { Moon, Search, SunMedium, LayoutDashboard, ShoppingCart, SquarePen, LineChart, Settings, ShieldAlert } from "lucide-react";
+import { logPlatformAuditAction } from "@/lib/platform/audit-logger";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 import { useTheme } from "next-themes";
@@ -78,12 +79,55 @@ const lockedWorkspaceNav = [
 ];
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, session, role, activeStoreId, loading, authRecovery, refreshRole, signOut } = useAuth();
+  const { user, session, role, platformRole, activeStoreId, loading, authRecovery, refreshRole, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [commandOpen, setCommandOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const isDarkTheme = resolvedTheme === "dark";
+
+  const [impersonationSession, setImpersonationSession] = useState<{
+    storeId: string;
+    storeName: string;
+    storeSlug?: string;
+    impersonatorEmail?: string;
+    startedAt?: string;
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("ezcomo_impersonation_session");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleExitImpersonation = async () => {
+    try {
+      if (impersonationSession && user) {
+        await logPlatformAuditAction(supabase, {
+          actorId: user.id,
+          actorEmail: user.email,
+          actorRole: platformRole,
+          action: "exit_impersonate_merchant",
+          targetType: "store",
+          targetId: impersonationSession.storeId,
+          details: { store_name: impersonationSession.storeName },
+        });
+      }
+    } catch (err) {
+      console.error("Error logging exit impersonation:", err);
+    }
+    if (typeof document !== "undefined") {
+      document.cookie = "ezcomo_impersonate_store_id=; path=/; max-age=0";
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("ezcomo_impersonation_session");
+    }
+    setImpersonationSession(null);
+    navigate("/cms-admin?tab=stores");
+  };
+
   const currentWorkspace =
     workspaceLabels.find((workspace) => location.pathname === workspace.path || location.pathname.startsWith(`${workspace.path}/`)) ?? {
       label: "Store Dashboard",
@@ -291,6 +335,24 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
     <div className="flex min-h-screen bg-background">
       <AdminSidebar compact={isGuidedSetupWorkspace} />
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        {impersonationSession && (
+          <div className="sticky top-0 z-40 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 px-4 py-2 text-white shadow-md flex items-center justify-between text-xs sm:text-sm font-medium">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 shrink-0 animate-pulse text-amber-100" />
+              <span>
+                <strong>Admin Impersonation Mode:</strong> Accessing merchant <strong>{impersonationSession.storeName}</strong> as platform operator ({impersonationSession.impersonatorEmail || user?.email}).
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0 shrink-0 font-semibold shadow-none"
+              onClick={() => void handleExitImpersonation()}
+            >
+              Exit Impersonation
+            </Button>
+          </div>
+        )}
         {/* Workspace Search Header */}
         <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-3">

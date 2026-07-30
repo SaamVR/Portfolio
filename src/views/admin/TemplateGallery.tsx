@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { defaultStore } from "@/lib/cms/default-store";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import {
   getStorefrontTemplateDefinition,
   getStorefrontTemplateSeedDefinition,
@@ -167,7 +168,7 @@ export function TemplateGallery({
         .select("id, title, description, cover_image, preview_asset_urls, category, price, pricing_mode, created_at, creator_id, status, install_count, rating_avg, rating_count, tags, best_for, aesthetic, mobile_ready, safety_status, safety_findings, rejection_reason")
         .order("created_at", { ascending: false });
 
-      if (platformRole !== "admin") {
+      if (!isPlatformRole(platformRole)) {
         query = query.eq("status", "published");
       }
 
@@ -572,7 +573,7 @@ export function TemplateGallery({
                         <span>{downloads.toLocaleString()}</span>
                       </div>
                     </div>
-                    {!isBuiltIn && platformRole === "admin" && status === "in_review" ? (
+                    {!isBuiltIn && isPlatformRole(platformRole) && status === "in_review" ? (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Button type="button" size="sm" data-testid={`template-approve-${id}`} onClick={() => handleModerateTemplate(id, "published")} disabled={moderatingTemplateId === id || item.safety_status !== "passed"}>
                           Approve

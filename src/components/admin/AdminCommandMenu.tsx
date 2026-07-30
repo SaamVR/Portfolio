@@ -43,6 +43,7 @@ import {
   Store,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import { useStoreEntitlements } from "@/hooks/useStoreEntitlements";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
@@ -66,7 +67,7 @@ export default function AdminCommandMenu({ open, setOpen }: AdminCommandMenuProp
   const navigate = useNavigate();
   const { platformRole, role, storeRole, activeStoreId } = useAuth();
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
-  const isPlatformAdmin = platformRole === "admin";
+  const isPlatformAdmin = isPlatformRole(platformRole);
   const isAdmin = role === "admin";
   const isOwner = storeRole === "owner" || isPlatformAdmin;
   const cmsEnabled = isAdmin && getFeatureEnabled(entitlementData?.featureMap, "cms_pages", false);

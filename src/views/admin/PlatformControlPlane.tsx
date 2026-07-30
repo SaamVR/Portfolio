@@ -5,28 +5,49 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  ArrowUpRight,
   BarChart3,
+  Building2,
+  CalendarPlus,
   CheckCircle2,
   Clock3,
   CreditCard,
+  DollarSign,
+  Eye,
+  FileImage,
   FileText,
+  Filter,
+  FolderArchive,
+  HardDrive,
+  Image,
+  Key,
   Layers3,
   Loader2,
+  Lock,
   Mail,
   Package,
+  Receipt,
   Search,
   Shield,
+  ShieldAlert,
   ShoppingCart,
   Sparkles,
   Store,
+  Trash2,
+  UserCheck,
   Users,
   Wand2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeEmail, resolveEffectiveFeatures, getLifecycleStatusForDate, getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
+import { getPlatformPermissions, PLATFORM_ROLES, type PlatformRole } from "@/lib/platform/rbac";
+import { logPlatformAuditAction, type PlatformAuditLogRow } from "@/lib/platform/audit-logger";
+import { normalizeMediaLibrary, type MediaLibraryAsset } from "@/lib/media-library";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { cn } from "@/lib/utils";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
+import { PlanTemplateMatrixCard } from "@/components/admin/PlanTemplateMatrixCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,8 +57,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Link, Navigate, useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   buildPlatformOverviewStats,
   buildStorePlatformSummaries,
@@ -51,6 +74,14 @@ import { downloadAnalyticsCsv } from "@/lib/analytics/export";
 import { getAnalyticsPresetLabel, resolveAnalyticsDateRange, type AnalyticsDatePreset } from "@/lib/analytics/date-range";
 import StoreBackupManager from "@/components/admin/StoreBackupManager";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+
+const PLATFORM_ROLE_COLORS: Record<string, string> = {
+  super_admin: "border-primary text-primary bg-primary/10",
+  admin: "border-primary text-primary bg-primary/10",
+  billing_admin: "border-amber-500 text-amber-600 bg-amber-500/10",
+  support_agent: "border-blue-500 text-blue-600 bg-blue-500/10",
+  co_admin: "border-purple-500 text-purple-600 bg-purple-500/10",
+};
 
 type PlanRow = {
   id: string;
@@ -101,28 +132,33 @@ type PlatformData = {
   plans: PlanRow[];
   planFeatures: any[];
   stores: StoreRow[];
-  subscriptions: Array<{ store_id: string; plan_id: string | null; status: string | null }>;
+  subscriptions: Array<{ store_id: string; plan_id: string | null; status: string | null; trial_ends_at?: string | null }>;
   storeOverrides: any[];
   emailOverrides: any[];
   lifecycleStates: Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>;
   lifecycleEvents: any[];
   orders: OrderRow[];
-  products: Array<{ id: string; store_id: string }>;
+  products: Array<{ id: string; store_id: string; images?: any; thumbnail?: string | null; variants?: any; description?: string | null }>;
   pages: Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>;
-  blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>;
+  blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null; content?: any }>;
+  siteSettings: Array<{ store_id: string; key: string; value: any }>;
   memberships: Array<{ store_id: string; user_id: string; role: string }>;
   messages: Array<{ id: string; store_id: string; is_read: boolean | null }>;
   reviews: Array<{ id: string; store_id: string; status: string | null }>;
   emailEvents: Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>;
   invoices: any[];
   analyticsEvents: AnalyticsReportEvent[];
+  auditLogs: PlatformAuditLogRow[];
+  userRoles: Array<{ id: string; user_id: string; role: string; created_at: string }>;
 };
 
 export default function PlatformControlPlane() {
-  const { session, platformRole, user, activeStoreId, loading: authLoading, refreshRole, signOut } = useAuth();
+  const { session, platformRole, user, activeStoreId, loading: authLoading, refreshRole, signOut, setActiveStoreId } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedStoreId, setSelectedStoreId] = useState(activeStoreId ?? "");
   const [storeSearch, setStoreSearch] = useState("");
+  const [impersonatingStoreId, setImpersonatingStoreId] = useState<string | null>(null);
   const [exceptionEmail, setExceptionEmail] = useState("");
   const [exceptionFeatureKey, setExceptionFeatureKey] = useState("backup_import");
   const [exceptionEnabled, setExceptionEnabled] = useState(true);
@@ -139,6 +175,229 @@ export default function PlatformControlPlane() {
   const [analyticsCustomStart, setAnalyticsCustomStart] = useState("");
   const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState("");
   const [billingReviewActionId, setBillingReviewActionId] = useState<string | null>(null);
+
+  const permissions = getPlatformPermissions(platformRole);
+
+  const handleImpersonateStore = async (store: { id: string; name: string; slug: string }) => {
+    if (!permissions.canImpersonateMerchant) {
+      toast.error("You do not have permission to impersonate merchant stores.");
+      return;
+    }
+
+    try {
+      setImpersonatingStoreId(store.id);
+
+      if (typeof document !== "undefined") {
+        document.cookie = `ezcomo_impersonate_store_id=${encodeURIComponent(store.id)}; path=/; max-age=7200; SameSite=Lax`;
+      }
+
+      const sessionData = {
+        storeId: store.id,
+        storeName: store.name,
+        storeSlug: store.slug,
+        impersonatorEmail: user?.email ?? "Operator",
+        impersonatorRole: platformRole,
+        startedAt: new Date().toISOString(),
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ezcomo_impersonation_session", JSON.stringify(sessionData));
+      }
+
+      if (setActiveStoreId) {
+        setActiveStoreId(store.id);
+      }
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "impersonate_merchant",
+        targetType: "store",
+        targetId: store.id,
+        details: {
+          store_name: store.name,
+          store_slug: store.slug,
+          operator_role: platformRole,
+        },
+      });
+
+      toast.success(`Impersonation mode active for ${store.name}. Redirecting...`);
+      navigate(`/admin?storeId=${encodeURIComponent(store.id)}`);
+    } catch (err) {
+      console.error("Impersonation error:", err);
+      toast.error("Failed to establish impersonation session.");
+    } finally {
+      setImpersonatingStoreId(null);
+    }
+  };
+
+  // Advanced Billing & Subscription State
+  const [isExtendTrialDialogOpen, setIsExtendTrialDialogOpen] = useState(false);
+  const [extendTrialStoreId, setExtendTrialStoreId] = useState("");
+  const [extendTrialDays, setExtendTrialDays] = useState(14);
+  const [extendTrialNote, setExtendTrialNote] = useState("");
+  const [isSubmittingExtendTrial, setIsSubmittingExtendTrial] = useState(false);
+
+  const [isManualOverrideDialogOpen, setIsManualOverrideDialogOpen] = useState(false);
+  const [manualOverrideStoreId, setManualOverrideStoreId] = useState("");
+  const [manualOverridePlanId, setManualOverridePlanId] = useState("pro");
+  const [manualOverrideReason, setManualOverrideReason] = useState("Platform Testing & VIP Exception");
+  const [isSubmittingManualOverride, setIsSubmittingManualOverride] = useState(false);
+
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [ledgerStatusFilter, setLedgerStatusFilter] = useState("all");
+  const [ledgerMethodFilter, setLedgerMethodFilter] = useState("all");
+
+  // Asset & Storage Telemetry State
+  const [storageSearch, setStorageSearch] = useState("");
+  const [storageStatusFilter, setStorageStatusFilter] = useState("all");
+  const [isPurgeDialogOpen, setIsPurgeDialogOpen] = useState(false);
+  const [purgeTargetStoreId, setPurgeTargetStoreId] = useState("");
+  const [isPurgingMedia, setIsPurgingMedia] = useState(false);
+
+  const handleExtendTrial = async () => {
+    if (!extendTrialStoreId) {
+      toast.error("Please select a store to extend trial.");
+      return;
+    }
+    if (!permissions.canManageSubscriptions && !permissions.isSuperAdmin && !permissions.isBillingAdmin) {
+      toast.error("You do not have permission to extend trials.");
+      return;
+    }
+
+    try {
+      setIsSubmittingExtendTrial(true);
+      const targetStore = data?.stores?.find((s) => s.id === extendTrialStoreId);
+      const existingSub = data?.subscriptions?.find((s) => s.store_id === extendTrialStoreId);
+
+      const currentTrialEnd = existingSub?.trial_ends_at ? new Date(existingSub.trial_ends_at) : new Date();
+      const baseDate = currentTrialEnd > new Date() ? currentTrialEnd : new Date();
+      const newTrialEndsAt = new Date(baseDate.getTime() + extendTrialDays * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error } = await (supabase as any)
+        .from("store_subscriptions")
+        .upsert(
+          {
+            store_id: extendTrialStoreId,
+            plan_id: existingSub?.plan_id || "free",
+            status: "trialing",
+            trial_ends_at: newTrialEndsAt,
+            current_period_ends_at: newTrialEndsAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "store_id" }
+        );
+
+      if (error) throw error;
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "extend_trial",
+        targetType: "store",
+        targetId: extendTrialStoreId,
+        details: {
+          store_name: targetStore?.name,
+          days_added: extendTrialDays,
+          new_trial_ends_at: newTrialEndsAt,
+          operator_note: extendTrialNote,
+        },
+      });
+
+      toast.success(`Granted +${extendTrialDays} days trial access to ${targetStore?.name || "store"}.`);
+      setIsExtendTrialDialogOpen(false);
+      setExtendTrialStoreId("");
+      setExtendTrialNote("");
+      await queryClient.invalidateQueries({ queryKey: ["platform-control-plane"] });
+    } catch (err: any) {
+      console.error("Extend trial error:", err);
+      toast.error(err?.message || "Failed to extend trial period.");
+    } finally {
+      setIsSubmittingExtendTrial(false);
+    }
+  };
+
+  const handleManualPlanOverride = async () => {
+    if (!manualOverrideStoreId) {
+      toast.error("Please select a store to override.");
+      return;
+    }
+    if (!permissions.canManageSubscriptions && !permissions.isSuperAdmin && !permissions.isBillingAdmin) {
+      toast.error("You do not have permission to execute plan overrides.");
+      return;
+    }
+
+    try {
+      setIsSubmittingManualOverride(true);
+      const targetStore = data?.stores?.find((s) => s.id === manualOverrideStoreId);
+      const targetPlan = data?.plans?.find((p) => p.id === manualOverridePlanId);
+
+      const { error: subError } = await (supabase as any)
+        .from("store_subscriptions")
+        .upsert(
+          {
+            store_id: manualOverrideStoreId,
+            plan_id: manualOverridePlanId,
+            status: "active",
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "store_id" }
+        );
+
+      if (subError) throw subError;
+
+      const invoiceId = `inv_override_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      await (supabase as any).from("store_invoices").insert({
+        id: invoiceId,
+        store_id: manualOverrideStoreId,
+        plan_id: manualOverridePlanId,
+        amount: 0,
+        currency: targetPlan?.currency_code || "BDT",
+        status: "paid",
+        payment_method: "manual_override",
+        provider: "platform_admin",
+        billing_interval: "monthly",
+        paid_at: new Date().toISOString(),
+        provider_invoice_id: `OVERRIDE-${manualOverrideReason.slice(0, 15).toUpperCase().replace(/\s+/g, "_")}`,
+      });
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "manual_plan_override",
+        targetType: "store",
+        targetId: manualOverrideStoreId,
+        details: {
+          store_name: targetStore?.name,
+          plan_id: manualOverridePlanId,
+          plan_name: targetPlan?.name,
+          reason: manualOverrideReason,
+        },
+      });
+
+      toast.success(`Store "${targetStore?.name}" upgraded to ${targetPlan?.name || manualOverridePlanId} (Manual Override Active).`);
+      setIsManualOverrideDialogOpen(false);
+      setManualOverrideStoreId("");
+      await queryClient.invalidateQueries({ queryKey: ["platform-control-plane"] });
+    } catch (err: any) {
+      console.error("Manual plan override error:", err);
+      toast.error(err?.message || "Failed to override store plan.");
+    } finally {
+      setIsSubmittingManualOverride(false);
+    }
+  };
+
+  // Security & Audit Trail State
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const [auditRoleFilter, setAuditRoleFilter] = useState("all");
+  const [selectedAuditLog, setSelectedAuditLog] = useState<PlatformAuditLogRow | null>(null);
+
+  // Platform Role Assignment State
+  const [targetAssignUserId, setTargetAssignUserId] = useState("");
+  const [targetAssignRole, setTargetAssignRole] = useState<NonNullable<PlatformRole>>("support_agent");
 
   // Plan creation / editing state
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
@@ -215,12 +474,15 @@ export default function PlatformControlPlane() {
         { data: products },
         { data: pages },
         { data: blocks },
+        { data: siteSettings },
         { data: memberships },
         { data: messages },
         { data: reviews },
         { data: emailEvents },
         { data: invoices },
         { data: analyticsEvents },
+        { data: auditLogs },
+        { data: userRoles },
       ] = await Promise.all([
         (supabase as any).from("cms_features").select("*").order("category").order("name"),
         (supabase as any).from("cms_plans").select("id, name, description, monthly_price, annual_price, annual_discount_percentage, currency_code, store_limit, trial_days, contact_only, sort_order, is_active").order("sort_order"),
@@ -232,9 +494,10 @@ export default function PlatformControlPlane() {
         (supabase as any).from("store_lifecycle_states").select("*").order("updated_at", { ascending: false }),
         (supabase as any).from("store_lifecycle_events").select("*").order("created_at", { ascending: false }).limit(50),
         (supabase as any).from("orders").select("id, store_id, status, total, created_at"),
-        (supabase as any).from("products").select("id, store_id"),
+        (supabase as any).from("products").select("id, store_id, images, thumbnail, variants, description"),
         (supabase as any).from("store_pages").select("id, store_id, slug, is_homepage"),
-        (supabase as any).from("store_page_blocks").select("id, store_id, page_id, is_visible"),
+        (supabase as any).from("store_page_blocks").select("id, store_id, page_id, is_visible, content"),
+        (supabase as any).from("site_settings").select("store_id, key, value"),
         (supabase as any).from("store_memberships").select("store_id, user_id, role"),
         (supabase as any).from("contact_messages").select("id, store_id, is_read"),
         (supabase as any).from("product_reviews").select("id, store_id, status"),
@@ -246,6 +509,8 @@ export default function PlatformControlPlane() {
           .gte("event_timestamp", new Date(Date.now() - (1000 * 60 * 60 * 24 * 30)).toISOString())
           .order("event_timestamp", { ascending: false })
           .limit(10000),
+        (supabase as any).from("platform_audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+        (supabase as any).from("user_roles").select("id, user_id, role, created_at").order("created_at", { ascending: false }),
       ]);
 
       return {
@@ -253,24 +518,27 @@ export default function PlatformControlPlane() {
         plans: (plans ?? []) as PlanRow[],
         planFeatures: (planFeatures ?? []) as any[],
         stores: (stores ?? []) as StoreRow[],
-        subscriptions: (subscriptions ?? []) as Array<{ store_id: string; plan_id: string | null; status: string | null }>,
+        subscriptions: (subscriptions ?? []) as Array<{ store_id: string; plan_id: string | null; status: string | null; trial_ends_at?: string | null }>,
         storeOverrides: (storeOverrides ?? []) as any[],
         emailOverrides: (emailOverrides ?? []) as any[],
         lifecycleStates: (lifecycleStates ?? []) as Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>,
         lifecycleEvents: (lifecycleEvents ?? []) as any[],
         orders: (orders ?? []) as OrderRow[],
-        products: (products ?? []) as Array<{ id: string; store_id: string }>,
+        products: (products ?? []) as Array<{ id: string; store_id: string; images?: any; thumbnail?: string | null; variants?: any; description?: string | null }>,
         pages: (pages ?? []) as Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>,
-        blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>,
+        blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null; content?: any }>,
+        siteSettings: (siteSettings ?? []) as Array<{ store_id: string; key: string; value: any }>,
         memberships: (memberships ?? []) as Array<{ store_id: string; user_id: string; role: string }>,
         messages: (messages ?? []) as Array<{ id: string; store_id: string; is_read: boolean | null }>,
         reviews: (reviews ?? []) as Array<{ id: string; store_id: string; status: string | null }>,
         emailEvents: (emailEvents ?? []) as Array<{ id: string; store_id: string | null; status: string | null; template_name: string | null; recipient: string | null; created_at: string }>,
         invoices: (invoices ?? []) as any[],
         analyticsEvents: (analyticsEvents ?? []) as AnalyticsReportEvent[],
+        auditLogs: (auditLogs ?? []) as PlatformAuditLogRow[],
+        userRoles: (userRoles ?? []) as Array<{ id: string; user_id: string; role: string; created_at: string }>,
       };
     },
-    enabled: platformRole === "admin",
+    enabled: permissions.canAccessControlPlane,
   });
 
   const summaries = useMemo<StorePlatformSummary[]>(() => (data ? buildStorePlatformSummaries(data as PlatformAnalyticsInput) : []), [data]);
@@ -287,6 +555,226 @@ export default function PlatformControlPlane() {
         .some((value) => String(value).toLowerCase().includes(query)),
     );
   }, [storeSearch, summaries]);
+
+  const filteredInvoices = useMemo(() => {
+    return (data?.invoices || []).filter((inv: any) => {
+      const storeName = inv.stores?.name?.toLowerCase() || "";
+      const storeSlug = inv.stores?.slug?.toLowerCase() || "";
+      const invoiceId = inv.id?.toLowerCase() || "";
+      const trxId = inv.provider_invoice_id?.toLowerCase() || "";
+      const search = ledgerSearch.toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        storeName.includes(search) ||
+        storeSlug.includes(search) ||
+        invoiceId.includes(search) ||
+        trxId.includes(search);
+
+      const matchesStatus = ledgerStatusFilter === "all" || inv.status === ledgerStatusFilter;
+      const matchesMethod = ledgerMethodFilter === "all" || (inv.payment_method || "manual_bkash") === ledgerMethodFilter;
+
+      return matchesSearch && matchesStatus && matchesMethod;
+    });
+  }, [data?.invoices, ledgerSearch, ledgerStatusFilter, ledgerMethodFilter]);
+
+  const storageTelemetry = useMemo(() => {
+    if (!data?.stores) {
+      return {
+        storeMetrics: [],
+        totalPlatformBytes: 0,
+        totalPlatformMb: 0,
+        totalPlatformAssets: 0,
+        totalOrphanedAssets: 0,
+        totalOrphanedBytes: 0,
+        totalOrphanedMb: 0,
+        highUsageStoresCount: 0,
+      };
+    }
+
+    const PLAN_QUOTAS_MB: Record<string, number> = {
+      free: 500,
+      starter: 2048,
+      pro: 10240,
+      advanced: 25600,
+      enterprise: 51200,
+    };
+
+    let totalPlatformBytes = 0;
+    let totalPlatformAssets = 0;
+    let totalOrphanedAssets = 0;
+    let totalOrphanedBytes = 0;
+    let highUsageStoresCount = 0;
+
+    const storeMetrics = data.stores.map((store) => {
+      const sub = data.subscriptions.find((s) => s.store_id === store.id);
+      const plan = data.plans.find((p) => p.id === sub?.plan_id);
+      const planKey = (plan?.id || "free").toLowerCase();
+      const quotaMb = PLAN_QUOTAS_MB[planKey] || PLAN_QUOTAS_MB.free;
+
+      const mediaSetting = data.siteSettings?.find((s) => s.store_id === store.id && s.key === "media_library");
+      const assets: MediaLibraryAsset[] = normalizeMediaLibrary(mediaSetting?.value);
+
+      const storeProducts = data.products?.filter((p) => p.store_id === store.id) || [];
+      const storeBlocks = data.blocks?.filter((b) => b.store_id === store.id) || [];
+      const storeSettings = data.siteSettings?.filter((s) => s.store_id === store.id && s.key !== "media_library") || [];
+
+      const combinedRefs = (
+        JSON.stringify(storeProducts) +
+        JSON.stringify(storeBlocks) +
+        JSON.stringify(storeSettings)
+      ).toLowerCase();
+
+      const orphanedAssets: MediaLibraryAsset[] = [];
+      let storeBytes = 0;
+      let storeOrphanedBytes = 0;
+
+      assets.forEach((asset) => {
+        const assetSize = asset.bytes && asset.bytes > 0 ? asset.bytes : 358400; // ~350 KB default
+        storeBytes += assetSize;
+
+        const urlMatch = asset.url ? combinedRefs.includes(asset.url.toLowerCase()) : false;
+        const publicIdMatch = asset.publicId ? combinedRefs.includes(asset.publicId.toLowerCase()) : false;
+        const filenameMatch = asset.originalFilename ? combinedRefs.includes(asset.originalFilename.toLowerCase()) : false;
+
+        if (!urlMatch && !publicIdMatch && !filenameMatch) {
+          orphanedAssets.push(asset);
+          storeOrphanedBytes += assetSize;
+        }
+      });
+
+      const storeMb = storeBytes / (1024 * 1024);
+      const storeOrphanedMb = storeOrphanedBytes / (1024 * 1024);
+      const usagePercent = Math.min(100, Math.round((storeMb / quotaMb) * 100));
+
+      if (usagePercent >= 80) {
+        highUsageStoresCount++;
+      }
+
+      totalPlatformBytes += storeBytes;
+      totalPlatformAssets += assets.length;
+      totalOrphanedAssets += orphanedAssets.length;
+      totalOrphanedBytes += storeOrphanedBytes;
+
+      return {
+        storeId: store.id,
+        storeName: store.name,
+        storeSlug: store.slug,
+        planName: plan?.name || "Free Tier",
+        planId: planKey,
+        quotaMb,
+        totalAssets: assets.length,
+        totalBytes: storeBytes,
+        totalMb: Number(storeMb.toFixed(2)),
+        usagePercent,
+        isWarning: usagePercent >= 80 && usagePercent < 100,
+        isExceeded: usagePercent >= 100,
+        assets,
+        orphanedAssets,
+        orphanedCount: orphanedAssets.length,
+        orphanedBytes: storeOrphanedBytes,
+        orphanedMb: Number(storeOrphanedMb.toFixed(2)),
+      };
+    });
+
+    const totalPlatformMb = Number((totalPlatformBytes / (1024 * 1024)).toFixed(2));
+    const totalOrphanedMb = Number((totalOrphanedBytes / (1024 * 1024)).toFixed(2));
+
+    return {
+      storeMetrics,
+      totalPlatformBytes,
+      totalPlatformMb,
+      totalPlatformAssets,
+      totalOrphanedAssets,
+      totalOrphanedBytes,
+      totalOrphanedMb,
+      highUsageStoresCount,
+    };
+  }, [data]);
+
+  const filteredStorageMetrics = useMemo(() => {
+    return storageTelemetry.storeMetrics.filter((m) => {
+      const query = storageSearch.trim().toLowerCase();
+      const matchesSearch = !query || m.storeName.toLowerCase().includes(query) || m.storeSlug.toLowerCase().includes(query);
+
+      let matchesStatus = true;
+      if (storageStatusFilter === "warning") {
+        matchesStatus = m.isWarning || m.isExceeded;
+      } else if (storageStatusFilter === "exceeded") {
+        matchesStatus = m.isExceeded;
+      } else if (storageStatusFilter === "orphaned") {
+        matchesStatus = m.orphanedCount > 0;
+      } else if (storageStatusFilter === "normal") {
+        matchesStatus = !m.isWarning && !m.isExceeded;
+      }
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [storageTelemetry.storeMetrics, storageSearch, storageStatusFilter]);
+
+  const handlePurgeOrphanedMedia = async (targetStoreId?: string) => {
+    const storeIdToPurge = targetStoreId || purgeTargetStoreId;
+    if (!storeIdToPurge) {
+      toast.error("Please select a store to purge orphaned media.");
+      return;
+    }
+
+    const metric = storageTelemetry.storeMetrics.find((m) => m.storeId === storeIdToPurge);
+    if (!metric || metric.orphanedAssets.length === 0) {
+      toast.info("No orphaned media assets found for this store.");
+      return;
+    }
+
+    if (!permissions.canAccessControlPlane) {
+      toast.error("Operator permissions required to purge media assets.");
+      return;
+    }
+
+    try {
+      setIsPurgingMedia(true);
+      const orphanedIds = new Set(metric.orphanedAssets.map((a) => a.id));
+      const activeAssets = metric.assets.filter((a) => !orphanedIds.has(a.id));
+
+      const { error } = await (supabase as any).from("site_settings").upsert(
+        {
+          store_id: storeIdToPurge,
+          key: "media_library",
+          value: activeAssets,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "store_id,key" },
+      );
+
+      if (error) throw error;
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "purge_orphaned_media",
+        targetType: "store_media_storage",
+        targetId: storeIdToPurge,
+        details: {
+          store_name: metric.storeName,
+          store_slug: metric.storeSlug,
+          purged_count: metric.orphanedCount,
+          freed_mb: metric.orphanedMb,
+          remaining_asset_count: activeAssets.length,
+          operator_role: platformRole,
+        },
+      });
+
+      toast.success(`Purged ${metric.orphanedCount} orphaned image${metric.orphanedCount === 1 ? "" : "s"} from ${metric.storeName}, freeing ${metric.orphanedMb} MB.`);
+      setIsPurgeDialogOpen(false);
+      setPurgeTargetStoreId("");
+      await queryClient.invalidateQueries({ queryKey: ["platform-control-plane"] });
+    } catch (err: any) {
+      console.error("Purge media error:", err);
+      toast.error(err?.message || "Failed to purge orphaned media assets.");
+    } finally {
+      setIsPurgingMedia(false);
+    }
+  };
 
   const overview = useMemo(
     () => buildPlatformOverviewStats(summaries, data ?? { orders: [], products: [], plans: [] }),
@@ -384,7 +872,7 @@ export default function PlatformControlPlane() {
     );
   }
 
-  if (platformRole !== "admin") {
+  if (!permissions.canAccessControlPlane) {
     return <Navigate to="/admin" replace />;
   }
 
@@ -393,11 +881,77 @@ export default function PlatformControlPlane() {
     await queryClient.invalidateQueries({ queryKey: ["store-entitlements"] });
   };
 
+  const filteredAuditLogs = useMemo(() => {
+    const logs = data?.auditLogs ?? [];
+    const query = auditSearch.trim().toLowerCase();
+    return logs.filter((log) => {
+      const matchesQuery =
+        !query ||
+        [log.actor_email, log.actor_id, log.action, log.target_type, log.target_id]
+          .filter(Boolean)
+          .some((val) => String(val).toLowerCase().includes(query));
+
+      const matchesAction = auditActionFilter === "all" || log.action === auditActionFilter;
+      const matchesRole = auditRoleFilter === "all" || log.actor_role === auditRoleFilter;
+
+      return matchesQuery && matchesAction && matchesRole;
+    });
+  }, [auditActionFilter, auditRoleFilter, auditSearch, data?.auditLogs]);
+
+  const handleAssignUserRole = async (targetUserId: string, newRole: PlatformRole | null) => {
+    if (!permissions.canAssignPlatformRoles) {
+      toast.error("Super Admin permissions required to assign platform roles.");
+      return;
+    }
+    if (!targetUserId.trim()) {
+      toast.error("User ID is required.");
+      return;
+    }
+
+    try {
+      if (!newRole) {
+        const { error } = await (supabase as any)
+          .from("user_roles")
+          .delete()
+          .eq("user_id", targetUserId.trim());
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("user_roles")
+          .upsert(
+            { user_id: targetUserId.trim(), role: newRole, created_at: new Date().toISOString() },
+            { onConflict: "user_id" },
+          );
+        if (error) throw error;
+      }
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "update_user_platform_role",
+        targetType: "user_role",
+        targetId: targetUserId.trim(),
+        details: { target_user_id: targetUserId.trim(), assigned_role: newRole },
+      });
+
+      toast.success(`Platform role updated to ${newRole || "None"}`);
+      setTargetAssignUserId("");
+      await refreshAll();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update user role");
+    }
+  };
+
   const handlePlatformStoreDeleted = async () => {
     await refreshAll();
   };
 
   const togglePlanFeature = async (planId: string, featureKey: string, enabled: boolean) => {
+    if (!permissions.canModifyFeatureMatrix) {
+      toast.error("Super Admin permissions required to modify package feature matrix.");
+      return;
+    }
     const { error } = await (supabase as any).from("cms_plan_features").upsert(
       { plan_id: planId, feature_key: featureKey, enabled },
       { onConflict: "plan_id,feature_key" },
@@ -406,21 +960,47 @@ export default function PlatformControlPlane() {
       toast.error("Failed to update package feature.");
       return;
     }
+    await logPlatformAuditAction(supabase, {
+      actorId: user?.id,
+      actorEmail: user?.email,
+      actorRole: platformRole,
+      action: "update_plan_feature",
+      targetType: "plan_feature",
+      targetId: `${planId}:${featureKey}`,
+      details: { plan_id: planId, feature_key: featureKey, enabled },
+    });
     toast.success("Package feature updated.");
     await refreshAll();
   };
 
   const toggleFeatureCatalog = async (featureKey: string, patch: Record<string, unknown>) => {
+    if (!permissions.canModifyFeatureMatrix) {
+      toast.error("Super Admin permissions required to update feature catalog.");
+      return;
+    }
     const { error } = await (supabase as any).from("cms_features").update(patch).eq("key", featureKey);
     if (error) {
       toast.error("Failed to update feature catalog.");
       return;
     }
+    await logPlatformAuditAction(supabase, {
+      actorId: user?.id,
+      actorEmail: user?.email,
+      actorRole: platformRole,
+      action: "update_feature_catalog",
+      targetType: "feature",
+      targetId: featureKey,
+      details: patch,
+    });
     toast.success("Feature catalog updated.");
     await refreshAll();
   };
 
   const setStoreOverride = async (featureKey: string, enabled: boolean | null) => {
+    if (!permissions.canModifyFeatureMatrix) {
+      toast.error("Super Admin permissions required to modify store feature overrides.");
+      return;
+    }
     if (!selectedStore) return;
 
     if (enabled === null) {
@@ -429,6 +1009,15 @@ export default function PlatformControlPlane() {
         toast.error("Failed to clear store override.");
         return;
       }
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: "clear_store_feature_override",
+        targetType: "store_override",
+        targetId: `${selectedStore.id}:${featureKey}`,
+        details: { store_id: selectedStore.id, store_name: selectedStore.name, feature_key: featureKey },
+      });
       toast.success("Store override cleared.");
       await refreshAll();
       return;
@@ -447,11 +1036,24 @@ export default function PlatformControlPlane() {
       toast.error("Failed to save store override.");
       return;
     }
+    await logPlatformAuditAction(supabase, {
+      actorId: user?.id,
+      actorEmail: user?.email,
+      actorRole: platformRole,
+      action: "update_store_feature_override",
+      targetType: "store_override",
+      targetId: `${selectedStore.id}:${featureKey}`,
+      details: { store_id: selectedStore.id, store_name: selectedStore.name, feature_key: featureKey, enabled },
+    });
     toast.success("Store override updated.");
     await refreshAll();
   };
 
   const saveEmailException = async () => {
+    if (!permissions.canGrantFeatureException) {
+      toast.error("Super Admin permissions required to grant feature exceptions.");
+      return;
+    }
     const normalizedEmail = normalizeEmail(exceptionEmail);
     if (!normalizedEmail) {
       toast.error("Enter a valid email.");
@@ -470,17 +1072,45 @@ export default function PlatformControlPlane() {
       toast.error("Failed to save email override.");
       return;
     }
+    await logPlatformAuditAction(supabase, {
+      actorId: user?.id,
+      actorEmail: user?.email,
+      actorRole: platformRole,
+      action: "grant_email_exception",
+      targetType: "feature_exception",
+      targetId: normalizedEmail,
+      details: {
+        normalized_email: normalizedEmail,
+        feature_key: exceptionFeatureKey,
+        scope_store_id: exceptionScopeStoreId,
+        enabled: exceptionEnabled,
+        note: exceptionNote || null,
+      },
+    });
     toast.success("Email exception saved.");
     setExceptionNote("");
     await refreshAll();
   };
 
   const deleteEmailException = async (id: string) => {
+    if (!permissions.canGrantFeatureException) {
+      toast.error("Super Admin permissions required to remove feature exceptions.");
+      return;
+    }
     const { error } = await (supabase as any).from("user_email_feature_overrides").delete().eq("id", id);
     if (error) {
       toast.error("Failed to remove email override.");
       return;
     }
+    await logPlatformAuditAction(supabase, {
+      actorId: user?.id,
+      actorEmail: user?.email,
+      actorRole: platformRole,
+      action: "remove_email_exception",
+      targetType: "feature_exception",
+      targetId: id,
+      details: { id },
+    });
     toast.success("Email exception removed.");
     await refreshAll();
   };
@@ -507,6 +1137,10 @@ export default function PlatformControlPlane() {
   };
 
   const runLifecycleAction = async () => {
+    if (!permissions.canTriggerLifecycleActions) {
+      toast.error("Permissions required to trigger lifecycle actions.");
+      return;
+    }
     if (!selectedStore) return;
 
     try {
@@ -595,6 +1229,16 @@ export default function PlatformControlPlane() {
         await insertLifecycleEvent(selectedStore.id, "deleted", "Store marked deleted. Tenant-scoped data purge is ready for execution.", {});
       }
 
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: `lifecycle_${lifecycleAction}`,
+        targetType: "store",
+        targetId: selectedStore.id,
+        details: { store_id: selectedStore.id, store_name: selectedStore.name, action: lifecycleAction },
+      });
+
       toast.success("Lifecycle action completed.");
       await refreshAll();
     } catch (error) {
@@ -605,6 +1249,10 @@ export default function PlatformControlPlane() {
 
   const savePlan = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!permissions.canManagePlans) {
+      toast.error("Super Admin permissions required to manage plans & pricing.");
+      return;
+    }
     if (!planForm.id.trim() || !planForm.name.trim() || !planForm.description.trim()) {
       toast.error("Please fill in plan ID, name, and description");
       return;
@@ -642,6 +1290,16 @@ export default function PlatformControlPlane() {
       }
 
       if (error) throw error;
+
+      await logPlatformAuditAction(supabase, {
+        actorId: user?.id,
+        actorEmail: user?.email,
+        actorRole: platformRole,
+        action: editingPlan ? "update_plan_pricing" : "create_plan",
+        targetType: "plan",
+        targetId: payload.id,
+        details: payload,
+      });
 
       toast.success(editingPlan ? "Plan updated successfully!" : "Plan created successfully!");
       setIsPlanDialogOpen(false);
@@ -791,8 +1449,10 @@ export default function PlatformControlPlane() {
           <TabsTrigger value="stores" className="shrink-0">Merchants</TabsTrigger>
           <TabsTrigger value="plans" className="shrink-0">Plans</TabsTrigger>
           <TabsTrigger value="subscriptions" className="shrink-0">Subscriptions</TabsTrigger>
+          <TabsTrigger value="storage" className="shrink-0">Storage Telemetry</TabsTrigger>
           <TabsTrigger value="health" className="shrink-0">CMS Health</TabsTrigger>
           <TabsTrigger value="lifecycle" className="shrink-0">Lifecycle</TabsTrigger>
+          <TabsTrigger value="security" className="shrink-0">Security & Logs</TabsTrigger>
           <TabsTrigger value="activity" className="shrink-0">Activity</TabsTrigger>
         </TabsList>
 
@@ -1101,6 +1761,18 @@ export default function PlatformControlPlane() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {permissions.canImpersonateMerchant && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-700 font-medium flex items-center gap-1.5 shadow-sm"
+                          disabled={impersonatingStoreId === selectedStore.id}
+                          onClick={() => void handleImpersonateStore(selectedStore)}
+                        >
+                          <UserCheck className="h-4 w-4" />
+                          {impersonatingStoreId === selectedStore.id ? "Initializing..." : "Impersonate Store"}
+                        </Button>
+                      )}
                       <Button asChild variant="outline" size="sm">
                         <Link to={absoluteStoreUrl({ slug: selectedStore.slug, customDomain: selectedStore.custom_domain }, "/")}>View Storefront</Link>
                       </Button>
@@ -1236,19 +1908,69 @@ export default function PlatformControlPlane() {
               </CardContent>
             </Card>
           </div>
+
+          <PlanTemplateMatrixCard
+            plans={data.plans}
+            planFeatures={data.planFeatures}
+            onTogglePlanFeature={togglePlanFeature}
+            canModify={permissions.canModifyFeatureMatrix}
+          />
         </TabsContent>
 
-        <TabsContent value="subscriptions">
+        <TabsContent value="subscriptions" className="space-y-6">
+          {/* Quick Operational Toolbar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div>
+              <h3 className="font-semibold text-foreground text-base flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <span>Subscription & Billing Operations</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Manage trial extensions, manual plan overrides, and review financial transaction logs.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-primary/30 hover:bg-primary/5 text-xs"
+                disabled={!permissions.canManageSubscriptions && !permissions.isSuperAdmin && !permissions.isBillingAdmin}
+                onClick={() => {
+                  setExtendTrialStoreId(data?.stores?.[0]?.id || "");
+                  setIsExtendTrialDialogOpen(true);
+                }}
+              >
+                <CalendarPlus className="h-4 w-4 text-primary" />
+                <span>Extend Trial</span>
+              </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-primary to-primary/90 text-xs shadow"
+                disabled={!permissions.canManageSubscriptions && !permissions.isSuperAdmin && !permissions.isBillingAdmin}
+                onClick={() => {
+                  setManualOverrideStoreId(data?.stores?.[0]?.id || "");
+                  setIsManualOverrideDialogOpen(true);
+                }}
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Manual Plan Override</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Distribution & Needs Attention Cards */}
           <div className="grid gap-6 xl:grid-cols-2">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Subscription Distribution</CardTitle>
+                <CardTitle className="text-base font-semibold">Subscription Distribution</CardTitle>
                 <CardDescription>Current subscription status across all tenant stores.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {Array.from(new Set(summaries.map((store) => store.subscriptionStatus))).map((status) => (
                   <div key={status} className="flex items-center justify-between rounded-lg border border-border p-3">
-                    <span className="text-sm font-medium text-foreground">{status}</span>
+                    <span className="text-sm font-medium text-foreground capitalize">{status}</span>
                     <Badge variant="secondary">{summaries.filter((store) => store.subscriptionStatus === status).length}</Badge>
                   </div>
                 ))}
@@ -1257,7 +1979,7 @@ export default function PlatformControlPlane() {
 
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Needs Billing Attention</CardTitle>
+                <CardTitle className="text-base font-semibold">Needs Billing Attention</CardTitle>
                 <CardDescription>Stores without active or trialing subscriptions.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1268,52 +1990,73 @@ export default function PlatformControlPlane() {
                       <p className="text-sm font-medium text-foreground">{store.name}</p>
                       <p className="text-xs text-muted-foreground">{store.planName} - {store.subscriptionStatus}</p>
                     </div>
-                    <Badge variant="outline">Follow up</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setExtendTrialStoreId(store.id);
+                        setIsExtendTrialDialogOpen(true);
+                      }}
+                    >
+                      Extend Trial
+                    </Button>
                   </div>
                 ))}
               </CardContent>
             </Card>
           </div>
 
-          <Card className="border-border mt-6">
-            <CardHeader>
-              <CardTitle>Manual bKash Verification Requests</CardTitle>
-              <CardDescription>Review and verify manual bKash &quot;Send Money&quot; transaction submissions from store owners.</CardDescription>
+          {/* Manual bKash Verification Requests */}
+          <Card className="border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-primary" />
+                  <span>Manual bKash Verification Requests</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Review and verify manual bKash &quot;Send Money&quot; transaction submissions from store owners.
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="font-mono">
+                {pendingManualInvoices.length} Pending
+              </Badge>
             </CardHeader>
             <CardContent>
               {pendingManualInvoices.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No pending manual payment verification requests.</p>
+                <p className="text-sm text-muted-foreground py-2">No pending manual payment verification requests.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-border text-muted-foreground">
-                        <th className="pb-3 pt-2 font-medium">Store</th>
-                        <th className="pb-3 pt-2 font-medium">Plan Package</th>
-                        <th className="pb-3 pt-2 font-medium">Amount</th>
-                        <th className="pb-3 pt-2 font-medium">Transaction ID (TrxID)</th>
-                        <th className="pb-3 pt-2 font-medium">Submitted At</th>
-                        <th className="pb-3 pt-2 font-medium text-right">Actions</th>
+                      <tr className="border-b border-border text-muted-foreground text-xs uppercase font-medium">
+                        <th className="pb-3 pt-2">Store</th>
+                        <th className="pb-3 pt-2">Plan Package</th>
+                        <th className="pb-3 pt-2">Amount</th>
+                        <th className="pb-3 pt-2">Transaction ID (TrxID)</th>
+                        <th className="pb-3 pt-2">Submitted At</th>
+                        <th className="pb-3 pt-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {pendingManualInvoices.map((invoice: any) => (
-                        <tr key={invoice.id} className="text-foreground">
+                        <tr key={invoice.id} className="text-foreground text-xs">
                           <td className="py-3 font-medium">
                             {invoice.stores?.name || "Unknown Store"}
-                            <span className="block text-xs font-normal text-muted-foreground">{invoice.stores?.slug}</span>
+                            <span className="block text-[11px] font-normal text-muted-foreground">{invoice.stores?.slug}</span>
                           </td>
-                          <td className="py-3 font-mono text-xs">{invoice.plan_id}</td>
+                          <td className="py-3 font-mono">{invoice.plan_id}</td>
                           <td className="py-3 font-semibold">BDT {invoice.amount}</td>
-                          <td className="py-3 font-mono text-xs text-primary font-bold">{invoice.provider_invoice_id}</td>
-                          <td className="py-3 text-xs text-muted-foreground">
+                          <td className="py-3 font-mono text-primary font-bold">{invoice.provider_invoice_id}</td>
+                          <td className="py-3 text-muted-foreground">
                             {invoice.created_at ? new Date(invoice.created_at).toLocaleString() : "N/A"}
                           </td>
                           <td className="py-3 text-right">
                             <div className="flex justify-end gap-2">
                               <Button
                                 size="sm"
-                                className="bg-green-600 text-white hover:bg-green-700 h-8 px-3"
+                                className="bg-green-600 text-white hover:bg-green-700 h-8 px-3 text-xs"
                                 disabled={billingReviewActionId === invoice.id}
                                 onClick={() => {
                                   void reviewManualInvoice(invoice, "approve");
@@ -1324,7 +2067,7 @@ export default function PlatformControlPlane() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-destructive text-destructive hover:bg-destructive/10 h-8 px-3"
+                                className="border-destructive text-destructive hover:bg-destructive/10 h-8 px-3 text-xs"
                                 disabled={billingReviewActionId === invoice.id}
                                 onClick={() => {
                                   void reviewManualInvoice(invoice, "reject");
@@ -1333,6 +2076,133 @@ export default function PlatformControlPlane() {
                                 {billingReviewActionId === invoice.id ? "Working..." : "Reject"}
                               </Button>
                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Platform Billing Ledger */}
+          <Card className="border-border">
+            <CardHeader className="space-y-3 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    <span>Platform Financial Ledger & History</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    Centralized audit trail of all store invoices, bKash payments, and manual plan override entries.
+                  </CardDescription>
+                </div>
+
+                <Badge variant="secondary" className="font-mono text-xs self-start sm:self-auto">
+                  {filteredInvoices.length} {filteredInvoices.length === 1 ? "Record" : "Records"}
+                </Badge>
+              </div>
+
+              {/* Filters Toolbar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by store, invoice ID, TrxID..."
+                    value={ledgerSearch}
+                    onChange={(e) => setLedgerSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <select
+                    value={ledgerStatusFilter}
+                    onChange={(e) => setLedgerStatusFilter(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9"
+                  >
+                    <option value="all">All Payment Statuses</option>
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <select
+                    value={ledgerMethodFilter}
+                    onChange={(e) => setLedgerMethodFilter(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9"
+                  >
+                    <option value="all">All Payment Methods</option>
+                    <option value="manual_override">Manual Override ($0)</option>
+                    <option value="manual_bkash">Manual bKash</option>
+                    <option value="bkash">bKash Gateway</option>
+                    <option value="stripe">Stripe</option>
+                  </select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredInvoices.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-xs">
+                  No billing history matches the selected search/filters.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground uppercase font-medium">
+                        <th className="pb-3 pt-2">Date & Time</th>
+                        <th className="pb-3 pt-2">Store</th>
+                        <th className="pb-3 pt-2">Plan</th>
+                        <th className="pb-3 pt-2">Amount</th>
+                        <th className="pb-3 pt-2">Method</th>
+                        <th className="pb-3 pt-2">Ref / TrxID</th>
+                        <th className="pb-3 pt-2 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredInvoices.map((inv: any) => (
+                        <tr key={inv.id} className="text-foreground">
+                          <td className="py-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                            {inv.created_at ? new Date(inv.created_at).toLocaleString() : "N/A"}
+                          </td>
+                          <td className="py-3 font-medium">
+                            {inv.stores?.name || "Unknown Store"}
+                            <span className="block text-[11px] font-normal text-muted-foreground">{inv.stores?.slug}</span>
+                          </td>
+                          <td className="py-3 font-mono capitalize">{inv.plan_id}</td>
+                          <td className="py-3 font-semibold">
+                            {inv.amount === 0 ? (
+                              <span className="text-muted-foreground">Free ($0)</span>
+                            ) : (
+                              <span>{inv.currency || "BDT"} {inv.amount}</span>
+                            )}
+                          </td>
+                          <td className="py-3">
+                            <Badge variant="outline" className="font-mono text-[10px] capitalize">
+                              {inv.payment_method?.replace("_", " ") || "manual_bkash"}
+                            </Badge>
+                          </td>
+                          <td className="py-3 font-mono text-[11px] text-primary">
+                            {inv.provider_invoice_id || inv.id?.slice(0, 12)}
+                          </td>
+                          <td className="py-3 text-right">
+                            <Badge
+                              className={cn(
+                                "font-mono text-[10px] uppercase",
+                                inv.status === "paid" && "bg-green-600/10 text-green-600 border-green-600/30",
+                                inv.status === "pending" && "bg-amber-600/10 text-amber-600 border-amber-600/30",
+                                inv.status === "rejected" && "bg-red-600/10 text-red-600 border-red-600/30"
+                              )}
+                              variant="outline"
+                            >
+                              {inv.status}
+                            </Badge>
                           </td>
                         </tr>
                       ))}
@@ -1601,7 +2471,577 @@ export default function PlatformControlPlane() {
             </div>
           </div>
         </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          {/* Security & Access Overview Header Cards */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="border-border bg-card/60">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                  <span>Current Operator Context</span>
+                  <Shield className="h-4 w-4 text-primary" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground text-sm truncate">{user?.email}</span>
+                  <Badge variant="outline" className={cn("capitalize font-semibold", PLATFORM_ROLE_COLORS[platformRole || ""] || "")}>
+                    {platformRole?.replace("_", " ") || "No Role"}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {permissions.canModifyFeatureMatrix && (
+                    <Badge variant="secondary" className="text-[10px]">Feature Matrix</Badge>
+                  )}
+                  {permissions.canManagePlans && (
+                    <Badge variant="secondary" className="text-[10px]">Plans & Pricing</Badge>
+                  )}
+                  {permissions.canReviewManualInvoices && (
+                    <Badge variant="secondary" className="text-[10px]">Manual Billing</Badge>
+                  )}
+                  {permissions.canDeleteStores && (
+                    <Badge variant="secondary" className="text-[10px]">Store Deletion</Badge>
+                  )}
+                  {permissions.canAssignPlatformRoles && (
+                    <Badge variant="secondary" className="text-[10px]">Assign Roles</Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card/60">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                  <span>Audit Trail Volume</span>
+                  <FileText className="h-4 w-4 text-primary" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-heading text-3xl font-bold text-foreground">{data?.auditLogs.length ?? 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">Captured operator audit events in platform_audit_logs</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card/60">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                  <span>Registered Platform Operators</span>
+                  <Building2 className="h-4 w-4 text-primary" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-heading text-3xl font-bold text-foreground">{data?.userRoles.length ?? 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">Users assigned explicit RBAC platform roles</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Role Assignment & Platform Access Section */}
+          {permissions.canAssignPlatformRoles && (
+            <Card className="border-border bg-card/60">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span>Platform Operator Role Management</span>
+                </CardTitle>
+                <CardDescription>
+                  Assign or modify granular platform roles for team members. Changes take effect on next token refresh or session navigation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end rounded-xl border border-border bg-background/50 p-4">
+                  <div className="flex-1 space-y-1.5">
+                    <Label htmlFor="assign-user-id">User ID (Supabase Auth UUID)</Label>
+                    <Input
+                      id="assign-user-id"
+                      value={targetAssignUserId}
+                      onChange={(e) => setTargetAssignUserId(e.target.value)}
+                      placeholder="e.g. 98b50e2d-dc99-43ef-b387-052637738f61"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                  <div className="w-full sm:w-52 space-y-1.5">
+                    <Label htmlFor="assign-role-select">Platform Role</Label>
+                    <select
+                      id="assign-role-select"
+                      value={targetAssignRole}
+                      onChange={(e) => setTargetAssignRole(e.target.value as NonNullable<PlatformRole>)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {PLATFORM_ROLES.map((r) => (
+                        <option key={r.key} value={r.key}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => void handleAssignUserRole(targetAssignUserId, targetAssignRole)}
+                    className="gap-2"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Assign Role
+                  </Button>
+                </div>
+
+                {/* Assigned Roles List */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-foreground">Active Platform Roles ({data?.userRoles.length ?? 0})</h4>
+                  {data?.userRoles.length === 0 ? (
+                    <AdminEmptyState
+                      icon={Shield}
+                      title="No explicit user roles assigned"
+                      description="Default fallback assigns binary legacy admin rights to master accounts."
+                      compact
+                    />
+                  ) : (
+                    <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+                      {data?.userRoles.map((ur) => (
+                        <div key={ur.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 bg-background/30 hover:bg-background/60 transition-colors">
+                          <div className="space-y-0.5">
+                            <p className="font-mono text-xs text-foreground font-medium">{ur.user_id}</p>
+                            <p className="text-[11px] text-muted-foreground">Assigned: {new Date(ur.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className={cn("capitalize font-semibold", PLATFORM_ROLE_COLORS[ur.role || ""] || "")}>
+                              {ur.role.replace("_", " ")}
+                            </Badge>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void handleAssignUserRole(ur.user_id, null)}
+                              className="text-destructive hover:text-destructive text-xs h-8"
+                            >
+                              Revoke
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Audit Logs Explorer & Search */}
+          <Card className="border-border bg-card/60">
+            <CardHeader>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock3 className="h-5 w-5 text-primary" />
+                    <span>Platform Audit Logs</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Immutable operator audit trail recording sensitive administrative changes across all stores and global settings.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search actor, action, target..."
+                      value={auditSearch}
+                      onChange={(e) => setAuditSearch(e.target.value)}
+                      className="pl-9 text-xs"
+                    />
+                  </div>
+                  <select
+                    value={auditRoleFilter}
+                    onChange={(e) => setAuditRoleFilter(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs focus:outline-none"
+                  >
+                    <option value="all">All Roles</option>
+                    {PLATFORM_ROLES.map((r) => (
+                      <option key={r.key} value={r.key}>{r.label}</option>
+                    ))}
+                    <option value="admin">Legacy Admin</option>
+                  </select>
+                  <select
+                    value={auditActionFilter}
+                    onChange={(e) => setAuditActionFilter(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs focus:outline-none"
+                  >
+                    <option value="all">All Actions</option>
+                    <option value="approve_invoice">Approve Invoice</option>
+                    <option value="reject_invoice">Reject Invoice</option>
+                    <option value="delete_store">Delete Store</option>
+                    <option value="update_plan_pricing">Update Plan Pricing</option>
+                    <option value="create_plan">Create Plan</option>
+                    <option value="update_plan_feature">Update Plan Feature</option>
+                    <option value="update_feature_catalog">Update Catalog</option>
+                    <option value="update_store_feature_override">Store Feature Override</option>
+                    <option value="grant_email_exception">Grant Email Exception</option>
+                    <option value="remove_email_exception">Remove Email Exception</option>
+                    <option value="update_user_platform_role">Update User Role</option>
+                  </select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {filteredAuditLogs.length === 0 ? (
+                <AdminEmptyState
+                  icon={Clock3}
+                  title="No audit logs match filters"
+                  description="Administrative actions matching your search and role filters will appear here."
+                  compact
+                />
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-border bg-muted/50 text-muted-foreground uppercase font-semibold text-[10px] tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3">Timestamp</th>
+                        <th className="px-4 py-3">Actor</th>
+                        <th className="px-4 py-3">Action</th>
+                        <th className="px-4 py-3">Target</th>
+                        <th className="px-4 py-3 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-background/40">
+                      {filteredAuditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-background/80 transition-colors">
+                          <td className="px-4 py-3 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground">{log.actor_email || log.actor_id?.slice(0, 8) || "System"}</span>
+                              {log.actor_role && (
+                                <Badge variant="outline" className={cn("text-[10px] py-0 capitalize", PLATFORM_ROLE_COLORS[log.actor_role || ""] || "")}>
+                                  {log.actor_role.replace("_", " ")}
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <Badge variant="secondary" className="font-mono text-[11px] bg-primary/10 text-primary border-primary/20">
+                              {log.action}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-muted-foreground capitalize">{log.target_type}: </span>
+                            <span className="font-mono text-foreground font-medium">{log.target_id}</span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedAuditLog(log)}
+                              className="h-7 text-xs gap-1"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              Inspect
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="storage" className="space-y-6">
+          {/* Overview Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-border/60 bg-gradient-to-br from-card to-muted/20">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Media Storage</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <HardDrive className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-foreground">{storageTelemetry.totalPlatformMb} MB</span>
+                  <span className="text-xs text-muted-foreground">({(storageTelemetry.totalPlatformMb / 1024).toFixed(2)} GB)</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Across all tenant storefront assets</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-gradient-to-br from-card to-muted/20">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Media Files</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                    <FileImage className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-foreground">{storageTelemetry.totalPlatformAssets}</span>
+                  <span className="text-xs text-muted-foreground">indexed assets</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Indexed in merchant media libraries</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-gradient-to-br from-card to-muted/20">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Orphaned Storage</span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-foreground">{storageTelemetry.totalOrphanedMb} MB</span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">({storageTelemetry.totalOrphanedAssets} files)</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Unreferenced files eligible for purge</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-gradient-to-br from-card to-muted/20">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quota Alerts</span>
+                  <div className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-xl",
+                    storageTelemetry.highUsageStoresCount > 0 ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-foreground">{storageTelemetry.highUsageStoresCount}</span>
+                  <span className="text-xs text-muted-foreground">stores high usage</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Stores near or over 80% quota limit</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Storage Telemetry Table Card */}
+          <Card className="border-border/60">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-5">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <HardDrive className="h-5 w-5 text-primary" />
+                  Merchant Storage & Media Consumption Telemetry
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-1">
+                  Monitor Cloudinary media consumption, storage quota utilization per plan, and safely purge unreferenced orphaned assets.
+                </CardDescription>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPurgeTargetStoreId("");
+                    setIsPurgeDialogOpen(true);
+                  }}
+                  className="h-9 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Media Purge Tool
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 space-y-5">
+              {/* Search & Filter Bar */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search merchant by store name or slug..."
+                    value={storageSearch}
+                    onChange={(e) => setStorageSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Filter className="h-3.5 w-3.5" /> Status:
+                  </span>
+                  <Select value={storageStatusFilter} onValueChange={setStorageStatusFilter}>
+                    <SelectTrigger className="h-9 text-xs w-[180px]">
+                      <SelectValue placeholder="Filter Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Merchants</SelectItem>
+                      <SelectItem value="warning">High Usage (80%+)</SelectItem>
+                      <SelectItem value="exceeded">Quota Exceeded (100%+)</SelectItem>
+                      <SelectItem value="orphaned">Has Orphaned Assets</SelectItem>
+                      <SelectItem value="normal">Normal Usage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="rounded-md border border-border/50 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="text-xs">Merchant Store</TableHead>
+                      <TableHead className="text-xs">Plan Tier</TableHead>
+                      <TableHead className="text-xs">Total Storage</TableHead>
+                      <TableHead className="text-xs">Quota Progress</TableHead>
+                      <TableHead className="text-xs">Orphaned Media</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStorageMetrics.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-xs text-muted-foreground">
+                          No merchant stores match the storage filter criteria.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStorageMetrics.map((metric) => (
+                        <TableRow key={metric.storeId} className="hover:bg-muted/20">
+                          <TableCell className="py-3 font-medium">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-foreground">{metric.storeName}</span>
+                              <span className="text-[11px] text-muted-foreground font-mono">{metric.storeSlug}</span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="py-3">
+                            <Badge variant="outline" className="text-[11px] capitalize font-medium">
+                              {metric.planName}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="py-3">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-foreground">{metric.totalMb} MB</span>
+                              <span className="text-[11px] text-muted-foreground">{metric.totalAssets} files</span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="py-3 w-[200px]">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="font-medium">{metric.usagePercent}%</span>
+                                <span className="text-muted-foreground">{metric.totalMb} / {metric.quotaMb} MB</span>
+                              </div>
+                              <Progress
+                                value={metric.usagePercent}
+                                className={cn(
+                                  "h-2",
+                                  metric.isExceeded
+                                    ? "bg-red-200 dark:bg-red-950 [&>div]:bg-red-600"
+                                    : metric.isWarning
+                                    ? "bg-amber-200 dark:bg-amber-950 [&>div]:bg-amber-500"
+                                    : "bg-emerald-100 dark:bg-emerald-950 [&>div]:bg-emerald-500"
+                                )}
+                              />
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="py-3">
+                            {metric.orphanedCount > 0 ? (
+                              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium text-xs">
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>{metric.orphanedCount} files ({metric.orphanedMb} MB)</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Clean
+                              </span>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="py-3">
+                            {metric.isExceeded ? (
+                              <Badge variant="destructive" className="text-[10px]">Quota Exceeded</Badge>
+                            ) : metric.isWarning ? (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">High Usage</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Healthy</Badge>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="py-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={metric.orphanedCount === 0}
+                              onClick={() => {
+                                setPurgeTargetStoreId(metric.storeId);
+                                setIsPurgeDialogOpen(true);
+                              }}
+                              className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Purge
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Audit Log Details Inspection Dialog */}
+      <Dialog open={!!selectedAuditLog} onOpenChange={(open) => !open && setSelectedAuditLog(null)}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock3 className="h-5 w-5 text-primary" />
+              <span>Audit Log Record</span>
+            </DialogTitle>
+            <DialogDescription>
+              Full payload captured in public.platform_audit_logs for security inspection.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAuditLog && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-lg border border-border p-3 space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px] font-semibold">Actor Email</span>
+                  <p className="font-medium text-foreground">{selectedAuditLog.actor_email || "System / N/A"}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3 space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px] font-semibold">Actor Role</span>
+                  <p className="font-medium text-foreground capitalize">{selectedAuditLog.actor_role?.replace("_", " ") || "N/A"}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3 space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px] font-semibold">Action</span>
+                  <p className="font-mono text-primary font-semibold">{selectedAuditLog.action}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3 space-y-1">
+                  <span className="text-muted-foreground uppercase text-[10px] font-semibold">Timestamp</span>
+                  <p className="font-mono text-foreground">{new Date(selectedAuditLog.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">JSON Event Payload / Metadata</Label>
+                <pre className="rounded-lg border border-border bg-muted/60 p-4 text-[11px] font-mono text-foreground overflow-x-auto max-h-60 scrollbar-thin">
+                  {JSON.stringify(selectedAuditLog.details, null, 2)}
+                </pre>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button type="button" variant="outline" onClick={() => setSelectedAuditLog(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
@@ -1739,6 +3179,298 @@ export default function PlatformControlPlane() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Trial Dialog */}
+      <Dialog open={isExtendTrialDialogOpen} onOpenChange={setIsExtendTrialDialogOpen}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarPlus className="h-5 w-5 text-primary" />
+              <span>Extend Store Trial</span>
+            </DialogTitle>
+            <DialogDescription>
+              Manually grant extra trial days to a tenant store without triggering automated billing.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-3">
+            <div>
+              <Label className="text-xs">Select Target Store</Label>
+              <select
+                value={extendTrialStoreId}
+                onChange={(e) => setExtendTrialStoreId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="" disabled>-- Select Store --</option>
+                {(data?.stores || []).map((store: any) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name} ({store.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1.5 block">Trial Days Extension</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[7, 14, 30].map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    variant={extendTrialDays === days ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setExtendTrialDays(days)}
+                  >
+                    +{days} Days
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="custom-trial-days" className="text-xs">Or Enter Custom Days</Label>
+              <Input
+                id="custom-trial-days"
+                type="number"
+                min="1"
+                max="365"
+                value={extendTrialDays}
+                onChange={(e) => setExtendTrialDays(parseInt(e.target.value) || 7)}
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="trial-note" className="text-xs">Operator Note / Rationale</Label>
+              <Textarea
+                id="trial-note"
+                value={extendTrialNote}
+                onChange={(e) => setExtendTrialNote(e.target.value)}
+                placeholder="e.g. VIP Onboarding Extension requested by merchant support..."
+                className="mt-1 text-xs h-20"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsExtendTrialDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSubmittingExtendTrial || !extendTrialStoreId}
+                onClick={handleExtendTrial}
+              >
+                {isSubmittingExtendTrial ? "Saving..." : `Confirm +${extendTrialDays} Days`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Plan Override Dialog */}
+      <Dialog open={isManualOverrideDialogOpen} onOpenChange={setIsManualOverrideDialogOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>Manual Plan Override</span>
+            </DialogTitle>
+            <DialogDescription>
+              Directly assign a plan tier to a merchant store without immediate payment processing.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-3">
+            <div>
+              <Label className="text-xs">Target Store</Label>
+              <select
+                value={manualOverrideStoreId}
+                onChange={(e) => setManualOverrideStoreId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="" disabled>-- Select Store --</option>
+                {(data?.stores || []).map((store: any) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name} ({store.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label className="text-xs">Target Plan Tier</Label>
+              <select
+                value={manualOverridePlanId}
+                onChange={(e) => setManualOverridePlanId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 capitalize"
+              >
+                {(data?.plans || []).map((plan: any) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name} ({plan.monthly_price === 0 ? "Free" : `BDT ${plan.monthly_price}/mo`})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="override-reason" className="text-xs">Override Reason / Audit Note</Label>
+              <Input
+                id="override-reason"
+                value={manualOverrideReason}
+                onChange={(e) => setManualOverrideReason(e.target.value)}
+                placeholder="e.g. Sponsorship, QA Testing, Payment Dispute Waiver"
+                className="mt-1 text-xs"
+              />
+            </div>
+
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-600 dark:text-amber-400 space-y-1">
+              <span className="font-semibold block">Important Audit Info</span>
+              <p className="text-[11px] leading-relaxed">
+                This action will mark the target store&apos;s subscription as active under the selected plan tier and generate a $0 paid invoice in the Platform Billing Ledger.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsManualOverrideDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                disabled={isSubmittingManualOverride || !manualOverrideStoreId}
+                onClick={handleManualPlanOverride}
+              >
+                {isSubmittingManualOverride ? "Applying..." : "Activate Plan Override"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Media Purge Audit Dialog */}
+      <Dialog open={isPurgeDialogOpen} onOpenChange={setIsPurgeDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Media Storage Purge Tool
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Audit and remove orphaned media assets that are not referenced in active products, page blocks, or site settings.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Select Target Merchant Store</Label>
+              <Select
+                value={purgeTargetStoreId}
+                onValueChange={(val) => setPurgeTargetStoreId(val)}
+              >
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Choose store to audit..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {storageTelemetry.storeMetrics.map((metric) => (
+                    <SelectItem key={metric.storeId} value={metric.storeId} className="text-xs">
+                      {metric.storeName} ({metric.orphanedCount} orphaned, {metric.orphanedMb} MB)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {purgeTargetStoreId ? (
+              (() => {
+                const metric = storageTelemetry.storeMetrics.find((m) => m.storeId === purgeTargetStoreId);
+                if (!metric) return null;
+
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/50 bg-muted/30 p-3 text-center">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Total Media</div>
+                        <div className="text-sm font-bold text-foreground">{metric.totalAssets} files ({metric.totalMb} MB)</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Orphaned Files</div>
+                        <div className="text-sm font-bold text-amber-600 dark:text-amber-400">{metric.orphanedCount} files</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Reclaimable Space</div>
+                        <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{metric.orphanedMb} MB</div>
+                      </div>
+                    </div>
+
+                    {metric.orphanedCount > 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-foreground flex items-center justify-between">
+                          <span>Orphaned Asset Audit Preview</span>
+                          <span className="text-[11px] text-muted-foreground">Showing up to 8 files</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto p-1 rounded-md border border-border/40 bg-background">
+                          {metric.orphanedAssets.slice(0, 8).map((asset, i) => (
+                            <div key={asset.id || i} className="group relative rounded-md border border-border/60 overflow-hidden bg-muted/20 text-center p-1.5 space-y-1">
+                              {asset.url ? (
+                                <img src={asset.url} alt={asset.originalFilename || asset.alt || "Media"} className="h-12 w-full object-cover rounded" />
+                              ) : (
+                                <div className="h-12 w-full flex items-center justify-center bg-muted rounded">
+                                  <FileImage className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <p className="text-[10px] truncate text-muted-foreground font-mono">{asset.originalFilename || asset.publicId || "Asset"}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span>Purging will unlink these assets from the store&apos;s media library and reclaim platform storage. Active storefront items will not be affected.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs flex items-center justify-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>This store has no orphaned media assets. All files are in use!</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="p-6 text-center text-xs text-muted-foreground border border-dashed rounded-md">
+                Select a store above to inspect its media library audit.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setIsPurgeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!purgeTargetStoreId || isPurgingMedia || (storageTelemetry.storeMetrics.find(m => m.storeId === purgeTargetStoreId)?.orphanedCount || 0) === 0}
+              onClick={() => handlePurgeOrphanedMedia()}
+              className="gap-1.5"
+            >
+              {isPurgingMedia ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Purging...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Confirm Purge & Reclaim Storage
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

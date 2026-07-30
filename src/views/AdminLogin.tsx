@@ -14,6 +14,8 @@ import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 
+import { isPlatformRole } from "@/lib/platform/rbac";
+
 const AdminLogin = () => {
   const { user, role, platformRole, storeRole, loading, refreshRole } = useAuth();
   const location = useLocation();
@@ -43,7 +45,7 @@ const AdminLogin = () => {
     const candidate = searchParams.get("next");
     return candidate && candidate.startsWith("/") ? candidate : null;
   }, [searchParams]);
-  const postLoginPath = returnPath || (platformRole === "admin" ? "/cms-admin" : "/admin");
+  const postLoginPath = returnPath || (isPlatformRole(platformRole) ? "/cms-admin" : "/admin");
 
   const setMode = (nextMode: "setup" | "invite") => {
     const next = new URLSearchParams(searchParams);

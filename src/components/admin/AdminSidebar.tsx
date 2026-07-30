@@ -21,6 +21,8 @@ import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
 import { getAdminNavigationSections } from "@/lib/admin/admin-navigation";
 
+import { isPlatformRole } from "@/lib/platform/rbac";
+
 type StorePageNavRow = {
   id: string;
   title: string;
@@ -56,7 +58,7 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
   const { role, platformRole, storeRole, user, signOut, activeStoreId } = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
-  const isPlatformAdmin = platformRole === "admin";
+  const isPlatformAdmin = isPlatformRole(platformRole);
   const isOwner = storeRole === "owner" || isPlatformAdmin;
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const supportUrl = getSupportUrl();

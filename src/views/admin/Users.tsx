@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import { Navigate } from "@/lib/react-router-dom-shim";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +18,7 @@ const Users = () => {
     let active = true;
 
     const fetch = async () => {
-      if (platformRole !== "admin") {
+      if (!isPlatformRole(platformRole)) {
         if (active) {
           setUsers([]);
           setLoading(false);
@@ -61,7 +62,7 @@ const Users = () => {
     };
   }, [platformRole]);
 
-  if ((authLoading || (session && platformRole !== "admin")) && platformRole !== "admin") {
+  if ((authLoading || (session && !isPlatformRole(platformRole))) && !isPlatformRole(platformRole)) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -69,7 +70,7 @@ const Users = () => {
     );
   }
 
-  if (platformRole !== "admin") return <Navigate to="/admin" replace />;
+  if (!isPlatformRole(platformRole)) return <Navigate to="/admin" replace />;
 
   if (loading && users.length === 0) {
     return (

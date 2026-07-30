@@ -28,6 +28,7 @@ import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import StoreSwitcher from "./StoreSwitcher";
 import { getAdminNavigationItems } from "@/lib/admin/admin-navigation";
+import { isPlatformRole } from "@/lib/platform/rbac";
 
 type AdminMobileNavProps = {
   onOpenCommand: () => void;
@@ -52,7 +53,7 @@ const AdminMobileNav = ({ onOpenCommand, compact = false }: AdminMobileNavProps)
   const { role, platformRole, user, signOut, activeStoreId } = useAuth();
   const location = useLocation();
   const isAdmin = role === "admin";
-  const isPlatformAdmin = platformRole === "admin";
+  const isPlatformAdmin = isPlatformRole(platformRole);
   const [isOpen, setIsOpen] = useState(false);
   const { data: entitlementData } = useStoreEntitlements(activeStoreId);
   const supportUrl = getSupportUrl();

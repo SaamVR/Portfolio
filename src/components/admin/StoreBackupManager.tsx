@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Download, FileArchive, Loader2, RefreshCcw, Upload, DatabaseBackup, ShieldAlert, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
+import { isPlatformRole } from "@/lib/platform/rbac";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -272,7 +273,7 @@ async function logBackupEvent(event: {
 
 export default function StoreBackupManager() {
   const { platformRole, role, activeStoreId, user } = useAuth();
-  const isPlatformAdmin = platformRole === "admin";
+  const isPlatformAdmin = isPlatformRole(platformRole);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sourceStoreId, setSourceStoreId] = useState(activeStoreId);

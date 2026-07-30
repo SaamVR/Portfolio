@@ -46,6 +46,8 @@ import {
   themeSourceTypeOptions,
 } from "@/components/admin/cms-library/shared";
 
+import { isPlatformRole } from "@/lib/platform/rbac";
+
 export default function CmsLibraryManager() {
   const { session, platformRole, user, loading: authLoading, refreshRole, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("blueprints");
@@ -134,7 +136,7 @@ export default function CmsLibraryManager() {
     );
   }
 
-  if (platformRole !== "admin") {
+  if (!isPlatformRole(platformRole)) {
     return <Navigate to="/admin" replace />;
   }
 

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { normalizeEmail, resolveEffectiveFeatures } from "@/lib/platform/control-plane";
 import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
+import { isPlatformRole } from "@/lib/platform/rbac";
 
 export function useStoreEntitlements(storeId?: string | null) {
   const { platformRole, user } = useAuth();
@@ -40,7 +41,7 @@ export function useStoreEntitlements(storeId?: string | null) {
         planMappings: (planMappings ?? []) as any[],
         storeOverrides: (storeOverrides ?? []) as any[],
         emailOverrides: (emailOverrides ?? []) as any[],
-        isPlatformAdmin: platformRole === "admin",
+        isPlatformAdmin: isPlatformRole(platformRole),
       });
 
       if (subscriptionStatus !== "active" && featureMap instanceof Map) {

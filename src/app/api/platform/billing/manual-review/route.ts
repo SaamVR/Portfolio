@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addMonths, getAuthenticatedUser, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
+import { logPlatformAuditAction } from "@/lib/platform/audit-logger";
 
 export const manualBillingReviewRouteDeps = {
   getAuthenticatedUser,
@@ -14,11 +15,11 @@ async function isPlatformAdmin(userId: string) {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "admin")
+    .in("role", ["admin", "super_admin", "billing_admin"])
     .maybeSingle();
 
   if (error) throw error;
-  return data?.role === "admin";
+  return { allowed: Boolean(data?.role), role: data?.role ?? null };
 }
 
 export async function POST(req: Request) {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const allowed = await isPlatformAdmin(user.id);
+    const { allowed, role: userRole } = await isPlatformAdmin(user.id);
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -98,6 +99,21 @@ export async function POST(req: Request) {
 
       if (subscriptionError) throw subscriptionError;
 
+      await logPlatformAuditAction(supabaseAdmin, {
+        actorId: user.id,
+        actorEmail: user.email,
+        actorRole: userRole,
+        action: "approve_invoice",
+        targetType: "invoice",
+        targetId: invoice.id,
+        details: {
+          store_id: invoice.store_id,
+          plan_id: invoice.plan_id,
+          review_note: reviewNote || null,
+          billing_interval: invoice.billing_interval,
+        },
+      });
+
       return NextResponse.json({ success: true, status: "paid" });
     }
 
@@ -112,6 +128,20 @@ export async function POST(req: Request) {
       .eq("id", invoice.id);
 
     if (invoiceRejectError) throw invoiceRejectError;
+
+    await logPlatformAuditAction(supabaseAdmin, {
+      actorId: user.id,
+      actorEmail: user.email,
+      actorRole: userRole,
+      action: "reject_invoice",
+      targetType: "invoice",
+      targetId: invoice.id,
+      details: {
+        store_id: invoice.store_id,
+        plan_id: invoice.plan_id,
+        review_note: reviewNote,
+      },
+    });
 
     return NextResponse.json({ success: true, status: "failed" });
   } catch (error) {
