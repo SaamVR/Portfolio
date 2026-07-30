@@ -29,7 +29,7 @@ CREATE POLICY "Platform admins can view audit logs"
     EXISTS (
       SELECT 1 FROM public.user_roles
       WHERE user_roles.user_id = auth.uid()
-        AND user_roles.role IN ('admin', 'super_admin', 'billing_admin', 'support_agent')
+        AND user_roles.role::text IN ('admin', 'super_admin', 'billing_admin', 'support_agent')
     )
   );
 
@@ -40,7 +40,7 @@ CREATE POLICY "Platform admins can insert audit logs"
     EXISTS (
       SELECT 1 FROM public.user_roles
       WHERE user_roles.user_id = auth.uid()
-        AND user_roles.role IN ('admin', 'super_admin', 'billing_admin', 'support_agent')
+        AND user_roles.role::text IN ('admin', 'super_admin', 'billing_admin', 'support_agent')
     )
   );
 
