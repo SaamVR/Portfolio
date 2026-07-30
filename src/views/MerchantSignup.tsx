@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "@/lib/react-router-dom-shim";
+import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
@@ -29,6 +29,7 @@ import {
   storefrontTemplateOptions,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
+import { getStorefrontTemplateReferenceImage } from "@/lib/cms/storefront-template-reference-images";
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { cn } from "@/lib/utils";
 
@@ -110,11 +111,14 @@ function getLaunchSuccessNextAction(templateId: StorefrontTemplateId) {
 }
 
 export default function MerchantSignup() {
-  const { user, loading, refreshRole, setActiveStoreId, activeStoreId } = useAuth();
+  const { user, loading, refreshRole, setActiveStoreId, activeStoreId, authRecovery } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const intent = searchParams.get("intent");
+  const entry = searchParams.get("entry");
   const requestedBlueprint = searchParams.get("blueprint");
   const isAdditionalStoreFlow = intent === "new-store";
+  const isDashboardCreateFlow = entry === "dashboard" && Boolean(user) && !isAdditionalStoreFlow;
   const [step, setStep] = useState<SignupStep>("methods");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -171,11 +175,19 @@ export default function MerchantSignup() {
   );
   const signupRootDomain = useMemo(() => getSignupRootDomain(), []);
   const normalizedSlug = form.storeSlug.trim();
+  const requiresOwnerName = !isAdditionalStoreFlow && !isDashboardCreateFlow;
   const canSubmitDetails = normalizedSlug.length > 0 && slugState !== "checking" && slugState !== "taken" && slugState !== "invalid";
   const canContinueToTemplate = canSubmitDetails
-    && (isAdditionalStoreFlow || Boolean(form.name.trim()))
+    && (!requiresOwnerName || Boolean(form.name.trim()))
     && Boolean(form.storeName.trim())
     && !accountRestriction;
+
+  useEffect(() => {
+    if (loading || !user || isAdditionalStoreFlow || isDashboardCreateFlow) return;
+    if (authRecovery.reason === "no_store") {
+      navigate("/admin", { replace: true });
+    }
+  }, [authRecovery.reason, isAdditionalStoreFlow, isDashboardCreateFlow, loading, navigate, user]);
 
   useEffect(() => {
     supabase
@@ -484,8 +496,8 @@ export default function MerchantSignup() {
     event.preventDefault();
     setSubmitError(null);
 
-    if ((!isAdditionalStoreFlow && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
-      const message = isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL";
+    if ((requiresOwnerName && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
+      const message = requiresOwnerName ? "Please fill in name, store name, and store URL" : "Please fill in store name and store URL";
       setSubmitError(message);
       toast.error(message);
       return;
@@ -514,8 +526,8 @@ export default function MerchantSignup() {
   const handleSubmitDetails = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitError(null);
-    if ((!isAdditionalStoreFlow && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
-      const message = isAdditionalStoreFlow ? "Please fill in store name and store URL" : "Please fill in name, store name, and store URL";
+    if ((requiresOwnerName && !form.name.trim()) || !form.storeName.trim() || !form.storeSlug.trim()) {
+      const message = requiresOwnerName ? "Please fill in name, store name, and store URL" : "Please fill in store name and store URL";
       setSubmitError(message);
       toast.error(message);
       return;
@@ -536,7 +548,7 @@ export default function MerchantSignup() {
     try {
       const { data, error } = await supabase.functions.invoke("merchant-signup", {
         body: {
-          owner_name: form.name.trim(),
+          owner_name: form.name.trim() || user?.user_metadata?.full_name || form.storeName.trim(),
           store_name: form.storeName.trim(),
           store_slug: form.storeSlug.trim(),
           site_url: siteUrl,
@@ -613,7 +625,7 @@ export default function MerchantSignup() {
             <p className="text-sm font-semibold text-primary">Merchant signup</p>
             <h2 className="mt-2 font-heading text-2xl font-bold">
               {step === "details"
-                ? isAdditionalStoreFlow ? "Add another store" : "Store details"
+                ? isAdditionalStoreFlow ? "Add another store" : isDashboardCreateFlow ? "Create your website" : "Store details"
                 : step === "template"
                   ? "Choose template"
                   : step === "success"
@@ -624,7 +636,9 @@ export default function MerchantSignup() {
               {step === "details"
                 ? isAdditionalStoreFlow
                   ? "This store will reuse your existing owner account and package limits."
-                  : "Set the site name and domain first."
+                  : isDashboardCreateFlow
+                    ? "Start with the website name and subdomain."
+                    : "Set the site name and domain first."
                 : step === "template"
                   ? "Pick the storefront template that should launch instantly for this store."
                   : step === "success"
@@ -690,7 +704,7 @@ export default function MerchantSignup() {
 
           {step === "details" ? (
             <form onSubmit={handleContinueToTemplate} className="space-y-4">
-              {!isAdditionalStoreFlow ? (
+              {!isAdditionalStoreFlow && !isDashboardCreateFlow ? (
                 <div>
                   <Label htmlFor="owner-name">Owner Name</Label>
                   <div className="relative mt-1">
@@ -718,42 +732,48 @@ export default function MerchantSignup() {
                   {slugStatusCopy}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="business-type">Business Type</Label>
-                  <select id="business-type" value={form.businessType} onChange={(event) => update("businessType", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                    {blueprintGroups.map(([group, items]) => (
-                      <optgroup key={group} label={group}>
-                        {items.map((blueprint) => (
-                          <option key={blueprint.id} value={blueprint.id}>
-                            {blueprint.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+              {isDashboardCreateFlow ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  After this step you will choose a storefront template with mobile-ready previews.
                 </div>
-                {!isAdditionalStoreFlow ? (
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="plan-id">Plan</Label>
-                    <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                      {plans.map((p) => (
-                        <option key={p.id} value={p.id} disabled={isContactOnlyPlan(p)}>
-                          {isContactOnlyPlan(p) ? `${p.name} - Contact support` : p.name}
-                        </option>
+                    <Label htmlFor="business-type">Business Type</Label>
+                    <select id="business-type" value={form.businessType} onChange={(event) => update("businessType", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
+                      {blueprintGroups.map(([group, items]) => (
+                        <optgroup key={group} label={group}>
+                          {items.map((blueprint) => (
+                            <option key={blueprint.id} value={blueprint.id}>
+                              {blueprint.name}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
-                    {plans.some((plan) => plan.id === "pro") ? (
-                      <p className="mt-1 text-xs text-muted-foreground">Free includes one store and an EZComo subdomain. Paid plans start with a 14-day trial, and custom domains unlock only after a paid package becomes active.</p>
-                    ) : null}
                   </div>
-                ) : (
-                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Package</p>
-                    <p className="mt-1 text-sm text-foreground">This store will inherit your current EZComo package limits automatically.</p>
-                  </div>
-                )}
-              </div>
+                  {!isAdditionalStoreFlow ? (
+                    <div>
+                      <Label htmlFor="plan-id">Plan</Label>
+                      <select id="plan-id" value={form.planId} onChange={(event) => update("planId", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.id} disabled={isContactOnlyPlan(p)}>
+                            {isContactOnlyPlan(p) ? `${p.name} - Contact support` : p.name}
+                          </option>
+                        ))}
+                      </select>
+                      {plans.some((plan) => plan.id === "pro") ? (
+                        <p className="mt-1 text-xs text-muted-foreground">Free includes one store and an EZComo subdomain. Paid plans start with a 14-day trial, and custom domains unlock only after a paid package becomes active.</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Package</p>
+                      <p className="mt-1 text-sm text-foreground">This store will inherit your current EZComo package limits automatically.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {submitError ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {submitError}
@@ -777,32 +797,51 @@ export default function MerchantSignup() {
                 <p className="font-medium text-foreground">{form.storeName || "Your store"}</p>
                 <p className="mt-1">{slugStatusCopy}</p>
               </div>
-              <div className="grid gap-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {storefrontTemplateOptions.map((template) => {
                   const templateId = template.value as StorefrontTemplateId;
                   const isActive = form.storefrontTemplateId === template.value;
                   const templateDefinition = getStorefrontTemplateDefinition(templateId);
+                  const referenceImage = getStorefrontTemplateReferenceImage(templateId);
                   return (
                     <button
                       key={template.value}
                       type="button"
                       onClick={() => update("storefrontTemplateId", template.value)}
                       className={cn(
-                        "rounded-lg border p-4 text-left transition-colors",
-                        isActive ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
+                        "overflow-hidden rounded-2xl border text-left transition-all",
+                        isActive ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-foreground">{template.label}</p>
-                            <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                              {templateDefinition.presentation.cardStyle}
-                            </span>
+                      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                        {referenceImage ? (
+                          <img
+                            src={referenceImage}
+                            alt={template.label}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-muted/60 text-muted-foreground">
+                            <LayoutTemplate className="h-8 w-8" />
                           </div>
-                          <p className="text-sm text-muted-foreground">{template.description}</p>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-white">{template.label}</p>
+                            {isActive ? <CheckCircle2 className="h-5 w-5 shrink-0 text-white" /> : null}
+                          </div>
                         </div>
-                        {isActive ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <LayoutTemplate className="h-5 w-5 shrink-0 text-muted-foreground" />}
+                      </div>
+                      <div className="space-y-3 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {templateDefinition.presentation.cardStyle}
+                          </span>
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            Mobile ready
+                          </span>
+                        </div>
+                        <p className="text-sm leading-6 text-muted-foreground">{template.description}</p>
                       </div>
                     </button>
                   );
