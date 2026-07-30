@@ -14,6 +14,8 @@ import { Moon, Search, SunMedium } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "./AdminRecoveryPanel";
 import { useTheme } from "next-themes";
+import { getAdminWorkspaceChips } from "@/lib/admin/admin-navigation";
+import { Button } from "@/components/ui/button";
 
 const workspaceLabels: Array<{ path: string; label: string; description: string }> = [
   { path: "/admin/launch", label: "Dashboard", description: "Store overview, launch checklist, and key alerts" },
@@ -45,6 +47,36 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
   { path: "/admin/site-settings", label: "Settings", description: "Brand, payments, domains, and store configuration" },
 ];
 
+
+const lockedWorkspaceCards = [
+  {
+    title: "Dashboard",
+    description: "Traffic, orders, and storefront health will appear here after your first site is created.",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Catalog",
+    description: "Products, collections, and inventory stay locked until a website exists.",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Storefront",
+    description: "Pages, themes, and launch settings unlock after you choose a template.",
+    icon: SquarePen,
+  },
+  {
+    title: "Analytics",
+    description: "Seller and shopper behavior reports activate once the storefront is live.",
+    icon: LineChart,
+  },
+];
+
+const lockedWorkspaceNav = [
+  { label: "Dashboard", icon: LayoutDashboard },
+  { label: "Products", icon: ShoppingCart },
+  { label: "Editor", icon: SquarePen },
+  { label: "Settings", icon: Settings },
+];
 
 const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const { user, session, role, activeStoreId, loading, authRecovery, refreshRole, signOut } = useAuth();
@@ -120,6 +152,110 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
 
   if (!role || !user) {
     const noStoreState = authRecovery.reason === "no_store" && !deletedStoreHistory;
+    if (noStoreState) {
+      return (
+        <div className="flex min-h-screen bg-background text-foreground">
+          <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
+            <div className="flex h-16 items-center border-b border-border px-6">
+              <Link to="/" className="font-heading text-lg font-bold text-foreground">
+                Store<span className="text-primary">Admin</span>
+              </Link>
+              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Locked
+              </span>
+            </div>
+            <div className="flex-1 space-y-6 p-4 opacity-45">
+              <div className="space-y-1.5">
+                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Workspace
+                </p>
+                {lockedWorkspaceNav.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-background/70 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-xl border border-dashed border-border bg-background/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">No active website</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Create a website to unlock products, editing, analytics, and domain setup.
+                </p>
+              </div>
+            </div>
+          </aside>
+
+          <main className="flex-1">
+            <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card/70 px-4 py-3 backdrop-blur-xl md:px-8">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
+                <p className="text-xs text-muted-foreground">Your account is ready. The workspace unlocks after the first website is created.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => void signOut()}>
+                Sign out
+              </Button>
+            </header>
+
+            <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+              <div className="rounded-3xl border border-border bg-card p-5 shadow-sm md:p-8">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="space-y-5">
+                    <div>
+                      <p className="text-sm font-semibold text-primary">Get started</p>
+                      <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                        Create your first website
+                      </h1>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+                        Start with the store name and subdomain, then pick a template. The rest of the admin workspace unlocks automatically after setup.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {lockedWorkspaceCards.map((card) => (
+                        <div key={card.title} className="rounded-2xl border border-border bg-background/80 p-4 opacity-50">
+                          <div className="flex items-center gap-3">
+                            <div className="rounded-xl border border-border bg-background p-2 text-muted-foreground">
+                              <card.icon className="h-4 w-4" />
+                            </div>
+                            <p className="text-sm font-semibold text-foreground">{card.title}</p>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+                    <p className="text-sm font-semibold text-primary">Website setup</p>
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-xl border border-primary/15 bg-background/90 p-3">
+                        <p className="text-sm font-medium text-foreground">1. Name and subdomain</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Choose the website name and the EZComo subdomain for launch.
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/90 p-3">
+                        <p className="text-sm font-medium text-foreground">2. Pick a template</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Preview storefront directions as cards, then launch with the right layout.
+                        </p>
+                      </div>
+                    </div>
+                    <Button asChild className="mt-5 h-11 w-full">
+                      <Link to="/signup?entry=dashboard">Create Website</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <AdminRecoveryPanel
         title={noStoreState ? "No store workspace found" : authRecovery.reason === "offline" ? "You are offline" : "Refreshing dashboard access"}
@@ -140,7 +276,7 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
         onRetry={() => void refreshRole()}
         onSecondary={() => {
           if (noStoreState) {
-            navigate("/signup");
+            navigate("/signup?entry=dashboard");
             return;
           }
           void signOut();
