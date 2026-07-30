@@ -784,16 +784,16 @@ export default function PlatformControlPlane() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:hidden">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="backups">Backups</TabsTrigger>
-          <TabsTrigger value="stores">Merchants</TabsTrigger>
-          <TabsTrigger value="plans">Plans</TabsTrigger>
-          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-          <TabsTrigger value="health">CMS Health</TabsTrigger>
-          <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+        <TabsList className="flex w-full items-center justify-start gap-1 overflow-x-auto scrollbar-none bg-muted/60 p-1 md:hidden">
+          <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+          <TabsTrigger value="analytics" className="shrink-0">Analytics</TabsTrigger>
+          <TabsTrigger value="backups" className="shrink-0">Backups</TabsTrigger>
+          <TabsTrigger value="stores" className="shrink-0">Merchants</TabsTrigger>
+          <TabsTrigger value="plans" className="shrink-0">Plans</TabsTrigger>
+          <TabsTrigger value="subscriptions" className="shrink-0">Subscriptions</TabsTrigger>
+          <TabsTrigger value="health" className="shrink-0">CMS Health</TabsTrigger>
+          <TabsTrigger value="lifecycle" className="shrink-0">Lifecycle</TabsTrigger>
+          <TabsTrigger value="activity" className="shrink-0">Activity</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -801,13 +801,17 @@ export default function PlatformControlPlane() {
             {overviewCards.map((card) => {
               const Icon = card.icon;
               return (
-                <Card key={card.label} className="border-border">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
-                    <Icon className="h-4 w-4 text-primary" />
+                <Card 
+                  key={card.label} 
+                  className="group relative overflow-hidden border-border bg-card/60 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:bg-card hover:shadow-md hover:shadow-primary/5"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <CardHeader className="relative flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">{card.label}</CardTitle>
+                    <Icon className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-110" />
                   </CardHeader>
-                  <CardContent>
-                    <p className="font-heading text-2xl font-bold text-foreground">{card.value}</p>
+                  <CardContent className="relative">
+                    <p className="font-heading text-2xl font-bold text-foreground tracking-tight transition-all duration-300 group-hover:text-primary">{card.value}</p>
                   </CardContent>
                 </Card>
               );
@@ -820,19 +824,20 @@ export default function PlatformControlPlane() {
                 <CardTitle>Operator Follow-Up Queue</CardTitle>
                 <CardDescription>The fastest platform-level issues to review next.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 lg:grid-cols-2">
+              <CardContent className="grid gap-4 lg:grid-cols-2">
                 {operatorFollowUps.map((item) => (
                   <button
                     key={item.title}
                     type="button"
                     onClick={() => setActiveTab(item.targetTab)}
-                    className="rounded-xl border border-border bg-background/50 p-4 text-left transition-colors hover:border-primary/30 hover:bg-background"
+                    className="group relative overflow-hidden rounded-2xl border border-border bg-background/40 p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-background/80 hover:shadow-md hover:shadow-primary/5"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                      <Badge variant="outline">{item.badge}</Badge>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    <div className="relative flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{item.title}</p>
+                      <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-medium">{item.badge}</Badge>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                    <p className="relative mt-2 text-sm text-muted-foreground leading-relaxed">{item.detail}</p>
                   </button>
                 ))}
               </CardContent>
@@ -1012,30 +1017,54 @@ export default function PlatformControlPlane() {
                     key={store.id}
                     type="button"
                     onClick={() => setSelectedStoreId(store.id)}
-                    className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedStore?.id === store.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                    className={`group relative overflow-hidden w-full rounded-xl border p-4 text-left transition-all duration-300 ${
+                      selectedStore?.id === store.id 
+                        ? "border-primary bg-primary/5 shadow-sm shadow-primary/5" 
+                        : "border-border bg-background/30 hover:border-primary/20 hover:bg-background/80 hover:shadow-sm"
+                    }`}
                   >
+                    {selectedStore?.id === store.id && (
+                      <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+                    )}
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="font-medium text-foreground">{store.name}</p>
-                        <p className="text-xs text-muted-foreground">/{store.slug}{store.custom_domain ? ` - ${store.custom_domain}` : ""}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge variant={store.is_published ? "default" : "outline"}>{store.is_published ? "Published" : "Draft"}</Badge>
-                          <Badge variant="secondary">{store.planName}</Badge>
-                          <Badge variant="outline">{store.subscriptionStatus}</Badge>
-                          <Badge variant="outline">{store.lifecycleStatus}</Badge>
+                        <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{store.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">/{store.slug}{store.custom_domain ? ` · ${store.custom_domain}` : ""}</p>
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          <Badge variant={store.is_published ? "default" : "outline"} className="text-[10px] py-0 px-1.5 font-normal">
+                            {store.is_published ? "Published" : "Draft"}
+                          </Badge>
+                          <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-secondary/80 font-normal">
+                            {store.planName}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-border font-normal">
+                            {store.subscriptionStatus}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-border font-normal">
+                            {store.lifecycleStatus}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-right text-xs text-muted-foreground">
-                        <div><p className="font-semibold text-foreground">{formatMoney(store.revenue)}</p><p>GMV</p></div>
-                        <div><p className="font-semibold text-foreground">{store.orderTotal}</p><p>Orders</p></div>
-                        <div><p className="font-semibold text-foreground">{store.pageTotal}</p><p>Pages</p></div>
+                      <div className="grid grid-cols-3 gap-4 text-right text-xs text-muted-foreground shrink-0 border-t border-border/40 pt-2 lg:border-t-0 lg:pt-0">
+                        <div>
+                          <p className="font-bold text-foreground text-[13px]">{formatMoney(store.revenue)}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">GMV</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground text-[13px]">{store.orderTotal}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">Orders</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground text-[13px]">{store.pageTotal}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">Pages</p>
+                        </div>
                       </div>
                     </div>
                   </button>
                 ))}
               </CardContent>
             </Card>
-
+ 
             <Card className="border-border">
               <CardHeader>
                 <CardTitle>Store Detail</CardTitle>
@@ -1044,16 +1073,31 @@ export default function PlatformControlPlane() {
               <CardContent className="space-y-4">
                 {selectedStore ? (
                   <>
-                    <div className="rounded-lg border border-border p-4">
-                      <p className="font-medium text-foreground">{selectedStore.name}</p>
-                      <p className="text-xs text-muted-foreground">Owner: {selectedStore.ownerLabel} - Members: {selectedStore.memberTotal}</p>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                        <div><p className="text-muted-foreground">Plan</p><p className="font-medium">{selectedStore.planName}</p></div>
-                        <div><p className="text-muted-foreground">Subscription</p><p className="font-medium">{selectedStore.subscriptionStatus}</p></div>
-                        <div><p className="text-muted-foreground">Revenue</p><p className="font-medium">{formatMoney(selectedStore.revenue)}</p></div>
-                        <div><p className="text-muted-foreground">Products</p><p className="font-medium">{selectedStore.productTotal}</p></div>
-                        <div><p className="text-muted-foreground">Pages</p><p className="font-medium">{selectedStore.pageTotal}</p></div>
-                        <div><p className="text-muted-foreground">Blocks</p><p className="font-medium">{selectedStore.visibleBlockTotal}/{selectedStore.blockTotal}</p></div>
+                    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/40 p-5">
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
+                      <p className="font-bold text-foreground text-lg">{selectedStore.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Owner: <span className="text-foreground/80 font-medium">{selectedStore.ownerLabel}</span> · Members: <span className="text-foreground/80 font-medium">{selectedStore.memberTotal}</span></p>
+                      <div className="mt-5 grid grid-cols-2 gap-4 text-xs">
+                        <div className="rounded-xl bg-background/50 p-3 border border-border/40">
+                          <p className="text-muted-foreground uppercase tracking-wider font-semibold text-[9px]">Plan</p>
+                          <p className="font-semibold text-foreground text-sm mt-1">{selectedStore.planName}</p>
+                        </div>
+                        <div className="rounded-xl bg-background/50 p-3 border border-border/40">
+                          <p className="text-muted-foreground uppercase tracking-wider font-semibold text-[9px]">Subscription</p>
+                          <p className="font-semibold text-foreground text-sm mt-1">{selectedStore.subscriptionStatus}</p>
+                        </div>
+                        <div className="rounded-xl bg-background/50 p-3 border border-border/40">
+                          <p className="text-muted-foreground uppercase tracking-wider font-semibold text-[9px]">Revenue (GMV)</p>
+                          <p className="font-semibold text-foreground text-sm mt-1">{formatMoney(selectedStore.revenue)}</p>
+                        </div>
+                        <div className="rounded-xl bg-background/50 p-3 border border-border/40">
+                          <p className="text-muted-foreground uppercase tracking-wider font-semibold text-[9px]">Catalog Size</p>
+                          <p className="font-semibold text-foreground text-sm mt-1">{selectedStore.productTotal} products</p>
+                        </div>
+                        <div className="rounded-xl bg-background/50 p-3 border border-border/40">
+                          <p className="text-muted-foreground uppercase tracking-wider font-semibold text-[9px]">Pages / Blocks</p>
+                          <p className="font-semibold text-foreground text-sm mt-1">{selectedStore.pageTotal} p · {selectedStore.visibleBlockTotal} b</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1110,24 +1154,28 @@ export default function PlatformControlPlane() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.plans.map((plan) => (
-                  <div key={plan.id} className="rounded-lg border border-border p-4">
+                  <div 
+                    key={plan.id} 
+                    className="group relative overflow-hidden rounded-xl border border-border bg-background/40 p-5 transition-all duration-300 hover:border-primary/30 hover:bg-background/80 hover:shadow-sm"
+                  >
+                    <div className="absolute inset-y-0 left-0 w-1 bg-primary/20 transition-all duration-300 group-hover:bg-primary" />
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">{plan.name}</p>
-                          <Badge variant="outline" className="font-mono text-[10px]">{plan.id}</Badge>
+                          <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">{plan.name}</p>
+                          <Badge variant="outline" className="font-mono text-[10px] bg-background/50">{plan.id}</Badge>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Store limit: {plan.store_limit != null ? plan.store_limit : "Unlimited"} | Trial: {plan.trial_days ?? 14} days | Sort order: {plan.sort_order ?? 0}
+                        <p className="text-xs text-muted-foreground leading-relaxed">{plan.description}</p>
+                        <p className="text-[11px] text-muted-foreground/80">
+                          Store limit: <span className="font-medium text-foreground">{plan.store_limit != null ? plan.store_limit : "Unlimited"}</span> | Trial: <span className="font-medium text-foreground">{plan.trial_days ?? 14} days</span> | Sort order: <span className="font-medium text-foreground">{plan.sort_order ?? 0}</span>
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <Badge variant={plan.is_active ? "secondary" : "outline"}>
+                        <Badge className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 font-semibold">
                           {plan.monthly_price != null ? `BDT ${plan.monthly_price}` : "Custom"}
                         </Badge>
-                        {plan.contact_only ? <Badge variant="outline">Contact support</Badge> : null}
-                        <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => openEditPlan(plan)}>
+                        {plan.contact_only ? <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20">Contact support</Badge> : null}
+                        <Button type="button" variant="ghost" size="sm" className="h-8 px-3 rounded-lg text-xs" onClick={() => openEditPlan(plan)}>
                           Edit
                         </Button>
                       </div>
@@ -1136,7 +1184,7 @@ export default function PlatformControlPlane() {
                 ))}
               </CardContent>
             </Card>
-
+ 
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Feature Matrix</CardTitle>
@@ -1161,13 +1209,24 @@ export default function PlatformControlPlane() {
                         <Switch checked={feature.is_active} onCheckedChange={(checked) => void toggleFeatureCatalog(feature.key, { is_active: checked })} />
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                       {data.plans.map((plan) => {
                         const enabled = Boolean(data.planFeatures.find((row) => row.plan_id === plan.id && row.feature_key === feature.key)?.enabled);
                         return (
-                          <div key={`${plan.id}-${feature.key}`} className="flex items-center justify-between rounded-lg border border-border bg-card/60 px-3 py-2">
-                            <span className="text-sm text-foreground">{plan.name}</span>
-                            <Switch checked={enabled} onCheckedChange={(checked) => void togglePlanFeature(plan.id, feature.key, checked)} />
+                          <div 
+                            key={`${plan.id}-${feature.key}`} 
+                            className={`flex items-center justify-between rounded-xl border px-3 py-2.5 transition-all duration-300 ${
+                              enabled 
+                                ? "border-primary/20 bg-primary/5" 
+                                : "border-border bg-background/40"
+                            }`}
+                          >
+                            <span className="text-xs font-medium text-foreground">{plan.name}</span>
+                            <Switch 
+                              checked={enabled} 
+                              className="scale-90"
+                              onCheckedChange={(checked) => void togglePlanFeature(plan.id, feature.key, checked)} 
+                            />
                           </div>
                         );
                       })}
