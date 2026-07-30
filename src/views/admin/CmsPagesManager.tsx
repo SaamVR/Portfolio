@@ -127,6 +127,14 @@ type ThemeRecord = {
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
 
+function isManagedStorefrontFlowPage(page: StorePage) {
+  if (page.slug !== "/shop") {
+    return false;
+  }
+
+  return page.blocks.every((block) => block.type === "rich-text" && block.isVisible === false);
+}
+
 type PageRecord = {
   id: string;
   slug: string;
@@ -1481,7 +1489,7 @@ export default function CmsPagesManager() {
         return;
       }
 
-      if (page.slug !== "/" && reservedCmsSlugs.has(page.slug)) {
+      if (page.slug !== "/" && reservedCmsSlugs.has(page.slug) && !isManagedStorefrontFlowPage(page)) {
         toast.error(`"${page.slug}" is already handled by the app and cannot be reused here.`);
         return;
       }
