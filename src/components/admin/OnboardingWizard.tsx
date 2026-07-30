@@ -10,9 +10,12 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronsLeft,
   Copy,
   Eye,
   EyeOff,
+  Maximize2,
+  Minimize2,
   Loader2,
   MapPin,
   MessageCircleMore,
@@ -24,7 +27,6 @@ import {
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AdminPreviewStoreButton } from "@/components/admin/AdminPreviewStoreButton";
 import { MerchantPreviewChecklist } from "@/components/admin/MerchantPreviewChecklist";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -80,6 +82,7 @@ import {
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
 import type { Json } from "@/integrations/supabase/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface DraftState {
   storeName: string;
@@ -141,6 +144,8 @@ type LaunchCompletionState = {
   published: boolean;
   templateId: string;
 };
+
+type PreviewDockMode = "closed" | "half" | "fullscreen";
 
 function getTemplateSeedDefaults(templateId: string, blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
   const templateProfile = resolveStorefrontTemplateProfile(templateId, { blueprintId: templateId });
@@ -788,6 +793,7 @@ export default function OnboardingWizard() {
   const [unseedingTemplateData, setUnseedingTemplateData] = useState(false);
   const [catalogSeedMetadata, setCatalogSeedMetadata] = useState<Record<string, unknown> | null>(null);
   const [completionState, setCompletionState] = useState<LaunchCompletionState | null>(null);
+  const [previewMode, setPreviewMode] = useState<PreviewDockMode>("closed");
 
   const activeTemplateProfile = useMemo(
     () => resolveStorefrontTemplateProfile(draft.blueprintId, { blueprintId: draft.blueprintId }),
@@ -805,7 +811,13 @@ export default function OnboardingWizard() {
   const showLeadContactFields = onboardingContext.behavior.showLeadContactFields;
   const showMapFields = onboardingContext.behavior.showMapFields;
   const showWhatsAppFields = onboardingContext.behavior.showWhatsAppFields;
-  const steps = activeTemplateProfile.seedDefinition.onboarding.steps;
+  const steps = useMemo(() => {
+    const allSteps = activeTemplateProfile.seedDefinition.onboarding.steps;
+    if (!guideMode) {
+      return allSteps;
+    }
+    return allSteps.filter((step) => step.id === "brand" || step.id === "content" || step.id === "launch");
+  }, [activeTemplateProfile.seedDefinition.onboarding.steps, guideMode]);
   const requestedStepIndex = useMemo(() => {
     if (!requestedStepId) return 0;
     const index = steps.findIndex((step) => step.id === requestedStepId);
@@ -959,6 +971,7 @@ export default function OnboardingWizard() {
         const onboardingStatus = (siteSettingsRows.find((entry) => entry.key === "onboarding_status")?.value ?? {}) as {
           completed?: boolean;
           completed_at?: string | null;
+          completed_via?: string | null;
         };
         const businessProfile = businessProfileResult?.data as {
           blueprint_id?: string;
@@ -985,8 +998,8 @@ export default function OnboardingWizard() {
         );
         const hasCompletedInitialSetup = Boolean(
           store?.is_published
-          || onboardingStatus?.completed
-          || onboardingStatus?.completed_at,
+          || (onboardingStatus?.completed && onboardingStatus?.completed_via === "publish")
+          || (onboardingStatus?.completed_at && onboardingStatus?.completed_via === "publish"),
         );
 
         if (!active) return;
@@ -1398,8 +1411,8 @@ export default function OnboardingWizard() {
         } as Json,
         faq_entries: draft.faqEntries as unknown as Json,
         onboarding_status: {
-          completed: true,
-          completed_at: new Date().toISOString(),
+          completed: publish,
+          completed_at: publish ? new Date().toISOString() : null,
           completed_via: publish ? "publish" : "draft_save",
         } as Json,
       }).map((entry) => ({
@@ -1437,6 +1450,7 @@ export default function OnboardingWizard() {
         );
 
       setDraft((current) => ({ ...current, isPublished: publish }));
+      setInitialSetupCompleted(publish);
       setCompletionState({
         published: publish,
         templateId: draft.blueprintId,
@@ -1647,7 +1661,8 @@ export default function OnboardingWizard() {
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <>
+    <div className="mx-auto max-w-6xl">
       <div className="space-y-6">
         <div className="space-y-2">
           <Badge variant="secondary" className="gap-1">
@@ -1656,11 +1671,13 @@ export default function OnboardingWizard() {
           </Badge>
           <h1 className="font-heading text-3xl font-bold text-foreground">Launch your store</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            A template-first setup flow that keeps the commerce engine intact while making each storefront flexible, tenant-scoped, and easier to launch with the shared template system.
+            {guideMode
+              ? "Use this guided pass to finish the first impression: store name, logo, hero copy, hero media, and the key intro text that merchants can refine later."
+              : "A template-first setup flow that keeps the commerce engine intact while making each storefront flexible, tenant-scoped, and easier to launch with the shared template system."}
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           {steps.map((step, index) => (
             <button
               key={step.id}
@@ -1700,7 +1717,7 @@ export default function OnboardingWizard() {
                     Template switching is disabled for this store package right now. The current storefront still works, but changing template-driven page defaults is locked.
                   </div>
                 ) : null}
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                <div className="grid gap-4">
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="secondary">{activeTemplateProfile.seedDefinition.name}</Badge>
@@ -1725,25 +1742,6 @@ export default function OnboardingWizard() {
                         ? "Demo data is currently seeded for this store. Switching templates does not automatically carry old demo catalog items across."
                         : "No demo catalog is seeded yet for this store."}
                     </p>
-                  </div>
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <p className="text-sm font-semibold text-foreground">Template preview</p>
-                    <p className="mt-1 text-xs text-muted-foreground">This is how the selected storefront direction currently looks with your draft data.</p>
-                    <div className="mt-4">
-                      <StorefrontPreviewFrame viewport="mobile" title={`${activeTemplateProfile.seedDefinition.name} mobile preview`}>
-                        {previewHomepage ? (
-                          <StorefrontTemplateRenderer
-                            store={previewStore}
-                            page={previewHomepage}
-                            blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
-                            adminMode={false}
-                            selectedBlockId={null}
-                            canManageStorefront={false}
-                            onSelectBlock={() => {}}
-                          />
-                        ) : null}
-                      </StorefrontPreviewFrame>
-                    </div>
                   </div>
                 </div>
                 {templateOptionGroups.map(([groupName, groupedTemplates]) => (
@@ -2509,19 +2507,18 @@ export default function OnboardingWizard() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button type="button" variant="outline" onClick={() => setActiveIndex((current) => Math.max(0, current - 1))} disabled={!canGoBack} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           {canGoNext ? (
-            <Button type="button" data-testid="onboarding-next-step" onClick={() => setActiveIndex((current) => Math.min(steps.length - 1, current + 1))} className="gap-2">
+            <Button type="button" data-testid="onboarding-next-step" onClick={() => setActiveIndex((current) => Math.min(steps.length - 1, current + 1))} className="gap-2 sm:self-end">
               Next
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
-              <AdminPreviewStoreButton variant="button" />
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button type="button" asChild variant="outline" className="gap-2">
                 <a href={storeUrl} target="_blank" rel="noreferrer">
                   <Eye className="h-4 w-4" />
@@ -2532,14 +2529,47 @@ export default function OnboardingWizard() {
           )}
         </div>
       </div>
+    </div>
+    <div className="fixed bottom-24 right-3 z-40 flex flex-col gap-2 sm:bottom-6 sm:right-6">
+      <Button
+        type="button"
+        size="icon"
+        className="h-12 w-12 rounded-full shadow-lg"
+        onClick={() => setPreviewMode(previewMode === "half" ? "closed" : "half")}
+        title="Open preview panel"
+      >
+        {previewMode === "half" ? <ChevronsLeft className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+      </Button>
+      <Button
+        type="button"
+        size="icon"
+        variant="outline"
+        className="h-12 w-12 rounded-full bg-background shadow-lg"
+        onClick={() => setPreviewMode(previewMode === "fullscreen" ? "closed" : "fullscreen")}
+        title="Open fullscreen preview"
+      >
+        {previewMode === "fullscreen" ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+      </Button>
+    </div>
 
-      <div className="lg:sticky lg:top-6 lg:h-max">
-        <Card className="overflow-hidden border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Live Preview</CardTitle>
-            <CardDescription>{onboardingContext.labels.previewDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
+    {previewMode === "half" ? (
+      <div className="fixed inset-y-0 right-0 z-50 w-full border-l border-border bg-background shadow-2xl sm:w-[min(50vw,720px)]">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Live Preview</p>
+              <p className="text-xs text-muted-foreground">{onboardingContext.labels.previewDescription}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="icon" variant="outline" onClick={() => setPreviewMode("fullscreen")}>
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant="outline" onClick={() => setPreviewMode("closed")}>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
             <StoreProvider store={previewStore}>
               <StoreThemeScope theme={previewStore.theme}>
                 <div className="space-y-3">
@@ -2551,6 +2581,48 @@ export default function OnboardingWizard() {
                     {previewHomepage ? (
                       <StorefrontTemplateRenderer
                         store={previewStore}
+                        page={previewHomepage}
+                        blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
+                        adminMode={false}
+                        selectedBlockId={null}
+                        canManageStorefront={false}
+                        onSelectBlock={() => {}}
+                      />
+                    ) : null}
+                  </StorefrontPreviewFrame>
+                </div>
+              </StoreThemeScope>
+            </StoreProvider>
+          </div>
+        </div>
+      </div>
+    ) : null}
+
+    <Dialog open={previewMode === "fullscreen"} onOpenChange={(open) => setPreviewMode(open ? "fullscreen" : "closed")}>
+      <DialogContent className="h-[100dvh] max-h-[100dvh] w-[100dvw] max-w-none translate-x-0 translate-y-0 left-0 top-0 rounded-none border-0 p-0">
+        <DialogHeader className="border-b px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <DialogTitle>Live Preview</DialogTitle>
+              <p className="text-xs text-muted-foreground">{onboardingContext.labels.previewDescription}</p>
+            </div>
+            <Button type="button" size="icon" variant="outline" onClick={() => setPreviewMode("closed")}>
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto p-4">
+          <StoreProvider store={previewStore}>
+            <StoreThemeScope theme={previewStore.theme}>
+              <div className="mx-auto max-w-5xl space-y-3">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="truncate text-sm font-semibold text-foreground">{draft.storeName}</p>
+                  <p className="truncate text-xs text-muted-foreground">/{draft.slug}</p>
+                </div>
+                <StorefrontPreviewFrame viewport="desktop" title="Onboarding storefront preview">
+                  {previewHomepage ? (
+                    <StorefrontTemplateRenderer
+                      store={previewStore}
                       page={previewHomepage}
                       blocks={[...previewHomepage.blocks].sort((a, b) => a.sortOrder - b.sortOrder)}
                       adminMode={false}
@@ -2560,12 +2632,12 @@ export default function OnboardingWizard() {
                     />
                   ) : null}
                 </StorefrontPreviewFrame>
-                </div>
-              </StoreThemeScope>
-            </StoreProvider>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              </div>
+            </StoreThemeScope>
+          </StoreProvider>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

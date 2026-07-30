@@ -330,17 +330,17 @@ const AdminProducts = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
           <h1 className="font-heading text-3xl font-bold text-foreground">Products</h1>
           <p className="text-sm text-muted-foreground">Manage your catalog, import inventory in bulk, and export the live product list when the merchant needs it.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto lg:grid-cols-3 lg:justify-end">
           <Button
             variant="outline"
             data-testid="products-export-button"
             onClick={handleExportCatalog}
-            className="gap-2"
+            className="h-11 justify-center gap-2"
           >
             <Download className="h-4 w-4" /> Export CSV
           </Button>
@@ -348,11 +348,11 @@ const AdminProducts = () => {
             variant="outline"
             data-testid="products-bulk-import-button"
             onClick={() => setImportDialogOpen(true)}
-            className="gap-2"
+            className="h-11 justify-center gap-2"
           >
             <Upload className="h-4 w-4" /> Bulk Import
           </Button>
-          <Button data-testid="products-add-button" onClick={openNew} className="gap-2">
+          <Button data-testid="products-add-button" onClick={openNew} className="h-11 justify-center gap-2">
             <Plus className="h-4 w-4" /> Add Product
           </Button>
         </div>
@@ -386,7 +386,7 @@ const AdminProducts = () => {
         placeholder="Search products..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        className="w-full max-w-sm"
       />
                       {loading && products.length === 0 ? (
         <div className="flex justify-center py-20">

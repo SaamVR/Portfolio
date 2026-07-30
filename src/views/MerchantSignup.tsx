@@ -575,7 +575,7 @@ export default function MerchantSignup() {
       setCreatedStore({
         storeId: data.store_id,
         dashboardPath,
-        onboardingPath: `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}`,
+        onboardingPath: `/admin/onboarding?storeId=${encodeURIComponent(data.store_id)}&guide=continue`,
       });
       setStep("success");
     } catch (error: any) {
