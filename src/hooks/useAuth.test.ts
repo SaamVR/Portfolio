@@ -1,0 +1,25 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { deriveAppRole } from "@/hooks/useAuth";
+
+test("deriveAppRole grants dashboard access to merchant owners and staff", () => {
+  assert.equal(deriveAppRole(null, "owner"), "admin");
+  assert.equal(deriveAppRole(null, "admin"), "admin");
+  assert.equal(deriveAppRole(null, "editor"), "admin");
+});
+
+test("deriveAppRole keeps merchant viewers read-only but dashboard-capable", () => {
+  assert.equal(deriveAppRole(null, "viewer"), "co_admin");
+});
+
+test("deriveAppRole prioritizes platform roles when present", () => {
+  assert.equal(deriveAppRole("super_admin", "viewer"), "admin");
+  assert.equal(deriveAppRole("admin", "viewer"), "admin");
+  assert.equal(deriveAppRole("billing_admin", "owner"), "admin");
+  assert.equal(deriveAppRole("support_agent", "editor"), "admin");
+  assert.equal(deriveAppRole("co_admin", "owner"), "co_admin");
+});
+
+test("deriveAppRole returns null without platform or store access", () => {
+  assert.equal(deriveAppRole(null, null), null);
+});

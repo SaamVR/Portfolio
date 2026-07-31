@@ -26,6 +26,23 @@ type CachedAccessState = ResolvedAccessState & {
   updatedAt: string;
 };
 
+export function deriveAppRole(nextPlatformRole: PlatformRole, nextStoreRole: StoreRole): AppRole {
+  if (nextPlatformRole) {
+    if (["super_admin", "admin", "billing_admin", "support_agent"].includes(nextPlatformRole)) {
+      return "admin";
+    }
+    if (nextPlatformRole === "co_admin") {
+      return "co_admin";
+    }
+  }
+
+  if (nextStoreRole) {
+    return nextStoreRole === "viewer" ? "co_admin" : "admin";
+  }
+
+  return null;
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -206,17 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const resolvedStoreId = membership?.storeId ?? null;
     const nextStoreRole = (membership?.role as StoreRole) ?? null;
     const nextPlatformRole = (platformRole?.role as PlatformRole) ?? null;
-    let nextRole: AppRole = null;
-
-    if (nextPlatformRole) {
-      if (["super_admin", "admin", "billing_admin", "support_agent"].includes(nextPlatformRole)) {
-        nextRole = "admin";
-      } else if (nextPlatformRole === "co_admin") {
-        nextRole = "co_admin";
-      }
-    } else if (nextStoreRole) {
-      nextRole = nextStoreRole === "viewer" ? "co_admin" : "admin";
-    }
+    const nextRole = deriveAppRole(nextPlatformRole, nextStoreRole);
 
     return {
       memberships: mappedMemberships,
