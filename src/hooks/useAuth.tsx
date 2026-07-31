@@ -214,6 +214,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else if (nextPlatformRole === "co_admin") {
         nextRole = "co_admin";
       }
+    } else if (nextStoreRole) {
+      nextRole = nextStoreRole === "viewer" ? "co_admin" : "admin";
     }
 
     return {
@@ -225,7 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const clearAccessState = useCallback(() => {
+  const clearAccessState = useCallback((options?: { preserveRecoveryState?: boolean }) => {
     cancelPendingSessionClear();
     resolvedAccessStateRef.current = null;
     setRole(null);
@@ -233,11 +235,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStoreRole(null);
     setStoreMemberships([]);
     setActiveStoreId(null);
-    setRecoveryState({
-      reason: "restoring",
-      usingCachedAccess: false,
-      detail: null,
-    });
+    if (!options?.preserveRecoveryState) {
+      setRecoveryState({
+        reason: "restoring",
+        usingCachedAccess: false,
+        detail: null,
+      });
+    }
     clearCachedAccessState();
   }, [cancelPendingSessionClear, setActiveStoreId, setRecoveryState]);
 
@@ -301,7 +305,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (!preserveExistingOnError || !nextUserId) {
-          clearAccessState();
+          clearAccessState({ preserveRecoveryState: true });
         }
       } finally {
         if (blockUi && mountedRef.current && blockingPermissionRequestIdRef.current === requestId) {
