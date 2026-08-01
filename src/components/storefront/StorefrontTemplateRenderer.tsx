@@ -30,7 +30,12 @@ import { cn } from "@/lib/utils";
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
   template: StorefrontTemplateDefinition,
+  options?: { preserveEditorOrder?: boolean },
 ): StorePageBlock[] {
+  if (options?.preserveEditorOrder) {
+    return [...blocks].sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
   const visibleSet = new Set(template.presentation.visibleSections);
   const orderMap = new Map(template.presentation.sectionOrder.map((type, index) => [type, index]));
 
@@ -89,7 +94,9 @@ export function StorefrontTemplateRenderer({
   embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
-  const blocksToRender = sortBlocksForTemplate(blocks, template);
+  const blocksToRender = sortBlocksForTemplate(blocks, template, {
+    preserveEditorOrder: adminMode,
+  });
   const renderBlockNode = (block: StorePageBlock, index: number) => (
     <div
       key={block.id}
