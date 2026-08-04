@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { deriveAppRole } from "@/hooks/useAuth";
+import { deriveAppRole, resolvePlatformRole } from "@/hooks/useAuth";
 
 test("deriveAppRole grants dashboard access to merchant owners and staff", () => {
   assert.equal(deriveAppRole(null, "owner"), "admin");
@@ -22,4 +22,10 @@ test("deriveAppRole prioritizes platform roles when present", () => {
 
 test("deriveAppRole returns null without platform or store access", () => {
   assert.equal(deriveAppRole(null, null), null);
+});
+
+test("resolvePlatformRole picks the first platform role row when multiple roles exist", () => {
+  assert.equal(resolvePlatformRole([{ role: "admin" }, { role: "billing_admin" }] as never), "admin");
+  assert.equal(resolvePlatformRole([{ role: "support_agent" }] as never), "support_agent");
+  assert.equal(resolvePlatformRole([],), null);
 });

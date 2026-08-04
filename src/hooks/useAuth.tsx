@@ -20,6 +20,9 @@ type ResolvedAccessState = {
 
 type MembershipAccessRow = Pick<Tables<"store_memberships">, "role" | "store_id">;
 type OwnedStoreAccessRow = Pick<Tables<"stores">, "id">;
+type PlatformRoleAccessRow = {
+  role: string | null;
+};
 
 type CachedAccessState = ResolvedAccessState & {
   userId: string;
@@ -41,6 +44,11 @@ export function deriveAppRole(nextPlatformRole: PlatformRole, nextStoreRole: Sto
   }
 
   return null;
+}
+
+export function resolvePlatformRole(rows: PlatformRoleAccessRow[] | null | undefined): PlatformRole {
+  const nextRole = (rows ?? []).find((row) => typeof row?.role === "string" && row.role.length > 0);
+  return (nextRole?.role as PlatformRole) ?? null;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
@@ -169,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .from("user_roles")
             .select("role")
             .eq("user_id", userId)
-            .maybeSingle(),
+            .order("created_at", { ascending: true }),
           supabase
             .from("store_memberships")
             .select("role, store_id")
@@ -222,7 +230,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const membership = preferredMembership ?? mappedMemberships[0] ?? null;
     const resolvedStoreId = membership?.storeId ?? null;
     const nextStoreRole = (membership?.role as StoreRole) ?? null;
-    const nextPlatformRole = (platformRole?.role as PlatformRole) ?? null;
+    const nextPlatformRole = resolvePlatformRole((platformRole ?? []) as PlatformRoleAccessRow[]);
     const nextRole = deriveAppRole(nextPlatformRole, nextStoreRole);
 
     return {
