@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
+import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 export const billingBkashCallbackRouteDeps = {
@@ -45,6 +46,10 @@ export async function GET(req: Request) {
     return NextResponse.redirect(getBillingRedirectUrl("error", "Invalid payment context."));
   }
 
+  if (invoice.status === "paid") {
+    return NextResponse.redirect(getBillingRedirectUrl("success"));
+  }
+
   if (status !== "success") {
     await supabaseAdmin
       .from("store_invoices")
@@ -73,16 +78,19 @@ export async function GET(req: Request) {
   }
 
   try {
-    const appKey = process.env.PLATFORM_BKASH_APP_KEY;
-    const appSecret = process.env.PLATFORM_BKASH_APP_SECRET;
-    const username = process.env.PLATFORM_BKASH_USERNAME;
-    const password = process.env.PLATFORM_BKASH_PASSWORD;
+    const platformConnection = await readPlatformBkashConnection(supabaseAdmin);
+    const configuredConnection = getPlatformBkashCredentialsFromConnection(platformConnection);
+
+    const appKey = configuredConnection?.appKey || process.env.PLATFORM_BKASH_APP_KEY;
+    const appSecret = configuredConnection?.appSecret || process.env.PLATFORM_BKASH_APP_SECRET;
+    const username = configuredConnection?.username || process.env.PLATFORM_BKASH_USERNAME;
+    const password = configuredConnection?.password || process.env.PLATFORM_BKASH_PASSWORD;
 
     if (!appKey || !appSecret || !username || !password) {
       throw new Error("Platform bKash credentials are not configured");
     }
 
-    const isLive = process.env.PLATFORM_BKASH_IS_LIVE === "true";
+    const isLive = configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true");
     const bkashBaseUrl = isLive
       ? "https://tokenized.pay.bka.sh/v1.2.0-beta"
       : "https://tokenized.sandbox.bka.sh/v1.2.0-beta";

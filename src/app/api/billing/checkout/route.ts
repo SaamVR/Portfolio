@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
+import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
 import {
   canManageStore,
   getAuthenticatedUser,
@@ -72,10 +73,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This plan does not require checkout" }, { status: 400 });
     }
 
-    const appKey = process.env.PLATFORM_BKASH_APP_KEY;
-    const appSecret = process.env.PLATFORM_BKASH_APP_SECRET;
-    const username = process.env.PLATFORM_BKASH_USERNAME;
-    const password = process.env.PLATFORM_BKASH_PASSWORD;
+    const platformConnection = await readPlatformBkashConnection(supabaseAdmin);
+    const configuredConnection = getPlatformBkashCredentialsFromConnection(platformConnection);
+
+    const appKey = configuredConnection?.appKey || process.env.PLATFORM_BKASH_APP_KEY;
+    const appSecret = configuredConnection?.appSecret || process.env.PLATFORM_BKASH_APP_SECRET;
+    const username = configuredConnection?.username || process.env.PLATFORM_BKASH_USERNAME;
+    const password = configuredConnection?.password || process.env.PLATFORM_BKASH_PASSWORD;
 
     if (!appKey || !appSecret || !username || !password) {
       return NextResponse.json(
@@ -102,7 +106,7 @@ export async function POST(req: Request) {
     if (invoiceError) throw invoiceError;
     createdInvoiceId = invoice.id;
 
-    const isLive = process.env.PLATFORM_BKASH_IS_LIVE === "true";
+    const isLive = configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true");
     const bkashBaseUrl = isLive
       ? "https://tokenized.pay.bka.sh/v1.2.0-beta"
       : "https://tokenized.sandbox.bka.sh/v1.2.0-beta";

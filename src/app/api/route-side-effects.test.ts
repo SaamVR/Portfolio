@@ -56,6 +56,12 @@ import {
   bkashPaymentConnectionRouteDeps,
 } from "@/app/api/payment-connections/bkash/route";
 import {
+  GET as platformBkashConnectionGet,
+  PUT as platformBkashConnectionPut,
+  DELETE as platformBkashConnectionDelete,
+  platformBkashPaymentConnectionRouteDeps,
+} from "@/app/api/platform/payment-connections/bkash/route";
+import {
   GET as publicPaymentSettingsGet,
   storePaymentSettingsRouteDeps,
 } from "@/app/api/store-payment-settings/route";
@@ -102,7 +108,12 @@ function jsonRequest(url: string, method: string, body: unknown, headers?: Heade
   });
 }
 
-function createCheckoutAdminMock(plan: { id: string; monthly_price: number; currency_code?: string; is_active?: boolean }) {
+function createCheckoutAdminMock(
+  plan: { id: string; monthly_price: number; currency_code?: string; is_active?: boolean },
+  options?: {
+    platformConnection?: Record<string, unknown> | null;
+  },
+) {
   const deletedInvoiceIds: string[] = [];
   const insertedInvoices: Array<Record<string, unknown>> = [];
   const updatedInvoiceProviderIds: Array<Record<string, unknown>> = [];
@@ -163,6 +174,23 @@ function createCheckoutAdminMock(plan: { id: string; monthly_price: number; curr
                 eq(_column: string, value: string) {
                   deletedInvoiceIds.push(value);
                   return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "platform_payment_connections_secure") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({
+                      data: options?.platformConnection ?? null,
+                      error: null,
+                    }),
+                  };
                 },
               };
             },
@@ -704,6 +732,92 @@ function createBkashConnectionAdminMock() {
                           maybeSingle: async () => ({ data: stored, error: null }),
                         };
                       },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+function createPlatformBkashConnectionAdminMock() {
+  const upserts: Array<Record<string, unknown>> = [];
+  const updates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  let stored: Record<string, unknown> | null = null;
+
+  return {
+    upserts,
+    updates,
+    client: {
+      from(table: string) {
+        if (table === "user_roles") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    in() {
+                      return {
+                        order: async () => ({
+                          data: [{ role: "super_admin" }],
+                          error: null,
+                        }),
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table !== "platform_payment_connections_secure") {
+          throw new Error(`Unexpected table ${table}`);
+        }
+
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: async () => ({ data: stored, error: null }),
+                };
+              },
+            };
+          },
+          upsert(payload: Record<string, unknown>) {
+            upserts.push(payload);
+            stored = {
+              id: "platform_payment_connection_1",
+              provider: "bkash",
+              created_at: FIXED_NOW.toISOString(),
+              updated_at: FIXED_NOW.toISOString(),
+              revoked_at: null,
+              ...payload,
+            };
+            return {
+              select() {
+                return {
+                  single: async () => ({ data: stored, error: null }),
+                };
+              },
+            };
+          },
+          update(payload: Record<string, unknown>) {
+            const filters: Array<[string, string]> = [];
+            stored = stored ? { ...stored, ...payload } : null;
+            return {
+              eq(column: string, value: string) {
+                filters.push([column, value]);
+                updates.push({ payload, filters: [...filters] });
+                return {
+                  select() {
+                    return {
+                      maybeSingle: async () => ({ data: stored, error: null }),
                     };
                   },
                 };
@@ -1302,7 +1416,7 @@ function createBkashCallbackAdminMock(invoice: {
   currency?: string;
   status?: string;
   provider_invoice_id?: string | null;
-} | null) {
+} | null, options?: { platformConnection?: Record<string, unknown> | null }) {
   const invoiceUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const subscriptionUpserts: Array<{ payload: Record<string, unknown>; options: Record<string, unknown> }> = [];
   const storeUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
@@ -1368,6 +1482,23 @@ function createBkashCallbackAdminMock(invoice: {
                   filters.push([column, value]);
                   storeUpdates.push({ payload, filters: [...filters] });
                   return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "platform_payment_connections_secure") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle: async () => ({
+                      data: options?.platformConnection ?? null,
+                      error: null,
+                    }),
+                  };
                 },
               };
             },
@@ -2493,6 +2624,63 @@ describe("merchant bKash payment connection side effects", () => {
   });
 });
 
+describe("platform CMS bKash payment connection side effects", () => {
+  test("stores CMS subscription bKash secrets server-side and returns only masked connection status", async () => {
+    const admin = createPlatformBkashConnectionAdminMock();
+
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => ({
+      id: "super_admin_1",
+      email: "cms@example.com",
+    }) as never);
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = (await platformBkashConnectionPut(
+      jsonRequest("https://example.com/api/platform/payment-connections/bkash", "PUT", {
+        settings: {
+          appKey: "platform-app-key",
+          appSecret: "platform-app-secret",
+          username: "platform-user",
+          password: "platform-password",
+          isLive: false,
+        },
+      }),
+    ))!;
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(admin.upserts[0]?.secret_payload, {
+      app_key: "platform-app-key",
+      app_secret: "platform-app-secret",
+      username: "platform-user",
+      password: "platform-password",
+    });
+
+    const body = await response.json();
+    assert.equal(body.connection.configured, true);
+    assert.equal(body.connection.metadata.environment, "sandbox");
+    assert.equal(JSON.stringify(body).includes("platform-app-secret"), false);
+    assert.equal(JSON.stringify(body).includes("platform-password"), false);
+
+    const readResponse = (await platformBkashConnectionGet(
+      new Request("https://example.com/api/platform/payment-connections/bkash", {
+        headers: { authorization: "Bearer token" },
+      }),
+    ))!;
+    assert.equal(readResponse.status, 200);
+    const readBody = await readResponse.json();
+    assert.equal(JSON.stringify(readBody).includes("platform-app-secret"), false);
+    assert.equal(JSON.stringify(readBody).includes("platform-password"), false);
+
+    const revokeResponse = (await platformBkashConnectionDelete(
+      new Request("https://example.com/api/platform/payment-connections/bkash", {
+        method: "DELETE",
+        headers: { authorization: "Bearer token" },
+      }),
+    ))!;
+    assert.equal(revokeResponse.status, 200);
+    assert.deepEqual(admin.updates[0]?.payload.secret_payload, {});
+  });
+});
+
 describe("public payment settings secret isolation", () => {
   test("returns storefront-safe payment settings while deriving gateway availability from the secure connection table", async () => {
     const admin = {
@@ -3017,6 +3205,71 @@ describe("bKash callback context integrity", () => {
         filters: [["id", "store_1"]],
       },
     ]);
+  });
+
+  test("uses the secure platform CMS bKash connection before env fallback", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://commerce.example.com";
+
+    const admin = createBkashCallbackAdminMock(
+      {
+        id: "invoice_1",
+        store_id: "store_1",
+        plan_id: "growth",
+        amount: 999,
+      },
+      {
+        platformConnection: {
+          id: "platform_connection_1",
+          provider: "bkash",
+          status: "connected",
+          public_metadata: { environment: "live", is_live: true },
+          secret_payload: {
+            app_key: "secure-app-key",
+            app_secret: "secure-app-secret",
+            username: "secure-user",
+            password: "secure-password",
+          },
+          created_at: FIXED_NOW.toISOString(),
+          updated_at: FIXED_NOW.toISOString(),
+          revoked_at: null,
+        },
+      },
+    );
+
+    mock.method(billingBkashCallbackRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(billingBkashCallbackRouteDeps, "now", () => FIXED_NOW);
+    const fetchMock = mock.method(
+      billingBkashCallbackRouteDeps,
+      "fetch",
+      async (_url: string | URL, init?: RequestInit) => {
+        const headers = init?.headers as Record<string, string>;
+        if (String(_url).includes("/token/grant")) {
+          assert.equal(headers.username, "secure-user");
+          assert.equal(headers.password, "secure-password");
+          return {
+            json: async () => ({ statusCode: "0000", id_token: "token_123" }),
+          } as never;
+        }
+
+        assert.equal(headers["X-APP-Key"], "secure-app-key");
+        return {
+          json: async () => ({ statusCode: "0000", amount: "999" }),
+        } as never;
+      },
+    );
+
+    const response = await billingBkashCallbackGet(
+      new Request(
+        "https://example.com/api/billing/bkash-callback?status=success&paymentID=pay_1&invoice_id=invoice_1&store_id=store_1",
+      ),
+    );
+
+    assert.equal(response.status, 307);
+    assert.equal(
+      response.headers.get("location"),
+      "https://commerce.example.com/admin/billing?payment=success",
+    );
+    assert.equal(fetchMock.mock.callCount(), 2);
   });
 });
 

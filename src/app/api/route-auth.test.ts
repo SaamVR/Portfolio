@@ -48,6 +48,11 @@ import {
   bkashPaymentConnectionRouteDeps,
 } from "@/app/api/payment-connections/bkash/route";
 import {
+  GET as platformBkashConnectionGet,
+  PUT as platformBkashConnectionPut,
+  platformBkashPaymentConnectionRouteDeps,
+} from "@/app/api/platform/payment-connections/bkash/route";
+import {
   GET as notificationPreviewGet,
   POST as notificationTestPost,
   notificationTestRouteDeps,
@@ -420,6 +425,66 @@ describe("merchant bKash payment connection route authorization", () => {
     assert.equal(response.status, 403);
     assert.deepEqual(await response.json(), { error: "Forbidden" });
     assert.equal(canManageStoreMock.mock.callCount(), 1);
+  });
+});
+
+describe("platform CMS bKash payment connection route authorization", () => {
+  test("rejects unauthenticated CMS payment connection reads before creating a service-role client", async () => {
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => null);
+    const adminClientMock = mock.method(platformBkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("should not create admin client");
+    });
+
+    const response = (await platformBkashConnectionGet(
+      new Request("https://example.com/api/platform/payment-connections/bkash"),
+    ))!;
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
+  });
+
+  test("rejects authenticated users without platform billing roles from saving CMS payment secrets", async () => {
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => ({
+      id: "viewer_1",
+    }) as never);
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => ({
+      from(table: string) {
+        assert.equal(table, "user_roles");
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  in() {
+                    return {
+                      order: async () => ({
+                        data: [],
+                        error: null,
+                      }),
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    }) as never);
+
+    const response = (await platformBkashConnectionPut(
+      jsonRequest("https://example.com/api/platform/payment-connections/bkash", "PUT", {
+        settings: {
+          appKey: "app-key",
+          appSecret: "secret",
+          username: "platform-user",
+          password: "platform-password",
+        },
+      }),
+    ))!;
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
   });
 });
 
