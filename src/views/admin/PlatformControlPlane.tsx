@@ -271,42 +271,29 @@ export default function PlatformControlPlane() {
     try {
       setIsSubmittingExtendTrial(true);
       const targetStore = data?.stores?.find((s) => s.id === extendTrialStoreId);
-      const existingSub = data?.subscriptions?.find((s) => s.store_id === extendTrialStoreId);
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Please sign in again before extending trials.");
+      }
 
-      const currentTrialEnd = existingSub?.trial_ends_at ? new Date(existingSub.trial_ends_at) : new Date();
-      const baseDate = currentTrialEnd > new Date() ? currentTrialEnd : new Date();
-      const newTrialEndsAt = new Date(baseDate.getTime() + extendTrialDays * 24 * 60 * 60 * 1000).toISOString();
-
-      const { error } = await (supabase as any)
-        .from("store_subscriptions")
-        .upsert(
-          {
-            store_id: extendTrialStoreId,
-            plan_id: existingSub?.plan_id || "free",
-            status: "trialing",
-            trial_ends_at: newTrialEndsAt,
-            current_period_ends_at: newTrialEndsAt,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "store_id" }
-        );
-
-      if (error) throw error;
-
-      await logPlatformAuditAction(supabase, {
-        actorId: user?.id,
-        actorEmail: user?.email,
-        actorRole: platformRole,
-        action: "extend_trial",
-        targetType: "store",
-        targetId: extendTrialStoreId,
-        details: {
-          store_name: targetStore?.name,
-          days_added: extendTrialDays,
-          new_trial_ends_at: newTrialEndsAt,
-          operator_note: extendTrialNote,
+      const response = await fetch("/api/platform/subscriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          action: "extend_trial",
+          storeId: extendTrialStoreId,
+          daysToAdd: extendTrialDays,
+          operatorNote: extendTrialNote,
+        }),
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to extend trial period.");
+      }
 
       toast.success(`Granted +${extendTrialDays} days trial access to ${targetStore?.name || "store"}.`);
       setIsExtendTrialDialogOpen(false);
@@ -335,50 +322,29 @@ export default function PlatformControlPlane() {
       setIsSubmittingManualOverride(true);
       const targetStore = data?.stores?.find((s) => s.id === manualOverrideStoreId);
       const targetPlan = data?.plans?.find((p) => p.id === manualOverridePlanId);
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Please sign in again before overriding plans.");
+      }
 
-      const { error: subError } = await (supabase as any)
-        .from("store_subscriptions")
-        .upsert(
-          {
-            store_id: manualOverrideStoreId,
-            plan_id: manualOverridePlanId,
-            status: "active",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "store_id" }
-        );
-
-      if (subError) throw subError;
-
-      const invoiceId = `inv_override_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      await (supabase as any).from("store_invoices").insert({
-        id: invoiceId,
-        store_id: manualOverrideStoreId,
-        plan_id: manualOverridePlanId,
-        amount: 0,
-        currency: targetPlan?.currency_code || "BDT",
-        status: "paid",
-        payment_method: "manual_override",
-        provider: "platform_admin",
-        billing_interval: "monthly",
-        paid_at: new Date().toISOString(),
-        provider_invoice_id: `OVERRIDE-${manualOverrideReason.slice(0, 15).toUpperCase().replace(/\s+/g, "_")}`,
-      });
-
-      await logPlatformAuditAction(supabase, {
-        actorId: user?.id,
-        actorEmail: user?.email,
-        actorRole: platformRole,
-        action: "manual_plan_override",
-        targetType: "store",
-        targetId: manualOverrideStoreId,
-        details: {
-          store_name: targetStore?.name,
-          plan_id: manualOverridePlanId,
-          plan_name: targetPlan?.name,
-          reason: manualOverrideReason,
+      const response = await fetch("/api/platform/subscriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          action: "manual_override",
+          storeId: manualOverrideStoreId,
+          planId: manualOverridePlanId,
+          reason: manualOverrideReason,
+        }),
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to override store plan.");
+      }
 
       toast.success(`Store "${targetStore?.name}" upgraded to ${targetPlan?.name || manualOverridePlanId} (Manual Override Active).`);
       setIsManualOverrideDialogOpen(false);

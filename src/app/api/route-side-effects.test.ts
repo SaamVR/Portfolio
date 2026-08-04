@@ -26,6 +26,10 @@ import {
   manualBillingReviewRouteDeps,
 } from "@/app/api/platform/billing/manual-review/route";
 import {
+  POST as platformSubscriptionsPost,
+  platformSubscriptionsRouteDeps,
+} from "@/app/api/platform/subscriptions/route";
+import {
   POST as deleteStorePost,
   deleteStoreRouteDeps,
 } from "@/app/api/stores/delete/route";
@@ -394,6 +398,137 @@ function createManualReviewAdminMock(invoice: {
                   return Promise.resolve({ error: null });
                 },
               };
+            },
+          };
+        }
+
+        if (table === "platform_audit_logs") {
+          return {
+            insert() {
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table ${table}`);
+      },
+    },
+  };
+}
+
+function createPlatformSubscriptionsAdminMock(options?: {
+  store?: { id: string; name: string; plan?: string | null } | null;
+  plan?: { id: string; name: string; currency_code?: string | null; is_active?: boolean | null } | null;
+  existingSubscription?: { plan_id?: string | null; trial_ends_at?: string | null } | null;
+  platformRoles?: string[];
+}) {
+  const insertedInvoices: Array<Record<string, unknown>> = [];
+  const subscriptionUpserts: Array<Record<string, unknown>> = [];
+  const auditLogs: Array<Record<string, unknown>> = [];
+
+  return {
+    insertedInvoices,
+    subscriptionUpserts,
+    auditLogs,
+    client: {
+      from(table: string) {
+        if (table === "user_roles") {
+          return {
+            select() {
+              return {
+                eq(_column: string, _value: string) {
+                  return {
+                    in(_column2: string, _value2: string[]) {
+                      return {
+                        order: async () => ({
+                          data: (options?.platformRoles ?? ["admin"]).map((role) => ({ role })),
+                          error: null,
+                        }),
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "stores") {
+          return {
+            select() {
+              return {
+                eq(_column: string, _value: string) {
+                  return {
+                    maybeSingle: async () => ({
+                      data: options?.store ?? { id: "store_1", name: "Demo Store", plan: "basic" },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+            update() {
+              return {
+                eq() {
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "store_subscriptions") {
+          return {
+            select() {
+              return {
+                eq(_column: string, _value: string) {
+                  return {
+                    maybeSingle: async () => ({
+                      data: options?.existingSubscription ?? { plan_id: "basic", trial_ends_at: null },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+            upsert(payload: Record<string, unknown>) {
+              subscriptionUpserts.push(payload);
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        if (table === "cms_plans") {
+          return {
+            select() {
+              return {
+                eq(_column: string, _value: string) {
+                  return {
+                    maybeSingle: async () => ({
+                      data: options?.plan ?? { id: "pro", name: "Pro", currency_code: "BDT", is_active: true },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "store_invoices") {
+          return {
+            insert(payload: Record<string, unknown>) {
+              insertedInvoices.push(payload);
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        if (table === "platform_audit_logs") {
+          return {
+            insert(payload: Record<string, unknown>) {
+              auditLogs.push(payload);
+              return Promise.resolve({ error: null });
             },
           };
         }
@@ -1838,6 +1973,110 @@ describe("manual billing review side effects", () => {
     assert.deepEqual(await response.json(), { success: true, status: "paid" });
     assert.equal(admin.invoiceUpdates.length, 1);
     assert.equal(admin.subscriptionUpserts.length, 1);
+  });
+});
+
+describe("platform subscription side effects", () => {
+  test("extends a trial through the server-side subscription path", async () => {
+    const admin = createPlatformSubscriptionsAdminMock({
+      store: { id: "store_trial_1", name: "Trial Store", plan: "basic" },
+      existingSubscription: {
+        plan_id: "advanced",
+        trial_ends_at: "2026-07-20T00:00:00.000Z",
+      },
+    });
+
+    mock.method(platformSubscriptionsRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_trial_1", email: "ops@example.com" }) as never);
+    mock.method(platformSubscriptionsRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(platformSubscriptionsRouteDeps, "now", () => FIXED_NOW);
+    mock.method(platformSubscriptionsRouteDeps, "upsertStoreSubscription", async (_client, payload) => {
+      admin.subscriptionUpserts.push(payload as Record<string, unknown>);
+      return { error: null } as never;
+    });
+
+    const response = await platformSubscriptionsPost(
+      jsonRequest(
+        "https://example.com/api/platform/subscriptions",
+        "POST",
+        {
+          action: "extend_trial",
+          storeId: "store_trial_1",
+          daysToAdd: 14,
+          operatorNote: "Recovery extension",
+        },
+        { Authorization: "Bearer token_trial_1" },
+      ),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true,
+      status: "trialing",
+      trialEndsAt: "2026-08-03T00:00:00.000Z",
+    });
+    assert.deepEqual(admin.subscriptionUpserts, [
+      {
+        storeId: "store_trial_1",
+        planId: "advanced",
+        status: "trialing",
+        provider: null,
+        providerSubscriptionId: null,
+        currentPeriodEndsAt: "2026-08-03T00:00:00.000Z",
+        trialEndsAt: "2026-08-03T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  test("applies a manual override through the server-side subscription path", async () => {
+    const admin = createPlatformSubscriptionsAdminMock({
+      store: { id: "store_override_1", name: "Override Store", plan: "basic" },
+      plan: { id: "pro", name: "Pro", currency_code: "BDT", is_active: true },
+    });
+
+    mock.method(platformSubscriptionsRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_override_1", email: "billing@example.com" }) as never);
+    mock.method(platformSubscriptionsRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(platformSubscriptionsRouteDeps, "now", () => FIXED_NOW);
+    mock.method(platformSubscriptionsRouteDeps, "upsertStoreSubscription", async (_client, payload) => {
+      admin.subscriptionUpserts.push(payload as Record<string, unknown>);
+      return { error: null } as never;
+    });
+
+    const response = await platformSubscriptionsPost(
+      jsonRequest(
+        "https://example.com/api/platform/subscriptions",
+        "POST",
+        {
+          action: "manual_override",
+          storeId: "store_override_1",
+          planId: "pro",
+          reason: "VIP exception",
+        },
+        { Authorization: "Bearer token_override_1" },
+      ),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true,
+      status: "active",
+      planId: "pro",
+    });
+    assert.deepEqual(admin.subscriptionUpserts, [
+      {
+        storeId: "store_override_1",
+        planId: "pro",
+        status: "active",
+        provider: "platform_admin",
+        providerSubscriptionId: null,
+        currentPeriodEndsAt: null,
+        trialEndsAt: null,
+      },
+    ]);
+    assert.equal(admin.insertedInvoices.length, 1);
+    assert.equal(admin.insertedInvoices[0]?.store_id, "store_override_1");
+    assert.equal(admin.insertedInvoices[0]?.plan_id, "pro");
+    assert.equal(admin.insertedInvoices[0]?.status, "paid");
+    assert.equal(admin.insertedInvoices[0]?.payment_method, "manual_override");
   });
 });
 
