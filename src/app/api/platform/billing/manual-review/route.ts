@@ -16,10 +16,14 @@ async function isPlatformAdmin(userId: string) {
     .select("role")
     .eq("user_id", userId)
     .in("role", ["admin", "super_admin", "billing_admin"])
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return { allowed: Boolean(data?.role), role: data?.role ?? null };
+  const resolvedRole =
+    Array.isArray(data) && data.length > 0 && typeof data[0]?.role === "string"
+      ? data[0].role
+      : null;
+  return { allowed: Boolean(resolvedRole), role: resolvedRole };
 }
 
 export async function POST(req: Request) {
@@ -146,6 +150,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, status: "failed" });
   } catch (error) {
     console.error("Manual billing review error:", error);
-    return NextResponse.json({ error: "Failed to review manual payment" }, { status: 500 });
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : "Failed to review manual payment";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

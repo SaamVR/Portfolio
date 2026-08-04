@@ -331,6 +331,7 @@ function createManualReviewAdminMock(invoice: {
   payment_method?: string | null;
   provider?: string | null;
   provider_invoice_id?: string | null;
+  platformRoles?: string[];
 }) {
   const invoiceUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const subscriptionUpserts: Array<Record<string, unknown>> = [];
@@ -346,10 +347,10 @@ function createManualReviewAdminMock(invoice: {
               return {
                 eq(_column: string, _value: string) {
                   return {
-                    eq(_column2: string, _value2: string) {
+                    in(_column2: string, _value2: string[]) {
                       return {
-                        maybeSingle: async () => ({
-                          data: { role: "admin" },
+                        order: async () => ({
+                          data: (invoice.platformRoles ?? ["admin"]).map((role) => ({ role })),
                           error: null,
                         }),
                       };
@@ -1803,6 +1804,40 @@ describe("manual billing review side effects", () => {
       },
     ]);
     assert.equal(upsertMock.mock.callCount(), 0);
+  });
+
+  test("accepts admins that have multiple allowed platform role rows", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_3",
+      store_id: "store_3",
+      plan_id: "pro",
+      status: "pending",
+      billing_interval: "monthly",
+      provider_invoice_id: "trx_789",
+      platformRoles: ["admin", "billing_admin"],
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_3" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(manualBillingReviewRouteDeps, "now", () => FIXED_NOW);
+    mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async (_client, payload) => {
+      admin.subscriptionUpserts.push(payload as Record<string, unknown>);
+      return { error: null } as never;
+    });
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_3", action: "approve" },
+        { Authorization: "Bearer token_789" },
+      ),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { success: true, status: "paid" });
+    assert.equal(admin.invoiceUpdates.length, 1);
+    assert.equal(admin.subscriptionUpserts.length, 1);
   });
 });
 
