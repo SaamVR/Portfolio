@@ -24,19 +24,39 @@ export interface PlatformAuditLogRow {
   created_at: string;
 }
 
+function normalizeAuditActorRole(role?: string | null) {
+  if (!role) return null;
+
+  if (role === "admin" || role === "super_admin") {
+    return "admin";
+  }
+
+  if (role === "co_admin" || role === "billing_admin" || role === "support_agent") {
+    return "co_admin";
+  }
+
+  return null;
+}
+
 export async function logPlatformAuditAction(
   client: SupabaseClient | any,
   input: AuditLogInput,
 ): Promise<void> {
   try {
+    const normalizedActorRole = normalizeAuditActorRole(input.actorRole);
     const payload = {
       actor_id: input.actorId ?? null,
       actor_email: input.actorEmail ?? null,
-      actor_role: input.actorRole ?? null,
+      actor_role: normalizedActorRole,
       action: input.action,
       target_type: input.targetType,
       target_id: input.targetId ?? null,
-      details: input.details ?? {},
+      details: {
+        ...(input.details ?? {}),
+        ...(input.actorRole && input.actorRole !== normalizedActorRole
+          ? { actor_role_source: input.actorRole }
+          : {}),
+      },
       ip_address: input.ipAddress ?? null,
       created_at: new Date().toISOString(),
     };
