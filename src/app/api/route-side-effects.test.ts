@@ -30,6 +30,10 @@ import {
   platformSubscriptionsRouteDeps,
 } from "@/app/api/platform/subscriptions/route";
 import {
+  GET as platformAccessGet,
+  platformAccessRouteDeps,
+} from "@/app/api/platform/access/route";
+import {
   POST as deleteStorePost,
   deleteStoreRouteDeps,
 } from "@/app/api/stores/delete/route";
@@ -529,6 +533,33 @@ function createPlatformSubscriptionsAdminMock(options?: {
             insert(payload: Record<string, unknown>) {
               auditLogs.push(payload);
               return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table ${table}`);
+      },
+    },
+  };
+}
+
+function createPlatformAccessAdminMock(platformRoles?: string[]) {
+  return {
+    client: {
+      from(table: string) {
+        if (table === "user_roles") {
+          return {
+            select() {
+              return {
+                eq(_column: string, _value: string) {
+                  return {
+                    order: async () => ({
+                      data: (platformRoles ?? ["admin"]).map((role) => ({ role })),
+                      error: null,
+                    }),
+                  };
+                },
+              };
             },
           };
         }
@@ -2077,6 +2108,30 @@ describe("platform subscription side effects", () => {
     assert.equal(admin.insertedInvoices[0]?.plan_id, "pro");
     assert.equal(admin.insertedInvoices[0]?.status, "paid");
     assert.equal(admin.insertedInvoices[0]?.payment_method, "manual_override");
+  });
+});
+
+describe("platform access side effects", () => {
+  test("returns the first resolved platform role for the authenticated user", async () => {
+    const admin = createPlatformAccessAdminMock(["admin"]);
+
+    mock.method(platformAccessRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_access_1" }) as never);
+    mock.method(platformAccessRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = await platformAccessGet(
+      new Request("https://example.com/api/platform/access", {
+        headers: {
+          Authorization: "Bearer token_access_1",
+        },
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true,
+      role: "admin",
+      isPlatformUser: true,
+    });
   });
 });
 

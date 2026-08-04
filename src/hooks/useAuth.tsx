@@ -68,6 +68,22 @@ function getErrorMessage(error: unknown) {
   return "";
 }
 
+async function fetchPlatformRoleFromServer(accessToken: string): Promise<PlatformRole> {
+  const response = await fetch("/api/platform/access", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error || "Failed to resolve platform access");
+  }
+
+  const payload = await response.json().catch(() => null);
+  return typeof payload?.role === "string" ? (payload.role as PlatformRole) : null;
+}
+
 function readCachedAccessState(userId: string): ResolvedAccessState | null {
   if (typeof window === "undefined") return null;
 
@@ -286,6 +302,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const resolved = await fetchRole(nextUserId);
+        if (!resolved.nextPlatformRole) {
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          if (accessToken) {
+            const serverPlatformRole = await fetchPlatformRoleFromServer(accessToken);
+            if (serverPlatformRole) {
+              resolved.nextPlatformRole = serverPlatformRole;
+              resolved.nextRole = deriveAppRole(serverPlatformRole, resolved.nextStoreRole);
+            }
+          }
+        }
         if (!mountedRef.current || requestId !== permissionRequestIdRef.current) {
           return;
         }
