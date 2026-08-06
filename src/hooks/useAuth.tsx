@@ -68,6 +68,21 @@ function getErrorMessage(error: unknown) {
   return "";
 }
 
+function buildPlatformRecoveredAccessState(
+  nextPlatformRole: PlatformRole,
+  current: ResolvedAccessState | null,
+): ResolvedAccessState {
+  const nextStoreRole = current?.nextStoreRole ?? null;
+
+  return {
+    memberships: current?.memberships ?? [],
+    resolvedStoreId: current?.resolvedStoreId ?? null,
+    nextStoreRole,
+    nextPlatformRole,
+    nextRole: deriveAppRole(nextPlatformRole, nextStoreRole),
+  };
+}
+
 async function fetchPlatformRoleFromServer(accessToken: string): Promise<PlatformRole> {
   const response = await fetch("/api/platform/access", {
     headers: {
@@ -179,6 +194,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const setRecoveryState = useCallback((nextState: SetStateAction<AuthRecoveryState>) => {
     setAuthRecovery(nextState);
+  }, []);
+
+  const recoverPlatformAccessFromServer = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      return null;
+    }
+
+    const nextPlatformRole = await fetchPlatformRoleFromServer(accessToken);
+    if (!nextPlatformRole) {
+      return null;
+    }
+
+    return buildPlatformRecoveredAccessState(nextPlatformRole, resolvedAccessStateRef.current);
   }, []);
 
   const fetchRole = useCallback(async (userId: string): Promise<ResolvedAccessState> => {
@@ -337,6 +367,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Auth permission refresh error:", error);
         }
 
+        try {
+          const recoveredAccess = await recoverPlatformAccessFromServer();
+          if (nextUserId && recoveredAccess && mountedRef.current && requestId === permissionRequestIdRef.current) {
+            applyResolvedAccessState(recoveredAccess);
+            writeCachedAccessState(nextUserId, recoveredAccess);
+            setRecoveryState({
+              reason: "ready",
+              usingCachedAccess: false,
+              detail: "Platform access was restored from the secure server check while store permissions continue to refresh.",
+            });
+            return;
+          }
+        } catch (serverRecoveryError) {
+          console.error("Auth platform recovery error:", serverRecoveryError);
+        }
+
         const offline = typeof navigator !== "undefined" && navigator.onLine === false;
         setRecoveryState({
           reason: offline ? "offline" : "permission_timeout",
@@ -356,7 +402,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     },
-    [applyResolvedAccessState, clearAccessState, fetchRole, setRecoveryState],
+    [applyResolvedAccessState, clearAccessState, fetchRole, recoverPlatformAccessFromServer, setRecoveryState],
   );
 
   const refreshRole = useCallback(async () => {
