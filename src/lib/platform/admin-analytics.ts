@@ -1,5 +1,5 @@
 import { getDefaultLifecycleState, type StoreLifecycleStateRecord } from "@/lib/platform/control-plane";
-import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
+import { resolveStorePlanState } from "@/lib/billing/plans";
 
 export type PlatformAnalyticsInput = {
   stores: Array<{
@@ -7,6 +7,7 @@ export type PlatformAnalyticsInput = {
     owner_id?: string | null;
     name: string;
     slug: string;
+    plan?: string | null;
     custom_domain?: string | null;
     is_published: boolean | null;
     updated_at?: string | null;
@@ -64,7 +65,11 @@ function shortId(value?: string | null) {
 export function buildStorePlatformSummaries(input: PlatformAnalyticsInput): StorePlatformSummary[] {
   return input.stores.map((store) => {
     const subscription = input.subscriptions.find((item) => item.store_id === store.id);
-    const plan = input.plans.find((item) => item.id === subscription?.plan_id);
+    const resolvedPlanState = resolveStorePlanState({
+      subscription,
+      legacyPlanId: store.plan ?? null,
+    });
+    const plan = input.plans.find((item) => item.id === (resolvedPlanState.effectivePlanId ?? resolvedPlanState.subscriptionPlanId));
     const storeOrders = input.orders.filter((item) => item.store_id === store.id);
     const storeProducts = input.products.filter((item) => item.store_id === store.id);
     const storePages = input.pages.filter((item) => item.store_id === store.id);
@@ -74,9 +79,9 @@ export function buildStorePlatformSummaries(input: PlatformAnalyticsInput): Stor
 
     return {
       ...store,
-      planId: subscription?.plan_id ?? null,
-      planName: plan?.name ?? subscription?.plan_id ?? "No plan",
-      subscriptionStatus: getEffectiveSubscriptionStatus(subscription) ?? "missing",
+      planId: resolvedPlanState.effectivePlanId ?? resolvedPlanState.subscriptionPlanId ?? resolvedPlanState.legacyPlanId ?? null,
+      planName: plan?.name ?? resolvedPlanState.subscriptionPlanId ?? resolvedPlanState.legacyPlanId ?? "No plan",
+      subscriptionStatus: resolvedPlanState.subscriptionStatus ?? "missing",
       orderTotal: storeOrders.length,
       revenue: storeOrders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + (order.total ?? 0), 0),
       productTotal: storeProducts.length,

@@ -8,6 +8,7 @@ import {
   Rocket,
   Settings,
   ShoppingCart,
+  Sparkles,
   Store,
   Users,
 } from "lucide-react";
@@ -141,6 +142,16 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       mobileShortLabel: "Stats",
     },
     {
+      to: withStoreId("/admin/onboarding", context.activeStoreId),
+      icon: Sparkles,
+      label: "Onboarding",
+      section: "secondary",
+      show: context.cmsEnabled,
+      match: ["/admin/onboarding"],
+      description: "Reopen the guided setup flow for homepage sections, brand content, payments, and launch steps.",
+      mobileShortLabel: "Setup",
+    },
+    {
       to: withStoreId("/admin/site-settings", context.activeStoreId),
       icon: Settings,
       label: "Settings",
@@ -166,6 +177,16 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       match: ["/admin/billing"],
       description: "Subscription plan, usage limits, and payment method.",
       mobileShortLabel: "Billing",
+    },
+    {
+      to: "/admin/guide",
+      icon: HelpCircle,
+      label: "How-To Guide",
+      section: "secondary",
+      show: true,
+      match: ["/admin/guide", "/admin/help", "/admin/how-to"],
+      description: "Step-by-step guidance on creating and managing your storefront.",
+      mobileShortLabel: "Guide",
     },
     {
       to: context.supportUrl,

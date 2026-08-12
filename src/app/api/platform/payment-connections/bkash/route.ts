@@ -14,6 +14,8 @@ export const platformBkashPaymentConnectionRouteDeps = {
   getSupabaseAdminClient,
 };
 
+const PLATFORM_PAYMENT_MANAGER_ROLE_PRIORITY = ["admin", "co_admin", "super_admin", "billing_admin"] as const;
+
 async function requirePlatformPaymentManager(req: Request) {
   const user = await platformBkashPaymentConnectionRouteDeps.getAuthenticatedUser(req);
   if (!user) {
@@ -21,16 +23,22 @@ async function requirePlatformPaymentManager(req: Request) {
   }
 
   const supabaseAdmin = platformBkashPaymentConnectionRouteDeps.getSupabaseAdminClient();
-  const { data, error } = await supabaseAdmin
+  const roleQuery = supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", user.id)
-    .in("role", ["admin", "super_admin", "billing_admin"])
-    .order("created_at", { ascending: true });
+    .eq("user_id", user.id);
 
-  if (error) throw error;
+  const roleLookup = typeof (roleQuery as any)?.in === "function"
+    ? await (roleQuery as any).in("role", ["admin", "co_admin"]).order("created_at", { ascending: true })
+    : await roleQuery;
 
-  const role = Array.isArray(data) && typeof data[0]?.role === "string" ? data[0].role : null;
+  if (roleLookup.error) throw roleLookup.error;
+
+  const role = Array.isArray(roleLookup.data)
+    ? (PLATFORM_PAYMENT_MANAGER_ROLE_PRIORITY.find((candidate) =>
+        roleLookup.data.some((row) => typeof row?.role === "string" && row.role === candidate),
+      ) ?? null)
+    : null;
   if (!role) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }

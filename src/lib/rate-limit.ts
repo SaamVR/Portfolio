@@ -1,37 +1,41 @@
+import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+
 export interface RateLimitOptions {
   limit: number;
   windowMs: number;
 }
 
-const rateLimits = new Map<string, { count: number; expiresAt: number }>();
-
-export function rateLimit(identifier: string, options: RateLimitOptions) {
-  const now = Date.now();
-  const current = rateLimits.get(identifier);
-
-  if (!current || current.expiresAt < now) {
-    rateLimits.set(identifier, { count: 1, expiresAt: now + options.windowMs });
-    return { success: true, limit: options.limit, remaining: options.limit - 1, reset: now + options.windowMs };
-  }
-
-  if (current.count >= options.limit) {
-    return { success: false, limit: options.limit, remaining: 0, reset: current.expiresAt };
-  }
-
-  current.count++;
-  return { success: true, limit: options.limit, remaining: options.limit - current.count, reset: current.expiresAt };
+interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
 }
 
-// Clean up expired entries every minute
-if (typeof setInterval !== "undefined") {
-  const cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of rateLimits.entries()) {
-      if (value.expiresAt < now) {
-        rateLimits.delete(key);
-      }
-    }
-  }, 60000);
+export async function rateLimit(identifier: string, options: RateLimitOptions): Promise<RateLimitResult> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const now = Date.now();
 
-  cleanupTimer.unref?.();
+  const { data, error } = await (supabaseAdmin as any).rpc("check_request_rate_limit", {
+    _identifier: identifier,
+    _limit: options.limit,
+    _window_ms: options.windowMs,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const count = Math.max(0, Number(row?.count ?? 0));
+  const resetAtText = typeof row?.reset_at === "string" ? row.reset_at : null;
+  const resetAt = resetAtText ? Date.parse(resetAtText) : now + options.windowMs;
+  const remaining = Math.max(0, options.limit - count);
+
+  return {
+    success: Boolean(row?.allowed),
+    limit: options.limit,
+    remaining,
+    reset: Number.isFinite(resetAt) ? resetAt : now + options.windowMs,
+  };
 }

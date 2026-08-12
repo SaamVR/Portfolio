@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, FolderTree } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, FolderTree, X } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
@@ -27,8 +27,32 @@ import {
   SAMPLE_TEMPLATE_CSV,
   type ParsedImportRow,
 } from "@/lib/cms/product-import";
+import {
+  appendMetricValue,
+  getTemplateDefaultProductMetrics,
+  normalizeMetricDefinitions,
+  normalizeMetricValues,
+  resolveProductMetricDefinitions,
+  type ProductMetricDefinition,
+} from "@/lib/cms/product-metrics";
+import {
+  fetchStoreProductTypes,
+  formatTaxonomyError,
+  PRODUCT_TAXONOMY_UPDATED_EVENT,
+  type ProductTypeTaxonomyRow,
+} from "@/lib/cms/product-taxonomy";
+import { refreshStorefrontProductCache } from "@/lib/storefront-cache-client";
+import type { Json } from "@/integrations/supabase/types";
 
-type Product = Tables<"products">;
+type Product = Tables<"products"> & {
+  metric_values?: unknown;
+};
+
+type ShopPageSettings = {
+  catalog_note_visible?: boolean;
+  catalog_note_title?: string;
+  catalog_note_description?: string;
+};
 
 const emptyProduct = {
   name: "",
@@ -44,9 +68,100 @@ const emptyProduct = {
   featured: false,
   badge: null as string | null,
   stock: 0,
+  metric_values: {} as Record<string, string[]>,
 };
 
 const BADGES = ["none", "New", "Sale"];
+
+function MetricValueChipInput({
+  label,
+  values,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  placeholder: string;
+  onChange: (nextValues: string[]) => void;
+}) {
+  const [draftValue, setDraftValue] = useState("");
+
+  useEffect(() => {
+    setDraftValue("");
+  }, [label, values.length]);
+
+  const commitDraft = useCallback(() => {
+    const nextValues = draftValue
+      .split(",")
+      .reduce((current, item) => appendMetricValue(current, item), values);
+    if (nextValues !== values) {
+      onChange(nextValues);
+    }
+    setDraftValue("");
+  }, [draftValue, onChange, values]);
+
+  const removeValue = (valueToRemove: string) => {
+    onChange(values.filter((value) => value !== valueToRemove));
+  };
+
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+      <div className="rounded-lg border border-input bg-background px-3 py-2">
+        <div className="flex flex-wrap gap-2">
+          {values.map((value) => (
+            <span
+              key={value}
+              className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground"
+            >
+              <span className="max-w-[140px] truncate sm:max-w-[180px]">{value}</span>
+              <button
+                type="button"
+                onClick={() => removeValue(value)}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={`Remove ${value}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            value={draftValue}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              if (nextValue.includes(",")) {
+                const nextValues = nextValue
+                  .split(",")
+                  .reduce((current, item) => appendMetricValue(current, item), values);
+                if (nextValues !== values) {
+                  onChange(nextValues);
+                }
+                setDraftValue("");
+                return;
+              }
+              setDraftValue(nextValue);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === ",") {
+                event.preventDefault();
+                commitDraft();
+                return;
+              }
+              if (event.key === "Backspace" && !draftValue && values.length > 0) {
+                event.preventDefault();
+                onChange(values.slice(0, -1));
+              }
+            }}
+            onBlur={commitDraft}
+            placeholder={values.length === 0 ? placeholder : "Add another value"}
+            className="h-8 min-w-[140px] flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Press Enter or comma to add each value.</p>
+    </div>
+  );
+}
 
 const AdminProducts = () => {
   const { role, activeStoreId } = useAuth();
@@ -63,6 +178,12 @@ const AdminProducts = () => {
   const [search, setSearch] = useState("");
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [dbTypes, setDbTypes] = useState<string[]>([]);
+  const [typeRows, setTypeRows] = useState<ProductTypeTaxonomyRow[]>([]);
+  const [metricsCatalog, setMetricsCatalog] = useState<ProductMetricDefinition[]>([]);
+  const [storefrontTemplateId, setStorefrontTemplateId] = useState<string>("general-catalog");
+  const [shopPageSettings, setShopPageSettings] = useState<ShopPageSettings>({});
+  const [shopPageSettingsSnapshot, setShopPageSettingsSnapshot] = useState<Record<string, unknown>>({});
+  const [savingCatalogNoteSettings, setSavingCatalogNoteSettings] = useState(false);
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importRows, setImportRows] = useState<ParsedImportRow[]>([]);
@@ -153,6 +274,7 @@ const AdminProducts = () => {
       setImportDialogOpen(false);
       setImportRows([]);
       setImportFileName("");
+      await refreshStorefrontProductCache(supabase, activeStoreId as string);
       const productRows = await fetchProducts();
       setProducts(productRows);
     } catch (err) {
@@ -178,55 +300,90 @@ const AdminProducts = () => {
     return nextProducts;
   }, [activeStoreId]);
 
-  useEffect(() => {
-    let active = true;
+  const refreshCatalogData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!activeStoreId) {
+      setProducts([]);
+      setDbCategories([]);
+      setDbTypes([]);
+      setTypeRows([]);
+      setMetricsCatalog([]);
+      setStorefrontTemplateId("general-catalog");
+      setShopPageSettings({});
+      setShopPageSettingsSnapshot({});
+      setLoading(false);
+      return;
+    }
 
-    const load = async () => {
-      if (!activeStoreId) {
-        setProducts([]);
-        setDbCategories([]);
-        setDbTypes([]);
-        setLoading(false);
-        return;
+    setLoading(true);
+    try {
+      const [productRows, categoriesRes, typesData, settingsRes] = await Promise.all([
+        fetchProducts(),
+        supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
+        fetchStoreProductTypes(activeStoreId as string),
+        supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["product_metrics_catalog", "storefront_profile", "shop_page"]),
+      ]);
+
+      setProducts(productRows);
+
+      if (categoriesRes.error || settingsRes.error) {
+        throw categoriesRes.error || settingsRes.error;
       }
 
-      setLoading(true);
-      try {
-        const [productRows, categoriesRes, typesRes] = await Promise.all([
-          fetchProducts(),
-          supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
-          supabase.from("product_types").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
-        ]);
+      setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
+      setDbTypes(typesData.map((row) => row.name));
+      setTypeRows(typesData as ProductTypeTaxonomyRow[]);
+      const settingsRows = settingsRes.data ?? [];
+      const metricsValue = settingsRows.find((row) => row.key === "product_metrics_catalog")?.value;
+      const storefrontProfile = settingsRows.find((row) => row.key === "storefront_profile")?.value as Record<string, unknown> | undefined;
+      const shopPage = settingsRows.find((row) => row.key === "shop_page")?.value as Record<string, unknown> | undefined;
+      setMetricsCatalog(normalizeMetricDefinitions(
+        typeof metricsValue === "object" && metricsValue
+          ? (metricsValue as Record<string, unknown>).customMetrics
+          : [],
+      ));
+      setStorefrontTemplateId(typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : "general-catalog");
+      setShopPageSettings({
+        catalog_note_visible: shopPage?.catalog_note_visible !== false,
+        catalog_note_title: typeof shopPage?.catalog_note_title === "string" ? shopPage.catalog_note_title : "",
+        catalog_note_description: typeof shopPage?.catalog_note_description === "string" ? shopPage.catalog_note_description : "",
+      });
+      setShopPageSettingsSnapshot(shopPage ?? {});
+    } catch (error) {
+      console.error("Failed to load product taxonomy:", error);
+      if (!options?.silent) {
+        toast.error(`Failed to load product data: ${formatTaxonomyError(error)}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [activeStoreId, fetchProducts]);
 
-        if (!active) return;
-        setProducts(productRows);
+  useEffect(() => {
+    void refreshCatalogData();
+  }, [refreshCatalogData]);
 
-        if (categoriesRes.error || typesRes.error) {
-          console.error("Failed to load product taxonomy:", categoriesRes.error || typesRes.error);
-          setDbCategories([]);
-          setDbTypes([]);
-          return;
-        }
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-        setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
-        setDbTypes((typesRes.data ?? []).map((r: any) => r.name));
-      } catch (error) {
-        if (!active) return;
-        console.error("Failed to load products:", error);
-        toast.error("Failed to refresh products. Please try again.");
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+    const handleTaxonomyUpdate = () => {
+      void refreshCatalogData({ silent: true });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshCatalogData({ silent: true });
       }
     };
 
-    void load();
+    window.addEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, handleTaxonomyUpdate);
+    window.addEventListener("focus", handleTaxonomyUpdate);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      active = false;
+      window.removeEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, handleTaxonomyUpdate);
+      window.removeEventListener("focus", handleTaxonomyUpdate);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeStoreId, fetchProducts]);
+  }, [refreshCatalogData]);
 
   useEffect(() => {
     setDialogOpen(false);
@@ -234,7 +391,53 @@ const AdminProducts = () => {
     setForm(emptyProduct);
     setSaving(false);
     setSearch("");
+    setTypeRows([]);
+    setMetricsCatalog([]);
+    setStorefrontTemplateId("general-catalog");
+    setShopPageSettings({});
+    setShopPageSettingsSnapshot({});
   }, [activeStoreId]);
+
+  const updateCatalogNoteSetting = useCallback((field: keyof ShopPageSettings, value: string | boolean) => {
+    setShopPageSettings((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }, []);
+
+  const saveCatalogNoteSettings = useCallback(async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before updating shop settings.");
+      return;
+    }
+
+    setSavingCatalogNoteSettings(true);
+    try {
+      const payload = {
+        ...shopPageSettingsSnapshot,
+        catalog_note_visible: shopPageSettings.catalog_note_visible !== false,
+        catalog_note_title: shopPageSettings.catalog_note_title?.trim() || null,
+        catalog_note_description: shopPageSettings.catalog_note_description?.trim() || null,
+      };
+
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({
+          store_id: activeStoreId,
+          key: "shop_page",
+          value: payload as unknown as Json,
+        }, { onConflict: "store_id,key" });
+
+      if (error) throw error;
+      setShopPageSettingsSnapshot(payload);
+      toast.success("Catalog note settings saved.");
+    } catch (error) {
+      console.error("Failed to save catalog note settings:", error);
+      toast.error("Failed to save catalog note settings.");
+    } finally {
+      setSavingCatalogNoteSettings(false);
+    }
+  }, [activeStoreId, shopPageSettings, shopPageSettingsSnapshot]);
 
   const openNew = () => {
     setEditing(null);
@@ -258,8 +461,28 @@ const AdminProducts = () => {
       featured: p.featured,
       badge: p.badge,
       stock: p.stock,
+      metric_values: normalizeMetricValues((p as Product).metric_values),
     });
     setDialogOpen(true);
+  };
+
+  const selectedTypeRow = typeRows.find((row) => row.name === form.type) ?? null;
+  const resolvedMetricDefinitions = resolveProductMetricDefinitions(
+    getTemplateDefaultProductMetrics(storefrontTemplateId),
+    selectedTypeRow?.metric_schema,
+  );
+  const selectedTypeHasExplicitSchema = Array.isArray(selectedTypeRow?.metric_schema);
+
+  const updateMetricValue = (metricKey: string, nextValues: string[]) => {
+    setForm((current) => ({
+      ...current,
+      sizes: metricKey === "size" ? nextValues : current.sizes,
+      colors: metricKey === "color" ? nextValues : current.colors,
+      metric_values: {
+        ...current.metric_values,
+        [metricKey]: nextValues,
+      },
+    }));
   };
 
   const handleSave = async () => {
@@ -278,24 +501,45 @@ const AdminProducts = () => {
       images: (form.images ?? []).filter((url) => url.trim() !== ""),
       badge: form.badge || null,
       original_price: form.original_price || null,
+      metric_values: form.metric_values,
+      sizes: form.metric_values.size ?? form.sizes,
+      colors: form.metric_values.color ?? form.colors,
       store_id: activeStoreId,
     };
 
-    if (editing) {
-      const { error } = await supabase.from("products").update(payload).eq("id", editing.id).eq("store_id", activeStoreId as string);
-      if (error) {
-        toast.error("Failed to update product");
-      } else {
+    try {
+      if (editing) {
+        const { error } = await (supabase.from("products") as any).update(payload).eq("id", editing.id).eq("store_id", activeStoreId as string);
+        if (error) {
+          throw error;
+        }
+
+        await refreshStorefrontProductCache(supabase, activeStoreId as string, {
+          products: [{ id: editing.id, name: payload.name }],
+        });
         toast.success("Product updated");
-      }
-    } else {
-      const { error } = await supabase.from("products").insert(payload);
-      if (error) {
-        toast.error("Failed to add product");
       } else {
+        const productId = crypto.randomUUID();
+        const { error } = await (supabase.from("products") as any).insert({
+          ...payload,
+          id: productId,
+        });
+        if (error) {
+          throw error;
+        }
+
+        await refreshStorefrontProductCache(supabase, activeStoreId as string, {
+          products: [{ id: productId, name: payload.name }],
+        });
         toast.success("Product added");
       }
+    } catch (error) {
+      console.error("Failed to save product:", error);
+      toast.error(editing ? "Failed to update product" : "Failed to add product");
+      setSaving(false);
+      return;
     }
+
     setSaving(false);
     setDialogOpen(false);
     void fetchProducts()
@@ -315,12 +559,28 @@ const AdminProducts = () => {
     }
 
     if (!confirm("Delete this product?")) return;
+    const deletedProduct = products.find((product) => product.id === id) ?? null;
     const { error } = await supabase.from("products").delete().eq("id", id).eq("store_id", activeStoreId as string);
     if (error) {
       toast.error("Failed to delete product");
     } else {
+      if (deletedProduct?.name) {
+        try {
+          await refreshStorefrontProductCache(supabase, activeStoreId as string, {
+            products: [{ id: deletedProduct.id, name: deletedProduct.name }],
+          });
+        } catch (refreshError) {
+          console.error("Failed to refresh storefront cache after product delete:", refreshError);
+        }
+      }
       toast.success("Product deleted");
-      fetchProducts();
+      void fetchProducts()
+        .then((productRows) => {
+          setProducts(productRows);
+        })
+        .catch((fetchError) => {
+          console.error("Failed to reload products after delete:", fetchError);
+        });
     }
   };
 
@@ -388,6 +648,50 @@ const AdminProducts = () => {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-border">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-base">Catalog note on Shop page</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                This optional section appears below the main shop results. Use it only when you want to explain the catalog, buying flow, or what shoppers should know.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/20 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Show catalog note section</p>
+                  <p className="text-xs text-muted-foreground">Turn this off if the extra catalog context feels unnecessary.</p>
+                </div>
+                <Switch
+                  checked={shopPageSettings.catalog_note_visible !== false}
+                  onCheckedChange={(checked) => updateCatalogNoteSetting("catalog_note_visible", checked)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Section title</Label>
+                <Input
+                  value={shopPageSettings.catalog_note_title ?? ""}
+                  placeholder="A quick note before shoppers keep browsing"
+                  onChange={(event) => updateCatalogNoteSetting("catalog_note_title", event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Section description</Label>
+                <Textarea
+                  value={shopPageSettings.catalog_note_description ?? ""}
+                  placeholder="Explain what this catalog includes, how pricing works, or what visitors should know before they continue shopping."
+                  rows={3}
+                  onChange={(event) => updateCatalogNoteSetting("catalog_note_description", event.target.value)}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={() => void saveCatalogNoteSettings()} disabled={savingCatalogNoteSettings} className="gap-2">
+                  {savingCatalogNoteSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Shop Note
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           <Input
             data-testid="products-search"
@@ -518,6 +822,22 @@ const AdminProducts = () => {
                     {dbTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {selectedTypeRow ? (
+                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
+                      {selectedTypeHasExplicitSchema ? "Type-specific options" : "Template fallback options"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {resolvedMetricDefinitions.length > 0 ? resolvedMetricDefinitions.map((metric) => (
+                        <span key={metric.key} className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {metric.label}
+                        </span>
+                      )) : (
+                        <span className="text-xs text-muted-foreground">No option selectors configured for this type.</span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="grid gap-2">
                 <Label>Category</Label>
@@ -544,21 +864,32 @@ const AdminProducts = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Sizes (comma-separated)</Label>
-              <Input
-                value={form.sizes.join(", ")}
-                onChange={(e) => setForm({ ...form, sizes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                placeholder="S, M, L, XL"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Colors (comma-separated)</Label>
-              <Input
-                value={form.colors.join(", ")}
-                onChange={(e) => setForm({ ...form, colors: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                placeholder="Black, White, Navy"
-              />
+            <div className="grid gap-3 rounded-lg border border-border p-4">
+              <div>
+                <Label>Type-based metrics</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  These fields follow the selected type. Template defaults only appear when the selected type does not define its own metric choices yet.
+                </p>
+              </div>
+              {resolvedMetricDefinitions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No metrics configured for this type yet.</p>
+              ) : (
+                resolvedMetricDefinitions.map((metric) => (
+                  <MetricValueChipInput
+                    key={metric.key}
+                    label={metric.label}
+                    values={form.metric_values[metric.key] ?? (metric.key === "size" ? form.sizes : metric.key === "color" ? form.colors : [])}
+                    onChange={(nextValues) => updateMetricValue(metric.key, nextValues)}
+                    placeholder={
+                      metric.key === "size"
+                        ? "Add values like Small, 256GB, 15-inch"
+                        : metric.key === "color"
+                          ? "Add values like Black, Silver, Navy"
+                          : "Add metric values"
+                    }
+                  />
+                ))
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.featured} onCheckedChange={(v) => setForm({ ...form, featured: v })} />

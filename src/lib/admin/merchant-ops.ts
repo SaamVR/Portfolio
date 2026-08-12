@@ -182,12 +182,12 @@ export function isContactConfigured(whatsappValue: unknown, contactValue: unknow
   );
 }
 
-export function getHomepageVisibleBlocks(snapshot: MerchantOpsSnapshot) {
+function getHomepageVisibleBlocks(snapshot: MerchantOpsSnapshot) {
   const homepage = snapshot.pages.find((page) => page.is_homepage || page.slug === "/");
   return snapshot.blocks.filter((block) => block.page_id === homepage?.id && block.is_visible !== false).length;
 }
 
-export function getCustomPageCount(snapshot: MerchantOpsSnapshot) {
+function getCustomPageCount(snapshot: MerchantOpsSnapshot) {
   return snapshot.pages.filter((page) => !page.is_homepage && page.slug !== "/").length;
 }
 

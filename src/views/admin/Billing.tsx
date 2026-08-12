@@ -28,11 +28,11 @@ import {
   canUseCustomDomains,
   formatPlanPrice,
   getPlanAnnualDiscountPercent,
-  getEffectiveSubscriptionStatus,
   getPlanPrice,
   getPlanTrialDays,
   getRemainingTrialDays,
   isContactOnlyPlan,
+  resolveStorePlanState,
   type PlanCatalogRecord,
   type BillingInterval,
 } from "@/lib/billing/plans";
@@ -107,6 +107,24 @@ export default function Billing() {
 
       if (error) throw error;
       return (data as BillingSubscription | null) ?? null;
+    },
+    enabled: !!activeStoreId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: storeRecord } = useQuery({
+    queryKey: ["admin-billing-store", activeStoreId],
+    queryFn: async () => {
+      if (!activeStoreId) return null;
+      const { data, error } = await supabase
+        .from("stores")
+        .select("plan")
+        .eq("id", activeStoreId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as { plan?: string | null } | null;
     },
     enabled: !!activeStoreId,
     staleTime: 60_000,
@@ -321,17 +339,22 @@ export default function Billing() {
     }
   };
 
-  const planName = subscription?.cms_plans?.name || "Free";
-  const planPrice = subscription?.cms_plans?.monthly_price || 0;
-  const currentPlanId = subscription?.plan_id || subscription?.cms_plans?.id || "free";
-  const status = getEffectiveSubscriptionStatus(subscription) || "trialing";
+  const resolvedPlanState = resolveStorePlanState({
+    subscription,
+    legacyPlanId: storeRecord?.plan ?? null,
+  });
+  const currentPlanId = resolvedPlanState.effectivePlanId || resolvedPlanState.subscriptionPlanId || resolvedPlanState.legacyPlanId || "free";
+  const resolvedPlan = plans?.find((plan) => plan.id === currentPlanId) ?? subscription?.cms_plans ?? null;
+  const planName = resolvedPlan?.name || "Free";
+  const planPrice = resolvedPlan?.monthly_price || 0;
+  const status = resolvedPlanState.subscriptionStatus || "trialing";
   const trialEndsAt = subscription?.trial_ends_at;
   const currentPeriodEndsAt = subscription?.current_period_ends_at;
   const remainingTrialDays = getRemainingTrialDays(trialEndsAt);
   const confirmedInvoices = (invoices || []).filter((invoice) => invoice.status === "paid");
   const pendingInvoices = (invoices || []).filter((invoice) => invoice.status === "pending");
   const failedInvoices = (invoices || []).filter((invoice) => invoice.status === "failed");
-  const customDomainsUnlocked = canUseCustomDomains(subscription, subscription?.cms_plans, true);
+  const customDomainsUnlocked = canUseCustomDomains(subscription, resolvedPlan, true);
   const pendingManualReview = pendingInvoices.filter(isManualInvoice);
   const statusSummary =
     status === "active"

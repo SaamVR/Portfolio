@@ -77,6 +77,7 @@ import { downloadAnalyticsCsv } from "@/lib/analytics/export";
 import { getAnalyticsPresetLabel, resolveAnalyticsDateRange, type AnalyticsDatePreset } from "@/lib/analytics/date-range";
 import StoreBackupManager from "@/components/admin/StoreBackupManager";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+import { refreshStorefrontCacheForStore } from "@/lib/storefront-cache-client";
 
 const PLATFORM_ROLE_COLORS: Record<string, string> = {
   super_admin: "border-primary text-primary bg-primary/10",
@@ -716,6 +717,10 @@ export default function PlatformControlPlane() {
 
       if (error) throw error;
 
+      await refreshStorefrontCacheForStore(supabase, storeIdToPurge, {
+        scope: "content",
+      });
+
       await logPlatformAuditAction(supabase, {
         actorId: user?.id,
         actorEmail: user?.email,
@@ -805,6 +810,23 @@ export default function PlatformControlPlane() {
     });
   }, [data, exceptionEmail, selectedPlanId, selectedStore?.id]);
 
+  const filteredAuditLogs = useMemo(() => {
+    const logs = data?.auditLogs ?? [];
+    const query = auditSearch.trim().toLowerCase();
+    return logs.filter((log) => {
+      const matchesQuery =
+        !query ||
+        [log.actor_email, log.actor_id, log.action, log.target_type, log.target_id]
+          .filter(Boolean)
+          .some((val) => String(val).toLowerCase().includes(query));
+
+      const matchesAction = auditActionFilter === "all" || log.action === auditActionFilter;
+      const matchesRole = auditRoleFilter === "all" || log.actor_role === auditRoleFilter;
+
+      return matchesQuery && matchesAction && matchesRole;
+    });
+  }, [auditActionFilter, auditRoleFilter, auditSearch, data?.auditLogs]);
+
   if (authLoading) {
     return (
       <AdminRecoveryPanel
@@ -849,23 +871,6 @@ export default function PlatformControlPlane() {
     await queryClient.invalidateQueries({ queryKey: ["platform-control-plane"] });
     await queryClient.invalidateQueries({ queryKey: ["store-entitlements"] });
   };
-
-  const filteredAuditLogs = useMemo(() => {
-    const logs = data?.auditLogs ?? [];
-    const query = auditSearch.trim().toLowerCase();
-    return logs.filter((log) => {
-      const matchesQuery =
-        !query ||
-        [log.actor_email, log.actor_id, log.action, log.target_type, log.target_id]
-          .filter(Boolean)
-          .some((val) => String(val).toLowerCase().includes(query));
-
-      const matchesAction = auditActionFilter === "all" || log.action === auditActionFilter;
-      const matchesRole = auditRoleFilter === "all" || log.actor_role === auditRoleFilter;
-
-      return matchesQuery && matchesAction && matchesRole;
-    });
-  }, [auditActionFilter, auditRoleFilter, auditSearch, data?.auditLogs]);
 
   const handleAssignUserRole = async (targetUserId: string, newRole: PlatformRole | null) => {
     if (!permissions.canAssignPlatformRoles) {
@@ -1154,6 +1159,9 @@ export default function PlatformControlPlane() {
           status_reason: "Store was archived after inactivity review.",
         });
         await insertLifecycleEvent(selectedStore.id, "archived", "Store was unpublished and archived.", {});
+        await refreshStorefrontCacheForStore(supabase, selectedStore.id, {
+          scope: "all",
+        });
       }
 
       if (lifecycleAction === "restore") {
@@ -1167,6 +1175,9 @@ export default function PlatformControlPlane() {
           last_activity_at: now.toISOString(),
         });
         await insertLifecycleEvent(selectedStore.id, "restored", "Store restored from archived state.", {});
+        await refreshStorefrontCacheForStore(supabase, selectedStore.id, {
+          scope: "all",
+        });
       }
 
       if (lifecycleAction === "schedule_delete") {
@@ -1196,6 +1207,9 @@ export default function PlatformControlPlane() {
           status_reason: "Store marked deleted after final backup checkpoint.",
         });
         await insertLifecycleEvent(selectedStore.id, "deleted", "Store marked deleted. Tenant-scoped data purge is ready for execution.", {});
+        await refreshStorefrontCacheForStore(supabase, selectedStore.id, {
+          scope: "all",
+        });
       }
 
       await logPlatformAuditAction(supabase, {

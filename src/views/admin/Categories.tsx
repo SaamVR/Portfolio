@@ -12,6 +12,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, FolderTree, Layers, Image as ImageIcon } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import type { Json } from "@/integrations/supabase/types";
+import {
+  getTemplateDefaultMetricKeys,
+  getTemplateDefaultProductMetrics,
+  mergeMetricDefinitions,
+  normalizeMetricDefinitions,
+  normalizeMetricLabel,
+  normalizeProductMetricKey,
+  type ProductMetricDefinition,
+} from "@/lib/cms/product-metrics";
+import {
+  fetchStoreProductTypes,
+  formatTaxonomyError,
+  notifyProductTaxonomyUpdated,
+  saveStoreProductType,
+} from "@/lib/cms/product-taxonomy";
+import { refreshEntireStorefrontCache, refreshStorefrontContentCache, refreshStorefrontTaxonomyCache } from "@/lib/storefront-cache-client";
 
 interface Category {
   id: string;
@@ -25,7 +42,34 @@ interface ProductType {
   id: string;
   name: string;
   sort_order: number;
-  created_at: string;
+  created_at?: string;
+  metric_schema?: unknown;
+}
+
+type MetricsCatalogState = {
+  customMetrics: ProductMetricDefinition[];
+};
+
+function describeTypeMetricMode(metricSchema: unknown) {
+  if (!Array.isArray(metricSchema)) {
+    return {
+      summary: "Template fallback",
+      detail: "This type still follows the template default option fields until you customize it.",
+    };
+  }
+
+  const definitions = normalizeMetricDefinitions(metricSchema);
+  if (definitions.length === 0) {
+    return {
+      summary: "No option selectors",
+      detail: "Products under this type will not show Size, Color, or custom option pickers unless you add them back.",
+    };
+  }
+
+  return {
+    summary: "Custom type options",
+    detail: "Only the selected metrics below will appear on product forms and storefront option selectors for this type.",
+  };
 }
 
 const AdminCategories = () => {
@@ -33,6 +77,8 @@ const AdminCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [types, setTypes] = useState<ProductType[]>([]);
   const [customData, setCustomData] = useState<Record<string, any>>({ categories: {}, types: {} });
+  const [metricsCatalog, setMetricsCatalog] = useState<MetricsCatalogState>({ customMetrics: [] });
+  const [storefrontTemplateId, setStorefrontTemplateId] = useState<string>("general-catalog");
   const [loading, setLoading] = useState(true);
 
   // Category dialog
@@ -44,14 +90,43 @@ const AdminCategories = () => {
   // Type dialog
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<ProductType | null>(null);
-  const [typeForm, setTypeForm] = useState({ name: "", sort_order: 0, image_url: "", tagline: "" });
+  const [typeForm, setTypeForm] = useState({
+    name: "",
+    sort_order: 0,
+    image_url: "",
+    tagline: "",
+    selectedMetricKeys: [] as string[],
+    customMetricName: "",
+  });
   const [savingType, setSavingType] = useState(false);
+
+  const availableMetricDefinitions = mergeMetricDefinitions(
+    getTemplateDefaultProductMetrics(storefrontTemplateId),
+    metricsCatalog.customMetrics,
+  );
+  const defaultMetricKeys = getTemplateDefaultMetricKeys(storefrontTemplateId);
+
+  const applyFetchedData = useCallback((nextData: {
+    categories: Category[];
+    types: ProductType[];
+    customData: Record<string, any>;
+    metricsCatalog: MetricsCatalogState;
+    storefrontTemplateId: string;
+  }) => {
+    setCategories(nextData.categories);
+    setTypes(nextData.types);
+    setCustomData(nextData.customData);
+    setMetricsCatalog(nextData.metricsCatalog);
+    setStorefrontTemplateId(nextData.storefrontTemplateId);
+  }, []);
 
   const fetchData = useCallback(async () => {
     const emptyData = {
       categories: [] as Category[],
       types: [] as ProductType[],
       customData: { categories: {}, types: {} } as Record<string, any>,
+      metricsCatalog: { customMetrics: [] } as MetricsCatalogState,
+      storefrontTemplateId: "general-catalog",
     };
 
     if (!activeStoreId) {
@@ -60,18 +135,33 @@ const AdminCategories = () => {
 
     const [catRes, typeRes, settingsRes] = await Promise.all([
       supabase.from("product_categories").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
-      supabase.from("product_types").select("*").eq("store_id", activeStoreId as string).order("sort_order"),
-      supabase.from("site_settings").select("*").eq("key", "categories_custom_data").eq("store_id", activeStoreId as string).maybeSingle(),
+      fetchStoreProductTypes(activeStoreId as string),
+      supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["categories_custom_data", "product_metrics_catalog", "storefront_profile"]),
     ]);
 
     if (catRes.error) throw catRes.error;
-    if (typeRes.error) throw typeRes.error;
     if (settingsRes.error) throw settingsRes.error;
+
+    const settingsRows = settingsRes.data ?? [];
+    const categoriesCustomData = settingsRows.find((row) => row.key === "categories_custom_data")?.value;
+    const productMetricsCatalog = settingsRows.find((row) => row.key === "product_metrics_catalog")?.value;
+    const storefrontProfile = settingsRows.find((row) => row.key === "storefront_profile")?.value as Record<string, unknown> | undefined;
 
     return {
       categories: (catRes.data as Category[]) ?? [],
-      types: (typeRes.data as ProductType[]) ?? [],
-      customData: settingsRes.data?.value ? settingsRes.data.value as Record<string, any> : { categories: {}, types: {} },
+      types: (typeRes as ProductType[]) ?? [],
+      customData: categoriesCustomData ? categoriesCustomData as Record<string, any> : { categories: {}, types: {} },
+      metricsCatalog: {
+        customMetrics: normalizeMetricDefinitions(
+          typeof productMetricsCatalog === "object" && productMetricsCatalog
+            ? (productMetricsCatalog as Record<string, unknown>).customMetrics
+            : [],
+        ),
+      },
+      storefrontTemplateId:
+        typeof storefrontProfile?.template_id === "string"
+          ? storefrontProfile.template_id
+          : "general-catalog",
     };
   }, [activeStoreId]);
 
@@ -87,6 +177,22 @@ const AdminCategories = () => {
       key: "categories_custom_data",
       value: updatedData
     }, { onConflict: "store_id,key" });
+    await refreshStorefrontContentCache(supabase, activeStoreId);
+  };
+
+  const saveMetricsCatalog = async (updatedCatalog: MetricsCatalogState) => {
+    if (!activeStoreId) {
+      toast.error("Select a store before saving metric settings.");
+      return;
+    }
+
+    setMetricsCatalog(updatedCatalog);
+    await supabase.from("site_settings").upsert({
+      store_id: activeStoreId,
+      key: "product_metrics_catalog",
+      value: updatedCatalog as unknown as Json,
+    }, { onConflict: "store_id,key" });
+    await refreshStorefrontTaxonomyCache(supabase, activeStoreId);
   };
 
   useEffect(() => {
@@ -105,13 +211,11 @@ const AdminCategories = () => {
       try {
         const nextData = await fetchData();
         if (!active) return;
-        setCategories(nextData.categories);
-        setTypes(nextData.types);
-        setCustomData(nextData.customData);
+        applyFetchedData(nextData);
       } catch (error) {
         if (!active) return;
         console.error("Failed to load categories and types:", error);
-        toast.error("Failed to refresh categories and types. Please try again.");
+        toast.error(formatTaxonomyError(error));
       } finally {
         if (active) {
           setLoading(false);
@@ -124,7 +228,13 @@ const AdminCategories = () => {
     return () => {
       active = false;
     };
-  }, [activeStoreId, fetchData]);
+  }, [activeStoreId, applyFetchedData, fetchData]);
+
+  const reloadData = useCallback(async () => {
+    const nextData = await fetchData();
+    applyFetchedData(nextData);
+    return nextData;
+  }, [applyFetchedData, fetchData]);
 
   useEffect(() => {
     setCatDialogOpen(false);
@@ -133,7 +243,7 @@ const AdminCategories = () => {
     setSavingCat(false);
     setTypeDialogOpen(false);
     setEditingType(null);
-    setTypeForm({ name: "", sort_order: 0, image_url: "", tagline: "" });
+    setTypeForm({ name: "", sort_order: 0, image_url: "", tagline: "", selectedMetricKeys: [], customMetricName: "" });
     setSavingType(false);
   }, [activeStoreId]);
 
@@ -187,6 +297,7 @@ const AdminCategories = () => {
           }
         };
         await saveCustomData(updated);
+        await refreshEntireStorefrontCache(supabase, activeStoreId);
       }
     } else {
       const { error } = await supabase.from("product_categories").insert({
@@ -207,11 +318,13 @@ const AdminCategories = () => {
           }
         };
         await saveCustomData(updated);
+        await refreshEntireStorefrontCache(supabase, activeStoreId);
       }
     }
     setSavingCat(false);
     setCatDialogOpen(false);
-    fetchData();
+    await reloadData();
+    notifyProductTaxonomyUpdated();
   };
 
   const deleteCat = async (id: string) => {
@@ -226,25 +339,39 @@ const AdminCategories = () => {
       toast.error("Failed to delete");
     } else {
       toast.success("Category deleted");
-      fetchData();
+      await refreshEntireStorefrontCache(supabase, activeStoreId);
+      await reloadData();
+      notifyProductTaxonomyUpdated();
     }
   };
 
   // --- Type CRUD ---
   const openNewType = () => {
     setEditingType(null);
-    setTypeForm({ name: "", sort_order: types.length + 1, image_url: "", tagline: "" });
+    setTypeForm({
+      name: "",
+      sort_order: types.length + 1,
+      image_url: "",
+      tagline: "",
+      selectedMetricKeys: defaultMetricKeys,
+      customMetricName: "",
+    });
     setTypeDialogOpen(true);
   };
 
   const openEditType = (t: ProductType) => {
     setEditingType(t);
     const custom = customData.types?.[t.name] ?? {};
+    const selectedMetrics = Array.isArray(t.metric_schema)
+      ? normalizeMetricDefinitions(t.metric_schema).map((metric) => metric.key)
+      : defaultMetricKeys;
     setTypeForm({ 
       name: t.name, 
       sort_order: t.sort_order,
       image_url: custom.image_url ?? "",
-      tagline: custom.tagline ?? ""
+      tagline: custom.tagline ?? "",
+      selectedMetricKeys: selectedMetrics,
+      customMetricName: "",
     });
     setTypeDialogOpen(true);
   };
@@ -257,49 +384,50 @@ const AdminCategories = () => {
 
     if (!typeForm.name.trim()) { toast.error("Name is required"); return; }
     setSavingType(true);
-    const payload = { name: typeForm.name.trim(), sort_order: typeForm.sort_order };
+    const selectedMetricDefinitions = availableMetricDefinitions.filter((metric) => typeForm.selectedMetricKeys.includes(metric.key));
+    const payload = {
+      name: typeForm.name.trim(),
+      sort_order: typeForm.sort_order,
+      metric_schema: selectedMetricDefinitions.map((metric) => ({
+        key: metric.key,
+        label: metric.label,
+      })),
+    };
 
-    if (editingType) {
-      const { error } = await supabase.from("product_types").update(payload).eq("id", editingType.id).eq("store_id", activeStoreId as string);
-      if (error) toast.error("Failed to update");
-      else {
-        toast.success("Type updated");
-        const updated = {
-          ...customData,
-          types: {
-            ...customData.types,
-            [typeForm.name.trim()]: {
-              image_url: typeForm.image_url,
-              tagline: typeForm.tagline
-            }
-          }
-        };
-        await saveCustomData(updated);
-      }
+    const { error, metricSchemaPersisted } = await saveStoreProductType({
+      storeId: activeStoreId as string,
+      editingTypeId: editingType?.id,
+      payload,
+    });
+
+    if (error) {
+      toast.error(`Failed to save type: ${formatTaxonomyError(error)}`);
     } else {
-      const { error } = await supabase.from("product_types").insert({
-        ...payload,
-        store_id: activeStoreId,
-      });
-      if (error) toast.error("Failed to add");
-      else {
+      if (editingType) {
+        toast.success("Type updated");
+      } else {
         toast.success("Type added");
-        const updated = {
-          ...customData,
-          types: {
-            ...customData.types,
-            [typeForm.name.trim()]: {
-              image_url: typeForm.image_url,
-              tagline: typeForm.tagline
-            }
-          }
-        };
-        await saveCustomData(updated);
       }
+      const updated = {
+        ...customData,
+        types: {
+          ...customData.types,
+          [typeForm.name.trim()]: {
+            image_url: typeForm.image_url,
+            tagline: typeForm.tagline
+          }
+        }
+      };
+      await saveCustomData(updated);
+      if (!metricSchemaPersisted && selectedMetricDefinitions.length > 0) {
+        toast.message("Type saved, but custom metrics will stay unavailable until the latest database migration is applied.");
+      }
+      await refreshEntireStorefrontCache(supabase, activeStoreId);
+      await reloadData();
+      notifyProductTaxonomyUpdated();
     }
     setSavingType(false);
     setTypeDialogOpen(false);
-    fetchData();
   };
 
   const deleteType = async (id: string) => {
@@ -314,8 +442,57 @@ const AdminCategories = () => {
       toast.error("Failed to delete");
     } else {
       toast.success("Type deleted");
-      fetchData();
+      await refreshStorefrontTaxonomyCache(supabase, activeStoreId);
+      await reloadData();
+      notifyProductTaxonomyUpdated();
     }
+  };
+
+  const toggleTypeMetric = (metricKey: string) => {
+    setTypeForm((current) => ({
+      ...current,
+      selectedMetricKeys: current.selectedMetricKeys.includes(metricKey)
+        ? current.selectedMetricKeys.filter((value) => value !== metricKey)
+        : [...current.selectedMetricKeys, metricKey],
+    }));
+  };
+
+  const addCustomMetric = async () => {
+    const key = normalizeProductMetricKey(typeForm.customMetricName);
+    if (!key) {
+      toast.error("Enter a metric name first.");
+      return;
+    }
+
+    if (availableMetricDefinitions.some((metric) => metric.key === key)) {
+      setTypeForm((current) => ({
+        ...current,
+        customMetricName: "",
+        selectedMetricKeys: current.selectedMetricKeys.includes(key)
+          ? current.selectedMetricKeys
+          : [...current.selectedMetricKeys, key],
+      }));
+      return;
+    }
+
+    const updatedCatalog: MetricsCatalogState = {
+      customMetrics: [
+        ...metricsCatalog.customMetrics,
+        {
+          key,
+          label: typeForm.customMetricName.trim() || normalizeMetricLabel(key),
+          kind: "multi_value_text",
+          source: "store",
+        },
+      ],
+    };
+
+    await saveMetricsCatalog(updatedCatalog);
+    setTypeForm((current) => ({
+      ...current,
+      customMetricName: "",
+      selectedMetricKeys: [...current.selectedMetricKeys, key],
+    }));
   };
 
   // helpers
@@ -338,7 +515,7 @@ const AdminCategories = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-3xl font-bold text-foreground">Categories & Types</h1>
-        <p className="text-sm text-muted-foreground">Manage product categories (with subcategories) and product types</p>
+        <p className="text-sm text-muted-foreground">Manage product categories, product types, and store-specific product metrics.</p>
       </div>
 
       <Tabs defaultValue="categories">
@@ -454,16 +631,19 @@ const AdminCategories = () => {
                     <TableHead className="w-16">Preview</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Tagline</TableHead>
+                    <TableHead>Metrics</TableHead>
                     <TableHead>Order</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {types.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No types yet</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No types yet</TableCell></TableRow>
                   ) : (
                     types.map((t) => {
                       const custom = customData.types?.[t.name] ?? {};
+                      const metricDefinitions = normalizeMetricDefinitions(t.metric_schema);
+                      const metricMode = describeTypeMetricMode(t.metric_schema);
                       return (
                         <TableRow key={t.id}>
                           <TableCell>
@@ -478,6 +658,23 @@ const AdminCategories = () => {
                           <TableCell className="font-medium">{t.name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground italic truncate max-w-[200px]">
                             {custom.tagline || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                                  {metricMode.summary}
+                                </span>
+                                {metricDefinitions.length === 0 ? null : metricDefinitions.map((metric) => (
+                                  <span key={metric.key} className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                                    {metric.label}
+                                  </span>
+                                ))}
+                              </div>
+                              <p className="text-[11px] leading-4 text-muted-foreground">
+                                {metricMode.detail}
+                              </p>
+                            </div>
                           </TableCell>
                           <TableCell>{t.sort_order}</TableCell>
                           <TableCell>
@@ -573,6 +770,64 @@ const AdminCategories = () => {
             <div className="grid gap-2">
               <Label>Tagline / Description</Label>
               <Input value={typeForm.tagline} placeholder="Smart casual essentials" onChange={(e) => setTypeForm({ ...typeForm, tagline: e.target.value })} />
+            </div>
+            <div className="grid gap-3 rounded-lg border border-border p-4">
+              <div>
+                <Label>Metrics for this type</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Size and Color start selected for convenience, but you can turn them off. Whatever stays selected here becomes the product option fields for this type.
+                </p>
+                <div className="mt-3 rounded-lg border border-dashed border-border bg-secondary/30 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground">
+                    {describeTypeMetricMode(typeForm.selectedMetricKeys.length > 0
+                      ? availableMetricDefinitions.filter((metric) => typeForm.selectedMetricKeys.includes(metric.key)).map((metric) => ({
+                          key: metric.key,
+                          label: metric.label,
+                        }))
+                      : []).summary}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {describeTypeMetricMode(typeForm.selectedMetricKeys.length > 0
+                      ? availableMetricDefinitions.filter((metric) => typeForm.selectedMetricKeys.includes(metric.key)).map((metric) => ({
+                          key: metric.key,
+                          label: metric.label,
+                        }))
+                      : []).detail}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableMetricDefinitions.map((metric) => {
+                  const selected = typeForm.selectedMetricKeys.includes(metric.key);
+                  const isTemplateDefault = metric.source === "template";
+
+                  return (
+                    <button
+                      key={metric.key}
+                      type="button"
+                      onClick={() => toggleTypeMetric(metric.key)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        selected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      }`}
+                    >
+                      {metric.label}
+                      {isTemplateDefault ? " • Default" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={typeForm.customMetricName}
+                  placeholder="Add custom metric name"
+                  onChange={(e) => setTypeForm({ ...typeForm, customMetricName: e.target.value })}
+                />
+                <Button type="button" variant="outline" onClick={() => void addCustomMetric()}>
+                  Add Custom
+                </Button>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label>Sort Order</Label>

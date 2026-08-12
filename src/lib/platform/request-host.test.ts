@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getEzcomoRequestHostname, getPreferredRequestHost, normalizeRequestHost } from "@/lib/platform/request-host";
+import { getEzcomoRequestHostname, getEzcomoRequestStoreSlug, getPreferredRequestHost, normalizeRequestHost } from "@/lib/platform/request-host";
 
 test("normalizeRequestHost strips protocol, path, and port", () => {
   assert.equal(normalizeRequestHost("https://XBD.EZComo.shop:443/path"), "xbd.ezcomo.shop");
@@ -36,6 +36,40 @@ test("getEzcomoRequestHostname trusts forwarded merchant host only with the prox
 
   assert.equal(getEzcomoRequestHostname({ headers: trustedHeaders }), "www.merchant.com");
   assert.equal(getEzcomoRequestHostname({ headers: untrustedHeaders }), "origin.ezcomo.shop");
+
+  delete process.env.EZCOMO_PROXY_SECRET;
+});
+
+test("getEzcomoRequestStoreSlug trusts store slug only with the proxy secret", () => {
+  process.env.EZCOMO_PROXY_SECRET = "proxy-secret";
+
+  const trustedHeaders = new Headers({
+    host: "origin.ezcomo.shop",
+    "x-ezcomo-store-slug": "merchant-noir",
+    "x-ezcomo-proxy-secret": "proxy-secret",
+  });
+  const untrustedHeaders = new Headers({
+    host: "origin.ezcomo.shop",
+    "x-ezcomo-store-slug": "attacker/shop",
+    "x-ezcomo-proxy-secret": "wrong",
+  });
+
+  assert.equal(getEzcomoRequestStoreSlug({ headers: trustedHeaders }), "merchant-noir");
+  assert.equal(getEzcomoRequestStoreSlug({ headers: untrustedHeaders }), null);
+
+  delete process.env.EZCOMO_PROXY_SECRET;
+});
+
+test("getEzcomoRequestStoreSlug rejects malformed slugs even when the proxy secret matches", () => {
+  process.env.EZCOMO_PROXY_SECRET = "proxy-secret";
+
+  const invalidHeaders = new Headers({
+    host: "origin.ezcomo.shop",
+    "x-ezcomo-store-slug": "merchant.noir",
+    "x-ezcomo-proxy-secret": "proxy-secret",
+  });
+
+  assert.equal(getEzcomoRequestStoreSlug({ headers: invalidHeaders }), null);
 
   delete process.env.EZCOMO_PROXY_SECRET;
 });

@@ -4,12 +4,13 @@ import { useAuth } from "@/hooks/auth-context";
 import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
-import { Loader2, Save, Plus, Trash2, GripVertical, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle, Store as StoreIcon, Database } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, GripVertical, Check, Palette, Search, PanelsTopLeft, ArrowRightCircle, Store as StoreIcon, Database, ChevronDown, ChevronUp } from "lucide-react";
 
 import { BrandSeoTab } from "./settings/BrandSeoTab";
 import { AnnouncementTab } from "./settings/AnnouncementTab";
@@ -37,8 +38,8 @@ import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
 import { isTemplateSeedMetadata, reseedTemplateCatalog, unseedTemplateCatalog } from "@/lib/cms/template-seed-management";
 import {
@@ -50,7 +51,7 @@ import {
   parseThemePackageImport,
   type ThemePackageDefinition,
 } from "@/lib/theme-packages";
-import { resolveStoreBlueprint, type StoreBusinessFamily, type StoreCatalogMode } from "@/lib/cms/store-blueprints";
+import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
 import { isSettingsTabCompatible, supportsDedicatedShopPage, supportsTransactionalCheckout } from "@/lib/cms/storefront-compat";
 import {
   getAvailableSettingsTabs,
@@ -68,6 +69,10 @@ import {
   storefrontTemplateOptions,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
+import {
+  applyHomepageSectionVisibilityToPages,
+  normalizeHomepageSectionVisibility,
+} from "@/lib/cms/template-homepage-sections";
 import { resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import type { Store } from "@/lib/cms/schema";
 import type { Json } from "@/integrations/supabase/types";
@@ -84,17 +89,47 @@ import {
   updateTemplatePageSnapshots,
   updateTemplateSettingsArchive,
 } from "@/lib/cms/template-site-settings-registry";
-import { getTemplateFeatureBlockDefinitions, type TemplateFeatureBlockType } from "@/lib/cms/template-feature-blocks";
 
 import { usePaymentGateway, scrubPaymentSettings } from "@/hooks/usePaymentGateway";
 import { useThemeManager } from "@/hooks/useThemeManager";
 import { siteSettingsSchema } from "@/lib/validations/site-settings";
 
-type StoreBusinessProfileSettingsRow = {
-  blueprint_id?: string | null;
-  blueprint_version?: number | null;
-  business_family?: StoreBusinessFamily | null;
-  catalog_mode?: StoreCatalogMode | null;
+const settingsCategoryTone: Record<string, { title: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
+  "Store Identity": {
+    title: "Store identity",
+    description: "Brand voice, navigation, footer, and the details shoppers notice first.",
+    icon: StoreIcon,
+  },
+  "Design System": {
+    title: "Design system",
+    description: "Theme, visual style, and reusable storefront presentation choices.",
+    icon: Palette,
+  },
+  "Storefront": {
+    title: "Storefront setup",
+    description: "Homepage sections, merchandising, and editing paths that shape the live storefront.",
+    icon: PanelsTopLeft,
+  },
+  "Checkout & Log": {
+    title: "Buying flow",
+    description: "Delivery, payment, loyalty, and shopper conversion settings.",
+    icon: Database,
+  },
+  Information: {
+    title: "Customer information",
+    description: "Support, FAQ, contact, and notification content that keeps shoppers confident.",
+    icon: ArrowRightCircle,
+  },
+  "Growth": {
+    title: "Growth tracking",
+    description: "Analytics and pixel settings for measuring merchant performance.",
+    icon: Search,
+  },
+  "Legacy Fallbacks": {
+    title: "Legacy fallback fields",
+    description: "Older fields still supported for compatibility while the shared block system takes over.",
+    icon: Database,
+  },
 };
 
 const scrollToAdminSection = (sectionId: string) => {
@@ -155,6 +190,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
       props: (typeof blockRow.props === "object" && blockRow.props ? blockRow.props : {}) as Record<string, unknown>,
       sortOrder: typeof blockRow.sort_order === "number" ? blockRow.sort_order : 0,
       isVisible: blockRow.is_visible ?? true,
+      visible: blockRow.is_visible ?? true,
       entranceAnimation: blockRow.entrance_animation ?? "none",
       hoverEffect: blockRow.hover_effect ?? "none",
       effectOverride: blockRow.effect_override ?? false,
@@ -212,31 +248,6 @@ export default function SiteSettings() {
   const entitlementsQuery = useStoreEntitlements(activeStoreId);
   const customDomainsAllowed = entitlementsQuery.data?.featureMap?.custom_domains !== false;
 
-  const { data: businessProfileData } = useQuery({
-    queryKey: ["store_business_profile_settings", activeStoreId],
-    queryFn: async (): Promise<StoreBusinessProfileSettingsRow> => {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("store_id", activeStoreId as string)
-        .eq("key", "business_profile")
-        .maybeSingle();
-
-      const raw = data?.value;
-      if (raw && typeof raw === "object") {
-        const valueObj = raw as Record<string, unknown>;
-        return {
-          blueprint_id: typeof valueObj.blueprint_id === "string" ? valueObj.blueprint_id : null,
-          blueprint_version: typeof valueObj.blueprint_version === "number" ? valueObj.blueprint_version : null,
-          business_family: (typeof valueObj.business_family === "string" ? valueObj.business_family : null) as StoreBusinessFamily | null,
-          catalog_mode: (typeof valueObj.catalog_mode === "string" ? valueObj.catalog_mode : null) as StoreCatalogMode | null,
-        };
-      }
-      return {};
-    },
-    enabled: Boolean(activeStoreId),
-  });
-
   const { data: rawSettingsData, isLoading: settingsLoading } = useQuery({
     queryKey: ["site_settings", activeStoreId],
     queryFn: async () => {
@@ -259,6 +270,8 @@ export default function SiteSettings() {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabValue>("brand_seo");
+  const [tabSearch, setTabSearch] = useState("");
+  const [mobileDirectoryOpen, setMobileDirectoryOpen] = useState(false);
 
   // Custom Hooks
   const paymentGateway = usePaymentGateway({
@@ -270,7 +283,7 @@ export default function SiteSettings() {
     activeStoreId,
     themeCustomizationSettings: settings.theme_customization,
     themePackages,
-    blueprintVersion: businessProfileData?.blueprint_version,
+    templateContractVersion: undefined,
   });
 
   useEffect(() => {
@@ -280,6 +293,7 @@ export default function SiteSettings() {
   }, [rawSettingsData]);
 
   const activeStorefrontTemplateId: StorefrontTemplateId =
+    (settings.storefront_profile?.template_id as StorefrontTemplateId | undefined) ??
     (settings.storefront_template?.template_id as StorefrontTemplateId | undefined) ??
     ((store as any)?.storefront_template_id as StorefrontTemplateId | undefined) ??
     "fashion";
@@ -289,32 +303,70 @@ export default function SiteSettings() {
     [activeStorefrontTemplateId],
   );
 
-  const activeStorefrontBlueprint = useMemo(() => {
-    return resolveStoreBlueprint(businessProfileData?.blueprint_id ?? activeStorefrontTemplateId);
-  }, [activeStorefrontTemplateId, businessProfileData?.blueprint_id]);
+  const activeStorefrontTemplateSeed = useMemo(() => {
+    return resolveStorefrontTemplateSeed(activeStorefrontTemplateId);
+  }, [activeStorefrontTemplateId]);
 
   const storefrontContext = useMemo(() => {
     return resolveStorefrontSettingsContext(
-      activeStorefrontBlueprint.businessFamily,
-      activeStorefrontBlueprint.catalogMode,
+      activeStorefrontTemplateSeed.businessFamily,
+      activeStorefrontTemplateSeed.catalogMode,
     );
-  }, [activeStorefrontBlueprint]);
+  }, [activeStorefrontTemplateSeed]);
 
   const availableTabs = useMemo(() => {
     return getAvailableSettingsTabs({
-      businessFamily: activeStorefrontBlueprint.businessFamily,
-      catalogMode: activeStorefrontBlueprint.catalogMode,
+      businessFamily: activeStorefrontTemplateSeed.businessFamily,
+      catalogMode: activeStorefrontTemplateSeed.catalogMode,
       templateId: activeStorefrontTemplateId,
     });
-  }, [activeStorefrontBlueprint, activeStorefrontTemplateId]);
+  }, [activeStorefrontTemplateSeed, activeStorefrontTemplateId]);
 
   const mobilePinnedTabs = useMemo(() => {
     return getMobilePinnedSettingsTabs({
-      businessFamily: activeStorefrontBlueprint.businessFamily,
-      catalogMode: activeStorefrontBlueprint.catalogMode,
+      businessFamily: activeStorefrontTemplateSeed.businessFamily,
+      catalogMode: activeStorefrontTemplateSeed.catalogMode,
       templateId: activeStorefrontTemplateId,
     });
-  }, [activeStorefrontBlueprint, activeStorefrontTemplateId]);
+  }, [activeStorefrontTemplateSeed, activeStorefrontTemplateId]);
+
+  const activeTabDefinition = useMemo(
+    () => availableTabs.find((tab) => tab.value === activeTab) ?? availableTabs[0] ?? null,
+    [activeTab, availableTabs],
+  );
+
+  const normalizedTabSearch = tabSearch.trim().toLowerCase();
+
+  const filteredTabs = useMemo(() => {
+    if (!normalizedTabSearch) return availableTabs;
+    return availableTabs.filter((tab) => {
+      const haystack = `${tab.label} ${tab.category} ${tab.keywords}`.toLowerCase();
+      return haystack.includes(normalizedTabSearch);
+    });
+  }, [availableTabs, normalizedTabSearch]);
+
+  const groupedTabs = useMemo(() => {
+    const groups = new Map<string, SettingsTabOption[]>();
+    filteredTabs.forEach((tab) => {
+      const existing = groups.get(tab.category) ?? [];
+      existing.push(tab);
+      groups.set(tab.category, existing);
+    });
+    return Array.from(groups.entries()).map(([category, tabs]) => ({
+      category,
+      tabs,
+      tone: settingsCategoryTone[category] ?? {
+        title: category,
+        description: "Merchant-facing settings grouped for quicker editing.",
+        icon: PanelsTopLeft,
+      },
+    }));
+  }, [filteredTabs]);
+
+  const mobileQuickTabs = useMemo(
+    () => availableTabs.filter((tab) => mobilePinnedTabs.includes(tab.value)),
+    [availableTabs, mobilePinnedTabs],
+  );
 
   const tabParam = searchParams.get("tab");
   useEffect(() => {
@@ -322,8 +374,8 @@ export default function SiteSettings() {
       if (
         isSettingsTabCompatible(
           tabParam as SettingsTabValue,
-          activeStorefrontBlueprint.businessFamily,
-          activeStorefrontBlueprint.catalogMode,
+          activeStorefrontTemplateSeed.businessFamily,
+          activeStorefrontTemplateSeed.catalogMode,
         )
       ) {
         setActiveTab(tabParam as SettingsTabValue);
@@ -331,11 +383,12 @@ export default function SiteSettings() {
         setActiveTab("brand_seo");
       }
     }
-  }, [activeStorefrontBlueprint, tabParam]);
+  }, [activeStorefrontTemplateSeed, tabParam]);
 
   const handleTabChange = (val: string) => {
     const nextTab = val as SettingsTabValue;
     setActiveTab(nextTab);
+    setMobileDirectoryOpen(false);
     setSearchParams((prev) => {
       const copy = new URLSearchParams(prev);
       copy.set("tab", nextTab);
@@ -391,7 +444,39 @@ export default function SiteSettings() {
 
       if (error) throw error;
 
+      if (key === "homepage_section_visibility") {
+        const pages = await loadStorePagesSnapshot(activeStoreId);
+        const homepage = pages.find((page) => page.isHomepage);
+        const nextPages = applyHomepageSectionVisibilityToPages(
+          pages,
+          activeStorefrontTemplateId,
+          normalizeHomepageSectionVisibility(activeStorefrontTemplateId, rawValue),
+        );
+        const nextHomepage = nextPages.find((page) => page.id === homepage?.id);
+        const changedBlocks = nextHomepage?.blocks.filter((block) => {
+          const previousBlock = homepage?.blocks.find((candidate) => candidate.id === block.id);
+          const previousVisibility = previousBlock?.isVisible ?? previousBlock?.visible ?? true;
+          const nextVisibility = block.isVisible ?? block.visible ?? true;
+          return previousBlock && previousVisibility !== nextVisibility;
+        }) ?? [];
+
+        for (const block of changedBlocks) {
+          const { error: blockError } = await supabase
+            .from("store_page_blocks")
+            .update({
+              is_visible: block.isVisible ?? block.visible ?? true,
+            })
+            .eq("store_id", activeStoreId)
+            .eq("id", block.id);
+
+          if (blockError) throw blockError;
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["store_pages_snapshot", activeStoreId] });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId] });
+      await refreshStorefrontContentCache(supabase, activeStoreId);
       toast.success("Settings saved successfully");
     } catch (err: any) {
       toast.error(err.message || "Failed to save settings");
@@ -482,38 +567,242 @@ export default function SiteSettings() {
 
   const supportsMapControls = storefrontTemplateDefinition.supportsMapControls ?? true;
   const hasDedicatedShop = supportsDedicatedShopPage(
-    activeStorefrontBlueprint.businessFamily,
-    activeStorefrontBlueprint.catalogMode,
+    activeStorefrontTemplateSeed.businessFamily,
+    activeStorefrontTemplateSeed.catalogMode,
   );
   const supportsSearch = storefrontTemplateDefinition.supportsSearchControls ?? true;
   const supportsWishlist = storefrontTemplateDefinition.supportsWishlistControls ?? true;
   const supportsCart = supportsTransactionalCheckout(
-    activeStorefrontBlueprint.businessFamily,
-    activeStorefrontBlueprint.catalogMode,
+    activeStorefrontTemplateSeed.businessFamily,
+    activeStorefrontTemplateSeed.catalogMode,
   );
   const supportsNewsletter = storefrontTemplateDefinition.supportsNewsletterControls ?? true;
 
   const analyticsSettings = normalizeAnalyticsSettings(settings.analytics_tracking);
+  const pageBuilderPath = buildPageBuilderPath("basic", { storeId: activeStoreId ?? undefined });
+  const templateLabel = storefrontTemplateDefinition.label ?? activeStorefrontTemplateId;
 
   return (
-    <div className="space-y-6 p-6 max-w-6xl mx-auto">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Site Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your store preferences, layout, themes, payment gateways, and content.
-          </p>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
+        <div className="border-b border-border/60 bg-muted/20 px-4 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Online Store
+                </span>
+                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                  {templateLabel}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Site Settings</h1>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Keep the storefront tidy, on-brand, and ready for shoppers. Update the sections merchants expect most, then jump deeper when needed.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[320px]">
+              <Link to={pageBuilderPath} className="min-w-0">
+                <Card className="h-full border-border/70 bg-background/80 transition-colors hover:border-primary/40 hover:bg-primary/5">
+                  <CardContent className="flex h-full items-center gap-3 p-4">
+                    <PanelsTopLeft className="h-5 w-5 text-primary" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Open page editor</p>
+                      <p className="text-xs leading-5 text-muted-foreground">Manage blocks, structure, and page flow.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Card className="border-border/70 bg-background/80">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <StoreIcon className="h-5 w-5 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{storefrontContext.pageLabel}</p>
+                    <p className="text-xs leading-5 text-muted-foreground">{storefrontContext.supportSummary}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4 sm:px-6">
+          <Card className="border-border/60 bg-background/70">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Template</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{templateLabel}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Shared blocks and template-aware defaults stay editable from here.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 bg-background/70">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Browse mode</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{storefrontContext.pageLabel}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">This store is optimized for {storefrontContext.itemLabelPlural} and {storefrontContext.conversionLabel}.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 bg-background/70">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quick edits</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{mobileQuickTabs.length} mobile-first shortcuts</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">The most-used settings are pinned below for fast merchant updates.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 bg-background/70">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Available panels</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{availableTabs.length} settings areas</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Grouped by identity, storefront, buying flow, and customer support.</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto p-1 bg-muted gap-1">
-          {availableTabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="text-xs sm:text-sm">
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]"
+        orientation="vertical"
+      >
+        <aside className="order-2 min-w-0 lg:order-1">
+          <div className="lg:sticky lg:top-24">
+            <Card className="overflow-hidden border-border/70 shadow-sm">
+              <CardHeader className="space-y-4 border-b border-border/60 bg-muted/20">
+                <div>
+                  <CardTitle className="text-lg">Guided settings</CardTitle>
+                  <CardDescription>
+                    Start with the common merchant edits, then open the deeper panels when you need them.
+                  </CardDescription>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={tabSearch}
+                    onChange={(event) => setTabSearch(event.target.value)}
+                    placeholder="Search settings"
+                    className="pl-9"
+                  />
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4 p-4">
+                <div className="space-y-2 lg:hidden">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quick actions</p>
+                  <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+                    {mobileQuickTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => handleTabChange(tab.value)}
+                        className={cn(
+                          "min-w-[136px] snap-start rounded-2xl border px-3 py-2 text-left transition-colors",
+                          activeTab === tab.value ? "border-primary bg-primary/10" : "border-border bg-background",
+                        )}
+                      >
+                        <p className={cn("text-sm font-medium", activeTab === tab.value ? "text-foreground" : "text-muted-foreground")}>{tab.label}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{tab.category}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-3 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMobileDirectoryOpen((current) => !current)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Browse all settings</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Open the full directory when you need a less common setting.
+                      </p>
+                    </div>
+                    {mobileDirectoryOpen ? (
+                      <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
+
+                <div className={cn("space-y-3", !mobileDirectoryOpen && "hidden lg:block")}>
+                  {groupedTabs.map((group) => {
+                    const Icon = group.tone.icon;
+                    return (
+                      <div key={group.category} className="rounded-2xl border border-border/60 bg-background/60 p-3">
+                        <div className="mb-3 flex items-start gap-3">
+                          <div className="rounded-xl border border-border/60 bg-background p-2">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">{group.tone.title}</p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">{group.tone.description}</p>
+                          </div>
+                        </div>
+                        <TabsList className="grid h-auto w-full gap-2 bg-transparent p-0">
+                          {group.tabs.map((tab) => (
+                            <TabsTrigger
+                              key={tab.value}
+                              value={tab.value}
+                              className={cn(
+                                "h-auto w-full justify-start rounded-xl border border-border/60 bg-background px-3 py-3 text-left",
+                                "data-[state=active]:border-primary/50 data-[state=active]:bg-primary/10 data-[state=active]:text-primary",
+                              )}
+                            >
+                              <span className="block min-w-0">
+                                <span className="block text-sm font-medium">{tab.label}</span>
+                                <span className="mt-1 block text-[11px] leading-5 text-muted-foreground">{tab.category}</span>
+                              </span>
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {filteredTabs.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    No settings matched that search yet.
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+        </aside>
+
+        <div className="order-1 min-w-0 space-y-5 lg:order-2">
+          <Card className="border-border/70 bg-card shadow-sm">
+            <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {activeTabDefinition?.category ?? "Settings"}
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-foreground">{activeTabDefinition?.label ?? "Site Settings"}</h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {isLegacySettingsTab(activeTab)
+                      ? "These fields remain available for compatibility. Shared blocks and template presets still take priority where storefront content has already moved forward."
+                      : `Update ${activeTabDefinition?.label?.toLowerCase() ?? "this area"} and keep the live storefront aligned across mobile and desktop.`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link to={pageBuilderPath}>
+                    <Button variant="outline" className="gap-2">
+                      <PanelsTopLeft className="h-4 w-4" />
+                      Page Builder
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-6">
 
         <BrandSeoTab
           settings={settings}
@@ -644,11 +933,14 @@ export default function SiteSettings() {
         />
 
         <TemplateFeaturesTab
-          themeManager={themeManager}
+          activeStoreId={activeStoreId}
+          templateId={activeStorefrontTemplateId}
           settings={settings}
           update={updateSettingField}
           SaveButton={SaveButton}
         />
+          </div>
+        </div>
       </Tabs>
     </div>
   );

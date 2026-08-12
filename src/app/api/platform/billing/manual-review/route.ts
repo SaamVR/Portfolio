@@ -9,19 +9,46 @@ export const manualBillingReviewRouteDeps = {
   now: () => new Date(),
 };
 
+const MANUAL_BILLING_PLATFORM_ROLE_PRIORITY = ["admin", "co_admin", "super_admin", "billing_admin"] as const;
+
+function getManualBillingReviewErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const message = "message" in error && typeof error.message === "string" ? error.message.trim() : "";
+    const details = "details" in error && typeof error.details === "string" ? error.details.trim() : "";
+    const hint = "hint" in error && typeof error.hint === "string" ? error.hint.trim() : "";
+    const code = "code" in error && typeof error.code === "string" ? error.code.trim() : "";
+
+    const composed = [message, details, hint].filter(Boolean).join(" ");
+    if (composed) {
+      return code ? `${composed} (code: ${code})` : composed;
+    }
+  }
+
+  return "Failed to review manual payment";
+}
+
 async function isPlatformAdmin(userId: string) {
   const supabaseAdmin = manualBillingReviewRouteDeps.getSupabaseAdminClient();
-  const { data, error } = await supabaseAdmin
+  const roleQuery = supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "super_admin", "billing_admin"])
-    .order("created_at", { ascending: true });
+    .eq("user_id", userId);
 
-  if (error) throw error;
+  const roleLookup = typeof (roleQuery as any)?.in === "function"
+    ? await (roleQuery as any).in("role", ["admin", "co_admin"]).order("created_at", { ascending: true })
+    : await roleQuery;
+
+  if (roleLookup.error) throw roleLookup.error;
+
   const resolvedRole =
-    Array.isArray(data) && data.length > 0 && typeof data[0]?.role === "string"
-      ? data[0].role
+    Array.isArray(roleLookup.data)
+      ? (MANUAL_BILLING_PLATFORM_ROLE_PRIORITY.find((candidate) =>
+          roleLookup.data.some((row) => typeof row?.role === "string" && row.role === candidate),
+        ) ?? null)
       : null;
   return { allowed: Boolean(resolvedRole), role: resolvedRole };
 }
@@ -150,10 +177,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, status: "failed" });
   } catch (error) {
     console.error("Manual billing review error:", error);
-    const message =
-      error instanceof Error && error.message.trim()
-        ? error.message
-        : "Failed to review manual payment";
+    const message = getManualBillingReviewErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

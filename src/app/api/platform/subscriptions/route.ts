@@ -9,19 +9,25 @@ export const platformSubscriptionsRouteDeps = {
   now: () => new Date(),
 };
 
+const PLATFORM_SUBSCRIPTION_ROLE_PRIORITY = ["admin", "co_admin", "super_admin", "billing_admin"] as const;
+
 async function getPlatformRole(userId: string) {
   const supabaseAdmin = platformSubscriptionsRouteDeps.getSupabaseAdminClient();
-  const { data, error } = await supabaseAdmin
+  const roleQuery = supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "super_admin", "billing_admin"])
-    .order("created_at", { ascending: true });
+    .eq("user_id", userId);
 
-  if (error) throw error;
+  const roleLookup = typeof (roleQuery as any)?.in === "function"
+    ? await (roleQuery as any).in("role", ["admin", "co_admin"]).order("created_at", { ascending: true })
+    : await roleQuery;
 
-  return Array.isArray(data) && data.length > 0 && typeof data[0]?.role === "string"
-    ? data[0].role
+  if (roleLookup.error) throw roleLookup.error;
+
+  return Array.isArray(roleLookup.data)
+    ? (PLATFORM_SUBSCRIPTION_ROLE_PRIORITY.find((candidate) =>
+        roleLookup.data.some((row) => typeof row?.role === "string" && row.role === candidate),
+      ) ?? null)
     : null;
 }
 

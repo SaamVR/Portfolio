@@ -27,11 +27,13 @@ export interface PlatformAuditLogRow {
 function normalizeAuditActorRole(role?: string | null) {
   if (!role) return null;
 
-  if (role === "admin" || role === "super_admin") {
+  const normalizedInput = role.trim().toLowerCase();
+
+  if (normalizedInput === "admin" || normalizedInput === "super_admin") {
     return "admin";
   }
 
-  if (role === "co_admin" || role === "billing_admin" || role === "support_agent") {
+  if (normalizedInput === "co_admin" || normalizedInput === "billing_admin" || normalizedInput === "support_agent") {
     return "co_admin";
   }
 
