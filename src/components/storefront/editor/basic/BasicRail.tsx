@@ -26,6 +26,7 @@ export function BasicRail({
             key={item.id}
             type="button"
             role="tab"
+            data-testid={`basic-mode-tab-${item.id}`}
             aria-selected={active}
             onClick={() => onTabChange(item.id)}
             className={cn(

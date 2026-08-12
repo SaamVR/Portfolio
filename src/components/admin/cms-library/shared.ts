@@ -1,27 +1,7 @@
-import { fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
-import { fallbackPageBlueprints } from "@/lib/cms/page-blueprints";
+import { cmsPageTemplates } from "@/lib/cms/page-templates";
 import { fallbackBlockRegistry } from "@/lib/cms/block-registry";
 import { allStoreBusinessFamilies, allStoreCatalogModes, storefrontProductVisibilityModes } from "@/lib/cms/storefront-compat";
-
-export type BlueprintRow = {
-  id: string;
-  name: string;
-  short_name: string;
-  description: string;
-  business_family: string;
-  catalog_mode: string;
-  group_name: string;
-  store_description: string;
-  legacy_template_id: string | null;
-  recommended_page_set: unknown;
-  recommended_block_set: unknown;
-  required_capabilities: unknown;
-  default_theme: unknown;
-  hero_payload: unknown;
-  onboarding_schema: unknown;
-  default_site_settings: unknown;
-  is_active: boolean;
-};
+import { storefrontTemplateSeedDefinitions } from "@/lib/cms/storefront-templates";
 
 export type ThemeRow = {
   id: string;
@@ -62,35 +42,18 @@ export type BlockRow = {
 };
 
 export type LibraryData = {
-  blueprints: BlueprintRow[];
   themes: ThemeRow[];
-  pages: PageRow[];
+  pages?: PageRow[];
   blocks: BlockRow[];
 };
 
 export type DialogState =
-  | { mode: "create" | "edit"; type: "blueprint"; item?: BlueprintRow }
   | { mode: "create" | "edit"; type: "theme"; item?: ThemeRow }
   | { mode: "create" | "edit"; type: "page"; item?: PageRow }
   | { mode: "create" | "edit"; type: "block"; item?: BlockRow }
   | null;
 
 export type FormState = Record<string, string | boolean>;
-
-export type BlueprintDefaultSiteSettings = {
-  storefrontProfile: {
-    productVisibility: string;
-    checkoutMode: string;
-  };
-  paymentSettings: {
-    codEnabled: boolean;
-    bkashEnabled: boolean;
-    nagadEnabled: boolean;
-    prepaidBadgeText: string;
-    prepaymentDiscountType: string;
-    prepaymentDiscountValue: number;
-  };
-};
 
 export type ThemeEditorPayload = {
   preview: {
@@ -111,35 +74,19 @@ export type ThemeEditorPayload = {
   };
 };
 
-export function findBlueprintRowsUsingThemePackage(data: LibraryData, themeId: string) {
-  const themeItem = data.themes.find((item) => item.id === themeId);
-  const themeIdentifiers = new Set(
-    [themeItem?.id, themeItem?.slug]
-      .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
-  );
-
-  return data.blueprints.filter((item) => {
-    const defaultTheme = item.default_theme && typeof item.default_theme === "object" && !Array.isArray(item.default_theme)
-      ? item.default_theme as Record<string, unknown>
-      : readJsonObject(JSON.stringify(item.default_theme ?? {}));
-    const presetId = typeof defaultTheme?.presetId === "string" ? defaultTheme.presetId : null;
-    return Boolean(presetId && themeIdentifiers.has(presetId));
-  });
-}
-
 export const businessFamilyOptions = allStoreBusinessFamilies;
 export const catalogModeOptions = allStoreCatalogModes;
 export const legacyTemplateOptions = ["clothing", "food", "general", "landing", "gadgets", "crafts"] as const;
 export const blockLayerOptions = ["core", "commerce", "extension"] as const;
-export const onboardingStepOptions = ["blueprint", "brand", "content", "catalog", "theme", "payments", "launch"] as const;
+export const onboardingStepOptions = ["template", "brand", "content", "catalog", "theme", "payments", "launch"] as const;
 export const productVisibilityOptions = storefrontProductVisibilityModes;
 export const checkoutModeOptions = ["standard", "whatsapp", "inquiry"] as const;
 export const prepaymentDiscountTypeOptions = ["none", "free_delivery", "percentage", "fixed"] as const;
 export const themeSourceTypeOptions = ["system", "admin_shared", "merchant_private", "merchant_submitted"] as const;
 export const themeModeOptions = ["light", "dark"] as const;
-export function buildKnownPageBlueprintIds(pages: PageRow[] = []) {
+export function buildKnownPageTemplateIds(pages: PageRow[] = []) {
   return Array.from(new Set([
-    ...fallbackPageBlueprints.map((item) => item.id),
+    ...cmsPageTemplates.map((item) => item.id),
     ...pages.map((item) => item.id),
   ])).sort();
 }
@@ -176,18 +123,6 @@ export function buildKnownBlockOptions(blocks: BlockRow[] = []) {
 }
 
 export function buildKnownCapabilities(data?: Partial<LibraryData>) {
-  const blueprintCapabilities = (data?.blueprints ?? [])
-    .flatMap((item) => {
-      if (Array.isArray(item.required_capabilities)) {
-        return item.required_capabilities.filter((value): value is string => typeof value === "string");
-      }
-
-      if (typeof item.required_capabilities === "string") {
-        return readStringArray(item.required_capabilities);
-      }
-
-      return [];
-    });
   const blockCapabilities = (data?.blocks ?? [])
     .flatMap((item) => {
       if (Array.isArray(item.required_capabilities)) {
@@ -202,14 +137,13 @@ export function buildKnownCapabilities(data?: Partial<LibraryData>) {
     });
 
   return Array.from(new Set([
-    ...fallbackStoreBlueprints.flatMap((item) => item.capabilities),
+    ...storefrontTemplateSeedDefinitions.flatMap((item) => item.capabilities),
     ...fallbackBlockRegistry.flatMap((item) => item.requiredCapabilities),
-    ...blueprintCapabilities,
     ...blockCapabilities,
   ])).sort();
 }
 
-export const jsonStringify = (value: unknown, fallback: unknown) => JSON.stringify(value ?? fallback, null, 2);
+const jsonStringify = (value: unknown, fallback: unknown) => JSON.stringify(value ?? fallback, null, 2);
 export const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export function parseJsonField(value: string, fieldLabel: string) {
@@ -242,7 +176,7 @@ export function writeStringArray(values: string[]) {
   return JSON.stringify(Array.from(new Set(values)).sort(), null, 2);
 }
 
-export function readJsonObject(value: string | boolean | undefined) {
+function readJsonObject(value: string | boolean | undefined) {
   if (typeof value !== "string") return null;
   try {
     const parsed = JSON.parse(value);
@@ -250,50 +184,6 @@ export function readJsonObject(value: string | boolean | undefined) {
   } catch {
     return null;
   }
-}
-
-export function readDefaultSiteSettings(value: string | boolean | undefined): BlueprintDefaultSiteSettings {
-  const parsed = readJsonObject(value);
-  const storefrontProfile = parsed?.storefront_profile && typeof parsed.storefront_profile === "object"
-    ? parsed.storefront_profile as Record<string, unknown>
-    : {};
-  const paymentSettings = parsed?.payment_settings && typeof parsed.payment_settings === "object"
-    ? parsed.payment_settings as Record<string, unknown>
-    : {};
-
-  return {
-    storefrontProfile: {
-      productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : "catalog",
-      checkoutMode: typeof storefrontProfile.checkout_mode === "string" ? storefrontProfile.checkout_mode : "standard",
-    },
-    paymentSettings: {
-      codEnabled: typeof paymentSettings.cod_enabled === "boolean" ? paymentSettings.cod_enabled : true,
-      bkashEnabled: typeof paymentSettings.bkash_enabled === "boolean" ? paymentSettings.bkash_enabled : false,
-      nagadEnabled: typeof paymentSettings.nagad_enabled === "boolean" ? paymentSettings.nagad_enabled : false,
-      prepaidBadgeText: typeof paymentSettings.prepaid_badge_text === "string" ? paymentSettings.prepaid_badge_text : "",
-      prepaymentDiscountType: typeof paymentSettings.prepayment_discount_type === "string" ? paymentSettings.prepayment_discount_type : "none",
-      prepaymentDiscountValue: typeof paymentSettings.prepayment_discount_value === "number" ? paymentSettings.prepayment_discount_value : 0,
-    },
-  };
-}
-
-export function updateDefaultSiteSettingsField(
-  existingValue: string | boolean | undefined,
-  section: "storefront_profile" | "payment_settings",
-  patch: Record<string, unknown>,
-) {
-  const base = readJsonObject(existingValue) ?? {};
-  const currentSection = base[section] && typeof base[section] === "object"
-    ? base[section] as Record<string, unknown>
-    : {};
-
-  return JSON.stringify({
-    ...base,
-    [section]: {
-      ...currentSection,
-      ...patch,
-    },
-  }, null, 2);
 }
 
 export function readThemeEditorPayload(
@@ -336,30 +226,7 @@ export function updateThemeJsonField(
   return updateObjectJsonField(existingValue, patch);
 }
 
-export function readOnboardingSteps(value: string | boolean | undefined) {
-  const parsed = readJsonObject(value);
-  const steps = Array.isArray(parsed?.steps) ? parsed.steps : [];
-  return steps
-    .filter((step): step is Record<string, unknown> => Boolean(step && typeof step === "object"))
-    .map((step) => ({
-      id: typeof step.id === "string" ? step.id : "blueprint",
-      title: typeof step.title === "string" ? step.title : "",
-      description: typeof step.description === "string" ? step.description : "",
-    }));
-}
-
-export function writeOnboardingSteps(
-  steps: Array<{ id: string; title: string; description: string }>,
-  existingValue: string | boolean | undefined,
-) {
-  const base = readJsonObject(existingValue) ?? {};
-  return JSON.stringify({
-    ...base,
-    steps,
-  }, null, 2);
-}
-
-export function updateObjectJsonField(
+function updateObjectJsonField(
   existingValue: string | boolean | undefined,
   patch: Record<string, unknown>,
 ) {
@@ -401,44 +268,19 @@ export function updatePagePayloadBlocks(
   return updatePagePayloadField(existingValue, { blocks });
 }
 
-export function buildBlueprintForm(item?: BlueprintRow): FormState {
-  const fallback = fallbackStoreBlueprints.find((entry) => entry.id === item?.id) ?? fallbackStoreBlueprints[0];
-  return {
-    id: item?.id ?? "",
-    name: item?.name ?? "",
-    short_name: item?.short_name ?? "",
-    description: item?.description ?? fallback.description,
-    business_family: item?.business_family ?? fallback.businessFamily,
-    catalog_mode: item?.catalog_mode ?? fallback.catalogMode,
-    group_name: item?.group_name ?? fallback.group,
-    store_description: item?.store_description ?? fallback.storeDescription,
-    legacy_template_id: item?.legacy_template_id ?? fallback.legacyTemplateId ?? "general",
-    recommended_page_set: jsonStringify(item?.recommended_page_set, fallback.recommendedPageSet),
-    recommended_block_set: jsonStringify(item?.recommended_block_set, fallback.recommendedBlockSet),
-    required_capabilities: jsonStringify(item?.required_capabilities, fallback.capabilities),
-    default_theme: jsonStringify(item?.default_theme, fallback.defaultTheme),
-    hero_payload: jsonStringify(item?.hero_payload, fallback.hero),
-    onboarding_schema: jsonStringify(item?.onboarding_schema, fallback.onboarding),
-    default_site_settings: jsonStringify(item?.default_site_settings, fallback.defaultSiteSettings),
-    is_active: item?.is_active ?? true,
-  };
-}
-
 export function buildPageForm(item?: PageRow): FormState {
-  const fallback = fallbackPageBlueprints.find((entry) => entry.id === item?.id) ?? fallbackPageBlueprints[0];
+  const fallback = cmsPageTemplates.find((entry) => entry.id === item?.id) ?? cmsPageTemplates[0];
   return {
     id: item?.id ?? "",
     name: item?.name ?? "",
     description: item?.description ?? fallback.description,
-    business_family: item?.business_family ?? fallback.businessFamily,
-    catalog_modes: jsonStringify(item?.catalog_modes, fallback.catalogModes),
     page_payload: jsonStringify(item?.page_payload, fallback.page),
     is_active: item?.is_active ?? true,
   };
 }
 
 export function buildThemeForm(item?: ThemeRow): FormState {
-  const fallbackTheme = fallbackStoreBlueprints[0]?.defaultTheme;
+  const fallbackTheme = storefrontTemplateSeedDefinitions[0]?.defaultTheme;
   return {
     id: item?.id ?? "",
     slug: item?.slug ?? "",

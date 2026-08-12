@@ -5,7 +5,7 @@ import {
 } from "@/lib/theme-packages";
 import { reservedCmsSlugs } from "@/lib/cms/block-library";
 import { getCmsBlockRegistryItem, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
-import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
+import { normalizePageTemplatePayload } from "@/lib/cms/page-templates";
 import {
   type BlockRow,
   type DialogState,
@@ -17,28 +17,12 @@ import {
 } from "@/components/admin/cms-library/shared";
 
 export type LibraryMutationTable =
-  | "store_blueprints"
   | "theme_packages"
-  | "page_blueprints"
   | "block_registry_entries";
 
 export type SaveDialogRequest =
   | {
-      table: "store_blueprints";
-      idColumn: "id";
-      idValue: string;
-      payload: Record<string, unknown>;
-      isCreate: boolean;
-    }
-  | {
       table: "theme_packages";
-      idColumn: "id";
-      idValue: string;
-      payload: Record<string, unknown>;
-      isCreate: boolean;
-    }
-  | {
-      table: "page_blueprints";
       idColumn: "id";
       idValue: string;
       payload: Record<string, unknown>;
@@ -56,12 +40,10 @@ export function getActiveDialogTitle(dialogState: DialogState) {
   if (!dialogState) return "";
 
   const itemLabel =
-    dialogState.type === "blueprint"
-      ? "Blueprint"
-      : dialogState.type === "theme"
+    dialogState.type === "theme"
         ? "Theme Package"
       : dialogState.type === "page"
-        ? "Page Blueprint"
+        ? "Page Template"
         : "Block Registry Entry";
 
   return `${dialogState.mode === "create" ? "Create" : "Edit"} ${itemLabel}`;
@@ -87,6 +69,8 @@ function normalizeBlockRegistryForValidation(blockRegistry?: BlockRow[]): CmsBlo
     requiredCapabilities: Array.isArray(item.required_capabilities)
       ? item.required_capabilities.filter((value): value is string => typeof value === "string")
       : [],
+    variantIds: [],
+    presetIds: [],
   }));
 }
 
@@ -95,47 +79,14 @@ export function buildSaveDialogRequest(
   form: FormState,
   options?: SaveDialogRequestOptions,
 ): SaveDialogRequest {
-  if (dialogState.type === "blueprint") {
-    const id = slugify(String(form.id || form.short_name || form.name || ""));
-    if (!id || !String(form.name || "").trim() || !String(form.short_name || "").trim()) {
-      throw new Error("Blueprint id, name, and short name are required.");
-    }
-
-    return {
-      table: "store_blueprints",
-      idColumn: "id",
-      idValue: dialogState.mode === "create" ? id : dialogState.item!.id,
-      isCreate: dialogState.mode === "create",
-      payload: {
-        id,
-        name: String(form.name).trim(),
-        short_name: String(form.short_name).trim(),
-        description: String(form.description || "").trim(),
-        business_family: String(form.business_family || "commerce").trim(),
-        catalog_mode: String(form.catalog_mode || "multi_product").trim(),
-        group_name: String(form.group_name || "General").trim(),
-        store_description: String(form.store_description || "").trim(),
-        legacy_template_id: String(form.legacy_template_id || "").trim() || null,
-        recommended_page_set: parseJsonField(String(form.recommended_page_set || "[]"), "Recommended page set"),
-        recommended_block_set: parseJsonField(String(form.recommended_block_set || "[]"), "Recommended block set"),
-        required_capabilities: parseStringArrayField(String(form.required_capabilities || "[]"), "Required capabilities"),
-        default_theme: parseJsonField(String(form.default_theme || "{}"), "Default theme"),
-        hero_payload: parseJsonField(String(form.hero_payload || "{}"), "Hero payload"),
-        onboarding_schema: parseJsonField(String(form.onboarding_schema || "{}"), "Onboarding schema"),
-        default_site_settings: parseJsonField(String(form.default_site_settings || "{}"), "Default site settings"),
-        is_active: Boolean(form.is_active),
-      },
-    };
-  }
-
   if (dialogState.type === "page") {
     const id = slugify(String(form.id || form.name || ""));
     if (!id || !String(form.name || "").trim()) {
-      throw new Error("Page blueprint id and name are required.");
+      throw new Error("Page template id and name are required.");
     }
     const businessFamily = String(form.business_family || "commerce").trim();
 
-    const normalizedPagePayload = normalizePageBlueprintPayload(
+    const normalizedPagePayload = normalizePageTemplatePayload(
       parseJsonField(String(form.page_payload || "{}"), "Page payload"),
     );
 
@@ -150,21 +101,7 @@ export function buildSaveDialogRequest(
       }
     }
 
-    return {
-      table: "page_blueprints",
-      idColumn: "id",
-      idValue: dialogState.mode === "create" ? id : dialogState.item!.id,
-      isCreate: dialogState.mode === "create",
-      payload: {
-        id,
-        name: String(form.name).trim(),
-        description: String(form.description || "").trim(),
-        business_family: businessFamily,
-        catalog_modes: parseStringArrayField(String(form.catalog_modes || "[]"), "Catalog modes"),
-        page_payload: normalizedPagePayload,
-        is_active: Boolean(form.is_active),
-      },
-    };
+    throw new Error("Shared page template management has been retired.");
   }
 
   if (dialogState.type === "theme") {

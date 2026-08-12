@@ -79,13 +79,13 @@ describe("cms library mutation builders", () => {
     expect(payload.name).toBe("Merchant Theme Shared");
   });
 
-  it("sanitizes page blueprint payloads before saving", () => {
-    const request = buildSaveDialogRequest(
+  it("rejects retired shared page template saves", () => {
+    assert.throws(() => buildSaveDialogRequest(
       { mode: "create", type: "page" },
       {
         id: "custom-page",
         name: "Custom Page",
-        description: "A page blueprint",
+        description: "A shared page template",
         business_family: "commerce",
         catalog_modes: JSON.stringify(["multi_product"]),
         page_payload: JSON.stringify({
@@ -120,14 +120,10 @@ describe("cms library mutation builders", () => {
         }),
         is_active: true,
       },
-    );
-
-    expect(request.table).toBe("page_blueprints");
-    expect(Array.isArray((request.payload.page_payload as { blocks: unknown[] }).blocks)).toBe(true);
-    expect((request.payload.page_payload as { blocks: unknown[] }).blocks).toHaveLength(1);
+    ), /retired/i);
   });
 
-  it("rejects reserved page blueprint slugs outside homepage", () => {
+  it("rejects reserved shared page template slugs outside homepage", () => {
     assert.throws(() => buildSaveDialogRequest(
       { mode: "create", type: "page" },
       {
@@ -158,8 +154,8 @@ describe("cms library mutation builders", () => {
     ), /reserved/i);
   });
 
-  it("allows core blocks in non-commerce page blueprints", () => {
-    const request = buildSaveDialogRequest(
+  it("rejects retired non-commerce shared page template saves", () => {
+    assert.throws(() => buildSaveDialogRequest(
       { mode: "create", type: "page" },
       {
         id: "service-landing",
@@ -186,13 +182,10 @@ describe("cms library mutation builders", () => {
         }),
         is_active: true,
       },
-    );
-
-    expect(request.table).toBe("page_blueprints");
-    expect((request.payload.page_payload as { blocks: Array<{ type: string }> }).blocks[0]?.type).toBe("rich-text");
+    ), /retired/i);
   });
 
-  it("rejects commerce-only blocks in non-commerce page blueprints", () => {
+  it("rejects commerce-only blocks in retired shared page templates before the retirement guard", () => {
     assert.throws(() => buildSaveDialogRequest(
       { mode: "create", type: "page" },
       {
@@ -222,8 +215,8 @@ describe("cms library mutation builders", () => {
     ), /not compatible/i);
   });
 
-  it("validates page blueprint blocks against the provided live block registry", () => {
-    const request = buildSaveDialogRequest(
+  it("rejects retired shared page template saves even with live block registry data", () => {
+    assert.throws(() => buildSaveDialogRequest(
       { mode: "create", type: "page" },
       {
         id: "hotel-booking",
@@ -261,9 +254,6 @@ describe("cms library mutation builders", () => {
           is_active: true,
         }],
       },
-    );
-
-    expect(request.table).toBe("page_blueprints");
-    expect((request.payload.page_payload as { blocks: Array<{ type: string }> }).blocks[0]?.type).toBe("featured-products");
+    ), /retired/i);
   });
 });

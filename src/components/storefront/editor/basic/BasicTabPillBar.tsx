@@ -20,6 +20,7 @@ export function BasicTabPillBar({
             key={item.id}
             type="button"
             role="tab"
+            data-testid={`basic-mode-tab-${item.id}`}
             aria-selected={item.id === activeTab}
             onClick={() => onTabChange(item.id)}
             className={cn(

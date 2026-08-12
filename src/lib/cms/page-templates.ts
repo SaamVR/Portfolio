@@ -1,5 +1,6 @@
 import type { StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { createDefaultBlock } from "@/lib/cms/block-library";
+import { sanitizeStorePage } from "@/lib/cms/validation";
 
 export interface CmsPageTemplate {
   id: string;
@@ -308,4 +309,28 @@ export function applyTemplateToPage(page: StorePage, templateId: string): StoreP
     seoDescription: template.page.seoDescription,
     blocks: template.page.blocks.map((block, index) => cloneBlock(block, index)),
   };
+}
+
+export function normalizePageTemplatePayload(payload: unknown): Omit<StorePage, "id"> {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Page payload must be an object.");
+  }
+
+  const candidate = payload as Partial<Omit<StorePage, "id">> & { blocks?: unknown[] };
+  const sanitizedPage = sanitizeStorePage({
+    id: "page-template-preview",
+    slug: typeof candidate.slug === "string" ? candidate.slug : "/page-1",
+    title: typeof candidate.title === "string" ? candidate.title : "Untitled Page",
+    seoTitle: typeof candidate.seoTitle === "string" ? candidate.seoTitle : "",
+    seoDescription: typeof candidate.seoDescription === "string" ? candidate.seoDescription : "",
+    isHomepage: candidate.isHomepage === true,
+    blocks: Array.isArray(candidate.blocks) ? candidate.blocks : [],
+  });
+
+  if (!sanitizedPage) {
+    throw new Error("Page payload must include at least one valid block and valid page metadata.");
+  }
+
+  const { id: _ignoredId, ...pageTemplatePayload } = sanitizedPage;
+  return pageTemplatePayload;
 }

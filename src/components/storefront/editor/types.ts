@@ -14,6 +14,7 @@ export type BasicTabId =
   | "launch";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
+export type InspectorTabId = "style" | "content" | "advanced";
 
 export type BasicRailItem = {
   id: BasicTabId;
@@ -37,6 +38,7 @@ export type EditorHeaderAction = {
   href?: string;
   variant?: "default" | "outline" | "secondary" | "ghost";
   disabled?: boolean;
+  className?: string;
 };
 
 export type EditorShellRenderProps = {

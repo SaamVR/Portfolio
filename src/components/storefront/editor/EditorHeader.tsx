@@ -6,6 +6,7 @@ import { EditorModeToggle } from "./EditorModeToggle";
 import { EditorPageSelector } from "./EditorPageSelector";
 import { EditorSaveState } from "./EditorSaveState";
 import type { EditorHeaderAction, EditorMode, EditorPageOption, SaveState } from "./types";
+import { cn } from "@/lib/utils";
 
 export function EditorHeader({
   storeName,
@@ -18,6 +19,7 @@ export function EditorHeader({
   saveDetail,
   canUseAdvanced,
   actions = [],
+  modeHrefs,
 }: {
   storeName: string;
   mode: EditorMode;
@@ -29,6 +31,7 @@ export function EditorHeader({
   saveDetail?: string | null;
   canUseAdvanced?: boolean;
   actions?: EditorHeaderAction[];
+  modeHrefs?: Partial<Record<EditorMode, string>>;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-gray-50/95 backdrop-blur dark:border-gray-800 dark:bg-gray-950/95">
@@ -38,7 +41,7 @@ export function EditorHeader({
           <p className="text-xs text-gray-500 dark:text-gray-500">Storefront editor</p>
         </div>
         <EditorPageSelector pages={pages} value={activePageId} onChange={onPageChange} />
-        <EditorModeToggle mode={mode} onChange={onModeChange} canUseAdvanced={canUseAdvanced} />
+        <EditorModeToggle mode={mode} onChange={onModeChange} canUseAdvanced={canUseAdvanced} hrefs={modeHrefs} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <EditorSaveState state={saveState} detail={saveDetail} />
           {actions.map((action) => {
@@ -50,7 +53,7 @@ export function EditorHeader({
             );
             if (action.href) {
               return (
-                <Button key={action.id} type="button" variant={action.variant ?? "outline"} size="sm" asChild disabled={action.disabled}>
+                <Button key={action.id} type="button" variant={action.variant ?? "outline"} size="sm" asChild disabled={action.disabled} className={action.className}>
                   <Link href={action.href}>{content}</Link>
                 </Button>
               );
@@ -63,7 +66,7 @@ export function EditorHeader({
                 size="sm"
                 onClick={action.onClick}
                 disabled={action.disabled}
-                className="gap-2"
+                className={cn("gap-2", action.className)}
               >
                 {content}
               </Button>

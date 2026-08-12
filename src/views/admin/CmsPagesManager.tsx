@@ -66,10 +66,9 @@ import {
 } from "@/lib/cms/default-store";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { ensureRequiredStoreFlowPages } from "@/lib/cms/blueprint-pages";
-import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForBlueprint, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
-import { applyPageBlueprint, fallbackPageBlueprints, instantiatePageBlueprint, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
+import { applyTemplateToPage, cmsPageTemplates, instantiateTemplate } from "@/lib/cms/page-templates";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { storefrontPath } from "@/lib/slug";
@@ -81,12 +80,13 @@ import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTe
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { sanitizeStoreBlocks, sanitizeStorePage, sanitizeStoreThemeCustomCss, validateStoreForPersistence } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
-import { fallbackStoreBlueprints, loadStoreBlueprints, resolveStoreBlueprint, type StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
-import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
+import { fallbackStorefrontTemplateSeeds, resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
+import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TemplateGallery } from "./TemplateGallery";
@@ -95,6 +95,16 @@ import { BasicBlockMiniEditor } from "@/components/storefront/BasicBlockMiniEdit
 import { BasicModeEditor } from "@/components/storefront/BasicModeEditor";
 import { DomTreeNavigator } from "@/components/storefront/DomTreeNavigator";
 import { EditorShell } from "@/components/storefront/editor/EditorShell";
+import { ThemePanel } from "@/components/storefront/editor/basic/ThemePanel";
+import { BasicPagesTab } from "@/components/storefront/editor/basic/tabs/BasicPagesTab";
+import { BasicLayoutTab } from "@/components/storefront/editor/basic/tabs/BasicLayoutTab";
+import { BasicContentTab } from "@/components/storefront/editor/basic/tabs/BasicContentTab";
+import { BasicStoreFlowTab } from "@/components/storefront/editor/basic/tabs/BasicStoreFlowTab";
+import { BasicEffectsTab } from "@/components/storefront/editor/basic/tabs/BasicEffectsTab";
+import { BasicLaunchTab } from "@/components/storefront/editor/basic/tabs/BasicLaunchTab";
+import { BlockTreePanel } from "@/components/storefront/editor/advanced/tree/BlockTreePanel";
+import { InspectorPanel } from "@/components/storefront/editor/advanced/inspector/InspectorPanel";
+import { buildThemeRecipePatch, type ThemeRecipe } from "@/components/storefront/editor/basic/theme-recipes";
 import type { BasicRailItem } from "@/components/storefront/editor/types";
 import { VisualCssInspector } from "@/components/storefront/VisualCssInspector";
 import { TiptapRichTextEditor } from "@/components/admin/TiptapRichTextEditor";
@@ -102,6 +112,8 @@ import type { RichTextDoc } from "@/lib/cms/schema";
 import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections } from "@/lib/cms/storefront-editor-registry";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+
+const PROMO_THEME_DEFAULT_VALUE = "__theme-default";
 
 type StoreRecord = {
   id: string;
@@ -114,6 +126,31 @@ type StoreRecord = {
   is_published: boolean | null;
   store_type?: string | null;
 };
+
+function mergeBlockProps(
+  currentProps: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const nextProps = { ...(currentProps ?? {}) };
+  Object.entries(patch).forEach(([key, value]) => {
+    if (value === undefined) {
+      delete nextProps[key];
+      return;
+    }
+    nextProps[key] = value;
+  });
+  return nextProps;
+}
+
+function normalizeBlockMetaPatch(patch: Partial<StorePageBlock>): Partial<StorePageBlock> {
+  if ("isVisible" in patch && !("visible" in patch)) {
+    return { ...patch, visible: patch.isVisible };
+  }
+  if ("visible" in patch && !("isVisible" in patch)) {
+    return { ...patch, isVisible: patch.visible };
+  }
+  return patch;
+}
 
 type ThemeRecord = {
   preset_id: string | null;
@@ -167,8 +204,7 @@ type BlockRecord = {
 };
 
 type BusinessProfileRecord = {
-  blueprint_id: string | null;
-  blueprint_version?: number | null;
+  template_id: string | null;
   business_family: string | null;
   catalog_mode: string | null;
 };
@@ -203,7 +239,7 @@ type StoreLayoutPackage = {
   source: {
     storeName: string;
     storeSlug: string;
-    blueprintId: string;
+    templateSeedId: string;
   };
   layout: {
     description: string;
@@ -243,11 +279,10 @@ function readRecoverableDraft(key: string): RecoverableDraft | null {
   }
 }
 
-function cloneHomepageBlocksForBlueprint(
-  blueprintId: string,
-  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
+function cloneHomepageBlocksForTemplateSeed(
+  templateSeedId: string,
 ): StorePageBlock[] {
-  const seededPages = instantiateStorePagesFromTemplate(blueprintId, pageBlueprints, { blueprintId });
+  const seededPages = instantiateStorePagesFromTemplate(templateSeedId, { templateSeedId });
   const homepage = seededPages.find((page) => page.isHomepage) ?? createDefaultCmsPage(0);
 
   return homepage.blocks.map((block, index) => ({
@@ -264,9 +299,8 @@ function mapRecordsToStore(
   pages: PageRecord[],
   blocks: BlockRecord[],
   siteSettings: SiteSettingRecord[],
-  blueprints: StoreBlueprintDefinition[] = [],
+  templateSeeds: StorefrontTemplateSeedDefinition[] = [],
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
-  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
 ): Store {
   const rawSiteSettings = siteSettings.reduce<Record<string, unknown>>((settings, setting) => {
     settings[setting.key] = setting.value;
@@ -276,14 +310,12 @@ function mapRecordsToStore(
     ? rawSiteSettings.storefront_profile as Record<string, unknown>
     : {};
   const templateProfile = resolveStorefrontTemplateProfile(storefrontProfile.template_id, {
-    blueprintId: typeof storefrontProfile.blueprint_id === "string"
-      ? storefrontProfile.blueprint_id
-      : businessProfile?.blueprint_id ?? store.store_type ?? "general-catalog",
+    templateSeedId: businessProfile?.template_id ?? store.store_type ?? "general-catalog",
     productVisibility: typeof storefrontProfile.product_visibility === "string"
       ? storefrontProfile.product_visibility
       : null,
   });
-  const blueprint = resolveStoreBlueprint(templateProfile.seedBlueprintId, blueprints);
+  const templateSeed = resolveStorefrontTemplateSeed(templateProfile.templateSeedId, templateSeeds);
   const fallbackTheme = resolveThemePackageById(
     theme?.theme_package_id,
     themePackages,
@@ -316,11 +348,11 @@ function mapRecordsToStore(
       }),
     )
     .filter((page): page is StorePage => Boolean(page));
-  const resolvedPages = ensureRequiredStoreFlowPages(
+  const resolvedPages = ensureRequiredStoreFlowPagesForTemplate(
     mappedPages.length > 0
       ? applyLegacyHomepageSettingsToPages(mappedPages, siteSettings)
-      : instantiateStorePagesFromTemplate(templateProfile, pageBlueprints),
-    blueprint,
+      : instantiateStorePagesFromTemplate(templateProfile),
+    templateSeed,
   );
 
   return storeSchema.parse({
@@ -353,8 +385,8 @@ function mapRecordsToStore(
   });
 }
 
-function getBlueprintBootstrapStoreName(blueprintId: string) {
-  const templateProfile = resolveStorefrontTemplateProfile(blueprintId, { blueprintId });
+function getTemplateBootstrapStoreName(templateSeedId: string) {
+  const templateProfile = resolveStorefrontTemplateProfile(templateSeedId, { templateSeedId });
   return `${templateProfile.seedDefinition.shortName} Store`;
 }
 
@@ -374,11 +406,10 @@ export default function CmsPagesManager() {
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
-  const [storeBlueprints, setStoreBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
-  const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
+  const [storeTemplateSeeds, setStoreTemplateSeeds] = useState<StorefrontTemplateSeedDefinition[]>(fallbackStorefrontTemplateSeeds);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
-  const [newPageTemplate, setNewPageTemplate] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
-  const [activeTemplateId, setActiveTemplateId] = useState(fallbackPageBlueprints[0]?.id ?? "landing");
+  const [newPageTemplate, setNewPageTemplate] = useState(cmsPageTemplates[0]?.id ?? "landing");
+  const [activeTemplateId, setActiveTemplateId] = useState(cmsPageTemplates[0]?.id ?? "landing");
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
   const [smartPolishSummary, setSmartPolishSummary] = useState<SmartPolishSummary | null>(null);
@@ -399,9 +430,8 @@ export default function CmsPagesManager() {
   const [desktopPreviewSide, setDesktopPreviewSide] = useState<"left" | "right">("right");
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [hasCheckedBasicPreview, setHasCheckedBasicPreview] = useState(false);
-  const [storeBlueprintId, setStoreBlueprintId] = useState("general-catalog");
+  const [storeTemplateSeedId, setStoreTemplateSeedId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
-  const [installedBlueprintVersion, setInstalledBlueprintVersion] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info" | "gallery">(
@@ -425,32 +455,38 @@ export default function CmsPagesManager() {
     returnTo,
     storeId: activeStoreId,
   });
+  const legacyBasicEditorHref = buildPageBuilderPath("basic", {
+    pageId: requestedPageId,
+    blockId: requestedBlockId || null,
+    returnTo,
+    storeId: activeStoreId,
+    legacy: true,
+  });
   const advancedEditorHref = buildPageBuilderPath("advanced", {
     pageId: requestedPageId,
     blockId: requestedBlockId || null,
     returnTo,
     storeId: activeStoreId,
   });
-  const pageBlueprintsEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
+  const legacyAdvancedEditorHref = buildPageBuilderPath("advanced", {
+    pageId: requestedPageId,
+    blockId: requestedBlockId || null,
+    returnTo,
+    storeId: activeStoreId,
+    legacy: true,
+  });
+  const pageTemplatesEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
   const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
   const pushHistoryLimit = 20;
-  const activeBlueprint = useMemo(
-    () => resolveStoreBlueprint(storeBlueprintId, storeBlueprints),
-    [storeBlueprintId, storeBlueprints],
+  const activeTemplateSeed = useMemo(
+    () => resolveStorefrontTemplateSeed(storeTemplateSeedId, storeTemplateSeeds),
+    [storeTemplateSeedId, storeTemplateSeeds],
   );
-  const availablePageBlueprints = useMemo(
-    () =>
-      pageBlueprints.filter(
-        (template) =>
-          template.businessFamily === activeBlueprint.businessFamily
-          && template.catalogModes.includes(activeBlueprint.catalogMode),
-      ),
-    [activeBlueprint, pageBlueprints],
-  );
+  const availablePageTemplates = useMemo(() => cmsPageTemplates, []);
   const availableBlockRegistry = useMemo(
-    () => filterBlockRegistryForBlueprint(blockRegistry, activeBlueprint),
-    [activeBlueprint, blockRegistry],
+    () => filterBlockRegistryForTemplateSeed(blockRegistry, activeTemplateSeed),
+    [activeTemplateSeed, blockRegistry],
   );
   const isMissingThemeReference = useMemo(
     () => Boolean(store?.theme.themePackageId) && isThemePackageReferenceMissing(store?.theme.themePackageId ?? null, themePackages),
@@ -467,12 +503,6 @@ export default function CmsPagesManager() {
       && typeof resolvedEditorThemePackage?.version === "number"
       && installedThemePackageVersion < resolvedEditorThemePackage.version,
     [installedThemePackageVersion, resolvedEditorThemePackage],
-  );
-  const hasBlueprintVersionUpdate = useMemo(
-    () =>
-      typeof installedBlueprintVersion === "number"
-      && installedBlueprintVersion < 1,
-    [installedBlueprintVersion],
   );
 
   const commitStoreChange = useCallback((
@@ -514,7 +544,6 @@ export default function CmsPagesManager() {
     if (!activeStoreId) {
       commitStoreChange(null, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(null);
-      setInstalledBlueprintVersion(null);
       setSelectedPageId("");
       setPersistedSnapshot("");
       setRecoverableDraft(null);
@@ -535,7 +564,6 @@ export default function CmsPagesManager() {
       if (!storeRecord) {
         commitStoreChange(null, { trackHistory: false, resetHistory: true });
         setInstalledThemePackageVersion(null);
-        setInstalledBlueprintVersion(null);
         setSelectedPageId("");
         setPersistedSnapshot("");
         setRecoverableDraft(null);
@@ -549,21 +577,17 @@ export default function CmsPagesManager() {
         pagesResponse,
         blocksResponse,
         siteSettingsResponse,
-        loadedBlueprints,
-        loadedPageBlueprints,
         loadedThemePackages,
       ] = await Promise.all([
-        supabase
-          .from("store_business_profiles")
-          .select("blueprint_id, blueprint_version, business_family, catalog_mode")
-          .eq("store_id", storeRecord.id)
-          .maybeSingle(),
+          supabase
+            .from("store_business_profiles")
+            .select("template_id, business_family, catalog_mode")
+            .eq("store_id", storeRecord.id)
+            .maybeSingle(),
         supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
         supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
         supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css").eq("store_id", storeRecord.id).order("sort_order"),
         supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories", "storefront_profile"]),
-        loadStoreBlueprints(supabase),
-        loadPageBlueprints(supabase),
         loadThemePackages(supabase, storeRecord.id),
       ]);
 
@@ -576,28 +600,23 @@ export default function CmsPagesManager() {
         (pagesResponse.data as PageRecord[] | null) ?? [],
         (blocksResponse.data as BlockRecord[] | null) ?? [],
         (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
-        loadedBlueprints,
+        fallbackStorefrontTemplateSeeds,
         loadedThemePackages,
-        loadedPageBlueprints,
       );
 
-      setStoreBlueprints(loadedBlueprints);
-      setPageBlueprints(loadedPageBlueprints);
+      setStoreTemplateSeeds(fallbackStorefrontTemplateSeeds);
       setThemePackages(loadedThemePackages);
       const storefrontProfileSetting = (Array.isArray(siteSettingsResponse.data)
         ? (siteSettingsResponse.data as SiteSettingRecord[]).find((entry) => entry.key === "storefront_profile")?.value
         : null) as Record<string, unknown> | null;
-      setStoreBlueprintId(
+      setStoreTemplateSeedId(
         resolveStorefrontTemplateProfile(storefrontProfileSetting?.template_id, {
-          blueprintId: typeof storefrontProfileSetting?.blueprint_id === "string"
-            ? storefrontProfileSetting.blueprint_id
-            : businessProfile?.blueprint_id ?? storeRecord.store_type ?? "general-catalog",
+          templateSeedId: businessProfile?.template_id ?? storeRecord.store_type ?? "general-catalog",
           productVisibility: typeof storefrontProfileSetting?.product_visibility === "string"
             ? storefrontProfileSetting.product_visibility
             : null,
-        }).seedBlueprintId,
+        }).templateSeedId,
       );
-      setInstalledBlueprintVersion(typeof businessProfile?.blueprint_version === "number" ? businessProfile.blueprint_version : null);
       commitStoreChange(parsedStore, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
         ? (themeResponse.data as ThemeRecord).theme_package_version ?? null
@@ -617,7 +636,6 @@ export default function CmsPagesManager() {
       toast.error("Failed to refresh the page builder workspace. Please try again.");
       commitStoreChange(null, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(null);
-      setInstalledBlueprintVersion(null);
     } finally {
       setLoading(false);
     }
@@ -640,7 +658,6 @@ export default function CmsPagesManager() {
     setIsMobileSettingsOpen(false);
     setPreviewViewport("desktop");
     setInstalledThemePackageVersion(null);
-    setInstalledBlueprintVersion(null);
     setPersistedSnapshot("");
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
@@ -653,12 +670,10 @@ export default function CmsPagesManager() {
     if (role !== "admin") return;
 
     const loadSharedLibraries = async () => {
-      const [loadedPageBlueprints, registry, loadedThemePackages] = await Promise.all([
-        loadPageBlueprints(supabase),
+      const [registry, loadedThemePackages] = await Promise.all([
         loadBlockRegistry(supabase),
         loadThemePackages(supabase, activeStoreId),
       ]);
-      setPageBlueprints(loadedPageBlueprints);
       setBlockRegistry(registry);
       setThemePackages(loadedThemePackages);
     };
@@ -667,16 +682,16 @@ export default function CmsPagesManager() {
   }, [activeStoreId, role]);
 
   useEffect(() => {
-    if (!availablePageBlueprints.some((template) => template.id === newPageTemplate)) {
-      setNewPageTemplate(availablePageBlueprints[0]?.id ?? "landing");
+    if (!availablePageTemplates.some((template) => template.id === newPageTemplate)) {
+      setNewPageTemplate(availablePageTemplates[0]?.id ?? "landing");
     }
-  }, [availablePageBlueprints, newPageTemplate]);
+  }, [availablePageTemplates, newPageTemplate]);
 
   useEffect(() => {
-    if (!availablePageBlueprints.some((template) => template.id === activeTemplateId)) {
-      setActiveTemplateId(availablePageBlueprints[0]?.id ?? "landing");
+    if (!availablePageTemplates.some((template) => template.id === activeTemplateId)) {
+      setActiveTemplateId(availablePageTemplates[0]?.id ?? "landing");
     }
-  }, [activeTemplateId, availablePageBlueprints]);
+  }, [activeTemplateId, availablePageTemplates]);
 
   useEffect(() => {
     if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
@@ -833,9 +848,9 @@ export default function CmsPagesManager() {
 
     setBootstrapping(true);
 
-    const templateProfile = resolveStorefrontTemplateProfile(storeBlueprintId, { blueprintId: storeBlueprintId });
-    const blueprint = resolveStoreBlueprint(templateProfile.seedBlueprintId, storeBlueprints);
-    const seedPages = instantiateStorePagesFromTemplate(templateProfile, pageBlueprints);
+    const templateProfile = resolveStorefrontTemplateProfile(storeTemplateSeedId, { templateSeedId: storeTemplateSeedId });
+    const templateSeed = resolveStorefrontTemplateSeed(templateProfile.templateSeedId, storeTemplateSeeds);
+    const seedPages = instantiateStorePagesFromTemplate(templateProfile);
     const themePackage = resolveThemePackageById(
       templateProfile.seedDefinition.defaultTheme.presetId,
       themePackages,
@@ -846,13 +861,13 @@ export default function CmsPagesManager() {
       {
         id: activeStoreId as string,
         owner_id: user.id,
-        name: store?.name ?? getBlueprintBootstrapStoreName(blueprint.id),
+        name: store?.name ?? getTemplateBootstrapStoreName(templateSeed.id),
         slug: store?.slug ?? `store-${String(activeStoreId).slice(0, 8)}`,
         description: templateProfile.seedDefinition.storeDescription,
         currency_code: "BDT",
         locale: "en-BD",
         is_published: false,
-        store_type: blueprint.id,
+        store_type: templateSeed.id,
       },
       { onConflict: "slug" },
     );
@@ -940,8 +955,7 @@ export default function CmsPagesManager() {
     await supabase.from("store_business_profiles").upsert(
       {
         store_id: activeStoreId as string,
-        blueprint_id: templateProfile.seedBlueprintId,
-        blueprint_version: 1,
+        template_id: templateProfile.templateSeedId,
         business_family: templateProfile.businessFamily,
         catalog_mode: templateProfile.catalogMode,
         enabled_modules: templateProfile.seedDefinition.capabilities,
@@ -974,9 +988,9 @@ export default function CmsPagesManager() {
 
   const addPage = () => {
     commitStoreChange((current) => {
-      if (!current) return current;
-      const page = pageBlueprintsEnabled
-        ? instantiatePageBlueprint(newPageTemplate, current.pages.length, availablePageBlueprints) ?? createDefaultCmsPage(current.pages.length)
+        if (!current) return current;
+        const page = pageTemplatesEnabled
+        ? instantiateTemplate(newPageTemplate, current.pages.length) ?? createDefaultCmsPage(current.pages.length)
         : createDefaultCmsPage(current.pages.length);
       setSelectedPageId(page.id);
       return { ...current, pages: [...current.pages, page] };
@@ -1009,11 +1023,11 @@ export default function CmsPagesManager() {
   };
 
   const applyTemplate = (templateId: string) => {
-    if (!pageBlueprintsEnabled) {
-      toast.error("Page blueprints are not enabled for this store.");
+    if (!pageTemplatesEnabled) {
+      toast.error("Page templates are not enabled for this store.");
       return;
     }
-    updateSelectedPage((page) => applyPageBlueprint(page, templateId, availablePageBlueprints) ?? page);
+    updateSelectedPage((page) => applyTemplateToPage(page, templateId) ?? page);
     setActiveTemplateId(templateId);
     toast.success("Template applied to the current page.");
   };
@@ -1035,7 +1049,7 @@ export default function CmsPagesManager() {
       ...page,
       slug: "/",
       isHomepage: true,
-      blocks: cloneHomepageBlocksForBlueprint(storeBlueprintId, pageBlueprints),
+      blocks: cloneHomepageBlocksForTemplateSeed(storeTemplateSeedId),
     }));
     setSelectedBlockId("");
     toast.success("Recommended homepage layout applied. Save Page Builder changes to publish it.");
@@ -1189,10 +1203,7 @@ export default function CmsPagesManager() {
 
       return {
         ...current,
-        props: {
-          ...current.props,
-          ...patch,
-        },
+        props: mergeBlockProps(current.props as Record<string, unknown>, patch),
       } as StorePageBlock;
     });
   };
@@ -1200,17 +1211,15 @@ export default function CmsPagesManager() {
   const updateAnyBlockProps = (blockId: string, patch: Record<string, unknown>) => {
     updateBlock(blockId, (current) => ({
       ...current,
-      props: {
-        ...current.props,
-        ...patch,
-      },
+      props: mergeBlockProps(current.props as Record<string, unknown>, patch),
     } as StorePageBlock));
   };
 
   const updateBlockMeta = (blockId: string, patch: Partial<StorePageBlock>) => {
+    const normalizedPatch = normalizeBlockMetaPatch(patch);
     updateBlock(blockId, (current) => ({
       ...current,
-      ...patch,
+      ...normalizedPatch,
     } as StorePageBlock));
   };
 
@@ -1290,7 +1299,12 @@ export default function CmsPagesManager() {
     updateStoreTheme({
       presetId: themePackage.presetId,
       themePackageId: themePackage.id,
-      customCssVars: themePackage.tokens[store.theme.mode] ?? {},
+      mode: themePackage.mode,
+      headingFont: themePackage.tokens.typography.headingFont ?? store.theme.headingFont,
+      bodyFont: themePackage.tokens.typography.bodyFont ?? store.theme.bodyFont,
+      borderRadius: themePackage.tokens.components.borderRadius ?? store.theme.borderRadius,
+      customCssVars: {},
+      paletteSource: undefined,
     });
   };
 
@@ -1309,6 +1323,27 @@ export default function CmsPagesManager() {
 
   const updateThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
     updateStoreTheme({ aesthetic });
+  };
+
+  const updateThemeScales = (radiusScale: number, densityScale: number) => {
+    updateStoreTheme({
+      radiusScale: Math.max(0, Math.min(1, radiusScale)),
+      densityScale: Math.max(0, Math.min(1, densityScale)),
+    });
+  };
+
+  const resetThemePalette = () => {
+    if (!store) return;
+    const nextVars = { ...store.theme.customCssVars };
+    for (const key of ["--primary", "--accent", "--background", "--foreground"]) {
+      delete nextVars[key];
+    }
+    updateStoreTheme({ customCssVars: nextVars, paletteSource: undefined });
+  };
+
+  const applyThemeRecipe = (recipe: ThemeRecipe) => {
+    if (!store) return;
+    updateStoreTheme(buildThemeRecipePatch(recipe, store.theme));
   };
 
   const updateThemeEffect = (
@@ -1340,7 +1375,7 @@ export default function CmsPagesManager() {
       source: {
         storeName: store.name,
         storeSlug: store.slug,
-        blueprintId: storeBlueprintId,
+        templateSeedId: storeTemplateSeedId,
       },
       layout: {
         description: store.description,
@@ -1534,7 +1569,7 @@ export default function CmsPagesManager() {
           currency_code: safeStore.currencyCode,
           locale: safeStore.locale,
           is_published: safeStore.isPublished,
-          store_type: storeBlueprintId,
+          store_type: storeTemplateSeedId,
         },
         { onConflict: "id" },
       );
@@ -1547,7 +1582,7 @@ export default function CmsPagesManager() {
         client: supabase,
         store: safeStore,
         ownerId: user.id,
-        blueprint: activeBlueprint,
+        templateSeed: activeTemplateSeed,
         themePackages,
         selectedPage,
         revisionLabel,
@@ -1557,6 +1592,10 @@ export default function CmsPagesManager() {
       if (persistResult.error) {
         throw new Error(`Failed to save Page Builder changes: ${persistResult.error.message || "Unknown persistence error"}`);
       }
+
+      await refreshStorefrontContentCache(supabase, safeStore.id, {
+        pageSlugs: selectedPage ? [selectedPage.slug] : undefined,
+      });
 
       toast.success("Page Builder changes saved.");
       setRevisionLabel("");
@@ -1822,12 +1861,12 @@ export default function CmsPagesManager() {
               <p className="mt-1 text-xs text-muted-foreground">Pages, blocks, and theme references are seeded for the active store only.</p>
             </div>
             <div className="rounded-xl border border-border bg-background/40 p-4">
-              <p className="text-sm font-medium text-foreground">Blueprint-aware</p>
+              <p className="text-sm font-medium text-foreground">Template-aware</p>
               <p className="mt-1 text-xs text-muted-foreground">The starter workspace pulls from the current storefront template and page templates.</p>
             </div>
             <div className="rounded-xl border border-border bg-background/40 p-4">
               <p className="text-sm font-medium text-foreground">Safe to customize</p>
-              <p className="mt-1 text-xs text-muted-foreground">Once initialized, edits stay local to this store and won’t mutate shared source packages.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Once initialized, edits stay local to this store and wonâ€™t mutate shared source packages.</p>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -2484,6 +2523,7 @@ export default function CmsPagesManager() {
           type: parsed.type ?? selectedBlock.type,
           sortOrder: selectedBlock.sortOrder,
           isVisible: parsed.isVisible ?? selectedBlock.isVisible,
+          visible: parsed.visible ?? parsed.isVisible ?? selectedBlock.visible ?? selectedBlock.isVisible,
           entranceAnimation: parsed.entranceAnimation ?? selectedBlock.entranceAnimation,
           hoverEffect: parsed.hoverEffect ?? selectedBlock.hoverEffect,
           effectOverride: parsed.effectOverride ?? selectedBlock.effectOverride,
@@ -2525,45 +2565,81 @@ export default function CmsPagesManager() {
     const fullHeight = options?.fullHeight ?? false;
 
     return (
-    <StoreProvider store={store}>
-      <StoreThemeScope theme={store.theme}>
+      <StoreProvider store={store}>
         <div className="[&_.animate-blur-in]:!opacity-100 [&_.animate-blur-in]:!blur-none [&_.animate-blur-in]:!filter-none [&_.animate-fade-in]:!opacity-100 [&_.animate-slide-up]:!opacity-100">
-          <div className="mb-3 rounded-xl border border-border bg-card px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {selectedPage?.title ?? "Preview"}
-          </div>
           {selectedPage ? (
             <StorefrontPreviewFrame
               viewport={previewViewport}
               title={`${selectedPage.title} preview`}
               className={cn(!fullHeight && "max-h-[720px]")}
+              showToolbar={false}
+              selectedBlockId={selectedBlockId}
+              onSelectBlock={(blockId) => setSelectedBlockId(blockId ?? "")}
             >
-              <StorefrontTemplateRenderer
-                store={store}
-                page={selectedPage}
-                blocks={previewBlocks}
-                adminMode={interactive}
-                selectedBlockId={selectedBlockId}
-                canManageStorefront={interactive}
-                onSelectBlock={setSelectedBlockId}
-              />
+              <StoreThemeScope theme={store.theme} themePackages={themePackages} respectVisitorPreference={false}>
+                <StorefrontTemplateRenderer
+                  store={store}
+                  page={selectedPage}
+                  blocks={previewBlocks}
+                  adminMode={interactive}
+                  selectedBlockId={selectedBlockId}
+                  canManageStorefront={interactive}
+                  onSelectBlock={(blockId) => setSelectedBlockId(blockId ?? "")}
+                />
+              </StoreThemeScope>
             </StorefrontPreviewFrame>
           ) : (
             <div className="rounded-xl border border-border bg-background p-8 text-sm text-muted-foreground">Add blocks to preview this page.</div>
           )}
         </div>
-      </StoreThemeScope>
-    </StoreProvider>
+      </StoreProvider>
     );
   };
   const previewCanvas = renderPreviewCanvas();
   const cleanPreviewCanvas = renderPreviewCanvas({ fullHeight: true, interactive: false });
+  const renderBasicPreviewSheet = () => {
+    if (!selectedPage) return null;
+
+    return (
+      <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
+        <SheetContent side="bottom" className="inset-0 h-[100dvh] max-h-[100dvh] w-screen overflow-y-auto border-0 p-0 duration-0 data-[state=open]:duration-0 data-[state=open]:slide-in-from-bottom-0" data-testid="basic-preview-overlay">
+          <SheetHeader className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-3 text-left backdrop-blur-xl sm:px-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <SheetTitle>Full Screen Preview</SheetTitle>
+                <SheetDescription className="truncate">{selectedPage.title} rendered with current Basic Mode draft.</SheetDescription>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-full" onClick={() => setIsMobilePreviewOpen(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "desktop" ? "secondary" : "outline"} onClick={() => setPreviewViewport("desktop")} data-testid="basic-preview-device-desktop" data-active={previewViewport === "desktop"}>
+                <Monitor className="h-4 w-4" />
+                <span className="text-xs">Desktop</span>
+              </Button>
+              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "tablet" ? "secondary" : "outline"} onClick={() => setPreviewViewport("tablet")} data-testid="basic-preview-device-tablet" data-active={previewViewport === "tablet"}>
+                <PanelsTopLeft className="h-4 w-4" />
+                <span className="text-xs">Tablet</span>
+              </Button>
+              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "mobile" ? "secondary" : "outline"} onClick={() => setPreviewViewport("mobile")} data-testid="basic-preview-device-mobile" data-active={previewViewport === "mobile"}>
+                <Smartphone className="h-4 w-4" />
+                <span className="text-xs">Mobile</span>
+              </Button>
+            </div>
+          </SheetHeader>
+          <div className="p-3 sm:p-4">{cleanPreviewCanvas}</div>
+        </SheetContent>
+      </Sheet>
+    );
+  };
   const useLegacyEditor = searchParams.get("legacy") === "1";
   const showNewEditor = (isBasicEditor || isAdvancedEditor) && !useLegacyEditor;
   const storefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings?.storefront_profile
     ? store.siteSettings.storefront_profile as Record<string, unknown>
     : {};
   const storefrontTemplateId = resolveStorefrontTemplateId(storefrontProfile.template_id, {
-    blueprintId: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : storeBlueprintId,
+    templateSeedId: typeof storefrontProfile.template_id === "string" ? storefrontProfile.template_id : storeTemplateSeedId,
     productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const selectedPageType = selectedPage ? resolveBasicEditorPageType(selectedPage.slug) : "custom";
@@ -2579,16 +2655,6 @@ export default function CmsPagesManager() {
     { id: "launch", label: "Launch", shortLabel: "Ln", icon: Rocket, warning: !store.isPublished },
   ];
   const themeFonts = ["Inter", "Poppins", "Playfair Display", "Raleway", "Oswald", "Montserrat", "Nunito", "Source Sans 3"];
-  const themeAesthetics: Array<NonNullable<Store["theme"]["aesthetic"]>> = [
-    "minimal",
-    "editorial",
-    "glassmorphism",
-    "fluid",
-    "brutalist",
-    "artisan",
-    "dark-luxury",
-    "playful-pop",
-  ];
   const sortedSelectedBlocks = selectedPage ? [...selectedPage.blocks].sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const focusedContentBlock = selectedBlock ?? sortedSelectedBlocks[0] ?? null;
   const focusedLayoutBlock = selectedBlock ?? sortedSelectedBlocks[0] ?? null;
@@ -2601,7 +2667,8 @@ export default function CmsPagesManager() {
     { id: "mobile", label: "Mobile preview checked", ready: hasCheckedBasicPreview || previewViewport === "mobile" },
   ];
   const launchReadyCount = readinessChecklist.filter((item) => item.ready).length;
-  const colorValueFromTheme = (token: string, fallback: string) => hslChannelsToHex(store.theme.customCssVars?.[token] ?? "") ?? fallback;
+  const resolvedThemeVars = resolveStoreThemeVars(store.theme, themePackages).vars;
+  const colorValueFromTheme = (token: string, fallback: string) => hslChannelsToHex(resolvedThemeVars[token] ?? "") ?? fallback;
   const primaryColorHex = colorValueFromTheme("--primary", "#10b981");
   const accentColorHex = colorValueFromTheme("--accent", "#f59e0b");
   const backgroundColorHex = colorValueFromTheme("--background", "#0f172a");
@@ -2659,845 +2726,129 @@ export default function CmsPagesManager() {
       )}
     </div>
   );
-  const currentPageBlueprintOption = availablePageBlueprints.find((template) => template.id === activeTemplateId)
-    ?? availablePageBlueprints.find((template) => template.id === newPageTemplate)
+  const currentPageBlueprintOption = availablePageTemplates.find((template) => template.id === activeTemplateId)
+    ?? availablePageTemplates.find((template) => template.id === newPageTemplate)
     ?? null;
   const renderNewBasicPanel = (tab: BasicRailItem["id"]) => {
     if (!selectedPage) return null;
 
     if (tab === "pages") {
       return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Current Page",
-            description: "Switch pages from the same storefront draft without leaving the editor.",
-            children: (
-              <div className="space-y-2">
-                {store.pages.map((page) => (
-                  <button
-                    key={page.id}
-                    type="button"
-                    onClick={() => selectPage(page.id)}
-                    className={cn(
-                      "flex min-h-11 w-full items-center justify-between rounded-md border px-3 text-left",
-                      selectedPage.id === page.id
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                        : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800",
-                    )}
-                  >
-                    <span>
-                      <span className="block text-sm font-medium">{page.title}</span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-500">{page.slug}</span>
-                    </span>
-                    {page.isHomepage ? <Badge variant="outline">Homepage</Badge> : null}
-                  </button>
-                ))}
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Starter Layout Direction",
-            description: "Template-aware guidance from the current storefront family.",
-            children: (
-              <div className="space-y-3">
-                <div className="grid gap-2">
-                  {starterLayoutRecommendations.map((layout) => (
-                    <button
-                      key={layout.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveTemplateId(layout.id);
-                        if (pageBlueprintsEnabled && availablePageBlueprints.some((template) => template.id === layout.id)) {
-                          applyTemplate(layout.id);
-                        }
-                      }}
-                      className={cn(
-                        "rounded-md border p-3 text-left dark:border-gray-800",
-                        activeTemplateId === layout.id
-                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-                          : "border-gray-200 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800",
-                      )}
-                    >
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{layout.title}</p>
-                      <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{layout.summary}</p>
-                      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-500">Best for: {layout.bestFor}</p>
-                    </button>
-                  ))}
-                </div>
-                <div className="grid gap-3 rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">New page blueprint</Label>
-                    <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {availablePageBlueprints.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description ? (
-                      <p className="text-[11px] text-gray-500 dark:text-gray-500">
-                        {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Apply blueprint to this page</Label>
-                    <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageBlueprintsEnabled}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {availablePageBlueprints.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {currentPageBlueprintOption?.description ? (
-                      <p className="text-[11px] text-gray-500 dark:text-gray-500">{currentPageBlueprintOption.description}</p>
-                    ) : null}
-                  </div>
-                  <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} disabled={!pageBlueprintsEnabled} className="gap-2">
-                    <LayoutTemplate className="h-4 w-4" />
-                    Apply Selected Blueprint
-                  </Button>
-                </div>
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Page Details",
-            description: "Edit the current page title, slug, and search details.",
-            children: (
-              <div className="space-y-3">
-                {renderField({
-                  label: "Page title",
-                  value: selectedPage.title,
-                  onChange: (value) => updateSelectedPage((page) => ({ ...page, title: value })),
-                })}
-                {renderField({
-                  label: "Page slug",
-                  value: selectedPage.slug,
-                  onChange: (value) => updateSelectedPage((page) => ({ ...page, slug: value })),
-                })}
-                {renderField({
-                  label: "SEO title",
-                  value: selectedPage.seoTitle ?? "",
-                  onChange: (value) => updateSelectedPage((page) => ({ ...page, seoTitle: value })),
-                })}
-                {renderField({
-                  label: "SEO description",
-                  value: selectedPage.seoDescription ?? "",
-                  onChange: (value) => updateSelectedPage((page) => ({ ...page, seoDescription: value })),
-                  multiline: true,
-                })}
-              </div>
-            ),
-          })}
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={addPage} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Page
-            </Button>
-            <Button type="button" variant="outline" onClick={() => duplicatePage(selectedPage.id)} className="gap-2">
-              <Copy className="h-4 w-4" />
-              Duplicate Page
-            </Button>
-            {selectedPage.isHomepage ? (
-              <Button type="button" variant="outline" onClick={applyRecommendedHomepage} className="gap-2">
-                <Wand2 className="h-4 w-4" />
-                Reset Homepage
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2 text-red-600 dark:text-red-400"
-              onClick={() => removePage(selectedPage.id)}
-              disabled={store.pages.length <= 1}
-            >
-              <Trash2 className="h-4 w-4" />
-              Remove Page
-            </Button>
-          </div>
-          {renderSectionCard({
-            title: "Revisions",
-            description: "Restore a saved page snapshot into the current editor draft.",
-            children: (
-              <div className="space-y-3">
-                <Input
-                  value={revisionLabel}
-                  onChange={(event) => setRevisionLabel(event.target.value)}
-                  placeholder="Optional save note, for example: homepage polish or launch pass"
-                  className="h-11 border-gray-300 dark:border-gray-700"
-                />
-                {loadingRevisions ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-500">Loading revisions...</p>
-                ) : revisions.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-500">No saved revisions yet. Save once and snapshots will appear here.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {revisions.slice(0, 4).map((revision) => (
-                      <div key={revision.id} className="flex items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-2 dark:border-gray-800">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{revision.revision_label || "Saved revision"}</p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-500">{new Date(revision.created_at).toLocaleString("en-GB")}</p>
-                        </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => restoreRevision(revision.id)}>
-                          Restore
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ),
-          })}
-        </div>
-      );
-    }
-
-    if (tab === "content") {
-      return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Sections",
-            description: "Pick a section to edit its real template-aware content fields.",
-            children: (
-              <div className="space-y-2">
-                {sortedSelectedBlocks.map((block) => (
-                  <button
-                    key={block.id}
-                    type="button"
-                    onClick={() => setSelectedBlockId(block.id)}
-                    className={cn(
-                      "flex min-h-11 w-full items-center justify-between rounded-md border px-3 text-left",
-                      focusedContentBlock?.id === block.id
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                        : "border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800",
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{block.type}</span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-500">{block.isVisible ? "Visible" : "Hidden"}</span>
-                    </span>
-                    {!block.isVisible ? <EyeOff className="h-4 w-4" /> : null}
-                  </button>
-                ))}
-              </div>
-            ),
-          })}
-          {focusedContentBlock ? (
-            <BasicBlockMiniEditor
-              block={focusedContentBlock}
-              storeId={store.id}
-              updateBlockProps={updateAnyBlockProps}
-              updateBlockMeta={updateBlockMeta}
-            />
-          ) : (
-            renderSectionCard({
-              title: "No Section Selected",
-              description: "Pick a section to start editing.",
-              children: <p className="text-sm text-gray-500 dark:text-gray-500">This page is empty right now.</p>,
-            })
-          )}
-        </div>
+        <BasicPagesTab
+          page={selectedPage}
+          allPages={store.pages}
+          selectPage={selectPage}
+          onCreatePage={addPage}
+        />
       );
     }
 
     if (tab === "layout") {
       return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Section Order",
-            description: "These are the live sections on this page. Reordering here updates the editor preview.",
-            children: (
-              <div className="space-y-3">
-                <div className="rounded-md border border-dashed border-emerald-300/80 bg-emerald-50/70 p-3 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  Current page sections
-                </div>
-                <div className="space-y-2">
-                  {sortedSelectedBlocks.map((block, index) => (
-                    <div
-                      key={block.id}
-                      className={cn(
-                        "rounded-md border p-2",
-                        focusedLayoutBlock?.id === block.id ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40" : "border-gray-200 dark:border-gray-800",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedBlockId(block.id)}>
-                          <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">{block.type}</span>
-                          <span className="block text-xs text-gray-500 dark:text-gray-500">Section {index + 1}</span>
-                        </button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" disabled={index === 0} onClick={() => moveBlock(block.id, -1)}>
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" disabled={index === sortedSelectedBlocks.length - 1} onClick={() => moveBlock(block.id, 1)}>
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => duplicateBlock(block.id)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => updateBlockMeta(block.id, { isVisible: !block.isVisible })}>
-                          {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-red-600 dark:text-red-400" onClick={() => removeBlock(block.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ),
-          })}
-          {focusedLayoutBlock && focusedLayoutVariants.length > 0
-            ? renderSectionCard({
-                title: "Layout Variant",
-                description: `Template-aware layout choices for ${focusedLayoutBlock.type}.`,
-                children: (
-                  <div className="grid grid-cols-2 gap-2">
-                    {focusedLayoutVariants.map((variant) => (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => updateBlockMeta(focusedLayoutBlock.id, { layoutVariant: variant.id })}
-                        className={cn(
-                          "rounded-md border p-3 text-left",
-                          focusedLayoutBlock.layoutVariant === variant.id
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-                            : "border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700",
-                        )}
-                      >
-                        <div className="mb-2 h-10 rounded bg-gray-100 dark:bg-gray-800" />
-                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{variant.label}</p>
-                        <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">{variant.guidance}</p>
-                      </button>
-                    ))}
-                  </div>
-                ),
-              })
-            : null}
-          {focusedLayoutBlock ? renderSectionCard({
-            title: "Layout Controls",
-            description: "Real section-level controls beyond variant selection.",
-            children: (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Section visibility</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Hide this section without deleting its content.</p>
-                  </div>
-                  <Switch checked={focusedLayoutBlock.isVisible} onCheckedChange={(checked) => updateBlockMeta(focusedLayoutBlock.id, { isVisible: checked })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Anchor ID</Label>
-                  <Input
-                    value={String((focusedLayoutBlock.props as Record<string, unknown>)?.anchorId ?? "")}
-                    onChange={(event) => updateAnyBlockProps(focusedLayoutBlock.id, { anchorId: event.target.value })}
-                    placeholder="section-anchor"
-                    className="h-11 border-gray-300 dark:border-gray-700"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Entrance animation</Label>
-                    <Select value={focusedLayoutBlock.entranceAnimation ?? "none"} onValueChange={(value) => updateBlockMeta(focusedLayoutBlock.id, { entranceAnimation: value as StorePageBlock["entranceAnimation"] })}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="fade">Fade</SelectItem>
-                        <SelectItem value="slide-up">Slide Up</SelectItem>
-                        <SelectItem value="zoom">Zoom</SelectItem>
-                        <SelectItem value="stagger">Stagger</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Hover effect</Label>
-                    <Select value={focusedLayoutBlock.hoverEffect ?? "none"} onValueChange={(value) => updateBlockMeta(focusedLayoutBlock.id, { hoverEffect: value as StorePageBlock["hoverEffect"] })}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="lift">Lift</SelectItem>
-                        <SelectItem value="zoom">Zoom</SelectItem>
-                        <SelectItem value="glow">Glow</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            ),
-          }) : null}
-          {renderSectionCard({
-            title: "Add Section",
-            description: "This is the section library. Adding one inserts a new block into the current page order above.",
-            children: (
-              <div className="space-y-3">
-                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
-                  Available sections to add
-                </div>
-                <div className="grid gap-2">
-                {availableBlockRegistry.map((block) => (
-                  <Button key={block.value} type="button" variant="outline" className="justify-start" onClick={() => addBlockOfType(block.value)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {block.label}
-                  </Button>
-                ))}
-                </div>
-              </div>
-            ),
-          })}
-        </div>
+        <BasicLayoutTab
+          page={selectedPage}
+          reorderBlocks={(start, end) => {
+            const diff = end - start;
+            const block = sortedSelectedBlocks[start];
+            if (block) moveBlock(block.id, diff > 0 ? 1 : -1);
+          }}
+          availableBlocks={availableBlockRegistry}
+          addBlockOfType={addBlockOfType}
+          removeBlock={removeBlock}
+          duplicateBlock={duplicateBlock}
+        />
+      );
+    }
+
+    if (tab === "content") {
+      return (
+        <BasicContentTab
+          page={selectedPage}
+          storeId={store.id}
+          focusedBlockId={selectedBlockId}
+          onFocusBlock={(blockId) => setSelectedBlockId(blockId ?? "")}
+          updateBlockProps={updateAnyBlockProps}
+          updateBlockMeta={updateBlockMeta}
+          allPages={store.pages}
+        />
       );
     }
 
     if (tab === "theme") {
       return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Brand Colors",
-            description: "These update the live draft immediately in preview.",
-            children: (
-              <div className="space-y-3">
-                {renderField({ label: "Primary", value: primaryColorHex, onChange: (value) => updateThemeVar("--primary", value) })}
-                {renderField({ label: "Accent", value: accentColorHex, onChange: (value) => updateThemeVar("--accent", value) })}
-                {renderField({ label: "Background", value: backgroundColorHex, onChange: (value) => updateThemeVar("--background", value) })}
-                {renderField({ label: "Foreground", value: foregroundColorHex, onChange: (value) => updateThemeVar("--foreground", value) })}
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Typography",
-            description: "Set heading and body fonts for this storefront theme.",
-            children: (
-              <div className="grid gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Heading font</Label>
-                  <Select value={store.theme.headingFont ?? themeFonts[0]} onValueChange={(value) => updateFont("heading", value)}>
-                    <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                    <SelectContent>{themeFonts.map((font) => <SelectItem key={font} value={font}>{font}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Body font</Label>
-                  <Select value={store.theme.bodyFont ?? themeFonts[0]} onValueChange={(value) => updateFont("body", value)}>
-                    <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                    <SelectContent>{themeFonts.map((font) => <SelectItem key={font} value={font}>{font}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Aesthetic",
-            description: "Use the existing storefront aesthetic tokens instead of inventing a separate system.",
-            children: (
-              <div className="grid grid-cols-2 gap-2">
-                {themeAesthetics.map((aesthetic) => (
-                  <button
-                    key={aesthetic}
-                    type="button"
-                    onClick={() => updateThemeAesthetic(aesthetic)}
-                    className={cn(
-                      "rounded-md border p-3 text-left capitalize",
-                      store.theme.aesthetic === aesthetic
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-                        : "border-gray-200 dark:border-gray-800",
-                    )}
-                  >
-                    <div className="mb-2 h-8 rounded bg-gray-100 dark:bg-gray-800" />
-                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{aesthetic.replace(/-/g, " ")}</p>
-                  </button>
-                ))}
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Theme System",
-            description: "Wire into the existing theme package, mode, and spacing scales.",
-            children: (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Theme preset</Label>
-                  <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={updateThemePackage}>
-                    <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {themePackages.map((themePackage) => (
-                        <SelectItem key={themePackage.id} value={themePackage.id}>{themePackage.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Theme mode</Label>
-                  <Select value={store.theme.mode} onValueChange={(value) => updateThemeMode(value as "light" | "dark")}>
-                    <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Radius scale</Label>
-                  <Input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={store.theme.radiusScale ?? 0.55}
-                    onChange={(event) => updateThemeScale("radius", Number(event.target.value))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Density scale</Label>
-                  <Input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={store.theme.densityScale ?? 0.5}
-                    onChange={(event) => updateThemeScale("density", Number(event.target.value))}
-                  />
-                </div>
-              </div>
-            ),
-          })}
-        </div>
+        <ThemePanel
+          theme={store.theme}
+          themePackages={themePackages}
+          colors={{
+            primary: primaryColorHex,
+            accent: accentColorHex,
+            background: backgroundColorHex,
+            foreground: foregroundColorHex,
+          }}
+          fonts={themeFonts}
+          onThemePackageChange={updateThemePackage}
+          onModeChange={updateThemeMode}
+          onColorChange={(key, value) => updateThemeVar(`--${key}`, value)}
+          onResetPalette={resetThemePalette}
+          onApplyRecipe={applyThemeRecipe}
+          onFontChange={updateFont}
+          onAestheticChange={updateThemeAesthetic}
+          onScaleChange={updateThemeScale}
+          onScalePresetChange={updateThemeScales}
+        />
       );
     }
 
     if (tab === "effects") {
       return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Storefront Effects",
-            description: "These write directly into the live theme effect settings.",
-            children: (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Scroll reveals</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Sections appear as customers scroll.</p>
-                  </div>
-                  <Switch checked={store.theme.effects?.scrollReveals ?? false} onCheckedChange={(checked) => updateThemeEffect("scrollReveals", checked)} />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Hover effects</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Cards and buttons react on pointer hover.</p>
-                  </div>
-                  <Switch checked={store.theme.effects?.hoverEffects ?? true} onCheckedChange={(checked) => updateThemeEffect("hoverEffects", checked)} />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Parallax</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Subtle background motion for hero-heavy layouts.</p>
-                  </div>
-                  <Switch checked={store.theme.effects?.parallax ?? false} onCheckedChange={(checked) => updateThemeEffect("parallax", checked)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Intensity</Label>
-                  <Select value={store.theme.effects?.intensity ?? "medium"} onValueChange={(value) => updateThemeEffect("intensity", value as "subtle" | "medium" | "bold")}>
-                    <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="subtle">Subtle</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="bold">Bold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ),
-          })}
-        </div>
+        <BasicEffectsTab
+          effects={store.theme.effects}
+          onUpdateEffect={updateThemeEffect}
+        />
       );
     }
 
     if (tab === "flow") {
       return (
-        <div className="space-y-6">
-          {renderSectionCard({
-            title: "Store Flow",
-            description: "These sections come from the current template family and commerce journey.",
-            children: (
-              <div className="space-y-2">
-                {flowSections.filter((section) => section.visible).map((section) => (
-                  <div key={section.id} className="rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{section.title}</p>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{section.description}</p>
-                  </div>
-                ))}
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Flow Actions",
-            description: "Jump straight into the live settings and storefront pages tied to the buying journey.",
-            children: (
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => selectPage(store.pages.find((page) => page.slug.includes("shop"))?.id ?? selectedPage.id)}>Open Shop Page</Button>
-                <Button type="button" variant="outline" onClick={() => selectPage(store.pages.find((page) => page.slug.includes("checkout"))?.id ?? selectedPage.id)}>Open Checkout Page</Button>
-                <Button type="button" variant="outline" asChild>
-                  <Link to={checkoutSettingsHref}>Payment Settings</Link>
-                </Button>
-                <Button type="button" variant="outline" asChild>
-                  <Link to={shippingSettingsHref}>Delivery Settings</Link>
-                </Button>
-                <Button type="button" variant="outline" asChild>
-                  <Link to={supportSettingsHref}>Support Settings</Link>
-                </Button>
-                <Button type="button" variant="outline" asChild>
-                  <Link to={footerSettingsHref}>Footer Settings</Link>
-                </Button>
-              </div>
-            ),
-          })}
-        </div>
+        <BasicStoreFlowTab store={store} />
       );
     }
 
     return (
-      <div className="space-y-6">
-        {renderSectionCard({
-          title: "Launch Readiness",
-          description: "Quick view of the most important merchant-facing basics before publishing.",
-          children: (
-            <div className="space-y-2">
-              {readinessChecklist.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-800">
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{item.label}</span>
-                  <Badge variant={item.ready ? "outline" : "secondary"}>{item.ready ? "Ready" : "Needs work"}</Badge>
-                </div>
-              ))}
-            </div>
-          ),
-        })}
-        {renderSectionCard({
-          title: "Status",
-          description: `${launchReadyCount}/${readinessChecklist.length} core checks are ready.`,
-          children: (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => void saveAll()} disabled={saving} className="gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Draft
-              </Button>
-              <Button type="button" variant="outline" onClick={openPreviewWorkspace} className="gap-2">
-                <Eye className="h-4 w-4" />
-                Preview
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <a href={previewHref} target="_blank" rel="noreferrer">Open Store</a>
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={checkoutSettingsHref}>Payment</Link>
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={shippingSettingsHref}>Delivery</Link>
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={supportSettingsHref}>Support</Link>
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={faqSettingsHref}>FAQ</Link>
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={aboutSettingsHref}>About</Link>
-              </Button>
-            </div>
-          ),
-        })}
-        {renderSectionCard({
-          title: "Launch Advice",
-          description: hasUnsavedChanges
-            ? "You still have unsaved draft changes. Save before treating preview as final."
-            : store.isPublished
-              ? "This storefront is already published. Use preview and deep links to sanity-check the live journey."
-              : "The storefront is still a draft. Save and preview before publishing from the platform workflow.",
-          children: (
-            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <p>Check homepage promise, product discovery, trust, and mobile preview in that order.</p>
-              <p>Use the deep links above for payment, delivery, support, FAQ, and About if a readiness row still needs work.</p>
-            </div>
-          ),
-        })}
-      </div>
+      <BasicLaunchTab
+        store={store}
+        onPublish={() => void saveAll()}
+        isPublishing={saving}
+      />
     );
   };
-  const renderNewAdvancedTree = () => (
-    <div className="space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Block Tree</p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">Real blocks from the selected page, with order and visibility controls.</p>
-      </div>
-      <div className="grid gap-2">
-        {availableBlockRegistry.slice(0, 6).map((block) => (
-          <Button key={block.value} type="button" variant="outline" className="justify-start" onClick={() => addBlockOfType(block.value)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add {block.label}
-          </Button>
-        ))}
-      </div>
-      <div className="space-y-1">
-        {sortedSelectedBlocks.map((block, index) => (
-          <div
-            key={block.id}
-            className={cn(
-              "rounded-md border px-3 py-2",
-              selectedBlock?.id === block.id ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40" : "border-gray-200 dark:border-gray-800",
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedBlockId(block.id)}>
-                <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">{block.type}</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-500">Section {index + 1}</span>
-              </button>
-              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" disabled={index === 0} onClick={() => moveBlock(block.id, -1)}>
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" disabled={index === sortedSelectedBlocks.length - 1} onClick={() => moveBlock(block.id, 1)}>
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => updateBlockMeta(block.id, { isVisible: !block.isVisible })}>
-                {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
-              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => duplicateBlock(block.id)}>
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-red-600 dark:text-red-400" onClick={() => removeBlock(block.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+
+  const renderNewAdvancedTree = () => {
+    if (!selectedPage) return null;
+    return (
+      <BlockTreePanel
+        page={selectedPage}
+        availableBlocks={availableBlockRegistry}
+        selectedBlockId={selectedBlockId}
+        onSelectBlock={setSelectedBlockId}
+        onMoveBlock={moveBlock}
+        onToggleVisibility={(id, isVisible) => updateBlockMeta(id, { isVisible, visible: isVisible })}
+        onRemoveBlock={removeBlock}
+        onAddBlock={addBlockOfType}
+      />
+    );
+  };
+
   const renderNewAdvancedInspector = () => (
-    <div className="space-y-4">
-      {selectedBlock ? (
-        <>
-          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedBlock.type}</p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">Content controls from the current block schema.</p>
-          </div>
-          {renderSectionCard({
-            title: "Content",
-            description: "Template-aware content and repeatable field editing for the selected section.",
-            children: (
-              <BasicBlockMiniEditor
-                block={selectedBlock}
-                storeId={store.id}
-                updateBlockProps={updateAnyBlockProps}
-                updateBlockMeta={updateBlockMeta}
-              />
-            ),
-          })}
-          {renderSectionCard({
-            title: "Layout & Behavior",
-            description: "Section-level controls that shape structure and interaction before raw styling.",
-            children: (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-gray-800">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Visible</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Hide or show this section.</p>
-                  </div>
-                  <Switch checked={selectedBlock.isVisible} onCheckedChange={(checked) => updateBlockMeta(selectedBlock.id, { isVisible: checked })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Entrance animation</Label>
-                    <Select value={selectedBlock.entranceAnimation ?? "none"} onValueChange={(value) => updateBlockMeta(selectedBlock.id, { entranceAnimation: value as StorePageBlock["entranceAnimation"] })}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="fade">Fade</SelectItem>
-                        <SelectItem value="slide-up">Slide Up</SelectItem>
-                        <SelectItem value="zoom">Zoom</SelectItem>
-                        <SelectItem value="stagger">Stagger</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Hover effect</Label>
-                    <Select value={selectedBlock.hoverEffect ?? "none"} onValueChange={(value) => updateBlockMeta(selectedBlock.id, { hoverEffect: value as StorePageBlock["hoverEffect"] })}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="lift">Lift</SelectItem>
-                        <SelectItem value="zoom">Zoom</SelectItem>
-                        <SelectItem value="glow">Glow</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {getBasicLayoutVariantOptions(storefrontTemplateId, selectedBlock.type).length > 0 ? (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Layout variant</Label>
-                    <Select value={selectedBlock.layoutVariant ?? getBasicLayoutVariantOptions(storefrontTemplateId, selectedBlock.type)[0]?.id ?? ""} onValueChange={(value) => updateBlockMeta(selectedBlock.id, { layoutVariant: value })}>
-                      <SelectTrigger className="h-11 border-gray-300 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {getBasicLayoutVariantOptions(storefrontTemplateId, selectedBlock.type).map((variant) => (
-                          <SelectItem key={variant.id} value={variant.id}>{variant.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null}
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Style",
-            description: "Responsive block-level styling through the existing visual CSS inspector.",
-            children: (
-              <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-                <VisualCssInspector
-                  selectedBlock={selectedBlock}
-                  viewport={previewViewport}
-                  allowCodeEditing={false}
-                  updateSelectedBlock={(patch) => updateBlockMeta(selectedBlock.id, patch)}
-                  updateSelectedBlockProps={(patch) => updateAnyBlockProps(selectedBlock.id, patch)}
-                />
-              </div>
-            ),
-          })}
-          {renderSectionCard({
-            title: "Code",
-            description: "Advanced section-level HTML and CSS escape hatches.",
-            children: (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Custom HTML</Label>
-                  <Textarea
-                    value={selectedBlock.customHtml ?? ""}
-                    onChange={(event) => updateBlockMeta(selectedBlock.id, { customHtml: event.target.value })}
-                    rows={4}
-                    className="border-gray-300 font-mono text-xs dark:border-gray-700"
-                    placeholder="<div>...</div>"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Custom CSS</Label>
-                  <Textarea
-                    value={selectedBlock.customCss ?? ""}
-                    onChange={(event) => updateBlockMeta(selectedBlock.id, { customCss: event.target.value })}
-                    rows={4}
-                    className="border-gray-300 font-mono text-xs dark:border-gray-700"
-                    placeholder=".block { ... }"
-                  />
-                </div>
-              </div>
-            ),
-          })}
-        </>
-      ) : (
-        <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-500">
-          Select a section to edit its content and styles.
-        </div>
-      )}
-    </div>
+    <InspectorPanel
+      selectedBlock={selectedBlock}
+      updateSelectedBlockProps={(props) => selectedBlock && updateAnyBlockProps(selectedBlock.id, props)}
+      updateSelectedBlockMeta={(patch) => selectedBlock && updateBlockMeta(selectedBlock.id, patch)}
+      viewport={previewViewport}
+      onViewportChange={setPreviewViewport}
+      storeId={store.id}
+      allPages={store.pages}
+    />
   );
 
   if (workspaceTab === "gallery") {
@@ -3523,11 +2874,14 @@ export default function CmsPagesManager() {
 
   if (showNewEditor && selectedPage) {
     return (
+      <>
       <EditorShell
         store={store}
         pages={store.pages}
         activePageId={selectedPage.id}
         onPageChange={selectPage}
+        selectedBlockId={selectedBlockId}
+        onSelectBlock={(id) => setSelectedBlockId(id ?? "")}
         mode={isAdvancedEditor ? "advanced" : "basic"}
         onModeChange={(nextMode) => {
           navigate(nextMode === "advanced" ? advancedEditorHref : basicEditorHref);
@@ -3543,8 +2897,9 @@ export default function CmsPagesManager() {
         saveState={saving ? "saving" : saveError ? "error" : hasUnsavedChanges ? "idle" : "saved"}
         saveDetail={saving ? "Saving your draft" : saveError ?? (hasUnsavedChanges ? "Draft has changes" : "All changes saved")}
         basicItems={basicShellItems}
+        modeHrefs={{ basic: basicEditorHref, advanced: advancedEditorHref }}
         panelTitle={selectedPage.title}
-        panelBreadcrumb={`Page ${selectedPageNumber} · ${selectedPage.slug}`}
+        panelBreadcrumb={`Page ${selectedPageNumber} Â· ${selectedPage.slug}`}
         panelHelp="Edit this page with live storefront content, theme, and preview controls."
         renderBasicPanel={(tab) => renderNewBasicPanel(tab)}
         renderPreview={() => previewCanvas}
@@ -3552,26 +2907,23 @@ export default function CmsPagesManager() {
         renderAdvancedInspector={() => renderNewAdvancedInspector()}
         headerActions={[
           {
-            id: "preview",
-            label: "Preview",
-            icon: Eye,
-            onClick: () => openBasicPreviewOverlay(previewViewport),
-            variant: "outline",
-          },
-          {
             id: "save",
             label: saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved",
             icon: saving ? Loader2 : Save,
             onClick: () => void saveAll(),
             disabled: saving,
+            className: "hidden lg:inline-flex",
+          },
+          {
+            id: "legacy",
+            label: "Legacy",
+            href: isAdvancedEditor ? legacyAdvancedEditorHref : legacyBasicEditorHref,
+            variant: "ghost",
+            className: "hidden lg:inline-flex",
           },
         ]}
         previewToolbarContent={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={() => openBasicPreviewOverlay(previewViewport)} className="gap-2">
-              <Eye className="h-4 w-4" />
-              Full Screen
-            </Button>
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={previewHref} target="_blank" rel="noreferrer">Open Store</a>
             </Button>
@@ -3585,6 +2937,8 @@ export default function CmsPagesManager() {
         canRedo={redoStack.length > 0}
         saveLabel={saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved"}
       />
+      {renderBasicPreviewSheet()}
+      </>
     );
   }
 
@@ -3856,7 +3210,7 @@ export default function CmsPagesManager() {
           selectedBlockId={selectedBlockId}
           onSelectBlock={setSelectedBlockId}
           onMoveBlock={moveBlock}
-          onToggleVisibility={(blockId, isVisible) => updateBlockMeta(blockId, { isVisible })}
+          onToggleVisibility={(blockId, isVisible) => updateBlockMeta(blockId, { isVisible, visible: isVisible })}
           onRemoveBlock={removeBlock}
         />
       ) : null}
@@ -4308,15 +3662,10 @@ export default function CmsPagesManager() {
                         This store is using theme snapshot v{installedThemePackageVersion} while the current package is v{resolvedEditorThemePackage?.version}. Saving Page Builder changes will install the latest snapshot for this store.
                       </p>
                     ) : null}
-                    {hasBlueprintVersionUpdate ? (
-                      <p className="mt-2 text-xs text-sky-600">
-                        This store still carries older compatibility metadata. Saving Page Builder changes will refresh the template-owned storefront profile for the current setup.
-                      </p>
-                    ) : null}
                   </div>
                   <div id="theme-package" className="grid gap-2 scroll-mt-36">
                     <Label>Theme Package</Label>
-                    <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={(value) => updateStoreTheme({ themePackageId: value })} disabled={!themePresetsEnabled}>
+                    <Select value={store.theme.themePackageId ?? store.theme.presetId} onValueChange={updateThemePackage} disabled={!themePresetsEnabled}>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a theme package" />
                       </SelectTrigger>
@@ -4523,7 +3872,7 @@ export default function CmsPagesManager() {
                 </div>
                 <div id="pages-library" className="rounded-lg border border-border p-3 scroll-mt-36">
                   <div className="grid gap-3">
-                    {!pageBlueprintsEnabled ? (
+                    {!pageTemplatesEnabled ? (
                       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                         Page templates are disabled for this store. New pages will start blank and template replacement is locked.
                       </div>
@@ -4535,12 +3884,12 @@ export default function CmsPagesManager() {
                     ) : null}
                     <div className="grid gap-2">
                       <Label>New Page Template</Label>
-                      <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageBlueprintsEnabled || !isAdvancedEditor}>
+                      <Select value={newPageTemplate} onValueChange={setNewPageTemplate} disabled={!pageTemplatesEnabled || !isAdvancedEditor}>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a template" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availablePageBlueprints.map((template) => (
+                          {availablePageTemplates.map((template) => (
                             <SelectItem key={template.id} value={template.id}>
                               {template.name}
                             </SelectItem>
@@ -4548,10 +3897,10 @@ export default function CmsPagesManager() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        {availablePageBlueprints.find((template) => template.id === newPageTemplate)?.description}
+                        {availablePageTemplates.find((template) => template.id === newPageTemplate)?.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Showing page templates matched to the <span className="font-medium text-foreground">{activeBlueprint.shortName}</span> storefront type.
+                        Showing page templates matched to the <span className="font-medium text-foreground">{activeTemplateSeed.shortName}</span> storefront type.
                       </p>
                     </div>
                     {isAdvancedEditor ? (
@@ -4721,27 +4070,27 @@ export default function CmsPagesManager() {
                         <p className="text-xs text-muted-foreground">Replace the current block stack with a prebuilt page structure.</p>
                       </div>
                       <div className="flex flex-col gap-2 md:flex-row">
-                        <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageBlueprintsEnabled}>
+                        <Select value={activeTemplateId} onValueChange={setActiveTemplateId} disabled={!pageTemplatesEnabled}>
                           <SelectTrigger className="md:max-w-[280px]">
                             <SelectValue placeholder="Choose a template" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availablePageBlueprints.map((template) => (
+                            {availablePageTemplates.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!pageBlueprintsEnabled}>
+                        <Button type="button" variant="outline" onClick={() => applyTemplate(activeTemplateId)} className="gap-2" disabled={!pageTemplatesEnabled}>
                           <LayoutTemplate className="h-4 w-4" />
                           Apply Template
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {availablePageBlueprints.find((template) => template.id === activeTemplateId)?.description}
+                        {availablePageTemplates.find((template) => template.id === activeTemplateId)?.description}
                       </p>
-                      {!pageBlueprintsEnabled ? (
+                      {!pageTemplatesEnabled ? (
                         <p className="text-xs text-muted-foreground">Enable the `cms_pages` feature to use template-backed page structures here.</p>
                       ) : null}
                     </div>
@@ -4908,6 +4257,15 @@ export default function CmsPagesManager() {
                   {selectedPage.blocks.map((block, index) => {
                     const blockMeta = getCmsBlockRegistryItem(block.type, blockRegistry);
                     const isFocused = selectedBlockId === block.id;
+                    const promoBgStyle = block.type === "promo-banner" && typeof block.props.bgStyle === "string" ? block.props.bgStyle : undefined;
+                    const usesCustomPromoTheme = Boolean(promoBgStyle);
+                    const clearPromoThemePatch = {
+                      bgStyle: undefined,
+                      enableGlow: undefined,
+                      enableParticles: undefined,
+                      enableOrbs: undefined,
+                      cardOpacity: undefined,
+                    };
 
                     return (
                       <div
@@ -4963,8 +4321,19 @@ export default function CmsPagesManager() {
                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => duplicateBlock(block.id)}>
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => updateBlock(block.id, (current) => ({ ...current, isVisible: !current.isVisible }))}>
-                              {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                updateBlock(block.id, (current) => {
+                                  const nextVisible = !(current.isVisible ?? current.visible ?? true);
+                                  return { ...current, isVisible: nextVisible, visible: nextVisible };
+                                })
+                              }
+                            >
+                              {(block.isVisible ?? block.visible ?? true) ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                             </Button>
                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeBlock(block.id)}>
                               <Trash2 className="h-4 w-4" />
@@ -4978,7 +4347,7 @@ export default function CmsPagesManager() {
                               {isFocused ? "Focused block editor" : "Tap edit to focus this block"}
                             </p>
                             <p className="truncate text-[11px] text-muted-foreground">
-                              {block.isVisible ? "Visible on storefront" : "Hidden from storefront"}
+                              {(block.isVisible ?? block.visible ?? true) ? "Visible on storefront" : "Hidden from storefront"}
                             </p>
                           </div>
                           {!isFocused ? (
@@ -4994,7 +4363,10 @@ export default function CmsPagesManager() {
                               <p className="text-sm font-medium text-foreground">Visible on storefront</p>
                               <p className="text-xs text-muted-foreground">Hide a block without deleting its configuration.</p>
                             </div>
-                            <Switch checked={block.isVisible} onCheckedChange={(checked) => updateBlock(block.id, (current) => ({ ...current, isVisible: checked }))} />
+                            <Switch
+                              checked={block.isVisible ?? block.visible ?? true}
+                              onCheckedChange={(checked) => updateBlock(block.id, (current) => ({ ...current, isVisible: checked, visible: checked }))}
+                            />
                           </div>
 
                           {!isFocused ? (
@@ -5147,11 +4519,23 @@ export default function CmsPagesManager() {
                               </div>
                               <div className="grid gap-2">
                                 <Label>Background Style</Label>
-                                <Select value={(block.props.bgStyle as string | undefined) ?? "gradient"} onValueChange={(value) => updateBlockProps(block.id, "promo-banner", { bgStyle: value })}>
+                                <Select
+                                  value={promoBgStyle ?? PROMO_THEME_DEFAULT_VALUE}
+                                  onValueChange={(value) =>
+                                    updateBlockProps(
+                                      block.id,
+                                      "promo-banner",
+                                      value === PROMO_THEME_DEFAULT_VALUE
+                                        ? clearPromoThemePatch
+                                        : { bgStyle: value },
+                                    )
+                                  }
+                                >
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
+                                    <SelectItem value={PROMO_THEME_DEFAULT_VALUE}>Follow site theme</SelectItem>
                                     <SelectItem value="gradient">Gradient</SelectItem>
                                     <SelectItem value="dark">Dark</SelectItem>
                                     <SelectItem value="accent">Accent</SelectItem>
@@ -5199,22 +4583,30 @@ export default function CmsPagesManager() {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div className="grid gap-2">
-                                <Label>Card Opacity</Label>
-                                <Input type="number" min={0} max={100} value={String(block.props.cardOpacity ?? 0)} onChange={(e) => updateBlockProps(block.id, "promo-banner", { cardOpacity: Number(e.target.value || 0) })} />
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                                <Label>Glow Button</Label>
-                                <Switch checked={(block.props.enableGlow as boolean | undefined) ?? false} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableGlow: checked })} />
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                                <Label>Particles</Label>
-                                <Switch checked={(block.props.enableParticles as boolean | undefined) ?? true} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableParticles: checked })} />
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                                <Label>Orbs</Label>
-                                <Switch checked={(block.props.enableOrbs as boolean | undefined) ?? true} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableOrbs: checked })} />
-                              </div>
+                              {usesCustomPromoTheme ? (
+                                <>
+                                  <div className="grid gap-2">
+                                    <Label>Card Opacity</Label>
+                                    <Input type="number" min={0} max={100} value={String(block.props.cardOpacity ?? 0)} onChange={(e) => updateBlockProps(block.id, "promo-banner", { cardOpacity: Number(e.target.value || 0) })} />
+                                  </div>
+                                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                                    <Label>Glow Button</Label>
+                                    <Switch checked={(block.props.enableGlow as boolean | undefined) ?? false} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableGlow: checked })} />
+                                  </div>
+                                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                                    <Label>Particles</Label>
+                                    <Switch checked={(block.props.enableParticles as boolean | undefined) ?? false} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableParticles: checked })} />
+                                  </div>
+                                  <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                                    <Label>Orbs</Label>
+                                    <Switch checked={(block.props.enableOrbs as boolean | undefined) ?? false} onCheckedChange={(checked) => updateBlockProps(block.id, "promo-banner", { enableOrbs: checked })} />
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100 md:col-span-2">
+                                  Promo colors and card treatment are following the active site theme.
+                                </div>
+                              )}
                             </div>
                           ) : null}
 

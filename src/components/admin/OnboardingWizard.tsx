@@ -10,8 +10,10 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ChevronsLeft,
   Copy,
   Eye,
@@ -36,7 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { MerchantPreviewChecklist } from "@/components/admin/MerchantPreviewChecklist";
+import { MerchantPreviewChecklist, type PreviewChecklistItem } from "@/components/admin/MerchantPreviewChecklist";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,9 +54,20 @@ import { StorefrontPreviewFrame } from "@/components/storefront/StorefrontPrevie
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTemplateRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import {
+  HomepageSectionChoiceCard,
+  HomepageSectionLinkArrow,
+  homepageSectionLinkIconClassName,
+} from "@/components/admin/HomepageSectionChoiceCard";
+import {
+  createRegistryDefaultBlock,
+  fallbackBlockRegistry,
+  prioritizeRecommendedBlocks,
+  type CmsBlockRegistryItem,
+} from "@/lib/cms/block-registry";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
-import { fallbackPageBlueprints, loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { getCatalogModeLabel } from "@/lib/cms/storefront-compat";
 import {
   type LaunchTemplatePaymentDefaults,
@@ -62,17 +75,16 @@ import {
 import { isTemplateSeedMetadata, reseedTemplateCatalog, unseedTemplateCatalog } from "@/lib/cms/template-seed-management";
 import { createStoreSlug } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
-import { buildPageBuilderPath } from "@/lib/admin-paths";
-import type { Store, StorePage } from "@/lib/cms/schema";
+import { buildPageBuilderPath, buildSiteSettingsPath, getHomepageSectionEditorLink } from "@/lib/admin-paths";
+import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
 import {
-  fallbackStoreBlueprints,
-  findStoreBlueprintById,
-  loadStoreBlueprints,
-  resolveStoreBlueprint,
-  type StoreBlueprintDefinition,
-} from "@/lib/cms/store-blueprints";
+  fallbackStorefrontTemplateSeeds,
+  findStorefrontTemplateSeedById,
+  resolveStorefrontTemplateSeed,
+  type StorefrontTemplateSeedDefinition,
+} from "@/lib/cms/storefront-template-seeds";
 import {
   buildStorefrontTemplateSiteSettingsEntries,
   getStorefrontTemplateSeedDefinition,
@@ -83,6 +95,12 @@ import {
 } from "@/lib/cms/storefront-templates";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { resolveOnboardingTemplateBehavior } from "@/lib/cms/onboarding-template-registry";
+import {
+  applyHomepageSectionVisibilityToPages,
+  createDefaultHomepageSectionVisibility,
+  getOptionalTemplateHomepageSectionChoices,
+  normalizeHomepageSectionVisibility,
+} from "@/lib/cms/template-homepage-sections";
 import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
 import { getStorefrontTemplateReferenceImage } from "@/lib/cms/storefront-template-reference-images";
 import {
@@ -99,9 +117,13 @@ interface DraftState {
   customDomain?: string;
   description: string;
   logoUrl: string;
-  blueprintId: string;
-  businessFamily: StoreBlueprintDefinition["businessFamily"];
-  catalogMode: StoreBlueprintDefinition["catalogMode"];
+  templateId: string;
+  onboardingMode: "template" | "blank";
+  blankBusinessFamily: StorefrontTemplateSeedDefinition["businessFamily"];
+  starterBlockSelections: string[];
+  starterVariantSelections: Record<string, string>;
+  businessFamily: StorefrontTemplateSeedDefinition["businessFamily"];
+  catalogMode: StorefrontTemplateSeedDefinition["catalogMode"];
   themePackageId: string;
   themeMode: Store["theme"]["mode"];
   headingFont: string;
@@ -145,10 +167,11 @@ interface DraftState {
     message: string;
   };
   faqEntries: Array<{ q: string; a: string }>;
+  homepageSectionVisibility: Record<string, boolean>;
   isPublished: boolean;
 }
 
-type ContentSectionId = "hero" | "delivery" | "lead" | "whatsapp";
+type ContentSectionId = "hero" | "layout" | "delivery" | "lead" | "whatsapp";
 type LaunchCompletionState = {
   published: boolean;
   templateId: string;
@@ -156,15 +179,15 @@ type LaunchCompletionState = {
 
 type PreviewDockMode = "closed" | "half" | "fullscreen";
 
-function getTemplateSeedDefaults(templateId: string, blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
-  const templateProfile = resolveStorefrontTemplateProfile(templateId, { blueprintId: templateId });
-  const blueprint = findStoreBlueprintById(templateProfile.seedBlueprintId, blueprints)
-    ?? resolveStoreBlueprint(templateProfile.seedBlueprintId, blueprints);
+function getTemplateSeedDefaults(templateId: string, templateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds) {
+  const templateProfile = resolveStorefrontTemplateProfile(templateId, { templateSeedId: templateId });
+  const templateSeed = findStorefrontTemplateSeedById(templateProfile.templateSeedId, templateSeeds)
+    ?? resolveStorefrontTemplateSeed(templateProfile.templateSeedId, templateSeeds);
 
   return {
     templateProfile,
     seedDefinition: templateProfile.seedDefinition,
-    blueprint,
+    templateSeed,
   };
 }
 
@@ -262,17 +285,294 @@ function OnboardingPreviewCard({
   );
 }
 
-function getBlueprintSiteSettingRecord(blueprint: StoreBlueprintDefinition, key: string) {
-  const value = blueprint.defaultSiteSettings[key];
+function BlankBuilderPreviewShell({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "primary";
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border p-2",
+        tone === "primary"
+          ? "border-primary/20 bg-primary/5"
+          : "border-border bg-muted/20",
+      )}
+    >
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-12 rounded-full bg-muted-foreground/20" />
+          <div className="h-2 w-8 rounded-full bg-muted-foreground/15" />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BlankBuilderBlockPreview({
+  blockType,
+  variantId,
+  draft,
+}: {
+  blockType: string;
+  variantId?: string;
+  draft?: Pick<DraftState, "heroTagline" | "heroTitle" | "heroSubtitle" | "heroMediaUrl" | "faqEntries">;
+}) {
+  if (blockType === "hero") {
+    const heroTagline = draft?.heroTagline?.trim() || "New collection";
+    const heroTitle = draft?.heroTitle?.trim() || "Bring your storefront to life";
+    const heroSubtitle = draft?.heroSubtitle?.trim() || "Start with a strong first impression, then refine the rest as real content comes in.";
+    const hasHeroMedia = Boolean(draft?.heroMediaUrl?.trim());
+
+    if (variantId === "split") {
+      return (
+        <BlankBuilderPreviewShell tone="primary">
+          <div className="grid grid-cols-[1.1fr_0.9fr] gap-2">
+            <div className="space-y-1.5 rounded-md bg-background p-2">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+              <p className="line-clamp-2 text-[11px] font-semibold leading-4 text-foreground">{heroTitle}</p>
+              <p className="line-clamp-2 text-[10px] leading-4 text-muted-foreground">{heroSubtitle}</p>
+              <div className="inline-flex h-5 items-center rounded-full bg-primary/20 px-2 text-[9px] font-medium text-primary">Shop now</div>
+            </div>
+            <div className="rounded-md bg-primary/15">
+              <div className="flex h-full items-end justify-end rounded-md border border-dashed border-primary/20 p-2 text-[9px] text-primary/70">
+                {hasHeroMedia ? "Hero media ready" : "Add hero media"}
+              </div>
+            </div>
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    if (variantId === "centered") {
+      return (
+        <BlankBuilderPreviewShell tone="primary">
+          <div className="rounded-md bg-background px-3 py-4 text-center">
+            <p className="mx-auto max-w-[90%] truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+            <p className="mx-auto mt-2 line-clamp-2 max-w-[90%] text-[11px] font-semibold leading-4 text-foreground">{heroTitle}</p>
+            <p className="mx-auto mt-1 line-clamp-2 max-w-[85%] text-[10px] leading-4 text-muted-foreground">{heroSubtitle}</p>
+            <div className="mx-auto mt-3 inline-flex h-5 items-center rounded-full bg-primary/20 px-2 text-[9px] font-medium text-primary">Explore</div>
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    if (variantId === "editorial") {
+      return (
+        <BlankBuilderPreviewShell tone="primary">
+          <div className="grid grid-cols-[0.8fr_1.2fr] gap-2">
+            <div className="rounded-md bg-primary/15">
+              <div className="flex h-full items-end justify-end rounded-md border border-dashed border-primary/20 p-2 text-[9px] text-primary/70">
+                {hasHeroMedia ? "Editorial media" : "Add image"}
+              </div>
+            </div>
+            <div className="space-y-1.5 rounded-md bg-background p-2">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+              <p className="line-clamp-2 text-[11px] font-semibold leading-4 text-foreground">{heroTitle}</p>
+              <p className="line-clamp-2 text-[10px] leading-4 text-muted-foreground">{heroSubtitle}</p>
+              <div className="grid grid-cols-2 gap-1 pt-1">
+                <div className="flex h-4 items-center justify-center rounded-full bg-primary/20 text-[9px] font-medium text-primary">Primary</div>
+                <div className="flex h-4 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">Secondary</div>
+              </div>
+            </div>
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    return (
+      <BlankBuilderPreviewShell tone="primary">
+        <div className="rounded-md bg-background p-3">
+          <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+          <p className="mt-2 line-clamp-2 text-[12px] font-semibold leading-4 text-foreground">{heroTitle}</p>
+          <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-muted-foreground">{heroSubtitle}</p>
+          <div className="mt-3 inline-flex h-5 items-center rounded-full bg-primary/20 px-2 text-[9px] font-medium text-primary">Browse</div>
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "featured-products") {
+    const isSidebar = variantId === "3-col-sidebar-left" || variantId === "3-col-sidebar-right";
+    const columnCount = variantId === "2-col" ? 2 : variantId === "4-col" ? 4 : 3;
+
+    return (
+      <BlankBuilderPreviewShell>
+        <div className={cn("grid gap-2", isSidebar ? "grid-cols-[0.4fr_1fr]" : "")}>
+          {isSidebar && variantId === "3-col-sidebar-left" ? <div className="rounded-md bg-background/80" /> : null}
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
+            {Array.from({ length: columnCount }).map((_, index) => (
+              <div key={index} className="space-y-1 rounded-md bg-background p-1.5">
+                <div className="aspect-[4/5] rounded bg-primary/10" />
+                <div className="h-2 rounded-full bg-foreground/15" />
+                <div className="h-2 w-2/3 rounded-full bg-foreground/10" />
+              </div>
+            ))}
+          </div>
+          {isSidebar && variantId === "3-col-sidebar-right" ? <div className="rounded-md bg-background/80" /> : null}
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "category-showcase") {
+    if (variantId === "carousel") {
+      return (
+        <BlankBuilderPreviewShell>
+          <div className="flex gap-1.5 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="min-w-0 flex-1 rounded-md bg-background p-1.5">
+                <div className="aspect-square rounded bg-primary/10" />
+                <div className="mt-1 h-2 rounded-full bg-foreground/12" />
+              </div>
+            ))}
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    if (variantId === "compact-list") {
+      return (
+        <BlankBuilderPreviewShell>
+          <div className="space-y-1.5">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-2 rounded-md bg-background p-1.5">
+                <div className="h-7 w-7 rounded bg-primary/10" />
+                <div className="h-2 flex-1 rounded-full bg-foreground/12" />
+              </div>
+            ))}
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    return (
+      <BlankBuilderPreviewShell>
+        <div className="grid grid-cols-3 gap-1.5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="rounded-md bg-background p-1.5">
+              <div className="aspect-square rounded bg-primary/10" />
+              <div className="mt-1 h-2 rounded-full bg-foreground/12" />
+            </div>
+          ))}
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "promo-banner") {
+    return (
+      <BlankBuilderPreviewShell tone="primary">
+        <div className="rounded-md bg-primary/15 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-1">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">Offer</p>
+              <p className="line-clamp-1 text-[11px] font-medium text-foreground">Highlight a timely promotion or announcement</p>
+            </div>
+            <div className="flex h-5 items-center rounded-full bg-background/80 px-2 text-[9px] font-medium text-foreground">View</div>
+          </div>
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "trust-badges") {
+    return (
+      <BlankBuilderPreviewShell>
+        <div className="grid grid-cols-3 gap-1.5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="rounded-md bg-background p-1.5 text-center">
+              <div className="mx-auto h-5 w-5 rounded-full bg-primary/12" />
+              <p className="mx-auto mt-1 max-w-[90%] truncate text-[9px] text-muted-foreground">
+                {["Secure", "Fast", "Trusted"][index] ?? "Verified"}
+              </p>
+            </div>
+          ))}
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "testimonials") {
+    return (
+      <BlankBuilderPreviewShell>
+        <div className="grid grid-cols-2 gap-1.5">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="rounded-md bg-background p-2">
+              <div className="flex gap-1">
+                {Array.from({ length: 4 }).map((__, starIndex) => (
+                  <div key={starIndex} className="h-2 w-2 rounded-full bg-primary/20" />
+                ))}
+              </div>
+              <p className="mt-2 line-clamp-2 text-[9px] leading-4 text-muted-foreground">
+                Quick proof that this storefront feels credible and easy to buy from.
+              </p>
+            </div>
+          ))}
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "faq-accordion") {
+    const previewFaqs = draft?.faqEntries?.filter((entry) => entry.q.trim()).slice(0, 3) ?? [];
+
+    return (
+      <BlankBuilderPreviewShell>
+        <div className="space-y-1.5">
+          {(previewFaqs.length > 0
+            ? previewFaqs
+            : Array.from({ length: 3 }).map((_, index) => ({
+                q: index === 0 ? "Do you deliver?" : index === 1 ? "How do I order?" : "Can I customize later?",
+                a: "",
+              }))).map((entry, index) => (
+            <div key={index} className="flex items-center justify-between rounded-md bg-background px-2 py-2">
+              <p className="truncate pr-2 text-[9px] text-muted-foreground">{entry.q}</p>
+              <div className="h-4 w-4 rounded-full bg-primary/12" />
+            </div>
+          ))}
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  if (blockType === "rich-text") {
+    return (
+      <BlankBuilderPreviewShell>
+        <div className="rounded-md bg-background p-2">
+          <p className="text-[11px] font-medium text-foreground">Tell the store story</p>
+          <p className="mt-2 line-clamp-3 text-[9px] leading-4 text-muted-foreground">
+            Useful when the merchant needs a short founder note, buying guide, service explanation, or trust-building introduction.
+          </p>
+        </div>
+      </BlankBuilderPreviewShell>
+    );
+  }
+
+  return (
+    <BlankBuilderPreviewShell>
+      <div className="rounded-md bg-background p-2">
+        <div className="h-3 w-1/2 rounded-full bg-foreground/15" />
+        <div className="mt-2 h-10 rounded-md bg-primary/10" />
+      </div>
+    </BlankBuilderPreviewShell>
+  );
+}
+
+function getTemplateSeedSiteSettingRecord(templateSeed: StorefrontTemplateSeedDefinition, key: string) {
+  const value = templateSeed.defaultSiteSettings[key];
   return typeof value === "object" && value ? value as Record<string, unknown> : {};
 }
 
-function getDefaultContactPage(blueprint: StoreBlueprintDefinition) {
-  const contact = getBlueprintSiteSettingRecord(blueprint, "contact_page");
+function getDefaultContactPage(templateSeed: StorefrontTemplateSeedDefinition) {
+  const contact = getTemplateSeedSiteSettingRecord(templateSeed, "contact_page");
   return {
     badge: typeof contact.badge === "string" ? contact.badge : "Get in touch",
     title: typeof contact.title === "string" ? contact.title : "Contact Us",
-    description: typeof contact.description === "string" ? contact.description : blueprint.storeDescription,
+    description: typeof contact.description === "string" ? contact.description : templateSeed.storeDescription,
     address: typeof contact.address === "string" ? contact.address : "",
     phone: typeof contact.phone === "string" ? contact.phone : "",
     email: typeof contact.email === "string" ? contact.email : "",
@@ -285,8 +585,8 @@ function getDefaultContactPage(blueprint: StoreBlueprintDefinition) {
   };
 }
 
-function getDefaultDeliverySettings(blueprint: StoreBlueprintDefinition) {
-  const delivery = getBlueprintSiteSettingRecord(blueprint, "delivery_settings");
+function getDefaultDeliverySettings(templateSeed: StorefrontTemplateSeedDefinition) {
+  const delivery = getTemplateSeedSiteSettingRecord(templateSeed, "delivery_settings");
   return {
     enabled: Boolean(delivery.enabled),
     primaryZoneLabel: typeof delivery.primary_zone_label === "string" ? delivery.primary_zone_label : "Primary delivery zone",
@@ -297,8 +597,8 @@ function getDefaultDeliverySettings(blueprint: StoreBlueprintDefinition) {
   };
 }
 
-function getDefaultWhatsAppSupport(blueprint: StoreBlueprintDefinition) {
-  const whatsapp = getBlueprintSiteSettingRecord(blueprint, "whatsapp_support");
+function getDefaultWhatsAppSupport(templateSeed: StorefrontTemplateSeedDefinition) {
+  const whatsapp = getTemplateSeedSiteSettingRecord(templateSeed, "whatsapp_support");
   return {
     enabled: Boolean(whatsapp.enabled),
     number: typeof whatsapp.number === "string" ? whatsapp.number : "",
@@ -306,8 +606,8 @@ function getDefaultWhatsAppSupport(blueprint: StoreBlueprintDefinition) {
   };
 }
 
-function getDefaultFaqEntries(blueprint: StoreBlueprintDefinition) {
-  const faq = blueprint.defaultSiteSettings.faq_entries;
+function getDefaultFaqEntries(templateSeed: StorefrontTemplateSeedDefinition) {
+  const faq = templateSeed.defaultSiteSettings.faq_entries;
   if (!Array.isArray(faq)) {
     return [] as Array<{ q: string; a: string }>;
   }
@@ -324,11 +624,11 @@ function getDefaultFaqEntries(blueprint: StoreBlueprintDefinition) {
 function getOnboardingContextCopy(
   templateId: string,
   catalogMode: DraftState["catalogMode"],
-  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+  templateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds,
 ) {
-  const { blueprint } = getTemplateSeedDefaults(templateId, blueprints);
+  const { templateSeed } = getTemplateSeedDefaults(templateId, templateSeeds);
   const templateProfile = resolveStorefrontTemplateProfile(templateId, {
-    blueprintId: blueprint.id,
+    templateSeedId: templateSeed.id,
     productVisibility: catalogMode === "menu"
       ? "menu"
       : catalogMode === "single_product"
@@ -341,11 +641,11 @@ function getOnboardingContextCopy(
   });
   const templateDefinition = getStorefrontTemplateDefinition(templateProfile.templateId);
   const behavior = resolveOnboardingTemplateBehavior({
-    blueprint,
+    templateSeed,
     templateId: templateProfile.templateId,
   });
-  const storefrontProfile = (typeof blueprint.defaultSiteSettings.storefront_profile === "object" && blueprint.defaultSiteSettings.storefront_profile)
-    ? blueprint.defaultSiteSettings.storefront_profile as Record<string, unknown>
+  const storefrontProfile = (typeof templateSeed.defaultSiteSettings.storefront_profile === "object" && templateSeed.defaultSiteSettings.storefront_profile)
+    ? templateSeed.defaultSiteSettings.storefront_profile as Record<string, unknown>
     : {};
   const orderExperience = resolveStorefrontOrderExperienceFromProfile({
     ...storefrontProfile,
@@ -372,7 +672,7 @@ function getOnboardingContextCopy(
       launchChecklist: behavior.launchChecklist,
       seedButton: behavior.seedButton,
       previewDescription: behavior.previewDescription,
-      blueprintHelper: behavior.blueprintHelper,
+      templateHelper: behavior.templateHelper,
       contentIntro: behavior.contentIntro,
       catalogIntro: behavior.catalogIntro,
       launchSuccess: orderExperience.labels.orderPlacedTitle,
@@ -396,18 +696,18 @@ const onboardingCatalogModeDescriptions: Record<(typeof onboardingCatalogModes)[
   landing_only: "A marketing-first launch page with direct contact or WhatsApp ordering.",
 };
 
-function getBlueprintPaymentDefaults(blueprintId: string): LaunchTemplatePaymentDefaults {
-  return getBlueprintPaymentDefaultsFromCollection(blueprintId);
+function getTemplatePaymentDefaults(templateId: string): LaunchTemplatePaymentDefaults {
+  return getTemplatePaymentDefaultsFromCollection(templateId);
 }
 
-function getBlueprintPaymentDefaultsFromCollection(
-  blueprintId: string,
-  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+function getTemplatePaymentDefaultsFromCollection(
+  templateId: string,
+  templateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds,
 ): LaunchTemplatePaymentDefaults {
-  const { seedDefinition } = getTemplateSeedDefaults(blueprintId, blueprints);
-  const blueprintPaymentSettings = seedDefinition.defaultSiteSettings.payment_settings;
-  if (typeof blueprintPaymentSettings === "object" && blueprintPaymentSettings) {
-    const paymentSettings = blueprintPaymentSettings as Record<string, unknown>;
+  const { seedDefinition } = getTemplateSeedDefaults(templateId, templateSeeds);
+  const templatePaymentSettings = seedDefinition.defaultSiteSettings.payment_settings;
+  if (typeof templatePaymentSettings === "object" && templatePaymentSettings) {
+    const paymentSettings = templatePaymentSettings as Record<string, unknown>;
     return {
       cod_enabled: typeof paymentSettings.cod_enabled === "boolean"
         ? paymentSettings.cod_enabled as boolean
@@ -437,25 +737,337 @@ function getBlueprintPaymentDefaultsFromCollection(
   };
 }
 
-function getDefaultBlueprintId(availableBlueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints) {
-  return availableBlueprints.find((item) => item.id === "general-catalog")?.id
-    ?? availableBlueprints[0]?.id
+function getDefaultTemplateSeedId(availableTemplateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds) {
+  return availableTemplateSeeds.find((item) => item.id === "general-catalog")?.id
+    ?? availableTemplateSeeds[0]?.id
     ?? "general-catalog";
 }
 
-function getBlueprintDraftStoreName(blueprint: StoreBlueprintDefinition) {
-  return `${blueprint.shortName} Store`;
+function getTemplateSeedDraftStoreName(templateSeed: StorefrontTemplateSeedDefinition) {
+  return `${templateSeed.shortName} Store`;
 }
 
-function draftFromBlueprint(
-  blueprintId: string,
+function getBlankDefaultBlockSelections(businessFamily: StorefrontTemplateSeedDefinition["businessFamily"]) {
+  if (businessFamily === "service" || businessFamily === "booking" || businessFamily === "donation") {
+    return ["hero", "rich-text"];
+  }
+
+  return ["hero", "featured-products"];
+}
+
+function getBlankCatalogMode(businessFamily: StorefrontTemplateSeedDefinition["businessFamily"]): StorefrontTemplateSeedDefinition["catalogMode"] {
+  switch (businessFamily) {
+    case "service":
+    case "booking":
+    case "listing":
+      return "inquiry_only";
+    default:
+      return "multi_product";
+  }
+}
+
+function getBlankCapabilities(businessFamily: StorefrontTemplateSeedDefinition["businessFamily"]) {
+  switch (businessFamily) {
+    case "booking":
+      return ["booking_requests", "lead_capture", "availability"];
+    case "listing":
+      return ["lead_capture", "listing_catalog", "viewing_requests"];
+    case "service":
+      return ["lead_capture", "packages", "service_inquiries"];
+    default:
+      return ["catalog", "cart", "checkout"];
+  }
+}
+
+type BlankBlockSuggestion = CmsBlockRegistryItem & {
+  reason: string;
+  relevanceLabel: string;
+  score: number;
+};
+
+function formatVariantLabel(value: string) {
+  return value.replace(/-/g, " ");
+}
+
+function getBlankBlockPriority(block: CmsBlockRegistryItem["value"], businessFamily: StorefrontTemplateSeedDefinition["businessFamily"]) {
+  const familyOrder: Record<StorefrontTemplateSeedDefinition["businessFamily"], Array<CmsBlockRegistryItem["value"]>> = {
+    commerce: [
+      "featured-products",
+      "category-showcase",
+      "promo-banner",
+      "trust-badges",
+      "testimonials",
+      "faq-accordion",
+      "rich-text",
+      "video-reel",
+      "social-feed",
+      "comparison",
+      "recently-viewed",
+      "recommended-products",
+    ],
+    booking: [
+      "rich-text",
+      "trust-badges",
+      "promo-banner",
+      "testimonials",
+      "faq-accordion",
+      "video-reel",
+      "social-feed",
+    ],
+    listing: [
+      "featured-products",
+      "trust-badges",
+      "rich-text",
+      "testimonials",
+      "faq-accordion",
+      "promo-banner",
+      "video-reel",
+      "social-feed",
+    ],
+    service: [
+      "rich-text",
+      "trust-badges",
+      "testimonials",
+      "faq-accordion",
+      "promo-banner",
+      "video-reel",
+      "social-feed",
+    ],
+    donation: [
+      "rich-text",
+      "trust-badges",
+      "testimonials",
+      "faq-accordion",
+      "promo-banner",
+      "video-reel",
+      "social-feed",
+    ],
+  };
+
+  return familyOrder[businessFamily].indexOf(block);
+}
+
+function getBlankBlockReason(block: CmsBlockRegistryItem, businessFamily: StorefrontTemplateSeedDefinition["businessFamily"], isRequired: boolean) {
+  if (isRequired) {
+    if (businessFamily === "service" || businessFamily === "booking") {
+      return "Included first because every guided launch needs a hero and a clear main conversion section.";
+    }
+
+    return "Included first because every guided launch needs a hero and a main catalog-style conversion section.";
+  }
+
+  const businessFamilyReasons: Partial<Record<CmsBlockRegistryItem["value"], Partial<Record<StorefrontTemplateSeedDefinition["businessFamily"], string>>>> = {
+    "featured-products": {
+      commerce: "Best early choice when shoppers need the main products, offers, or listings in front of them quickly.",
+      listing: "Useful when the homepage should move visitors straight into active listings or featured properties.",
+    },
+    "category-showcase": {
+      commerce: "A strong early add when the store has multiple collections, menus, or product groups to browse.",
+    },
+    "promo-banner": {
+      commerce: "Helpful for offers, shipping cues, or campaign messaging near the top of the homepage.",
+      booking: "Helpful for seasonal promotions, limited-time packages, or reservation offers.",
+      listing: "Helpful for featured offers, neighborhood campaigns, or seller-focused callouts.",
+      service: "Helpful for limited packages, consultation offers, or a strong lead-driving callout.",
+      donation: "Helpful for time-bound campaigns, donation drives, or cause updates that need immediate attention.",
+    },
+    "trust-badges": {
+      commerce: "Suggested early because new stores usually benefit from faster payment, delivery, and support trust.",
+      booking: "Suggested early because guests want confidence around service quality, support, and reservation handling.",
+      listing: "Suggested early because property and listing journeys need extra trust before inquiry.",
+      service: "Suggested early because service buyers want confidence before they message or book.",
+      donation: "Suggested early because donors need confidence about legitimacy, support, and how contributions are handled.",
+    },
+    testimonials: {
+      commerce: "Useful when social proof should show up before shoppers hesitate on a first purchase.",
+      booking: "Useful when guest feedback helps reduce booking hesitation.",
+      listing: "Useful when client proof or past results help move visitors into inquiry.",
+      service: "Useful when client proof is important before someone requests a consultation.",
+      donation: "Useful when donor stories or beneficiary proof helps visitors trust the campaign before contributing.",
+    },
+    "faq-accordion": {
+      commerce: "Useful when shipping, return, sizing, or payment questions are likely to slow purchase.",
+      booking: "Useful when timing, cancellation, or reservation questions matter early.",
+      listing: "Useful when visitors need answers before sending a viewing or pricing inquiry.",
+      service: "Useful when scope, timeline, or pricing questions come up often.",
+      donation: "Useful when donors need quick answers about impact, payment methods, transparency, or campaign rules.",
+    },
+    "rich-text": {
+      commerce: "Useful when the homepage needs brand story, policy context, or delivery details beyond product cards.",
+      booking: "A good early section for explaining the reservation flow and guest expectations clearly.",
+      listing: "A good early section for explaining process, location context, or how inquiries work.",
+      service: "A good early section for explaining packages, process, and what happens after inquiry.",
+      donation: "A good early section for explaining the mission, campaign context, and how donations make a difference.",
+    },
+    "video-reel": {
+      commerce: "Helpful when demos or motion explain the product faster than text alone.",
+      booking: "Helpful for tours, room previews, or showing the atmosphere before booking.",
+      listing: "Helpful for walkthroughs, neighborhood clips, or featured property motion.",
+      service: "Helpful when demonstrations or behind-the-scenes proof build trust quickly.",
+      donation: "Helpful when campaign videos, field updates, or founder messages make the cause feel more real.",
+    },
+    "social-feed": {
+      commerce: "Best when the brand already has good visual proof from customers or creators.",
+      booking: "Best when recent guest moments or venue visuals help bookings.",
+      listing: "Best when live social proof supports discovery and credibility.",
+      service: "Best when project snapshots or client moments build confidence.",
+      donation: "Best when campaign updates, volunteer moments, or beneficiary visuals support credibility.",
+    },
+    comparison: {
+      commerce: "Useful when buyers compare packages, devices, plans, or feature tiers before buying.",
+    },
+    "recently-viewed": {
+      commerce: "More valuable once shoppers browse multiple items and return often.",
+    },
+    "recommended-products": {
+      commerce: "Best after the main catalog flow is already clear and you want stronger cross-sell support.",
+    },
+  };
+
+  return businessFamilyReasons[block.value]?.[businessFamily]
+    ?? "A supporting section you can add now or turn on later from onboarding and settings.";
+}
+
+function buildBlankBlockSuggestions(
+  blocks: CmsBlockRegistryItem[],
+  businessFamily: StorefrontTemplateSeedDefinition["businessFamily"],
+  recommendedBlockSet: readonly string[],
+): BlankBlockSuggestion[] {
+  const requiredDefaults = new Set(getBlankDefaultBlockSelections(businessFamily));
+  const recommended = prioritizeRecommendedBlocks(blocks, { recommendedBlockSet: [...recommendedBlockSet] });
+  const recommendedOrder = new Map(recommended.map((block, index) => [block.value, index]));
+
+  return [...blocks]
+    .map((block) => {
+      const isRequired = requiredDefaults.has(block.value);
+      const priorityIndex = getBlankBlockPriority(block.value, businessFamily);
+      const recommendedIndex = recommendedOrder.get(block.value) ?? 999;
+      const score = (
+        (isRequired ? 1000 : 0)
+        + (priorityIndex >= 0 ? 400 - (priorityIndex * 20) : 0)
+        + (recommendedIndex < 999 ? 180 - Math.min(recommendedIndex, 8) * 8 : 0)
+        + (block.layer === "core" ? 20 : 0)
+        + (block.variantIds.length > 0 ? 12 : 0)
+      );
+
+      return {
+        ...block,
+        score,
+        relevanceLabel: isRequired
+          ? "Starter default"
+          : priorityIndex >= 0
+            ? priorityIndex < 3
+              ? "Strong match"
+              : "Good fit"
+            : "Optional later",
+        reason: getBlankBlockReason(block, businessFamily, isRequired),
+      };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      return left.label.localeCompare(right.label);
+      });
+}
+
+function sortStarterBlockSelections(
+  selections: string[],
+  businessFamily: StorefrontTemplateSeedDefinition["businessFamily"],
+) {
+  const requiredDefaults = new Set(getBlankDefaultBlockSelections(businessFamily));
+
+  return [...new Set(selections)]
+    .sort((left, right) => {
+      const leftRequired = requiredDefaults.has(left);
+      const rightRequired = requiredDefaults.has(right);
+
+      if (leftRequired !== rightRequired) {
+        return leftRequired ? -1 : 1;
+      }
+
+      const priorityDelta = getBlankBlockPriority(left as CmsBlockRegistryItem["value"], businessFamily) - getBlankBlockPriority(right as CmsBlockRegistryItem["value"], businessFamily);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return left.localeCompare(right);
+    });
+}
+
+function getOrderedStarterBlockSelections(
+  businessFamily: StorefrontTemplateSeedDefinition["businessFamily"],
+  selections: string[],
+) {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+
+  for (const blockType of [...getBlankDefaultBlockSelections(businessFamily), ...selections]) {
+    if (seen.has(blockType)) {
+      continue;
+    }
+
+    seen.add(blockType);
+    ordered.push(blockType);
+  }
+
+  return ordered;
+}
+
+function buildBlankBuilderChecklist(
+  draft: DraftState,
+  selectedBlocks: string[],
+): PreviewChecklistItem[] {
+  const heroVariant = draft.starterVariantSelections.hero || "full-bleed";
+  const defaultBlocks = getBlankDefaultBlockSelections(draft.blankBusinessFamily);
+  const hasOptionalStoryBlock = selectedBlocks.some((block) => !defaultBlocks.includes(block));
+  const contentHeavyBlocks = selectedBlocks.filter((block) =>
+    ["promo-banner", "faq-accordion", "testimonials", "trust-badges", "social-feed", "video-reel", "comparison", "rich-text"].includes(block),
+  );
+
+  return [
+    {
+      label: "Starter homepage structure is set",
+      done: selectedBlocks.length >= defaultBlocks.length,
+      hint: "Core sections stay included, and you can still rearrange or expand them before launch.",
+    },
+    {
+      label: "Hero message feels launch-ready",
+      done: Boolean(draft.heroTitle.trim() && draft.heroSubtitle.trim()),
+      hint: "A strong headline and supporting line make the blank template feel intentional immediately.",
+    },
+    {
+      label: "Media-heavy hero layouts have artwork",
+      done: !["full-bleed", "editorial", "split"].includes(heroVariant) || Boolean(draft.heroMediaUrl.trim()),
+      hint: "Split, editorial, and full-bleed heroes look much stronger once a real image is attached.",
+    },
+    {
+      label: "Optional storytelling sections are intentional",
+      done: hasOptionalStoryBlock,
+      hint: hasOptionalStoryBlock
+        ? "Nice. The homepage goes beyond the bare minimum and starts explaining the offer."
+        : "A minimal homepage is fine, but consider one extra supporting section if the merchant needs more context.",
+    },
+    {
+      label: "Selected optional sections can be personalized later",
+      done: contentHeavyBlocks.length === 0,
+      hint: contentHeavyBlocks.length > 0
+        ? `${contentHeavyBlocks.slice(0, 3).map((block) => formatVariantLabel(block)).join(", ")} will feel stronger after a quick content pass in Styles.`
+        : "Nothing content-heavy is waiting on extra setup yet.",
+    },
+  ];
+}
+
+function draftFromTemplateSeed(
+  templateId: string,
   themePackages: ThemePackageDefinition[],
   previous?: Partial<DraftState>,
-  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+  templateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds,
 ): DraftState {
-  const { templateProfile, blueprint, seedDefinition } = getTemplateSeedDefaults(blueprintId, blueprints);
+  const { templateProfile, templateSeed, seedDefinition } = getTemplateSeedDefaults(templateId, templateSeeds);
   const themePackage = resolveThemePackageById(previous?.themePackageId, themePackages, seedDefinition.defaultTheme.presetId);
-  const storeName = previous?.storeName || getBlueprintDraftStoreName(blueprint);
+  const storeName = previous?.storeName || getTemplateSeedDraftStoreName(templateSeed);
 
   return {
     storeName,
@@ -463,7 +1075,13 @@ function draftFromBlueprint(
     customDomain: previous?.customDomain || "",
     description: previous?.description || seedDefinition.storeDescription,
     logoUrl: previous?.logoUrl || "",
-    blueprintId: templateProfile.templateId,
+    templateId: templateProfile.templateId,
+    onboardingMode: previous?.onboardingMode || seedDefinition.onboardingMode,
+    blankBusinessFamily: previous?.blankBusinessFamily || templateProfile.businessFamily,
+    starterBlockSelections: previous?.starterBlockSelections?.length
+      ? previous.starterBlockSelections
+      : getBlankDefaultBlockSelections(templateProfile.businessFamily),
+    starterVariantSelections: previous?.starterVariantSelections || {},
     businessFamily: previous?.businessFamily || templateProfile.businessFamily,
     catalogMode: previous?.catalogMode || templateProfile.catalogMode,
     themePackageId: previous?.themePackageId || themePackage.id,
@@ -478,24 +1096,28 @@ function draftFromBlueprint(
     heroSubtitle: previous?.heroSubtitle || seedDefinition.hero.subtitle,
     heroMediaUrl: previous?.heroMediaUrl || "",
     payment: {
-      ...getBlueprintPaymentDefaults(blueprint.id),
-      ...getBlueprintPaymentDefaultsFromCollection(blueprint.id, blueprints),
+      ...getTemplatePaymentDefaults(templateSeed.id),
+      ...getTemplatePaymentDefaultsFromCollection(templateSeed.id, templateSeeds),
       bkash_number: previous?.payment?.bkash_number || "",
       nagad_number: previous?.payment?.nagad_number || "",
     },
     contactPage: {
-      ...getDefaultContactPage(blueprint),
+      ...getDefaultContactPage(templateSeed),
       ...previous?.contactPage,
     },
     delivery: {
-      ...getDefaultDeliverySettings(blueprint),
+      ...getDefaultDeliverySettings(templateSeed),
       ...previous?.delivery,
     },
     whatsappSupport: {
-      ...getDefaultWhatsAppSupport(blueprint),
+      ...getDefaultWhatsAppSupport(templateSeed),
       ...previous?.whatsappSupport,
     },
-    faqEntries: previous?.faqEntries?.length ? previous.faqEntries : getDefaultFaqEntries(blueprint),
+    faqEntries: previous?.faqEntries?.length ? previous.faqEntries : getDefaultFaqEntries(templateSeed),
+    homepageSectionVisibility: normalizeHomepageSectionVisibility(
+      templateProfile.templateId,
+      previous?.homepageSectionVisibility ?? createDefaultHomepageSectionVisibility(templateProfile.templateId),
+    ),
     isPublished: previous?.isPublished ?? false,
   };
 }
@@ -609,19 +1231,68 @@ function applyCatalogModeToPages(pages: StorePage[], draft: DraftState): StorePa
   }));
 }
 
+function applyBlankHomepageComposition(pages: StorePage[], draft: DraftState): StorePage[] {
+  if (draft.onboardingMode !== "blank") {
+    return pages;
+  }
+
+  const selectedBlocks = getOrderedStarterBlockSelections(draft.blankBusinessFamily, draft.starterBlockSelections);
+
+  const homepageBlocks = selectedBlocks.map((blockType, index) => {
+    const block = createRegistryDefaultBlock(blockType as StorePageBlock["type"], index);
+    const selectedVariant = draft.starterVariantSelections[blockType];
+
+    if (block.type !== "hero") {
+      return {
+        ...block,
+        layoutVariant: selectedVariant || block.layoutVariant,
+      };
+    }
+
+    return {
+      ...block,
+      layoutVariant: selectedVariant || block.layoutVariant,
+      props: {
+        ...block.props,
+        tagline: draft.heroTagline,
+        title: draft.heroTitle,
+        highlight: draft.heroHighlight,
+        subtitle: draft.heroSubtitle,
+        mediaUrl: draft.heroMediaUrl,
+        mediaType: draft.heroMediaUrl ? "image" as const : undefined,
+      },
+    };
+  });
+
+  return pages.map((page) => (
+    page.isHomepage
+      ? {
+          ...page,
+          blocks: homepageBlocks,
+        }
+      : page
+  ));
+}
+
 function buildPreviewStore(
   draft: DraftState,
   activeStoreId: string,
   themePackages: ThemePackageDefinition[],
-  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
-  blueprints: StoreBlueprintDefinition[] = fallbackStoreBlueprints,
+  templateSeeds: StorefrontTemplateSeedDefinition[] = fallbackStorefrontTemplateSeeds,
 ): Store {
-  const templateProfile = resolveStorefrontTemplateProfile(draft.blueprintId, { blueprintId: draft.blueprintId });
+  const templateProfile = resolveStorefrontTemplateProfile(draft.templateId, { templateSeedId: draft.templateId });
   const seedDefinition = templateProfile.seedDefinition;
   const themePackage = resolveThemePackageById(draft.themePackageId, themePackages, seedDefinition.defaultTheme.presetId);
-  const templatePages = applyCatalogModeToPages(
-    applyHeroToPages(instantiateStorePagesFromTemplate(templateProfile, pageBlueprints), draft),
-    draft,
+  const templatePages = applyHomepageSectionVisibilityToPages(
+      applyCatalogModeToPages(
+        applyBlankHomepageComposition(
+        applyHeroToPages(instantiateStorePagesFromTemplate(templateProfile), draft),
+          draft,
+        ),
+        draft,
+    ),
+    templateProfile.templateId,
+    draft.homepageSectionVisibility,
   );
 
   return {
@@ -712,6 +1383,13 @@ function getContentSectionCards(context: ReturnType<typeof getOnboardingContextC
       icon: Sparkles,
     },
     {
+      id: "layout",
+      title: "Homepage sections",
+      description: "Choose optional template sections to show on launch.",
+      visible: true,
+      icon: Layers,
+    },
+    {
       id: "delivery",
       title: context.behavior.deliverySectionTitle,
       description: context.behavior.deliverySectionDescription,
@@ -793,10 +1471,9 @@ export default function OnboardingWizard() {
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(true);
   const [initialSetupCompleted, setInitialSetupCompleted] = useState(false);
-  const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
+  const [templateSeeds, setTemplateSeeds] = useState<StorefrontTemplateSeedDefinition[]>(fallbackStorefrontTemplateSeeds);
   const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
-  const [pageBlueprints, setPageBlueprints] = useState<CmsPageBlueprint[]>(fallbackPageBlueprints);
-  const [draft, setDraft] = useState<DraftState>(() => draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
+  const [draft, setDraft] = useState<DraftState>(() => draftFromTemplateSeed(getDefaultTemplateSeedId(), fallbackThemePackages));
   const [contentSection, setContentSection] = useState<ContentSectionId>("hero");
   const [seedingTemplateData, setSeedingTemplateData] = useState(false);
   const [unseedingTemplateData, setUnseedingTemplateData] = useState(false);
@@ -810,12 +1487,12 @@ export default function OnboardingWizard() {
   const [previewMode, setPreviewMode] = useState<PreviewDockMode>("closed");
 
   const activeTemplateProfile = useMemo(
-    () => resolveStorefrontTemplateProfile(draft.blueprintId, { blueprintId: draft.blueprintId }),
-    [draft.blueprintId],
+    () => resolveStorefrontTemplateProfile(draft.templateId, { templateSeedId: draft.templateId }),
+    [draft.templateId],
   );
   const onboardingContext = useMemo(
-    () => getOnboardingContextCopy(draft.blueprintId, draft.catalogMode, blueprints),
-    [blueprints, draft.blueprintId, draft.catalogMode],
+    () => getOnboardingContextCopy(draft.templateId, draft.catalogMode, templateSeeds),
+    [templateSeeds, draft.templateId, draft.catalogMode],
   );
   const availableCatalogModes = useMemo(() => {
     const allowed = onboardingContext.behavior.allowedCatalogModes;
@@ -839,12 +1516,61 @@ export default function OnboardingWizard() {
   }, [requestedStepId, steps]);
   const activeStep = steps[activeIndex] ?? steps[0];
   const previewStore = useMemo(
-    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages, pageBlueprints, blueprints),
-    [draft, activeStoreId, blueprints, pageBlueprints, themePackages],
+    () => buildPreviewStore(draft, activeStoreId ?? "preview-store", themePackages, templateSeeds),
+    [draft, activeStoreId, templateSeeds, themePackages],
   );
   const contentSections = useMemo(
     () => getContentSectionCards(onboardingContext),
     [onboardingContext],
+  );
+  const optionalHomepageSections = useMemo(
+    () => getOptionalTemplateHomepageSectionChoices(activeTemplateProfile.templateId),
+    [activeTemplateProfile.templateId],
+  );
+  const enabledHomepageSections = useMemo(
+    () => optionalHomepageSections.filter((section) => draft.homepageSectionVisibility[section.type] ?? true),
+    [draft.homepageSectionVisibility, optionalHomepageSections],
+  );
+  const hiddenHomepageSections = useMemo(
+    () => optionalHomepageSections.filter((section) => !(draft.homepageSectionVisibility[section.type] ?? true)),
+    [draft.homepageSectionVisibility, optionalHomepageSections],
+  );
+  const blankBlockChoices = useMemo(() => {
+    if (draft.onboardingMode !== "blank") {
+      return [];
+    }
+
+    const compatibleBlocks = fallbackBlockRegistry.filter((block) => {
+      if (!block.compatibleBusinessFamilies.includes(draft.blankBusinessFamily)) {
+        return false;
+      }
+
+      return block.requiredCapabilities.every((capability) => getBlankCapabilities(draft.blankBusinessFamily).includes(capability));
+    });
+
+    return buildBlankBlockSuggestions(
+      compatibleBlocks,
+      draft.blankBusinessFamily,
+      activeTemplateProfile.seedDefinition.recommendedBlockSet,
+    );
+  }, [activeTemplateProfile.seedDefinition.recommendedBlockSet, draft.blankBusinessFamily, draft.onboardingMode]);
+  const orderedStarterBlocks = useMemo(
+    () => getOrderedStarterBlockSelections(draft.blankBusinessFamily, draft.starterBlockSelections),
+    [draft.blankBusinessFamily, draft.starterBlockSelections],
+  );
+  const selectedBlankBlockChoices = useMemo(() => {
+    if (draft.onboardingMode !== "blank") {
+      return [];
+    }
+
+    const byType = new Map(blankBlockChoices.map((block) => [block.value, block]));
+    return orderedStarterBlocks
+      .map((blockType) => byType.get(blockType as any))
+      .filter((block): block is BlankBlockSuggestion => Boolean(block));
+  }, [blankBlockChoices, draft.onboardingMode, orderedStarterBlocks]);
+  const blankBuilderChecklist = useMemo(
+    () => buildBlankBuilderChecklist(draft, orderedStarterBlocks),
+    [draft, orderedStarterBlocks],
   );
 
   const filteredTemplateOptions = useMemo(() => {
@@ -889,18 +1615,18 @@ export default function OnboardingWizard() {
 
   const previewModalProfile = useMemo(() => {
     if (!previewModalTemplateId) return null;
-    return resolveStorefrontTemplateProfile(previewModalTemplateId, { blueprintId: previewModalTemplateId });
+    return resolveStorefrontTemplateProfile(previewModalTemplateId, { templateSeedId: previewModalTemplateId });
   }, [previewModalTemplateId]);
 
   const previewModalDraft = useMemo(() => {
     if (!previewModalTemplateId) return null;
-    return draftFromBlueprint(previewModalTemplateId, themePackages);
+    return draftFromTemplateSeed(previewModalTemplateId, themePackages);
   }, [previewModalTemplateId, themePackages]);
 
   const previewModalStore = useMemo(() => {
     if (!previewModalDraft) return null;
-    return buildPreviewStore(previewModalDraft, "preview-modal-store", themePackages, pageBlueprints, blueprints);
-  }, [previewModalDraft, themePackages, pageBlueprints, blueprints]);
+    return buildPreviewStore(previewModalDraft, "preview-modal-store", themePackages, templateSeeds);
+  }, [previewModalDraft, themePackages, templateSeeds]);
 
   const previewModalHomepage = useMemo(() => {
     if (!previewModalStore) return null;
@@ -921,11 +1647,11 @@ export default function OnboardingWizard() {
   const storeUrl = getStoreUrl(draft.slug, draft.customDomain);
   const canGoNext = activeIndex < steps.length - 1;
   const canGoBack = activeIndex > 0;
-  const blueprintEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
+  const templateEditingEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
   const launchAction = useMemo(
-    () => getPrimaryCatalogAction(draft.blueprintId, draft.catalogMode),
-    [draft.blueprintId, draft.catalogMode],
+    () => getPrimaryCatalogAction(draft.templateId, draft.catalogMode),
+    [draft.templateId, draft.catalogMode],
   );
 
   useEffect(() => {
@@ -941,10 +1667,9 @@ export default function OnboardingWizard() {
     setSaving(false);
     setInitialSetupCompleted(false);
     setCompletionState(null);
-    setBlueprints(fallbackStoreBlueprints);
+    setTemplateSeeds(fallbackStorefrontTemplateSeeds);
     setThemePackages(fallbackThemePackages);
-    setPageBlueprints(fallbackPageBlueprints);
-    setDraft(draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
+    setDraft(draftFromTemplateSeed(getDefaultTemplateSeedId(), fallbackThemePackages));
     setContentSection("hero");
     setCatalogSeedMetadata(null);
     setLoading(role === "admin" && Boolean(activeStoreId));
@@ -972,7 +1697,7 @@ export default function OnboardingWizard() {
           setActiveIndex(requestedStepIndex);
           setSlugAvailable(true);
           setSlugChecking(false);
-          setDraft(draftFromBlueprint(getDefaultBlueprintId(), fallbackThemePackages));
+          setDraft(draftFromTemplateSeed(getDefaultTemplateSeedId(), fallbackThemePackages));
           setLoading(false);
         }
         return;
@@ -982,15 +1707,12 @@ export default function OnboardingWizard() {
         setLoading(true);
       }
       try {
-        const [loadedBlueprints, loadedThemePackages, loadedPageBlueprints] = await Promise.all([
-          loadStoreBlueprints(supabase),
+        const [loadedThemePackages] = await Promise.all([
           loadThemePackages(supabase, activeStoreId),
-          loadPageBlueprints(supabase),
         ]);
         if (!active) return;
-        setBlueprints(loadedBlueprints);
+        setTemplateSeeds(fallbackStorefrontTemplateSeeds);
         setThemePackages(loadedThemePackages);
-        setPageBlueprints(loadedPageBlueprints);
 
         const [{ data: storeRecord }, { data: themeRecord }, { data: onboardingSettings }, businessProfileResult] = await Promise.all([
           supabase
@@ -1003,10 +1725,10 @@ export default function OnboardingWizard() {
             .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
-          supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "onboarding_status", "storefront_profile", "contact_page", "delivery_settings", "whatsapp_support", "faq_entries", "catalog_seed_metadata"]),
+          supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["payment_settings", "onboarding_status", "storefront_profile", "homepage_section_visibility", "contact_page", "delivery_settings", "whatsapp_support", "faq_entries", "catalog_seed_metadata"]),
           supabase
             .from("store_business_profiles")
-            .select("blueprint_id, blueprint_version, business_family, catalog_mode")
+            .select("template_id, business_family, catalog_mode")
             .eq("store_id", activeStoreId as string)
             .maybeSingle(),
         ]);
@@ -1031,6 +1753,7 @@ export default function OnboardingWizard() {
         const siteSettingsRows = Array.isArray(onboardingSettings) ? onboardingSettings as Array<{ key?: string; value?: unknown }> : [];
         const payment = ((siteSettingsRows.find((entry) => entry.key === "payment_settings")?.value ?? {}) as Partial<DraftState["payment"]>);
         const storefrontProfileSetting = (siteSettingsRows.find((entry) => entry.key === "storefront_profile")?.value ?? {}) as Record<string, unknown>;
+        const homepageSectionVisibilitySetting = siteSettingsRows.find((entry) => entry.key === "homepage_section_visibility")?.value ?? {};
         const contactPageSetting = ((siteSettingsRows.find((entry) => entry.key === "contact_page")?.value ?? {}) as Partial<DraftState["contactPage"]>);
         const deliverySetting = ((siteSettingsRows.find((entry) => entry.key === "delivery_settings")?.value ?? {}) as Record<string, unknown>);
         const whatsappSupportSetting = ((siteSettingsRows.find((entry) => entry.key === "whatsapp_support")?.value ?? {}) as Partial<DraftState["whatsappSupport"]>);
@@ -1042,27 +1765,26 @@ export default function OnboardingWizard() {
           completed_via?: string | null;
         };
         const businessProfile = businessProfileResult?.data as {
-          blueprint_id?: string;
-          blueprint_version?: number | null;
+          template_id?: string;
           business_family?: DraftState["businessFamily"];
           catalog_mode?: DraftState["catalogMode"];
         } | null;
         const templateProfile = resolveStorefrontTemplateProfile(
           storefrontProfileSetting?.template_id,
           {
-            blueprintId: typeof businessProfile?.blueprint_id === "string"
-              ? businessProfile.blueprint_id
-              : typeof storefrontProfileSetting?.blueprint_id === "string"
-                ? storefrontProfileSetting.blueprint_id
-                : store?.store_type ?? getDefaultBlueprintId(loadedBlueprints),
+            templateSeedId: typeof businessProfile?.template_id === "string"
+              ? businessProfile.template_id
+              : typeof storefrontProfileSetting?.template_id === "string"
+                ? storefrontProfileSetting.template_id
+                : store?.store_type ?? getDefaultTemplateSeedId(fallbackStorefrontTemplateSeeds),
             productVisibility: typeof storefrontProfileSetting?.product_visibility === "string"
               ? storefrontProfileSetting.product_visibility
               : null,
           },
         );
-        const { blueprint: safeBlueprint, seedDefinition: safeSeedDefinition } = getTemplateSeedDefaults(
+        const { templateSeed: safeTemplateSeed, seedDefinition: safeSeedDefinition } = getTemplateSeedDefaults(
           templateProfile.templateId,
-          loadedBlueprints,
+          fallbackStorefrontTemplateSeeds,
         );
         const hasCompletedInitialSetup = Boolean(
           store?.is_published
@@ -1073,12 +1795,31 @@ export default function OnboardingWizard() {
         if (!active) return;
         setInitialSetupCompleted(hasCompletedInitialSetup);
         setCatalogSeedMetadata(isTemplateSeedMetadata(catalogSeedMetadataSetting) ? catalogSeedMetadataSetting as Record<string, unknown> : null);
-        setDraft(draftFromBlueprint(templateProfile.templateId, loadedThemePackages, {
-          storeName: store?.name || getBlueprintDraftStoreName(safeBlueprint),
-          slug: store?.slug || createStoreSlug(store?.name || getBlueprintDraftStoreName(safeBlueprint)),
+        setDraft(draftFromTemplateSeed(templateProfile.templateId, loadedThemePackages, {
+          storeName: store?.name || getTemplateSeedDraftStoreName(safeTemplateSeed),
+          slug: store?.slug || createStoreSlug(store?.name || getTemplateSeedDraftStoreName(safeTemplateSeed)),
           customDomain: store?.custom_domain || "",
           description: store?.description || undefined,
           logoUrl: store?.logo_url || "",
+          onboardingMode: storefrontProfileSetting?.onboarding_mode === "blank" ? "blank" : safeSeedDefinition.onboardingMode,
+          blankBusinessFamily:
+            storefrontProfileSetting?.onboarding_mode === "blank"
+              && (storefrontProfileSetting?.blank_business_family === "commerce"
+                || storefrontProfileSetting?.blank_business_family === "booking"
+                || storefrontProfileSetting?.blank_business_family === "listing"
+                || storefrontProfileSetting?.blank_business_family === "service")
+              ? storefrontProfileSetting.blank_business_family
+              : safeSeedDefinition.businessFamily,
+          starterBlockSelections: Array.isArray(storefrontProfileSetting?.starter_block_selections)
+            ? storefrontProfileSetting.starter_block_selections.filter((value): value is string => typeof value === "string")
+            : undefined,
+          starterVariantSelections:
+            typeof storefrontProfileSetting?.starter_variant_selections === "object" && storefrontProfileSetting.starter_variant_selections
+              ? Object.fromEntries(
+                  Object.entries(storefrontProfileSetting.starter_variant_selections as Record<string, unknown>)
+                    .filter((entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string"),
+                )
+              : undefined,
           businessFamily: businessProfile?.business_family || safeSeedDefinition.businessFamily,
           catalogMode: businessProfile?.catalog_mode || safeSeedDefinition.catalogMode,
           themePackageId: theme?.theme_package_id || theme?.preset_id || safeSeedDefinition.defaultTheme.presetId,
@@ -1088,26 +1829,26 @@ export default function OnboardingWizard() {
           borderRadius: theme?.components?.borderRadius || undefined,
           customCssVars: theme?.colors || {},
           payment: {
-            ...getBlueprintPaymentDefaultsFromCollection(safeBlueprint.id, loadedBlueprints),
+            ...getTemplatePaymentDefaultsFromCollection(safeTemplateSeed.id, fallbackStorefrontTemplateSeeds),
             ...payment,
             bkash_number: payment.bkash_number || "",
             nagad_number: payment.nagad_number || "",
           },
           contactPage: {
-            ...getDefaultContactPage(safeBlueprint),
+            ...getDefaultContactPage(safeTemplateSeed),
             ...contactPageSetting,
           },
           delivery: {
-            ...getDefaultDeliverySettings(safeBlueprint),
+            ...getDefaultDeliverySettings(safeTemplateSeed),
             enabled: Boolean(deliverySetting.enabled),
-            primaryZoneLabel: typeof deliverySetting.primary_zone_label === "string" ? deliverySetting.primary_zone_label : getDefaultDeliverySettings(safeBlueprint).primaryZoneLabel,
-            secondaryZoneLabel: typeof deliverySetting.secondary_zone_label === "string" ? deliverySetting.secondary_zone_label : getDefaultDeliverySettings(safeBlueprint).secondaryZoneLabel,
-            deliveryFee: typeof deliverySetting.delivery_fee === "number" ? deliverySetting.delivery_fee : getDefaultDeliverySettings(safeBlueprint).deliveryFee,
-            deliveryFeeOutside: typeof deliverySetting.delivery_fee_outside === "number" ? deliverySetting.delivery_fee_outside : getDefaultDeliverySettings(safeBlueprint).deliveryFeeOutside,
-            freeThreshold: typeof deliverySetting.free_threshold === "number" ? deliverySetting.free_threshold : getDefaultDeliverySettings(safeBlueprint).freeThreshold,
+            primaryZoneLabel: typeof deliverySetting.primary_zone_label === "string" ? deliverySetting.primary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).primaryZoneLabel,
+            secondaryZoneLabel: typeof deliverySetting.secondary_zone_label === "string" ? deliverySetting.secondary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).secondaryZoneLabel,
+            deliveryFee: typeof deliverySetting.delivery_fee === "number" ? deliverySetting.delivery_fee : getDefaultDeliverySettings(safeTemplateSeed).deliveryFee,
+            deliveryFeeOutside: typeof deliverySetting.delivery_fee_outside === "number" ? deliverySetting.delivery_fee_outside : getDefaultDeliverySettings(safeTemplateSeed).deliveryFeeOutside,
+            freeThreshold: typeof deliverySetting.free_threshold === "number" ? deliverySetting.free_threshold : getDefaultDeliverySettings(safeTemplateSeed).freeThreshold,
           },
           whatsappSupport: {
-            ...getDefaultWhatsAppSupport(safeBlueprint),
+            ...getDefaultWhatsAppSupport(safeTemplateSeed),
             ...whatsappSupportSetting,
           },
           faqEntries: Array.isArray(faqEntriesSetting)
@@ -1117,9 +1858,13 @@ export default function OnboardingWizard() {
                   q: typeof entry.q === "string" ? entry.q : "",
                   a: typeof entry.a === "string" ? entry.a : "",
                 }))
-            : getDefaultFaqEntries(safeBlueprint),
+            : getDefaultFaqEntries(safeTemplateSeed),
+          homepageSectionVisibility: normalizeHomepageSectionVisibility(
+            templateProfile.templateId,
+            homepageSectionVisibilitySetting,
+          ),
           isPublished: store?.is_published ?? false,
-        }, loadedBlueprints));
+        }, fallbackStorefrontTemplateSeeds));
         setActiveIndex(requestedStepIndex);
         setContentSection("hero");
       } catch (error) {
@@ -1180,6 +1925,100 @@ export default function OnboardingWizard() {
     setDraft((current) => ({ ...current, ...patch }));
   };
 
+  const updateBlankBusinessFamily = (businessFamily: DraftState["blankBusinessFamily"]) => {
+    setDraft((current) => ({
+      ...current,
+      blankBusinessFamily: businessFamily,
+      businessFamily,
+      catalogMode: getBlankCatalogMode(businessFamily),
+      starterBlockSelections: sortStarterBlockSelections(getBlankDefaultBlockSelections(businessFamily), businessFamily),
+      starterVariantSelections: {},
+    }));
+  };
+
+  const toggleStarterBlockSelection = (blockType: string) => {
+    setDraft((current) => {
+      const requiredDefaults = new Set(getBlankDefaultBlockSelections(current.blankBusinessFamily));
+      if (requiredDefaults.has(blockType)) {
+        return current;
+      }
+
+      const selections = current.starterBlockSelections.includes(blockType)
+        ? current.starterBlockSelections.filter((value) => value !== blockType)
+        : [...current.starterBlockSelections, blockType];
+
+      const nextVariants = { ...current.starterVariantSelections };
+      if (!selections.includes(blockType)) {
+        delete nextVariants[blockType];
+      }
+
+        return {
+          ...current,
+          starterBlockSelections: sortStarterBlockSelections(selections, current.blankBusinessFamily),
+          starterVariantSelections: nextVariants,
+        };
+      });
+    };
+
+  const restoreRecommendedStarterSelections = () => {
+    setDraft((current) => {
+      const nextSelections = sortStarterBlockSelections(
+        [
+          ...getBlankDefaultBlockSelections(current.blankBusinessFamily),
+          ...current.starterBlockSelections,
+        ],
+        current.blankBusinessFamily,
+      );
+
+      return {
+        ...current,
+        starterBlockSelections: nextSelections,
+      };
+    });
+  };
+
+  const moveStarterBlockSelection = (blockType: string, direction: "up" | "down") => {
+    setDraft((current) => {
+      const requiredDefaults = new Set(getBlankDefaultBlockSelections(current.blankBusinessFamily));
+      if (requiredDefaults.has(blockType)) {
+        return current;
+      }
+
+      const optionalSelections = current.starterBlockSelections.filter((value) => !requiredDefaults.has(value));
+      const currentIndex = optionalSelections.indexOf(blockType);
+
+      if (currentIndex < 0) {
+        return current;
+      }
+
+      const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= optionalSelections.length) {
+        return current;
+      }
+
+      const nextSelections = [...optionalSelections];
+      [nextSelections[currentIndex], nextSelections[targetIndex]] = [nextSelections[targetIndex], nextSelections[currentIndex]];
+
+      return {
+        ...current,
+        starterBlockSelections: [
+          ...getBlankDefaultBlockSelections(current.blankBusinessFamily),
+          ...nextSelections,
+        ],
+      };
+    });
+  };
+
+  const updateStarterVariantSelection = (blockType: string, variantId: string) => {
+    setDraft((current) => ({
+      ...current,
+      starterVariantSelections: {
+        ...current.starterVariantSelections,
+        [blockType]: variantId,
+      },
+    }));
+  };
+
   const updatePayment = (patch: Partial<DraftState["payment"]>) => {
     setDraft((current) => ({
       ...current,
@@ -1220,6 +2059,16 @@ export default function OnboardingWizard() {
     }));
   };
 
+  const updateHomepageSectionVisibility = (type: string, enabled: boolean) => {
+    setDraft((current) => ({
+      ...current,
+      homepageSectionVisibility: {
+        ...current.homepageSectionVisibility,
+        [type]: enabled,
+      },
+    }));
+  };
+
   const seedTemplateDemoData = async () => {
     if (!activeStoreId) {
       toast.error("Open the merchant store first, then retry.");
@@ -1234,7 +2083,7 @@ export default function OnboardingWizard() {
       const catalogSeed = await reseedTemplateCatalog(
         supabase as any,
         activeStoreId,
-        draft.blueprintId,
+        draft.templateId,
         currentSeedMetadata,
       );
 
@@ -1316,9 +2165,9 @@ export default function OnboardingWizard() {
     }
   };
 
-  const applyBlueprint = (blueprintId: string) => {
+  const applyTemplateSeed = (templateId: string) => {
     setDraft((current) =>
-      draftFromBlueprint(blueprintId, themePackages, {
+      draftFromTemplateSeed(templateId, themePackages, {
         storeName: current.storeName,
         slug: current.slug,
         customDomain: current.customDomain,
@@ -1330,8 +2179,12 @@ export default function OnboardingWizard() {
         bodyFont: current.bodyFont,
         borderRadius: current.borderRadius,
         customCssVars: current.customCssVars,
+        onboardingMode: getTemplateSeedDefaults(templateId, templateSeeds).seedDefinition.onboardingMode,
+        blankBusinessFamily: current.blankBusinessFamily,
+        starterBlockSelections: current.starterBlockSelections,
+        starterVariantSelections: current.starterVariantSelections,
         payment: {
-          ...getBlueprintPaymentDefaultsFromCollection(blueprintId, blueprints),
+          ...getTemplatePaymentDefaultsFromCollection(templateId, templateSeeds),
           bkash_number: current.payment.bkash_number,
           nagad_number: current.payment.nagad_number,
         },
@@ -1339,8 +2192,12 @@ export default function OnboardingWizard() {
         delivery: current.delivery,
         whatsappSupport: current.whatsappSupport,
         faqEntries: current.faqEntries,
+        homepageSectionVisibility: normalizeHomepageSectionVisibility(
+          resolveStorefrontTemplateProfile(templateId, { templateSeedId: templateId }).templateId,
+          current.homepageSectionVisibility,
+        ),
         isPublished: current.isPublished,
-      }, blueprints),
+      }, templateSeeds),
     );
     setCatalogSeedMetadata(null);
     setContentSection("hero");
@@ -1378,28 +2235,27 @@ export default function OnboardingWizard() {
         }
       }
 
-      const { blueprint: selectedBlueprint, seedDefinition } = getTemplateSeedDefaults(draft.blueprintId, blueprints);
-      const templateProfile = resolveStorefrontTemplateProfile(draft.blueprintId, {
-        blueprintId: selectedBlueprint.id,
+      const { templateSeed: selectedTemplateSeed, seedDefinition } = getTemplateSeedDefaults(draft.templateId, templateSeeds);
+      const templateProfile = resolveStorefrontTemplateProfile(draft.templateId, {
+        templateSeedId: selectedTemplateSeed.id,
         productVisibility: typeof (seedDefinition.defaultSiteSettings.storefront_profile as Record<string, unknown> | undefined)?.product_visibility === "string"
           ? (seedDefinition.defaultSiteSettings.storefront_profile as Record<string, string>).product_visibility
           : null,
       });
       const selectedThemePackage = resolveThemePackageById(draft.themePackageId, themePackages, seedDefinition.defaultTheme.presetId);
-      const pages = buildPreviewStore(
-        { ...draft, isPublished: publish },
-        activeStoreId,
-        themePackages,
-        pageBlueprints,
-        blueprints,
-      ).pages;
+        const pages = buildPreviewStore(
+          { ...draft, isPublished: publish },
+          activeStoreId,
+          themePackages,
+          templateSeeds,
+        ).pages;
 
       const { error: storeError } = await supabase.from("stores").update(
         {
-          name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
-          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
+          name: draft.storeName.trim() || getTemplateSeedDraftStoreName(selectedTemplateSeed),
+          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getTemplateSeedDraftStoreName(selectedTemplateSeed)),
           description: draft.description.trim() || seedDefinition.storeDescription,
-          store_type: templateProfile.seedBlueprintId,
+          store_type: templateProfile.templateSeedId,
           logo_url: draft.logoUrl.trim() || null,
           currency_code: "BDT",
           locale: "en-BD",
@@ -1416,8 +2272,8 @@ export default function OnboardingWizard() {
         client: supabase,
         store: {
           id: activeStoreId,
-          name: draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint),
-          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getBlueprintDraftStoreName(selectedBlueprint)),
+          name: draft.storeName.trim() || getTemplateSeedDraftStoreName(selectedTemplateSeed),
+          slug: draft.slug.trim() || createStoreSlug(draft.storeName.trim() || getTemplateSeedDraftStoreName(selectedTemplateSeed)),
           logoUrl: draft.logoUrl.trim() || undefined,
           customDomain: draft.customDomain?.trim() || undefined,
           description: draft.description.trim() || seedDefinition.storeDescription,
@@ -1438,7 +2294,7 @@ export default function OnboardingWizard() {
           },
           pages,
         },
-        blueprint: selectedBlueprint,
+        templateSeed: selectedTemplateSeed,
         ownerId: user.id,
         themePackages,
       });
@@ -1448,7 +2304,17 @@ export default function OnboardingWizard() {
         return;
       }
 
+      await refreshStorefrontContentCache(supabase, activeStoreId);
+
       const siteSettingsRows = buildStorefrontTemplateSiteSettingsEntries(templateProfile.seedDefinition, {
+        storefront_profile: {
+          ...(((templateProfile.seedDefinition.defaultSiteSettings.storefront_profile as Record<string, unknown> | undefined) ?? {})),
+          template_id: templateProfile.templateId,
+          onboarding_mode: draft.onboardingMode,
+          blank_business_family: draft.blankBusinessFamily,
+          starter_block_selections: draft.starterBlockSelections,
+          starter_variant_selections: draft.starterVariantSelections,
+        } as Json,
         payment_settings: draft.payment as unknown as Json,
         contact_page: {
           badge: draft.contactPage.badge,
@@ -1478,6 +2344,10 @@ export default function OnboardingWizard() {
           message: draft.whatsappSupport.message,
         } as Json,
         faq_entries: draft.faqEntries as unknown as Json,
+        homepage_section_visibility: normalizeHomepageSectionVisibility(
+          templateProfile.templateId,
+          draft.homepageSectionVisibility,
+        ) as unknown as Json,
         onboarding_status: {
           completed: publish,
           completed_at: publish ? new Date().toISOString() : null,
@@ -1499,7 +2369,7 @@ export default function OnboardingWizard() {
       );
 
       if (siteSettingsError) {
-        toast.error("Failed to save blueprint defaults.");
+        toast.error("Failed to save template defaults.");
         return;
       }
 
@@ -1508,8 +2378,7 @@ export default function OnboardingWizard() {
         .upsert(
           {
             store_id: activeStoreId,
-            blueprint_id: templateProfile.seedBlueprintId,
-            blueprint_version: 1,
+            template_id: templateProfile.templateSeedId,
             business_family: templateProfile.businessFamily,
             catalog_mode: templateProfile.catalogMode,
             enabled_modules: templateProfile.seedDefinition.capabilities,
@@ -1521,7 +2390,7 @@ export default function OnboardingWizard() {
       setInitialSetupCompleted(publish);
       setCompletionState({
         published: publish,
-        templateId: draft.blueprintId,
+        templateId: draft.templateId,
       });
       toast.success(publish ? "Store is live." : "Store setup saved.");
     } finally {
@@ -1540,6 +2409,7 @@ export default function OnboardingWizard() {
     const pageBuilderHref = buildPageBuilderPath("basic", { storeId: activeStoreId });
     const launchReadinessHref = `/admin/launch?storeId=${encodeURIComponent(activeStoreId)}`;
     const firstCatalogHref = `${launchAction.href}${launchAction.href.includes("?") ? "&" : "?"}storeId=${encodeURIComponent(activeStoreId)}`;
+    const homepageSectionsHref = buildSiteSettingsPath("template_features", activeStoreId);
     const completionChecklist = [
       {
         label: completionState.published ? "Storefront is published" : "Storefront draft is saved",
@@ -1638,6 +2508,43 @@ export default function OnboardingWizard() {
                 </div>
               </div>
             </div>
+
+            {optionalHomepageSections.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Homepage section handoff</p>
+                    <p className="text-sm text-muted-foreground">
+                      Core sections are already live. Optional sections can still be adjusted later without reopening first-time setup.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {enabledHomepageSections.length > 0 ? enabledHomepageSections.map((section) => (
+                        <Badge key={section.type} variant="secondary">{section.label} live</Badge>
+                      )) : (
+                        <Badge variant="outline">No optional sections live yet</Badge>
+                      )}
+                      {hiddenHomepageSections.length > 0 ? hiddenHomepageSections.map((section) => (
+                        <Badge key={section.type} variant="outline">{section.label} off</Badge>
+                      )) : null}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                    <Button type="button" asChild variant="outline" className="justify-start gap-2">
+                      <a href={homepageSectionsHref}>
+                        <Layers className="h-4 w-4" />
+                        Open Homepage Sections
+                      </a>
+                    </Button>
+                    <Button type="button" asChild variant="outline" className="justify-start gap-2">
+                      <a href={pageBuilderHref}>
+                        <LayoutTemplate className="h-4 w-4" />
+                        Open Page Builder
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -1720,7 +2627,7 @@ export default function OnboardingWizard() {
     );
   }
 
-  if (loading && !activeStoreId) {
+  if (loading) {
     return (
       <div className="flex min-h-[360px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1778,9 +2685,9 @@ export default function OnboardingWizard() {
             <CardDescription>{activeStep.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {activeStep.id === "blueprint" ? (
+            {activeStep.id === "template" ? (
               <div className="grid gap-6">
-                {!blueprintEditingEnabled ? (
+                {!templateEditingEnabled ? (
                   <div className="rounded-lg border border-dashed border-border bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-3">
                     <Sparkles className="h-5 w-5 shrink-0" />
                     <span>
@@ -1805,6 +2712,227 @@ export default function OnboardingWizard() {
                       {activeTemplateProfile.seedDefinition.name} Template
                     </h3>
                   </div>
+
+                  {draft.onboardingMode === "blank" ? (
+                    <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Blank builder setup</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Start from the shared storefront shell, choose the business mode, then decide which starter sections should be live on day one.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2 md:grid-cols-4">
+                        {([
+                          { id: "commerce", label: "Commerce", description: "Catalog and checkout first." },
+                          { id: "booking", label: "Booking", description: "Reservations and availability." },
+                          { id: "listing", label: "Listing", description: "Browse and inquire." },
+                          { id: "service", label: "Service", description: "Packages and consultation." },
+                        ] as const).map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => updateBlankBusinessFamily(option.id)}
+                            className={cn(
+                              "rounded-xl border p-3 text-left transition-colors",
+                              draft.blankBusinessFamily === option.id
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:border-primary/40",
+                            )}
+                          >
+                            <p className="text-sm font-semibold text-foreground">{option.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">{option.description}</p>
+                          </button>
+                        ))}
+                      </div>
+
+                        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                          Hero plus the main conversion section stay in the starter set by default. Everything else here is optional and can still be changed later from onboarding and the editor.
+                        </div>
+
+                        <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
+                          Suggestions are sorted for this business mode first, so the most suitable starter sections show up before the more optional ones.
+                        </div>
+
+                        <div className="flex flex-col gap-3 rounded-lg border border-border bg-background/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div data-testid="blank-builder-selection-summary">
+                            <p className="text-sm font-medium text-foreground">
+                              <span data-testid="blank-builder-selection-count">{orderedStarterBlocks.length}</span>{" "}
+                              starter sections selected
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Keep the strongest sections first, then layer in optional sections only when they help the homepage tell a clearer story.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={restoreRecommendedStarterSelections}
+                          >
+                            Restore recommended mix
+                          </Button>
+                        </div>
+
+                        <MerchantPreviewChecklist items={blankBuilderChecklist} className="mb-0" />
+
+                        {selectedBlankBlockChoices.length > 0 ? (
+                          <div className="rounded-xl border border-border bg-card p-4">
+                            <div className="flex flex-col gap-1">
+                              <p className="text-sm font-semibold text-foreground">Selected homepage order</p>
+                              <p className="text-xs leading-5 text-muted-foreground">
+                                The first rows here appear earlier on the homepage. Core starter sections stay pinned at the top, while optional sections can be reordered.
+                              </p>
+                            </div>
+                            <div className="mt-3 grid gap-2">
+                              {selectedBlankBlockChoices.map((block, index) => {
+                                const requiredDefaults = new Set(getBlankDefaultBlockSelections(draft.blankBusinessFamily));
+                                const isRequired = requiredDefaults.has(block.value);
+                                const selectedVariantId = draft.starterVariantSelections[block.value] || block.variantIds[0];
+                                const movableBlocks = selectedBlankBlockChoices.filter((item) => !requiredDefaults.has(item.value));
+                                const movableIndex = movableBlocks.findIndex((item) => item.value === block.value);
+
+                                return (
+                                  <div key={block.value} className="flex items-center gap-3 rounded-lg border border-border bg-background/80 p-3">
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                      {index + 1}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-medium text-foreground">{block.label}</p>
+                                        {isRequired ? <Badge variant="secondary">Core</Badge> : null}
+                                        {selectedVariantId ? (
+                                          <Badge variant="outline" className="bg-background/70 text-[10px]">
+                                            {formatVariantLabel(selectedVariantId)}
+                                          </Badge>
+                                        ) : null}
+                                      </div>
+                                      <p className="mt-1 text-xs text-muted-foreground">{block.reason}</p>
+                                    </div>
+                                    {!isRequired ? (
+                                      <div className="flex shrink-0 flex-col gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => moveStarterBlockSelection(block.value, "up")}
+                                          disabled={movableIndex <= 0}
+                                        >
+                                          <ChevronUp className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => moveStarterBlockSelection(block.value, "down")}
+                                          disabled={movableIndex < 0 || movableIndex >= movableBlocks.length - 1}
+                                        >
+                                          <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-3 lg:grid-cols-2">
+                        {blankBlockChoices.map((block) => {
+                          const requiredDefaults = new Set(getBlankDefaultBlockSelections(draft.blankBusinessFamily));
+                          const isRequired = requiredDefaults.has(block.value);
+                          const isSelected = isRequired || draft.starterBlockSelections.includes(block.value);
+                          const selectedVariantId = draft.starterVariantSelections[block.value] || block.variantIds[0];
+
+                          return (
+                            <div
+                              key={block.value}
+                              data-testid={`blank-block-card-${block.value}`}
+                              data-selected={isSelected ? "true" : "false"}
+                              data-required={isRequired ? "true" : "false"}
+                              className={cn(
+                              "rounded-xl border p-4",
+                              isSelected ? "border-primary/40 bg-primary/5" : "border-border bg-background",
+                              )}
+                            >
+                              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px] sm:items-start">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-foreground">{block.label}</p>
+                                    {isRequired ? <Badge variant="secondary">Default</Badge> : null}
+                                    {!isRequired ? (
+                                      <Badge variant="outline" className="bg-background/70 text-[10px]">
+                                        {block.relevanceLabel}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{block.description}</p>
+                                  <p className="mt-2 text-xs leading-5 text-primary/90">{block.reason}</p>
+                                </div>
+                                <div className="space-y-2">
+                                  <BlankBuilderBlockPreview
+                                    blockType={block.value}
+                                    variantId={selectedVariantId}
+                                    draft={draft}
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={isSelected ? "secondary" : "outline"}
+                                    disabled={isRequired}
+                                    onClick={() => toggleStarterBlockSelection(block.value)}
+                                    data-testid={`blank-block-toggle-${block.value}`}
+                                    className="w-full"
+                                  >
+                                    {isRequired ? "Included" : isSelected ? "Added" : "Add"}
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {isSelected && block.variantIds.length > 0 ? (
+                                <div className="mt-3 grid gap-2">
+                                  <Label className="text-xs">Layout style</Label>
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {block.variantIds.map((variantId) => {
+                                      const variantSelected = selectedVariantId === variantId;
+
+                                      return (
+                                        <button
+                                          key={variantId}
+                                          type="button"
+                                          onClick={() => updateStarterVariantSelection(block.value, variantId)}
+                                          data-testid={`blank-block-variant-${block.value}-${variantId}`}
+                                          className={cn(
+                                            "rounded-lg border p-2 text-left transition-colors",
+                                            variantSelected
+                                              ? "border-primary bg-primary/10"
+                                              : "border-border bg-background hover:border-primary/30",
+                                          )}
+                                        >
+                                          <BlankBuilderBlockPreview blockType={block.value} variantId={variantId} draft={draft} />
+                                          <div className="mt-2 flex items-center justify-between gap-2">
+                                            <span className="text-xs font-medium text-foreground">
+                                              {formatVariantLabel(variantId)}
+                                            </span>
+                                            {variantSelected ? (
+                                              <Badge variant="secondary" className="text-[10px]">Selected</Badge>
+                                            ) : null}
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Seed / Unseed Demo Data Buttons */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -1922,7 +3050,7 @@ export default function OnboardingWizard() {
                       {paginatedTemplateOptions.map((item) => {
                         const seedDefinition = getStorefrontTemplateSeedDefinition(item.value);
                         const referenceImage = getStorefrontTemplateReferenceImage(item.value);
-                        const isCurrentActive = draft.blueprintId === item.value;
+                        const isCurrentActive = draft.templateId === item.value;
 
                         return (
                           <div
@@ -2017,9 +3145,9 @@ export default function OnboardingWizard() {
                                   )}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (blueprintEditingEnabled) applyBlueprint(item.value);
+                                    if (templateEditingEnabled) applyTemplateSeed(item.value);
                                   }}
-                                  disabled={!blueprintEditingEnabled}
+                                  disabled={!templateEditingEnabled}
                                 >
                                   {isCurrentActive ? (
                                     <>
@@ -2054,7 +3182,7 @@ export default function OnboardingWizard() {
                     {filteredTemplateOptions.length > TEMPLATES_PER_PAGE && (
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-5 mt-4">
                         <p className="text-xs text-muted-foreground">
-                          Showing <span className="font-semibold text-foreground">{(templatePage - 1) * TEMPLATES_PER_PAGE + 1}</span>–<span className="font-semibold text-foreground">{Math.min(templatePage * TEMPLATES_PER_PAGE, filteredTemplateOptions.length)}</span> of <span className="font-semibold text-foreground">{filteredTemplateOptions.length}</span> templates
+                          Showing <span className="font-semibold text-foreground">{(templatePage - 1) * TEMPLATES_PER_PAGE + 1}</span>â€“<span className="font-semibold text-foreground">{Math.min(templatePage * TEMPLATES_PER_PAGE, filteredTemplateOptions.length)}</span> of <span className="font-semibold text-foreground">{filteredTemplateOptions.length}</span> templates
                         </p>
 
                         <div className="flex items-center gap-2">
@@ -2089,7 +3217,7 @@ export default function OnboardingWizard() {
                   </>
                 )}
 
-                {/* Interactive Live Blueprint Preview Modal */}
+                {/* Interactive Live Template Preview Modal */}
                 <Dialog
                   open={!!previewModalTemplateId}
                   onOpenChange={(open) => {
@@ -2107,7 +3235,7 @@ export default function OnboardingWizard() {
                         </Badge>
                       </div>
                       <DialogTitle className="text-2xl font-bold">
-                        {previewModalProfile?.seedDefinition.name} Blueprint
+                        {previewModalProfile?.seedDefinition.name} Template
                       </DialogTitle>
                       <DialogDescription>
                         {previewModalProfile?.seedDefinition.description}
@@ -2162,7 +3290,7 @@ export default function OnboardingWizard() {
                       <div className="rounded-xl border p-4 bg-muted/20">
                         <div className="flex items-center justify-between mb-3">
                           <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                            <Eye className="h-3.5 w-3.5 text-primary" /> Blueprint Mobile Layout
+                            <Eye className="h-3.5 w-3.5 text-primary" /> Template Mobile Layout
                           </p>
                         </div>
                         <StorefrontPreviewFrame viewport="mobile" title={`${previewModalProfile?.seedDefinition.name} preview`}>
@@ -2189,15 +3317,15 @@ export default function OnboardingWizard() {
                         type="button"
                         className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                         onClick={() => {
-                          if (previewModalTemplateId && blueprintEditingEnabled) {
-                            applyBlueprint(previewModalTemplateId);
+                          if (previewModalTemplateId && templateEditingEnabled) {
+                            applyTemplateSeed(previewModalTemplateId);
                             setPreviewModalTemplateId(null);
-                            toast.success(`Applied ${previewModalProfile?.seedDefinition.name} blueprint`);
+                            toast.success(`Applied ${previewModalProfile?.seedDefinition.name} template`);
                           }
                         }}
-                        disabled={!blueprintEditingEnabled}
+                        disabled={!templateEditingEnabled}
                       >
-                        <CheckCircle2 className="h-4 w-4" /> Apply Blueprint
+                        <CheckCircle2 className="h-4 w-4" /> Apply Template
                       </Button>
                     </div>
                   </DialogContent>
@@ -2337,6 +3465,55 @@ export default function OnboardingWizard() {
                         storeId={activeStoreId ?? undefined}
                       />
                     </div>
+                  </div>
+                ) : null}
+                {contentSection === "layout" ? (
+                  <div className="space-y-4 rounded-lg border border-border p-4">
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-sm font-medium text-foreground">Homepage launch sections</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Navbar, hero, the main catalog or booking area, and footer stay on by default. These switches only control the extra sections available for this template.
+                      </p>
+                    </div>
+                    {optionalHomepageSections.length === 0 ? (
+                      <div className="rounded-lg border border-border bg-card p-4">
+                        <p className="text-sm font-semibold text-foreground">No optional sections for this template</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          This launch flow keeps the homepage focused on the required template sections.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        {optionalHomepageSections.map((section) => {
+                          const enabled = draft.homepageSectionVisibility[section.type] ?? true;
+                          const editorLink = getHomepageSectionEditorLink(section.editTab, activeStoreId);
+
+                          return (
+                            <HomepageSectionChoiceCard
+                              key={section.type}
+                              section={section}
+                              enabled={enabled}
+                              statusLabels={{
+                                enabled: "Enabled at launch",
+                                disabled: "Off by default",
+                              }}
+                              actionLabels={{
+                                enable: "Start with this live",
+                                disable: "Keep this off",
+                              }}
+                              onEnabledChange={(checked) => updateHomepageSectionVisibility(section.type, checked)}
+                              editHint="Even after launch, this section can be turned back on and its copy can be edited from the matching tool."
+                              editLink={(
+                                <Link href={editorLink.href} className="inline-flex items-center gap-1 text-primary hover:underline">
+                                  {editorLink.label}
+                                  <HomepageSectionLinkArrow className={homepageSectionLinkIconClassName} />
+                                </Link>
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ) : null}
                 {showDeliveryFields && contentSection === "delivery" ? (
@@ -2844,6 +4021,9 @@ export default function OnboardingWizard() {
                     {onboardingContext.labels.launchChecklist}
                   </p>
                 </div>
+                {draft.onboardingMode === "blank" ? (
+                  <MerchantPreviewChecklist items={blankBuilderChecklist} className="mb-0" />
+                ) : null}
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
                   <div className="space-y-3 rounded-lg border border-border p-4">
                     <div>

@@ -21,17 +21,17 @@ export function BasicMobileDock({
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 lg:hidden">
       <div className="mx-auto flex max-w-md items-center gap-2">
-        <Button type="button" variant="outline" className="min-h-11 flex-1 gap-2" onClick={onPreview}>
+        <Button type="button" variant="outline" className="min-h-11 flex-1 gap-2" onClick={onPreview} aria-label="Open mobile preview" data-testid="basic-mobile-preview-button">
           <Eye className="h-4 w-4" />
           Preview
         </Button>
-        <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={onUndo} disabled={disableUndo}>
+        <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={onUndo} disabled={disableUndo} aria-label="Undo editor change" data-testid="basic-mobile-undo-button">
           <Undo2 className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={onRedo} disabled={disableRedo}>
+        <Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={onRedo} disabled={disableRedo} aria-label="Redo editor change" data-testid="basic-mobile-redo-button">
           <Redo2 className="h-4 w-4" />
         </Button>
-        <Button type="button" className="min-h-11 flex-1" onClick={onSave}>
+        <Button type="button" className="min-h-11 flex-1" onClick={onSave} aria-label={`${saveLabel} editor changes`} data-testid="basic-mobile-save-button">
           {saveLabel}
         </Button>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Eye, Rocket, Save } from "lucide-react";
 import { EditorHeader } from "./EditorHeader";
 import { useEditorShellState } from "./useEditorShellState";
@@ -22,6 +22,8 @@ export interface EditorShellProps {
   pages: StorePage[];
   activePageId: string;
   onPageChange: (id: string) => void;
+  selectedBlockId?: string | null;
+  onSelectBlock?: (id: string | null) => void;
   mode: EditorMode;
   onModeChange: (mode: EditorMode) => void;
   breakpoint?: Breakpoint;
@@ -31,6 +33,7 @@ export interface EditorShellProps {
   saveDetail?: string | null;
   basicItems: BasicRailItem[];
   initialTab?: BasicTabId;
+  modeHrefs?: Partial<Record<EditorMode, string>>;
   panelTitle: string;
   panelBreadcrumb?: string;
   panelHelp?: string;
@@ -54,6 +57,8 @@ export function EditorShell({
   pages,
   activePageId,
   onPageChange,
+  selectedBlockId,
+  onSelectBlock,
   mode,
   onModeChange,
   breakpoint,
@@ -63,6 +68,7 @@ export function EditorShell({
   saveDetail,
   basicItems,
   initialTab = "content",
+  modeHrefs,
   panelTitle,
   panelBreadcrumb,
   panelHelp,
@@ -87,6 +93,19 @@ export function EditorShell({
     initialBreakpoint: breakpoint ?? "desktop",
     saveState,
   });
+
+  // Listen to iframe postMessage ezcomo:block-clicked
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.kind === "ezcomo:block-clicked" && typeof event.data?.blockId === "string") {
+        onSelectBlock?.(event.data.blockId);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onSelectBlock]);
 
   const pageOptions = useMemo(
     () => pages.map((page) => ({ id: page.id, title: page.title, slug: page.slug })),
@@ -121,6 +140,7 @@ export function EditorShell({
         saveState={saveState}
         saveDetail={saveDetail}
         canUseAdvanced={canUseAdvanced}
+        modeHrefs={modeHrefs}
         actions={actions}
       />
       {mode === "advanced" && !canUseAdvanced ? (

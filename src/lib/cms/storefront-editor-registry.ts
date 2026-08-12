@@ -1,5 +1,9 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
-import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import {
+  getStorefrontTemplateDefinition,
+  getStorefrontTemplateSeedDefinition,
+  type StorefrontTemplateId,
+} from "@/lib/cms/storefront-templates";
 
 export type LayoutVariantOption = {
   id: string;
@@ -23,6 +27,42 @@ export type BasicBlockCoachConfig = {
   titleOverrides?: Partial<Record<"title" | "subtitle" | "tagline" | "ctaText" | "limit", string>>;
   priorityFields?: string[];
   priorityLabel?: string;
+};
+
+export type SharedBlockSuggestionInfo = {
+  headline: string;
+  reason: string;
+  caveat?: string;
+  recommended: boolean;
+};
+
+export type SharedBlockCopy = {
+  featuredSourceLabel: string;
+  featuredSourceTitle: string;
+  featuredSourceDescription: string;
+  featuredCategoryLabel: string;
+  featuredTypeLabel: string;
+  comparisonCategoryLabel: string;
+  comparisonTypeLabel: string;
+  categorySourceLabel: string;
+  categorySourceTitle: string;
+  categorySourceDescription: string;
+  comparisonSourceTitle: string;
+  comparisonSourceDescription: string;
+  faqListTitle: string;
+  faqDescription: string;
+  faqEmptyText: string;
+  trustListTitle: string;
+  trustDescription: string;
+  trustEmptyText: string;
+  testimonialListTitle: string;
+  testimonialDescription: string;
+  testimonialEmptyText: string;
+};
+
+export type SharedSourceOption = {
+  label: string;
+  value: string;
 };
 
 export type BasicEditorPageType = "homepage" | "product" | "checkout" | "contact" | "about" | "catalog" | "custom";
@@ -816,4 +856,336 @@ export function getBasicBlockCoach(
       ...(blockCoachOverrides[templateId]?.[blockType]?.titleOverrides ?? {}),
     },
   };
+}
+
+export function getSharedBlockSuggestionInfo(
+  templateId: StorefrontTemplateId,
+  blockType: StorePageBlock["type"],
+): SharedBlockSuggestionInfo {
+  const definition = getStorefrontTemplateDefinition(templateId);
+  const seed = getStorefrontTemplateSeedDefinition(templateId);
+  const recommended = seed.recommendedBlockSet.includes(blockType);
+  const orderedIndex = definition.presentation.sectionOrder.indexOf(blockType);
+  const businessFamily = seed.businessFamily;
+
+  const businessFraming: Record<typeof businessFamily, string> = {
+    commerce: "This template is tuned for product discovery and buying confidence.",
+    booking: "This template is tuned for reservation clarity and action readiness.",
+    listing: "This template is tuned for scanning options and reaching out with confidence.",
+    service: "This template is tuned for explaining outcomes and nudging inquiry or booking.",
+    donation: "This template is tuned for mission clarity and conversion trust.",
+  };
+
+  const blockReasons: Partial<Record<StorePageBlock["type"], string>> = {
+    hero: "The homepage still lives or dies on the first message, so hero stays the strongest lever here.",
+    "promo-banner": businessFamily === "commerce"
+      ? "Timed offers and campaign moments usually matter near the top for this storefront type."
+      : "This works best when the store needs a short announcement without interrupting the main conversion path.",
+    "category-showcase": businessFamily === "commerce" || businessFamily === "listing"
+      ? "Visitors often need a cleaner browse path before they are ready to compare individual items."
+      : "Use this only when navigation by group or type helps people reach the right offer faster.",
+    "featured-products": businessFamily === "service" || businessFamily === "booking"
+      ? "This is the main block for packages, services, or bookable offers people need to evaluate next."
+      : "This is the main merchandising surface for the offers shoppers should see first.",
+    comparison: "Useful when buyers need side-by-side differences before they feel ready to commit.",
+    "rich-text": "Helpful when the storefront needs story, policy, or context between harder-selling sections.",
+    "social-feed": "Useful when visual proof and real-world usage matter more than polished marketing copy alone.",
+    "video-reel": "Useful when motion, texture, walkthroughs, or atmosphere carry meaning that static images miss.",
+    "faq-accordion": "Strong when shoppers or guests usually hesitate because of delivery, booking, policy, or support questions.",
+    "trust-badges": "Best when reassurance should be skimmed quickly instead of buried inside longer copy.",
+    testimonials: "Social proof helps when people want believable evidence before they act.",
+    "recommended-products": "This works later in the page when you want softer cross-sell discovery.",
+    "recently-viewed": "This matters most for returning visitors who are already comparing or resuming a session.",
+  };
+
+  return {
+    headline: recommended ? "Recommended for this template" : "Compatible, but more optional here",
+    reason: blockReasons[blockType] ?? businessFraming[businessFamily],
+    caveat: orderedIndex >= 0
+      ? `This template usually places it around section ${orderedIndex + 1} in the homepage story.`
+      : recommended
+        ? businessFraming[businessFamily]
+        : "It can still work well, but it usually needs a clearer reason to earn homepage space.",
+    recommended,
+  };
+}
+
+export function getSharedBlockCopy(templateId: StorefrontTemplateId): SharedBlockCopy {
+  switch (templateId) {
+    case "food":
+      return {
+        featuredSourceLabel: "Show Dishes From",
+        featuredSourceTitle: "Dish source",
+        featuredSourceDescription: "Choose which dishes this section should spotlight. If a menu category is empty, add dishes first.",
+        featuredCategoryLabel: "Menu Category",
+        featuredTypeLabel: "Menu Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Menu Navigation For",
+        categorySourceTitle: "Menu navigation",
+        categorySourceDescription: "Pick the menu path guests should use first: categories, dish types, or an automatic blend.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which dishes or offers this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Order questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions guests ask before ordering: delivery, payment, spice level, allergens, and support.",
+        trustListTitle: "Service trust points",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: freshness, hygiene, delivery timing, payment, or support.",
+        testimonialListTitle: "Guest reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention taste, freshness, portion size, speed, or support.",
+      };
+    case "subscriptions":
+      return {
+        featuredSourceLabel: "Show Plans From",
+        featuredSourceTitle: "Plan source",
+        featuredSourceDescription: "Choose which plans this section should compare or highlight first.",
+        featuredCategoryLabel: "Plan Category",
+        featuredTypeLabel: "Account / Plan Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Plan Navigation For",
+        categorySourceTitle: "Plan navigation",
+        categorySourceDescription: "Pick the clearest plan discovery path for new buyers.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which plans or offers this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions shoppers ask before buying: billing, activation, renewal, compatibility, and support.",
+        trustListTitle: "Plan trust points",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: activation speed, renewal clarity, account support, or device compatibility.",
+        testimonialListTitle: "Reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention activation, reliability, support, or repeat renewals.",
+      };
+    case "hotel":
+      return {
+        featuredSourceLabel: "Show Rooms From",
+        featuredSourceTitle: "Room source",
+        featuredSourceDescription: "Choose which room group this section should guide guests toward first.",
+        featuredCategoryLabel: "Room Category",
+        featuredTypeLabel: "Room Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Room Navigation For",
+        categorySourceTitle: "Room navigation",
+        categorySourceDescription: "Pick the room discovery path guests should see first.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which rooms or offers this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Guest questions",
+        faqDescription: "Add the questions that block inquiry, booking, or first contact.",
+        faqEmptyText: "Add the questions guests ask before booking: location, check-in, room details, cancellation, and support.",
+        trustListTitle: "Guest confidence points",
+        trustDescription: "Use practical reassurances about guest experience, support, and booking confidence.",
+        trustEmptyText: "Add practical reassurances: location confidence, guest support, cancellation clarity, or booking trust.",
+        testimonialListTitle: "Guest reviews",
+        testimonialDescription: "Specific guest comments about stay, location, comfort, or support make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention stay quality, comfort, staff support, or location.",
+      };
+    case "real-estate":
+      return {
+        featuredSourceLabel: "Show Listings From",
+        featuredSourceTitle: "Listing source",
+        featuredSourceDescription: "Choose which listings this section should surface first for buyers or renters.",
+        featuredCategoryLabel: "Property Category",
+        featuredTypeLabel: "Listing Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Listing Navigation For",
+        categorySourceTitle: "Listing navigation",
+        categorySourceDescription: "Pick the listing navigation style that helps visitors scan faster.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which listings or offers this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Buyer and renter questions",
+        faqDescription: "Add the questions that block viewings, contact, or listing trust.",
+        faqEmptyText: "Add the questions visitors ask before contacting: location, availability, pricing, visits, and support.",
+        trustListTitle: "Listing trust points",
+        trustDescription: "Use practical reassurances about listings, response, support, and transparency.",
+        trustEmptyText: "Add practical reassurances: verified details, responsive support, transparency, or visit coordination.",
+        testimonialListTitle: "Buyer and renter reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention trust, responsiveness, listing clarity, or viewing support.",
+      };
+    case "inquiry-catalog":
+      return {
+        featuredSourceLabel: "Show Quote Items From",
+        featuredSourceTitle: "Quote source",
+        featuredSourceDescription: "Choose which quote-led items this section should push buyers toward first.",
+        featuredCategoryLabel: "Buyer Category",
+        featuredTypeLabel: "Product Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Navigation For",
+        categorySourceTitle: "Category source",
+        categorySourceDescription: "Pick the navigation style shoppers should see in this section.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which quote-led items this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions buyers ask before contacting: MOQ, lead time, customization, pricing, and support.",
+        trustListTitle: "Trust badges",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: MOQ clarity, lead time, production support, customization, or business trust.",
+        testimonialListTitle: "Reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention reliability, quality, responsiveness, or business support.",
+      };
+    case "service":
+      return {
+        featuredSourceLabel: "Show Services From",
+        featuredSourceTitle: "Service source",
+        featuredSourceDescription: "Choose which services or packages this section should highlight first.",
+        featuredCategoryLabel: "Category",
+        featuredTypeLabel: "Product Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Navigation For",
+        categorySourceTitle: "Category source",
+        categorySourceDescription: "Pick the navigation style shoppers should see in this section.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which services or offers this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Service questions",
+        faqDescription: "Add the questions that block inquiry, booking, or first contact.",
+        faqEmptyText: "Add the questions shoppers ask before reaching out: process, pricing, timelines, revisions, and support.",
+        trustListTitle: "Trust badges",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: response speed, consultation clarity, support, or delivery confidence.",
+        testimonialListTitle: "Client reviews",
+        testimonialDescription: "Specific, believable quotes about results, support, or experience make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention results, responsiveness, delivery, or ongoing support.",
+      };
+    case "electronics":
+      return {
+        featuredSourceLabel: "Show Products From",
+        featuredSourceTitle: "Product source",
+        featuredSourceDescription: "Choose which products this section should pull from. If a category or type has no products yet, add products first.",
+        featuredCategoryLabel: "Category",
+        featuredTypeLabel: "Product Type",
+        comparisonCategoryLabel: "Device Category",
+        comparisonTypeLabel: "Device Type",
+        categorySourceLabel: "Show Navigation For",
+        categorySourceTitle: "Category source",
+        categorySourceDescription: "Pick the navigation style shoppers should see in this section.",
+        comparisonSourceTitle: "Comparison source",
+        comparisonSourceDescription: "Choose which products should appear side by side. Keep them close enough that the comparison helps a real decision.",
+        faqListTitle: "Questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions shoppers ask before buying: warranty, delivery, compatibility, payment, and support.",
+        trustListTitle: "Trust badges",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: warranty, delivery, authenticity, or after-sales support.",
+        testimonialListTitle: "Reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention performance, reliability, delivery, or support.",
+      };
+    case "beauty":
+      return {
+        featuredSourceLabel: "Show Products From",
+        featuredSourceTitle: "Product source",
+        featuredSourceDescription: "Choose which products this section should pull from. If a category or type has no products yet, add products first.",
+        featuredCategoryLabel: "Category",
+        featuredTypeLabel: "Product Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Discovery Navigation For",
+        categorySourceTitle: "Discovery navigation",
+        categorySourceDescription: "Pick whether shoppers should browse by category or product type first.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which products this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions shoppers ask before buying: skin type, usage, shipping, returns, and support.",
+        trustListTitle: "Trust badges",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: authenticity, routine guidance, delivery, or support.",
+        testimonialListTitle: "Reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention skin feel, results, repeat purchase, or support.",
+      };
+    default:
+      return {
+        featuredSourceLabel: "Show Products From",
+        featuredSourceTitle: "Product source",
+        featuredSourceDescription: "Choose which products this section should pull from. If a category or type has no products yet, add products first.",
+        featuredCategoryLabel: "Category",
+        featuredTypeLabel: "Product Type",
+        comparisonCategoryLabel: "Category",
+        comparisonTypeLabel: "Product Type",
+        categorySourceLabel: "Show Navigation For",
+        categorySourceTitle: "Category source",
+        categorySourceDescription: "Pick the navigation style shoppers should see in this section.",
+        comparisonSourceTitle: "Product source",
+        comparisonSourceDescription: "Choose which products this comparison should pull from. Keep the set tight so differences stay readable.",
+        faqListTitle: "Questions",
+        faqDescription: "Add only the questions that block purchase decisions.",
+        faqEmptyText: "Add the questions shoppers ask before buying: delivery, payment, returns, sizing, and support.",
+        trustListTitle: "Trust badges",
+        trustDescription: "Use practical reassurances, not generic claims.",
+        trustEmptyText: "Add practical reassurances: delivery, payment, exchange, support, or authenticity.",
+        testimonialListTitle: "Reviews",
+        testimonialDescription: "Specific, believable quotes make this section stronger.",
+        testimonialEmptyText: "Add specific reviews that mention product quality, delivery, fit, taste, or support.",
+      };
+  }
+}
+
+export function getSharedFeaturedSourceOptions(templateId: StorefrontTemplateId): SharedSourceOption[] {
+  switch (templateId) {
+    case "food":
+      return [
+        { label: "Popular dishes first", value: "featured-or-all" },
+        { label: "Bestsellers only", value: "featured" },
+        { label: "All live dishes", value: "all" },
+        { label: "Newest dishes", value: "newest" },
+        { label: "One menu category", value: "category" },
+        { label: "One menu type", value: "type" },
+      ];
+    case "subscriptions":
+      return [
+        { label: "Best plans first", value: "featured-or-all" },
+        { label: "Featured plans only", value: "featured" },
+        { label: "All live plans", value: "all" },
+        { label: "Newest plans", value: "newest" },
+        { label: "One plan category", value: "category" },
+        { label: "One account type", value: "type" },
+      ];
+    case "hotel":
+      return [
+        { label: "Best rooms first", value: "featured-or-all" },
+        { label: "Featured rooms only", value: "featured" },
+        { label: "All live rooms", value: "all" },
+        { label: "Newest rooms", value: "newest" },
+        { label: "One room category", value: "category" },
+        { label: "One room type", value: "type" },
+      ];
+    case "real-estate":
+      return [
+        { label: "Best listings first", value: "featured-or-all" },
+        { label: "Featured listings only", value: "featured" },
+        { label: "All live listings", value: "all" },
+        { label: "Newest listings", value: "newest" },
+        { label: "One property category", value: "category" },
+        { label: "One listing type", value: "type" },
+      ];
+    case "inquiry-catalog":
+      return [
+        { label: "Most requested items first", value: "featured-or-all" },
+        { label: "Quote highlights only", value: "featured" },
+        { label: "All live quote items", value: "all" },
+        { label: "Newest quote items", value: "newest" },
+        { label: "One buyer category", value: "category" },
+        { label: "One product type", value: "type" },
+      ];
+    default:
+      return [
+        { label: "Featured first, then all products", value: "featured-or-all" },
+        { label: "Featured products only", value: "featured" },
+        { label: "All available products", value: "all" },
+        { label: "Newest products", value: "newest" },
+        { label: "One category", value: "category" },
+        { label: "One product type", value: "type" },
+      ];
+  }
 }
