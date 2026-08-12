@@ -17,6 +17,7 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { getDomainRoutingKvAdapter } from "@/lib/domain-routing-kv";
 import { getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { canUseCustomDomains } from "@/lib/billing/plans";
 
@@ -154,6 +155,65 @@ async function loadStoreSummary(supabaseAdmin: SupabaseClient, storeId: string) 
     slug,
     platformDomain: slug && baseDomain ? `${slug}.${baseDomain}` : "",
   };
+}
+
+async function syncDomainRoutingKv(
+  payload:
+    | {
+        action: "upsert";
+        hostname: string;
+        storeSlug: string;
+        isActive: boolean;
+        isPrimary: boolean;
+        source: "domain-created" | "domain-checked" | "domain-primary";
+      }
+    | {
+        action: "delete";
+        hostname: string;
+      },
+) {
+  const kv = getDomainRoutingKvAdapter();
+
+  if (payload.action === "delete") {
+    await kv.delete(payload.hostname);
+    return;
+  }
+
+  if (!payload.storeSlug) {
+    return;
+  }
+
+  if (!payload.isActive) {
+    await kv.delete(payload.hostname);
+    return;
+  }
+
+  await kv.set({
+    hostname: payload.hostname,
+    storeSlug: payload.storeSlug,
+    isActive: payload.isActive,
+    isPrimary: payload.isPrimary,
+    source: payload.source,
+  });
+}
+
+type DomainRoutingSyncWarning = {
+  message: string;
+};
+
+async function syncDomainRoutingKvSafely(
+  payload: Parameters<typeof syncDomainRoutingKv>[0],
+): Promise<DomainRoutingSyncWarning | null> {
+  try {
+    await syncDomainRoutingKv(payload);
+    return null;
+  } catch (error) {
+    return {
+      message: error instanceof Error
+        ? `Domain route saved, but Cloudflare KV sync needs a retry: ${error.message}`
+        : "Domain route saved, but Cloudflare KV sync needs a retry.",
+    };
+  }
 }
 
 type DomainAccessState = {
@@ -479,12 +539,21 @@ export async function POST(req: Request) {
 
     const refreshed = await loadStoreDomains(access.supabaseAdmin, storeId);
     const store = await loadStoreSummary(access.supabaseAdmin, storeId);
+    const routingSyncWarning = await syncDomainRoutingKvSafely({
+      action: "upsert",
+      hostname: normalized.hostname,
+      storeSlug: store.slug,
+      isActive: status === "active" && hostnameStatus === "active" && sslStatus === "active",
+      isPrimary: true,
+      source: "domain-created",
+    });
     return NextResponse.json({
       success: true,
       store,
       domainAccess: domainAccessResult.domainAccess,
       domains: refreshed.map(serializeDomain),
       primaryHostname: normalized.hostname,
+      warning: routingSyncWarning,
     });
   } catch (error) {
     return NextResponse.json(
@@ -529,7 +598,21 @@ export async function PATCH(req: Request) {
       }
 
       const store = await loadStoreSummary(access.supabaseAdmin, storeId);
-      return NextResponse.json({ success: true, store, domainAccess: domainAccessResult.domainAccess, domain });
+      const routingSyncWarning = await syncDomainRoutingKvSafely({
+        action: "upsert",
+        hostname: normalized.hostname,
+        storeSlug: store.slug,
+        isActive: domain.isActive,
+        isPrimary: domain.isPrimary || domain.isActive,
+        source: "domain-checked",
+      });
+      return NextResponse.json({
+        success: true,
+        store,
+        domainAccess: domainAccessResult.domainAccess,
+        domain,
+        warning: routingSyncWarning,
+      });
     }
 
     if (action === "make-primary") {
@@ -545,7 +628,21 @@ export async function PATCH(req: Request) {
         .update({ custom_domain: normalized.hostname })
         .eq("id", storeId);
 
-      return NextResponse.json({ success: true, domain: serializeDomain(updated) });
+      const store = await loadStoreSummary(access.supabaseAdmin, storeId);
+      const routingSyncWarning = await syncDomainRoutingKvSafely({
+        action: "upsert",
+        hostname: normalized.hostname,
+        storeSlug: store.slug,
+        isActive: updated.status === "active",
+        isPrimary: true,
+        source: "domain-primary",
+      });
+
+      return NextResponse.json({
+        success: true,
+        domain: serializeDomain(updated),
+        warning: routingSyncWarning,
+      });
     }
 
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
@@ -601,7 +698,16 @@ export async function DELETE(req: Request) {
       .eq("id", storeId)
       .in("custom_domain", [normalized.hostname]);
 
-    return NextResponse.json({ success: true, domainAccess: domainAccessResult.domainAccess });
+    const routingSyncWarning = await syncDomainRoutingKvSafely({
+      action: "delete",
+      hostname: normalized.hostname,
+    });
+
+    return NextResponse.json({
+      success: true,
+      domainAccess: domainAccessResult.domainAccess,
+      warning: routingSyncWarning,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to remove custom domain" },

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "989794656b19c8e292a184768fbbbb4a",
+  "name": "ezcomo-custom-domain-proxy",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-11",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "DOMAIN_ROUTING_KV",
+      "id": "b2bdc55bbd434044b044cf1532a3e357"
+    }
+  ],
+  "vars": {
+    "ORIGIN_HOSTNAME": "origin.ezcomo.shop",
+    "PLATFORM_DOMAIN": "ezcomo.shop"
+  }
+}
