@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { after } from "next/server";
 import {
   canManageStore,
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { jsonNoStore } from "@/lib/http/cache-control";
+import { dispatchOrderCancelledBackgroundJobs } from "@/lib/orders/order-background-queue";
 
 export const orderStatusRouteDeps = {
   getAuthenticatedUser,
@@ -29,12 +31,12 @@ export async function PATCH(req: Request) {
   try {
     const user = await orderStatusRouteDeps.getAuthenticatedUser(req);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { orderId, storeId, status } = await req.json();
     if (!orderId || !storeId || !status) {
-      return NextResponse.json({ error: "Missing orderId, storeId, or status" }, { status: 400 });
+      return jsonNoStore({ error: "Missing orderId, storeId, or status" }, { status: 400 });
     }
 
     const supabaseAdmin = orderStatusRouteDeps.getSupabaseAdminClient();
@@ -45,7 +47,7 @@ export async function PATCH(req: Request) {
       ["owner", "admin", "editor"],
     );
     if (!authorized) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return jsonNoStore({ error: "Forbidden" }, { status: 403 });
     }
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -57,11 +59,11 @@ export async function PATCH(req: Request) {
 
     if (orderError) throw orderError;
     if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return jsonNoStore({ error: "Order not found" }, { status: 404 });
     }
 
     if (!canTransition(String(order.status), status)) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: `Cannot move order from ${order.status} to ${status}` },
         { status: 400 },
       );
@@ -76,26 +78,31 @@ export async function PATCH(req: Request) {
     if (updateError) throw updateError;
 
     if (status === "cancelled") {
-      void (supabaseAdmin as any).from("store_revenue_events").insert({
-        store_id: storeId,
-        order_id: orderId,
-        customer_id: order.user_id ?? null,
-        event_type: "cancellation",
-        gross_amount: Number(order.total ?? 0),
-        refund_amount: Number(order.total ?? 0),
-        net_amount: 0,
-        currency_code: "BDT",
-        payment_method: order.payment_method ?? null,
-        status,
-        metadata: {
-          previous_status: order.status,
-        },
+      after(async () => {
+        await dispatchOrderCancelledBackgroundJobs({
+          revenueEventRow: {
+            store_id: storeId,
+            order_id: orderId,
+            customer_id: order.user_id ?? null,
+            event_type: "cancellation",
+            gross_amount: Number(order.total ?? 0),
+            refund_amount: Number(order.total ?? 0),
+            net_amount: 0,
+            currency_code: "BDT",
+            payment_method: order.payment_method ?? null,
+            status,
+            metadata: {
+              previous_status: order.status,
+            },
+          },
+          supabaseAdmin,
+        });
       });
     }
 
-    return NextResponse.json({ success: true, status });
+    return jsonNoStore({ success: true, status });
   } catch (error) {
     console.error("Order status update error:", error);
-    return NextResponse.json({ error: "Failed to update order status" }, { status: 500 });
+    return jsonNoStore({ error: "Failed to update order status" }, { status: 500 });
   }
 }

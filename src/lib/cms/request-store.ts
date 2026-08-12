@@ -1,7 +1,11 @@
 import { headers } from "next/headers";
 import { DEFAULT_STORE_ID } from "@/lib/cms/default-store";
-import { getStoreBySlug, isLocalStorefrontHostname, resolveStoreByHostname } from "@/lib/cms/store-resolver";
-import { getEzcomoRequestHostname, normalizeRequestHost } from "@/lib/platform/request-host";
+import { getStoreBySlug, getStoreShellBySlug, getStoreShellById, isLocalStorefrontHostname, resolveStoreByHostname } from "@/lib/cms/store-resolver";
+import { getEzcomoRequestHostname, getEzcomoRequestStoreSlug, normalizeRequestHost } from "@/lib/platform/request-host";
+
+type RequestStoreOptions = {
+  requestedPageSlug?: string | null;
+};
 
 export function shouldTryLocalStoreSlugFallback(hostname?: string | null, resolvedStoreId?: string | null) {
   const normalizedHost = normalizeRequestHost(hostname);
@@ -18,10 +22,15 @@ export function getLocalStoreSlugCandidates(env: Record<string, string | undefin
   ].filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim())));
 }
 
-export async function getRequestStore() {
+export async function getRequestStore(options?: RequestStoreOptions) {
   const requestHeaders = await headers();
+  const forwardedStoreSlug = getEzcomoRequestStoreSlug({ headers: requestHeaders });
+  if (forwardedStoreSlug) {
+    return getStoreBySlug(forwardedStoreSlug, undefined, options);
+  }
+
   const requestHost = getEzcomoRequestHostname({ headers: requestHeaders }) || undefined;
-  const resolved = await resolveStoreByHostname(requestHost);
+  const resolved = await resolveStoreByHostname(requestHost, options);
 
   if (resolved && !shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
     return resolved;
@@ -29,7 +38,7 @@ export async function getRequestStore() {
 
   if (isLocalStorefrontHostname(requestHost)) {
     for (const slug of getLocalStoreSlugCandidates()) {
-      const localStore = await getStoreBySlug(slug);
+      const localStore = await getStoreBySlug(slug, undefined, options);
       if (localStore) {
         return localStore;
       }
@@ -37,4 +46,30 @@ export async function getRequestStore() {
   }
 
   return resolved;
+}
+
+export async function getRequestStoreShell(options?: RequestStoreOptions) {
+  const requestHeaders = await headers();
+  const forwardedStoreSlug = getEzcomoRequestStoreSlug({ headers: requestHeaders });
+  if (forwardedStoreSlug) {
+    return getStoreShellBySlug(forwardedStoreSlug, undefined, options);
+  }
+
+  const requestHost = getEzcomoRequestHostname({ headers: requestHeaders }) || undefined;
+  const resolved = await resolveStoreByHostname(requestHost, options);
+
+  if (resolved && !shouldTryLocalStoreSlugFallback(requestHost, resolved.id)) {
+    return getStoreShellById(resolved.id, options);
+  }
+
+  if (isLocalStorefrontHostname(requestHost)) {
+    for (const slug of getLocalStoreSlugCandidates()) {
+      const localStore = await getStoreShellBySlug(slug, undefined, options);
+      if (localStore) {
+        return localStore;
+      }
+    }
+  }
+
+  return resolved ? await getStoreShellById(resolved.id, options) : resolved;
 }

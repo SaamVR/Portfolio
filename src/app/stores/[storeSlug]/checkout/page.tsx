@@ -1,5 +1,5 @@
 import StoreCheckoutClient from "@/app/stores/[storeSlug]/checkout/StoreCheckoutClient";
-import { getStoreBySlug } from "@/lib/cms/store-resolver";
+import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
 import { notFound } from "next/navigation";
 
 export default async function Page({
@@ -8,7 +8,7 @@ export default async function Page({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/checkout" });
 
   if (!store) {
     notFound();

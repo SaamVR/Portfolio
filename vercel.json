@@ -1,26 +1,25 @@
 {
   "version": 2,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
+  "functions": {
+    "src/app/api/queues/order-background/route.ts": {
+      "experimentalTriggers": [
         {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
+          "type": "queue/v2beta",
+          "topic": "order-background-events",
+          "retryAfterSeconds": 60,
+          "initialDelaySeconds": 0
+        }
+      ]
+    },
+    "src/app/api/queues/notification-delivery/route.ts": {
+      "experimentalTriggers": [
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.com http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co https://www.facebook.com https://images.unsplash.com https://loremflickr.com https://placehold.co https://api.dicebear.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
+          "type": "queue/v2beta",
+          "topic": "notification-delivery-events",
+          "retryAfterSeconds": 60,
+          "initialDelaySeconds": 0
         }
       ]
     }
-  ]
+  }
 }

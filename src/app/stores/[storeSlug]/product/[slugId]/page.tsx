@@ -1,5 +1,5 @@
 import StoreProductPageClient from "@/app/stores/[storeSlug]/product/[slugId]/StoreProductPageClient";
-import { getStoreBySlug } from "@/lib/cms/store-resolver";
+import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
 import { buildStoreProductMetadata, getProductMetadataBySlugId } from "@/lib/cms/store-metadata";
 import { notFound } from "next/navigation";
 
@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ storeSlug: string; slugId: string }>;
 }) {
   const { storeSlug, slugId } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: `/product/${slugId}` });
   const product = store ? await getProductMetadataBySlugId(store.id, slugId) : null;
 
   if (!store || !product) {
@@ -24,8 +24,8 @@ export default async function Page({
 }: {
   params: Promise<{ storeSlug: string; slugId: string }>;
 }) {
-  const { storeSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const { storeSlug, slugId } = await params;
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: `/product/${slugId}` });
 
   if (!store) {
     notFound();

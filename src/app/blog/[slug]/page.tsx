@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/components/storefront/blog/BlogPostPage";
-import { getRequestStore } from "@/lib/cms/request-store";
+import { getRequestStoreShell } from "@/lib/cms/request-store";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import type { BlogPostRecord } from "@/lib/cms/blog";
 
@@ -12,7 +12,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const store = await getRequestStore();
+  const store = await getRequestStoreShell({ requestedPageSlug: `/blog/${slug}` });
   const supabase = getCmsSupabaseServerClient();
   if (!store || !supabase) return {};
   const { data } = await (supabase as any)
@@ -36,7 +36,7 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const store = await getRequestStore();
+  const store = await getRequestStoreShell({ requestedPageSlug: `/blog/${slug}` });
   const supabase = getCmsSupabaseServerClient();
   if (!store || !supabase) notFound();
 

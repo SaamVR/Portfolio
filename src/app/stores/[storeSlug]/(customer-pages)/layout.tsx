@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
-import { getStoreBySlug } from "@/lib/cms/store-resolver";
+import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export default async function StoreCustomerPagesLayout({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/account" });
 
   if (!store) {
     notFound();

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
-import { triggerWhatsAppOrderNotify } from "@/lib/cms/whatsapp-order-notify";
 import { normalizeOrderItems } from "@/lib/cms/order-input";
 import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
+import { jsonNoStore } from "@/lib/http/cache-control";
+import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allowedPaymentMethods = new Set(["bkash", "bkash_manual", "nagad", "cod"]);
@@ -41,13 +42,13 @@ function mapOrderError(message: string) {
 
 export async function POST(req: Request) {
   try {
-    const limit = rateLimit(`order_create:${getClientIp(req)}`, {
+    const limit = await rateLimit(`order_create:${getClientIp(req)}`, {
       limit: 12,
       windowMs: 60_000,
     });
 
     if (!limit.success) {
-      return NextResponse.json({ error: "Too many order attempts. Please wait a minute." }, { status: 429 });
+      return jsonNoStore({ error: "Too many order attempts. Please wait a minute." }, { status: 429 });
     }
 
     const body = await req.json();
@@ -61,19 +62,19 @@ export async function POST(req: Request) {
     const shippingCity = readText(body?.shippingCity, 100);
 
     if (!uuidPattern.test(storeId)) {
-      return NextResponse.json({ error: "Invalid store" }, { status: 400 });
+      return jsonNoStore({ error: "Invalid store" }, { status: 400 });
     }
 
     if (!idempotencyKey) {
-      return NextResponse.json({ error: "Missing idempotency key" }, { status: 400 });
+      return jsonNoStore({ error: "Missing idempotency key" }, { status: 400 });
     }
 
     if (!customerName || !customerPhone || !shippingAddress || !shippingCity) {
-      return NextResponse.json({ error: "Missing required customer or shipping fields" }, { status: 400 });
+      return jsonNoStore({ error: "Missing required customer or shipping fields" }, { status: 400 });
     }
 
     if (!allowedPaymentMethods.has(paymentMethod)) {
-      return NextResponse.json({ error: "Invalid payment method" }, { status: 400 });
+      return jsonNoStore({ error: "Invalid payment method" }, { status: 400 });
     }
 
     const items = normalizeOrderItems(body?.items);
@@ -116,34 +117,13 @@ export async function POST(req: Request) {
 
     if (error) {
       const mapped = mapOrderError(error.message || "");
-      return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+      return jsonNoStore({ error: mapped.message }, { status: mapped.status });
     }
 
     const order = Array.isArray(data) ? data[0] : data;
     if (!order?.order_number) {
-      return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+      return jsonNoStore({ error: "Failed to create order" }, { status: 500 });
     }
-
-    // Fail-safe WhatsApp order notification for merchant
-    void triggerWhatsAppOrderNotify(supabaseAdmin, {
-      store_id: storeId,
-      order_id: order.id,
-      order_number: order.order_number,
-      store_name: typeof store?.name === "string" ? store.name : undefined,
-      order_label: orderExperience.labels.trackActionLabel === "Track Order" ? "Order Number" : "Request Number",
-      customer_label: orderExperience.labels.detailsTitle,
-      items_label: orderExperience.labels.summaryTitle,
-      total_label: orderExperience.labels.totalLabel,
-      address_label: orderExperience.labels.addressSummaryLabel,
-      option_label: orderExperience.labels.optionLabel,
-      merchant_notification_title: orderExperience.labels.merchantNotificationTitle,
-      customer_name: customerName,
-      customer_phone: customerPhone,
-      shipping_address: shippingAddress,
-      shipping_city: shippingCity,
-      total: Number(order.total ?? 0),
-      items: order.items || items,
-    });
 
     const orderItems = Array.isArray(order.items) ? order.items : items;
     const productRevenueWeight = orderItems.reduce((sum: number, item: any) => {
@@ -213,60 +193,61 @@ export async function POST(req: Request) {
       }).filter((row) => row.product_id),
     ];
 
-    void (supabaseAdmin as any).from("store_analytics_events").insert(purchaseEventRows);
-    void (supabaseAdmin as any).from("store_revenue_events").insert({
-      store_id: storeId,
-      order_id: order.id,
-      customer_id: user?.id ?? null,
-      event_type: "sale",
-      gross_amount: Number(order.total ?? 0),
-      refund_amount: 0,
-      net_amount: Number(order.total ?? 0),
-      currency_code: "BDT",
-      payment_method: paymentMethod,
-      status: typeof order.status === "string" ? order.status : "pending",
-      attribution_source: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.source, 120) || null,
-      attribution_medium: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.medium, 120) || null,
-      attribution_campaign: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.campaign, 160) || null,
-      metadata: {
-        order_number: order.order_number,
-        item_count: orderItems.reduce((sum: number, item: any) => sum + Number(item?.quantity ?? 0), 0),
-      },
+    after(async () => {
+      await dispatchOrderCreatedBackgroundJobs({
+        customerEmail,
+        customerPhone,
+        notification: {
+          store_id: storeId,
+          order_id: order.id,
+          order_number: order.order_number,
+          store_name: typeof store?.name === "string" ? store.name : undefined,
+          order_label: orderExperience.labels.trackActionLabel === "Track Order" ? "Order Number" : "Request Number",
+          customer_label: orderExperience.labels.detailsTitle,
+          items_label: orderExperience.labels.summaryTitle,
+          total_label: orderExperience.labels.totalLabel,
+          address_label: orderExperience.labels.addressSummaryLabel,
+          option_label: orderExperience.labels.optionLabel,
+          merchant_notification_title: orderExperience.labels.merchantNotificationTitle,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          shipping_address: shippingAddress,
+          shipping_city: shippingCity,
+          total: Number(order.total ?? 0),
+          items: order.items || items,
+        },
+        purchaseEventRows,
+        recoveryOrderId: order.id,
+        recoveredRevenue: Number(order.total ?? 0),
+        revenueEventRow: {
+          store_id: storeId,
+          order_id: order.id,
+          customer_id: user?.id ?? null,
+          event_type: "sale",
+          gross_amount: Number(order.total ?? 0),
+          refund_amount: 0,
+          net_amount: Number(order.total ?? 0),
+          currency_code: "BDT",
+          payment_method: paymentMethod,
+          status: typeof order.status === "string" ? order.status : "pending",
+          attribution_source: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.source, 120) || null,
+          attribution_medium: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.medium, 120) || null,
+          attribution_campaign: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.campaign, 160) || null,
+          metadata: {
+            order_number: order.order_number,
+            item_count: orderItems.reduce((sum: number, item: any) => sum + Number(item?.quantity ?? 0), 0),
+          },
+        },
+        storeId,
+        supabaseAdmin,
+      });
     });
 
-    if (customerPhone || customerEmail) {
-      const recoveryLeadQuery = (supabaseAdmin as any)
-        .from("store_cart_recovery_leads")
-        .select("id, recovered_revenue")
-        .eq("store_id", storeId)
-        .in("status", ["active", "abandoned", "contacted"])
-        .order("updated_at", { ascending: false })
-        .limit(1);
-
-      const { data: matchingRecoveryLead } = customerPhone
-        ? await recoveryLeadQuery.eq("contact_phone", customerPhone).maybeSingle()
-        : await recoveryLeadQuery.eq("contact_email", customerEmail).maybeSingle();
-
-      if (matchingRecoveryLead?.id) {
-        void (supabaseAdmin as any)
-          .from("store_cart_recovery_leads")
-          .update({
-            status: "recovered",
-            recovery_stage: "recovered",
-            recovered_order_id: order.id,
-            recovered_revenue: Number(order.total ?? 0),
-            last_activity_at: new Date().toISOString(),
-          })
-          .eq("id", matchingRecoveryLead.id)
-          .eq("store_id", storeId);
-      }
-    }
-
-    return NextResponse.json({ order });
+    return jsonNoStore({ order });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create order";
     const mapped = mapOrderError(message);
     console.error("Order create error:", error);
-    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+    return jsonNoStore({ error: mapped.message }, { status: mapped.status });
   }
 }

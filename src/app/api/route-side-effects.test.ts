@@ -78,6 +78,17 @@ import {
   POST as notificationRetryPost,
   notificationRetryRouteDeps,
 } from "@/app/api/notifications/retry/route";
+import {
+  POST as notificationProcessQueuePost,
+  notificationProcessQueueRouteDeps,
+} from "@/app/api/notifications/process-queue/route";
+import { notificationDeliveryQueueDeps } from "@/lib/notifications/notification-delivery-queue";
+import {
+  POST as cartRecoveryProcessQueuePost,
+  cartRecoveryProcessQueueRouteDeps,
+} from "@/app/api/cart-recovery/process-queue/route";
+import { recoveryMessageProcessorDeps } from "@/lib/cart-recovery/recovery-message-processor";
+import { logPlatformAuditAction } from "@/lib/platform/audit-logger";
 
 afterEach(() => {
   mock.restoreAll();
@@ -831,15 +842,18 @@ function createPlatformBkashConnectionAdminMock() {
 }
 
 function createAnalyticsAdminMock(options?: {
-  storePublished?: boolean;
   productBelongsToStore?: boolean;
   orderBelongsToStore?: boolean;
 }) {
   const insertedEvents: Array<Record<string, unknown>> = [];
   const limits = new Map<string, number>();
+  let storeSelectCount = 0;
 
   return {
     insertedEvents,
+    get storeSelectCount() {
+      return storeSelectCount;
+    },
     client: {
       from(table: string) {
         if (table === "store_analytics_ingestion_limits") {
@@ -876,11 +890,12 @@ function createAnalyticsAdminMock(options?: {
         if (table === "stores") {
           return {
             select() {
+              storeSelectCount += 1;
               return {
                 eq() {
                   return {
                     maybeSingle: async () => ({
-                      data: options?.storePublished === false ? { id: "store_1", is_published: false } : { id: "store_1", is_published: true },
+                      data: { id: "store_1", is_published: true },
                       error: null,
                     }),
                   };
@@ -917,8 +932,12 @@ function createAnalyticsAdminMock(options?: {
 
         if (table === "store_analytics_events") {
           return {
-            insert(payload: Record<string, unknown>) {
-              insertedEvents.push(payload);
+            insert(payload: Record<string, unknown> | Array<Record<string, unknown>>) {
+              if (Array.isArray(payload)) {
+                insertedEvents.push(...payload);
+              } else {
+                insertedEvents.push(payload);
+              }
               return Promise.resolve({ error: null });
             },
           };
@@ -1539,16 +1558,10 @@ function createDeleteStoreAdminMock(options?: {
             select() {
               return {
                 eq() {
-                  return {
-                    eq() {
-                      return {
-                        maybeSingle: async () => ({
-                          data: options?.platformRole ? { role: options.platformRole } : null,
-                          error: null,
-                        }),
-                      };
-                    },
-                  };
+                  return Promise.resolve({
+                    data: options?.platformRole ? [{ role: options.platformRole }] : [],
+                    error: null,
+                  });
                 },
               };
             },
@@ -1632,10 +1645,75 @@ function createDeleteStoreAdminMock(options?: {
 
 function createNotificationAdminMock() {
   const escalations: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const processingFailures: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
+  const recoveryMessageUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
 
   return {
     escalations,
+    processingFailures,
+    recoveryMessageUpdates,
     client: {
+      rpc(fn: string, args: Record<string, unknown>) {
+        if (fn === "claim_due_email_events") {
+          void args;
+          return Promise.resolve({
+            data: [
+              {
+                id: "event_retry_1",
+                store_id: "store_1",
+                order_id: "order_1",
+                template_name: "merchant-order-alert",
+                recipient: "ops@example.com",
+                channel: "email",
+                metadata: {
+                  retry_payload: {
+                    store_id: "store_1",
+                    order_id: "order_1",
+                    templateName: "merchant-order-alert",
+                    to: "ops@example.com",
+                  },
+                },
+                retry_count: 1,
+                status: "processing",
+              },
+            ],
+            error: null,
+          });
+        }
+
+        if (fn === "claim_due_cart_recovery_messages") {
+          void args;
+          return Promise.resolve({
+            data: [
+              {
+                id: "recovery_msg_1",
+                store_id: "store_1",
+                lead_id: "lead_1",
+                channel: "email",
+                template_key: "recovery-sequence",
+                status: "processing",
+                retry_count: 0,
+                contact_email: "buyer@example.com",
+                contact_phone: null,
+                contact_name: "Amina",
+                store_name: "Demo Store",
+                store_slug: "demo-store",
+                coupon_code: "RECOVER-123",
+                cart_value: 1290,
+                item_count: 2,
+                metadata: {
+                  item_summary: "Dress x1, Scarf x1",
+                },
+              },
+            ],
+            error: null,
+          });
+        }
+
+        {
+          throw new Error(`Unexpected rpc ${fn}`);
+        }
+      },
       from(table: string) {
         if (table === "stores") {
           return {
@@ -1717,13 +1795,37 @@ function createNotificationAdminMock() {
               return {
                 eq(column: string, value: string) {
                   filters.push([column, value]);
-                  return {
-                    eq(column2: string, value2: string) {
-                      filters.push([column2, value2]);
-                      escalations.push({ payload, filters: [...filters] });
-                      return Promise.resolve({ error: null });
-                    },
-                  };
+                  if ("operator_escalated_at" in payload || "operator_escalation_reason" in payload) {
+                    return {
+                      eq(column2: string, value2: string) {
+                        filters.push([column2, value2]);
+                        escalations.push({ payload, filters: [...filters] });
+                        return Promise.resolve({ error: null });
+                      },
+                    };
+                  }
+
+                  if (column === "id") {
+                    processingFailures.push({ payload, filters: [...filters] });
+                    return Promise.resolve({ error: null });
+                  }
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "store_cart_recovery_messages") {
+          return {
+            update(payload: Record<string, unknown>) {
+              return {
+                eq(column: string, value: string) {
+                  recoveryMessageUpdates.push({
+                    payload,
+                    filters: [[column, value]],
+                  });
+                  return Promise.resolve({ error: null });
                 },
               };
             },
@@ -2135,6 +2237,41 @@ describe("manual billing review side effects", () => {
     assert.deepEqual(await response.json(), { success: true, status: "paid" });
     assert.equal(admin.invoiceUpdates.length, 1);
     assert.equal(admin.subscriptionUpserts.length, 1);
+  });
+
+  test("returns structured Supabase error details instead of the generic fallback", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_4",
+      store_id: "store_4",
+      plan_id: "pro",
+      status: "pending",
+      provider_invoice_id: "trx_999",
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_4" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({
+      error: {
+        code: "23503",
+        message: "insert or update on table \"store_subscriptions\" violates foreign key constraint",
+        details: "Key (plan_id)=(pro) is not present in table \"cms_plans\".",
+      },
+    }) as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_4", action: "approve" },
+        { Authorization: "Bearer token_999" },
+      ),
+    );
+
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), {
+      error:
+        "insert or update on table \"store_subscriptions\" violates foreign key constraint Key (plan_id)=(pro) is not present in table \"cms_plans\". (code: 23503)",
+    });
   });
 });
 
@@ -2657,6 +2794,8 @@ describe("platform CMS bKash payment connection side effects", () => {
     const body = await response.json();
     assert.equal(body.connection.configured, true);
     assert.equal(body.connection.metadata.environment, "sandbox");
+    assert.equal(body.connection.metadata.forceTestMode, false);
+    assert.equal(body.connection.metadata.baseUrl, null);
     assert.equal(JSON.stringify(body).includes("platform-app-secret"), false);
     assert.equal(JSON.stringify(body).includes("platform-password"), false);
 
@@ -2678,6 +2817,47 @@ describe("platform CMS bKash payment connection side effects", () => {
     ))!;
     assert.equal(revokeResponse.status, 200);
     assert.deepEqual(admin.updates[0]?.payload.secret_payload, {});
+  });
+
+  test("stores global CMS subscription test-mode metadata without exposing secrets", async () => {
+    const admin = createPlatformBkashConnectionAdminMock();
+
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getAuthenticatedUser", async () => ({
+      id: "super_admin_1",
+      email: "cms@example.com",
+    }) as never);
+    mock.method(platformBkashPaymentConnectionRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = (await platformBkashConnectionPut(
+      jsonRequest("https://example.com/api/platform/payment-connections/bkash", "PUT", {
+        settings: {
+          appKey: "platform-app-key",
+          appSecret: "platform-app-secret",
+          username: "platform-user",
+          password: "platform-password",
+          isLive: true,
+          forceTestMode: true,
+          baseUrl: "https://sandbox.example.test/v1.2.0-beta",
+        },
+      }),
+    ))!;
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(admin.upserts[0]?.public_metadata, {
+      is_live: true,
+      environment: "live",
+      force_test_mode: true,
+      base_url: "https://sandbox.example.test/v1.2.0-beta",
+      label: "bKash PGW",
+      app_key_hint: "pl****ey",
+      username_hint: "pl****er",
+    });
+
+    const body = await response.json();
+    assert.equal(body.connection.metadata.forceTestMode, true);
+    assert.equal(body.connection.metadata.baseUrl, "https://sandbox.example.test/v1.2.0-beta");
+    assert.equal(JSON.stringify(body).includes("platform-app-secret"), false);
+    assert.equal(JSON.stringify(body).includes("platform-password"), false);
   });
 });
 
@@ -2808,18 +2988,8 @@ describe("analytics ingestion hardening", () => {
     assert.equal(admin.insertedEvents.length, 0);
   });
 
-  test("rejects unpublished stores and cross-store product references", async () => {
+  test("rejects cross-store product references before insert", async () => {
     mock.method(analyticsTrackRouteDeps, "rateLimit", () => ({ success: true }));
-    mock.method(analyticsTrackRouteDeps, "getSupabaseAdminClient", () => createAnalyticsAdminMock({ storePublished: false }).client as never);
-
-    const unpublishedResponse = await analyticsTrackPost(
-      jsonRequest("https://example.com/api/analytics/track", "POST", {
-        storeId,
-        eventName: "page_view",
-      }),
-    );
-    assert.equal(unpublishedResponse.status, 404);
-
     const admin = createAnalyticsAdminMock({ productBelongsToStore: false });
     mock.method(analyticsTrackRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
     const crossStoreResponse = await analyticsTrackPost(
@@ -2864,6 +3034,39 @@ describe("analytics ingestion hardening", () => {
     assert.notEqual(admin.insertedEvents[0]?.visitor_id, "visitor-clear");
     assert.notEqual(admin.insertedEvents[0]?.session_id, "session-clear");
     assert.equal(admin.insertedEvents[0]?.traffic_source, "facebook");
+    assert.equal(admin.storeSelectCount, 0);
+  });
+
+  test("accepts batched analytics payloads in one insert", async () => {
+    const admin = createAnalyticsAdminMock();
+    mock.method(analyticsTrackRouteDeps, "rateLimit", () => ({ success: true }));
+    mock.method(analyticsTrackRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = await analyticsTrackPost(
+      jsonRequest("https://example.com/api/analytics/track", "POST", {
+        events: [
+          {
+            storeId,
+            eventName: "page_view",
+            visitorId: "visitor-1",
+            sessionId: "session-1",
+            pagePath: "/shop",
+          },
+          {
+            storeId,
+            eventName: "view_item",
+            visitorId: "visitor-1",
+            sessionId: "session-1",
+            productId,
+            pagePath: "/product/demo",
+          },
+        ],
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(admin.insertedEvents.length, 2);
+    assert.equal(admin.storeSelectCount, 0);
   });
 });
 
@@ -3271,6 +3474,82 @@ describe("bKash callback context integrity", () => {
     );
     assert.equal(fetchMock.mock.callCount(), 2);
   });
+
+  test("forces CMS billing onto the saved global test-mode base URL when enabled", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://commerce.example.com";
+
+    const admin = createBkashCallbackAdminMock(
+      {
+        id: "invoice_1",
+        store_id: "store_1",
+        plan_id: "growth",
+        amount: 999,
+      },
+      {
+        platformConnection: {
+          id: "platform_connection_1",
+          provider: "bkash",
+          status: "connected",
+          public_metadata: {
+            environment: "live",
+            is_live: true,
+            force_test_mode: true,
+            base_url: "https://sandbox.example.test/v1.2.0-beta",
+          },
+          secret_payload: {
+            app_key: "secure-app-key",
+            app_secret: "secure-app-secret",
+            username: "secure-user",
+            password: "secure-password",
+          },
+          created_at: FIXED_NOW.toISOString(),
+          updated_at: FIXED_NOW.toISOString(),
+          revoked_at: null,
+        },
+      },
+    );
+
+    mock.method(billingBkashCallbackRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(billingBkashCallbackRouteDeps, "now", () => FIXED_NOW);
+    const urls: string[] = [];
+    const fetchMock = mock.method(
+      billingBkashCallbackRouteDeps,
+      "fetch",
+      async (url: string | URL, init?: RequestInit) => {
+        urls.push(String(url));
+        const headers = init?.headers as Record<string, string>;
+        if (String(url).includes("/token/grant")) {
+          assert.equal(headers.username, "secure-user");
+          assert.equal(headers.password, "secure-password");
+          return {
+            json: async () => ({ statusCode: "0000", id_token: "token_123" }),
+          } as never;
+        }
+
+        assert.equal(headers["X-APP-Key"], "secure-app-key");
+        return {
+          json: async () => ({ statusCode: "0000", amount: "999" }),
+        } as never;
+      },
+    );
+
+    const response = await billingBkashCallbackGet(
+      new Request(
+        "https://example.com/api/billing/bkash-callback?status=success&paymentID=pay_1&invoice_id=invoice_1&store_id=store_1",
+      ),
+    );
+
+    assert.equal(response.status, 307);
+    assert.equal(
+      response.headers.get("location"),
+      "https://commerce.example.com/admin/billing?payment=success",
+    );
+    assert.equal(fetchMock.mock.callCount(), 2);
+    assert.deepEqual(urls, [
+      "https://sandbox.example.test/v1.2.0-beta/tokenized/checkout/token/grant",
+      "https://sandbox.example.test/v1.2.0-beta/tokenized/checkout/execute",
+    ]);
+  });
 });
 
 describe("store deletion side effects", () => {
@@ -3527,5 +3806,133 @@ describe("notification retry side effects", () => {
     assert.equal(admin.escalations.length, 1);
     assert.equal(admin.escalations[0]?.payload.operator_escalation_reason, "Please review before launch.");
     assert.deepEqual(await response.json(), { success: true, action: "escalated" });
+  });
+});
+
+describe("notification queue processor side effects", () => {
+  test("claims queued notification rows and dispatches them through the server-side delivery path", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    const admin = createNotificationAdminMock();
+
+    const originalAdminClient = notificationDeliveryQueueDeps.getSupabaseAdminClient;
+    const originalFetch = notificationDeliveryQueueDeps.fetch;
+
+    mock.method(notificationProcessQueueRouteDeps, "getSecret", () => "processor-secret");
+    notificationDeliveryQueueDeps.getSupabaseAdminClient = () => admin.client as never;
+    notificationDeliveryQueueDeps.fetch = (async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      assert.equal(body.existingEventId, "event_retry_1");
+      assert.equal(body.retryCount, 2);
+      assert.equal(body.templateName, "merchant-order-alert");
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }) as typeof notificationDeliveryQueueDeps.fetch;
+
+    try {
+      const response = await notificationProcessQueuePost(
+        new Request("https://example.com/api/notifications/process-queue", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-notification-queue-secret": "processor-secret",
+          },
+          body: JSON.stringify({ limit: 10 }),
+        }),
+      );
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), {
+        success: true,
+        claimed: 1,
+        dispatched: 1,
+        failed: 0,
+      });
+    } finally {
+      notificationDeliveryQueueDeps.getSupabaseAdminClient = originalAdminClient;
+      notificationDeliveryQueueDeps.fetch = originalFetch;
+    }
+  });
+});
+
+describe("cart recovery queue processor side effects", () => {
+  test("claims queued recovery rows and sends recovery emails through the server-side delivery path", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    const admin = createNotificationAdminMock();
+
+    const originalAdminClient = recoveryMessageProcessorDeps.getSupabaseAdminClient;
+    const originalFetch = notificationDeliveryQueueDeps.fetch;
+
+    mock.method(cartRecoveryProcessQueueRouteDeps, "getSecret", () => "recovery-secret");
+    recoveryMessageProcessorDeps.getSupabaseAdminClient = () => admin.client as never;
+    notificationDeliveryQueueDeps.fetch = (async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      assert.equal(body.templateName, "cart-recovery");
+      assert.equal(body.customer_email, "buyer@example.com");
+      assert.equal(body.couponCode, "RECOVER-123");
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }) as typeof notificationDeliveryQueueDeps.fetch;
+
+    try {
+      const response = await cartRecoveryProcessQueuePost(
+        new Request("https://example.com/api/cart-recovery/process-queue", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-cart-recovery-queue-secret": "recovery-secret",
+          },
+          body: JSON.stringify({ limit: 10 }),
+        }),
+      );
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), {
+        success: true,
+        claimed: 1,
+        dispatched: 1,
+        skipped: 0,
+        failed: 0,
+      });
+      assert.equal(admin.recoveryMessageUpdates.length, 1);
+      assert.equal(admin.recoveryMessageUpdates[0]?.payload.status, "sent");
+    } finally {
+      recoveryMessageProcessorDeps.getSupabaseAdminClient = originalAdminClient;
+      notificationDeliveryQueueDeps.fetch = originalFetch;
+    }
+  });
+});
+
+describe("platform audit logger", () => {
+  test("normalizes super_admin into the persisted app_role-compatible actor role", async () => {
+    const inserts: Array<Record<string, unknown>> = [];
+    const client = {
+      from(table: string) {
+        if (table !== "platform_audit_logs") {
+          throw new Error(`Unexpected table ${table}`);
+        }
+
+        return {
+          insert(payload: Record<string, unknown>) {
+            inserts.push(payload);
+            return Promise.resolve({ error: null });
+          },
+        };
+      },
+    };
+
+    await logPlatformAuditAction(client as never, {
+      actorId: "admin_1",
+      actorEmail: "admin@example.com",
+      actorRole: "super_admin",
+      action: "approve_invoice",
+      targetType: "invoice",
+      targetId: "invoice_1",
+    });
+
+    assert.equal(inserts.length, 1);
+    assert.equal(inserts[0]?.actor_role, "admin");
+    assert.deepEqual(inserts[0]?.details, {
+      actor_role_source: "super_admin",
+    });
   });
 });

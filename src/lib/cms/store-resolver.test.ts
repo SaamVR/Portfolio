@@ -1,14 +1,15 @@
 import { describe, expect, it } from "@/test/test-utils";
 import { buildResolvedStoreFromRecords, canAccessStorefrontStore } from "@/lib/cms/store-resolver";
-import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 describe("store resolver mapping", () => {
   it("allows storefront access for trialing stores even before the publish flag is flipped", () => {
+    const trialEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
     expect(
       canAccessStorefrontStore(
         { is_published: false },
-        { status: "trialing", trial_ends_at: "2026-07-31T00:00:00.000Z" },
+        { status: "trialing", trial_ends_at: trialEndsAt },
       ),
     ).toBe(true);
   });
@@ -37,7 +38,7 @@ describe("store resolver mapping", () => {
     expect(isUnexpired).toBe(true);
   });
 
-  it("uses business profile blueprints and theme package defaults when records are sparse", () => {
+  it("uses business profile template seeds and theme package defaults when records are sparse", () => {
     const store = buildResolvedStoreFromRecords(
       {
         id: "store-1",
@@ -50,7 +51,7 @@ describe("store resolver mapping", () => {
         store_type: "clothing",
       },
       {
-        blueprint_id: "single-product",
+        template_id: "single-product",
       },
       {
         preset_id: "ocean-teal",
@@ -73,7 +74,7 @@ describe("store resolver mapping", () => {
     expect(store.pages[0]?.slug).toBe("/");
   });
 
-  it("uses an explicit custom blueprint definition when provided", () => {
+  it("uses an explicit custom template seed definition when provided", () => {
     const store = buildResolvedStoreFromRecords(
       {
         id: "store-2",
@@ -86,7 +87,7 @@ describe("store resolver mapping", () => {
         store_type: "luxury-hotel",
       },
       {
-        blueprint_id: "luxury-hotel",
+        template_id: "luxury-hotel",
       },
       null,
       [],
@@ -97,12 +98,15 @@ describe("store resolver mapping", () => {
         legacyTemplateId: "general",
         name: "Luxury Hotel",
         shortName: "Hotel",
-        description: "Custom hospitality blueprint",
+        description: "Custom hospitality template seed",
         businessFamily: "service",
         catalogMode: "inquiry_only",
         group: "Hotels",
+        onboardingMode: "template",
         recommendedPageSet: ["home", "contact"],
+        compatibleBlockSet: ["hero", "rich-text", "faq-accordion"],
         recommendedBlockSet: ["hero", "rich-text", "faq-accordion"],
+        defaultBlockSet: ["hero", "rich-text", "faq-accordion"],
         defaultTheme: {
           presetId: "royal-purple",
           mode: "light",
@@ -137,7 +141,7 @@ describe("store resolver mapping", () => {
     expect(store.pages[0]?.blocks[0]?.type).toBe("hero");
   });
 
-  it("resolves custom theme packages and custom recommended page blueprints when provided", () => {
+  it("resolves custom theme packages and custom recommended page templates when provided", () => {
     const themePackages: ThemePackageDefinition[] = [{
       id: "merchant-noir",
       slug: "merchant-noir",
@@ -172,33 +176,6 @@ describe("store resolver mapping", () => {
       ownerStoreId: "store-3",
       isActive: true,
     }];
-    const pageBlueprints: CmsPageBlueprint[] = [{
-      id: "custom-gallery",
-      name: "Custom Gallery",
-      description: "Custom gallery page",
-      businessFamily: "commerce",
-      catalogModes: ["multi_product"],
-      page: {
-        slug: "/gallery",
-        title: "Gallery",
-        seoTitle: "Gallery",
-        seoDescription: "A custom gallery page",
-        isHomepage: false,
-        blocks: [{
-          id: "gallery-rich-text",
-          type: "rich-text",
-          isVisible: true,
-          visible: true,
-          sortOrder: 0,
-          props: {
-            title: "Gallery",
-            body: "Custom gallery body",
-            align: "left",
-          },
-        }],
-      },
-    }];
-
     const store = buildResolvedStoreFromRecords(
       {
         id: "store-3",
@@ -211,7 +188,7 @@ describe("store resolver mapping", () => {
         store_type: "gallery-studio",
       },
       {
-        blueprint_id: "gallery-studio",
+        template_id: "gallery-studio",
       },
       {
         preset_id: "merchant-noir",
@@ -230,12 +207,15 @@ describe("store resolver mapping", () => {
         legacyTemplateId: "general",
         name: "Gallery Studio",
         shortName: "Gallery",
-        description: "Custom gallery blueprint",
+        description: "Custom gallery template seed",
         businessFamily: "commerce",
         catalogMode: "multi_product",
         group: "Custom",
+        onboardingMode: "template",
         recommendedPageSet: ["home", "custom-gallery"],
+        compatibleBlockSet: ["hero", "rich-text"],
         recommendedBlockSet: ["hero", "rich-text"],
+        defaultBlockSet: ["hero", "rich-text"],
         defaultTheme: {
           presetId: "merchant-noir",
           mode: "light",
@@ -260,13 +240,12 @@ describe("store resolver mapping", () => {
         defaultSiteSettings: {},
       },
       themePackages,
-      pageBlueprints,
     );
 
     expect(store.theme.themePackageId).toBe("merchant-noir");
     expect(store.theme.headingFont).toBe("'Manrope', sans-serif");
     expect(store.theme.customCssVars["--background"]).toBe("#111111");
-    expect(store.pages.some((page) => page.slug === "/gallery")).toBe(true);
+    expect(store.pages.some((page) => page.slug === "/gallery")).toBe(false);
   });
 
   it("carries store-scoped custom css from the installed theme snapshot", () => {
@@ -282,7 +261,7 @@ describe("store resolver mapping", () => {
         store_type: "general-catalog",
       },
       {
-        blueprint_id: "general-catalog",
+        template_id: "general-catalog",
       },
       {
         preset_id: "default",
@@ -316,7 +295,7 @@ describe("store resolver mapping", () => {
         store_type: "general-catalog",
       },
       {
-        blueprint_id: "general-catalog",
+        template_id: "general-catalog",
       },
       null,
       [],
@@ -325,5 +304,51 @@ describe("store resolver mapping", () => {
     );
 
     expect(store.customDomain).toBe("shop.domain-store.com");
+  });
+
+  it("can build a lightweight shell store without persisted page rows or page blocks", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-6",
+        name: "Shell Store",
+        slug: "shell-store",
+        description: "Fast public storefront shell",
+        currency_code: "USD",
+        locale: "en-US",
+        is_published: true,
+        store_type: "general-catalog",
+      },
+      {
+        template_id: "general-catalog",
+      },
+      {
+        preset_id: "default",
+        theme_package_id: "default",
+        mode: "light",
+        typography: null,
+        components: null,
+        colors: {
+          "--background": "#ffffff",
+        },
+        resolved_tokens: null,
+      },
+      [],
+      [],
+      [{
+        key: "storefront_profile",
+        value: {
+          template_id: "general-catalog",
+          product_visibility: "catalog",
+        },
+      }],
+    );
+
+    expect(store.pages.length > 0).toBe(true);
+    expect(store.pages[0]?.blocks.length > 0).toBe(true);
+    expect(store.theme.mode).toBe("light");
+    expect(store.siteSettings?.storefront_profile).toEqual({
+      template_id: "general-catalog",
+      product_visibility: "catalog",
+    });
   });
 });

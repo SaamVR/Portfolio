@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { BlogIndexPage } from "@/components/storefront/blog/BlogIndexPage";
-import { getStoreBySlug } from "@/lib/cms/store-resolver";
+import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import type { BlogPostRecord } from "@/lib/cms/blog";
 
@@ -12,7 +12,7 @@ export async function generateMetadata({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/blog" });
   if (!store) return {};
   return {
     title: `${store.name} Blog`,
@@ -26,7 +26,7 @@ export default async function Page({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreBySlug(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/blog" });
   const supabase = getCmsSupabaseServerClient();
   if (!store || !supabase) notFound();
 

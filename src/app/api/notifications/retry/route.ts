@@ -4,6 +4,7 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { dispatchNotificationDelivery } from "@/lib/notifications/notification-delivery-queue";
 
 type RetryableEventRow = {
   id: string;
@@ -109,28 +110,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, retried: 0, message: "No due retry events found." });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Supabase server credentials are not configured" }, { status: 503 });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = notificationRetryRouteDeps.fetch as typeof fetch;
+    let retried = 0;
+    let failed = 0;
+
+    try {
+      for (const event of retryableEvents) {
+        const result = await dispatchNotificationDelivery(getRetryPayload(event));
+        if (result.mode === "inline" && !result.response.ok) {
+          failed += 1;
+          continue;
+        }
+        retried += 1;
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === "Supabase server credentials are not configured") {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+      throw error;
+    } finally {
+      globalThis.fetch = originalFetch;
     }
-
-    const settledResults = await Promise.allSettled(
-      retryableEvents.map((event) =>
-        notificationRetryRouteDeps.fetch(`${supabaseUrl}/functions/v1/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify(getRetryPayload(event)),
-        }),
-      ),
-    );
-
-    const retried = settledResults.filter((result) => result.status === "fulfilled").length;
-    const failed = settledResults.length - retried;
 
     return NextResponse.json({
       success: true,

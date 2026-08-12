@@ -4,6 +4,7 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { dispatchNotificationDelivery } from "@/lib/notifications/notification-delivery-queue";
 
 type PreviewChannel = "email" | "sms";
 type NotificationTemplateName =
@@ -202,12 +203,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "A test recipient is required" }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Supabase server credentials are not configured" }, { status: 503 });
-    }
-
     const payload: Record<string, unknown> = {
       to: channel === "email" ? recipient : undefined,
       customer_phone: channel === "sms" ? recipient : undefined,
@@ -225,25 +220,27 @@ export async function POST(req: Request) {
       },
     };
 
-    const response = await notificationTestRouteDeps.fetch(
-      `${supabaseUrl}/functions/v1/send-email`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify(payload),
-      },
-    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = notificationTestRouteDeps.fetch as typeof fetch;
+    try {
+      const result = await dispatchNotificationDelivery(payload);
 
-    const responseBody = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: responseBody?.error || "Failed to send test notification" },
-        { status: response.status || 500 },
-      );
+      if (result.mode === "inline") {
+        const responseBody = await result.response.json().catch(() => ({}));
+        if (!result.response.ok) {
+          return NextResponse.json(
+            { error: responseBody?.error || "Failed to send test notification" },
+            { status: result.response.status || 500 },
+          );
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === "Supabase server credentials are not configured") {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+      throw error;
+    } finally {
+      globalThis.fetch = originalFetch;
     }
 
     return NextResponse.json({

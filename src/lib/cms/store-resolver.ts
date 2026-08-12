@@ -4,19 +4,18 @@ import {
   DEFAULT_STORE_LOCALE,
   createDefaultStore,
 } from "@/lib/cms/default-store";
-import { ensureRequiredStoreFlowPages, instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
-import { loadPageBlueprints, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
-import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+import { unstable_cache } from "next/cache";
 import { resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
-import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
+import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { sanitizeStorePage } from "@/lib/cms/validation";
-import { resolveStoreBlueprint, type StoreBlueprintDefinition, loadStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
-import { isSubscriptionLive } from "@/lib/billing/plans";
+import { resolveStorePlanState } from "@/lib/billing/plans";
 
 const STORE_SETTING_KEYS_TO_PRELOAD = [
   "announcement_bar",
@@ -24,6 +23,7 @@ const STORE_SETTING_KEYS_TO_PRELOAD = [
   "categories_custom_data",
   "contact_page",
   "countdown_timer",
+  "catalog_seed_metadata",
   "delivery_settings",
   "exit_intent",
   "faq_entries",
@@ -76,12 +76,14 @@ interface StoreThemeRow {
 }
 
 interface StoreBusinessProfileRow {
-  blueprint_id: string | null;
+  template_id: string | null;
 }
 
 interface StoreSubscriptionRow {
+  plan_id?: string | null;
   status: string | null;
   trial_ends_at?: string | null;
+  current_period_ends_at?: string | null;
 }
 
 interface StorePageRow {
@@ -100,6 +102,36 @@ interface StoreBlockRow {
   props: Record<string, unknown> | null;
   sort_order: number | null;
   is_visible: boolean | null;
+}
+
+type StoreResolverOptions = {
+  requestedPageSlug?: string | null;
+};
+
+function normalizeRequestedPageSlug(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return "/";
+  }
+
+  if (trimmed === "/") {
+    return "/";
+  }
+
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function buildStorefrontContentTags(storeId: string, requestedPageSlug?: string | null) {
+  const normalizedPageSlug = normalizeRequestedPageSlug(requestedPageSlug);
+  const safePageTag = normalizedPageSlug === "/"
+    ? "homepage"
+    : normalizedPageSlug.replace(/^\/+/, "").replace(/[^\w/-]+/g, "-");
+
+  return [
+    `store:${storeId}`,
+    `store:${storeId}:content`,
+    `store:${storeId}:page:${safePageTag}`,
+  ];
 }
 
 export async function getDefaultStore(): Promise<Store> {
@@ -181,9 +213,8 @@ export function buildResolvedStoreFromRecords(
   pages: StorePageRow[],
   blocks: StoreBlockRow[],
   siteSettings: SiteSettingRecord[],
-  blueprintOverride?: StoreBlueprintDefinition | null,
+  templateSeedOverride?: StorefrontTemplateSeedDefinition | null,
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
-  pageBlueprints: CmsPageBlueprint[] = [],
 ): Store {
   const rawSiteSettings = siteSettings.reduce<Record<string, unknown>>((settings, setting) => {
     settings[setting.key] = setting.value;
@@ -193,24 +224,24 @@ export function buildResolvedStoreFromRecords(
     ? rawSiteSettings.storefront_profile as Record<string, unknown>
     : {};
   const templateProfile = resolveStorefrontTemplateProfile(initialStorefrontProfile.template_id, {
-    blueprintId: (typeof initialStorefrontProfile.blueprint_id === "string" ? initialStorefrontProfile.blueprint_id : null)
-      ?? businessProfile?.blueprint_id
+    templateSeedId: businessProfile?.template_id
       ?? store.store_type
       ?? "general-catalog",
     productVisibility: typeof initialStorefrontProfile.product_visibility === "string"
       ? initialStorefrontProfile.product_visibility
       : null,
   });
-  const blueprint = blueprintOverride ?? resolveStoreBlueprint(templateProfile.seedBlueprintId);
-  const seedDefinition = blueprintOverride ?? templateProfile.seedDefinition;
+  const templateSeed = templateSeedOverride ?? resolveStorefrontTemplateSeed(templateProfile.templateSeedId);
+  const seedDefinition = templateSeedOverride ?? templateProfile.seedDefinition;
   const fallbackTheme = resolveThemePackageById(
     theme?.theme_package_id,
     themePackages,
     theme?.preset_id ?? seedDefinition.defaultTheme.presetId,
   );
-  const fallbackPages = blueprintOverride
-    ? instantiateStorePagesFromBlueprint(blueprintOverride, pageBlueprints)
-    : instantiateStorePagesFromTemplate(templateProfile, pageBlueprints);
+  const fallbackPages = templateSeedOverride
+    ? instantiateStorePagesFromTemplate(templateSeedOverride)
+    : instantiateStorePagesFromTemplate(templateProfile);
+  const fallbackPageBySlug = new Map(fallbackPages.map((page) => [page.slug, page]));
   const mappedPages = applyLegacyHomepageSettingsToPages(
     pages
       .map((page) =>
@@ -221,15 +252,23 @@ export function buildResolvedStoreFromRecords(
           seoTitle: page.seo_title ?? undefined,
           seoDescription: page.seo_description ?? undefined,
           isHomepage: page.is_homepage ?? false,
-          blocks: blocks
-            .filter((block) => block.page_id === page.id)
-            .map((block) => ({
-              id: block.id,
-              type: block.block_type,
-              props: block.props ?? {},
-              sortOrder: block.sort_order ?? 0,
-              isVisible: block.is_visible ?? true,
-            })),
+          blocks: (() => {
+            const persistedBlocks = blocks
+              .filter((block) => block.page_id === page.id)
+              .map((block) => ({
+                id: block.id,
+                type: block.block_type,
+                props: block.props ?? {},
+                sortOrder: block.sort_order ?? 0,
+                isVisible: block.is_visible ?? true,
+              }));
+
+            if (persistedBlocks.length > 0) {
+              return persistedBlocks;
+            }
+
+            return fallbackPageBySlug.get(page.slug)?.blocks ?? [];
+          })(),
         }),
       )
       .filter((page): page is StorePage => Boolean(page)),
@@ -242,15 +281,14 @@ export function buildResolvedStoreFromRecords(
   resolvedSiteSettings.storefront_profile = {
     ...storefrontProfile,
     template_id: resolveStorefrontTemplateId(storefrontProfile.template_id, {
-      blueprintId: blueprint.id,
+      templateSeedId: templateSeed.id,
       productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
     }),
-    blueprint_id: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : blueprint.id,
   };
 
-  const resolvedPages = ensureRequiredStoreFlowPages(
+  const resolvedPages = ensureRequiredStoreFlowPagesForTemplate(
     mappedPages.length > 0 ? mappedPages : fallbackPages,
-    blueprint,
+    templateSeed,
   );
 
   return storeSchema.parse({
@@ -279,22 +317,29 @@ export function buildResolvedStoreFromRecords(
 }
 
 export function canAccessStorefrontStore(
-  store: Pick<StoreRow, "is_published"> | null | undefined,
+  store: Pick<StoreRow, "is_published"> | { is_published?: boolean | null; plan?: string | null } | null | undefined,
   subscription?: StoreSubscriptionRow | null,
 ) {
   if (!store) {
     return false;
   }
 
+  const resolvedPlanState = resolveStorePlanState({
+    subscription: subscription ?? null,
+    legacyPlanId: typeof (store as { plan?: string | null })?.plan === "string"
+      ? (store as { plan?: string | null }).plan ?? null
+      : null,
+  });
+
   if (!store.is_published) {
-    return isSubscriptionLive(subscription ?? null);
+    return resolvedPlanState.live;
   }
 
   if (!subscription) {
     return true;
   }
 
-  return isSubscriptionLive(subscription ?? null);
+  return resolvedPlanState.live;
 }
 
 function getStoreResolverClient() {
@@ -305,7 +350,9 @@ function getStoreResolverClient() {
   }
 }
 
-export async function resolveStoreByHostname(hostname?: string): Promise<Store | null> {
+const STOREFRONT_RESOLVER_REVALIDATE_SECONDS = 60;
+
+export async function resolveStoreByHostname(hostname?: string, options?: StoreResolverOptions): Promise<Store | null> {
   const normalizedHostname = normalizeHostname(hostname);
   const supabase = getStoreResolverClient();
 
@@ -345,16 +392,14 @@ export async function resolveStoreByHostname(hostname?: string): Promise<Store |
     matchedStoreId = matchedDomain.store_id;
   }
 
-  const { data: subscription } = await supabase
-    .from("store_subscriptions")
-    .select("status, trial_ends_at")
-    .eq("store_id", matchedStoreId)
-    .maybeSingle();
-  if (!canAccessStorefrontStore({ is_published: true }, (subscription as StoreSubscriptionRow | null) ?? null)) {
+  const { data: storePlanState, error: storePlanStateError } = await loadStorePlanState(supabase as never, matchedStoreId, {
+    includePublished: true,
+  });
+  if (storePlanStateError || !canAccessStorefrontStore({ is_published: true, plan: storePlanState?.legacyPlanId ?? null }, (storePlanState?.subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 
-  const store = await getStoreById(matchedStoreId);
+  const store = await getStoreById(matchedStoreId, options);
   return store;
 }
 
@@ -387,7 +432,16 @@ export async function validatePreviewToken(storeId: string, previewToken?: strin
   return true;
 }
 
-export async function getStoreBySlug(slug: string, previewToken?: string | null): Promise<Store | null> {
+export async function getStoreBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
+  if (!previewToken) {
+    return getStoreBySlugCached(slug, requestedPageSlug);
+  }
+
+  return getStoreBySlugUncached(slug, previewToken, options);
+}
+
+async function getStoreBySlugUncached(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
   const supabase = getStoreResolverClient();
 
   if (!supabase) {
@@ -407,20 +461,23 @@ export async function getStoreBySlug(slug: string, previewToken?: string | null)
   const isValidToken = await validatePreviewToken(store.id, previewToken);
 
   if (!isValidToken) {
-    const { data: subscription } = await supabase
-      .from("store_subscriptions")
-      .select("status, trial_ends_at")
-      .eq("store_id", store.id)
-      .maybeSingle();
-    if (!canAccessStorefrontStore(store as Pick<StoreRow, "is_published">, (subscription as StoreSubscriptionRow | null) ?? null)) {
+    const { data: storePlanState, error: storePlanStateError } = await loadStorePlanState(supabase as never, store.id, {
+      includePublished: true,
+    });
+    if (storePlanStateError || !canAccessStorefrontStore({ ...(store as Pick<StoreRow, "is_published">), plan: storePlanState?.legacyPlanId ?? null }, (storePlanState?.subscription as StoreSubscriptionRow | null) ?? null)) {
       return null;
     }
   }
 
-  return await getStoreById(store.id);
+  return await getStoreByIdUncached(store.id, options);
 }
 
-export async function getStoreById(storeId: string): Promise<Store | null> {
+export async function getStoreById(storeId: string, options?: StoreResolverOptions): Promise<Store | null> {
+  const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
+  return getStoreByIdCached(storeId, requestedPageSlug);
+}
+
+async function loadStoreResolverCoreRecords(storeId: string) {
   const supabase = getStoreResolverClient();
 
   if (!supabase) {
@@ -431,11 +488,8 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
     { data: store, error: storeError },
     { data: businessProfile },
     { data: theme },
-    { data: pages },
-    { data: blocks },
     { data: siteSettings },
     themePackages,
-    pageBlueprints,
   ] = await Promise.all([
     supabase
       .from("stores")
@@ -444,7 +498,7 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .maybeSingle(),
     supabase
       .from("store_business_profiles")
-      .select("blueprint_id")
+      .select("template_id")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
@@ -453,41 +507,166 @@ export async function getStoreById(storeId: string): Promise<Store | null> {
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
-      .from("store_pages")
-      .select("id, slug, title, seo_title, seo_description, is_homepage")
-      .eq("store_id", storeId),
-    supabase
-      .from("store_page_blocks")
-      .select("id, page_id, block_type, props, sort_order, is_visible")
-      .eq("store_id", storeId),
-    supabase
       .from("site_settings")
       .select("key, value")
       .eq("store_id", storeId)
       .in("key", STORE_SETTING_KEYS_TO_PRELOAD),
     loadThemePackages(supabase, storeId),
-    loadPageBlueprints(supabase),
   ]);
 
   if (storeError || !store) {
     return null;
   }
 
-  const blueprintKey = ((businessProfile as StoreBusinessProfileRow | null)?.blueprint_id ?? (store as StoreRow).store_type ?? null) as string | null;
-  const blueprintDefinition = await loadStoreBlueprintById(supabase, blueprintKey);
+  return {
+    store: store as StoreRow,
+    businessProfile: (businessProfile as StoreBusinessProfileRow | null) ?? null,
+    theme: (theme as StoreThemeRow | null) ?? null,
+    siteSettings: (siteSettings as SiteSettingRecord[] | null) ?? [],
+    themePackages,
+  };
+}
+
+async function getStoreByIdUncached(storeId: string, options?: StoreResolverOptions): Promise<Store | null> {
+  const supabase = getStoreResolverClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
+
+  const { data: pageRows, error: pagesError } = await supabase
+    .from("store_pages")
+    .select("id, slug, title, seo_title, seo_description, is_homepage")
+    .eq("store_id", storeId);
+
+  if (pagesError) {
+    return null;
+  }
+
+  const pages = (pageRows as StorePageRow[] | null) ?? [];
+  const homepagePage = pages.find((page) => page.is_homepage) ?? pages[0] ?? null;
+  const requestedPage = pages.find((page) => page.slug === requestedPageSlug) ?? null;
+  const pageIdsToLoad = Array.from(new Set(
+    [homepagePage?.id, requestedPage?.id].filter((value): value is string => Boolean(value)),
+  ));
+
+  const [coreRecords, { data: blocks }] = await Promise.all([
+    loadStoreResolverCoreRecords(storeId),
+    supabase
+      .from("store_page_blocks")
+      .select("id, page_id, block_type, props, sort_order, is_visible")
+      .eq("store_id", storeId)
+      .in("page_id", pageIdsToLoad.length > 0 ? pageIdsToLoad : ["00000000-0000-0000-0000-000000000000"]),
+  ]);
+
+  if (!coreRecords) {
+    return null;
+  }
+
+  const templateSeedId = (coreRecords.businessProfile?.template_id ?? coreRecords.store.store_type ?? null) as string | null;
+  const templateSeedDefinition = resolveStorefrontTemplateSeed(templateSeedId);
 
   return buildResolvedStoreFromRecords(
-    store as StoreRow,
-    (businessProfile as StoreBusinessProfileRow | null) ?? null,
-    (theme as StoreThemeRow | null) ?? null,
-    (pages as StorePageRow[] | null) ?? [],
+    coreRecords.store,
+    coreRecords.businessProfile,
+    coreRecords.theme,
+    pages,
     (blocks as StoreBlockRow[] | null) ?? [],
-    (siteSettings as SiteSettingRecord[] | null) ?? [],
-    blueprintDefinition,
-    themePackages,
-    pageBlueprints,
+    coreRecords.siteSettings,
+    templateSeedDefinition,
+    coreRecords.themePackages,
   );
 }
+
+export async function getStoreShellById(storeId: string, options?: StoreResolverOptions): Promise<Store | null> {
+  const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
+  return getStoreShellByIdCached(storeId, requestedPageSlug);
+}
+
+async function getStoreShellByIdUncached(storeId: string): Promise<Store | null> {
+  const coreRecords = await loadStoreResolverCoreRecords(storeId);
+
+  if (!coreRecords) {
+    return null;
+  }
+
+  const templateSeedId = (coreRecords.businessProfile?.template_id ?? coreRecords.store.store_type ?? null) as string | null;
+  const templateSeedDefinition = resolveStorefrontTemplateSeed(templateSeedId);
+
+  return buildResolvedStoreFromRecords(
+    coreRecords.store,
+    coreRecords.businessProfile,
+    coreRecords.theme,
+    [],
+    [],
+    coreRecords.siteSettings,
+    templateSeedDefinition,
+    coreRecords.themePackages,
+  );
+}
+
+export async function getStoreShellBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
+  if (!previewToken) {
+    return getStoreShellBySlugCached(slug, requestedPageSlug);
+  }
+
+  const store = await getStoreBySlugUncached(slug, previewToken, options);
+  if (!store) {
+    return null;
+  }
+
+  return getStoreShellByIdUncached(store.id);
+}
+
+const getStoreByIdCached = (storeId: string, requestedPageSlug: string) =>
+  unstable_cache(
+    async () => getStoreByIdUncached(storeId, { requestedPageSlug }),
+    ["storefront-store-by-id", storeId, requestedPageSlug],
+    {
+      revalidate: STOREFRONT_RESOLVER_REVALIDATE_SECONDS,
+      tags: buildStorefrontContentTags(storeId, requestedPageSlug),
+    },
+  )();
+
+const getStoreShellByIdCached = (storeId: string, requestedPageSlug: string) =>
+  unstable_cache(
+    async () => getStoreShellByIdUncached(storeId),
+    ["storefront-store-shell-by-id", storeId, requestedPageSlug],
+    {
+      revalidate: STOREFRONT_RESOLVER_REVALIDATE_SECONDS,
+      tags: buildStorefrontContentTags(storeId, requestedPageSlug),
+    },
+  )();
+
+const getStoreBySlugCached = (slug: string, requestedPageSlug: string) =>
+  unstable_cache(
+    async () => getStoreBySlugUncached(slug, undefined, { requestedPageSlug }),
+    ["storefront-store-by-slug", slug, requestedPageSlug],
+    {
+      revalidate: STOREFRONT_RESOLVER_REVALIDATE_SECONDS,
+      tags: [`storefront:slug:${slug}`],
+    },
+  )();
+
+const getStoreShellBySlugCached = (slug: string, requestedPageSlug: string) =>
+  unstable_cache(
+    async () => {
+      const store = await getStoreBySlugUncached(slug, undefined, { requestedPageSlug });
+      if (!store) {
+        return null;
+      }
+
+      return getStoreShellByIdUncached(store.id);
+    },
+    ["storefront-store-shell-by-slug", slug, requestedPageSlug],
+    {
+      revalidate: STOREFRONT_RESOLVER_REVALIDATE_SECONDS,
+      tags: [`storefront:slug:${slug}`],
+    },
+  )();
 
 export function getHomepage(store: Store): StorePage {
   return store.pages.find((page) => page.isHomepage) ?? store.pages[0];
