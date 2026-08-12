@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useNavigate } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
@@ -84,8 +84,15 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [commandOpen, setCommandOpen] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDarkTheme = resolvedTheme === "dark";
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === "system" ? resolvedTheme : theme;
+  const isDarkTheme = mounted ? (currentTheme === "dark" || resolvedTheme === "dark") : false;
 
   const [impersonationSession, setImpersonationSession] = useState<{
     storeId: string;
@@ -134,9 +141,11 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
       label: "Store Dashboard",
       description: "Store operations and performance",
     };
-  const isCmsWorkspace =
+  const isPageBuilderWorkspace =
     location.pathname === "/admin/page-builder" ||
-    location.pathname.startsWith("/admin/page-builder/") ||
+    location.pathname.startsWith("/admin/page-builder/");
+  const isCmsWorkspace =
+    isPageBuilderWorkspace ||
     location.pathname === "/admin/cms" ||
     location.pathname.startsWith("/admin/cms/");
   const isGuidedSetupWorkspace = location.pathname === "/admin/onboarding" || location.pathname.startsWith("/admin/onboarding/");
@@ -437,7 +446,9 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
           {children}
         </div>
       </main>
-      <AdminMobileNav onOpenCommand={() => setCommandOpen(true)} compact={isGuidedSetupWorkspace} />
+      {!isPageBuilderWorkspace ? (
+        <AdminMobileNav onOpenCommand={() => setCommandOpen(true)} compact={isGuidedSetupWorkspace} />
+      ) : null}
       <AdminCommandMenu open={commandOpen} setOpen={setCommandOpen} />
     </div>
   );

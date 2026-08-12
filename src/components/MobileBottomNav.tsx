@@ -35,27 +35,27 @@ const MobileBottomNav = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-white/10 glass-panel bg-background/85 supports-[backdrop-filter]:bg-background/60 pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 glass-panel bg-background/92 supports-[backdrop-filter]:bg-background/70 pb-safe md:hidden"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around px-2 py-1 safe-area-inset-bottom">
+      <div className="safe-area-inset-bottom flex min-h-[72px] items-center justify-around px-3 py-2">
         {links.map(({ to, icon: Icon, label, exact, badge }) => {
           const active = isActive(to, exact);
           const isCart = label === "Cart";
           const innerContent = (
             <>
               <div className="relative">
-                <Icon className={cn("h-5 w-5 transition-all duration-200", active && "scale-110")} />
+                <Icon className={cn("h-[1.35rem] w-[1.35rem] transition-all duration-200", active && "scale-110")} />
                 {badge !== undefined && badge > 0 && (
-                  <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  <span className="absolute -right-2.5 -top-2.5 flex h-[1.05rem] min-w-[1.05rem] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )}
               </div>
-              <span className={cn("text-[10px] font-medium leading-none transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("text-[11px] font-medium leading-none transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}>
                 {label}
               </span>
-              {active && <span className="absolute -top-px left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-primary" />}
+              {active && <span className="absolute -top-px left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />}
             </>
           );
 
@@ -64,7 +64,7 @@ const MobileBottomNav = () => {
               <button
                 key={to}
                 onClick={() => setIsCartOpen(true)}
-                className={cn("relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
+                className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
                 aria-label={label}
               >
                 {innerContent}
@@ -76,7 +76,7 @@ const MobileBottomNav = () => {
             <Link
               key={to}
               to={to}
-              className={cn("relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
+              className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
               aria-label={label}
               aria-current={active ? "page" : undefined}
             >

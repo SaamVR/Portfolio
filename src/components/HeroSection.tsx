@@ -58,17 +58,18 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
   const legacyHero = overrides?.disableLegacyFallback ? null : hero;
+  const storeName = currentStore?.name?.trim() || "your storefront";
 
-  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Discover";
-  const title = overrides?.title ?? legacyHero?.title ?? "Built For";
-  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? "Your Business";
+  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Now available";
+  const title = overrides?.title ?? legacyHero?.title ?? "Built for";
+  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? storeName;
   const subtitle =
     overrides?.subtitle ??
     legacyHero?.subtitle ??
-    "Share your products, services, and offers with a storefront shaped around your business.";
-  const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Explore";
+    (currentStore?.description?.trim() || "Share products, services, bookings, or offers with a storefront that feels clear, modern, and ready to buy from.");
+  const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Start exploring";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/", currentStore?.slug);
-  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "View Details";
+  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "Learn more";
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
@@ -153,9 +154,9 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
       id={overrides?.anchorId}
       ref={sectionRef}
       className={[
-        "relative flex min-h-[82svh] items-center justify-center overflow-hidden md:min-h-[90vh]",
+        "relative flex min-h-[74svh] items-center justify-center overflow-hidden md:min-h-[88vh]",
         isSplit || isEditorial ? "bg-background text-foreground" : "",
-        isCentered ? "min-h-[72svh] md:min-h-[78vh]" : "",
+        isCentered ? "min-h-[68svh] md:min-h-[76vh]" : "",
       ].filter(Boolean).join(" ")}
     >
       {!isSplit && !isEditorial ? (
@@ -170,14 +171,23 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10 md:from-black/55 md:via-transparent md:to-transparent" />
           <div className="absolute inset-0 grain-texture opacity-[0.03]" />
+          {!mediaUrl ? (
+            <div className="absolute inset-x-4 bottom-4 hidden rounded-lg border border-white/12 bg-black/25 p-4 text-white/90 backdrop-blur-md md:left-auto md:right-8 md:block md:max-w-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Ready to launch</p>
+              <p className="mt-2 text-sm font-medium">Clear message, direct action, and room for product proof.</p>
+              <p className="mt-2 text-sm leading-6 text-white/75">
+                Add real imagery later without losing the structure shoppers need on day one.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <div
         className={[
-          "relative z-10 container mx-auto px-4 py-16 sm:py-20 md:py-24",
-          isSplit ? "grid gap-10 text-left lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center" : "",
-          isEditorial ? "grid gap-10 text-left lg:grid-cols-[minmax(360px,0.72fr)_minmax(0,1fr)] lg:items-center" : "",
+          "relative z-10 container mx-auto px-4 py-14 sm:py-18 md:py-24",
+          isSplit ? "grid gap-8 text-left lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:gap-12" : "",
+          isEditorial ? "grid gap-8 text-left lg:grid-cols-[minmax(360px,0.72fr)_minmax(0,1fr)] lg:items-center lg:gap-12" : "",
           !isSplit && !isEditorial ? "text-center" : "",
         ].filter(Boolean).join(" ")}
       >
@@ -188,7 +198,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           </p>
           <h1
             className={[
-              "mb-4 max-w-[12ch] font-heading text-4xl font-black leading-[0.98] opacity-0 animate-blur-in sm:mb-6 sm:max-w-[11ch] sm:text-6xl",
+              "mb-4 max-w-[12ch] font-heading text-[2.35rem] font-black leading-[0.98] opacity-0 animate-blur-in sm:mb-6 sm:max-w-[11ch] sm:text-6xl",
               isEditorial ? "text-foreground md:text-7xl lg:text-8xl" : "",
               isSplit ? "text-foreground md:max-w-[10ch] md:text-7xl" : "",
               !isSplit && !isEditorial ? "mx-auto text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] md:max-w-none md:text-8xl" : "",
@@ -200,7 +210,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           </h1>
           <p
             className={[
-              "mb-8 max-w-[34ch] text-sm leading-6 opacity-0 animate-blur-in sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl",
+              "mb-7 max-w-[34ch] text-sm leading-6 opacity-0 animate-blur-in sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl",
               isSplit || isEditorial ? "text-muted-foreground" : "mx-auto text-gray-100 drop-shadow-md",
             ].filter(Boolean).join(" ")}
             style={{ animationDelay: "0.3s" }}
@@ -209,21 +219,21 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           </p>
           <div
             className={[
-              "flex flex-col gap-4 opacity-0 animate-blur-in sm:flex-row sm:gap-6",
+              "flex flex-col gap-3 opacity-0 animate-blur-in sm:flex-row sm:gap-4",
               isSplit || isEditorial ? "items-start justify-start" : "items-center justify-center",
             ].filter(Boolean).join(" ")}
             style={{ animationDelay: "0.45s" }}
           >
             <Link
               href={ctaLink}
-              className="button-premium w-full sm:w-auto rounded-full bg-primary px-8 py-3.5 sm:px-10 sm:py-4 font-heading text-[15px] font-bold tracking-wide text-primary-foreground text-center shadow-lg"
+              className="button-premium w-full sm:w-auto rounded-full bg-primary px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-bold tracking-wide text-primary-foreground text-center shadow-lg"
             >
               {ctaText}
             </Link>
             <Link
               href={secondaryCtaLink}
               className={[
-                "w-full sm:w-auto rounded-full border px-8 py-3.5 sm:px-10 sm:py-4 font-heading text-[15px] font-semibold text-center transition-all duration-500",
+                "w-full sm:w-auto rounded-full border px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-semibold text-center transition-all duration-500",
                 isSplit || isEditorial
                   ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-primary/5"
                   : "border-white/20 glass-panel text-white hover:bg-white/10 hover:border-white/40",
@@ -235,7 +245,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
           {!isCentered ? (
             <div
               className={[
-                "mt-8 flex max-w-4xl flex-wrap items-center gap-2.5 opacity-0 animate-blur-in sm:mt-10",
+                "mt-7 flex max-w-4xl flex-wrap items-center gap-2 opacity-0 animate-blur-in sm:mt-10",
                 isSplit || isEditorial ? "justify-start" : "mx-auto justify-center",
               ].filter(Boolean).join(" ")}
               style={{ animationDelay: "0.6s" }}
@@ -246,7 +256,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
                   <div
                     key={item.label}
                     className={[
-                      "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium backdrop-blur-md",
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium leading-5 backdrop-blur-md sm:px-4",
                       isSplit || isEditorial ? "border-border bg-card text-foreground" : "border-white/15 bg-black/25 text-white/95",
                     ].filter(Boolean).join(" ")}
                   >

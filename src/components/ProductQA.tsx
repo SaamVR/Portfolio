@@ -6,17 +6,18 @@ import { toast } from "sonner";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import GuestCheckoutModal from "./GuestCheckoutModal";
 import { isUuid } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useNavigate } from "@/lib/react-router-dom-shim";
+import { buildCustomerAuthPath, getCurrentRelativePath } from "@/lib/storefront-customer-access";
 
 export default function ProductQA({ productId }: { productId: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
+  const navigate = useNavigate();
   const [question, setQuestion] = useState("");
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Use the RPC function to fetch Q&A since we don't have a direct table for it, or we can just use a generic 'messages' table or similar?
   // Actually, we need to create a product_qa table in Supabase! 
@@ -72,7 +73,8 @@ export default function ProductQA({ productId }: { productId: string }) {
 
   const handleSubmit = () => {
     if (!user) {
-      setShowAuthModal(true);
+      toast.info("Please sign in first, then we'll bring you right back to your question.");
+      navigate(buildCustomerAuthPath(getCurrentRelativePath(), currentStore?.slug));
       return;
     }
     if (!question.trim()) return;
@@ -81,8 +83,6 @@ export default function ProductQA({ productId }: { productId: string }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <GuestCheckoutModal open={showAuthModal} onOpenChange={setShowAuthModal} />
-      
       <div className="mb-8 flex items-center justify-between border-b border-border pb-4">
         <h2 className="flex items-center gap-2 font-heading text-2xl font-bold text-foreground">
           <HelpCircle className="h-6 w-6 text-primary" />
@@ -98,6 +98,11 @@ export default function ProductQA({ productId }: { productId: string }) {
             <p className="text-sm text-muted-foreground mb-4">
               Ask us anything about this product. Fit, material, sizing, or delivery details!
             </p>
+            {!user ? (
+              <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                Sign in to ask a question. We will return you to this product right after login.
+              </div>
+            ) : null}
             <div className="space-y-4">
               <Textarea
                 placeholder="Type your question here..."

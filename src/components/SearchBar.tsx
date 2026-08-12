@@ -3,6 +3,7 @@ import { useNavigate } from "@/lib/react-router-dom-shim";
 import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProducts } from "@/hooks/useProducts";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { Badge } from "@/components/ui/badge";
 import { productUrl } from "@/lib/slug";
@@ -54,6 +55,10 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: products = [] } = useProducts(storeId);
+  const { data: searchResults = null } = useProductSearch({
+    query: debouncedQuery,
+    perPage: 6,
+  }, storeId);
   const { data: dynamicProductTypes = [] } = useProductTypes(storeId);
   const categoryChips = dynamicProductTypes.length > 0
     ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
@@ -98,7 +103,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   }, [open]);
 
   const filtered = debouncedQuery.trim()
-    ? products
+    ? (searchResults ?? products
         .filter((p) => {
           const q = debouncedQuery.toLowerCase();
           return (
@@ -106,7 +111,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
             p.type.toLowerCase().includes(q) ||
             p.category.toLowerCase().includes(q)
           );
-        })
+        }))
         .slice(0, 6)
     : [];
 
@@ -249,6 +254,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
         <input
           ref={inputRef}
           type="search"
+          suppressHydrationWarning
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

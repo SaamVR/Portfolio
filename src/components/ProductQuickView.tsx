@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
-import { getDisplayableProductType, getRenderableSizeOptions, shouldShowSizeOptions } from "@/lib/cms/storefront-product-presentation";
+import {
+  getDisplayableProductType,
+  getPrimaryProductOptionValue,
+  getRenderableMetricOptionGroups,
+  getRenderableSizeOptions,
+  shouldShowSizeOptions,
+} from "@/lib/cms/storefront-product-presentation";
 
 interface ProductQuickViewProps {
   product: Product | null;
@@ -19,6 +25,7 @@ interface ProductQuickViewProps {
 
 const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps) => {
   const [selectedSize, setSelectedSize] = useState("");
+  const [selectedMetricOptions, setSelectedMetricOptions] = useState<Record<string, string[]>>({});
   const { addItem } = useCart();
   const currentStore = useOptionalStore();
   const presentation = useStoreProductPresentation(product);
@@ -27,8 +34,10 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
 
   const { cardVariant, specs } = presentation;
   const sizeOptions = getRenderableSizeOptions(product, specs, cardVariant);
+  const metricOptionGroups = getRenderableMetricOptionGroups(product, specs, cardVariant);
   const requiresSizeSelection = shouldShowSizeOptions(product, specs, cardVariant);
   const displayType = getDisplayableProductType(product.type);
+  const selectedOptionLabels = metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []);
 
   const handleAddToCart = () => {
     if (requiresSizeSelection && !selectedSize) {
@@ -40,39 +49,49 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
       name: product.name,
       price: product.price,
       image: product.image,
-      size: selectedSize || sizeOptions[0] || "Default",
+      size: [selectedSize, ...selectedOptionLabels]
+        .filter(Boolean)
+        .join(" • ") || getPrimaryProductOptionValue(product, specs, cardVariant),
       storeId: currentStore?.id,
     });
     toast.success("Added to cart!");
     onOpenChange(false);
     setSelectedSize("");
+    setSelectedMetricOptions({});
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSelectedSize(""); }}>
-      <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0 sm:rounded-xl border-border">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        onOpenChange(nextOpen);
+        if (!nextOpen) {
+          setSelectedSize("");
+          setSelectedMetricOptions({});
+        }
+      }}
+    >
+      <DialogContent className="max-w-3xl gap-0 overflow-hidden border-border p-0 sm:rounded-xl">
         <DialogTitle className="sr-only">{product.name}</DialogTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2">
-          {/* Image */}
           <div className="relative aspect-square overflow-hidden bg-secondary">
             <img
               src={product.image}
               alt={product.name}
               className="h-full w-full object-contain p-4"
             />
-            {product.featured && (
+            {product.featured ? (
               <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
                 Featured
               </span>
-            )}
+            ) : null}
             {displayType ? (
-              <span className="absolute right-3 top-3 rounded-sm bg-background/70 backdrop-blur-sm px-2 py-1 text-xs font-medium text-muted-foreground">
+              <span className="absolute right-3 top-3 rounded-sm bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
                 {displayType}
               </span>
             ) : null}
           </div>
 
-          {/* Details */}
           <div className="flex flex-col justify-between p-6">
             <div>
               {getDisplayableProductType(product.category) || displayType ? (
@@ -88,9 +107,9 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
                 <div className="mb-6">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground">Size</p>
                   <div className="flex flex-wrap gap-2">
-                    {sizeOptions.map((size) => (
+                    {sizeOptions.map((size, index) => (
                       <button
-                        key={size}
+                        key={`${size}-${index}`}
                         onClick={() => setSelectedSize(size)}
                         aria-label={`Select size ${size}`}
                         aria-pressed={selectedSize === size}
@@ -98,7 +117,7 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
                           "flex h-9 min-w-12 items-center justify-center rounded-md border px-3 text-xs font-medium smooth-hover",
                           selectedSize === size
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
                         )}
                       >
                         {size}
@@ -107,6 +126,30 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
                   </div>
                 </div>
               ) : null}
+
+              {metricOptionGroups.map((group) => (
+                <div key={group.key} className="mb-6">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground">{group.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.options.map((option, index) => (
+                      <button
+                        key={`${group.key}-${option}-${index}`}
+                        onClick={() => setSelectedMetricOptions((current) => ({ ...current, [group.key]: [option] }))}
+                        aria-label={`Select ${group.label} ${option}`}
+                        aria-pressed={(selectedMetricOptions[group.key]?.[0] ?? "") === option}
+                        className={cn(
+                          "flex h-9 min-w-12 items-center justify-center rounded-md border px-3 text-xs font-medium smooth-hover",
+                          (selectedMetricOptions[group.key]?.[0] ?? "") === option
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
+                        )}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-3">

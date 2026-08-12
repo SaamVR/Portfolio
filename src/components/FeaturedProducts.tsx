@@ -1,11 +1,14 @@
+import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
+import { Button } from "@/components/ui/button";
 import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/lib/storefront-theme-customization";
+import { storefrontPath } from "@/lib/slug";
 
 const FeaturedProducts = ({
   limit = 6,
@@ -29,7 +32,7 @@ const FeaturedProducts = ({
   const currentStore = useOptionalStore();
   const { data: featured = [], isLoading } = useFeaturedProducts(currentStore?.id);
   const { data: allProducts = [] } = useProducts(currentStore?.id);
-  const { data: settings } = useSiteSettings<{tagline?: string, title?: string}>("home_featured", currentStore?.id);
+  const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_featured", currentStore?.id);
   const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
   const legacySettings = disableLegacyFallback ? null : settings;
   const availableProducts = allProducts.filter((product) => product.isAvailable !== false);
@@ -78,7 +81,7 @@ const FeaturedProducts = ({
 
   if (isLoading) {
     return (
-      <section className="py-20">
+      <section className="py-14 md:py-20">
         <div className={`mx-auto flex justify-center px-4 ${containerClass}`}>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -86,15 +89,56 @@ const FeaturedProducts = ({
     );
   }
 
-  if (productsToRender.length === 0) return null;
+  if (productsToRender.length === 0) {
+    return (
+      <section className="py-14 md:py-20">
+        <div className={`mx-auto px-4 ${containerClass}`}>
+          <div className="mx-auto max-w-4xl rounded-lg border border-border bg-card px-6 py-8 shadow-sm md:px-8 md:py-10">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Catalog coming together</p>
+                <h2 className="mt-3 font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+                  {title ?? legacySettings?.title ?? "Products will appear here soon"}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
+                  The storefront structure is already live. Add the first real items to turn this space into a browsable catalog, menu, booking list, or offer gallery.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
+                <Button asChild className="gap-2">
+                  <Link href={storefrontPath("/shop", currentStore?.slug)}>
+                    Browse store
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link href={storefrontPath("/contact", currentStore?.slug)}>
+                    <Sparkles className="h-4 w-4" />
+                    Contact the store
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="py-20">
+    <section className="py-14 md:py-20">
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
-          <div className="mb-12 text-center">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{tagline ?? legacySettings?.tagline ?? "Featured"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{title ?? legacySettings?.title ?? "Explore What’s Available"}</h2>
+          <div className="mb-8 text-left md:mb-12 md:text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary md:text-sm">
+              {tagline ?? legacySettings?.tagline ?? "Featured"}
+            </p>
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              {title ?? legacySettings?.title ?? "Explore What’s Available"}
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:mx-auto md:text-base">
+              Start with the strongest items first so shoppers immediately understand what this storefront is actually selling.
+            </p>
           </div>
         </AnimatedSection>
         <div
@@ -105,7 +149,7 @@ const FeaturedProducts = ({
           }
         >
           {hasSidebar && layoutVariant !== "3-col-sidebar-right" ? sidebar : null}
-          <div className={`grid gap-6 ${variantGridClass}`}>
+          <div className={`grid gap-4 md:gap-6 ${variantGridClass}`}>
             {productsToRender.slice(0, limit).map((product, i) => (
               <AnimatedSection key={product.id} delay={i * 100} animation="blur">
                 <ProductCard product={product} />

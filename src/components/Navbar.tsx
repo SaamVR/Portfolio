@@ -16,6 +16,7 @@ import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCusto
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { buildAutoNavbarItems } from "@/lib/cms/page-listing-preferences";
+import { cn } from "@/lib/utils";
 
 interface NavigationSettings {
   primary_links?: Array<{ label?: string; url?: string; children?: Array<{ label?: string; url?: string }> }>;
@@ -23,6 +24,7 @@ interface NavigationSettings {
   shop_feature_title?: string;
   shop_feature_subtitle?: string;
   shop_feature_image?: string;
+  nav_layout?: "brand-left" | "centered" | "compact";
   show_search?: boolean;
   show_theme_toggle?: boolean;
   show_account?: boolean;
@@ -49,7 +51,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { totalItems, setIsCartOpen } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
@@ -93,7 +95,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
     : null;
   const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
-    blueprintId: typeof storefrontProfile?.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const brandName = brand?.name || fallbackBrandName;
@@ -109,7 +111,8 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     currentStore?.slug,
   );
 
-  const isDark = mounted ? theme === "dark" : false;
+  const currentTheme = theme === "system" ? resolvedTheme : theme;
+  const isDark = mounted ? (currentTheme === "dark" || resolvedTheme === "dark") : false;
   const displayWishlistCount = mounted ? wishlistCount : 0;
   const displayTotalItems = mounted ? totalItems : 0;
   const defaultNavLinks = [
@@ -145,6 +148,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const autoLinkKeys = new Set(autoPageLinks.map((link) => link.to));
   const navLinks: NavbarLink[] = [...manualNavLinks, ...autoPageLinks.filter((link) => !manualNavLinks.some((manualLink) => manualLink.to === link.to || autoLinkKeys.has(manualLink.to) && manualLink.label === link.label))];
   const shopLabel = navigation?.shop_label?.trim() || "Shop";
+  const navLayout = navigation?.nav_layout ?? "brand-left";
   const showSearch = navigation?.show_search ?? true;
   const showThemeToggle = navigation?.show_theme_toggle ?? true;
   const showAccount = navigation?.show_account ?? true;
@@ -161,6 +165,8 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const navModeClass = themeCustomization?.nav_style === "static"
     ? ""
     : "fixed left-0 right-0";
+  const isCenteredNav = navLayout === "centered";
+  const isCompactNav = navLayout === "compact";
 
   return (
     <>
@@ -172,26 +178,33 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className={`mx-auto flex h-16 items-center justify-between px-4 ${containerClass}`}>
-          <div className="flex items-center gap-4">
+        <div className={cn(`mx-auto flex items-center justify-between gap-3 px-4 ${containerClass}`, isCompactNav ? "h-14" : "h-16", isCenteredNav ? "md:relative" : "")}>
+          <div className={cn("flex min-w-0 items-center gap-3", isCenteredNav ? "md:flex-1" : "")}>
             <MobileMenu />
-            <Link to={storefrontPath("/", currentStore?.slug)} className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm transition-transform hover:scale-105 duration-300">
-              <span className="flex items-center gap-3">
+            <Link
+              to={storefrontPath("/", currentStore?.slug)}
+              className={cn(
+                "min-w-0 font-heading font-bold tracking-tight text-foreground drop-shadow-sm transition-transform duration-300 hover:scale-[1.01]",
+                isCenteredNav ? "md:absolute md:left-1/2 md:-translate-x-1/2" : "",
+                isCompactNav ? "text-xl" : "text-2xl",
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-3">
                 {currentStore?.logoUrl ? (
                   <img
                     src={currentStore.logoUrl}
                     alt={`${brandName} logo`}
-                    className="h-9 w-9 rounded-lg object-cover"
+                    className="h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9"
                   />
                 ) : null}
-                <span>
+                <span className={cn("min-w-0 truncate", isCompactNav ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}>
                   {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
                 </span>
               </span>
             </Link>
           </div>
 
-          <div className="hidden items-center gap-8 md:flex">
+          <div className={cn("hidden items-center md:flex", isCompactNav ? "gap-4 lg:gap-5" : "gap-6 lg:gap-8", isCenteredNav ? "md:flex-1 md:justify-center" : "")}>
             {navLinks.map((link) => (
               <div
                 key={link.to}
@@ -201,7 +214,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               >
                 <Link
                   to={link.to}
-                  className={`nav-link-anim relative flex items-center gap-1.5 py-2 text-[15px] font-semibold tracking-wide transition-colors ${
+                  className={`nav-link-anim relative flex items-center gap-1.5 py-2 ${isCompactNav ? "text-sm" : "text-[15px]"} font-semibold tracking-wide transition-colors ${
                     location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -306,7 +319,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             ))}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className={cn("flex shrink-0 items-center", isCompactNav ? "gap-0.5 sm:gap-1.5" : "gap-0.5 sm:gap-2", isCenteredNav ? "md:flex-1 md:justify-end" : "")}>
             {showFoodLocation ? (
               <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm lg:inline-flex">
                 <MapPin className="h-3.5 w-3.5 text-primary" />
@@ -337,7 +350,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             {showThemeToggle ? (
               <button
                 onClick={() => setTheme(isDark ? "light" : "dark")}
-                className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground md:hidden"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground md:hidden"
                 aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
               >
                 <Sun
@@ -350,15 +363,15 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             ) : null}
 
             {showSearch ? (
-              <div className="hidden md:block">
-                <SearchBar className="w-64" />
+              <div className="hidden lg:block">
+                <SearchBar className={isCompactNav ? "w-52" : "w-64"} />
               </div>
             ) : null}
 
             {showAccount ? (
               <Link
                 to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                 aria-label={user ? "My account" : "Sign in"}
               >
                 <User className="h-5 w-5" />
@@ -368,13 +381,13 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             {showWishlist ? (
               <Link
                 to={storefrontPath("/wishlist", currentStore?.slug)}
-                className="relative flex items-center text-muted-foreground transition-colors hover:text-foreground"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                 aria-label={`Wishlist with ${displayWishlistCount} items`}
               >
                 <Heart className="h-5 w-5" />
                 {displayWishlistCount > 0 && (
                   <span
-                    className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground animate-bounce-in"
+                    className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground animate-bounce-in"
                     aria-live="polite"
                   >
                     {displayWishlistCount}
@@ -386,13 +399,13 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             {showCart ? (
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                 aria-label={`Shopping cart with ${displayTotalItems} items`}
               >
                 <ShoppingBag className="h-5 w-5" />
                 {displayTotalItems > 0 && (
                   <span
-                    className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground animate-bounce-in"
+                    className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground animate-bounce-in"
                     aria-live="polite"
                   >
                     {displayTotalItems}

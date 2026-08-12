@@ -13,11 +13,16 @@ import { storefrontPath } from "@/lib/slug";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { getNormalizedDeliverySettings, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
+import { useNavigate } from "@/lib/react-router-dom-shim";
+import { useAuth } from "@/hooks/auth-context";
+import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
   const storeSlug = currentStore?.slug;
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, addItem } = useCart();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -27,6 +32,10 @@ const CartDrawer = () => {
   const drawerItems = items.filter((item) => (item.storeId ?? cartStoreId) === cartStoreId);
   const drawerTotal = drawerItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const digitalOnlyCart = isDigitalOnlyCart(drawerItems);
+  const preloadedStorefrontProfile =
+    currentStore?.id === cartStoreId && typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
+      ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+      : undefined;
 
   const { data: upsellProducts } = useQuery({
     queryKey: ["upsell-products", cartStoreId],
@@ -46,11 +55,15 @@ const CartDrawer = () => {
 
   const { data: paymentSettings } = usePublicPaymentSettings(isCartOpen ? cartStoreId : null);
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", isCartOpen ? cartStoreId : null);
+  const { data: storefrontProfileData } = useSiteSettings<Record<string, unknown>>("storefront_profile", isCartOpen ? cartStoreId : null);
   const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
+  const allowGuestCheckout = resolveAllowGuestCheckout(storefrontProfileData ?? preloadedStorefrontProfile);
   const { data: loyaltySettings } = useSiteSettings<any>("loyalty_settings", isCartOpen ? cartStoreId : null);
   const prepaymentDiscountType = paymentSettings?.prepayment_discount_type;
   const prepaymentDiscountValue = paymentSettings?.prepayment_discount_value;
   const freeThreshold = deliverySettings.free_threshold;
+  const checkoutPath = storefrontPath("/checkout", storeSlug);
+  const authCheckoutPath = buildCustomerAuthPath(checkoutPath, storeSlug);
 
   // Filter out products already in the cart
   const availableUpsells = upsellProducts?.filter(
@@ -245,13 +258,26 @@ const CartDrawer = () => {
                         return;
                       }
                       setIsCartOpen(false);
-                      setShowCheckoutModal(true);
+                      if (!allowGuestCheckout && !user) {
+                        navigate(authCheckoutPath);
+                        return;
+                      }
+                      if (allowGuestCheckout) {
+                        setShowCheckoutModal(true);
+                        return;
+                      }
+                      navigate(checkoutPath);
                     }}
                     className="flex w-full items-center justify-center rounded-md bg-primary py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 glow-shadow transition-opacity"
                   >
-                    Checkout Instantly
+                    {!allowGuestCheckout && !user ? "Login to Checkout" : allowGuestCheckout ? "Checkout Instantly" : "Continue to Checkout"}
                   </button>
                 </div>
+                {!allowGuestCheckout ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    This store requires customer login before purchase. We will bring shoppers back to checkout after sign-in.
+                  </p>
+                ) : null}
               </div>
             )}
           </div>

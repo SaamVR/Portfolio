@@ -30,7 +30,7 @@ const cmsAdminLinks = [
 
 const mobileCmsRoutes = [
   { to: "/cms-admin", icon: Shield, label: "Overview", description: "Platform health and store ops" },
-  { to: "/cms-admin/libraries", icon: Layers3, label: "Library", description: "Blueprints, themes, and blocks" },
+  { to: "/cms-admin/libraries", icon: Layers3, label: "Library", description: "Templates, themes, and blocks" },
   { to: "/admin", icon: LayoutDashboard, label: "Store Admin", description: "Jump back into a merchant workspace" },
 ];
 
@@ -229,7 +229,7 @@ export default function CmsAdminLayout({ children }: { children: React.ReactNode
               </p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 {location.pathname.startsWith("/cms-admin/libraries")
-                  ? "Manage shared blueprint, theme, page, and block packages without dropping into low-signal screens."
+                  ? "Manage shared template, theme, page, and block packages without dropping into low-signal screens."
                   : "Keep platform-level controls, merchant system packages, and recovery actions close on mobile."}
               </p>
             </div>

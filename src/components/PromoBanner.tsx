@@ -38,6 +38,22 @@ interface PromoBannerProps {
   };
 }
 
+function hasExplicitPromoThemeOverrides(settings?: PromoBannerSettings | null) {
+  if (!settings) return false;
+  return [
+    settings.bg_style,
+    settings.text_alignment,
+    settings.padding_size,
+    settings.enable_glow,
+    settings.enable_particles,
+    settings.enable_orbs,
+    settings.card_opacity,
+  ].some((value) => {
+    if (value === undefined || value === null) return false;
+    return typeof value === "string" ? value.trim().length > 0 : true;
+  });
+}
+
 const getBannerStyle = (bgStyle: string) => {
   switch (bgStyle) {
     case "gradient":
@@ -117,6 +133,18 @@ const getBorderGradient = (bgStyle: string) => {
   }
 };
 
+const DARK_BANNER_STYLES: PromoBannerSettings["bg_style"][] = [
+  "gradient",
+  "luxury-gold",
+  "indigo",
+  "rose",
+  "dark",
+  "aurora",
+  "luxury-dark",
+  "confetti",
+  "mesh-gradient",
+];
+
 const SparkleSVG = ({ className }: { className: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z" />
@@ -127,70 +155,78 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const currentStore = useOptionalStore();
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
+  const useLegacyThemeOverrides = hasExplicitPromoThemeOverrides(legacySettings);
 
   if (legacySettings?.enabled === false) return null;
 
-  const bg = overrides?.bgStyle ?? legacySettings?.bg_style ?? "gradient";
-  const isDarkBg = ["gradient", "luxury-gold", "indigo", "rose", "dark", "aurora", "luxury-dark", "confetti", "mesh-gradient"].includes(bg);
-  const style = getBannerStyle(bg);
-  const orbCls = getOrbColors(bg);
-  const borderGrad = getBorderGradient(bg);
+  const bg: PromoBannerSettings["bg_style"] | undefined = overrides?.bgStyle ?? (useLegacyThemeOverrides ? legacySettings?.bg_style : undefined);
+  const usesCustomBannerTheme = Boolean(bg);
+  const isDarkBg = bg ? DARK_BANNER_STYLES.includes(bg) : false;
+  const style = bg ? getBannerStyle(bg) : undefined;
+  const orbCls = getOrbColors(bg ?? "accent");
+  const borderGrad = getBorderGradient(bg ?? "accent");
 
   const badgeText = overrides?.badgeText ?? legacySettings?.badge_text ?? "";
   const title = overrides?.title ?? legacySettings?.title ?? "Spotlight What Matters Most";
   const subtitle =
     overrides?.subtitle ??
     legacySettings?.subtitle ??
-    "Feature a promotion, announcement, launch, or conversion push without relying on category-specific placeholder copy.";
-  const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "Explore";
+    "Use this section for one timely reason to act now: a launch, a seasonal offer, a service push, or a direct contact moment.";
+  const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "See the offer";
   const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
 
-  const align = overrides?.textAlignment ?? legacySettings?.text_alignment ?? "center";
+  const align = overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
   const containerAlignCls = align === "left" ? "items-start" : align === "right" ? "items-end" : "items-center";
   const textMaxCls = align === "left" ? "mr-auto" : align === "right" ? "ml-auto" : "mx-auto";
 
-  const padding = overrides?.paddingSize ?? legacySettings?.padding_size ?? "cozy";
-  const paddingCls = padding === "compact" ? "py-8" : padding === "large" ? "py-24" : "py-14";
+  const padding = overrides?.paddingSize ?? (useLegacyThemeOverrides ? legacySettings?.padding_size : undefined) ?? "cozy";
+  const paddingCls = padding === "compact" ? "py-8" : padding === "large" ? "py-20 md:py-24" : "py-12 md:py-16";
 
   const buttonGlowCls =
-    (overrides?.enableGlow ?? legacySettings?.enable_glow)
+    (overrides?.enableGlow ?? (useLegacyThemeOverrides ? legacySettings?.enable_glow : undefined))
       ? bg === "accent"
         ? "animate-pulse-glow-primary"
         : "animate-pulse-glow"
       : "";
 
-  const showParticles = overrides?.enableParticles ?? legacySettings?.enable_particles ?? true;
-  const showOrbs = overrides?.enableOrbs ?? legacySettings?.enable_orbs ?? true;
+  const showParticles = overrides?.enableParticles ?? (useLegacyThemeOverrides ? legacySettings?.enable_particles : undefined) ?? false;
+  const showOrbs = overrides?.enableOrbs ?? (useLegacyThemeOverrides ? legacySettings?.enable_orbs : undefined) ?? false;
 
-  const customOpacitySource = overrides?.cardOpacity ?? legacySettings?.card_opacity;
+  const customOpacitySource = overrides?.cardOpacity ?? (useLegacyThemeOverrides ? legacySettings?.card_opacity : undefined);
   const customOpacity = customOpacitySource !== undefined ? customOpacitySource / 100 : null;
 
-  const cardBgCls = isDarkBg
-    ? `${customOpacity !== null ? "" : "bg-white/[0.03]"} border-white/10 text-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]`
-    : `${customOpacity !== null ? "" : "bg-black/[0.02] dark:bg-white/[0.02]"} border-black/[0.08] dark:border-white/10 text-foreground shadow-lg dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]`;
+  const cardBgCls = usesCustomBannerTheme
+    ? isDarkBg
+      ? `${customOpacity !== null ? "" : "bg-white/[0.03]"} border-white/10 text-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]`
+      : `${customOpacity !== null ? "" : "bg-black/[0.02] dark:bg-white/[0.02]"} border-black/[0.08] dark:border-white/10 text-foreground shadow-lg dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]`
+    : `${customOpacity !== null ? "" : "bg-card/80"} border-border text-foreground shadow-lg`;
 
-  const badgeBgCls = isDarkBg
+  const badgeBgCls = usesCustomBannerTheme && isDarkBg
     ? "bg-white/10 text-white border-white/10 hover:bg-white/20"
     : "bg-black/5 dark:bg-white/10 text-foreground border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/20";
 
-  const headingCls = isDarkBg
+  const headingCls = usesCustomBannerTheme && isDarkBg
     ? "bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text text-transparent"
     : "text-foreground";
 
   return (
-    <section style={style} className={`${paddingCls} relative overflow-hidden transition-all duration-300`} aria-label="Promotional banner">
-      <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} />
-      <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} />
+    <section
+      style={style}
+      className={`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`}
+      aria-label="Promotional banner"
+    >
+      {usesCustomBannerTheme ? <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
+      {usesCustomBannerTheme ? <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
 
-      {showOrbs && isDarkBg ? (
+      {usesCustomBannerTheme && showOrbs && isDarkBg ? (
         <>
           <div className={`absolute left-[5%] top-[-10%] h-64 w-64 rounded-full ${orbCls.orb1} blur-3xl pointer-events-none animate-float-orb-1`} />
           <div className={`absolute right-[5%] bottom-[-10%] h-64 w-64 rounded-full ${orbCls.orb2} blur-3xl pointer-events-none animate-float-orb-2`} />
         </>
       ) : null}
 
-      {showParticles && isDarkBg ? (
+      {usesCustomBannerTheme && showParticles && isDarkBg ? (
         <>
           <SparkleSVG className="absolute top-10 left-[10%] animate-float-particle-slow text-amber-400/25 h-5 w-5 hidden md:block pointer-events-none" />
           <SparkleSVG className="absolute bottom-12 right-[12%] animate-float-particle-fast text-emerald-400/20 h-6 w-6 hidden md:block pointer-events-none" />
@@ -199,7 +235,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
         </>
       ) : null}
 
-      {isDarkBg ? <div className="absolute inset-0 grain-texture opacity-[0.025] pointer-events-none" /> : null}
+      {usesCustomBannerTheme && isDarkBg ? <div className="absolute inset-0 grain-texture opacity-[0.025] pointer-events-none" /> : null}
 
       <div className="container mx-auto px-4 relative z-10">
         <div
@@ -210,25 +246,25 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
                 }
               : undefined
           }
-          className={`max-w-4xl ${textMaxCls} rounded-3xl border ${cardBgCls} backdrop-blur-xl p-8 md:p-16 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`}
+          className={`max-w-4xl ${textMaxCls} rounded-lg border ${cardBgCls} backdrop-blur-xl p-6 md:p-10 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`}
         >
           <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
           <div className="absolute -bottom-24 -right-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
 
           <div className={`flex flex-col ${containerAlignCls} ${alignCls} relative z-10`}>
             {badgeText ? (
-              <span className={`mb-6 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-bold tracking-widest uppercase shadow-sm border ${badgeBgCls} backdrop-blur-md transition-all duration-300`}>
+              <span className={`mb-5 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-bold tracking-widest uppercase shadow-sm border ${badgeBgCls} backdrop-blur-md transition-all duration-300`}>
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
                 {badgeText}
               </span>
             ) : null}
 
-            <h2 className={`font-heading text-3xl font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`}>
+            <h2 className={`font-heading text-[1.9rem] font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`}>
               {title}
             </h2>
 
             {subtitle ? (
-              <p className={`${textMaxCls} mt-4 max-w-2xl text-sm md:text-base opacity-80 leading-relaxed font-normal`}>
+              <p className={`${textMaxCls} mt-3 max-w-2xl text-sm leading-7 md:text-base opacity-80 font-normal`}>
                 {subtitle}
               </p>
             ) : null}
@@ -236,7 +272,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
             {ctaLink && ctaText ? (
               <Link
                 href={ctaLink}
-                className={`mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 text-xs md:text-sm font-bold tracking-wider uppercase transition-all duration-500 hover:scale-105 active:scale-100 shadow-md ${buttonGlowCls} ${
+                className={`mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-xs md:mt-8 md:px-8 md:py-4 md:text-sm font-bold tracking-wider uppercase transition-all duration-500 hover:scale-105 active:scale-100 shadow-md ${buttonGlowCls} ${
                   bg === "luxury-gold"
                     ? "bg-accent text-accent-foreground hover:bg-accent/90 border-accent/20"
                     : "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20"

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
-import { ShoppingBag, Heart, User } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Sparkles, User } from "lucide-react";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
@@ -24,13 +24,23 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildAutoNavbarItems } from "@/lib/cms/page-listing-preferences";
+import { cn } from "@/lib/utils";
 
 interface NavigationSettings {
   primary_links?: Array<{ label?: string; url?: string; children?: Array<{ label?: string; url?: string }> }>;
   shop_label?: string;
+  nav_layout?: "brand-left" | "centered" | "compact";
   show_account?: boolean;
   show_wishlist?: boolean;
   show_cart?: boolean;
+}
+
+interface ContactSettings {
+  address?: string;
+}
+
+interface DeliverySettings {
+  primary_zone_label?: string;
 }
 
 type MobileNavLink = {
@@ -48,6 +58,8 @@ const MobileMenu = () => {
   const [pageMenuOpen, setPageMenuOpen] = useState<string | null>(null);
   const currentStore = useOptionalStore();
   const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
+  const { data: contactSettings } = useSiteSettings<ContactSettings>("contact_page", currentStore?.id);
+  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
   const homePath = storefrontPath("/", currentStore?.slug);
@@ -104,6 +116,7 @@ const MobileMenu = () => {
     ...manualNavLinks,
     ...autoPageLinks.filter((link) => !manualNavLinks.some((manualLink) => manualLink.to === link.to)),
   ];
+  const navLayout = navigation?.nav_layout ?? "brand-left";
   const homeLink = navLinks.find((link) => link.to === homePath) ?? { label: "Home", to: homePath };
   const shopLink = navLinks.find((link) => link.to === shopPath);
   const secondaryLinks = navLinks.filter((link) => link.to !== homePath && link.to !== shopPath);
@@ -111,6 +124,7 @@ const MobileMenu = () => {
   const showAccount = navigation?.show_account ?? true;
   const showWishlist = navigation?.show_wishlist ?? true;
   const showCart = navigation?.show_cart ?? true;
+  const locationLabel = deliverySettings?.primary_zone_label?.trim() || contactSettings?.address?.trim() || "";
 
   return (
     <Sheet>
@@ -124,12 +138,28 @@ const MobileMenu = () => {
           <span className="block h-0.5 w-3.5 self-end bg-foreground mr-2.5 transition-all duration-300" />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[85vw] max-w-[340px] glass-panel border-r border-white/10 p-6 flex flex-col h-full bg-background/80">
+      <SheetContent side="left" className={cn("w-[85vw] glass-panel border-r border-white/10 p-6 flex flex-col h-full bg-background/80", navLayout === "compact" ? "max-w-[320px]" : "max-w-[340px]")}>
         <SheetHeader className="mb-4 text-left">
-          <SheetTitle className="font-heading text-2xl font-bold tracking-tight text-foreground drop-shadow-sm">
+          <SheetTitle className={cn("font-heading font-bold tracking-tight text-foreground drop-shadow-sm", navLayout === "compact" ? "text-xl" : "text-2xl", navLayout === "centered" ? "text-center" : "")}>
             {currentStore?.name || "Store"}
           </SheetTitle>
         </SheetHeader>
+
+        {(currentStore?.description || locationLabel) ? (
+          <div className="mb-4 rounded-lg border border-border/70 bg-card/70 p-4">
+            {locationLabel ? (
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span className="truncate">{locationLabel}</span>
+              </div>
+            ) : null}
+            {currentStore?.description ? (
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {currentStore.description}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-2 mb-6">
           <SearchBar className="w-full" />
@@ -169,6 +199,13 @@ const MobileMenu = () => {
                     {link.label}
                   </Link>
                 ))}
+                <div className="mt-2 rounded-lg border border-border/60 bg-card/60 px-3 py-3 text-xs leading-5 text-muted-foreground">
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Start with what matters most
+                  </span>
+                  <p className="mt-1">Lead with the clearest categories first so shoppers are not forced to guess where to begin.</p>
+                </div>
               </CollapsibleContent>
             </Collapsible>
           ) : null}

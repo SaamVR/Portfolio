@@ -12,6 +12,8 @@ export default tseslint.config(
       "node_modules/**",
       "scratch/**",
       "supabase/.temp/**",
+      "src/integrations/supabase/types.ts",
+      "worker-configuration.d.ts",
     ],
   },
   {

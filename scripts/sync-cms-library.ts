@@ -3,8 +3,6 @@ import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   buildBlockRegistrySeedRows,
-  buildPageBlueprintSeedRows,
-  buildStoreBlueprintSeedRows,
   buildThemePackageSeedRows,
 } from "../src/lib/cms/library-sync";
 
@@ -71,27 +69,19 @@ async function main() {
     },
   );
 
-  const blueprintRows = buildStoreBlueprintSeedRows();
   const themeRows = buildThemePackageSeedRows();
-  const pageRows = buildPageBlueprintSeedRows();
   const blockRows = buildBlockRegistrySeedRows();
 
   const [
-    blueprintResult,
     themeResult,
-    pageResult,
     blockResult,
   ] = await Promise.all([
-    supabase.from("store_blueprints").upsert(blueprintRows, { onConflict: "id" }),
     supabase.from("theme_packages").upsert(themeRows, { onConflict: "slug" }),
-    supabase.from("page_blueprints").upsert(pageRows, { onConflict: "id" }),
     supabase.from("block_registry_entries").upsert(blockRows, { onConflict: "block_type" }),
   ]);
 
   const failures = [
-    ["store_blueprints", blueprintResult.error],
     ["theme_packages", themeResult.error],
-    ["page_blueprints", pageResult.error],
     ["block_registry_entries", blockResult.error],
   ].filter(([, error]) => Boolean(error));
 
@@ -106,9 +96,7 @@ async function main() {
   console.log(
     JSON.stringify({
       synced: {
-        store_blueprints: blueprintRows.length,
         theme_packages: themeRows.length,
-        page_blueprints: pageRows.length,
         block_registry_entries: blockRows.length,
       },
     }, null, 2),

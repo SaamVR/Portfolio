@@ -29,7 +29,7 @@ const primaryLinks = [
 
 const secondaryLinks = [
   { to: "/cms-admin", icon: Shield, label: "Platform Overview", description: "Stores, plans, lifecycle, and billing health" },
-  { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library", description: "Blueprints, themes, page blueprints, and blocks" },
+  { to: "/cms-admin/libraries", icon: Layers3, label: "Shared Library", description: "Templates, themes, page templates, and blocks" },
 ];
 
 export default function CmsAdminMobileNav({ userEmail, onOpenCommand, onSignOut }: CmsAdminMobileNavProps) {

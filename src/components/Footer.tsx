@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Send, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
@@ -132,30 +133,70 @@ const Footer = () => {
         if (!showShopLinks) return null;
         return (
           <div key="shop">
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
-            <div className="flex flex-col gap-2">
-              {shopLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="text-sm text-muted-foreground hover:text-foreground smooth-hover"
-                >
-                  {link.label}
-                </Link>
-              ))}
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">Shop</h4>
+              <div className="flex flex-col gap-3">
+                {shopLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="shop" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">Shop</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {shopLinks.map((link) => (
+                        <Link
+                          key={link.label}
+                          href={link.href}
+                          className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         );
       case "company":
         return (
           <div key="company">
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
-            <div className="flex flex-col gap-2">
-              {companyLinks.map((link, i) => (
-                <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
-                  {link.label}
-                </Link>
-              ))}
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">Company</h4>
+              <div className="flex flex-col gap-3">
+                {companyLinks.map((link, i) => (
+                  <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="company" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">Company</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {companyLinks.map((link, i) => (
+                        <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         );
@@ -175,6 +216,7 @@ const Footer = () => {
                 <form onSubmit={handleSubscribe} className="relative z-10 flex gap-2">
                   <input
                     type="email"
+                    suppressHydrationWarning
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -200,13 +242,31 @@ const Footer = () => {
         if (!extraLinks.length) return null;
         return (
           <div key="extra">
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
-            <div className="flex flex-col gap-2">
-              {extraLinks.map((link, i) => (
-                <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-sm text-muted-foreground hover:text-foreground smooth-hover">
-                  {link.label}
-                </Link>
-              ))}
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
+              <div className="flex flex-col gap-3">
+                {extraLinks.map((link, i) => (
+                  <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="extra" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">{extraLinksTitle}</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {extraLinks.map((link, i) => (
+                        <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         );
@@ -226,9 +286,9 @@ const Footer = () => {
     <footer className="relative overflow-hidden border-t border-white/5 bg-secondary">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
-      <div className="container mx-auto px-4 pt-16 pb-24 md:pb-16 lg:py-20">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">{renderedSections}</div>
-        <div className="mt-16 flex flex-col items-center justify-center gap-4 border-t border-white/5 pt-8 text-[13px] text-muted-foreground/60">
+      <div className="container mx-auto px-4 pt-12 pb-24 md:pt-16 md:pb-16 lg:py-20">
+        <div className="grid grid-cols-1 gap-y-2 gap-x-10 md:grid-cols-2 lg:grid-cols-4 md:gap-y-10">{renderedSections}</div>
+        <div className="mt-12 md:mt-16 flex flex-col items-center justify-center gap-3 border-t border-white/5 pt-8 text-[13px] text-muted-foreground/60 text-center">
           <p className="tracking-wide">{paymentText}</p>
           <p className="tracking-wider">{copyrightText}</p>
         </div>

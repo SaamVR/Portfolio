@@ -18,7 +18,7 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
-import { resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
+import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
 import { getAdminNavigationSections } from "@/lib/admin/admin-navigation";
 
 import { isPlatformRole } from "@/lib/platform/rbac";
@@ -34,15 +34,15 @@ type ActiveStoreMeta = {
   slug: string;
   custom_domain?: string | null;
   store_type?: string | null;
-  blueprint_id?: string | null;
+  template_id?: string | null;
 };
 
 const isRouteActive = (pathname: string, target: string) =>
   target === "/admin" ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 
 function shouldShowVirtualShopPage(meta?: ActiveStoreMeta | null) {
-  const blueprint = resolveStoreBlueprint(meta?.blueprint_id ?? meta?.store_type ?? "general-catalog");
-  return blueprint.businessFamily === "commerce" && blueprint.catalogMode !== "single_product";
+  const templateSeed = resolveStorefrontTemplateSeed(meta?.template_id ?? meta?.store_type ?? "general-catalog");
+  return templateSeed.businessFamily === "commerce" && templateSeed.catalogMode !== "single_product";
 }
 
 function inferPagePlacement(page: StorePageNavRow) {
@@ -129,12 +129,12 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
       if (error) throw error;
       const { data: profile } = await supabase
         .from("store_business_profiles")
-        .select("blueprint_id")
+        .select("template_id")
         .eq("store_id", activeStoreId as string)
         .maybeSingle();
       return {
         ...((data as ActiveStoreMeta | null) ?? { slug: "" }),
-        blueprint_id: (profile as { blueprint_id?: string | null } | null)?.blueprint_id ?? null,
+        template_id: (profile as { template_id?: string | null } | null)?.template_id ?? null,
       };
     },
     enabled: Boolean(activeStoreId) && cmsEnabled,

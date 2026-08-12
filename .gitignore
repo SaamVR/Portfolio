@@ -48,4 +48,13 @@ supabase/.temp/
 backups/
 test-results/
 tmp/
+.tmp-smoke/
+knip-report.txt
+knip_report.txt
+lint-report.txt
 
+# Dump files
+DUMP/
+
+# Cloudflare local state
+cloudflare/**/.wrangler/
