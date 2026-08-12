@@ -61,6 +61,20 @@ function clonePreviewStyles(targetDocument: Document) {
       background: rgba(150, 150, 150, 0.3);
       border-radius: 3px;
     }
+
+    /* EZComo Preview Selection Outlines */
+    .ezcomo-selected-outline {
+      outline: 2px solid #10b981 !important;
+      outline-offset: -2px !important;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
+      position: relative !important;
+      z-index: 20 !important;
+    }
+
+    .ezcomo-hovered-outline {
+      outline: 2px dashed #9ca3af !important;
+      outline-offset: -2px !important;
+    }
   `;
   targetDocument.head.appendChild(baseStyle);
 
@@ -94,6 +108,10 @@ export function StorefrontPreviewFrame({
   className,
   title = "Storefront preview",
   isolateNavigation = true,
+  selectedBlockId,
+  onSelectBlock,
+  onHoverBlock,
+  onPatchDraft,
 }: {
   viewport?: PreviewViewport;
   onViewportChange?: (viewport: PreviewViewport) => void;
@@ -102,6 +120,10 @@ export function StorefrontPreviewFrame({
   className?: string;
   title?: string;
   isolateNavigation?: boolean;
+  selectedBlockId?: string | null;
+  onSelectBlock?: (blockId: string | null) => void;
+  onHoverBlock?: (blockId: string | null) => void;
+  onPatchDraft?: (patch: Record<string, unknown>) => void;
 }) {
   const [internalViewport, setInternalViewport] = useState<PreviewViewport>("desktop");
   const activeViewport = controlledViewport ?? internalViewport;
@@ -116,7 +138,9 @@ export function StorefrontPreviewFrame({
   const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
   const config = viewportConfig[activeViewport];
+  const patchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Mount iframe document & set up event listeners
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
@@ -125,66 +149,158 @@ export function StorefrontPreviewFrame({
     if (!targetDocument) return;
 
     targetDocument.open();
-    targetDocument.write("<!doctype html><html><head></head><body><div id=\"storefront-preview-root\"></div></body></html>");
+    targetDocument.write('<!doctype html><html><head></head><body><div id="storefront-preview-root"></div></body></html>');
     targetDocument.close();
-
-    const handleNativeClick = (e: MouseEvent) => {
-      if (!isolateNavigation) return;
-      const target = e.target as HTMLElement | null;
-      if (target?.closest("a, button, [role='button'], input[type='submit'], form")) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    if (isolateNavigation) {
-      targetDocument.addEventListener("click", handleNativeClick, true);
-    }
 
     clonePreviewStyles(targetDocument);
     setMountNode(targetDocument.getElementById("storefront-preview-root") as HTMLDivElement | null);
+  }, [activeViewport]);
 
-    return () => {
-      if (isolateNavigation) {
-        targetDocument.removeEventListener("click", handleNativeClick, true);
-      }
-    };
-  }, [activeViewport, isolateNavigation]);
-
+  // Click-to-Select & Hover Event Delegation inside Iframe
   useEffect(() => {
     const iframe = iframeRef.current;
     const targetDocument = iframe?.contentDocument;
-    const targetWindow = iframe?.contentWindow;
-    if (!targetDocument || !targetWindow) return;
+    if (!targetDocument) return;
 
-    const handleClick = (event: MouseEvent) => {
-      const eventTarget = event.target;
-      if (!(eventTarget instanceof Node)) return;
-      const anchor = eventTarget instanceof Element ? eventTarget.closest("a[href]") : null;
-      if (!(anchor instanceof HTMLAnchorElement)) return;
+    const handleNativeClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
 
-      const resolvedHref = resolveAnchorHref(targetDocument, anchor);
-      if (!resolvedHref) return;
+      const blockEl = target.closest("[data-ezcomo-block-id]") as HTMLElement | null;
+      if (blockEl) {
+        const blockId = blockEl.getAttribute("data-ezcomo-block-id");
+        if (blockId) {
+          if (isolateNavigation) {
+            const isInteractive = target.closest("a, button, [role='button'], input[type='submit'], form");
+            if (isInteractive) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }
+          onSelectBlock?.(blockId);
 
-      event.preventDefault();
-      event.stopPropagation();
-      targetWindow.location.href = resolvedHref;
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ kind: "ezcomo:block-clicked", blockId }, window.location.origin);
+          }
+        }
+      } else if (isolateNavigation) {
+        const isInteractive = target.closest("a, button, [role='button'], input[type='submit'], form");
+        if (isInteractive) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
     };
 
-    const handleSubmit = (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
+    const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const blockEl = target.closest("[data-ezcomo-block-id]") as HTMLElement | null;
+      const blockId = blockEl?.getAttribute("data-ezcomo-block-id") ?? null;
+
+      // Update hover outline class
+      targetDocument.querySelectorAll(".ezcomo-hovered-outline").forEach((el) => {
+        if (el !== blockEl) el.classList.remove("ezcomo-hovered-outline");
+      });
+
+      if (blockEl && !blockEl.classList.contains("ezcomo-selected-outline")) {
+        blockEl.classList.add("ezcomo-hovered-outline");
+      }
+
+      onHoverBlock?.(blockId);
     };
 
-    targetDocument.addEventListener("click", handleClick, true);
-    targetDocument.addEventListener("submit", handleSubmit, true);
+    const handleMouseLeave = () => {
+      targetDocument.querySelectorAll(".ezcomo-hovered-outline").forEach((el) => {
+        el.classList.remove("ezcomo-hovered-outline");
+      });
+      onHoverBlock?.(null);
+    };
+
+    targetDocument.addEventListener("click", handleNativeClick, true);
+    targetDocument.addEventListener("mousemove", handleMouseMove, true);
+    targetDocument.addEventListener("mouseleave", handleMouseLeave, true);
 
     return () => {
-      targetDocument.removeEventListener("click", handleClick, true);
-      targetDocument.removeEventListener("submit", handleSubmit, true);
+      targetDocument.removeEventListener("click", handleNativeClick, true);
+      targetDocument.removeEventListener("mousemove", handleMouseMove, true);
+      targetDocument.removeEventListener("mouseleave", handleMouseLeave, true);
     };
-  }, [mountNode]);
+  }, [mountNode, isolateNavigation, onSelectBlock, onHoverBlock]);
 
+  // Sync Outlines & Scroll-to on selectedBlockId change
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const targetDocument = iframe?.contentDocument;
+    if (!targetDocument) return;
+
+    // Clear old selected outlines
+    targetDocument.querySelectorAll(".ezcomo-selected-outline").forEach((el) => {
+      el.classList.remove("ezcomo-selected-outline");
+    });
+
+    if (!selectedBlockId) return;
+
+    const selectedEl = targetDocument.querySelector(`[data-ezcomo-block-id="${selectedBlockId}"]`) as HTMLElement | null;
+    if (selectedEl) {
+      selectedEl.classList.remove("ezcomo-hovered-outline");
+      selectedEl.classList.add("ezcomo-selected-outline");
+      selectedEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedBlockId, mountNode]);
+
+  // PostMessage protocol listener
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      const data = event.data;
+      if (!data || typeof data !== "object" || !data.kind) return;
+
+      switch (data.kind) {
+        case "ezcomo:select":
+          if (typeof data.blockId === "string" || data.blockId === null) {
+            onSelectBlock?.(data.blockId);
+          }
+          break;
+
+        case "ezcomo:scroll-to":
+          if (data.blockId && iframeRef.current?.contentDocument) {
+            const targetEl = iframeRef.current.contentDocument.querySelector(`[data-ezcomo-block-id="${data.blockId}"]`);
+            targetEl?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          break;
+
+        case "ezcomo:patch":
+          if (data.store && onPatchDraft) {
+            if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
+            patchTimerRef.current = setTimeout(() => {
+              onPatchDraft(data.store);
+            }, 200); // 200ms throttle
+          }
+          break;
+
+        case "ezcomo:block-clicked":
+          if (data.blockId) {
+            onSelectBlock?.(data.blockId);
+          }
+          break;
+
+        case "ezcomo:block-hovered":
+          onHoverBlock?.(data.blockId ?? null);
+          break;
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
+    };
+  }, [onSelectBlock, onHoverBlock, onPatchDraft]);
+
+  // Scale computation
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -202,21 +318,6 @@ export function StorefrontPreviewFrame({
   }, [config.width]);
 
   const scaledHeight = useMemo(() => Math.max(300, Math.round(config.height * scale)), [config.height, scale]);
-
-  const handleInterceptClick = (e: React.MouseEvent) => {
-    if (!isolateNavigation) return;
-    const target = e.target as HTMLElement | null;
-    if (target?.closest("a, button, [role='button'], input[type='submit'], form")) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
-
-  const handleInterceptSubmit = (e: React.FormEvent) => {
-    if (!isolateNavigation) return;
-    e.preventDefault();
-    e.stopPropagation();
-  };
 
   const handleRefresh = () => {
     if (iframeRef.current?.contentWindow) {
@@ -324,11 +425,7 @@ export function StorefrontPreviewFrame({
               }}
             />
             {mountNode ? createPortal(
-              <div
-                className="w-full h-full"
-                onClickCapture={handleInterceptClick}
-                onSubmitCapture={handleInterceptSubmit}
-              >
+              <div className="w-full h-full">
                 {children}
               </div>,
               mountNode

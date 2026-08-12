@@ -14,7 +14,7 @@ export function NeighborhoodGrid({
   fallbackSrc?: string | null;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
         <Link
           key={item.title}
@@ -31,7 +31,7 @@ export function NeighborhoodGrid({
               className="object-cover"
             />
           </div>
-          <div className="p-4">
+          <div className="p-3 sm:p-4">
             <p className="text-base font-semibold text-slate-950 dark:text-foreground">{item.title}</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-muted-foreground">{item.subtitle}</p>
           </div>

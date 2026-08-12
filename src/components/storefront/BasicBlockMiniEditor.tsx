@@ -12,8 +12,13 @@ import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProducts } from "@/hooks/useProducts";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { TiptapRichTextEditor } from "@/components/admin/TiptapRichTextEditor";
-import type { RichTextDoc, StorePageBlock } from "@/lib/cms/schema";
-import { getBasicBlockCoach } from "@/lib/cms/storefront-editor-registry";
+import { PropertyRow } from "@/components/storefront/editor/shared/PropertyRow";
+import { TextField } from "@/components/storefront/editor/shared/TextField";
+import { NumberStepper } from "@/components/storefront/editor/shared/NumberStepper";
+import { LinkPicker } from "@/components/storefront/editor/shared/LinkPicker";
+import { MediaField as SharedMediaField } from "@/components/storefront/editor/shared/MediaField";
+import type { RichTextDoc, StorePage, StorePageBlock } from "@/lib/cms/schema";
+import { getBasicBlockCoach, getSharedBlockCopy, getSharedFeaturedSourceOptions } from "@/lib/cms/storefront-editor-registry";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 type FieldConfig = {
@@ -30,6 +35,7 @@ type BasicBlockMiniEditorProps = {
   storeId: string;
   updateBlockProps: (blockId: string, patch: Record<string, unknown>) => void;
   updateBlockMeta: (blockId: string, patch: Partial<StorePageBlock>) => void;
+  allPages?: StorePage[];
 };
 
 type RepeatableFieldConfig = {
@@ -116,20 +122,42 @@ function Field({
   config,
   value,
   updateBlockProps,
+  allPages = [],
 }: {
   blockId: string;
   config: FieldConfig;
   value: unknown;
   updateBlockProps: (blockId: string, patch: Record<string, unknown>) => void;
+  allPages?: StorePage[];
 }) {
   const nextValue = String(value ?? "");
 
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-sm">{config.label}</Label>
-      {config.type === "select" ? (
+  if (config.key === "ctaLink" || config.key === "secondaryCtaLink") {
+    return (
+      <LinkPicker
+        label={config.label}
+        value={nextValue}
+        onChange={(url) => updateBlockProps(blockId, { [config.key]: url })}
+        allPages={allPages}
+      />
+    );
+  }
+
+  if (config.type === "number") {
+    return (
+      <NumberStepper
+        label={config.label}
+        value={Number(value ?? 0)}
+        onChange={(val) => updateBlockProps(blockId, { [config.key]: val })}
+      />
+    );
+  }
+
+  if (config.type === "select") {
+    return (
+      <PropertyRow label={config.label}>
         <select
-          className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+          className="h-9 w-full rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-1 text-xs text-foreground"
           value={nextValue || config.options?.[0]?.value || ""}
           onChange={(event) => updateBlockProps(blockId, { [config.key]: event.target.value })}
         >
@@ -139,26 +167,18 @@ function Field({
             </option>
           ))}
         </select>
-      ) : config.multiline ? (
-        <Textarea
-          rows={3}
-          value={nextValue}
-          placeholder={config.placeholder}
-          onChange={(event) => updateBlockProps(blockId, { [config.key]: event.target.value })}
-        />
-      ) : (
-        <Input
-          type={config.type ?? "text"}
-          value={nextValue}
-          placeholder={config.placeholder}
-          onChange={(event) => {
-            updateBlockProps(blockId, {
-              [config.key]: config.type === "number" ? Number(event.target.value || 0) : event.target.value,
-            });
-          }}
-        />
-      )}
-    </div>
+      </PropertyRow>
+    );
+  }
+
+  return (
+    <TextField
+      label={config.label}
+      value={nextValue}
+      placeholder={config.placeholder}
+      multiline={config.multiline}
+      onChange={(val) => updateBlockProps(blockId, { [config.key]: val })}
+    />
   );
 }
 
@@ -325,16 +345,17 @@ function MediaField({
   );
 }
 
-export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateBlockMeta }: BasicBlockMiniEditorProps) {
+export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateBlockMeta, allPages = [] }: BasicBlockMiniEditorProps) {
   const props = getProps(block);
   const { data: products = [] } = useProducts(storeId);
   const { data: productCategories = [] } = useProductCategories(storeId);
   const { data: storefrontProfile } = useSiteSettings<Record<string, unknown>>("storefront_profile", storeId);
   const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
-    blueprintId: typeof storefrontProfile?.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const blockCoach = getBasicBlockCoach(templateId, block.type);
+  const sharedBlockCopy = getSharedBlockCopy(templateId);
   const productTypeOptions = useMemo(() => {
     return Array.from(new Set(products.map((product) => String(product.type ?? "")).filter(Boolean))).sort();
   }, [products]);
@@ -356,90 +377,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
   }), [block.type, blockCoach.titleOverrides]);
   const priorityLabels = (blockCoach.priorityFields ?? []).map((fieldKey) => fieldLabelMap[fieldKey] ?? fieldKey);
 
-  const getFeaturedSourceOptions = () => {
-    if (templateId === "food") {
-      return [
-        { label: "Popular dishes first", value: "featured-or-all" },
-        { label: "Bestsellers only", value: "featured" },
-        { label: "All live dishes", value: "all" },
-        { label: "Newest dishes", value: "newest" },
-        { label: "One menu category", value: "category" },
-        { label: "One menu type", value: "type" },
-      ];
-    }
-
-    if (templateId === "subscriptions") {
-      return [
-        { label: "Best plans first", value: "featured-or-all" },
-        { label: "Featured plans only", value: "featured" },
-        { label: "All live plans", value: "all" },
-        { label: "Newest plans", value: "newest" },
-        { label: "One plan category", value: "category" },
-        { label: "One account type", value: "type" },
-      ];
-    }
-
-    if (templateId === "hotel") {
-      return [
-        { label: "Best rooms first", value: "featured-or-all" },
-        { label: "Featured rooms only", value: "featured" },
-        { label: "All live rooms", value: "all" },
-        { label: "Newest rooms", value: "newest" },
-        { label: "One room category", value: "category" },
-        { label: "One room type", value: "type" },
-      ];
-    }
-
-    if (templateId === "real-estate") {
-      return [
-        { label: "Best listings first", value: "featured-or-all" },
-        { label: "Featured listings only", value: "featured" },
-        { label: "All live listings", value: "all" },
-        { label: "Newest listings", value: "newest" },
-        { label: "One property category", value: "category" },
-        { label: "One listing type", value: "type" },
-      ];
-    }
-
-    if (templateId === "inquiry-catalog") {
-      return [
-        { label: "Most requested items first", value: "featured-or-all" },
-        { label: "Quote highlights only", value: "featured" },
-        { label: "All live quote items", value: "all" },
-        { label: "Newest quote items", value: "newest" },
-        { label: "One buyer category", value: "category" },
-        { label: "One product type", value: "type" },
-      ];
-    }
-
-    return [
-      { label: "Featured first, then all products", value: "featured-or-all" },
-      { label: "Featured products only", value: "featured" },
-      { label: "All available products", value: "all" },
-      { label: "Newest products", value: "newest" },
-      { label: "One category", value: "category" },
-      { label: "One product type", value: "type" },
-    ];
-  };
-
-  const getFeaturedSourceLabel = () => {
-    if (templateId === "food") return "Show Dishes From";
-    if (templateId === "subscriptions") return "Show Plans From";
-    if (templateId === "hotel") return "Show Rooms From";
-    if (templateId === "real-estate") return "Show Listings From";
-    if (templateId === "inquiry-catalog") return "Show Quote Items From";
-    if (templateId === "service") return "Show Services From";
-    return "Show Products From";
-  };
-
-  const getCategorySourceLabel = () => {
-    if (templateId === "food") return "Show Menu Navigation For";
-    if (templateId === "beauty") return "Show Discovery Navigation For";
-    if (templateId === "subscriptions") return "Show Plan Navigation For";
-    if (templateId === "hotel") return "Show Room Navigation For";
-    if (templateId === "real-estate") return "Show Listing Navigation For";
-    return "Show Navigation For";
-  };
+  const featuredSourceOptions = useMemo(() => getSharedFeaturedSourceOptions(templateId), [templateId]);
 
   const updateArrayItem = (key: string, index: number, patch: Record<string, unknown>) => {
     const currentItems = getObjectArray(props[key]);
@@ -479,6 +417,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
           config={field}
           value={props[field.key]}
           updateBlockProps={updateBlockProps}
+          allPages={allPages}
         />
       ))}
     </div>
@@ -557,30 +496,16 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
             ])}
           </FieldGroup>
           <DetailsGroup
-            title={templateId === "food" ? "Dish source" : templateId === "subscriptions" ? "Plan source" : templateId === "hotel" ? "Room source" : templateId === "real-estate" ? "Listing source" : templateId === "inquiry-catalog" ? "Quote source" : templateId === "service" ? "Service source" : "Product source"}
-            description={
-              templateId === "food"
-                ? "Choose which dishes this section should spotlight. If a menu category is empty, add dishes first."
-                : templateId === "subscriptions"
-                  ? "Choose which plans this section should compare or highlight first."
-                  : templateId === "hotel"
-                    ? "Choose which room group this section should guide guests toward first."
-                    : templateId === "real-estate"
-                      ? "Choose which listings this section should surface first for buyers or renters."
-                      : templateId === "inquiry-catalog"
-                        ? "Choose which quote-led items this section should push buyers toward first."
-                        : templateId === "service"
-                          ? "Choose which services or packages this section should highlight first."
-                          : "Choose which products this section should pull from. If a category or type has no products yet, add products first."
-            }
+            title={sharedBlockCopy.featuredSourceTitle}
+            description={sharedBlockCopy.featuredSourceDescription}
           >
             <div className="grid gap-3">
               {renderFields([
                 {
                   key: "source",
-                  label: getFeaturedSourceLabel(),
+                  label: sharedBlockCopy.featuredSourceLabel,
                   type: "select",
-                  options: getFeaturedSourceOptions(),
+                  options: featuredSourceOptions,
                 },
               ])}
               {props.source === "category" ? (
@@ -588,7 +513,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
                   blockId={block.id}
                   config={{
                     key: "category",
-                    label: templateId === "food" ? "Menu Category" : templateId === "hotel" ? "Room Category" : templateId === "real-estate" ? "Property Category" : templateId === "subscriptions" ? "Plan Category" : templateId === "inquiry-catalog" ? "Buyer Category" : "Category",
+                    label: sharedBlockCopy.featuredCategoryLabel,
                     type: "select",
                     options: productCategoryOptions.length > 0
                       ? productCategoryOptions.map((category) => ({ label: category, value: category }))
@@ -603,7 +528,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
                   blockId={block.id}
                   config={{
                     key: "productType",
-                    label: templateId === "food" ? "Menu Type" : templateId === "subscriptions" ? "Account / Plan Type" : templateId === "hotel" ? "Room Type" : templateId === "real-estate" ? "Listing Type" : "Product Type",
+                    label: sharedBlockCopy.featuredTypeLabel,
                     type: "select",
                     options: productTypeOptions.length > 0
                       ? productTypeOptions.map((type) => ({ label: type, value: type }))
@@ -634,18 +559,16 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
             ])}
           </FieldGroup>
           <DetailsGroup
-            title={templateId === "electronics" ? "Comparison source" : "Product source"}
-            description={templateId === "electronics"
-              ? "Choose which products should appear side by side. Keep them close enough that the comparison helps a real decision."
-              : "Choose which products this comparison should pull from. Keep the set tight so differences stay readable."}
+            title={sharedBlockCopy.comparisonSourceTitle}
+            description={sharedBlockCopy.comparisonSourceDescription}
           >
             <div className="grid gap-3">
               {renderFields([
                 {
                   key: "source",
-                  label: getFeaturedSourceLabel(),
+                  label: sharedBlockCopy.featuredSourceLabel,
                   type: "select",
-                  options: getFeaturedSourceOptions(),
+                  options: featuredSourceOptions,
                 },
               ])}
               {props.source === "category" ? (
@@ -653,7 +576,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
                   blockId={block.id}
                   config={{
                     key: "category",
-                    label: templateId === "electronics" ? "Device Category" : "Category",
+                    label: sharedBlockCopy.comparisonCategoryLabel,
                     type: "select",
                     options: productCategoryOptions.length > 0
                       ? productCategoryOptions.map((category) => ({ label: category, value: category }))
@@ -668,7 +591,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
                   blockId={block.id}
                   config={{
                     key: "productType",
-                    label: templateId === "electronics" ? "Device Type" : "Product Type",
+                    label: sharedBlockCopy.comparisonTypeLabel,
                     type: "select",
                     options: productTypeOptions.length > 0
                       ? productTypeOptions.map((type) => ({ label: type, value: type }))
@@ -713,25 +636,13 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
             { key: "title", label: blockCoach.titleOverrides?.title ?? "Section Title" },
           ])}
           <DetailsGroup
-            title={templateId === "food" ? "Menu navigation" : templateId === "beauty" ? "Discovery navigation" : templateId === "subscriptions" ? "Plan navigation" : templateId === "hotel" ? "Room navigation" : templateId === "real-estate" ? "Listing navigation" : "Category source"}
-            description={
-              templateId === "food"
-                ? "Pick the menu path guests should use first: categories, dish types, or an automatic blend."
-                : templateId === "beauty"
-                  ? "Pick whether shoppers should browse by category or product type first."
-                  : templateId === "subscriptions"
-                    ? "Pick the clearest plan discovery path for new buyers."
-                    : templateId === "hotel"
-                      ? "Pick the room discovery path guests should see first."
-                      : templateId === "real-estate"
-                        ? "Pick the listing navigation style that helps visitors scan faster."
-                        : "Pick the navigation style shoppers should see in this section."
-            }
+            title={sharedBlockCopy.categorySourceTitle}
+            description={sharedBlockCopy.categorySourceDescription}
           >
             {renderFields([
               {
                 key: "source",
-                label: getCategorySourceLabel(),
+                label: sharedBlockCopy.categorySourceLabel,
                 type: "select",
                 options: [
                   { label: "Auto choose best available", value: "auto" },
@@ -868,15 +779,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
       break;
     case "faq-accordion": {
       const faqs = getObjectArray(props.faqs);
-      const faqTitle = templateId === "hotel"
-        ? "Guest questions"
-        : templateId === "service"
-          ? "Service questions"
-          : templateId === "real-estate"
-            ? "Buyer and renter questions"
-            : templateId === "food"
-              ? "Order questions"
-              : "Questions";
+      const faqTitle = sharedBlockCopy.faqListTitle;
       editor = (
         <div className="grid gap-4">
           {renderFields([
@@ -885,18 +788,8 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
           ])}
           <RepeatableListEditor
             title={faqTitle}
-            description={templateId === "service" || templateId === "booking" || templateId === "hotel"
-              ? "Add the questions that block inquiry, booking, or first contact."
-              : templateId === "real-estate"
-                ? "Add the questions that block viewings, contact, or listing trust."
-                : "Add only the questions that block purchase decisions."}
-            emptyText={templateId === "food"
-              ? "Add the questions guests ask before ordering: delivery, payment, spice level, allergens, and support."
-              : templateId === "hotel"
-                ? "Add the questions guests ask before booking: location, check-in, room details, cancellation, and support."
-                : templateId === "real-estate"
-                  ? "Add the questions visitors ask before contacting: location, availability, pricing, visits, and support."
-                  : "Add the questions shoppers ask before buying: delivery, payment, returns, sizing, and support."}
+            description={sharedBlockCopy.faqDescription}
+            emptyText={sharedBlockCopy.faqEmptyText}
             addLabel="Add Question"
             fields={[
               { key: "q", label: "Question", placeholder: "Do you offer cash on delivery?" },
@@ -914,30 +807,14 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
     }
     case "trust-badges": {
       const badges = getObjectArray(props.badges);
-      const trustTitle = templateId === "food"
-        ? "Service trust points"
-        : templateId === "hotel"
-          ? "Guest confidence points"
-          : templateId === "real-estate"
-            ? "Listing trust points"
-            : templateId === "subscriptions"
-              ? "Plan trust points"
-              : "Trust badges";
+      const trustTitle = sharedBlockCopy.trustListTitle;
       editor = (
         <div className="grid gap-4">
           {renderFields([{ key: "title", label: "Trust Section Title" }])}
           <RepeatableListEditor
             title={trustTitle}
-            description={templateId === "real-estate"
-              ? "Use practical reassurances about listings, response, support, and transparency."
-              : templateId === "hotel"
-                ? "Use practical reassurances about guest experience, support, and booking confidence."
-                : "Use practical reassurances, not generic claims."}
-            emptyText={templateId === "subscriptions"
-              ? "Add practical reassurances: activation speed, account support, renewal clarity, or device compatibility."
-              : templateId === "food"
-                ? "Add practical reassurances: freshness, hygiene, delivery timing, payment, or support."
-                : "Add practical reassurances: delivery, payment, exchange, support, or authenticity."}
+            description={sharedBlockCopy.trustDescription}
+            emptyText={sharedBlockCopy.trustEmptyText}
             addLabel="Add Badge"
             fields={[
               { key: "label", label: "Badge Label", placeholder: "7-Day Return" },
@@ -967,15 +844,7 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
     }
     case "testimonials": {
       const reviews = getObjectArray(props.reviews);
-      const reviewTitle = templateId === "hotel"
-        ? "Guest reviews"
-        : templateId === "service" || templateId === "booking"
-          ? "Client reviews"
-          : templateId === "real-estate"
-            ? "Buyer and renter reviews"
-            : templateId === "food"
-              ? "Guest reviews"
-              : "Reviews";
+      const reviewTitle = sharedBlockCopy.testimonialListTitle;
       editor = (
         <div className="grid gap-4">
           {renderFields([
@@ -984,16 +853,8 @@ export function BasicBlockMiniEditor({ block, storeId, updateBlockProps, updateB
           ])}
           <RepeatableListEditor
             title={reviewTitle}
-            description={templateId === "service" || templateId === "booking"
-              ? "Specific, believable quotes about results, support, or experience make this section stronger."
-              : templateId === "hotel"
-                ? "Specific guest comments about stay, location, comfort, or support make this section stronger."
-                : "Specific, believable quotes make this section stronger."}
-            emptyText={templateId === "real-estate"
-              ? "Add specific reviews that mention trust, responsiveness, listing clarity, or viewing support."
-              : templateId === "food"
-                ? "Add specific reviews that mention taste, freshness, portion size, speed, or support."
-                : "Add specific reviews that mention product quality, delivery, fit, taste, or support."}
+            description={sharedBlockCopy.testimonialDescription}
+            emptyText={sharedBlockCopy.testimonialEmptyText}
             addLabel="Add Review"
             fields={[
               { key: "name", label: "Customer Name", placeholder: "Ayesha Rahman" },

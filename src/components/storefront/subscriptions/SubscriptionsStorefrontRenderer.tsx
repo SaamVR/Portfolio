@@ -318,19 +318,19 @@ export function SubscriptionsStorefrontRenderer({
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Browse Subscriptions"}
               </Link>
               <Link
                 href={storefrontPath(heroBlock?.secondaryCtaLink || "/about", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "How It Works"}
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
                 { label: "Instant delivery", icon: Clock3 },
                 { label: "Secure payments", icon: ShieldCheck },
@@ -338,7 +338,7 @@ export function SubscriptionsStorefrontRenderer({
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.label} className="rounded-[20px] border border-[#e7eee9] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-card">
+                  <div key={item.label} className="rounded-[20px] border border-[#e7eee9] bg-white p-3 sm:p-4 shadow-sm dark:border-white/10 dark:bg-card">
                     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Icon className="h-4.5 w-4.5" />
                     </div>
@@ -367,10 +367,10 @@ export function SubscriptionsStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1320px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#e7eee9] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 rounded-[28px] border border-[#e7eee9] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
           {trustItems.map((item, index) => (
-            <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
                 {index % 4 === 0 ? <ShieldCheck className="h-4.5 w-4.5" /> : index % 4 === 1 ? <BadgeCheck className="h-4.5 w-4.5" /> : index % 4 === 2 ? <Clock3 className="h-4.5 w-4.5" /> : <Sparkles className="h-4.5 w-4.5" />}
               </div>
               <div>
@@ -382,18 +382,18 @@ export function SubscriptionsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Browse by category"}
           title={categoryBlock?.title?.trim() || "Subscription categories"}
           subtitle="Explore subscriptions across different use cases without leaving the shared storefront architecture."
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[22px] border border-[#e7eee9] bg-white p-5 text-center shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[22px] border border-[#e7eee9] bg-white p-3 text-center shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 sm:p-5 dark:border-white/10 dark:bg-card"
             >
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 3 === 0 ? <Zap className="h-5 w-5" /> : index % 3 === 1 ? <Search className="h-5 w-5" /> : <BadgeCheck className="h-5 w-5" />}
@@ -442,7 +442,7 @@ export function SubscriptionsStorefrontRenderer({
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProducts.slice(0, 6).map((product) => (
             <SubscriptionProductCard
               key={product.id}
@@ -454,7 +454,7 @@ export function SubscriptionsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="grid gap-5 overflow-hidden rounded-[30px] border border-[#e7eee9] bg-[linear-gradient(135deg,#f2fcf4_0%,#f7fdf8_100%)] p-6 shadow-[0_20px_44px_-34px_rgba(15,23,42,0.16)] lg:grid-cols-[0.9fr_1.1fr] lg:items-center dark:border-white/10 dark:bg-card">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Annual plan promotion</p>
@@ -487,7 +487,7 @@ export function SubscriptionsStorefrontRenderer({
           title="Subscribe in three simple steps"
           subtitle="A reusable flow for subscription stores: choose a plan, check billing duration, then finish in the normal storefront cart and checkout."
         />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[
             { title: "Choose a subscription", body: "Browse the marketplace, compare products, and pick the one that matches your needs.", icon: Search },
             { title: "Pick plan and billing", body: "Use the card selectors to choose account type and monthly or yearly billing before adding to cart.", icon: BadgeCheck },
@@ -510,14 +510,14 @@ export function SubscriptionsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 pb-14 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 pb-14 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={testimonialBlock?.subtitle?.trim() || "Customer reviews"}
           title={testimonialBlock?.title?.trim() || "What subscribers say"}
         />
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:overflow-visible">
           {resolvedTestimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[24px] border border-[#e7eee9] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <div key={testimonial.id} className="min-w-[280px] snap-center flex-shrink-0 rounded-[24px] border border-[#e7eee9] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card lg:min-w-0">
               <div className="flex items-center gap-1 text-[#f2b21d]">
                 {Array.from({ length: testimonial.rating }).map((_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />

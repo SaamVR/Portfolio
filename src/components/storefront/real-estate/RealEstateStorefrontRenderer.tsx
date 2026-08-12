@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/data/products";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
+import { getMetricNumericFallback } from "@/lib/cms/storefront-product-presentation";
 import { storefrontPath } from "@/lib/slug";
 
 type HeroBlockProps = {
@@ -204,8 +205,8 @@ function matchesFilters(product: Product, metadata: TemplateSeedCatalogMetadata 
   const specs = metadata?.products?.[product.id]?.specs;
   const location = `${getString(specs, ["location", "city", "address", "neighborhood"])} ${product.description}`.toLowerCase();
   const propertyType = getString(specs, ["property_type", "listing_type"], `${product.category} ${product.type}`).toLowerCase();
-  const beds = getNumber(specs, ["beds", "bedrooms"], Math.max(1, Math.min(product.sizes.length || 3, 6)));
-  const baths = getNumber(specs, ["baths", "bathrooms"], Math.max(1, Math.min(product.colors.length || 2, 5)));
+  const beds = getNumber(specs, ["beds", "bedrooms"], Math.max(1, Math.min(getMetricNumericFallback(product, ["beds", "bedrooms"], 3), 6)));
+  const baths = getNumber(specs, ["baths", "bathrooms"], Math.max(1, Math.min(getMetricNumericFallback(product, ["baths", "bathrooms"], 2), 5)));
   const listingType = getString(specs, ["listing_type", "listing_mode", "status"], product.name).toLowerCase();
 
   if (filters.location.trim() && !location.includes(filters.location.trim().toLowerCase())) return false;
@@ -336,7 +337,7 @@ export function RealEstateStorefrontRenderer({
   return (
     <div className="bg-[#fbfcfa] text-slate-950 dark:bg-background dark:text-foreground">
       <section className="overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf7_100%)] dark:bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--background))_100%)]">
-        <div className="mx-auto grid max-w-[1400px] gap-8 px-5 pb-6 pt-8 md:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-10 lg:pb-8 lg:pt-10">
+        <div className="mx-auto grid max-w-[1400px] gap-8 px-5 pb-2 pt-4 md:pb-6 md:pt-8 md:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-10 lg:pb-8 lg:pt-10">
           <div className="max-w-[560px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#1f9b46]">{heroBlock?.tagline?.trim() || "Find the perfect place to call home"}</p>
             <h1 className="mt-5 max-w-[9ch] text-[3rem] font-semibold leading-[1.03] tracking-[-0.05em] text-slate-950 dark:text-foreground sm:text-[4.4rem]">
@@ -348,13 +349,13 @@ export function RealEstateStorefrontRenderer({
               <button
                 type="button"
                 onClick={() => listingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-[#1f9b46] px-6 text-sm font-semibold text-white shadow-[0_18px_34px_-18px_rgba(31,155,70,0.56)]"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#1f9b46] px-6 text-sm font-semibold text-white shadow-[0_18px_34px_-18px_rgba(31,155,70,0.56)] sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "View Listings"}
               </button>
               <Link
                 href={storefrontPath("/contact", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce8dd] bg-white px-6 text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce8dd] bg-white px-6 text-sm font-semibold text-slate-800 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "Contact Agent"}
               </Link>
@@ -377,7 +378,7 @@ export function RealEstateStorefrontRenderer({
           </div>
         </div>
 
-        <div className="mx-auto max-w-[1400px] px-5 pb-10 md:px-8 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-5 pb-6 md:pb-10 md:px-8 lg:px-10">
           <PropertySearchBar
             filters={filters}
             propertyTypes={categoryNames}
@@ -388,14 +389,14 @@ export function RealEstateStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1400px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#dce8dd] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.15)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 rounded-[28px] border border-[#dce8dd] bg-white p-3 sm:p-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.15)] sm:grid-cols-2 xl:grid-cols-4 dark:border-white/10 dark:bg-card">
           {[
             { label: "Trusted by buyers and renters", body: "Use store-managed reviews, listings, and contact flow to build confidence." },
             { label: "Verified listings", body: "Present real products as property listings with merchant-managed details and media." },
             { label: "Expert guidance", body: contactSettings?.response_time_text?.trim() || "Publish your response time and buying support in Site Settings." },
             { label: "Secure and transparent", body: "Keep contact and property information routed through the active merchant storefront." },
           ].map((item) => (
-            <div key={item.label} className="rounded-[20px] border border-[#eef3ef] bg-[#fbfcfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
+            <div key={item.label} className="rounded-[20px] border border-[#eef3ef] bg-[#fbfcfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
               <p className="text-base font-semibold text-slate-950 dark:text-foreground">{item.label}</p>
               <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-muted-foreground">{item.body}</p>
             </div>
@@ -403,17 +404,17 @@ export function RealEstateStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Browse by type"}
           title={categoryBlock?.title?.trim() || "Find a Property That Fits Your Lifestyle"}
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[22px] border border-[#dce8dd] bg-white p-5 text-center shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[22px] border border-[#dce8dd] bg-white p-3 sm:p-5 text-center shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="mx-auto inline-flex rounded-full bg-[#ecf7ee] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1f9b46]">
                 Type
@@ -436,7 +437,7 @@ export function RealEstateStorefrontRenderer({
             View All Listings
           </Link>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {featuredListings.map((product) => (
             <PropertyListingCard
               key={product.id}
@@ -447,7 +448,7 @@ export function RealEstateStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="grid gap-8 lg:grid-cols-[0.58fr_0.42fr]">
           <div>
             <SectionHeading
@@ -489,7 +490,7 @@ export function RealEstateStorefrontRenderer({
               </Link>
             </div>
           </div>
-          <div className="relative aspect-[16/8.8] w-full overflow-hidden rounded-[24px] border border-white/70 bg-white/70 dark:border-white/10 dark:bg-secondary/20">
+          <div className="relative hidden aspect-[16/8.8] w-full overflow-hidden rounded-[24px] border border-white/70 bg-white/70 md:block dark:border-white/10 dark:bg-secondary/20">
             <SafeStorefrontImage
               src={templateAssets?.promo_image_url ?? heroListing?.image ?? templateAssets?.hero_image_url}
               fallbackSrc={templateAssets?.fallback_product_image_url ?? null}
@@ -502,23 +503,24 @@ export function RealEstateStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="mb-6 flex items-end justify-between gap-4">
           <SectionHeading
             eyebrow="Meet our experts"
             title="Our Trusted Real Estate Agents"
           />
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible">
           {agents.map((agent) => (
-            <AgentCard
-              key={agent.name}
-              name={agent.name}
-              role={agent.role}
-              details={agent.details}
-              phone={contactSettings?.phone}
-              email={contactSettings?.email}
-            />
+            <div key={agent.name} className="min-w-[75vw] shrink-0 snap-center md:min-w-0">
+              <AgentCard
+                name={agent.name}
+                role={agent.role}
+                details={agent.details}
+                phone={contactSettings?.phone}
+                email={contactSettings?.email}
+              />
+            </div>
           ))}
         </div>
       </section>
@@ -528,9 +530,9 @@ export function RealEstateStorefrontRenderer({
           eyebrow={testimonialBlock?.subtitle?.trim() || "What our clients say"}
           title={testimonialBlock?.title?.trim() || "Trusted by Homeowners Across the Market"}
         />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible">
           {testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[24px] border border-[#dce8dd] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-card">
+            <div key={testimonial.id} className="min-w-[280px] snap-center flex-shrink-0 rounded-[24px] border border-[#dce8dd] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-card md:min-w-0">
               <div className="flex items-center gap-1 text-[#1f9b46]">
                 {Array.from({ length: testimonial.rating }).map((_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />
@@ -543,14 +545,14 @@ export function RealEstateStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="Common questions"
           title="Frequently Asked Questions"
         />
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-2 md:gap-4 lg:grid-cols-2">
           {faqs.slice(0, 6).map((faq, index) => (
-            <details key={`${faq.q}-${index}`} className="rounded-[20px] border border-[#dce8dd] bg-white px-5 py-4 shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <details key={`${faq.q}-${index}`} className="rounded-[20px] border border-[#dce8dd] bg-white px-4 py-3 shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] md:px-5 md:py-4 dark:border-white/10 dark:bg-card">
               <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-foreground">{faq.q}</summary>
               <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-muted-foreground">{faq.a}</p>
             </details>

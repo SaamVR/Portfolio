@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 
@@ -10,7 +11,17 @@ function isAuthorizedWebhook(req: Request) {
   const expectedSecret = process.env.BILLING_WEBHOOK_SECRET;
   const providedSecret = req.headers.get("x-commerce-webhook-secret");
 
-  return Boolean(expectedSecret && providedSecret && providedSecret === expectedSecret);
+  if (!expectedSecret || !providedSecret) {
+    return false;
+  }
+
+  const expectedBuffer = Buffer.from(expectedSecret, "utf8");
+  const providedBuffer = Buffer.from(providedSecret, "utf8");
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expectedBuffer, providedBuffer);
 }
 
 export async function POST(req: Request) {

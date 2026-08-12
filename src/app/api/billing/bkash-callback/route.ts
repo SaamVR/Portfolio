@@ -90,10 +90,13 @@ export async function GET(req: Request) {
       throw new Error("Platform bKash credentials are not configured");
     }
 
-    const isLive = configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true");
-    const bkashBaseUrl = isLive
+    const isLive = configuredConnection?.forceTestMode
+      ? false
+      : (configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true"));
+    const defaultBkashBaseUrl = isLive
       ? "https://tokenized.pay.bka.sh/v1.2.0-beta"
       : "https://tokenized.sandbox.bka.sh/v1.2.0-beta";
+    const bkashBaseUrl = configuredConnection?.baseUrl || defaultBkashBaseUrl;
 
     const tokenRes = await billingBkashCallbackRouteDeps.fetch(
       `${bkashBaseUrl}/tokenized/checkout/token/grant`,

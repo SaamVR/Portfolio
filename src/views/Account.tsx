@@ -1,5 +1,5 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Link } from "@/lib/react-router-dom-shim";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -44,6 +44,22 @@ interface Address {
   address: string;
   city: string;
   is_default: boolean;
+}
+
+interface StoreCustomerProfile {
+  id: string;
+  store_id: string;
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+  marketing_opt_in: boolean;
+  notes: string | null;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 const addressSchema = z.object({
@@ -245,26 +261,33 @@ const ReviewSheet = ({
 const ProfileHeader = ({
   user,
   profile,
+  storeId,
   onSignOut,
 }: {
   user: any;
-  profile: any;
+  profile: StoreCustomerProfile | null | undefined;
+  storeId: string;
   onSignOut: () => void;
 }) => {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    setDisplayName(profile?.display_name || "");
+  }, [profile?.display_name, storeId]);
+
   const updateProfile = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
-        .from("profiles")
+        .from("store_customer_profiles" as any)
         .update({ display_name: displayName.trim() } as any)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("store_id", storeId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-profile", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-store-profile", user.id, storeId] });
       toast.success("Profile updated");
       setEditing(false);
     },
@@ -284,7 +307,7 @@ const ProfileHeader = ({
       <CardContent className="relative px-6 pb-6">
         <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-10">
           <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
-            <AvatarImage src={profile?.avatar_url} />
+            <AvatarImage src={profile?.avatar_url ?? undefined} />
             <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
               {initials}
             </AvatarFallback>
@@ -468,16 +491,65 @@ const Account = () => {
   const reviewedSet = new Set(submittedReviews.map((r) => `${r.product_id}__${r.order_id}`));
 
   const { data: profile } = useQuery({
-    queryKey: ["my-profile", user?.id],
+    queryKey: ["my-store-profile", user?.id, storeId],
     queryFn: async () => {
-      const { data } = await supabase
+      if (!user || !storeId) return null;
+
+      const { data: globalProfile, error: globalProfileError } = await supabase
         .from("profiles")
         .select("display_name, email, avatar_url")
         .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (globalProfileError) throw globalProfileError;
+
+      const baseDisplayName =
+        globalProfile?.display_name
+        || (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null)
+        || (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : null)
+        || user.email?.split("@")[0]
+        || "Customer";
+      const baseAvatar =
+        globalProfile?.avatar_url
+        || (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null)
+        || (typeof user.user_metadata?.picture === "string" ? user.user_metadata.picture : null)
+        || null;
+      const basePhone =
+        (typeof user.user_metadata?.phone_number === "string" ? user.user_metadata.phone_number : null)
+        || user.phone
+        || null;
+      const baseEmail = globalProfile?.email || user.email || null;
+
+      const { data: existingProfile, error: existingProfileError } = await (supabase as any)
+        .from("store_customer_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("store_id", storeId)
+        .maybeSingle();
+
+      if (existingProfileError) throw existingProfileError;
+      if (existingProfile) {
+        return existingProfile as StoreCustomerProfile;
+      }
+
+      const { data: createdProfile, error: createProfileError } = await (supabase as any)
+        .from("store_customer_profiles")
+        .upsert({
+          store_id: storeId,
+          user_id: user.id,
+          display_name: baseDisplayName,
+          avatar_url: baseAvatar,
+          phone: basePhone,
+          email: baseEmail,
+          status: "active",
+        }, { onConflict: "store_id,user_id" })
+        .select("*")
         .single();
-      return data;
+
+      if (createProfileError) throw createProfileError;
+      return createdProfile as StoreCustomerProfile;
     },
-    enabled: !!user,
+    enabled: !!user && !!storeId,
   });
 
   // Fetch wishlist products using the optimized hook
@@ -632,7 +704,7 @@ const Account = () => {
       <PageTransition>
         <div className="container mx-auto max-w-4xl px-4 py-8 sm:py-12">
           {/* Profile Header */}
-          <ProfileHeader user={user} profile={profile} onSignOut={signOut} />
+          <ProfileHeader user={user} profile={profile} storeId={storeId} onSignOut={signOut} />
 
           {/* Quick Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 mb-8">

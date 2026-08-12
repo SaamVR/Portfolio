@@ -13,6 +13,7 @@ import { useCart } from "@/context/useCart";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/data/products";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
+import { getPrimaryProductOptionValue } from "@/lib/cms/storefront-product-presentation";
 import { storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -399,13 +400,13 @@ export function BeautyStorefrontRenderer({
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_16px_32px_-18px_rgba(34,197,94,0.7)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_16px_32px_-18px_rgba(34,197,94,0.7)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroCtaLabel}
               </Link>
               <Link
                 href={contactHref}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7ebe4] bg-white px-7 text-sm font-semibold text-slate-700 shadow-[0_12px_30px_-22px_rgba(15,23,42,0.24)] transition-colors hover:border-primary/30 hover:text-slate-900 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-[#e7ebe4] bg-white px-7 text-sm font-semibold text-slate-700 shadow-[0_12px_30px_-22px_rgba(15,23,42,0.24)] transition-colors hover:border-primary/30 hover:text-slate-900 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroSecondaryCtaLabel}
               </Link>
@@ -428,36 +429,45 @@ export function BeautyStorefrontRenderer({
             </div>
           </div>
 
-          <div className="relative min-h-[420px] lg:min-h-[620px]">
-            <div className="absolute inset-0 rounded-[40px] bg-white/70 shadow-[0_35px_90px_-55px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:bg-card/70" />
-            <div className="absolute inset-x-[10%] bottom-10 top-10">
-              {heroProducts[1] ? (
-                <img src={heroProducts[1].image} alt={heroProducts[1].name} className="absolute left-[30%] top-[2%] h-[37%] w-[30%] rounded-[32px] object-contain drop-shadow-[0_22px_30px_rgba(15,23,42,0.14)]" />
-              ) : null}
+          <div className="relative min-h-[240px] md:min-h-[420px] lg:min-h-[620px]">
+            <div className="hidden md:block">
+              <div className="absolute inset-0 rounded-[40px] bg-white/70 shadow-[0_35px_90px_-55px_rgba(15,23,42,0.28)] backdrop-blur-sm dark:bg-card/70" />
+              <div className="absolute inset-x-[10%] bottom-10 top-10">
+                {heroProducts[1] ? (
+                  <img src={heroProducts[1].image} alt={heroProducts[1].name} className="absolute left-[30%] top-[2%] h-[37%] w-[30%] rounded-[32px] object-contain drop-shadow-[0_22px_30px_rgba(15,23,42,0.14)]" />
+                ) : null}
+                {heroProducts[0] ? (
+                  <img src={heroProducts[0].image} alt={heroProducts[0].name} className="absolute left-[9%] top-[34%] h-[34%] w-[36%] rounded-[34px] object-contain drop-shadow-[0_24px_36px_rgba(15,23,42,0.16)]" />
+                ) : null}
+                {heroProducts[2] ? (
+                  <img src={heroProducts[2].image} alt={heroProducts[2].name} className="absolute left-[44%] top-[38%] h-[30%] w-[23%] rounded-[26px] object-contain drop-shadow-[0_18px_30px_rgba(15,23,42,0.14)]" />
+                ) : null}
+                {heroProducts[3] ? (
+                  <img src={heroProducts[3].image} alt={heroProducts[3].name} className="absolute right-[5%] top-[30%] h-[40%] w-[30%] rounded-[34px] object-contain drop-shadow-[0_22px_34px_rgba(15,23,42,0.16)]" />
+                ) : null}
+                {heroProducts[4] ? (
+                  <img src={heroProducts[4].image} alt={heroProducts[4].name} className="absolute right-[0%] bottom-[3%] h-[25%] w-[23%] rounded-[28px] object-contain drop-shadow-[0_20px_32px_rgba(15,23,42,0.14)]" />
+                ) : null}
+              </div>
+            </div>
+            <div className="block md:hidden aspect-[4/3] overflow-hidden rounded-[24px] bg-white shadow-md dark:bg-card">
               {heroProducts[0] ? (
-                <img src={heroProducts[0].image} alt={heroProducts[0].name} className="absolute left-[9%] top-[34%] h-[34%] w-[36%] rounded-[34px] object-contain drop-shadow-[0_24px_36px_rgba(15,23,42,0.16)]" />
-              ) : null}
-              {heroProducts[2] ? (
-                <img src={heroProducts[2].image} alt={heroProducts[2].name} className="absolute left-[44%] top-[38%] h-[30%] w-[23%] rounded-[26px] object-contain drop-shadow-[0_18px_30px_rgba(15,23,42,0.14)]" />
-              ) : null}
-              {heroProducts[3] ? (
-                <img src={heroProducts[3].image} alt={heroProducts[3].name} className="absolute right-[5%] top-[30%] h-[40%] w-[30%] rounded-[34px] object-contain drop-shadow-[0_22px_34px_rgba(15,23,42,0.16)]" />
-              ) : null}
-              {heroProducts[4] ? (
-                <img src={heroProducts[4].image} alt={heroProducts[4].name} className="absolute right-[0%] bottom-[3%] h-[25%] w-[23%] rounded-[28px] object-contain drop-shadow-[0_20px_32px_rgba(15,23,42,0.14)]" />
-              ) : null}
+                <img src={heroProducts[0].image} alt={heroProducts[0].name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-[#f6faf4]" />
+              )}
             </div>
           </div>
         </div>
       </section>
 
       <section className="border-y border-[#edf1ea] bg-white dark:border-white/10 dark:bg-card/30">
-        <div className="mx-auto grid max-w-[1320px] gap-4 px-5 py-5 sm:grid-cols-2 md:px-8 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto grid max-w-[1320px] grid-cols-2 gap-3 px-5 py-5 sm:grid-cols-2 md:px-8 lg:grid-cols-4 lg:px-10">
           {trustItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="flex items-center gap-3 rounded-[22px] border border-[#eef2ec] bg-[#fbfcfa] px-4 py-4 dark:border-white/10 dark:bg-card">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/10 bg-primary/5 text-primary">
+              <div key={item.label} className="flex items-center gap-3 rounded-[22px] border border-[#eef2ec] bg-[#fbfcfa] p-3 sm:px-4 sm:py-4 dark:border-white/10 dark:bg-card">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/10 bg-primary/5 text-primary">
                   <Icon className="h-4.5 w-4.5" />
                 </div>
                 <div>
@@ -470,7 +480,7 @@ export function BeautyStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-14 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
             {categoryBlock?.tagline?.trim() || "Shop by category"}
@@ -479,12 +489,12 @@ export function BeautyStorefrontRenderer({
             {categoryBlock?.title?.trim() || "Find what you love"}
           </h2>
         </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-8 grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {beautyCategories.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[30px] border border-[#eaf0e8] bg-white px-4 py-7 text-center shadow-[0_14px_28px_-24px_rgba(15,23,42,0.34)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[30px] border border-[#eaf0e8] bg-white py-5 px-3 text-center shadow-[0_14px_28px_-24px_rgba(15,23,42,0.34)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-primary/10 bg-primary/5 text-primary">
                 <Leaf className="h-5 w-5" />
@@ -509,26 +519,26 @@ export function BeautyStorefrontRenderer({
       </section>
 
       {bundleDeals.length > 0 ? (
-        <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+        <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
           <BeautySectionHeading
             eyebrow="Best value"
             title="Beauty Bundles & Combos"
             actionLabel="View all"
             actionHref={storefrontPath("/shop", activeStore.slug)}
           />
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {bundleDeals.map((bundle) => (
               <article key={bundle.id} className="overflow-hidden rounded-[32px] border border-[#e9ece7] bg-white p-4 shadow-[0_18px_45px_-34px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-card">
                 <div className={cn(
-                  "rounded-[28px] p-5",
+                  "rounded-[28px] p-4 sm:p-5",
                   bundle.id.endsWith("0") ? "bg-[#f6faf4]" : bundle.id.endsWith("3") ? "bg-[#f5f5ef]" : "bg-[#fff4f6]",
                 )}>
                   <span className="inline-flex rounded-full bg-[#fff4cc] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#977400]">
                     Save {bundle.savingsPercent}%
                   </span>
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                     {bundle.products.map((product) => (
-                      <div key={product.id} className="flex h-40 items-center justify-center overflow-hidden rounded-[24px] bg-white/75 p-3 dark:bg-secondary/60">
+                      <div key={product.id} className="flex h-28 md:h-40 items-center justify-center overflow-hidden rounded-[20px] sm:rounded-[24px] bg-white/75 p-2 sm:p-3 dark:bg-secondary/60">
                         <img src={product.image} alt={product.name} className="h-full w-full object-contain" />
                       </div>
                     ))}
@@ -551,7 +561,7 @@ export function BeautyStorefrontRenderer({
                           name: product.name,
                           price: product.price,
                           image: product.image,
-                          size: product.sizes[0] || "Default",
+                          size: getPrimaryProductOptionValue(product, {}, "beauty"),
                           storeId: activeStore.id,
                         });
                       });
@@ -577,7 +587,7 @@ export function BeautyStorefrontRenderer({
         <BeautyRail products={bestSellerProducts.length > 0 ? bestSellerProducts : highlightedProducts} reviewStats={reviewStatsByProduct} />
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
             {testimonialBlock?.subtitle?.trim() || "Customer love"}
@@ -593,9 +603,9 @@ export function BeautyStorefrontRenderer({
           <div aria-hidden="true" className="absolute -right-1 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#e7ece5] bg-white text-slate-500 shadow-sm lg:flex dark:border-white/10 dark:bg-card dark:text-muted-foreground">
             <ChevronRight className="h-4 w-4" />
           </div>
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory lg:grid lg:grid-cols-3 lg:overflow-visible">
             {homepageReviews.map((review, index) => (
-              <article key={review.id ?? `review-${index}`} className="rounded-[30px] border border-[#e9ece7] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-card">
+              <article key={review.id ?? `review-${index}`} className="min-w-[85vw] shrink-0 snap-center md:min-w-0 rounded-[30px] border border-[#e9ece7] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-card">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 text-sm font-semibold text-primary">
                     {(review.author_name || "C").slice(0, 1).toUpperCase()}

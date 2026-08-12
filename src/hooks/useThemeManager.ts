@@ -61,12 +61,12 @@ export function useThemeManager({
   activeStoreId,
   themeCustomizationSettings,
   themePackages = fallbackThemePackages,
-  blueprintVersion,
+  templateContractVersion,
 }: {
   activeStoreId: string | null;
   themeCustomizationSettings?: Record<string, any>;
   themePackages?: ThemePackageDefinition[];
-  blueprintVersion?: number | null;
+  templateContractVersion?: number | null;
 }) {
   const { data: themeData } = useQuery({
     queryKey: ["store_themes", activeStoreId],
@@ -124,9 +124,9 @@ export function useThemeManager({
     [activeThemePackage.version, themeData?.theme_package_version],
   );
 
-  const hasBlueprintVersionUpdate = useMemo(
-    () => typeof blueprintVersion === "number" && blueprintVersion < 1,
-    [blueprintVersion],
+  const hasLegacyTemplateContract = useMemo(
+    () => typeof templateContractVersion === "number" && templateContractVersion < 1,
+    [templateContractVersion],
   );
 
   const resolvedThemeMode = (themeData?.mode === "light" ? "light" : "dark") as "light" | "dark";
@@ -199,7 +199,7 @@ export function useThemeManager({
     activeThemePackage,
     isMissingActiveThemeReference,
     hasThemeVersionUpdate,
-    hasBlueprintVersionUpdate,
+    hasLegacyTemplateContract,
     resolvedThemeMode,
     resolvedHeadingFont,
     resolvedBodyFont,

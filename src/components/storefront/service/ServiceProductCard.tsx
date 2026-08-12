@@ -5,9 +5,14 @@ import { ArrowRight, CheckCircle2, Clock3, Star } from "lucide-react";
 import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
-import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
+import {
+  getDisplayableProductType,
+  getProductOptionSummaryLines,
+  type ProductPresentationSpecs,
+} from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -22,7 +27,7 @@ type ReviewStats = {
   average: number;
 };
 
-function buildInclusions(product: Product) {
+function buildInclusions(product: Product, specs: ProductPresentationSpecs) {
   const parts = product.description
     .split(/[.!?]\s+/)
     .map((part) => part.trim())
@@ -36,8 +41,8 @@ function buildInclusions(product: Product) {
 
   return [
     product.type ? `${product.type} planning and delivery` : "Service planning and delivery",
-    product.colors.length > 0 ? `Options across ${product.colors.slice(0, 3).join(", ")}` : "Tailored options based on your brief",
-    product.sizes.length > 0 ? `Available in ${product.sizes.slice(0, 3).join(", ")}` : "Clear scope, revisions, and handoff",
+    ...getProductOptionSummaryLines(product, specs, "service").slice(0, 2),
+    "Clear scope, revisions, and handoff",
   ];
 }
 
@@ -58,7 +63,8 @@ export function ServiceProductCard({
 }) {
   const currentStore = useOptionalStore();
   const { isInWishlist, toggleItem } = useWishlist();
-  const inclusions = buildInclusions(product);
+  const { specs } = useStoreProductPresentation(product);
+  const inclusions = buildInclusions(product, specs);
   const rating = reviewStats?.average ?? 4.9;
   const url = productUrl(product.id, product.name, currentStore?.slug);
 

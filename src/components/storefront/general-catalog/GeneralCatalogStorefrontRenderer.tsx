@@ -272,7 +272,7 @@ export function GeneralCatalogStorefrontRenderer({
   return (
     <div className="bg-[#fbfcfb] text-slate-950 dark:bg-background dark:text-foreground">
       <section className="overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.09),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#fbfcfb_100%)] dark:bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--background))_100%)]">
-        <div className="mx-auto grid max-w-[1320px] gap-8 px-5 pb-12 pt-8 md:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:px-10 lg:pb-14 lg:pt-10">
+        <div className="mx-auto grid max-w-[1320px] gap-8 px-5 pb-6 pt-4 md:pb-12 md:pt-8 md:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:px-10 lg:pb-14 lg:pt-10">
           <div className="max-w-[540px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">{heroEyebrow}</p>
             <h1 className="mt-5 text-[3rem] font-semibold leading-[1.03] tracking-[-0.05em] text-slate-950 dark:text-foreground sm:text-[4.1rem]">
@@ -285,20 +285,20 @@ export function GeneralCatalogStorefrontRenderer({
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Browse All Products"}
               </Link>
               <Link
                 href={storefrontPath(heroBlock?.secondaryCtaLink || "/contact", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "Contact Store"}
               </Link>
             </div>
 
-            <div className="mt-7 flex flex-col gap-3 rounded-[22px] border border-[#e7eee9] bg-white p-3 shadow-sm sm:flex-row sm:items-center dark:border-white/10 dark:bg-card">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="mt-7 flex flex-row items-center gap-3 rounded-[22px] border border-[#e7eee9] bg-white p-3 shadow-sm dark:border-white/10 dark:bg-card">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Search className="h-5 w-5" />
               </div>
               <div className="flex-1">
@@ -314,7 +314,7 @@ export function GeneralCatalogStorefrontRenderer({
             </div>
           </div>
 
-          <div className="relative aspect-[16/10.7] w-full overflow-hidden rounded-[34px] border border-[#e8efe9] bg-white shadow-[0_28px_70px_-46px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-card">
+          <div className="relative aspect-[2/1] md:aspect-[16/10.7] w-full overflow-hidden rounded-[34px] border border-[#e8efe9] bg-white shadow-[0_28px_70px_-46px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-card">
             {heroProduct ? (
               <SafeStorefrontImage
                 src={heroProduct.image}
@@ -325,7 +325,7 @@ export function GeneralCatalogStorefrontRenderer({
                 className="object-cover"
               />
             ) : (
-              <div className="aspect-[16/10.7] w-full bg-[#f5faf6]" />
+              <div className="aspect-[2/1] md:aspect-[16/10.7] w-full bg-[#f5faf6]" />
             )}
             <div className="absolute bottom-6 left-6 rounded-[22px] border border-white/80 bg-white/92 px-4 py-3 shadow-[0_18px_34px_-20px_rgba(15,23,42,0.26)] dark:border-white/10 dark:bg-card/92">
               <p className="text-sm font-semibold text-slate-950 dark:text-foreground">
@@ -339,17 +339,17 @@ export function GeneralCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Explore categories"}
           title={categoryBlock?.title?.trim() || "Broad categories for faster browsing"}
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[24px] border border-[#e7eee9] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[24px] border border-[#e7eee9] bg-white p-3 sm:p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 4 === 0 ? <Sparkles className="h-5 w-5" /> : index % 4 === 1 ? <Tags className="h-5 w-5" /> : index % 4 === 2 ? <Zap className="h-5 w-5" /> : <BadgeCheck className="h-5 w-5" />}
@@ -364,7 +364,7 @@ export function GeneralCatalogStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1320px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             {
               eyebrow: "Limited time",
@@ -393,7 +393,7 @@ export function GeneralCatalogStorefrontRenderer({
               <Link
                 key={card.title}
                 href={card.href}
-                className={`rounded-[28px] border p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card ${index === 0 ? "border-[#ddf0e1] bg-[linear-gradient(135deg,#effaf1_0%,#f7fcf8_100%)]" : index === 1 ? "border-[#dfeefd] bg-[linear-gradient(135deg,#f3f9ff_0%,#f9fcff_100%)]" : "border-[#f0e3f6] bg-[linear-gradient(135deg,#faf6ff_0%,#fcfbff_100%)]"}`}
+                className={`rounded-[28px] border p-4 sm:p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card ${index === 0 ? "border-[#ddf0e1] bg-[linear-gradient(135deg,#effaf1_0%,#f7fcf8_100%)]" : index === 1 ? "border-[#dfeefd] bg-[linear-gradient(135deg,#f3f9ff_0%,#f9fcff_100%)]" : "border-[#f0e3f6] bg-[linear-gradient(135deg,#faf6ff_0%,#fcfbff_100%)]"}`}
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm">
                   <Icon className="h-5 w-5" />
@@ -411,7 +411,7 @@ export function GeneralCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={featuredBlock?.tagline?.trim() || "Featured products"}
           title={featuredBlock?.title?.trim() || "Handpicked products with flexible filters"}
@@ -448,7 +448,7 @@ export function GeneralCatalogStorefrontRenderer({
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.slice(0, 8).map((product) => (
             <GeneralCatalogProductCard key={product.id} product={product} reviewStats={reviewStats[product.id]} />
           ))}
@@ -466,7 +466,7 @@ export function GeneralCatalogStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1320px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#e7eee9] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 rounded-[28px] border border-[#e7eee9] bg-white p-3 sm:p-4 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 dark:border-white/10 dark:bg-card">
           {[
             { label: "Happy customers", value: `${Math.max(availableProducts.length * 40, 50)}+`, icon: Sparkles },
             { label: "Average rating", value: `${Object.values(reviewStats).length > 0 ? (Object.values(reviewStats).reduce((sum, item) => sum + item.average, 0) / Object.values(reviewStats).length).toFixed(1) : "4.9"}/5`, icon: Star },
@@ -475,8 +475,8 @@ export function GeneralCatalogStorefrontRenderer({
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon className="h-4.5 w-4.5" />
                 </div>
                 <div>
@@ -489,15 +489,15 @@ export function GeneralCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 pb-14 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 pb-14 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={richTextBlock?.eyebrow?.trim() || "Why this catalog works"}
           title={richTextBlock?.title?.trim() || "A broad catalog still needs a strong point of view"}
           subtitle={brandValueBody}
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {trustItems.map((item, index) => (
-            <div key={item.title} className="rounded-[24px] border border-[#e7eee9] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <div key={item.title} className="rounded-[24px] border border-[#e7eee9] bg-white p-4 md:p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 4 === 0 ? <ShieldCheck className="h-5 w-5" /> : index % 4 === 1 ? <BadgeCheck className="h-5 w-5" /> : index % 4 === 2 ? <Truck className="h-5 w-5" /> : <Headphones className="h-5 w-5" />}
               </div>

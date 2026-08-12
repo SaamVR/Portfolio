@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
-import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
+import { resolveStorePlanState } from "@/lib/billing/plans";
 
 type StoreCreationEligibility = {
   allowed: boolean;
@@ -70,7 +70,12 @@ export function useStoreCreationEligibility() {
         };
       }
 
-      const [{ data: subscription }, { data: plan }] = await Promise.all([
+      const [{ data: store }, { data: subscription }, { data: plan }] = await Promise.all([
+        (supabase as any)
+          .from("stores")
+          .select("plan")
+          .eq("id", activeStoreId)
+          .maybeSingle(),
         (supabase as any)
           .from("store_subscriptions")
           .select("plan_id, status, trial_ends_at")
@@ -93,9 +98,11 @@ export function useStoreCreationEligibility() {
           }),
       ]);
 
-      const subscriptionStatus = getEffectiveSubscriptionStatus(
-        (subscription as { status?: string | null; trial_ends_at?: string | null } | null) ?? null,
-      );
+      const resolvedPlanState = resolveStorePlanState({
+        subscription: (subscription as { plan_id?: string | null; status?: string | null; trial_ends_at?: string | null } | null) ?? null,
+        legacyPlanId: typeof store?.plan === "string" ? store.plan : null,
+      });
+      const subscriptionStatus = resolvedPlanState.subscriptionStatus;
       const ownedStoreCount = ownerStoreIds.length;
       const storeLimit = typeof plan?.store_limit === "number" ? plan.store_limit : plan?.store_limit === null ? null : 1;
       const planName = typeof plan?.name === "string" ? plan.name : "current";

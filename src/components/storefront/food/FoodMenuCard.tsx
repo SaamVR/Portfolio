@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +17,7 @@ import {
   ProductCardTitle,
   ProductCardActions,
 } from "@/components/storefront/product/ProductCardFoundation";
+import { getPrimaryProductOptionValue } from "@/lib/cms/storefront-product-presentation";
 
 type ReviewStats = {
   count: number;
@@ -73,6 +75,8 @@ export function FoodMenuCard({
   const reviewCount = reviewStats?.count ?? 0;
   const prepTime = getPreparationTime(product);
   const url = productUrl(product.id, product.name, currentStore?.slug);
+  const { specs } = useStoreProductPresentation(product);
+  const primaryOption = getPrimaryProductOptionValue(product, specs, "food");
 
   return (
     <ProductCardShell>
@@ -123,7 +127,7 @@ export function FoodMenuCard({
                   name: product.name,
                   price: product.price,
                   image: product.image,
-                  size: product.sizes[0] || "Standard",
+                  size: primaryOption,
                   storeId: currentStore?.id,
                 });
               }}

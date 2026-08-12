@@ -390,13 +390,13 @@ export function InquiryCatalogStorefrontRenderer({
               {heroSubtitle}
             </p>
 
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
                 { label: "Wholesale pricing", description: "Competitive bulk rates" },
                 { label: "Custom branding", description: "Print, embroidery, labels" },
                 { label: "Reliable delivery", description: "Merchant-managed timelines" },
               ].map((item) => (
-                <div key={item.label} className="rounded-[20px] border border-[#e7ece8] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-card">
+                <div key={item.label} className="rounded-[20px] border border-[#e7ece8] bg-white p-3 sm:p-4 shadow-sm dark:border-white/10 dark:bg-card">
                   <p className="text-sm font-semibold text-slate-900 dark:text-foreground">{item.label}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">{item.description}</p>
                 </div>
@@ -407,13 +407,13 @@ export function InquiryCatalogStorefrontRenderer({
               <button
                 type="button"
                 onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroCta}
               </button>
               <Link
                 href={storefrontPath(heroBlock?.secondaryCtaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dde7df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dde7df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroSecondary}
               </Link>
@@ -449,12 +449,12 @@ export function InquiryCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <InquirySectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Business categories"}
           title={categoryBlock?.title?.trim() || "Find the right products for your business"}
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {categories.map((category, index) => {
             const categoryProduct = pickCategoryProduct(availableProducts, category);
             return (
@@ -503,14 +503,14 @@ export function InquiryCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <InquirySectionHeading
           eyebrow="Bulk-order benefits"
           title="Built for bulk. Backed by reliability."
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {trustItems.map((item, index) => (
-            <div key={`${item.label}-${index}`} className="rounded-[22px] border border-[#e8ede8] bg-white px-4 py-5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
+            <div key={`${item.label}-${index}`} className="rounded-[22px] border border-[#e8ede8] bg-white p-3 sm:p-5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 5 === 0 ? <ShieldCheck className="h-5 w-5" /> : index % 5 === 1 ? <Factory className="h-5 w-5" /> : index % 5 === 2 ? <Box className="h-5 w-5" /> : index % 5 === 3 ? <Truck className="h-5 w-5" /> : <BriefcaseBusiness className="h-5 w-5" />}
               </div>
@@ -565,7 +565,7 @@ export function InquiryCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <InquirySectionHeading
           eyebrow={brandingEyebrow}
           title={brandingTitle}
@@ -581,7 +581,7 @@ export function InquiryCatalogStorefrontRenderer({
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className="flex gap-4 rounded-[22px] border border-[#e8ede8] bg-white px-5 py-5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
+                <div key={item.label} className="flex gap-4 rounded-[22px] border border-[#e8ede8] bg-white p-3 sm:px-5 sm:py-5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -593,7 +593,7 @@ export function InquiryCatalogStorefrontRenderer({
               );
             })}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             {(heroProducts.length > 0 ? heroProducts : availableProducts).slice(0, 4).map((product) => (
               <div key={product.id} className="overflow-hidden rounded-[24px] border border-[#e8ede8] bg-white shadow-[0_16px_32px_-28px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
                 <img
@@ -610,11 +610,11 @@ export function InquiryCatalogStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1320px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#e8ede8] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 lg:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 rounded-[28px] border border-[#e8ede8] bg-white p-3 sm:p-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10 dark:bg-card">
           {statItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
+              <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon className="h-4.5 w-4.5" />
                 </div>
@@ -628,7 +628,7 @@ export function InquiryCatalogStorefrontRenderer({
         </div>
       </section>
 
-      <section ref={formRef} className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section ref={formRef} className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <InquirySectionHeading
           eyebrow="Request a quote"
           title="Tell us about your business needs"

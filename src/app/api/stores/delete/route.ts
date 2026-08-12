@@ -17,6 +17,8 @@ export const deleteStoreRouteDeps = {
   now: () => new Date(),
 };
 
+const DELETE_STORE_PLATFORM_ROLE_PRIORITY = ["admin", "super_admin", "billing_admin", "support_agent"] as const;
+
 export async function POST(req: Request) {
   try {
     const user = await deleteStoreRouteDeps.getAuthenticatedUser(req);
@@ -45,13 +47,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [{ data: platformRole }, { data: store }] = await Promise.all([
+    const [{ data: platformRoleRows }, { data: store }] = await Promise.all([
       supabaseAdmin
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .in("role", ["admin", "super_admin", "billing_admin", "support_agent"])
-        .maybeSingle(),
+        .eq("user_id", user.id),
       supabaseAdmin
         .from("stores")
         .select("id, owner_id, name, slug")
@@ -59,11 +59,19 @@ export async function POST(req: Request) {
         .maybeSingle(),
     ]);
 
+    const platformRole = Array.isArray(platformRoleRows)
+      ? (DELETE_STORE_PLATFORM_ROLE_PRIORITY.find((candidate) =>
+          platformRoleRows.some((row) => typeof row?.role === "string" && row.role === candidate),
+        ) ?? null)
+      : (platformRoleRows && typeof (platformRoleRows as { role?: unknown }).role === "string"
+          ? (platformRoleRows as { role: string }).role
+          : null);
+
     if (!store) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
-    const isPlatformAdmin = Boolean(platformRole?.role && ["admin", "super_admin"].includes(platformRole.role));
+    const isPlatformAdmin = platformRole === "admin" || platformRole === "super_admin";
     if (isPlatformAdmin && !normalizedNote) {
       return NextResponse.json({ error: "Deletion note is required for platform admins" }, { status: 400 });
     }
@@ -139,7 +147,7 @@ export async function POST(req: Request) {
     await logPlatformAuditAction(supabaseAdmin, {
       actorId: user.id,
       actorEmail: user.email,
-      actorRole: platformRole?.role || "store_owner",
+      actorRole: platformRole || "store_owner",
       action: "delete_store",
       targetType: "store",
       targetId: store.id,

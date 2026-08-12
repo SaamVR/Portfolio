@@ -29,6 +29,7 @@ import Reviews from "@/views/admin/Reviews";
 import SiteSettings from "@/views/admin/SiteSettings";
 import Users from "@/views/admin/Users";
 import OnlineStoreHub from "@/views/admin/OnlineStoreHub";
+import SiteGuideView from "@/views/admin/SiteGuideView";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/react-router-dom-shim";
@@ -126,6 +127,10 @@ function AdminDashboardRoute({ route }: { route: string }) {
       return <Reviews />;
     case "site-settings":
       return <SiteSettings />;
+    case "guide":
+    case "help":
+    case "how-to":
+      return <SiteGuideView />;
     case "users":
       return <Users />;
     default:

@@ -15,6 +15,7 @@ import PageTransition from "@/components/PageTransition";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import type { Product } from "@/data/products";
 import { useProducts } from "@/hooks/useProducts";
+import { useProductSearch } from "@/hooks/useProductSearch";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -28,6 +29,7 @@ import { resolveShopPageVariant, type ShopPageVariant } from "@/lib/cms/storefro
 import {
   getDisplayableProductType,
   getProductPresentationSpecs,
+  getRenderableMetricOptionGroups,
   getRenderableColorOptions,
   getRenderableSizeOptions,
   isPhysicalDeliveryKeyword,
@@ -65,6 +67,10 @@ export interface ShopPageSettings {
   promo_description?: string;
   promo_cta_label?: string;
   promo_cta_href?: string;
+  catalog_note_visible?: boolean;
+  catalog_note_title?: string;
+  catalog_note_description?: string;
+  catalog_note_highlights?: string[];
   compare_enabled?: boolean;
   show_sale_filter?: boolean;
   show_price_filter?: boolean;
@@ -271,8 +277,17 @@ function getContextValue(context: ProductContext, key: string) {
     case "rating":
       return [String(Math.floor(rating))];
     default:
-      return [];
+      if (product.metricValues?.[key]?.length) {
+        return product.metricValues[key];
+      }
+      return getStringArray(specs, key);
   }
+}
+
+function formatFilterLabel(key: string) {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function collectFilterValues(contexts: ProductContext[], key: string) {
@@ -407,6 +422,22 @@ function getFilterDefinitions(variant: ShopPageVariant, contexts: ProductContext
       break;
   }
 
+  const reservedKeys = new Set(base.map((item) => item.key));
+  reservedKeys.add("size");
+  reservedKeys.add("color");
+
+  const dynamicMetricKeys = Array.from(
+    new Set(
+      contexts.flatMap((context) =>
+        getRenderableMetricOptionGroups(context.product, context.specs, context.cardVariant).map((group) => group.key),
+      ),
+    ),
+  )
+    .filter((key) => !reservedKeys.has(key))
+    .sort((left, right) => left.localeCompare(right));
+
+  dynamicMetricKeys.forEach((key) => push(key, formatFilterLabel(key)));
+
   const enabled = settings.enabled_filters?.length ? new Set(settings.enabled_filters) : null;
   const filtered = enabled ? base.filter((item) => enabled.has(item.key)) : base;
   if (settings.filter_order?.length) {
@@ -414,6 +445,22 @@ function getFilterDefinitions(variant: ShopPageVariant, contexts: ProductContext
     return [...filtered].sort((left, right) => (order.get(left.key) ?? 999) - (order.get(right.key) ?? 999));
   }
   return filtered;
+}
+
+function isFilterDefinitionEnabled(filter: FilterDefinition, settings: ShopPageSettings) {
+  if (filter.key === "discount") {
+    return settings.show_sale_filter ?? true;
+  }
+
+  if (filter.key === "size") {
+    return settings.show_size_filter ?? true;
+  }
+
+  if (filter.key === "color" || filter.key === "shade") {
+    return settings.show_color_filter ?? true;
+  }
+
+  return true;
 }
 
 function matchesContextFilters(context: ProductContext, params: URLSearchParams, filterDefinitions: FilterDefinition[]) {
@@ -493,7 +540,10 @@ function SortSelector({ value, options, onChange }: { value: ShopSortOption; opt
   );
 }
 
-function ResultsCount({ count }: { count: number }) {
+function ResultsCount({ count, isLoading = false }: { count: number; isLoading?: boolean }) {
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading results...</p>;
+  }
   return <p className="text-sm text-muted-foreground">Showing <span className="font-medium text-foreground">{count}</span> result{count === 1 ? "" : "s"}</p>;
 }
 
@@ -548,6 +598,7 @@ function FilterField({
   onChange: (key: string, value: string | null) => void;
 }) {
   const value = params.get(filter.key) ?? "";
+  const selections = value.split(",").map((entry) => entry.trim()).filter(Boolean);
   if (filter.values.length === 0 && filter.key !== "availability" && filter.key !== "discount") return null;
 
   if (filter.kind === "single") {
@@ -562,14 +613,38 @@ function FilterField({
     );
   }
 
+  const toggleMultiValue = (option: string) => {
+    const next = new Set(selections);
+    if (next.has(option)) next.delete(option);
+    else next.add(option);
+    onChange(filter.key, next.size > 0 ? Array.from(next).join(",") : null);
+  };
+
   return (
-    <label className="space-y-2">
+    <div className="space-y-2">
       <span className="text-sm font-semibold text-foreground">{filter.label}</span>
-      <select value={value} onChange={(event) => onChange(filter.key, event.target.value || null)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground">
-        <option value="">All</option>
-        {Array.from(new Set(filter.values)).map((option, index) => <option key={`${filter.key}-${option}-${index}`} value={option}>{option}</option>)}
-      </select>
-    </label>
+      <div className="flex flex-wrap gap-2">
+        {Array.from(new Set(filter.values)).map((option, index) => {
+          const active = selections.includes(option);
+          return (
+            <button
+              key={`${filter.key}-${option}-${index}`}
+              type="button"
+              onClick={() => toggleMultiValue(option)}
+              aria-pressed={active}
+              className={cn(
+                "min-h-10 rounded-full border px-3 py-2 text-left text-sm font-medium transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -612,28 +687,34 @@ function FilterDrawer({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 bg-black/40 lg:hidden">
-      <div className="absolute inset-y-0 right-0 w-full max-w-sm overflow-y-auto bg-background p-5 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col overflow-hidden bg-background shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="text-lg font-semibold text-foreground">Filters</h3>
           <button type="button" onClick={() => onOpenChange(false)} className="rounded-full border border-border p-2">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {filterDefinitions.map((filter) => (
             <FilterField key={filter.key} filter={filter} params={params} onChange={onChange} />
           ))}
+        </div>
+        <div className="border-t border-border px-5 py-4">
+          <button type="button" onClick={() => onOpenChange(false)} className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+            View Results
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function MobileFilterButton({ onClick }: { onClick: () => void }) {
+function MobileFilterButton({ onClick, count }: { onClick: () => void; count?: number }) {
   return (
     <button type="button" onClick={onClick} className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground lg:hidden">
       <Filter className="h-4 w-4" />
       Filter
+      {count && count > 0 ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{count}</span> : null}
     </button>
   );
 }
@@ -708,11 +789,13 @@ function ShopHero({
   settings,
   storeName,
   count,
+  isLoading = false,
 }: {
   variant: ShopPageVariant;
   settings: ShopPageSettings;
   storeName: string;
   count: number;
+  isLoading?: boolean;
 }) {
   const badge = settings.hero_badge?.trim()
     || (variant === "food" ? "Menu" : variant === "real_estate" ? "Listings" : variant === "subscription" ? "Plans" : "Catalog");
@@ -724,25 +807,25 @@ function ShopHero({
     || `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`;
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-background via-card to-secondary/50 px-6 py-10 md:px-10 md:py-14">
-      <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+    <section className="overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-background via-card to-secondary/50 px-5 py-6 md:px-10 md:py-14">
+      <div className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{badge}</p>
-          <h1 className="mt-3 font-heading text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">{description}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary md:text-sm">{badge}</p>
+          <h1 className="mt-2 font-heading text-3xl font-bold leading-tight text-foreground md:mt-3 md:text-5xl">{title}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:mt-4 md:leading-7">{description}</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-          <div className="rounded-2xl border border-border bg-background/80 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="col-span-2 rounded-2xl border border-border bg-background/80 p-3 sm:col-span-1 md:p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live results</p>
-            <p className="mt-2 text-2xl font-bold text-foreground">{count}</p>
+            <p className="mt-1 text-xl font-bold text-foreground md:mt-2 md:text-2xl">{isLoading ? "Loading" : count}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background/80 p-4">
+          <div className="rounded-2xl border border-border bg-background/80 p-3 md:p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Template</p>
-            <p className="mt-2 text-sm font-semibold capitalize text-foreground">{variant.replace(/_/g, " ")}</p>
+            <p className="mt-1 text-sm font-semibold capitalize text-foreground md:mt-2">{variant.replace(/_/g, " ")}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background/80 p-4">
+          <div className="hidden rounded-2xl border border-border bg-background/80 p-3 sm:block md:p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Shareable</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">All filters sync to URL</p>
+            <p className="mt-1 text-sm font-semibold text-foreground md:mt-2">All filters sync to URL</p>
           </div>
         </div>
       </div>
@@ -757,12 +840,14 @@ function ShopToolbar({
   setSort,
   sortOptions,
   count,
+  isLoading = false,
   activeChips,
   clearChip,
   view,
   setView,
   onOpenFilters,
   showMap,
+  activeFilterCount,
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -770,21 +855,23 @@ function ShopToolbar({
   setSort: (value: ShopSortOption) => void;
   sortOptions: ShopSortOption[];
   count: number;
+  isLoading?: boolean;
   activeChips: Array<{ key: string; label: string }>;
   clearChip: (key: string) => void;
   view: "grid" | "list" | "map";
   setView: (value: "grid" | "list" | "map") => void;
   onOpenFilters: () => void;
   showMap: boolean;
+  activeFilterCount: number;
 }) {
   return (
-    <div className="space-y-4 rounded-3xl border border-border bg-card/40 p-4">
+    <div className="space-y-3 rounded-3xl border border-border bg-card/40 p-3 md:space-y-4 md:p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex-1">
           <SearchInput value={query} onChange={setQuery} placeholder="Search products, services, or listings..." />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <MobileFilterButton onClick={onOpenFilters} />
+          <MobileFilterButton onClick={onOpenFilters} count={activeFilterCount} />
           <SortSelector value={sort} options={sortOptions} onChange={setSort} />
           <div className="hidden items-center gap-2 md:flex">
             <button type="button" onClick={() => setView("grid")} className={cn("rounded-xl border px-3 py-2", view === "grid" ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground")}><Grid2X2 className="h-4 w-4" /></button>
@@ -794,38 +881,78 @@ function ShopToolbar({
         </div>
       </div>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <ResultsCount count={count} />
+        <ResultsCount count={count} isLoading={isLoading} />
         <ActiveFilterChips chips={activeChips} onClear={clearChip} />
       </div>
     </div>
   );
 }
 
-function VariantSupportSection({
+function CatalogNoteSection({
   variant,
   settings,
+  count,
 }: {
   variant: ShopPageVariant;
   settings: ShopPageSettings;
+  count: number;
 }) {
-  const promoTitle = settings.promo_title?.trim()
-    || (variant === "electronics" ? "Need help comparing specs?" : variant === "food" ? "Popular combinations" : variant === "subscription" ? "How activation works" : variant === "real_estate" ? "Neighborhoods and agents" : "Curated highlights");
-  const promoDescription = settings.promo_description?.trim()
-    || (variant === "inquiry" ? "Use Request Quote to gather wholesale requirements without forcing a consumer cart flow." : variant === "hotel" ? "Room availability still stays merchant-controlled while dates and guest counts remain shareable." : "This section can be customized later through CMS-driven shop page settings.");
-  const ctaLabel = settings.promo_cta_label?.trim() || "Learn more";
+  if (settings.catalog_note_visible === false) {
+    return null;
+  }
+
+  const title = settings.catalog_note_title?.trim()
+    || settings.promo_title?.trim()
+    || (variant === "electronics"
+      ? "Buying this catalog is easier when specs are clear"
+      : variant === "food"
+        ? "Everything here is from the live menu"
+        : variant === "subscription"
+          ? "Plans, renewals, and activation stay merchant-managed"
+          : variant === "real_estate"
+            ? "Listings stay current while location filters guide discovery"
+            : "A quick note before shoppers keep browsing");
+  const description = settings.catalog_note_description?.trim()
+    || settings.promo_description?.trim()
+    || (variant === "inquiry"
+      ? "Use this section to explain that products can be browsed normally, but pricing, branding, or bulk requirements should be discussed through the quote flow."
+      : variant === "hotel"
+        ? "Use this section to clarify availability, booking expectations, room policies, or what makes this inventory easier to trust."
+        : `This catalog is powered by the merchant's real product data, so shoppers are browsing live pricing, availability, and store-controlled content across ${count} current items.`);
+  const ctaLabel = settings.promo_cta_label?.trim() || "Need help?";
   const ctaHref = settings.promo_cta_href?.trim() || "#";
+  const highlights = (Array.isArray(settings.catalog_note_highlights) ? settings.catalog_note_highlights : [])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  const fallbackHighlights = [
+    `${count} live results`,
+    "Merchant-managed pricing",
+    "Shareable filters and search",
+  ];
+  const noteHighlights = highlights.length > 0 ? highlights : fallbackHighlights;
 
   return (
     <section className="rounded-[2rem] border border-border bg-card/40 px-6 py-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-start">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Shop Support</p>
-          <h2 className="mt-2 font-heading text-2xl font-bold text-foreground">{promoTitle}</h2>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{promoDescription}</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Catalog Note</p>
+          <h2 className="mt-2 font-heading text-2xl font-bold text-foreground">{title}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
-        <Link href={ctaHref} className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-5 text-sm font-semibold text-foreground">
-          {ctaLabel}
-        </Link>
+        <div className="space-y-3 rounded-2xl border border-border bg-background/70 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">What shoppers should know</p>
+          <div className="space-y-2">
+            {noteHighlights.map((item) => (
+              <div key={item} className="rounded-xl border border-border bg-card/60 px-3 py-2 text-sm text-foreground">
+                {item}
+              </div>
+            ))}
+          </div>
+          <Link href={ctaHref} className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-5 text-sm font-semibold text-foreground">
+            {ctaLabel}
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -852,7 +979,7 @@ function MapPanel({ contexts }: { contexts: ProductContext[] }) {
   );
 }
 
-export const shopPageRegistry = {
+const shopPageRegistry = {
   generic: GenericShopPage,
   fashion: FashionShopPage,
   beauty: BeautyShopPage,
@@ -880,13 +1007,13 @@ type RenderProps = {
 };
 
 function GenericShopPage(props: RenderProps) {
-  return <>{props.shell}{props.results}{props.recent}{props.newsletter}</>;
+  return <>{props.shell}{props.results}{props.support}{props.recent}{props.newsletter}</>;
 }
 function FashionShopPage(props: RenderProps) {
-  return <>{props.shell}{props.support}{props.results}{props.recent}{props.newsletter}</>;
+  return <>{props.shell}{props.results}{props.support}{props.recent}{props.newsletter}</>;
 }
 function BeautyShopPage(props: RenderProps) {
-  return <>{props.shell}{props.support}{props.results}{props.newsletter}</>;
+  return <>{props.shell}{props.results}{props.support}{props.newsletter}</>;
 }
 function ElectronicsShopPage(props: RenderProps) {
   return <>{props.shell}{props.map}{props.results}{props.support}{props.recent}</>;
@@ -940,7 +1067,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
     : null;
   const templateId = useMemo(() => resolveStorefrontTemplateId(storefrontProfile?.template_id, {
-    blueprintId: typeof storefrontProfile?.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   }), [storefrontProfile]);
   const shopVariant = resolveShopPageVariant({
@@ -953,7 +1080,10 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const contexts = useMemo(() => buildProductContexts(availableProducts, catalogSeedMetadata ?? undefined, templateId), [availableProducts, catalogSeedMetadata, templateId]);
   const typeOptions = useMemo(() => buildShopOptions(availableProducts, "type", (productTypeRows as CatalogRow[]).map((row) => row.name).filter((value): value is string => Boolean(value))), [availableProducts, productTypeRows]);
   const categoryOptions = useMemo(() => buildShopOptions(availableProducts, "category", (productCategoryRows as CatalogRow[]).map((row) => row.name).filter((value): value is string => Boolean(value))), [availableProducts, productCategoryRows]);
-  const filterDefinitions = useMemo(() => getFilterDefinitions(shopVariant, contexts, shopPage ?? {}), [contexts, shopPage, shopVariant]);
+  const filterDefinitions = useMemo(
+    () => getFilterDefinitions(shopVariant, contexts, shopPage ?? {}).filter((filter) => isFilterDefinitionEnabled(filter, shopPage ?? {})),
+    [contexts, shopPage, shopVariant],
+  );
 
   const query = searchParams.get("q") ?? "";
   const activeType = searchParams.get("type") ?? "All";
@@ -964,8 +1094,21 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const maxPrice = searchParams.get("max") ?? "";
   const view = (searchParams.get("view") as "grid" | "list" | "map" | null) ?? shopPage?.default_view ?? (shopVariant === "real_estate" ? "map" : "grid");
   const perPage = shopPage?.products_per_page && shopPage.products_per_page > 0 ? shopPage.products_per_page : 12;
+  const { data: indexedSearchProducts = null, isLoading: isSearchLoading } = useProductSearch({
+    query,
+    category: activeCategory !== "All" ? activeCategory : null,
+    type: activeType !== "All" ? activeType : null,
+    minPrice,
+    maxPrice,
+    saleOnly,
+    perPage: Math.max(perPage * 4, 48),
+  }, storeId);
 
-  const baseFilteredProducts = useMemo(() => filterAndSortProducts(availableProducts, {
+  const searchableProducts = query.trim() && indexedSearchProducts
+    ? indexedSearchProducts
+    : availableProducts;
+
+  const baseFilteredProducts = useMemo(() => filterAndSortProducts(searchableProducts, {
     query,
     type: activeType,
     category: activeCategory,
@@ -975,7 +1118,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     maxPrice,
     selectedSizes: [],
     selectedColors: [],
-  }), [activeCategory, activeSort, activeType, availableProducts, maxPrice, minPrice, query, saleOnly]);
+  }), [activeCategory, activeSort, activeType, maxPrice, minPrice, query, saleOnly, searchableProducts]);
 
   const filteredContexts = useMemo(() => {
     const baseSet = new Set(baseFilteredProducts.map((product) => product.id));
@@ -984,6 +1127,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   }, [activeSort, baseFilteredProducts, contexts, filterDefinitions, searchParams]);
 
   const filteredProducts = filteredContexts.map((context) => context.product);
+  const isProductsLoading = isLoading || (query.trim() ? isSearchLoading : false);
   const analyticsSnapshotRef = useRef("");
   const quickViewSnapshotRef = useRef("");
 
@@ -1008,6 +1152,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
           activeCategory,
           sort: activeSort,
           source: "shop_page",
+          searchBackend: indexedSearchProducts ? "postgres_index" : "supabase_fallback",
         },
       });
     }
@@ -1081,6 +1226,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     minPrice,
     query,
     saleOnly,
+    indexedSearchProducts,
     searchParams,
     searchParamSnapshot,
     trackEvent,
@@ -1152,12 +1298,14 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       setSort={(value) => setSingleParam("sort", value === "newest" ? null : value)}
       sortOptions={sortOptions}
       count={filteredProducts.length}
+      isLoading={isProductsLoading}
       activeChips={activeChips}
       clearChip={(key) => setSingleParam(key, null)}
       view={view}
       setView={(value) => setSingleParam("view", value === "grid" ? null : value)}
       onOpenFilters={() => setFilterDrawerOpen(true)}
       showMap={showMap}
+      activeFilterCount={activeChips.filter((chip) => chip.key !== "q").length}
     />
   );
 
@@ -1193,7 +1341,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
         </nav>
       </AnimatedSection>
       <AnimatedSection animation="blur">
-        <ShopHero variant={shopVariant} settings={shopPage ?? {}} storeName={storeName} count={filteredProducts.length || availableProducts.length} />
+        <ShopHero variant={shopVariant} settings={shopPage ?? {}} storeName={storeName} count={filteredProducts.length || availableProducts.length} isLoading={isLoading} />
       </AnimatedSection>
       <AnimatedSection delay={80} animation="blur">{tabs}</AnimatedSection>
       <AnimatedSection delay={120} animation="blur">{toolbar}</AnimatedSection>
@@ -1210,7 +1358,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const newsletter = (shopPage?.newsletter_visible ?? true)
     ? <NewsletterSection title={`Stay in touch with ${storeName}`} description="Use this section for launches, offers, or merchant updates without changing the core commerce flow." />
     : null;
-  const support = <VariantSupportSection variant={shopVariant} settings={shopPage ?? {}} />;
+  const support = <CatalogNoteSection variant={shopVariant} settings={shopPage ?? {}} count={filteredProducts.length || availableProducts.length} />;
   const recent = <RecentlyViewed title={shopVariant === "real_estate" ? "Recently Viewed Properties" : "Recently Viewed"} />;
   const map = view === "map" || shopVariant === "real_estate" ? <MapPanel contexts={filteredContexts} /> : null;
 

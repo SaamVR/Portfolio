@@ -13,7 +13,7 @@ export async function generateMetadata({
 }) {
   const { storeSlug, pageSlug } = await params;
   const { preview } = await searchParams;
-  const store = await getStoreBySlug(storeSlug, preview);
+  const store = await getStoreBySlug(storeSlug, preview, { requestedPageSlug: `/${pageSlug}` });
   const page = store ? getPageBySlug(store, `/${pageSlug}`) : null;
 
   if (!store || !page) {
@@ -35,7 +35,7 @@ export default async function Page({
 }) {
   const { storeSlug, pageSlug } = await params;
   const { preview } = await searchParams;
-  const store = await getStoreBySlug(storeSlug, preview);
+  const store = await getStoreBySlug(storeSlug, preview, { requestedPageSlug: `/${pageSlug}` });
 
   if (!store) {
     notFound();

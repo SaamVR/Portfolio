@@ -32,6 +32,9 @@ const StorefrontAnalyticsContext = createContext<StorefrontAnalyticsContextValue
   trackEvent: () => undefined,
 });
 
+const analyticsBatchSize = 10;
+const analyticsFlushDelayMs = 1_500;
+
 function callGlobalTrackers(event: StorefrontAnalyticsEvent, settings: AnalyticsSettings) {
   if (typeof window === "undefined") return;
 
@@ -70,6 +73,8 @@ export function StorefrontAnalyticsProvider({
   const [visitorId, setVisitorId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const pageViewRef = useRef("");
+  const queueRef = useRef<Array<Record<string, unknown>>>([]);
+  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resolveAttribution = useCallback((queryString: string) => {
     if (typeof window === "undefined") return {};
@@ -105,6 +110,39 @@ export function StorefrontAnalyticsProvider({
     setSessionId(existingSessionId);
   }, [store.id]);
 
+  const flushQueue = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (flushTimeoutRef.current) {
+      clearTimeout(flushTimeoutRef.current);
+      flushTimeoutRef.current = null;
+    }
+
+    const batch = queueRef.current.splice(0, analyticsBatchSize);
+    if (batch.length === 0) return;
+
+    void fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: batch }),
+      keepalive: true,
+    }).catch(() => {
+      queueRef.current.unshift(...batch);
+    });
+  }, []);
+
+  const enqueueEvent = useCallback((payload: Record<string, unknown>) => {
+    queueRef.current.push(payload);
+    if (queueRef.current.length >= analyticsBatchSize) {
+      flushQueue();
+      return;
+    }
+
+    if (flushTimeoutRef.current) return;
+    flushTimeoutRef.current = setTimeout(() => {
+      flushQueue();
+    }, analyticsFlushDelayMs);
+  }, [flushQueue]);
+
   const trackEvent = useCallback((event: StorefrontAnalyticsEvent) => {
     if (typeof window === "undefined") return;
     if (!shouldTrack(settings, event.eventName)) return;
@@ -130,12 +168,7 @@ export function StorefrontAnalyticsProvider({
     };
 
     if (settings.firstPartyEnabled !== false && !event.skipFirstParty) {
-      void fetch("/api/analytics/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => undefined);
+      enqueueEvent(payload);
     }
 
     callGlobalTrackers(
@@ -147,7 +180,26 @@ export function StorefrontAnalyticsProvider({
       },
       settings,
     );
-  }, [pathname, searchParams, sessionId, settings, store.currencyCode, store.id, visitorId]);
+  }, [enqueueEvent, pathname, searchParams, sessionId, settings, store.currencyCode, store.id, visitorId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const flushOnExit = () => {
+      flushQueue();
+    };
+
+    window.addEventListener("pagehide", flushOnExit);
+    window.addEventListener("beforeunload", flushOnExit);
+    document.addEventListener("visibilitychange", flushOnExit);
+
+    return () => {
+      window.removeEventListener("pagehide", flushOnExit);
+      window.removeEventListener("beforeunload", flushOnExit);
+      document.removeEventListener("visibilitychange", flushOnExit);
+      flushQueue();
+    };
+  }, [flushQueue]);
 
   useEffect(() => {
     if (!pathname || !visitorId || !sessionId || settings.trackPageViews === false) return;

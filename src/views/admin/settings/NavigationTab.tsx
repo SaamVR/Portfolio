@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, GripVertical } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function NavigationTab({
   settings,
@@ -49,6 +50,7 @@ export function NavigationTab({
         <MobileSectionJumper
           items={[
             { id: "navigation-links", label: "Primary Links" },
+            { id: "navigation-layout", label: "Header Style" },
             { id: "navigation-shop", label: "Feature Card" },
             { id: "navigation-visibility", label: "Visibility" },
           ]}
@@ -108,6 +110,83 @@ export function NavigationTab({
               </Button>
             </div>
           ))}
+        </div>
+
+        <div id="navigation-layout" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Header Style</h3>
+            <p className="text-xs text-muted-foreground">Choose the shared storefront navigation tone merchants should start with.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              {
+                id: "brand-left",
+                label: "Brand Left",
+                description: "Best for a familiar shopping flow with the brand anchored first.",
+              },
+              {
+                id: "centered",
+                label: "Centered Brand",
+                description: "Good for a cleaner, more visual storefront first impression.",
+              },
+              {
+                id: "compact",
+                label: "Compact",
+                description: "Keeps navigation lighter for stores where products should dominate quickly.",
+              },
+            ].map((option) => {
+              const selected = (settings.navigation?.nav_layout ?? "brand-left") === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => update("navigation", "nav_layout", option.id)}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition-colors",
+                    selected
+                      ? "border-primary bg-primary/8"
+                      : "border-border bg-card hover:border-primary/30",
+                  )}
+                >
+                  <div className="rounded-lg border border-border bg-muted/20 p-2">
+                    {option.id === "centered" ? (
+                      <div className="grid grid-cols-3 items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="h-2 w-8 rounded-full bg-muted-foreground/20" />
+                          <div className="h-2 w-8 rounded-full bg-muted-foreground/15" />
+                        </div>
+                        <div className="mx-auto h-3 w-14 rounded-full bg-primary/25" />
+                        <div className="ml-auto flex gap-1">
+                          <div className="h-5 w-5 rounded-full bg-background" />
+                          <div className="h-5 w-5 rounded-full bg-background" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="h-3 w-14 rounded-full bg-primary/25" />
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-7 rounded-full bg-muted-foreground/20" />
+                          <div className="h-2 w-7 rounded-full bg-muted-foreground/15" />
+                          {option.id !== "compact" ? <div className="h-2 w-7 rounded-full bg-muted-foreground/15" /> : null}
+                        </div>
+                        <div className="flex gap-1">
+                          <div className="h-5 w-5 rounded-full bg-background" />
+                          <div className="h-5 w-5 rounded-full bg-background" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{option.label}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
+                    </div>
+                    {selected ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" /> : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {hasDedicatedShopPage && (

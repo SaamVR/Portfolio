@@ -49,7 +49,7 @@ function hashRecoveryIdentifier(storeId: string, value: string) {
 
 export async function POST(req: Request) {
   try {
-    const limit = cartRecoveryLeadRouteDeps.rateLimit(`cart_recovery:${getClientIp(req)}`, {
+    const limit = await cartRecoveryLeadRouteDeps.rateLimit(`cart_recovery:${getClientIp(req)}`, {
       limit: 45,
       windowMs: 60_000,
     });

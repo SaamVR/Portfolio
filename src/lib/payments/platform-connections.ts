@@ -61,6 +61,8 @@ export function getPlatformBkashCredentialsFromConnection(row: PlatformBkashConn
 
   return {
     isLive: metadata.environment === "live" || metadata.is_live === true,
+    forceTestMode: metadata.force_test_mode === true,
+    baseUrl: typeof metadata.base_url === "string" && metadata.base_url.trim().length > 0 ? metadata.base_url.trim() : "",
     appKey: typeof secrets.app_key === "string" ? secrets.app_key : "",
     appSecret: typeof secrets.app_secret === "string" ? secrets.app_secret : "",
     username: typeof secrets.username === "string" ? secrets.username : "",

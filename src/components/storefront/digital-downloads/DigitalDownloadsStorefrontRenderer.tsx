@@ -307,13 +307,13 @@ export function DigitalDownloadsStorefrontRenderer({
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.58)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Shop Bestsellers"}
               </Link>
               <Link
                 href={storefrontPath(heroBlock?.secondaryCtaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "Explore Collections"}
               </Link>
@@ -379,9 +379,9 @@ export function DigitalDownloadsStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1320px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#e7eee9] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 rounded-[28px] border border-[#e7eee9] bg-white p-3 sm:p-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
           {trustItems.map((item, index) => (
-            <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
+            <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 4 === 0 ? <Download className="h-4.5 w-4.5" /> : index % 4 === 1 ? <ShieldCheck className="h-4.5 w-4.5" /> : index % 4 === 2 ? <Sparkles className="h-4.5 w-4.5" /> : <LifeBuoy className="h-4.5 w-4.5" />}
               </div>
@@ -394,18 +394,18 @@ export function DigitalDownloadsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Browse digital categories"}
           title={categoryBlock?.title?.trim() || "Browse digital download categories"}
           subtitle="Use the real categories already attached to this store's products, with graceful fallbacks when merchants haven't curated category content yet."
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[22px] border border-[#e7eee9] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[22px] border border-[#e7eee9] bg-white p-3 sm:p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <FolderOpen className="h-5 w-5" />
@@ -436,7 +436,7 @@ export function DigitalDownloadsStorefrontRenderer({
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.slice(0, featuredBlock?.limit ?? 8).map((product) => (
             <DigitalProductCard
               key={product.id}
@@ -454,7 +454,7 @@ export function DigitalDownloadsStorefrontRenderer({
         ) : null}
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="grid gap-6 rounded-[32px] border border-[#e7f1e7] bg-[linear-gradient(135deg,#f7fcf4_0%,#ffffff_45%,#f5fbf6_100%)] px-6 py-7 shadow-[0_20px_42px_-34px_rgba(34,197,94,0.28)] lg:grid-cols-[1fr_auto] lg:items-center lg:px-8 dark:border-primary/15 dark:bg-primary/5">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Limited-time offer</p>
@@ -492,14 +492,14 @@ export function DigitalDownloadsStorefrontRenderer({
           title={`Why buy from ${activeStore.name || "this store"}?`}
           subtitle="Keep the marketing rhythm conversion-focused while still grounding each selling point in merchant-controlled store data and policies."
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { title: "Premium quality", body: "Curated digital products connected to the store's live catalog, pricing, and product management tools." },
             { title: "Flexible licensing", body: "License selection is preserved in the cart and checkout flow so merchants can sell different usage rights." },
             { title: "Fast support", body: contactSettings?.response_time_text?.trim() || "Customers can contact the merchant directly for access or compatibility help." },
             { title: "Merchant-controlled offers", body: footerSettings?.about_text?.trim() || "Discounts, pricing, promo logic, and support remain unique to each merchant." },
           ].map((item) => (
-            <div key={item.title} className="rounded-[24px] border border-[#e6eee7] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
+            <div key={item.title} className="rounded-[24px] border border-[#e6eee7] bg-white p-3 sm:p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <ShieldCheck className="h-5 w-5" />
               </div>
@@ -510,7 +510,7 @@ export function DigitalDownloadsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="How it works"
           title="Purchase, download, create"
@@ -536,9 +536,9 @@ export function DigitalDownloadsStorefrontRenderer({
           eyebrow={testimonialBlock?.title?.trim() || "Customer reviews"}
           title={testimonialBlock?.subtitle?.trim() || "What customers are saying"}
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-4">
           {resolvedTestimonials.slice(0, 4).map((item) => (
-            <div key={item.id} className="rounded-[24px] border border-[#e6eee7] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
+            <div key={item.id} className="min-w-[85vw] shrink-0 snap-center md:min-w-0 rounded-[24px] border border-[#e6eee7] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
               <div className="flex items-center gap-1 text-[#f2b21d]">
                 {Array.from({ length: item.rating }).map((_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
               </div>
@@ -552,7 +552,7 @@ export function DigitalDownloadsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <DownloadAccessPanel />
       </section>
     </div>

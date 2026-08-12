@@ -8,7 +8,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
 import { productUrl, storefrontPath } from "@/lib/slug";
-import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
+import { getDisplayableProductType, getMetricNumericFallback } from "@/lib/cms/storefront-product-presentation";
 import {
   ProductCardShell,
   ProductCardMedia,
@@ -44,7 +44,7 @@ function getString(specs: Record<string, unknown> | undefined, keys: string[], f
 }
 
 function deriveCapacity(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]) {
-  return getNumber(metadata?.specs, ["capacity", "guest_capacity", "guests", "occupancy"], Math.min(Math.max(product.sizes.length || 2, 2), 6));
+  return getNumber(metadata?.specs, ["capacity", "guest_capacity", "guests", "occupancy"], Math.min(Math.max(getMetricNumericFallback(product, ["capacity", "guest_capacity", "guests", "occupancy"], 2), 2), 6));
 }
 
 function deriveBedType(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]) {

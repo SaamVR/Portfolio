@@ -7,6 +7,7 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { generateCloudinarySrcSet } from "@/lib/cms/cloudinary-responsive";
+import { getMetricNumericFallback } from "@/lib/cms/storefront-product-presentation";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +17,8 @@ type ReviewStats = {
 };
 
 function deriveDuration(product: Product) {
-  if (product.sizes.length >= 4) return 90;
-  if (product.colors.length >= 4) return 75;
+  const configuredDuration = getMetricNumericFallback(product, ["duration", "duration_minutes"], 0);
+  if (configuredDuration > 0) return configuredDuration;
   if (typeof product.stock === "number" && product.stock > 30) return 45;
   return 60;
 }

@@ -82,16 +82,6 @@ export function ShopPageTab({
               />
             </div>
           )}
-          {supportsSizeControls && (
-            <div className="grid gap-2">
-              <Label>Size Guide Button Label</Label>
-              <Input
-                value={settings.shop_page?.size_guide_label ?? ""}
-                placeholder="Size Guide"
-                onChange={(e) => update("shop_page", "size_guide_label", e.target.value)}
-              />
-            </div>
-          )}
         </div>
 
         <div id="shop-page-states" className="space-y-3 scroll-mt-36 rounded-xl border border-border p-3">
@@ -135,15 +125,6 @@ export function ShopPageTab({
               <Label>Show sale filter</Label>
             </div>
           )}
-          {supportsPriceFilterControls && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={settings.shop_page?.show_price_filter ?? true}
-                onCheckedChange={(v) => update("shop_page", "show_price_filter", v)}
-              />
-              <Label>Show price filter</Label>
-            </div>
-          )}
           {supportsSizeControls && (
             <div className="flex items-center gap-2">
               <Switch
@@ -160,15 +141,6 @@ export function ShopPageTab({
                 onCheckedChange={(v) => update("shop_page", "show_color_filter", v)}
               />
               <Label>Show color filter</Label>
-            </div>
-          )}
-          {supportsSizeControls && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={settings.shop_page?.show_size_guide ?? true}
-                onCheckedChange={(v) => update("shop_page", "show_size_guide", v)}
-              />
-              <Label>Show size guide button</Label>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getRequiredEnv, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { jsonNoStore } from "@/lib/http/cache-control";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -28,21 +28,21 @@ function getSupabasePublishableKey() {
 
 export async function POST(request: Request) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
-  const { success } = rateLimit(`auth_${ip}`, { limit: 10, windowMs: 60000 });
+  const { success } = await rateLimit(`auth_${ip}`, { limit: 10, windowMs: 60000 });
   if (!success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return jsonNoStore({ error: "Too many requests" }, { status: 429 });
   }
 
   try {
     const { id_token: idToken, display_name: displayName } = await request.json();
     if (!idToken) {
-      return NextResponse.json({ error: "Missing id_token" }, { status: 400 });
+      return jsonNoStore({ error: "Missing id_token" }, { status: 400 });
     }
 
     const firebaseApiKey = getFirebaseApiKey();
     const firebaseProjectId = getFirebaseProjectId();
     if (!firebaseApiKey || !firebaseProjectId) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: "Firebase server credentials are not configured." },
         { status: 500 },
       );
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     );
     const verifyData = await verifyResponse.json();
     if (!verifyResponse.ok || verifyData.error) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: `Firebase token verification failed: ${verifyData.error?.message || verifyResponse.statusText}` },
         { status: 401 },
       );
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const firebaseUser = verifyData.users?.[0];
     const uid = firebaseUser?.localId;
     if (!uid) {
-      return NextResponse.json({ error: "Firebase token did not include a user." }, { status: 401 });
+      return jsonNoStore({ error: "Firebase token did not include a user." }, { status: 401 });
     }
 
     const email = getFirebaseEmail(uid, firebaseUser.email);
@@ -117,14 +117,14 @@ export async function POST(request: Request) {
     });
     if (signInError) throw signInError;
 
-    return NextResponse.json({
+    return jsonNoStore({
       access_token: authData.session?.access_token,
       refresh_token: authData.session?.refresh_token,
       user: authData.user,
     });
   } catch (error) {
     console.error("Auth bridge error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       {
         error: error instanceof Error ? error.message : "Failed to complete phone authentication.",
       },

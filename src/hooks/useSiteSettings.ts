@@ -10,10 +10,8 @@ export function useSiteSettings<T = any>(key: string, explicitStoreId?: string |
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
   const scopedStoreSettings = currentStore?.siteSettings as Record<string, T | undefined> | undefined;
-  const hasScopedValue = currentStore?.id === storeId
-    && scopedStoreSettings
-    && key in scopedStoreSettings
-    && scopedStoreSettings[key] != null;
+  const hasScopedStore = currentStore?.id === storeId && !!scopedStoreSettings;
+  const hasScopedValue = hasScopedStore && key in scopedStoreSettings;
   const scopedValue = hasScopedValue ? (scopedStoreSettings?.[key] ?? null) : null;
 
   return useQuery({
@@ -23,6 +21,13 @@ export function useSiteSettings<T = any>(key: string, explicitStoreId?: string |
 
       if (hasScopedValue) {
         return scopedValue as T | null;
+      }
+
+      // Public storefront pages already receive a store-scoped settings snapshot
+      // through StoreProvider, so missing keys should resolve to null instead of
+      // falling back to merchant-scoped direct reads that trigger permission noise.
+      if (hasScopedStore) {
+        return null;
       }
 
       if (!isValidUUID(storeId)) {

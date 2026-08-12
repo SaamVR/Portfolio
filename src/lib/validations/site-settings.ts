@@ -52,6 +52,7 @@ export const navigationSchema = z.object({
   shop_feature_title: z.string().optional(),
   shop_feature_subtitle: z.string().optional(),
   shop_feature_image: z.string().optional(),
+  nav_layout: z.enum(["brand-left", "centered", "compact"]).optional(),
   show_search: z.boolean().optional(),
   show_theme_toggle: z.boolean().optional(),
   show_account: z.boolean().optional(),

@@ -301,13 +301,13 @@ export function HotelStorefrontRenderer({
               <button
                 type="button"
                 onClick={() => roomsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-[#285c46] px-6 text-sm font-semibold text-white shadow-[0_18px_34px_-18px_rgba(40,92,70,0.56)]"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#285c46] px-6 text-sm font-semibold text-white shadow-[0_18px_34px_-18px_rgba(40,92,70,0.56)] sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Book Now"}
               </button>
               <Link
                 href={storefrontPath("/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#d9e4dc] bg-white px-6 text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#d9e4dc] bg-white px-6 text-sm font-semibold text-slate-800 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "View Rooms"}
               </Link>
@@ -327,7 +327,7 @@ export function HotelStorefrontRenderer({
             </div>
           </div>
 
-          <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[34px] border border-[#e6ece7] bg-white shadow-[0_28px_70px_-44px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-card">
+          <div className="relative aspect-[16/9] md:aspect-[16/11] w-full overflow-hidden rounded-[34px] border border-[#e6ece7] bg-white shadow-[0_28px_70px_-44px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-card">
             {heroProduct ? (
               <SafeStorefrontImage
                 src={templateAssets?.hero_image_url ?? heroProduct.image}
@@ -338,12 +338,12 @@ export function HotelStorefrontRenderer({
                 className="object-cover"
               />
             ) : (
-              <div className="aspect-[16/11] w-full bg-[#edf4ef]" />
+              <div className="aspect-[16/9] md:aspect-[16/11] w-full bg-[#edf4ef]" />
             )}
           </div>
         </div>
 
-        <div className="mx-auto max-w-[1400px] px-5 pb-12 md:px-8 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-5 pb-6 md:pb-12 md:px-8 lg:px-10">
           <HotelBookingBar
             checkIn={checkIn}
             checkOut={checkOut}
@@ -359,14 +359,14 @@ export function HotelStorefrontRenderer({
       </section>
 
       <section className="mx-auto max-w-[1400px] px-5 py-4 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#dfe8e1] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.15)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+        <div className="grid grid-cols-2 gap-3 rounded-[28px] border border-[#dfe8e1] bg-white p-3 sm:p-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.15)] sm:grid-cols-2 xl:grid-cols-4 dark:border-white/10 dark:bg-card">
           {[
             { label: "Best Rate Guarantee", body: "Present merchant-managed pricing with direct contact for final confirmation." },
             { label: "Free Cancellation", body: "Use FAQ and policy pages to explain timing, cutoffs, and exceptions." },
             { label: "Secure Booking", body: "Reservation requests stay scoped to this hotel storefront and merchant inbox." },
             { label: "24/7 Guest Support", body: contactSettings?.phone?.trim() || contactSettings?.email?.trim() || "Keep phone and email visible for guests." },
           ].map((item) => (
-            <div key={item.label} className="rounded-[20px] border border-[#eef2ee] bg-[#fbfcfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
+            <div key={item.label} className="rounded-[20px] border border-[#eef2ee] bg-[#fbfcfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
               <p className="text-base font-semibold text-slate-950 dark:text-foreground">{item.label}</p>
               <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-muted-foreground">{item.body}</p>
             </div>
@@ -374,18 +374,18 @@ export function HotelStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Choose your stay"}
           title={categoryBlock?.title?.trim() || "Explore Our Room Categories"}
           subtitle="Use real categories or product types to keep room discovery flexible across different hotel setups."
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[24px] border border-[#dfe8e1] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[24px] border border-[#dfe8e1] bg-white p-3 sm:p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="mb-4 inline-flex rounded-full bg-[#edf4ef] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#285c46]">
                 Category
@@ -409,7 +409,7 @@ export function HotelStorefrontRenderer({
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {roomProducts.map((product) => (
             <RoomProductCard
               key={product.id}
@@ -421,7 +421,7 @@ export function HotelStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="Premium amenities"
           title="Everything You Need for a Perfect Stay"
@@ -439,7 +439,7 @@ export function HotelStorefrontRenderer({
               Book Now & Save
             </Link>
           </div>
-          <div className="relative aspect-[16/8.4] w-full overflow-hidden rounded-[24px] border border-white/10 bg-white/10">
+          <div className="relative hidden aspect-[16/8.4] w-full overflow-hidden rounded-[24px] border border-white/10 bg-white/10 md:block">
             <SafeStorefrontImage
               src={templateAssets?.promo_image_url ?? galleryImages[1]?.src}
               fallbackSrc={templateAssets?.fallback_product_image_url ?? null}
@@ -452,7 +452,7 @@ export function HotelStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="Experience the stay"
           title="Moments to Remember"
@@ -468,9 +468,9 @@ export function HotelStorefrontRenderer({
           eyebrow={testimonialBlock?.subtitle?.trim() || "Guest reviews"}
           title={testimonialBlock?.title?.trim() || "What Our Guests Say"}
         />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible">
           {testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[24px] border border-[#dfe8e1] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-card">
+            <div key={testimonial.id} className="flex-shrink-0 w-[280px] snap-center sm:w-[320px] xl:w-auto rounded-[24px] border border-[#dfe8e1] bg-white p-4 sm:p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-card">
               <div className="flex items-center gap-1 text-[#f4bf53]">
                 {Array.from({ length: testimonial.rating }).map((_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />
@@ -483,14 +483,14 @@ export function HotelStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1400px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1400px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="FAQs"
           title="Frequently Asked Questions"
         />
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-2 md:gap-4 lg:grid-cols-2">
           {faqs.slice(0, 6).map((faq, index) => (
-            <details key={`${faq.q}-${index}`} className="rounded-[20px] border border-[#dfe8e1] bg-white px-5 py-4 shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <details key={`${faq.q}-${index}`} className="rounded-[20px] border border-[#dfe8e1] bg-white px-4 py-3 md:px-5 md:py-4 shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
               <summary className="cursor-pointer list-none text-sm font-semibold text-slate-950 dark:text-foreground">{faq.q}</summary>
               <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-muted-foreground">{faq.a}</p>
             </details>

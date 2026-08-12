@@ -7,6 +7,7 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
+import { getMetricNumericFallback } from "@/lib/cms/storefront-product-presentation";
 import { productUrl, storefrontPath } from "@/lib/slug";
 import {
   ProductCardShell,
@@ -53,11 +54,11 @@ function deriveAddress(product: Product, metadata?: TemplateSeedCatalogMetadata[
 }
 
 function deriveBeds(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]) {
-  return getNumber(metadata?.specs, ["beds", "bedrooms"], Math.max(1, Math.min(product.sizes.length || 3, 6)));
+  return getNumber(metadata?.specs, ["beds", "bedrooms"], Math.max(1, Math.min(getMetricNumericFallback(product, ["beds", "bedrooms"], 3), 6)));
 }
 
 function deriveBaths(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]) {
-  return getNumber(metadata?.specs, ["baths", "bathrooms"], Math.max(1, Math.min(product.colors.length || 2, 5)));
+  return getNumber(metadata?.specs, ["baths", "bathrooms"], Math.max(1, Math.min(getMetricNumericFallback(product, ["baths", "bathrooms"], 2), 5)));
 }
 
 function deriveArea(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]) {

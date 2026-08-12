@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/data/products";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { generateCloudinarySrcSet } from "@/lib/cms/cloudinary-responsive";
+import { getMetricNumericFallback } from "@/lib/cms/storefront-product-presentation";
 import { storefrontPath } from "@/lib/slug";
 
 type HeroBlockProps = {
@@ -127,8 +128,8 @@ function extractPlainText(value: unknown): string {
 }
 
 function deriveDuration(product: Product) {
-  if (product.sizes.length >= 4) return 90;
-  if (product.colors.length >= 4) return 75;
+  const configuredDuration = getMetricNumericFallback(product, ["duration", "duration_minutes"], 0);
+  if (configuredDuration > 0) return configuredDuration;
   if (typeof product.stock === "number" && product.stock > 30) return 45;
   return 60;
 }
@@ -452,13 +453,13 @@ export function BookingStorefrontRenderer({
               <button
                 type="button"
                 onClick={() => bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.55)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.55)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Book Now"}
               </button>
               <Link
                 href={storefrontPath("/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "Explore Services"}
               </Link>
@@ -506,13 +507,13 @@ export function BookingStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Our bookable services"}
           title={categoryBlock?.title?.trim() || "Choose what you want to reserve"}
           subtitle={categoryNames.length > 0 ? `Categories in this store include ${categoryNames.slice(0, 4).join(", ")}.` : "Use real services or spaces from this merchant catalog."}
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {bookingProducts.map((product) => (
             <BookingServiceCard
               key={product.id}
@@ -739,8 +740,8 @@ export function BookingStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
-        <div className="grid gap-4 rounded-[28px] border border-[#e7eee9] bg-white px-4 py-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] sm:grid-cols-2 xl:grid-cols-4 lg:px-6 dark:border-white/10 dark:bg-card">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 rounded-[28px] border border-[#e7eee9] bg-white p-3 sm:p-5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
           {[
             { label: "Instant confirmation", body: "Booking requests are sent directly into the merchant's scoped message pipeline.", icon: Mail },
             { label: "Flexible reschedule", body: "Use this area to explain reschedule windows, lead time, or same-day limitations.", icon: CalendarDays },
@@ -749,7 +750,7 @@ export function BookingStorefrontRenderer({
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] px-4 py-4 dark:border-white/10 dark:bg-secondary/20">
+              <div key={item.label} className="rounded-[20px] border border-[#eef3ef] bg-[#fbfdfb] p-3 sm:p-4 dark:border-white/10 dark:bg-secondary/20">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon className="h-4.5 w-4.5" />
                 </div>
@@ -766,9 +767,9 @@ export function BookingStorefrontRenderer({
           eyebrow={testimonialBlock?.subtitle?.trim() || "What guests say"}
           title={testimonialBlock?.title?.trim() || "Trusted by returning clients"}
         />
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3">
           {testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[24px] border border-[#e7eee9] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <div key={testimonial.id} className="min-w-[85vw] shrink-0 snap-center md:min-w-0 rounded-[24px] border border-[#e7eee9] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
               <div className="flex items-center gap-1 text-primary">
                 {Array.from({ length: testimonial.rating }).map((_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />
@@ -786,7 +787,7 @@ export function BookingStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 pb-14 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 pb-14 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="Visit us"
           title="Location and contact"

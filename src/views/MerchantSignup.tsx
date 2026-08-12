@@ -19,12 +19,8 @@ import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
 import {
-  fallbackStoreBlueprints,
-  loadStoreBlueprints,
-  type StoreBlueprintDefinition,
-} from "@/lib/cms/store-blueprints";
-import {
   getStorefrontTemplateDefinition,
+  getStorefrontTemplateSeedDefinition,
   resolveStorefrontTemplateId,
   storefrontTemplateOptions,
   type StorefrontTemplateId,
@@ -116,7 +112,10 @@ export default function MerchantSignup() {
   const [searchParams] = useSearchParams();
   const intent = searchParams.get("intent");
   const entry = searchParams.get("entry");
-  const requestedBlueprint = searchParams.get("blueprint");
+  const requestedTemplateParam = searchParams.get("template");
+  const requestedTemplateId = resolveStorefrontTemplateId(undefined, {
+    templateSeedId: requestedTemplateParam || "general-catalog",
+  }) as StorefrontTemplateId;
   const isAdditionalStoreFlow = intent === "new-store";
   const isDashboardCreateFlow = entry === "dashboard" && Boolean(user) && !isAdditionalStoreFlow;
   const [step, setStep] = useState<SignupStep>("methods");
@@ -137,29 +136,29 @@ export default function MerchantSignup() {
     { id: "advanced", name: "Advanced", description: null, monthly_price: 1490, trial_days: 14, contact_only: false },
     { id: "pro", name: "Pro", description: null, monthly_price: 3990, trial_days: 14, contact_only: true },
   ]);
-  const [blueprints, setBlueprints] = useState<StoreBlueprintDefinition[]>(fallbackStoreBlueprints);
   const [accountRestriction, setAccountRestriction] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     storeName: "",
     storeSlug: "",
-    businessType: requestedBlueprint || "general-catalog",
-    storefrontTemplateId: resolveStorefrontTemplateId(undefined, { blueprintId: requestedBlueprint || "general-catalog" }) as StorefrontTemplateId,
+    businessType: requestedTemplateId,
+    storefrontTemplateId: requestedTemplateId,
     planId: searchParams.get("planId") || "free",
     otpCode: "",
   });
   const slugCheckSequence = useRef(0);
 
-  const blueprintGroups = useMemo(() => {
-    const groups = new Map<string, StoreBlueprintDefinition[]>();
-    for (const blueprint of blueprints) {
-      const existing = groups.get(blueprint.group) ?? [];
-      existing.push(blueprint);
-      groups.set(blueprint.group, existing);
+  const templateGroups = useMemo(() => {
+    const groups = new Map<string, typeof storefrontTemplateOptions>();
+    for (const template of storefrontTemplateOptions) {
+      const seed = getStorefrontTemplateSeedDefinition(template.value);
+      const existing = groups.get(seed.group) ?? [];
+      existing.push(template);
+      groups.set(seed.group, existing);
     }
     return Array.from(groups.entries());
-  }, [blueprints]);
+  }, []);
   const selectedTemplate = useMemo(
     () => getStorefrontTemplateDefinition(form.storefrontTemplateId),
     [form.storefrontTemplateId],
@@ -206,34 +205,12 @@ export default function MerchantSignup() {
   }, [isAdditionalStoreFlow, searchParams]);
 
   useEffect(() => {
-    let active = true;
-
-    const loadBlueprintOptions = async () => {
-      const loaded = await loadStoreBlueprints(supabase);
-      if (!active || loaded.length === 0) return;
-
-      setBlueprints(loaded);
-      setForm((prev) => {
-        const requested = requestedBlueprint && loaded.some((item) => item.id === requestedBlueprint)
-          ? requestedBlueprint
-          : null;
-        const hasCurrent = loaded.some((item) => item.id === prev.businessType);
-        const nextBusinessType = requested ?? (hasCurrent ? prev.businessType : loaded[0].id);
-        return {
-          ...prev,
-          businessType: nextBusinessType,
-          storefrontTemplateId: resolveStorefrontTemplateId(prev.storefrontTemplateId, {
-            blueprintId: nextBusinessType,
-          }) as StorefrontTemplateId,
-        };
-      });
-    };
-
-    void loadBlueprintOptions();
-    return () => {
-      active = false;
-    };
-  }, [requestedBlueprint]);
+    setForm((prev) => ({
+      ...prev,
+      businessType: requestedTemplateId,
+      storefrontTemplateId: requestedTemplateId,
+    }));
+  }, [requestedTemplateId]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -338,10 +315,12 @@ export default function MerchantSignup() {
         next.storeName = `${value.trim()}'s Store`.trim();
         next.storeSlug = slugify(next.storeName);
       }
-      if (field === "businessType") {
-        next.storefrontTemplateId = resolveStorefrontTemplateId(prev.storefrontTemplateId, {
-          blueprintId: value,
-        }) as StorefrontTemplateId;
+        if (field === "businessType" || field === "storefrontTemplateId") {
+          const templateId = resolveStorefrontTemplateId(value, {
+            templateSeedId: value,
+          }) as StorefrontTemplateId;
+        next.businessType = templateId;
+        next.storefrontTemplateId = templateId;
       }
       return next;
     });
@@ -739,13 +718,13 @@ export default function MerchantSignup() {
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="business-type">Business Type</Label>
+                    <Label htmlFor="business-type">Template Family</Label>
                     <select id="business-type" value={form.businessType} onChange={(event) => update("businessType", event.target.value)} className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm">
-                      {blueprintGroups.map(([group, items]) => (
+                      {templateGroups.map(([group, items]) => (
                         <optgroup key={group} label={group}>
-                          {items.map((blueprint) => (
-                            <option key={blueprint.id} value={blueprint.id}>
-                              {blueprint.name}
+                          {items.map((template) => (
+                            <option key={template.value} value={template.value}>
+                              {template.label}
                             </option>
                           ))}
                         </optgroup>

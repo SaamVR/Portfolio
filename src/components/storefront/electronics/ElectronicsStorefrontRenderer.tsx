@@ -227,10 +227,10 @@ function ElectronicsSectionHeading({
   actionHref?: string;
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="mb-5 md:mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">{eyebrow}</p>
-        <h2 className="mt-2 text-[1.9rem] font-semibold tracking-tight text-slate-950 dark:text-foreground sm:text-[2.35rem]">
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-foreground sm:text-3xl md:text-[2.35rem] leading-tight">
           {title}
         </h2>
       </div>
@@ -401,74 +401,77 @@ export function ElectronicsStorefrontRenderer({
   return (
     <div className="bg-[#f5f7fa] text-slate-950 dark:bg-background dark:text-foreground">
       <section className="overflow-hidden bg-[linear-gradient(180deg,#edf4fb_0%,#f7fafc_55%,#f5f7fa_100%)] dark:bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--background))_100%)]">
-        <div className="mx-auto grid max-w-[1320px] gap-8 px-5 pb-10 pt-8 md:px-8 md:pb-12 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-10 lg:px-10 lg:pb-14 lg:pt-12">
+        <div className="mx-auto grid max-w-[1320px] gap-8 px-4 pb-12 pt-8 md:px-6 md:pb-16 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-10 lg:px-8 lg:pb-24 lg:pt-16">
           <div className="max-w-[520px]">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary shadow-sm dark:bg-card/70">
               <Bolt className="h-3.5 w-3.5" />
               {heroTagline}
             </div>
-            <h1 className="mt-5 max-w-[11ch] text-[2.9rem] font-semibold leading-[1.02] tracking-[-0.05em] text-slate-950 dark:text-foreground sm:text-[4.2rem]">
+            <h1 className="mt-5 max-w-[11ch] text-4xl font-semibold leading-[1.05] tracking-[-0.05em] text-slate-950 dark:text-foreground sm:text-5xl md:text-[4.2rem]">
               {heroTitle}{" "}
               <span className="text-primary">{heroHighlight}</span>
             </h1>
-            <p className="mt-5 max-w-[44ch] text-base leading-7 text-slate-600 dark:text-muted-foreground sm:text-lg">
+            <p className="mt-5 max-w-[44ch] text-base leading-relaxed text-slate-600 dark:text-muted-foreground sm:text-lg">
               {heroSubtitle}
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroPrimaryCta}
               </Link>
               <Link
                 href={heroSecondaryHref}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce5ec] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce5ec] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroSecondaryCta}
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <div className="flex items-center gap-2 rounded-xl border border-[#dde4eb] bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-card dark:text-muted-foreground">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                Store-backed warranty
+                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                <span className="truncate">Store-backed warranty</span>
               </div>
               <div className="flex items-center gap-2 rounded-xl border border-[#dde4eb] bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-card dark:text-muted-foreground">
-                <Truck className="h-4 w-4 text-primary" />
-                {deliverySettings?.free_threshold
-                  ? `Free delivery over ৳${deliverySettings.free_threshold.toLocaleString()}`
-                  : "Delivery options shown at checkout"}
+                <Truck className="h-4 w-4 text-primary shrink-0" />
+                <span className="truncate">
+                  {deliverySettings?.free_threshold
+                    ? `Free delivery over ৳${deliverySettings.free_threshold.toLocaleString()}`
+                    : "Delivery options at checkout"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="relative min-h-[360px] rounded-[30px] border border-white/70 bg-[linear-gradient(145deg,#ffffff_0%,#eef4f8_100%)] p-5 shadow-[0_30px_80px_-52px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-card/60 dark:shadow-none sm:min-h-[460px] lg:min-h-[520px]">
-            <div className="absolute right-5 top-5 flex items-center gap-2 rounded-full border border-[#dce5ec] bg-white/92 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm dark:border-white/10 dark:bg-card/90 dark:text-muted-foreground">
+          <div className="relative min-h-[300px] md:min-h-[400px] lg:min-h-[520px] w-full rounded-[20px] md:rounded-[30px] border border-white/70 bg-[linear-gradient(145deg,#ffffff_0%,#eef4f8_100%)] p-4 md:p-5 shadow-[0_30px_80px_-52px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-card/60 dark:shadow-none">
+            <div className="absolute right-4 top-4 md:right-5 md:top-5 flex items-center gap-2 rounded-full border border-[#dce5ec] bg-white/92 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm dark:border-white/10 dark:bg-card/90 dark:text-muted-foreground z-10">
               <Search className="h-3.5 w-3.5" />
-              Compare top gadgets
+              <span className="hidden sm:inline">Compare top gadgets</span>
+              <span className="sm:hidden">Compare</span>
             </div>
             {heroProduct ? (
-              <div className="absolute inset-x-[9%] bottom-[9%] top-[16%] grid gap-4 lg:grid-cols-[1fr_170px]">
-                <div className="flex items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,#f8fcff_0%,#edf4f8_62%,#e9eef3_100%)] p-6 dark:bg-secondary/50">
+              <div className="absolute inset-0 p-4 md:p-6 flex flex-col md:inset-x-[9%] md:bottom-[9%] md:top-[16%] md:grid md:gap-4 lg:grid-cols-[1fr_170px] lg:p-0">
+                <div className="flex flex-1 items-center justify-center rounded-[16px] md:rounded-[28px] bg-[radial-gradient(circle_at_top,#f8fcff_0%,#edf4f8_62%,#e9eef3_100%)] p-4 md:p-6 dark:bg-secondary/50">
                   <img
                     src={heroProduct.image}
                     alt={heroProduct.name}
-                    className="h-full max-h-[320px] w-full object-contain drop-shadow-[0_30px_48px_rgba(15,23,42,0.22)] sm:max-h-[400px]"
+                    className="h-full w-full max-h-[220px] md:max-h-[360px] object-contain drop-shadow-[0_30px_48px_rgba(15,23,42,0.22)]"
                   />
                 </div>
-                <div className="grid gap-4">
+                <div className="hidden lg:grid gap-4">
                   {heroSupportProducts.map((product) => (
                     <div
                       key={product.id}
                       className="flex items-center gap-3 rounded-[22px] border border-[#dce5ec] bg-white/92 p-3 shadow-sm dark:border-white/10 dark:bg-card/90"
                     >
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f3f7fb] p-2 dark:bg-secondary/60">
-                        <img src={product.image} alt={product.name} className="h-full w-full object-contain" />
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f3f7fb] p-2 dark:bg-secondary/60 shrink-0">
+                        <img src={product.image} alt={product.name} className="h-full max-h-full w-full object-contain" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-foreground">{product.name}</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">{pickCategorySeed(product)}</p>
-                        <p className="mt-1 text-sm font-semibold text-primary">৳{product.price.toLocaleString()}</p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-muted-foreground truncate">{pickCategorySeed(product)}</p>
+                        <p className="mt-1 text-sm font-semibold text-primary truncate">৳{product.price.toLocaleString()}</p>
                       </div>
                     </div>
                   ))}
@@ -479,39 +482,39 @@ export function ElectronicsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 md:py-16 lg:px-8 lg:py-20">
         <ElectronicsSectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "Popular departments"}
           title={categoryBlock?.title?.trim() || "Shop by device type"}
           actionLabel="View all"
           actionHref={storefrontPath("/shop", activeStore.slug)}
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
           {categoryNames.map((category, index) => {
             const categoryProduct = pickCategoryProducts(availableProducts, category, 1)[0];
             return (
               <Link
                 key={`${category}-${index}`}
                 href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-                className="group overflow-hidden rounded-[24px] border border-[#dce5ec] bg-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.26)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+                className="group overflow-hidden rounded-[20px] md:rounded-[24px] border border-[#dce5ec] bg-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.26)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
               >
-                <div className="flex aspect-[16/10] items-center justify-center bg-[linear-gradient(180deg,#f6fbff_0%,#eff5fa_100%)] p-6 dark:bg-secondary/45">
+                <div className="flex aspect-square md:aspect-[4/3] sm:aspect-[16/10] items-center justify-center bg-[linear-gradient(180deg,#f6fbff_0%,#eff5fa_100%)] p-4 sm:p-6 dark:bg-secondary/45">
                   {categoryProduct ? (
-                    <img src={categoryProduct.image} alt={categoryProduct.name} className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
+                    <img src={categoryProduct.image} alt={categoryProduct.name} className="h-full w-full max-h-[140px] md:max-h-full object-contain transition duration-300 group-hover:scale-[1.03]" />
                   ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5 text-primary">
+                    <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-xl md:rounded-2xl border border-primary/10 bg-primary/5 text-primary">
                       <CategoryIcon index={index} />
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between gap-3 px-5 py-4">
-                  <div>
-                    <p className="text-base font-semibold text-slate-900 dark:text-foreground">{category}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-muted-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 px-3 py-3 md:px-5 md:py-4">
+                  <div className="min-w-0">
+                    <p className="text-sm md:text-base font-semibold text-slate-900 dark:text-foreground truncate">{category}</p>
+                    <p className="mt-0.5 md:mt-1 text-[11px] md:text-sm text-slate-500 dark:text-muted-foreground truncate">
                       {activeStore.name ? `${activeStore.name} selection` : "Browse curated picks"}
                     </p>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dce5ec] text-slate-500 transition-colors group-hover:border-primary/30 group-hover:text-primary dark:border-white/10 dark:text-muted-foreground">
+                  <div className="hidden sm:flex h-8 w-8 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-full border border-[#dce5ec] text-slate-500 transition-colors group-hover:border-primary/30 group-hover:text-primary dark:border-white/10 dark:text-muted-foreground">
                     <ChevronRight className="h-4 w-4" />
                   </div>
                 </div>
@@ -521,55 +524,56 @@ export function ElectronicsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-3 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 md:py-16 lg:px-8 lg:py-20">
         <ElectronicsSectionHeading
           eyebrow={featuredBlock?.tagline?.trim() || "Featured gadgets"}
           title={featuredBlock?.title?.trim() || "Best picks for everyday performance"}
           actionLabel="Shop all"
           actionHref={storefrontPath("/shop", activeStore.slug)}
         />
-        <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:overflow-visible">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible">
           {primaryProducts.map((product) => (
-            <ElectronicsProductCard
-              key={product.id}
-              product={product}
-              reviewStats={reviewStatsByProduct[product.id]}
-            />
+            <div key={product.id} className="min-w-[72vw] shrink-0 snap-start sm:min-w-[45vw] md:min-w-0 md:shrink">
+              <ElectronicsProductCard
+                product={product}
+                reviewStats={reviewStatsByProduct[product.id]}
+              />
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
-        <div className="overflow-hidden rounded-[30px] border border-[#dbe4ea] bg-[linear-gradient(135deg,#0f172a_0%,#101f3d_58%,#162f58_100%)] text-white shadow-[0_26px_60px_-42px_rgba(15,23,42,0.6)] dark:border-white/10">
-          <div className="grid gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-10">
+      <section className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 md:py-12 lg:px-8 lg:py-16">
+        <div className="overflow-hidden rounded-[24px] md:rounded-[30px] border border-[#dbe4ea] bg-[linear-gradient(135deg,#0f172a_0%,#101f3d_58%,#162f58_100%)] text-white shadow-[0_26px_60px_-42px_rgba(15,23,42,0.6)] dark:border-white/10">
+          <div className="grid gap-6 md:gap-8 px-5 py-8 md:px-8 md:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-12 lg:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
                 <Clock3 className="h-3.5 w-3.5" />
                 Limited time deal
               </div>
-              <h2 className="mt-4 max-w-[16ch] text-[2rem] font-semibold tracking-tight sm:text-[2.6rem]">
+              <h2 className="mt-4 max-w-[16ch] text-3xl font-semibold tracking-tight sm:text-[2.6rem] leading-tight">
                 {countdownBlock?.title?.trim() || "Upgrade your setup before this deal expires"}
               </h2>
-              <p className="mt-3 max-w-[46ch] text-sm leading-7 text-slate-300 sm:text-base">
+              <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-slate-300 sm:text-base">
                 {countdownBlock?.subtitle?.trim() || `${activeStore.name || "This store"} is highlighting price drops on fast-moving gadgets and accessories.`}
               </p>
               <Link
                 href={storefrontPath(countdownBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                className="mt-6 inline-flex h-12 md:h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5 w-full sm:w-auto"
               >
                 {countdownBlock?.ctaText?.trim() || "Grab the deal"}
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 w-full">
               {[
                 { label: "Days", value: dealTimer.days },
                 { label: "Hours", value: dealTimer.hours },
                 { label: "Minutes", value: dealTimer.minutes },
                 { label: "Seconds", value: dealTimer.seconds },
               ].map((item) => (
-                <div key={item.label} className="rounded-[22px] border border-white/10 bg-white/8 px-4 py-5 text-center backdrop-blur-sm">
-                  <p className="text-[2rem] font-semibold tracking-tight text-white sm:text-[2.4rem]">{item.value}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-300">{item.label}</p>
+                <div key={item.label} className="rounded-[16px] md:rounded-[22px] border border-white/10 bg-white/8 px-2 py-4 md:px-4 md:py-5 text-center backdrop-blur-sm flex flex-col justify-center">
+                  <p className="text-xl md:text-[2rem] font-semibold tracking-tight text-white sm:text-[2.4rem]">{item.value}</p>
+                  <p className="mt-1 md:mt-2 text-[9px] md:text-[11px] uppercase tracking-[0.22em] text-slate-300">{item.label}</p>
                 </div>
               ))}
             </div>
@@ -578,36 +582,36 @@ export function ElectronicsStorefrontRenderer({
       </section>
 
       {(comparisonSectionBlock ? comparisonSectionBlock.isVisible !== false : true) && comparisonProducts.length >= 2 ? (
-        <section className="mx-auto max-w-[1320px] px-5 py-3 md:px-8 lg:px-10">
+        <section className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 md:py-16 lg:px-8 lg:py-20">
           <ElectronicsSectionHeading
             eyebrow={comparisonBlock?.tagline?.trim() || "Compare before you buy"}
             title={comparisonBlock?.title?.trim() || "Quick product comparison"}
           />
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 md:overflow-visible">
             {comparisonProducts.map((product) => {
               const stats = reviewStatsByProduct[product.id];
               const compareSpecs = buildTechnicalSpecs(product);
               return (
                 <article
                   key={product.id}
-                  className="overflow-hidden rounded-[28px] border border-[#dce5ec] bg-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-card"
+                  className="min-w-[85vw] shrink-0 snap-start sm:min-w-[60vw] md:min-w-0 md:shrink overflow-hidden rounded-[20px] md:rounded-[28px] border border-[#dce5ec] bg-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)] dark:border-white/10 dark:bg-card flex flex-col"
                 >
-                  <div className="grid gap-5 p-5 sm:grid-cols-[220px_1fr]">
-                    <div className="flex aspect-[4/3] items-center justify-center rounded-[24px] bg-[linear-gradient(180deg,#f7fbff_0%,#eef4f8_100%)] p-5 dark:bg-secondary/45">
-                      <img src={product.image} alt={product.name} className="h-full w-full object-contain" />
+                  <div className="flex flex-col sm:grid gap-4 md:gap-5 p-4 md:p-5 sm:grid-cols-[180px_1fr] md:grid-cols-[220px_1fr] h-full">
+                    <div className="flex aspect-square sm:aspect-auto sm:h-full items-center justify-center rounded-[16px] md:rounded-[24px] bg-[linear-gradient(180deg,#f7fbff_0%,#eef4f8_100%)] p-4 md:p-5 dark:bg-secondary/45">
+                      <img src={product.image} alt={product.name} className="h-full max-h-[160px] sm:max-h-full w-full object-contain" />
                     </div>
-                    <div>
+                    <div className="flex flex-col flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                        <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
                           {pickCategorySeed(product)}
                         </span>
                         {product.originalPrice && product.originalPrice > product.price ? (
-                          <span className="inline-flex rounded-full bg-[#fff1ef] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#ef4444]">
+                          <span className="inline-flex rounded-full bg-[#fff1ef] px-2.5 py-1 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.16em] text-[#ef4444]">
                             Save ৳{(product.originalPrice - product.price).toLocaleString()}
                           </span>
                         ) : null}
                       </div>
-                      <h3 className="mt-3 text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-foreground">
+                      <h3 className="mt-3 text-lg md:text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-foreground line-clamp-2">
                         {product.name}
                       </h3>
                       <div className="mt-2 flex items-center gap-2">
@@ -621,24 +625,24 @@ export function ElectronicsStorefrontRenderer({
                           {stats?.count ? `${stats.count} reviews` : "New arrival"}
                         </span>
                       </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {compareSpecs.map((spec) => (
-                          <div key={spec} className="rounded-2xl border border-[#e7edf2] bg-[#f8fbfd] px-3 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-secondary/40 dark:text-muted-foreground">
+                      <div className="mt-4 grid gap-2 sm:gap-3 sm:grid-cols-2">
+                        {compareSpecs.slice(0, 4).map((spec) => (
+                          <div key={spec} className="rounded-xl md:rounded-2xl border border-[#e7edf2] bg-[#f8fbfd] px-3 py-2.5 md:py-3 text-xs md:text-sm text-slate-600 dark:border-white/10 dark:bg-secondary/40 dark:text-muted-foreground line-clamp-2 sm:line-clamp-none">
                             {spec}
                           </div>
                         ))}
-                        <div className="rounded-2xl border border-[#e7edf2] bg-[#f8fbfd] px-3 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-secondary/40 dark:text-muted-foreground">
+                        <div className="hidden sm:block rounded-xl md:rounded-2xl border border-[#e7edf2] bg-[#f8fbfd] px-3 py-2.5 md:py-3 text-xs md:text-sm text-slate-600 dark:border-white/10 dark:bg-secondary/40 dark:text-muted-foreground">
                           {deliverySettings?.enabled ? "Ready for merchant delivery setup" : "Delivery setup can be enabled from settings"}
                         </div>
                       </div>
-                      <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <p className="text-[1.6rem] font-bold text-primary">৳{product.price.toLocaleString()}</p>
+                      <div className="mt-5 flex flex-wrap items-center gap-3 mt-auto pt-2">
+                        <p className="text-xl md:text-[1.6rem] font-bold text-primary">৳{product.price.toLocaleString()}</p>
                         {product.originalPrice && product.originalPrice > product.price ? (
-                          <p className="text-sm text-slate-400 line-through">৳{product.originalPrice.toLocaleString()}</p>
+                          <p className="text-xs md:text-sm text-slate-400 line-through">৳{product.originalPrice.toLocaleString()}</p>
                         ) : null}
                         <Link
                           href={productUrl(product.id, product.name, activeStore.slug)}
-                          className="ml-auto inline-flex h-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                          className="ml-auto inline-flex h-10 md:h-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-4 text-xs md:text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground shrink-0"
                         >
                           {comparisonBlock?.ctaText?.trim() || "View details"}
                         </Link>
@@ -653,39 +657,41 @@ export function ElectronicsStorefrontRenderer({
       ) : null}
 
       {accessoryProducts.length > 0 ? (
-        <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+        <section className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 md:py-16 lg:px-8 lg:py-20">
           <ElectronicsSectionHeading
             eyebrow="Accessories"
             title="Complete the setup"
             actionLabel="Browse accessories"
             actionHref={storefrontPath("/shop", activeStore.slug)}
           />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
             {accessoryProducts.map((product) => (
               <Link
                 key={product.id}
                 href={productUrl(product.id, product.name, activeStore.slug)}
-                className="group rounded-[24px] border border-[#dce5ec] bg-white p-4 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.26)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+                className="group flex flex-col rounded-[20px] md:rounded-[24px] border border-[#dce5ec] bg-white p-3 sm:p-4 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.26)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card h-full"
               >
-                <div className="flex aspect-[3/2] items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#f7fbff_0%,#eef4f8_100%)] p-4 dark:bg-secondary/45">
-                  <img src={product.image} alt={product.name} className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
+                <div className="flex aspect-square md:aspect-[3/2] w-full items-center justify-center rounded-[16px] md:rounded-[20px] bg-[linear-gradient(180deg,#f7fbff_0%,#eef4f8_100%)] p-4 dark:bg-secondary/45">
+                  <img src={product.image} alt={product.name} className="h-full max-h-[140px] md:max-h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
                 </div>
-                <div className="mt-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-muted-foreground">
+                <div className="mt-4 flex flex-col flex-1">
+                  <p className="text-[10px] md:text-sm font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-muted-foreground line-clamp-1">
                     {product.type || product.category}
                   </p>
-                  <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-slate-950 dark:text-foreground">{product.name}</h3>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-muted-foreground">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#f3f7fb] px-2.5 py-1 dark:bg-secondary/60">
-                      <Truck className="h-3.5 w-3.5 text-primary" />
-                      Delivery ready
+                  <h3 className="mt-1 md:mt-2 line-clamp-2 text-sm md:text-lg font-semibold text-slate-950 dark:text-foreground">{product.name}</h3>
+                  <div className="mt-2 md:mt-3 flex flex-wrap gap-1.5 md:gap-2 text-[10px] md:text-xs text-slate-500 dark:text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#f3f7fb] px-2 py-0.5 md:px-2.5 md:py-1 dark:bg-secondary/60">
+                      <Truck className="h-3 md:h-3.5 w-3 md:w-3.5 text-primary shrink-0" />
+                      <span className="truncate">Delivery ready</span>
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#f3f7fb] px-2.5 py-1 dark:bg-secondary/60">
-                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                      Store support
+                    <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-[#f3f7fb] px-2 py-0.5 md:px-2.5 md:py-1 dark:bg-secondary/60">
+                      <ShieldCheck className="h-3 md:h-3.5 w-3 md:w-3.5 text-primary shrink-0" />
+                      <span className="truncate">Store support</span>
                     </span>
                   </div>
-                  <p className="mt-4 text-xl font-bold text-primary">৳{product.price.toLocaleString()}</p>
+                  <div className="mt-auto pt-3 md:pt-4">
+                    <p className="text-lg md:text-xl font-bold text-primary">৳{product.price.toLocaleString()}</p>
+                  </div>
                 </div>
               </Link>
             ))}

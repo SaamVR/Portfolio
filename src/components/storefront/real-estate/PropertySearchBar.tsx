@@ -42,12 +42,12 @@ export function PropertySearchBar({
         ))}
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_auto]">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_auto]">
         <input
           value={filters.location}
           onChange={(event) => update("location", event.target.value)}
           placeholder="City, neighborhood, or zip"
-          className="rounded-[18px] border border-[#dce8dd] bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:border-white/10 dark:bg-card dark:text-foreground"
+          className="col-span-2 rounded-[18px] border border-[#dce8dd] bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 xl:col-span-1 dark:border-white/10 dark:bg-card dark:text-foreground"
         />
         <select
           value={filters.propertyType}
@@ -94,7 +94,7 @@ export function PropertySearchBar({
         <button
           type="button"
           onClick={onSubmit}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[18px] bg-[#1f9b46] px-5 text-sm font-semibold text-white shadow-[0_18px_30px_-18px_rgba(31,155,70,0.55)]"
+          className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[18px] bg-[#1f9b46] px-5 text-sm font-semibold text-white shadow-[0_18px_30px_-18px_rgba(31,155,70,0.55)] xl:col-span-1"
         >
           <Search className="h-4 w-4" />
           Search

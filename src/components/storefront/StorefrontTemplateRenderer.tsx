@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactElement } from "react";
+
 import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
 import { BeautyStorefrontRenderer } from "@/components/storefront/beauty/BeautyStorefrontRenderer";
 import { BookingStorefrontRenderer } from "@/components/storefront/booking/BookingStorefrontRenderer";
@@ -26,6 +28,29 @@ import {
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
 import { cn } from "@/lib/utils";
+
+type SpecializedHomepageRendererProps = {
+  store: Store;
+  page: StorePage;
+  blocks: StorePageBlock[];
+};
+
+const specializedHomepageRenderers: Partial<Record<StorefrontTemplateId, (props: SpecializedHomepageRendererProps) => ReactElement>> = {
+  beauty: (props) => <BeautyStorefrontRenderer {...props} />,
+  landing: (props) => <LandingStorefrontRenderer {...props} />,
+  electronics: (props) => <ElectronicsStorefrontRenderer {...props} />,
+  food: (props) => <FoodStorefrontRenderer {...props} />,
+  subscriptions: (props) => <SubscriptionsStorefrontRenderer {...props} />,
+  "digital-downloads": (props) => <DigitalDownloadsStorefrontRenderer {...props} />,
+  "general-catalog": (props) => <GeneralCatalogStorefrontRenderer {...props} />,
+  crafts: (props) => <CraftsStorefrontRenderer {...props} />,
+  "single-product": (props) => <SingleProductStorefrontRenderer {...props} />,
+  "inquiry-catalog": (props) => <InquiryCatalogStorefrontRenderer {...props} />,
+  service: (props) => <ServiceStorefrontRenderer {...props} />,
+  booking: (props) => <BookingStorefrontRenderer {...props} />,
+  hotel: (props) => <HotelStorefrontRenderer {...props} />,
+  "real-estate": (props) => <RealEstateStorefrontRenderer {...props} />,
+};
 
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
@@ -63,7 +88,7 @@ function resolveTemplateForStore(store: Store): {
   const templateId = resolveStorefrontTemplateId(
     storefrontProfile?.template_id,
     {
-      blueprintId: typeof storefrontProfile?.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+      templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
       productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
     },
   );
@@ -72,6 +97,10 @@ function resolveTemplateForStore(store: Store): {
     templateId,
     template: getStorefrontTemplateDefinition(templateId),
   };
+}
+
+function isBlockVisible(block: StorePageBlock): boolean {
+  return block.isVisible ?? block.visible ?? true;
 }
 
 export function StorefrontTemplateRenderer({
@@ -96,10 +125,11 @@ export function StorefrontTemplateRenderer({
   const { template, templateId } = resolveTemplateForStore(store);
   const blocksToRender = sortBlocksForTemplate(blocks, template, {
     preserveEditorOrder: adminMode,
-  });
+  }).filter(isBlockVisible);
   const renderBlockNode = (block: StorePageBlock, index: number) => (
     <div
       key={block.id}
+      data-ezcomo-block-id={block.id}
       onClick={() => {
         if (canManageStorefront && adminMode) {
           onSelectBlock(block.id);
@@ -107,6 +137,9 @@ export function StorefrontTemplateRenderer({
       }}
       className={cn(
         "relative transition-shadow",
+        (block.props as Record<string, unknown> | undefined)?.hideOnMobile === true && "max-sm:hidden",
+        (block.props as Record<string, unknown> | undefined)?.hideOnTablet === true && "sm:max-lg:hidden",
+        (block.props as Record<string, unknown> | undefined)?.hideOnDesktop === true && "lg:hidden",
         canManageStorefront && adminMode && "cursor-pointer ring-1 ring-inset ring-primary/20 hover:ring-primary/40",
         selectedBlockId === block.id && "ring-2 ring-primary/50",
       )}
@@ -122,37 +155,12 @@ export function StorefrontTemplateRenderer({
   const fallbackBlockNodes = blocksToRender
     .filter((block) => !consumedBlockTypes.has(block.type))
     .map((block, index) => renderBlockNode(block, index));
+  const specializedHomepageRenderer = page.isHomepage ? specializedHomepageRenderers[templateId] : undefined;
 
-  const renderedBlocks = template.rendererKind === "fashion"
+  const renderedBlocks = adminMode || template.rendererKind === "fashion"
     ? blockNodes
-    : templateId === "beauty" && page.isHomepage
-      ? <BeautyStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "landing" && page.isHomepage
-      ? <LandingStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "electronics" && page.isHomepage
-      ? <ElectronicsStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "food" && page.isHomepage
-      ? <FoodStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "subscriptions" && page.isHomepage
-      ? <SubscriptionsStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "digital-downloads" && page.isHomepage
-      ? <DigitalDownloadsStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "general-catalog" && page.isHomepage
-      ? <GeneralCatalogStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "crafts" && page.isHomepage
-      ? <CraftsStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "single-product" && page.isHomepage
-      ? <SingleProductStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "inquiry-catalog" && page.isHomepage
-      ? <InquiryCatalogStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "service" && page.isHomepage
-      ? <ServiceStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "booking" && page.isHomepage
-      ? <BookingStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "hotel" && page.isHomepage
-      ? <HotelStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
-    : templateId === "real-estate" && page.isHomepage
-      ? <RealEstateStorefrontRenderer store={store} page={page} blocks={blocksToRender} />
+    : specializedHomepageRenderer
+      ? specializedHomepageRenderer({ store, page, blocks: blocksToRender })
     : (
       <div data-template-renderer="generic-placeholder">
         {blockNodes}

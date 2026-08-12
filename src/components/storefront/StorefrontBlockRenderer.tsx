@@ -15,9 +15,12 @@ import { AlertTriangle, BadgeCheck, CreditCard, Headset, Instagram, Play, Shield
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
+import { useFeaturedProducts, useProducts, useProduct } from "@/hooks/useProducts";
+import { useAuth } from "@/hooks/auth-context";
+import { useParams } from "@/lib/react-router-dom-shim";
 import { sanitizeStoreBlockCustomCss, sanitizeStoreBlockCustomHtml } from "@/lib/cms/validation";
-import { productUrl, storefrontPath } from "@/lib/slug";
+import { getSharedBlockPresetProps } from "@/lib/cms/storefront-shared-block-presets";
+import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 
 function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
   if (!nodes || !Array.isArray(nodes)) return null;
@@ -302,18 +305,18 @@ function TestimonialsBlock({
   ];
 
   return (
-    <section className="bg-background py-16 md:py-24">
+    <section className="bg-background py-12 md:py-24 overflow-hidden">
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-10 max-w-2xl text-center">
+        <div className="mx-auto mb-8 max-w-2xl text-center md:mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Social proof</p>
           <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             {title || "Customers are talking"}
           </h2>
           {subtitle ? <p className="mt-4 text-sm leading-7 text-muted-foreground md:text-base">{subtitle}</p> : null}
         </div>
-        <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-3">
+        <div className="mx-auto flex snap-x snap-mandatory overflow-x-auto gap-4 pb-6 md:grid md:max-w-6xl md:grid-cols-3 md:pb-0 md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {displayReviews.map((review) => (
-            <article key={`${review.name}-${review.comment}`} className="flex min-h-[220px] flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm">
+            <article key={`${review.name}-${review.comment}`} className="flex min-w-[85vw] sm:min-w-[340px] md:min-w-0 min-h-[220px] snap-center md:snap-align-none flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm">
               <div>
                 <div className="mb-5 flex items-center gap-1 text-accent">
                   {Array.from({ length: Math.max(1, Math.min(5, review.rating ?? 5)) }).map((_, index) => (
@@ -339,8 +342,8 @@ function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle
   ];
 
   return (
-    <section className="bg-background py-16 md:py-24">
-      <div className="container mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-[0.9fr_minmax(0,1.1fr)] lg:items-start">
+    <section className="bg-background py-12 md:py-24">
+      <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:gap-10 lg:grid-cols-[0.9fr_minmax(0,1.1fr)] lg:items-start">
         <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Customer confidence</p>
           <h2 className="mt-4 text-3xl font-bold font-heading tracking-tight text-foreground md:text-4xl">
@@ -369,8 +372,8 @@ function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle
         </div>
         <Accordion type="single" collapsible className="w-full space-y-3">
           {displayFaqs.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`} className="overflow-hidden rounded-2xl border border-border bg-card px-5">
-              <AccordionTrigger className="text-left font-medium hover:text-primary transition-colors">
+            <AccordionItem key={index} value={`item-${index}`} className="overflow-hidden rounded-2xl border border-border bg-card px-4 md:px-5">
+              <AccordionTrigger className="text-left text-[15px] leading-relaxed md:text-base font-medium hover:text-primary transition-colors py-4">
                 {faq.q}
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">
@@ -493,7 +496,13 @@ export function StorefrontBlockRenderer({
   block: StorePageBlock;
   template?: StorefrontTemplateDefinition;
 }) {
-  if (!block.isVisible) {
+  const currentStore = useOptionalStore();
+  const { slugId } = useParams();
+  const productId = slugId ? extractIdFromSlug(slugId as string) : undefined;
+  const { data: currentProduct } = useProduct(productId, currentStore?.id);
+  const { user } = useAuth();
+
+  if ((block.isVisible ?? block.visible ?? true) === false) {
     return null;
   }
 
@@ -505,18 +514,19 @@ export function StorefrontBlockRenderer({
     </div>
   );
 
-  // Mock data context for tag resolution - in production this would come from a React Context or Global State
   const dataContext = {
     store: {
-      name: "Acme Store",
-      meta_description: "The best products in the world",
+      name: currentStore?.name || "Store",
+      meta_description: currentStore?.description || currentStore?.siteSettings?.meta_description || "",
     },
     product: {
-      price: "$99.00",
-      inventory_count: "42",
+      price: currentProduct ? `BDT ${currentProduct.price.toLocaleString()}` : "",
+      inventory_count: currentProduct ? String(currentProduct.stock) : "",
+      name: currentProduct?.name || "",
+      description: currentProduct?.description || "",
     },
     customer: {
-      name: "Valued Customer",
+      name: user?.user_metadata?.full_name || user?.email || "",
     }
   };
 
@@ -545,26 +555,28 @@ export function StorefrontBlockRenderer({
 
   const resolvedProps = resolveTags(block.props);
   const blockLayoutVariant = block.layoutVariant ?? template?.presentation.blockLayoutVariants?.[block.type];
+  const presetProps = template ? getSharedBlockPresetProps(template.id, block.type) : {};
+  const mergedProps = { ...presetProps, ...resolvedProps };
 
   const renderBlock = () => {
     switch (block.type) {
       case "countdown":
-        return <CountdownTimer overrides={resolvedProps} />;
+        return <CountdownTimer overrides={mergedProps} />;
       case "hero":
-        return <HeroSection overrides={{ ...resolvedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
+        return <HeroSection overrides={{ ...mergedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
       case "promo-banner":
-        return <PromoBanner overrides={{ ...resolvedProps, disableLegacyFallback: true }} />;
+        return <PromoBanner overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "category-showcase":
-        return <CategoryShowcase overrides={{ ...resolvedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
+        return <CategoryShowcase overrides={{ ...mergedProps, layoutVariant: blockLayoutVariant, disableLegacyFallback: true }} />;
       case "featured-products":
         return (
           <FeaturedProducts
-            limit={resolvedProps.limit}
-            title={resolvedProps.title}
-            tagline={resolvedProps.tagline}
-            source={resolvedProps.source}
-            category={resolvedProps.category}
-            productType={resolvedProps.productType}
+            limit={mergedProps.limit}
+            title={mergedProps.title}
+            tagline={mergedProps.tagline}
+            source={mergedProps.source}
+            category={mergedProps.category}
+            productType={mergedProps.productType}
             layoutVariant={blockLayoutVariant}
             disableLegacyFallback
           />
@@ -572,32 +584,32 @@ export function StorefrontBlockRenderer({
       case "recommended-products":
         return (
           <FeaturedProducts
-            limit={resolvedProps.limit}
-            title={resolvedProps.title ?? "Products you may like"}
-            tagline={resolvedProps.tagline ?? "More to explore"}
-            source={resolvedProps.source}
-            category={resolvedProps.category}
-            productType={resolvedProps.productType}
+            limit={mergedProps.limit}
+            title={mergedProps.title ?? "Products you may like"}
+            tagline={mergedProps.tagline ?? "More to explore"}
+            source={mergedProps.source}
+            category={mergedProps.category}
+            productType={mergedProps.productType}
             layoutVariant={blockLayoutVariant}
             disableLegacyFallback
           />
         );
       case "comparison":
-        return <ComparisonBlock {...resolvedProps} />;
+        return <ComparisonBlock {...mergedProps} />;
       case "recently-viewed":
-        return <RecentlyViewed title={resolvedProps.title} />;
+        return <RecentlyViewed title={typeof mergedProps.title === "string" ? mergedProps.title : undefined} />;
       case "rich-text":
-        return <RichTextBlock {...resolvedProps} />;
+        return <RichTextBlock {...mergedProps} />;
       case "social-feed":
-        return <SocialFeedBlock {...resolvedProps} />;
+        return <SocialFeedBlock {...mergedProps} />;
       case "video-reel":
-        return <VideoReelBlock {...resolvedProps} />;
+        return <VideoReelBlock {...mergedProps} />;
       case "faq-accordion":
-        return <FaqAccordionBlock {...resolvedProps} />;
+        return <FaqAccordionBlock {...mergedProps} />;
       case "trust-badges":
-        return <TrustBadgesBlock {...resolvedProps} />;
+        return <TrustBadgesBlock {...mergedProps} />;
       case "testimonials":
-        return <TestimonialsBlock {...resolvedProps} />;
+        return <TestimonialsBlock {...mergedProps} />;
       default:
         return null;
     }
@@ -649,7 +661,10 @@ export function StorefrontBlockRenderer({
   return (
     <ErrorBoundary fallback={BlockFallback}>
       {renderCustomCss()}
-      <div className={`w-full transition-all duration-200 ${blockClass}`}>
+      <div
+        className={`w-full transition-all duration-200 ${blockClass}`}
+        data-ezcomo-block-id={block.id}
+      >
         {renderBlock()}
         {safeCustomHtml ? <div dangerouslySetInnerHTML={{ __html: safeCustomHtml }} /> : null}
       </div>

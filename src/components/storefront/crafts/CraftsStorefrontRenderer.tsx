@@ -404,13 +404,13 @@ export function CraftsStorefrontRenderer({
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_18px_36px_-18px_rgba(43,154,90,0.58)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_18px_36px_-18px_rgba(43,154,90,0.58)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroCta}
               </Link>
               <Link
                 href={storefrontPath(heroBlock?.secondaryCtaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-full border border-[#e7dac6] bg-white px-7 text-sm font-semibold text-[#4f4132] shadow-[0_16px_32px_-24px_rgba(71,54,35,0.22)] transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full border border-[#e7dac6] bg-white px-7 text-sm font-semibold text-[#4f4132] shadow-[0_16px_32px_-24px_rgba(71,54,35,0.22)] transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroSecondaryCta}
               </Link>
@@ -453,7 +453,7 @@ export function CraftsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
             {categoryBlock?.tagline?.trim() || (labelMode === "bengali" ? "বাছাই করা কারুশিল্প" : "Craft categories")}
@@ -462,14 +462,14 @@ export function CraftsStorefrontRenderer({
             {categoryBlock?.title?.trim() || (labelMode === "bengali" ? "ক্যাটেগরি সমূহ" : "Browse by category")}
           </h2>
         </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 lg:grid-cols-6">
           {categoryNames.map((category, index) => {
             const categoryProduct = pickCategoryProduct(availableProducts, category);
             return (
               <Link
                 key={`${category}-${index}`}
                 href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-                className="rounded-[22px] border border-[#eee2d2] bg-white p-3 shadow-[0_16px_32px_-28px_rgba(71,54,35,0.22)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+                className="rounded-[22px] border border-[#eee2d2] bg-white p-3 sm:p-5 shadow-[0_16px_32px_-28px_rgba(71,54,35,0.22)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
               >
                 <div className="overflow-hidden rounded-[18px] bg-[#f5eee3] dark:bg-secondary/70">
                   {categoryProduct ? (
@@ -496,7 +496,7 @@ export function CraftsStorefrontRenderer({
             eyebrow={labelMode === "bengali" ? "জনপ্রিয় কালেকশন" : "Popular collections"}
             title={labelMode === "bengali" ? "জনপ্রিয় কালেকশন" : "Explore signature collections"}
           />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             {collectionSpotlights.map((collection) => (
               <Link
                 key={collection.id}
@@ -526,7 +526,7 @@ export function CraftsStorefrontRenderer({
         </section>
       ) : null}
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
           <div className="overflow-hidden rounded-[30px] border border-[#ebdfce] bg-[#f6efe3] dark:border-white/10 dark:bg-secondary/70">
             {storyProduct?.image ? (
@@ -590,7 +590,7 @@ export function CraftsStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="overflow-hidden rounded-[30px] border border-[#e9ddcc] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f3ea_100%)] shadow-[0_20px_46px_-34px_rgba(71,54,35,0.24)] dark:border-white/10 dark:bg-card">
           <div className="grid gap-6 px-5 py-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-8">
             <div className="grid gap-4 sm:grid-cols-3">

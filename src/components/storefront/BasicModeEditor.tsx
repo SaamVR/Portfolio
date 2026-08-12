@@ -23,6 +23,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections, type BasicFlowSectionId } from "@/lib/cms/storefront-editor-registry";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -373,6 +374,7 @@ type StoreFlowSettings = {
     template_id?: string;
     product_visibility?: string;
     checkout_mode?: string;
+    allow_guest_checkout?: boolean;
   };
   payment_settings: {
     cod_enabled?: boolean;
@@ -408,6 +410,7 @@ const defaultFlowSettings: StoreFlowSettings = {
   storefront_profile: {
     product_visibility: "available",
     checkout_mode: "standard",
+    allow_guest_checkout: true,
   },
   payment_settings: {
     cod_enabled: true,
@@ -506,6 +509,8 @@ function BasicStoreFlowSettingsPanel({ storeId, templateId }: { storeId: string;
       if (error) throw error;
       dirtySettingKeysRef.current.delete(key);
       await queryClient.invalidateQueries({ queryKey: ["site_settings", storeId, key] });
+      await queryClient.invalidateQueries({ queryKey: ["site_settings", storeId] });
+      await refreshStorefrontContentCache(supabase, storeId);
       toast.success(`${key.replace(/_/g, " ")} saved.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save flow settings.");
@@ -667,6 +672,19 @@ function BasicStoreFlowSettingsPanel({ storeId, templateId }: { storeId: string;
                 <option value="inquiry">Inquiry first</option>
               </select>
             </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
+              <div className="space-y-1">
+                <Label>Allow checkout without signup</Label>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Leave this on for guest checkout, or turn it off to require customer login before purchase.
+                </p>
+              </div>
+              <Switch
+                data-testid="basic-flow-allow-guest-checkout"
+                checked={settings.storefront_profile.allow_guest_checkout ?? true}
+                onCheckedChange={(checked) => updateFlowSetting("storefront_profile", "allow_guest_checkout", checked)}
+              />
+            </div>
             <div className="grid gap-2">
               {[
                 { key: "cod_enabled", label: "Cash on Delivery" },
@@ -797,7 +815,7 @@ export function BasicModeEditor({
   const templateId = resolveStorefrontTemplateId(
     storefrontProfile.template_id,
     {
-      blueprintId: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+      templateSeedId: typeof storefrontProfile.template_id === "string" ? storefrontProfile.template_id : null,
       productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
     },
   );
@@ -935,12 +953,12 @@ export function BasicModeEditor({
   const renderSection = () => {
     switch (activeSection) {
       case "start": {
-        const visibleSections = page.blocks.filter((block) => block.isVisible).length;
+        const visibleSections = page.blocks.filter((block) => block.isVisible ?? block.visible ?? true).length;
         const heroBlock = page.blocks.find((block) => block.type === "hero");
         const heroProps = heroBlock?.props as Record<string, unknown> | undefined;
         const hasHeroMessage = Boolean(heroProps?.title || heroProps?.subtitle);
-        const hasProductsSection = page.blocks.some((block) => block.type === "featured-products" && block.isVisible);
-        const hasTrustSection = page.blocks.some((block) => ["trust-badges", "faq-accordion", "testimonials"].includes(block.type) && block.isVisible);
+        const hasProductsSection = page.blocks.some((block) => block.type === "featured-products" && (block.isVisible ?? block.visible ?? true));
+        const hasTrustSection = page.blocks.some((block) => ["trust-badges", "faq-accordion", "testimonials"].includes(block.type) && (block.isVisible ?? block.visible ?? true));
         const hasFlowSettings = Boolean(
           store.theme.aesthetic || store.theme.presetId !== "default" || page.blocks.some((block) => block.type === "featured-products"),
         );
@@ -1272,7 +1290,10 @@ export function BasicModeEditor({
             </div>
             {page.blocks.length > 0 ? (
               <div className="space-y-3">
-                {page.blocks.map((block, index) => (
+                {page.blocks.map((block, index) => {
+                  const isVisible = block.isVisible ?? block.visible ?? true;
+
+                  return (
                   <div
                     key={block.id}
                     draggable
@@ -1313,7 +1334,7 @@ export function BasicModeEditor({
                           <span className="truncate text-sm font-semibold capitalize text-foreground">{index + 1}. {block.type.replace("-", " ")}</span>
                           <span className="truncate text-[11px] text-muted-foreground">
                             {block.layoutVariant ? block.layoutVariant : "Default layout"}
-                            {!block.isVisible ? " · hidden" : ""}
+                            {!isVisible ? " · hidden" : ""}
                           </span>
                         </div>
                       </div>
@@ -1324,11 +1345,11 @@ export function BasicModeEditor({
                           className="h-8 w-8"
                           onClick={(event) => {
                             event.stopPropagation();
-                            updateBlockMeta(block.id, { isVisible: !block.isVisible });
+                            updateBlockMeta(block.id, { isVisible: !isVisible, visible: !isVisible });
                           }}
-                          title={block.isVisible ? "Hide section" : "Show section"}
+                          title={isVisible ? "Hide section" : "Show section"}
                         >
-                          {block.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                          {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                         </Button>
                         <Button
                           variant="ghost"
@@ -1383,7 +1404,8 @@ export function BasicModeEditor({
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
@@ -1487,8 +1509,8 @@ export function BasicModeEditor({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <p className="truncate text-sm font-semibold capitalize text-foreground">{index + 1}. {block.type.replace("-", " ")}</p>
-                              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px]", block.isVisible ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                                {block.isVisible ? "Live" : "Hidden"}
+                              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px]", (block.isVisible ?? block.visible ?? true) ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                                {(block.isVisible ?? block.visible ?? true) ? "Live" : "Hidden"}
                               </span>
                             </div>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">{label || "Untitled section"}</p>
@@ -1506,7 +1528,7 @@ export function BasicModeEditor({
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Editing Section {focusedIndex + 1}</p>
                         <h4 className="mt-1 text-base font-semibold capitalize text-foreground">{focusedBlock.type.replace("-", " ")}</h4>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {focusedBlock.isVisible ? "Visible on storefront" : "Hidden from shoppers"} - {focusedIndex + 1} of {page.blocks.length}
+                          {(focusedBlock.isVisible ?? focusedBlock.visible ?? true) ? "Visible on storefront" : "Hidden from shoppers"} - {focusedIndex + 1} of {page.blocks.length}
                         </p>
                       </div>
                       <div className="flex gap-1">
@@ -2168,6 +2190,9 @@ export function BasicModeEditor({
   const activeNavItem = navItems[activeNavIndex] ?? navItems[0];
   const previousNavItem = activeNavIndex > 0 ? navItems[activeNavIndex - 1] : null;
   const nextNavItem = activeNavIndex < navItems.length - 1 ? navItems[activeNavIndex + 1] : null;
+  const visibleBlockCount = page.blocks.filter((block) => block.isVisible ?? block.visible ?? true).length;
+  const hiddenBlockCount = Math.max(0, page.blocks.length - visibleBlockCount);
+  const contentPageCount = allPages.filter((candidate) => getPageGroup(candidate) === "content").length;
   const navGroups = [
     {
       id: "plan",
@@ -2199,6 +2224,43 @@ export function BasicModeEditor({
   return (
     <div className="flex h-full w-full flex-col bg-card text-card-foreground">
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 p-2 backdrop-blur sm:bg-muted/20 sm:p-3">
+        <div className="mb-3 rounded-3xl border border-border/70 bg-background/85 p-3 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Guided editor
+                </Badge>
+                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px]">
+                  {templateId}
+                </Badge>
+                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px]">
+                  {pageType}
+                </Badge>
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-foreground sm:text-xl">{page.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                This editor follows the shared storefront wiring. Update structure, content, style, and buying flow here without leaving the current merchant workflow.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Visible</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{visibleBlockCount} live sections</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Hidden</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{hiddenBlockCount} tucked away</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Pages</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{contentPageCount} content pages</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="mb-2 flex items-center justify-between gap-3 sm:hidden">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -2301,9 +2363,40 @@ export function BasicModeEditor({
             </div>
           ))}
         </div>
+        <div className="mt-3 hidden items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-3 py-2 sm:flex">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground">{activeNavItem.label}</p>
+            <p className="text-xs leading-5 text-muted-foreground">{activeNavItem.hint}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {previousNavItem ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => setActiveSection(previousNavItem.id)}
+              >
+                <ArrowUp className="mr-1 h-3.5 w-3.5 rotate-[-90deg]" />
+                Back
+              </Button>
+            ) : null}
+            {nextNavItem ? (
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-full"
+                onClick={() => setActiveSection(nextNavItem.id)}
+              >
+                Next
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+          </div>
+        </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-3 pb-32 sm:p-5 sm:pb-5">
+      <div className="flex-1 overflow-y-auto bg-muted/10 p-3 pb-32 sm:p-5 sm:pb-5">
         {renderSection()}
       </div>
     </div>

@@ -441,21 +441,21 @@ export function FoodStorefrontRenderer({
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath(heroBlock?.ctaLink || "/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.62)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroCta}
               </Link>
               <Link
                 href={heroSupportHref}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dde7df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dde7df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroSecondaryCta}
               </Link>
             </div>
           </div>
 
-          <div className="relative min-h-[350px] rounded-[34px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(246,250,246,0.9)_52%,rgba(236,245,237,0.92)_100%)] p-4 shadow-[0_28px_70px_-46px_rgba(15,23,42,0.3)] dark:bg-secondary/40 sm:min-h-[460px] lg:min-h-[520px]">
-            <div className="absolute right-5 top-5 rounded-full border border-[#d9e6db] bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-card/90 dark:text-muted-foreground">
+          <div className="relative min-h-[220px] md:min-h-[350px] sm:min-h-[460px] lg:min-h-[520px] rounded-[34px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(246,250,246,0.9)_52%,rgba(236,245,237,0.92)_100%)] p-4 shadow-[0_28px_70px_-46px_rgba(15,23,42,0.3)] dark:bg-secondary/40">
+            <div className="absolute right-5 top-5 z-10 rounded-full border border-[#d9e6db] bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-card/90 dark:text-muted-foreground">
               {deliverySettings?.free_threshold
                 ? `Free delivery over ৳${deliverySettings.free_threshold.toLocaleString()}`
                 : "Freshly prepared for each order"}
@@ -463,14 +463,14 @@ export function FoodStorefrontRenderer({
             {heroDish ? (
               <div className="absolute inset-x-[7%] bottom-[8%] top-[11%]">
                 <div className="grid h-full gap-4 lg:grid-cols-[1fr_170px]">
-                  <div className="flex items-center justify-center rounded-[28px] bg-white/75 p-5 dark:bg-card/75">
+                  <div className="flex items-center justify-center rounded-[28px] bg-white/75 p-3 sm:p-5 dark:bg-card/75">
                     <img
                       src={heroDish.image}
                       alt={heroDish.name}
                       className="h-full max-h-[360px] w-full object-cover rounded-[24px] shadow-[0_28px_46px_-28px_rgba(15,23,42,0.28)]"
                     />
                   </div>
-                  <div className="grid gap-4">
+                  <div className="hidden lg:grid gap-4">
                     {[heroDishAlt, popularDishes[2] ?? availableProducts[2]].filter(Boolean).map((product) => (
                       <div key={product!.id} className="rounded-[22px] border border-[#dde8de] bg-white/92 p-3 shadow-sm dark:border-white/10 dark:bg-card/90">
                         <div className="flex items-center gap-3">
@@ -498,7 +498,7 @@ export function FoodStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="mx-auto max-w-xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
             {categoryBlock?.tagline?.trim() || "Explore cuisines"}
@@ -507,23 +507,23 @@ export function FoodStorefrontRenderer({
             {categoryBlock?.title?.trim() || "What are you craving?"}
           </h2>
         </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="mt-8 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7">
           {categoryNames.map((category, index) => {
             const categoryProduct = pickCategoryProduct(availableProducts, category);
             return (
               <Link
                 key={`${category}-${index}`}
                 href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-                className="rounded-[22px] border border-[#e3ebe4] bg-white px-4 py-5 text-center shadow-[0_14px_30px_-24px_rgba(15,23,42,0.2)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+                className="rounded-[22px] border border-[#e3ebe4] bg-white px-2 py-3 sm:px-4 sm:py-5 text-center shadow-[0_14px_30px_-24px_rgba(15,23,42,0.2)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#f4f8f4] dark:bg-secondary/60">
+                <div className="mx-auto flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center overflow-hidden rounded-full bg-[#f4f8f4] dark:bg-secondary/60">
                   {categoryProduct ? (
                     <img src={categoryProduct.image} alt={categoryProduct.name} className="h-full w-full object-cover" />
                   ) : (
                     <UtensilsCrossed className="h-5 w-5 text-primary" />
                   )}
                 </div>
-                <p className="mt-4 text-base font-semibold text-slate-900 dark:text-foreground">{category}</p>
+                <p className="mt-3 sm:mt-4 text-sm sm:text-base font-semibold text-slate-900 dark:text-foreground">{category}</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
                   {categoryProduct?.type || "Freshly made"}
                 </p>
@@ -535,7 +535,7 @@ export function FoodStorefrontRenderer({
 
       {comboOffers.length > 0 ? (
         <section className="mx-auto max-w-[1320px] px-5 py-2 md:px-8 lg:px-10">
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {comboOffers.map((offer, index) => (
               <article
                 key={offer.id}
@@ -569,7 +569,7 @@ export function FoodStorefrontRenderer({
                       {index === 0 ? "Order combos" : (countdownBlock?.ctaText?.trim() || "View offers")}
                     </Link>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {offer.products.map((product) => (
                       <div key={product.id} className="overflow-hidden rounded-[22px] bg-white/85 p-2 dark:bg-secondary/60">
                         <img src={product.image} alt={product.name} className="aspect-[1/1] w-full rounded-[18px] object-cover" />
@@ -583,7 +583,7 @@ export function FoodStorefrontRenderer({
         </section>
       ) : null}
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <FoodSectionHeading
           eyebrow={featuredBlock?.tagline?.trim() || "Popular picks"}
           title={featuredBlock?.title?.trim() || "Most loved dishes"}
@@ -611,13 +611,13 @@ export function FoodStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="overflow-hidden rounded-[30px] border border-[#e4ebe4] bg-white shadow-[0_18px_40px_-32px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-card">
-          <div className="grid gap-4 px-5 py-6 md:px-8 lg:grid-cols-4 lg:px-10 lg:py-8">
+          <div className="grid grid-cols-2 gap-3 p-3 sm:p-5 md:grid-cols-4 md:px-8 lg:px-10 lg:py-8">
             {infoCards.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-[22px] border border-[#edf2ed] bg-[#fbfcfb] px-4 py-5 text-center dark:border-white/10 dark:bg-secondary/30">
+                <div key={item.title} className="rounded-[22px] border border-[#edf2ed] bg-[#fbfcfb] px-3 py-4 md:px-4 md:py-5 text-center dark:border-white/10 dark:bg-secondary/30">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>

@@ -11,7 +11,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const store = await getRequestStore();
+  const store = await getRequestStore({ requestedPageSlug: `/${slug}` });
   if (!store) {
     return {};
   }
@@ -30,7 +30,7 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const store = await getRequestStore();
+  const store = await getRequestStore({ requestedPageSlug: `/${slug}` });
   if (!store) {
     notFound();
   }

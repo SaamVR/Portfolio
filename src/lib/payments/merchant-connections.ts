@@ -31,11 +31,15 @@ function pickSecretValue(value: unknown) {
 export function splitBkashConnectionSettings(rawSettings: unknown) {
   const settings = safeObject(rawSettings);
   const isLive = settings.isLive === true || settings.bkash_is_live === true;
+  const forceTestMode = settings.forceTestMode === true || settings.testMode === true;
+  const baseUrl = readText(settings.baseUrl ?? settings.bkash_base_url, 500);
 
   return {
     publicMetadata: {
       is_live: isLive,
       environment: isLive ? "live" : "sandbox",
+      force_test_mode: forceTestMode,
+      base_url: baseUrl || null,
       label: readText(settings.label, 120) || "bKash PGW",
       app_key_hint: maskText(readText(settings.appKey ?? settings.bkash_app_key, 500)),
       username_hint: maskText(readText(settings.username ?? settings.bkash_username, 500)),
@@ -73,6 +77,8 @@ export function buildBkashConnectionResponse(row: BkashPaymentConnectionRow | nu
       status: "draft" as BkashConnectionStatus,
       metadata: {
         environment: "sandbox",
+        forceTestMode: false,
+        baseUrl: null,
         label: "bKash PGW",
         appKeyHint: null,
         usernameHint: null,
@@ -92,6 +98,8 @@ export function buildBkashConnectionResponse(row: BkashPaymentConnectionRow | nu
     status: row.status,
     metadata: {
       environment: metadata.environment === "live" ? "live" : "sandbox",
+      forceTestMode: metadata.force_test_mode === true,
+      baseUrl: typeof metadata.base_url === "string" && metadata.base_url.trim().length > 0 ? metadata.base_url.trim() : null,
       label: readText(metadata.label, 120) || "bKash PGW",
       appKeyHint: typeof metadata.app_key_hint === "string" ? metadata.app_key_hint : null,
       usernameHint: typeof metadata.username_hint === "string" ? metadata.username_hint : null,

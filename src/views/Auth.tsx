@@ -42,6 +42,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const accountPath = storefrontPath("/account", currentStore?.slug);
   const nextPath = searchParams.get("next") || accountPath;
+  const isPurchaseReturn = nextPath.includes("/checkout") || nextPath.includes("/cart") || nextPath.includes("/product");
   const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
 
   useEffect(() => {
@@ -87,7 +88,10 @@ const Auth = () => {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle({
+        redirectPath: storefrontPath("/auth", currentStore?.slug),
+        nextPath,
+      });
       navigate(nextPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Google authentication failed");
@@ -184,6 +188,12 @@ const Auth = () => {
               {mode === "login" ? "Access orders, addresses, reviews, and wishlist." : "Create a customer profile for faster checkout."}
             </p>
           </div>
+
+          {isPurchaseReturn ? (
+            <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+              Sign in to continue your purchase. We will send you back to the same page right after login.
+            </div>
+          ) : null}
 
           {mode === "login" ? (
             <Tabs defaultValue="email" className="rounded-lg border border-border bg-card p-6 shadow-sm">

@@ -23,6 +23,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/data/products";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { generateCloudinarySrcSet } from "@/lib/cms/cloudinary-responsive";
+import {
+  getPrimaryProductOptionValue,
+  getRenderableColorOptions,
+  getRenderableMetricOptionGroups,
+  getRenderableSizeOptions,
+} from "@/lib/cms/storefront-product-presentation";
 import { storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -148,11 +154,28 @@ function buildBenefitPoints(product: Product, storeName?: string) {
     .map((part) => part.trim())
     .filter(Boolean)
     .slice(0, 3);
+  const colorOptions = getRenderableColorOptions(product, {}, "single_product");
+  const sizeOptions = getRenderableSizeOptions(product, {}, "single_product");
+  const metricGroups = getRenderableMetricOptionGroups(product, {}, "single_product");
 
   const points = [
     ...descriptionPoints,
-    product.colors.length > 0 ? `${product.colors.length} finish option${product.colors.length === 1 ? "" : "s"} available` : "",
-    product.sizes.length > 0 ? `${product.sizes.length} size option${product.sizes.length === 1 ? "" : "s"} ready to order` : "",
+    ...(product.metricValues
+      ? Object.entries(product.metricValues)
+          .filter(([, values]) => values.length > 0)
+          .slice(0, 2)
+          .map(([key, values]) => `${key.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}: ${values.slice(0, 3).join(", ")}`)
+      : []),
+    ...(product.metricValues && Object.keys(product.metricValues).length > 0
+      ? []
+      : [
+          colorOptions.length > 0 ? `${colorOptions.length} finish option${colorOptions.length === 1 ? "" : "s"} available` : "",
+          sizeOptions.length > 0 ? `${sizeOptions.length} size option${sizeOptions.length === 1 ? "" : "s"} ready to order` : "",
+          ...metricGroups
+            .filter((group) => group.options.length > 0)
+            .slice(0, 2)
+            .map((group) => `${group.label}: ${group.options.slice(0, 3).join(", ")}`),
+        ]),
     storeName ? `Fulfilled directly by ${storeName}` : "Merchant-managed fulfillment and support",
   ].filter(Boolean);
 
@@ -318,18 +341,29 @@ export function SingleProductStorefrontRenderer({
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedMetricOptions, setSelectedMetricOptions] = useState<Record<string, string[]>>({});
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     setSelectedImage(0);
-    setSelectedColor(flagshipProduct?.colors[0] ?? null);
-    setSelectedSize(flagshipProduct?.sizes[0] ?? null);
+    setSelectedColor(flagshipProduct ? (getRenderableColorOptions(flagshipProduct, {}, "single_product")[0] ?? null) : null);
+    setSelectedSize(flagshipProduct ? (getRenderableSizeOptions(flagshipProduct, {}, "single_product")[0] ?? null) : null);
+    setSelectedMetricOptions(flagshipProduct
+      ? Object.fromEntries(
+          getRenderableMetricOptionGroups(flagshipProduct, {}, "single_product")
+            .map((group) => [group.key, [group.options[0] ?? ""]]),
+        )
+      : {});
     setQuantity(1);
   }, [flagshipProduct]);
 
   if (!flagshipProduct) {
     return null;
   }
+
+  const flagshipColorOptions = getRenderableColorOptions(flagshipProduct, {}, "single_product");
+  const flagshipSizeOptions = getRenderableSizeOptions(flagshipProduct, {}, "single_product");
+  const flagshipMetricOptionGroups = getRenderableMetricOptionGroups(flagshipProduct, {}, "single_product");
 
   const activeImage = galleryImages[selectedImage] ?? flagshipProduct.image;
   const heroEyebrow = heroBlock?.tagline?.trim() || "New launch";
@@ -354,13 +388,19 @@ export function SingleProductStorefrontRenderer({
       ];
 
   const handleAddToCart = () => {
+    const selectedOptions = [
+      selectedColor,
+      selectedSize,
+      ...flagshipMetricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
+    ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(flagshipProduct, {}, "single_product");
+
     for (let index = 0; index < quantity; index += 1) {
       addItem({
         productId: flagshipProduct.id,
         name: flagshipProduct.name,
         price: flagshipProduct.price,
         image: activeImage,
-        size: selectedSize || flagshipProduct.sizes[0] || "Default",
+        size: selectedOptions,
         storeId: activeStore.id,
       });
     }
@@ -384,8 +424,8 @@ export function SingleProductStorefrontRenderer({
             </p>
 
             <ul className="mt-7 space-y-3">
-              {benefitPoints.slice(0, 3).map((point) => (
-                <li key={point} className="flex items-start gap-3 text-sm text-slate-700 dark:text-muted-foreground">
+              {benefitPoints.slice(0, 3).map((point, index) => (
+                <li key={`${point}-${index}`} className="flex items-start gap-3 text-sm text-slate-700 dark:text-muted-foreground">
                   <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 text-primary" />
                   <span>{point}</span>
                 </li>
@@ -570,45 +610,72 @@ export function SingleProductStorefrontRenderer({
                 ) : null}
               </div>
 
-              <div className="mt-5">
-                <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Color</p>
-                <div className="mt-3 flex gap-3">
-                  {(flagshipProduct.colors.length > 0 ? flagshipProduct.colors : ["Default"]).map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      title={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={cn(
-                        "h-10 w-10 rounded-full border-2 shadow-sm transition-transform hover:scale-105",
-                        selectedColor === color ? "border-primary ring-2 ring-primary/20" : "border-[#e6eaed] dark:border-white/10",
-                      )}
-                      style={{ backgroundColor: resolveColorChip(color) }}
-                    />
-                  ))}
+              {flagshipColorOptions.length > 0 ? (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Color</p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {flagshipColorOptions.map((color, index) => (
+                      <button
+                        key={`${color}-${index}`}
+                        type="button"
+                        title={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={cn(
+                          "h-10 w-10 rounded-full border-2 shadow-sm transition-transform hover:scale-105",
+                          selectedColor === color ? "border-primary ring-2 ring-primary/20" : "border-[#e6eaed] dark:border-white/10",
+                        )}
+                        style={{ backgroundColor: resolveColorChip(color) }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className="mt-5">
-                <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Size</p>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  {(flagshipProduct.sizes.length > 0 ? flagshipProduct.sizes : ["Default"]).map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setSelectedSize(size)}
-                      className={cn(
-                        "inline-flex h-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition-colors",
-                        selectedSize === size
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-[#e6eaed] bg-white text-slate-700 dark:border-white/10 dark:bg-secondary dark:text-foreground",
-                      )}
-                    >
-                      {size}
-                    </button>
-                  ))}
+              {flagshipSizeOptions.length > 0 ? (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Size</p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {flagshipSizeOptions.map((size, index) => (
+                      <button
+                        key={`${size}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedSize(size)}
+                        className={cn(
+                          "inline-flex min-h-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition-colors",
+                          selectedSize === size
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-[#e6eaed] bg-white text-slate-700 dark:border-white/10 dark:bg-secondary dark:text-foreground",
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
+
+              {flagshipMetricOptionGroups.map((group) => (
+                <div key={group.key} className="mt-5">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">{group.label}</p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {group.options.map((option, index) => (
+                      <button
+                        key={`${group.key}-${option}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedMetricOptions((current) => ({ ...current, [group.key]: [option] }))}
+                        className={cn(
+                          "inline-flex min-h-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition-colors",
+                          (selectedMetricOptions[group.key]?.[0] ?? "") === option
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-[#e6eaed] bg-white text-slate-700 dark:border-white/10 dark:bg-secondary dark:text-foreground",
+                        )}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
               <div className="mt-5 flex items-center gap-4">
                 <div className="flex items-center rounded-full border border-[#e6eaed] dark:border-white/10">

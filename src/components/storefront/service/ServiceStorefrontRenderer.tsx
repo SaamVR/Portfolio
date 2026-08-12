@@ -430,7 +430,7 @@ export function ServiceStorefrontRenderer({
   return (
     <div className="bg-[#fbfdfb] text-slate-950 dark:bg-background dark:text-foreground">
       <section className="overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.10),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#fbfdfb_100%)] dark:bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--background))_100%)]">
-        <div className="mx-auto grid max-w-[1320px] gap-8 px-5 pb-14 pt-8 md:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-10 lg:pb-16 lg:pt-10">
+        <div className="mx-auto grid max-w-[1320px] gap-8 px-5 pb-6 pt-4 md:pb-14 md:pt-8 md:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-10 lg:pb-16 lg:pt-10">
           <div className="max-w-[540px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">{heroEyebrow}</p>
             <h1 className="mt-5 text-[3rem] font-semibold leading-[1.02] tracking-[-0.05em] text-slate-950 dark:text-foreground sm:text-[4.35rem]">
@@ -443,25 +443,25 @@ export function ServiceStorefrontRenderer({
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href={storefrontPath("/contact", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.55)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_34px_-18px_rgba(34,197,94,0.55)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {heroBlock?.ctaText?.trim() || "Book a Free Consultation"}
               </Link>
               <Link
                 href={storefrontPath("/shop", activeStore.slug)}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 dark:border-white/10 dark:bg-card dark:text-foreground"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-[#dce9df] bg-white px-6 text-sm font-semibold text-slate-800 transition-colors hover:border-primary/35 sm:w-auto dark:border-white/10 dark:bg-card dark:text-foreground"
               >
                 {heroBlock?.secondaryCtaText?.trim() || "Explore Services"}
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid grid-cols-3 gap-2">
               {[
                 { label: "Fast turnaround", description: contactSettings?.response_time_text?.trim() || "Clear milestones and follow-up" },
                 { label: "Quality delivery", description: trustBlock?.badges?.[0]?.description?.trim() || "Merchant-managed output and review" },
                 { label: "Trusted support", description: contactSettings?.phone?.trim() || contactSettings?.email?.trim() || "Direct access to the team" },
               ].map((item, index) => (
-                <div key={item.label} className="rounded-[20px] border border-[#e7eee9] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-card">
+                <div key={item.label} className="rounded-[20px] border border-[#e7eee9] bg-white p-3 sm:p-4 shadow-sm dark:border-white/10 dark:bg-card">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     {index === 0 ? <Clock3 className="h-4.5 w-4.5" /> : index === 1 ? <BadgeCheck className="h-4.5 w-4.5" /> : <Users className="h-4.5 w-4.5" />}
                   </div>
@@ -479,10 +479,10 @@ export function ServiceStorefrontRenderer({
                 srcSet={generateCloudinarySrcSet(heroProduct.image)}
                 sizes="(max-width: 1024px) 92vw, 48vw"
                 alt={heroProduct.name}
-                className="aspect-[16/11] w-full object-cover"
+                className="aspect-[2/1] md:aspect-[16/11] w-full object-cover"
               />
             ) : (
-              <div className="aspect-[16/11] w-full bg-[#f4faf5]" />
+              <div className="aspect-[2/1] md:aspect-[16/11] w-full bg-[#f4faf5]" />
             )}
             <div className="absolute inset-y-0 left-0 w-1/2 bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0))] dark:bg-[linear-gradient(90deg,rgba(10,10,10,0.72),rgba(10,10,10,0))]" />
             <div className="absolute bottom-6 left-6 max-w-[260px] rounded-[22px] border border-white/80 bg-white/92 p-4 shadow-[0_18px_34px_-20px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-card/92">
@@ -520,23 +520,23 @@ export function ServiceStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={categoryBlock?.tagline?.trim() || "What we do"}
           title={categoryBlock?.title?.trim() || "Core service categories"}
           subtitle="Use your real categories or product types to present service areas without duplicating business logic."
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {categoryNames.map((category, index) => (
             <Link
               key={`${category}-${index}`}
               href={storefrontPath(`/shop?category=${encodeURIComponent(category)}`, activeStore.slug)}
-              className="rounded-[22px] border border-[#e7eee9] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
+              className="rounded-[22px] border border-[#e7eee9] bg-white p-3 sm:p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] transition-transform hover:-translate-y-1 dark:border-white/10 dark:bg-card"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {index % 3 === 0 ? <Sparkles className="h-5 w-5" /> : index % 3 === 1 ? <BriefcaseBusiness className="h-5 w-5" /> : <CalendarDays className="h-5 w-5" />}
               </div>
-              <h3 className="mt-5 text-base font-semibold text-slate-950 dark:text-foreground">{category}</h3>
+              <h3 className="mt-3 sm:mt-5 text-base font-semibold text-slate-950 dark:text-foreground">{category}</h3>
               <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-muted-foreground">
                 Merchant-managed packages, pricing, and delivery details live under this service area.
               </p>
@@ -555,11 +555,11 @@ export function ServiceStorefrontRenderer({
           title={featuredBlock?.title?.trim() || "Choose the right package for your goals"}
           subtitle="Real products double as service packages here, so merchants keep one catalog and one source of truth for pricing."
         />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {packageProducts.map((product, index) => (
             <div
               key={product.id}
-              className={`rounded-[28px] border bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)] dark:bg-card ${index === 1 ? "border-primary/40 ring-1 ring-primary/20 dark:border-primary/30" : "border-[#e7eee9] dark:border-white/10"}`}
+              className={`rounded-[28px] border bg-white p-4 sm:p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)] dark:bg-card ${index === 1 ? "border-primary/40 ring-1 ring-primary/20 dark:border-primary/30" : "border-[#e7eee9] dark:border-white/10"}`}
             >
               {index === 1 ? (
                 <div className="mb-4 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -598,7 +598,7 @@ export function ServiceStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
             <SectionHeading
@@ -610,9 +610,9 @@ export function ServiceStorefrontRenderer({
               {trustBody}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             {portfolioImages.map((image, index) => (
-              <div key={`${image}-${index}`} className={`overflow-hidden rounded-[24px] border border-[#e7eee9] bg-white shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card ${index === 0 ? "sm:col-span-2" : ""}`}>
+              <div key={`${image}-${index}`} className={`overflow-hidden rounded-[24px] border border-[#e7eee9] bg-white shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card ${index === 0 ? "col-span-2 sm:col-span-2" : ""}`}>
                 <img
                   src={image}
                   srcSet={generateCloudinarySrcSet(image)}
@@ -644,14 +644,14 @@ export function ServiceStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow={testimonialBlock?.subtitle?.trim() || "Clients love us"}
           title={testimonialBlock?.title?.trim() || "What clients say"}
         />
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:overflow-visible">
           {testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[24px] border border-[#e7eee9] bg-white p-6 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card">
+            <div key={testimonial.id} className="min-w-[280px] snap-center flex-shrink-0 rounded-[24px] border border-[#e7eee9] bg-white p-5 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card lg:min-w-0">
               <div className="flex items-center gap-1 text-primary">
                 {Array.from({ length: testimonial.rating }).map((_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />
@@ -675,10 +675,10 @@ export function ServiceStorefrontRenderer({
           title="People behind the service"
           subtitle="This section stays lightweight and reuses merchant identity plus contact details when custom team data is not yet available."
         />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {teamMembers.map((member) => (
             <div key={`${member.name}-${member.role}`} className="overflow-hidden rounded-[24px] border border-[#e7eee9] bg-white shadow-[0_16px_34px_-30px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-card">
-              <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.16),_transparent_48%),linear-gradient(180deg,#f5faf6_0%,#eef7f0_100%)] text-[2.3rem] font-semibold tracking-tight text-primary dark:bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.22),_transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]">
+              <div className="flex aspect-[3/2] sm:aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.16),_transparent_48%),linear-gradient(180deg,#f5faf6_0%,#eef7f0_100%)] text-[2.3rem] font-semibold tracking-tight text-primary dark:bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.22),_transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]">
                 {member.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
               </div>
               <div className="space-y-3 p-5">
@@ -708,19 +708,19 @@ export function ServiceStorefrontRenderer({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-5 py-12 md:px-8 lg:px-10">
+      <section className="mx-auto max-w-[1320px] px-5 py-6 md:py-12 md:px-8 lg:px-10">
         <SectionHeading
           eyebrow="FAQ"
           title={faqBlock?.title?.trim() || "Frequently asked questions"}
           subtitle={faqBlock?.subtitle?.trim() || "Answer common questions before the client reaches out, so the final CTA feels easier to act on."}
         />
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-2 md:gap-4 lg:grid-cols-2">
           {faqs.map((faq, index) => (
             <button
               key={`${faq.q}-${index}`}
               type="button"
               onClick={() => setOpenFaq(openFaq === index ? -1 : index)}
-              className="rounded-[20px] border border-[#e7eee9] bg-white px-5 py-4 text-left shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card"
+              className="rounded-[20px] border border-[#e7eee9] bg-white px-4 py-3 md:px-5 md:py-4 text-left shadow-[0_14px_28px_-26px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-card"
             >
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-semibold text-slate-950 dark:text-foreground">{faq.q}</span>

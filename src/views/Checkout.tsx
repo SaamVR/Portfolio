@@ -1,7 +1,7 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@/lib/react-router-dom-shim";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { ArrowLeft, Phone, Copy, CheckCircle2, Tag, X, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -20,6 +20,8 @@ import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-car
 import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
+import { buildCustomerAuthPath, getCurrentRelativePath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
+import { clearBuyNowPayload, loadBuyNowPayload } from "@/lib/storefront-buy-now";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -60,20 +62,39 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const storeName = currentStore?.name ?? "this store";
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { items, clearCart, couponCode, setCouponCode } = useCart();
   const { user } = useAuth();
   const { trackEvent, visitorId, sessionId } = useStorefrontAnalytics();
   const createOrder = useCreateOrder();
   const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
-  const checkoutStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : storeId;
+  const cartCheckoutStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : storeId;
+  const buyNowMode = searchParams.get("buy_now") === "1";
+  const buyNowPayload = useMemo(
+    () => (buyNowMode && storeId ? loadBuyNowPayload(storeId) : null),
+    [buyNowMode, storeId],
+  );
+  const buyNowStoreId = buyNowPayload?.items[0]?.storeId;
+  const checkoutStoreId = buyNowMode
+    ? (buyNowStoreId ?? storeId)
+    : cartCheckoutStoreId;
   const hasMixedStoreItems = cartStoreIds.length > 1;
-  const checkoutItems = items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
+  const checkoutItems = buyNowMode
+    ? (buyNowPayload?.items ?? []).filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId)
+    : items.filter((item) => (item.storeId ?? checkoutStoreId) === checkoutStoreId);
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const digitalOnlyCheckout = isDigitalOnlyCart(checkoutItems);
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
+  const preloadedStorefrontProfile =
+    currentStore?.id === checkoutStoreId && typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
+      ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+      : undefined;
+  const { data: storefrontProfileData, isLoading: storefrontProfileLoading } = useSiteSettings<Record<string, unknown>>("storefront_profile", checkoutStoreId);
   const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
+  const allowGuestCheckout = resolveAllowGuestCheckout(storefrontProfileData ?? preloadedStorefrontProfile);
   const experience = resolveStorefrontOrderExperience(currentStore, checkoutItems);
+  const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [form, setForm] = useState({
@@ -93,10 +114,30 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const checkoutTrackedRef = useRef("");
 
   useEffect(() => {
+    if (buyNowMode && !storeId) {
+      return;
+    }
+
+    if (buyNowMode && !buyNowPayload) {
+      toast.error("That Buy Now session expired. Please start again from the product page.");
+      navigate(storefrontPath("/cart", storeSlug), { replace: true });
+      return;
+    }
+
     if (checkoutItems.length === 0 && !isRedirecting) {
       navigate(storefrontPath("/cart", storeSlug));
     }
-  }, [checkoutItems.length, isRedirecting, navigate, storeSlug]);
+  }, [buyNowMode, buyNowPayload, checkoutItems.length, isRedirecting, navigate, storeId, storeSlug]);
+
+  useEffect(() => {
+    if (!checkoutStoreId || storefrontProfileLoading || allowGuestCheckout || user) {
+      return;
+    }
+
+    setIsRedirecting(true);
+    toast.info("Please sign in to continue this store's checkout.");
+    navigate(buildCustomerAuthPath(getCurrentRelativePath(storefrontPath("/checkout", storeSlug)), storeSlug), { replace: true });
+  }, [allowGuestCheckout, checkoutStoreId, navigate, storeSlug, storefrontProfileLoading, user]);
 
   useEffect(() => {
     if (!checkoutItems.length) return;
@@ -229,6 +270,23 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     return null;
   }
 
+  if (!allowGuestCheckout && !user) {
+    return (
+      <LayoutWrapper>
+        <SEOHead title="Checkout" description={`Complete your order with ${storeName}.`} noindex />
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="max-w-lg rounded-lg border border-primary/20 bg-primary/5 p-8 text-center">
+            <h1 className="mb-3 font-heading text-2xl font-bold text-foreground">Sign in required for checkout</h1>
+            <p className="text-sm text-muted-foreground">
+              This store only allows checkout for signed-in customers. We are taking you to login now and will return you here right after.
+            </p>
+            <Loader2 className="mx-auto mt-5 h-7 w-7 animate-spin text-primary" />
+          </div>
+        </div>
+      </LayoutWrapper>
+    );
+  }
+
   const couponDiscount = appliedCoupon
     ? appliedCoupon.discount_type === "percentage"
       ? Math.round((checkoutSubtotal * appliedCoupon.discount_value) / 100)
@@ -307,7 +365,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasMixedStoreItems) {
+    if (hasMixedStoreItems && !buyNowMode) {
       toast.error("Please checkout one store at a time.");
       return;
     }
@@ -400,7 +458,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           return;
         }
 
-        clearCart(checkoutStoreId);
+        if (buyNowMode) {
+          clearBuyNowPayload(checkoutStoreId);
+        } else {
+          clearCart(checkoutStoreId);
+        }
         window.location.href = data.bkashURL;
         return;
       }
@@ -428,7 +490,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
       }
       setIsRedirecting(true);
-      clearCart(checkoutStoreId);
+      if (buyNowMode) {
+        clearBuyNowPayload(checkoutStoreId);
+      } else {
+        clearCart(checkoutStoreId);
+      }
       navigate(storefrontPath(`/order-success?order=${encodeURIComponent(order.order_number)}`, storeSlug));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to place order. Please try again.";
@@ -440,8 +506,6 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
-
-  const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
 
   return (
     <LayoutWrapper>

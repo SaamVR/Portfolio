@@ -23,7 +23,13 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import type { ProductCardVariant } from "@/lib/cms/storefront-product-presentation";
-import { getDisplayableProductType, getRenderableColorOptions, getRenderableSizeOptions } from "@/lib/cms/storefront-product-presentation";
+import {
+  getDisplayableProductType,
+  getPrimaryProductOptionValue,
+  getRenderableColorOptions,
+  getRenderableMetricOptionGroups,
+  getRenderableSizeOptions,
+} from "@/lib/cms/storefront-product-presentation";
 
 function formatPrice(product: Product) {
   return `BDT ${product.price.toLocaleString()}`;
@@ -59,6 +65,7 @@ function FashionProductCard({
   const { specs } = useStoreProductPresentation(product);
   const colorOptions = getRenderableColorOptions(product, specs, "fashion");
   const sizeOptions = getRenderableSizeOptions(product, specs, "fashion");
+  const metricOptionGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
   const url = productUrl(product.id, product.name, currentStore?.slug);
 
   const visibleColors = colorOptions.slice(0, 4);
@@ -66,6 +73,8 @@ function FashionProductCard({
 
   const visibleSizes = sizeOptions.slice(0, 3);
   const remainingSizes = sizeOptions.length - visibleSizes.length;
+  const visibleMetricGroups = metricOptionGroups.slice(0, 2);
+  const remainingMetricGroups = metricOptionGroups.length - visibleMetricGroups.length;
 
   return (
     <ProductCardShell>
@@ -88,9 +97,9 @@ function FashionProductCard({
         </ProductCardTitle>
 
         <div className="flex flex-wrap items-center gap-1.5 min-h-[1.5rem]">
-          {visibleColors.map((color) => (
+          {visibleColors.map((color, index) => (
             <span
-              key={color}
+              key={`${color}-${index}`}
               className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10 shadow-sm"
               style={{ backgroundColor: color.toLowerCase() === "white" ? "#f3f4f6" : color.toLowerCase() }}
               title={color}
@@ -100,13 +109,22 @@ function FashionProductCard({
             <span className="text-[10px] font-semibold text-muted-foreground">+{remainingColors}</span>
           ) : null}
 
-          {visibleSizes.map((size) => (
-            <span key={size} className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+          {visibleSizes.map((size, index) => (
+            <span key={`${size}-${index}`} className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
               {size}
             </span>
           ))}
           {remainingSizes > 0 ? (
             <span className="text-[10px] font-semibold text-muted-foreground">+{remainingSizes}</span>
+          ) : null}
+
+          {visibleMetricGroups.map((group) => (
+            <span key={group.key} className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {group.label}: {group.options[0]}
+            </span>
+          ))}
+          {remainingMetricGroups > 0 ? (
+            <span className="text-[10px] font-semibold text-muted-foreground">+{remainingMetricGroups}</span>
           ) : null}
         </div>
 
@@ -136,7 +154,7 @@ function FashionProductCard({
                 name: product.name,
                 price: product.price,
                 image: product.image,
-                size: product.sizes[0] || "Default",
+                size: getPrimaryProductOptionValue(product, specs, "fashion"),
                 storeId: currentStore?.id,
               })}
               className="inline-flex h-10 flex-1 min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
@@ -160,7 +178,7 @@ function GenericProductCard({
   );
 }
 
-export const productCardRegistry: Record<ProductCardVariant, ({ product, onQuickView }: { product: Product; onQuickView?: (product: Product) => void }) => ReactElement> = {
+const productCardRegistry: Record<ProductCardVariant, ({ product, onQuickView }: { product: Product; onQuickView?: (product: Product) => void }) => ReactElement> = {
   generic: ({ product }) => <GenericProductCard product={product} />,
   fashion: ({ product, onQuickView }) => <FashionProductCard product={product} onQuickView={onQuickView} />,
   beauty: ({ product }) => <BeautyProductCard product={product} />,

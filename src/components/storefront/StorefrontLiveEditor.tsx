@@ -16,9 +16,10 @@ import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { supabase } from "@/integrations/supabase/client";
-import { loadStoreBlueprints, resolveStoreBlueprint } from "@/lib/cms/store-blueprints";
+import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
 import { loadThemePackages } from "@/lib/theme-packages";
 import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
@@ -29,7 +30,7 @@ import { StoreThemeScope } from "./StoreThemeScope";
 import { StorefrontBlockRenderer } from "./StorefrontBlockRenderer";
 import { VisualCssInspector } from "./VisualCssInspector";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
-import { fallbackBlockRegistry, filterBlockRegistryForBlueprint, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -50,6 +51,32 @@ const BASIC_TEXT_FIELDS = [
 const PROMO_BG_STYLES = ["gradient", "dark", "accent", "luxury-gold", "indigo", "rose", "aurora", "luxury-dark", "confetti", "mesh-gradient"] as const;
 const PROMO_ALIGNMENTS = ["left", "center", "right"] as const;
 const PROMO_PADDING_SIZES = ["compact", "cozy", "large"] as const;
+const PROMO_THEME_DEFAULT_VALUE = "__theme-default";
+
+function mergeBlockProps(
+  currentProps: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const nextProps = { ...(currentProps ?? {}) };
+  Object.entries(patch).forEach(([key, value]) => {
+    if (value === undefined) {
+      delete nextProps[key];
+      return;
+    }
+    nextProps[key] = value;
+  });
+  return nextProps;
+}
+
+function normalizeBlockMetaPatch(patch: Partial<StorePageBlock>): Partial<StorePageBlock> {
+  if ("isVisible" in patch && !("visible" in patch)) {
+    return { ...patch, visible: patch.isVisible };
+  }
+  if ("visible" in patch && !("isVisible" in patch)) {
+    return { ...patch, isVisible: patch.visible };
+  }
+  return patch;
+}
 
 function serializeStoreDraft(store: Store): string {
   return JSON.stringify(store);
@@ -167,18 +194,18 @@ export function StorefrontLiveEditor({
     () => (importPreview ? buildImportChangeSummary(store, importPreview) : null),
     [importPreview, store],
   );
-  const activeBlueprint = useMemo(() => {
+  const activeTemplateSeed = useMemo(() => {
     const profile = store.siteSettings?.storefront_profile;
-    const inferredBlueprintId = typeof profile === "object" && profile && "blueprint_id" in profile && typeof profile.blueprint_id === "string"
-      ? profile.blueprint_id
+    const inferredTemplateSeedId = typeof profile === "object" && profile && "template_id" in profile && typeof profile.template_id === "string"
+      ? profile.template_id
       : typeof profile === "object" && profile && "product_visibility" in profile && profile.product_visibility === "landing_only"
         ? "landing-page"
         : undefined;
-    return resolveStoreBlueprint(inferredBlueprintId);
+    return resolveStorefrontTemplateSeed(inferredTemplateSeedId);
   }, [store.siteSettings]);
   const availableBlockRegistry = useMemo(
-    () => filterBlockRegistryForBlueprint(blockRegistry, activeBlueprint),
-    [activeBlueprint, blockRegistry],
+    () => filterBlockRegistryForTemplateSeed(blockRegistry, activeTemplateSeed),
+    [activeTemplateSeed, blockRegistry],
   );
 
   useEffect(() => {
@@ -378,9 +405,10 @@ export function StorefrontLiveEditor({
 
   const updateSelectedBlock = (patch: Partial<StorePageBlock>) => {
     if (!selectedBlock) return;
+    const normalizedPatch = normalizeBlockMetaPatch(patch);
     applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
       ...block,
-      ...patch,
+      ...normalizedPatch,
     } as StorePageBlock)));
   };
 
@@ -389,10 +417,7 @@ export function StorefrontLiveEditor({
 
     applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({
       ...block,
-      props: {
-        ...(block.props as Record<string, unknown>),
-        ...patch,
-      },
+      props: mergeBlockProps(block.props as Record<string, unknown>, patch),
     } as StorePageBlock)));
   };
 
@@ -559,17 +584,16 @@ export function StorefrontLiveEditor({
   const saveLiveEdits = async () => {
     setSaving(true);
     try {
-      const [blueprints, themePackages, businessProfileResult] = await Promise.all([
-        loadStoreBlueprints(supabase),
+      const [themePackages, businessProfileResult] = await Promise.all([
         loadThemePackages(supabase, store.id),
-        supabase.from("store_business_profiles").select("blueprint_id").eq("store_id", store.id).maybeSingle(),
+        supabase.from("store_business_profiles" as any).select("template_id").eq("store_id", store.id).maybeSingle(),
       ]);
-      const blueprint = resolveStoreBlueprint(businessProfileResult.data?.blueprint_id ?? null, blueprints);
+      const templateSeed = resolveStorefrontTemplateSeed((businessProfileResult.data as { template_id?: string | null } | null)?.template_id ?? null);
       const result = await persistStorefrontState({
         client: supabase,
         store,
         ownerId: userId ?? null,
-        blueprint,
+        templateSeed,
         themePackages,
         selectedPage: page,
         revisionLabel: `Live ${editorMode} edit`,
@@ -580,6 +604,10 @@ export function StorefrontLiveEditor({
         toast.error(`Failed to save live edits: ${result.error.message || "Unknown error"}`);
         return;
       }
+
+      await refreshStorefrontContentCache(supabase, store.id, {
+        pageSlugs: [page.slug],
+      });
 
       const nextSnapshot = serializeStoreDraft(store);
       setPersistedSnapshot(nextSnapshot);
@@ -690,15 +718,38 @@ export function StorefrontLiveEditor({
             </div>
           </div>
         );
-      case "promo-banner":
+      case "promo-banner": {
+        const promoBgStyle =
+          typeof selectedBlock.props.bgStyle === "string"
+            ? selectedBlock.props.bgStyle
+            : undefined;
+        const usesCustomPromoTheme = Boolean(promoBgStyle);
+        const clearPromoThemePatch = {
+          bgStyle: undefined,
+          enableGlow: undefined,
+          enableParticles: undefined,
+          enableOrbs: undefined,
+          cardOpacity: undefined,
+        };
+
         return (
           <div className="grid gap-3">
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Background Style</Label>
-                <Select value={(selectedBlock.props.bgStyle as string | undefined) ?? "gradient"} onValueChange={(value) => updateSelectedBlockProps({ bgStyle: value })}>
+                <Select
+                  value={promoBgStyle ?? PROMO_THEME_DEFAULT_VALUE}
+                  onValueChange={(value) =>
+                    updateSelectedBlockProps(
+                      value === PROMO_THEME_DEFAULT_VALUE
+                        ? clearPromoThemePatch
+                        : { bgStyle: value },
+                    )
+                  }
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={PROMO_THEME_DEFAULT_VALUE}>Follow site theme</SelectItem>
                     {PROMO_BG_STYLES.map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
                     ))}
@@ -729,33 +780,42 @@ export function StorefrontLiveEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Card Opacity</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={selectedBlock.props.cardOpacity?.toString() ?? ""}
-                  onChange={(event) => updateSelectedBlockNumber("cardOpacity", event.target.value)}
-                />
-              </div>
+              {usesCustomPromoTheme ? (
+                <div className="grid gap-2">
+                  <Label>Card Opacity</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={selectedBlock.props.cardOpacity?.toString() ?? ""}
+                    onChange={(event) => updateSelectedBlockNumber("cardOpacity", event.target.value)}
+                  />
+                </div>
+              ) : null}
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
-                <Label>Glow</Label>
-                <Switch checked={(selectedBlock.props.enableGlow as boolean | undefined) ?? false} onCheckedChange={(checked) => updateSelectedBlockProps({ enableGlow: checked })} />
+            {usesCustomPromoTheme ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                  <Label>Glow</Label>
+                  <Switch checked={(selectedBlock.props.enableGlow as boolean | undefined) ?? false} onCheckedChange={(checked) => updateSelectedBlockProps({ enableGlow: checked })} />
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                  <Label>Particles</Label>
+                  <Switch checked={(selectedBlock.props.enableParticles as boolean | undefined) ?? false} onCheckedChange={(checked) => updateSelectedBlockProps({ enableParticles: checked })} />
+                </div>
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                  <Label>Orbs</Label>
+                  <Switch checked={(selectedBlock.props.enableOrbs as boolean | undefined) ?? false} onCheckedChange={(checked) => updateSelectedBlockProps({ enableOrbs: checked })} />
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
-                <Label>Particles</Label>
-                <Switch checked={(selectedBlock.props.enableParticles as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ enableParticles: checked })} />
+            ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+                Promo colors and card treatment are following the active site theme.
               </div>
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
-                <Label>Orbs</Label>
-                <Switch checked={(selectedBlock.props.enableOrbs as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ enableOrbs: checked })} />
-              </div>
-            </div>
+            )}
           </div>
         );
+      }
       case "featured-products":
         return (
           <div className="grid gap-2">
@@ -1161,11 +1221,11 @@ export function StorefrontLiveEditor({
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-foreground">{selectedBlock.type}</p>
-                            <Badge variant="outline">{selectedBlock.isVisible ? "Visible" : "Hidden"}</Badge>
+                            <Badge variant="outline">{(selectedBlock.isVisible ?? selectedBlock.visible ?? true) ? "Visible" : "Hidden"}</Badge>
                           </div>
                           <Switch
-                            checked={selectedBlock.isVisible}
-                            onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked })))}
+                            checked={selectedBlock.isVisible ?? selectedBlock.visible ?? true}
+                            onCheckedChange={(checked) => setStore((current) => updateBlock(current, page.id, selectedBlock.id, (block) => ({ ...block, isVisible: checked, visible: checked })))}
                           />
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -1315,7 +1375,7 @@ export function StorefrontLiveEditor({
             }));
           }}
           onToggleVisibility={(id, isVisible) => {
-            applyStoreChange((current) => updateBlock(current, page.id, id, (block) => ({ ...block, isVisible })));
+            applyStoreChange((current) => updateBlock(current, page.id, id, (block) => ({ ...block, isVisible, visible: isVisible })));
           }}
           onRemoveBlock={(id) => {
             applyStoreChange((current) => updatePage(current, page.id, (p) => ({

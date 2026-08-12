@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import {
@@ -17,7 +18,12 @@ import {
   ProductCardActions,
 } from "@/components/storefront/product/ProductCardFoundation";
 
-import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
+import {
+  getDisplayableProductType,
+  getPrimaryProductOptionValue,
+  getProductOptionSummaryLines,
+  type ProductPresentationSpecs,
+} from "@/lib/cms/storefront-product-presentation";
 
 type ReviewStats = {
   count: number;
@@ -38,8 +44,9 @@ function getBadgeClass(badge: string) {
   return "bg-[#ecfdf3] text-[#16a34a] dark:bg-emerald-950 dark:text-emerald-300";
 }
 
-export function buildTechnicalSpecs(product: Product) {
-  const specs: string[] = [];
+export function buildTechnicalSpecs(product: Product, presentationSpecs?: ProductPresentationSpecs) {
+  const technicalSpecs: string[] = [];
+  const optionSummaries = getProductOptionSummaryLines(product, presentationSpecs ?? { specs: {} }, "electronics");
 
   if (product.description) {
     const extracted = product.description
@@ -48,23 +55,23 @@ export function buildTechnicalSpecs(product: Product) {
       .filter(Boolean)
       .slice(0, 3);
 
-    specs.push(...extracted);
+    technicalSpecs.push(...extracted);
   }
 
-  if (specs.length < 3 && product.colors.length > 0) {
-    specs.push(`${product.colors.length} finish option${product.colors.length === 1 ? "" : "s"}`);
+  if (technicalSpecs.length < 3 && optionSummaries.length > 0) {
+    technicalSpecs.push(optionSummaries[0]);
   }
 
-  if (specs.length < 3 && typeof product.stock === "number") {
-    specs.push(product.stock > 0 ? `${product.stock}+ units in stock` : "Restocking soon");
+  if (technicalSpecs.length < 3 && typeof product.stock === "number") {
+    technicalSpecs.push(product.stock > 0 ? `${product.stock}+ units in stock` : "Restocking soon");
   }
 
-  if (specs.length < 3) {
+  if (technicalSpecs.length < 3) {
     const label = getDisplayableProductType(product.type) || getDisplayableProductType(product.category) || "Electronics";
-    specs.push(`${label} ready for daily use`);
+    technicalSpecs.push(`${label} ready for daily use`);
   }
 
-  return specs.slice(0, 3);
+  return technicalSpecs.slice(0, 3);
 }
 
 export function ElectronicsProductCard({
@@ -78,10 +85,12 @@ export function ElectronicsProductCard({
   const { isInWishlist, toggleItem } = useWishlist();
   const { addItem } = useCart();
   const badge = resolveBadge(product);
-  const specs = buildTechnicalSpecs(product);
   const averageRating = reviewStats?.average ?? 4.7;
   const reviewCount = reviewStats?.count ?? 0;
   const url = productUrl(product.id, product.name, currentStore?.slug);
+  const { specs } = useStoreProductPresentation(product);
+  const technicalSpecs = buildTechnicalSpecs(product, specs);
+  const primaryOption = getPrimaryProductOptionValue(product, specs, "electronics");
 
   return (
     <ProductCardShell>
@@ -113,7 +122,7 @@ export function ElectronicsProductCard({
         </div>
 
         <ul className="space-y-1 text-xs text-muted-foreground min-h-[3.25rem]">
-          {specs.map((spec) => (
+          {technicalSpecs.map((spec) => (
             <li key={spec} className="flex items-center gap-1.5 truncate">
               <span className="h-1 w-1 shrink-0 rounded-full bg-primary" />
               <span className="truncate">{spec}</span>
@@ -138,7 +147,7 @@ export function ElectronicsProductCard({
                   name: product.name,
                   price: product.price,
                   image: product.image,
-                  size: product.sizes[0] || "Default",
+                  size: primaryOption,
                   storeId: currentStore?.id,
                 });
               }}

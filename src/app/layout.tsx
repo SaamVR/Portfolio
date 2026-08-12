@@ -1,6 +1,7 @@
 import React from "react";
 import "@/index.css";
 import { Providers } from "./providers";
+import { appFontVariables } from "@/lib/fonts";
 import { PLATFORM_BRAND_NAME, getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 function getSupabaseOrigin() {
@@ -60,15 +61,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
         {supabaseOrigin ? <link rel="preconnect" href={supabaseOrigin} /> : null}
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body>
+      <body className={appFontVariables}>
         <Providers>{children}</Providers>
       </body>
     </html>

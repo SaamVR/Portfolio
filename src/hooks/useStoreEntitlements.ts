@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { normalizeEmail, resolveEffectiveFeatures } from "@/lib/platform/control-plane";
-import { getEffectiveSubscriptionStatus } from "@/lib/billing/plans";
+import { resolveStorePlanState } from "@/lib/billing/plans";
 import { isPlatformRole } from "@/lib/platform/rbac";
 
 export function useStoreEntitlements(storeId?: string | null) {
@@ -13,8 +13,9 @@ export function useStoreEntitlements(storeId?: string | null) {
     queryFn: async () => {
       if (!storeId) return { planId: null, effectivePlanId: null, subscriptionStatus: null, features: [], featureMap: {} as any };
       const normalizedEmail = normalizeEmail(user?.email);
-      const [{ data: subscription }, { data: features }, { data: storeOverrides }, { data: emailOverrides }, { data: allPlans }] = await Promise.all([
+      const [{ data: subscription }, { data: store }, { data: features }, { data: storeOverrides }, { data: emailOverrides }, { data: allPlans }] = await Promise.all([
         (supabase as any).from("store_subscriptions").select("plan_id, status, trial_ends_at").eq("store_id", storeId).maybeSingle(),
+        (supabase as any).from("stores").select("plan").eq("id", storeId).maybeSingle(),
         (supabase as any).from("cms_features").select("key, name, description, category, default_visible, is_active").order("category").order("name"),
         (supabase as any).from("store_feature_overrides").select("feature_key, enabled").eq("store_id", storeId),
         normalizedEmail
@@ -27,11 +28,12 @@ export function useStoreEntitlements(storeId?: string | null) {
         (supabase as any).from("cms_plans").select("id, monthly_price").order("sort_order"),
       ]);
 
-      const planId = subscription?.plan_id as string | undefined;
-      const subscriptionStatus = getEffectiveSubscriptionStatus(subscription as any) ?? undefined;
-      const paidPlanReady = subscriptionStatus === "active" || subscriptionStatus === "trialing";
+      const resolvedPlanState = resolveStorePlanState({
+        subscription: subscription as any,
+        legacyPlanId: typeof store?.plan === "string" ? store.plan : null,
+      });
       const defaultPlan = (allPlans ?? []).find((p: any) => p.id === "free") ?? (allPlans ?? [])[0] ?? { id: "free" };
-      const effectivePlanId = planId && paidPlanReady ? planId : defaultPlan.id;
+      const effectivePlanId = resolvedPlanState.effectivePlanId ?? defaultPlan.id;
       const { data: planMappings } = effectivePlanId
         ? await (supabase as any).from("cms_plan_features").select("feature_key, enabled").eq("plan_id", effectivePlanId)
         : { data: [] };
@@ -44,7 +46,7 @@ export function useStoreEntitlements(storeId?: string | null) {
         isPlatformAdmin: isPlatformRole(platformRole),
       });
 
-      if (subscriptionStatus !== "active" && featureMap instanceof Map) {
+      if (resolvedPlanState.subscriptionStatus !== "active" && featureMap instanceof Map) {
         const currentCustomDomains = featureMap.get("custom_domains");
         if (currentCustomDomains) {
           featureMap.set("custom_domains", {
@@ -55,9 +57,9 @@ export function useStoreEntitlements(storeId?: string | null) {
       }
 
       return {
-        planId: planId ?? null,
+        planId: resolvedPlanState.subscriptionPlanId ?? resolvedPlanState.legacyPlanId ?? null,
         effectivePlanId,
-        subscriptionStatus: subscriptionStatus ?? null,
+        subscriptionStatus: resolvedPlanState.subscriptionStatus,
         features: (features ?? []) as any[],
         featureMap,
       };

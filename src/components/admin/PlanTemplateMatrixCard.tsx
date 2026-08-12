@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Palette,
@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-export interface PlanTemplateItem {
+interface PlanTemplateItem {
   id: string;
   key: string;
   name: string;
@@ -35,7 +35,7 @@ export interface PlanTemplateItem {
   badgeLabel?: string;
 }
 
-export const PLATFORM_TEMPLATES_AND_THEMES: PlanTemplateItem[] = [
+const PLATFORM_TEMPLATES_AND_THEMES: PlanTemplateItem[] = [
   // Templates - Retail
   {
     id: "template:fashion",
@@ -298,13 +298,13 @@ export function PlanTemplateMatrixCard({
     return map;
   }, [planFeatures]);
 
-  const isEnabled = (planId: string, itemKey: string, defaultTier: string, planName: string): boolean => {
+  const isEnabled = useCallback((planId: string, itemKey: string, defaultTier: string, planName: string): boolean => {
     const key = `${planId}:${itemKey}`;
     if (planFeatureMap.has(key)) {
       return Boolean(planFeatureMap.get(key));
     }
     return isTierEligible(planName, defaultTier);
-  };
+  }, [planFeatureMap]);
 
   const filteredItems = useMemo(() => {
     return PLATFORM_TEMPLATES_AND_THEMES.filter((item) => {
@@ -333,7 +333,7 @@ export function PlanTemplateMatrixCard({
       }
     }
     return { totalItems, premiumItems, activeMappings };
-  }, [plans, planFeatureMap]);
+  }, [isEnabled, plans]);
 
   const handleBulkResetDefaults = async () => {
     if (!canModify) {

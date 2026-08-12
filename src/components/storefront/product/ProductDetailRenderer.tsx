@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@/lib/react-router-dom-shim";
 import { CalendarDays, Clock3, Download, FileText, Heart, MapPin, Minus, MonitorSmartphone, MoveRight, Phone, Plus, Ruler, ShieldCheck, ShoppingBag, Sparkles, Star, Users } from "lucide-react";
 import ProductImageGallery from "@/components/ProductImageGallery";
 import ProductReviews from "@/components/ProductReviews";
@@ -20,6 +21,8 @@ import { SubscriptionPlanSelector } from "@/components/storefront/subscriptions/
 import { encodeDigitalCartVariant } from "@/lib/digital-cart";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { productUrl, storefrontPath } from "@/lib/slug";
+import { saveBuyNowPayload } from "@/lib/storefront-buy-now";
+import { resolveAllowGuestCheckoutForStore } from "@/lib/storefront-customer-access";
 import { cn } from "@/lib/utils";
 import {
   getDigitalCompatibility,
@@ -31,6 +34,8 @@ import {
 } from "@/components/storefront/digital-downloads/digital-download-utils";
 import {
   getDisplayableProductType,
+  getPrimaryProductOptionValue,
+  getRenderableMetricOptionGroups,
   getRenderableColorOptions,
   getRenderableSizeOptions,
   getStructuredSpecEntries,
@@ -247,7 +252,10 @@ function ProductVariantSelector({
   if (options.length === 0) return null;
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold text-foreground">{label}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        {value ? <span className="text-xs font-medium text-muted-foreground">{value}</span> : null}
+      </div>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -266,6 +274,26 @@ function ProductVariantSelector({
         ))}
       </div>
     </div>
+  );
+}
+
+function ProductOptionPanel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-border/80 bg-background/65 p-4 shadow-sm">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {description ? <p className="text-xs leading-5 text-muted-foreground">{description}</p> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -389,9 +417,8 @@ function GenericProductDetailsContent({
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
   const { trackEvent } = useStorefrontAnalytics();
+  const navigate = useNavigate();
   const { specs } = useStoreProductPresentation(product);
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0] || "");
-  const [selectedColor, setSelectedColor] = useState(product.colors[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState("");
@@ -410,15 +437,31 @@ function GenericProductDetailsContent({
   const selectedDuration = subscriptionDurations.find((item) => item.id === selectedDurationId) ?? subscriptionDurations[0];
   const colorOptions = useMemo(() => getRenderableColorOptions(product, specs, variant), [product, specs, variant]);
   const sizeOptions = useMemo(() => getRenderableSizeOptions(product, specs, variant), [product, specs, variant]);
+  const metricOptionGroups = useMemo(() => getRenderableMetricOptionGroups(product, specs, variant), [product, specs, variant]);
+  const [selectedSize, setSelectedSize] = useState(sizeOptions[0] || "");
+  const [selectedColor, setSelectedColor] = useState(colorOptions[0] || "");
+  const [selectedMetricOptions, setSelectedMetricOptions] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(metricOptionGroups.map((group) => [group.key, [group.options[0] ?? ""]])),
+  );
   const showColorSelector = shouldShowColorOptions(product, specs, variant);
   const showSizeSelector = shouldShowSizeOptions(product, specs, variant);
   const showSizeGuideButton = shouldShowSizeGuide(product, specs, variant);
+  const customMetricItems = metricOptionGroups.map((group) => ({
+    label: group.label,
+    value: group.options.join(", "),
+  }));
+  const optionSummaryItems = withValue([
+    ...(sizeOptions.length > 0 ? [{ icon: <Ruler className="h-4 w-4" />, label: getString(specs, ["size_label", "size_title"], "Sizes"), value: sizeOptions.join(", ") }] : []),
+    ...(colorOptions.length > 0 ? [{ icon: <Sparkles className="h-4 w-4" />, label: getString(specs, ["color_label", "color_title"], "Colors"), value: colorOptions.join(", ") }] : []),
+    ...customMetricItems.map((item) => ({ icon: <ShieldCheck className="h-4 w-4" />, label: item.label, value: item.value })),
+  ]);
   const totalPrice = variant === "subscription"
     ? (selectedDuration?.price ?? product.price)
     : variant === "digital"
       ? (selectedLicense?.price ?? product.price)
       : product.price * quantity;
   const contactHref = storefrontPath("/contact", currentStore?.slug);
+  const allowGuestCheckout = resolveAllowGuestCheckoutForStore(currentStore);
   const wishlisted = isInWishlist(product.id);
   const technicalSpecItems = getStructuredSpecEntries(specs, ["technical_specs", "specifications"]);
   const featureItems = getStringArray(specs, ["features", "benefits", "included_items"]).map((value, index) => ({
@@ -446,6 +489,18 @@ function GenericProductDetailsContent({
     return () => window.clearTimeout(timeout);
   }, [product.category, product.id, product.name, product.price, product.type, trackEvent]);
 
+  useEffect(() => {
+    setSelectedSize(sizeOptions[0] || "");
+  }, [product.id, sizeOptions]);
+
+  useEffect(() => {
+    setSelectedColor(colorOptions[0] || "");
+  }, [colorOptions, product.id]);
+
+  useEffect(() => {
+    setSelectedMetricOptions(Object.fromEntries(metricOptionGroups.map((group) => [group.key, [group.options[0] ?? ""]])));
+  }, [metricOptionGroups, product.id]);
+
   const addToCartLabel = variant === "food"
     ? "Add"
     : variant === "beauty"
@@ -455,6 +510,52 @@ function GenericProductDetailsContent({
         : variant === "digital"
           ? "Purchase"
           : "Add to Cart";
+  const supportsBuyNow = !["inquiry", "service", "booking", "hotel_room", "property"].includes(variant);
+
+  const buildCartSelection = () => {
+    if (variant === "subscription") {
+      return [{
+        productId: product.id,
+        name: product.name,
+        price: selectedDuration?.price ?? product.price,
+        image: product.image,
+        size: `${selectedPlan?.label || "Individual"} • ${selectedDuration?.label || "Monthly"}`,
+        quantity: 1,
+        storeId: currentStore?.id,
+      }];
+    }
+
+    if (variant === "digital") {
+      return [{
+        productId: product.id,
+        name: product.name,
+        price: selectedLicense?.price ?? product.price,
+        image: product.image,
+        size: encodeDigitalCartVariant({
+          license: selectedLicense?.label || "Personal",
+          formats: getDigitalFormats(product),
+        }),
+        quantity: 1,
+        storeId: currentStore?.id,
+      }];
+    }
+
+    const cartSelection = [
+      selectedSize,
+      selectedColor,
+      ...metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
+    ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(product, specs, variant);
+
+    return Array.from({ length: quantity }, () => ({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      size: cartSelection,
+      quantity: 1,
+      storeId: currentStore?.id,
+    }));
+  };
 
   const primaryAction = () => {
     if (variant === "subscription") {
@@ -484,16 +585,37 @@ function GenericProductDetailsContent({
       return;
     }
 
+    const cartSelection = [
+      selectedSize,
+      selectedColor,
+      ...metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
+    ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(product, specs, variant);
+
     for (let index = 0; index < quantity; index += 1) {
       addItem({
         productId: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
-        size: selectedSize || selectedColor || sizeOptions[0] || colorOptions[0] || "Default",
+        size: cartSelection,
         storeId: currentStore?.id,
       });
     }
+  };
+
+  const handleBuyNow = () => {
+    const items = buildCartSelection();
+    if (items.length === 0) return;
+
+    saveBuyNowPayload(items, currentStore?.id);
+    const checkoutPath = storefrontPath("/checkout?buy_now=1", currentStore?.slug);
+
+    if (!allowGuestCheckout) {
+      navigate(storefrontPath(`/auth?next=${encodeURIComponent(checkoutPath)}`, currentStore?.slug));
+      return;
+    }
+
+    navigate(checkoutPath);
   };
 
   const metaItems = (() => {
@@ -651,7 +773,10 @@ function GenericProductDetailsContent({
           { label: "Bathrooms", value: getOptionalNumber(specs, ["baths", "bathrooms"]) !== null ? String(getOptionalNumber(specs, ["baths", "bathrooms"])) : "" },
         ]);
       default:
-        return technicalSpecItems;
+        return withValue([
+          ...customMetricItems,
+          ...technicalSpecItems,
+        ]);
     }
   })().filter((item) => item.value.trim());
 
@@ -661,10 +786,7 @@ function GenericProductDetailsContent({
         return [{
           title: "Fit, fabric, and feel",
           body: product.description,
-          items: [
-              ...(sizeOptions.length > 0 ? [{ icon: <Ruler className="h-4 w-4" />, label: "Sizes", value: sizeOptions.join(", ") }] : []),
-              ...(colorOptions.length > 0 ? [{ icon: <Sparkles className="h-4 w-4" />, label: "Colors", value: colorOptions.join(", ") }] : []),
-          ],
+          items: optionSummaryItems,
         }];
       case "beauty":
         return [{
@@ -673,6 +795,7 @@ function GenericProductDetailsContent({
           items: [
               { icon: <Sparkles className="h-4 w-4" />, label: "Skin concerns", value: getString(specs, ["skin_concerns", "concerns"], getDisplayableProductType(product.category) || "Merchant-specified concerns") },
               { icon: <ShieldCheck className="h-4 w-4" />, label: "How to use", value: getString(specs, ["how_to_use"], "Use as directed by the merchant.") },
+              ...customMetricItems.map((item) => ({ icon: <Ruler className="h-4 w-4" />, label: item.label, value: item.value })),
             ],
         }];
       case "electronics":
@@ -684,6 +807,7 @@ function GenericProductDetailsContent({
             items: [
               { icon: <FileText className="h-4 w-4" />, label: "Box contents", value: getString(specs, ["box_contents"], "See merchant listing for included accessories") },
               ...featureItems.map((item) => ({ icon: <Sparkles className="h-4 w-4" />, label: item.label, value: item.value })),
+              ...customMetricItems.map((item) => ({ icon: <ShieldCheck className="h-4 w-4" />, label: item.label, value: item.value })),
             ],
           },
         ];
@@ -702,6 +826,7 @@ function GenericProductDetailsContent({
           body: product.description,
           items: [
               ...metaItems,
+              ...customMetricItems.map((item) => ({ icon: <Sparkles className="h-4 w-4" />, label: item.label, value: item.value })),
               { icon: <ShieldCheck className="h-4 w-4" />, label: "Care", value: getString(specs, ["care_instructions"], "Follow merchant care instructions for this handmade piece") },
             ],
         }];
@@ -714,6 +839,7 @@ function GenericProductDetailsContent({
           body: product.description,
           items: [
               ...metaItems,
+              ...customMetricItems.map((item) => ({ icon: <ShieldCheck className="h-4 w-4" />, label: item.label, value: item.value })),
               { icon: <CalendarDays className="h-4 w-4" />, label: "Packages", value: getString(specs, ["packages", "included_items"], "Packages and scope confirmed with the merchant") },
             ],
         }];
@@ -757,7 +883,7 @@ function GenericProductDetailsContent({
         return [{
           title: "Description",
           body: product.description,
-          items: metaItems,
+          items: [...metaItems, ...customMetricItems.map((item) => ({ icon: <ShieldCheck className="h-4 w-4" />, label: item.label, value: item.value }))],
         }];
     }
   })();
@@ -793,11 +919,23 @@ function GenericProductDetailsContent({
         />
       </div>
 
-      {showColorSelector || showSizeSelector ? (
-        <>
+      {showColorSelector || showSizeSelector || metricOptionGroups.length > 0 ? (
+        <ProductOptionPanel
+          title="Choose your options"
+          description={metricOptionGroups.length > 0 ? "Variant choices and store-specific product attributes are grouped here for a cleaner setup before checkout." : "Select the available product options before adding to cart."}
+        >
           {showColorSelector ? <ProductVariantSelector label={getString(specs, ["color_label", "color_title"], "Color")} options={colorOptions} value={selectedColor} onChange={setSelectedColor} /> : null}
           {showSizeSelector ? <ProductVariantSelector label={getString(specs, ["size_label", "size_title"], "Size / Option")} options={sizeOptions} value={selectedSize} onChange={setSelectedSize} /> : null}
-        </>
+          {metricOptionGroups.map((group) => (
+            <ProductVariantSelector
+              key={group.key}
+              label={getString(specs, [`${group.key}_label`, `${group.key}_title`], group.label)}
+              options={group.options}
+              value={selectedMetricOptions[group.key]?.[0] ?? ""}
+              onChange={(value) => setSelectedMetricOptions((current) => ({ ...current, [group.key]: [value] }))}
+            />
+          ))}
+        </ProductOptionPanel>
       ) : null}
 
       {variant === "subscription" ? (
@@ -884,13 +1022,25 @@ function GenericProductDetailsContent({
             </Link>
           </div>
         ) : (
-          <button type="button" onClick={primaryAction} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
-            {addToCartLabel} - BDT {totalPrice.toLocaleString()}
-          </button>
+          <div className={cn("grid gap-3", supportsBuyNow ? "sm:grid-cols-2" : "")}>
+            <button type="button" onClick={primaryAction} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
+              {addToCartLabel} - BDT {totalPrice.toLocaleString()}
+            </button>
+            {supportsBuyNow ? (
+              <button type="button" onClick={handleBuyNow} className="inline-flex h-12 w-full items-center justify-center rounded-md border border-border px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary">
+                Buy Now
+              </button>
+            ) : null}
+          </div>
         )}
         <div className="text-sm text-muted-foreground">
           <SocialShare url={absoluteStoreUrl(currentStore ?? undefined, productUrl(product.id, product.name, currentStore?.slug))} title={product.name} />
         </div>
+        {!allowGuestCheckout && ["generic", "fashion", "beauty", "electronics", "food", "crafts", "subscription", "digital", "single_product"].includes(variant) ? (
+          <p className="text-xs text-muted-foreground">
+            This store requires customer login before checkout. Shoppers can add items first and sign in when they continue to buy.
+          </p>
+        ) : null}
       </div>
 
       {showSizeGuideButton ? (
@@ -903,9 +1053,9 @@ function GenericProductDetailsContent({
       <ProductMetaList items={metaItems} />
       <SizeGuide open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
       <StickyMobileAction
-        label={variant === "property" ? "Contact Agent" : addToCartLabel}
+        label={variant === "property" ? "Contact Agent" : supportsBuyNow ? "Buy Now" : addToCartLabel}
         price={variant === "property" || variant === "hotel_room" ? product.price : totalPrice}
-        onClick={variant === "property" || variant === "hotel_room" || variant === "service" || variant === "booking" || variant === "inquiry" ? () => { window.location.href = contactHref; } : primaryAction}
+        onClick={variant === "property" || variant === "hotel_room" || variant === "service" || variant === "booking" || variant === "inquiry" ? () => { window.location.href = contactHref; } : supportsBuyNow ? handleBuyNow : primaryAction}
         wishlisted={wishlisted}
         onToggleWishlist={() => toggleItem(product.id)}
       />
@@ -932,7 +1082,7 @@ function GenericProductDetailsContent({
 
 type ProductDetailRendererComponent = ({ product }: { product: Product }) => React.ReactNode;
 
-export const productDetailRegistry: Record<ProductDetailVariant, ProductDetailRendererComponent> = {
+const productDetailRegistry: Record<ProductDetailVariant, ProductDetailRendererComponent> = {
   generic: ({ product }) => <GenericProductDetailsContent product={product} variant="generic" />,
   fashion: ({ product }) => <GenericProductDetailsContent product={product} variant="fashion" />,
   beauty: ({ product }) => <GenericProductDetailsContent product={product} variant="beauty" />,

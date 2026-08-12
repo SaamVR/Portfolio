@@ -7,10 +7,16 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
-import { getDisplayableProductType } from "@/lib/cms/storefront-product-presentation";
+import {
+  getDisplayableProductType,
+  getProductOptionCount,
+  getRenderableMetricOptionGroups,
+  type ProductPresentationSpecs,
+} from "@/lib/cms/storefront-product-presentation";
 import { SubscriptionDurationSelector, type SubscriptionDurationOption } from "@/components/storefront/subscriptions/SubscriptionDurationSelector";
 import { SubscriptionPlanSelector, type SubscriptionPlanOption } from "@/components/storefront/subscriptions/SubscriptionPlanSelector";
 import {
@@ -27,7 +33,11 @@ type ReviewStats = {
   average: number;
 };
 
-function buildPlanOptions(product: Product, metadata?: TemplateSeedCatalogMetadata["products"][string]): SubscriptionPlanOption[] {
+function buildPlanOptions(
+  product: Product,
+  specs: ProductPresentationSpecs,
+  metadata?: TemplateSeedCatalogMetadata["products"][string],
+): SubscriptionPlanOption[] {
   const seedPlans = (metadata?.variants ?? [])
     .find((variant) => variant.name.toLowerCase() === "plan")
     ?.values?.map((value) => ({
@@ -47,8 +57,17 @@ function buildPlanOptions(product: Product, metadata?: TemplateSeedCatalogMetada
 
   if (sizePlans.length > 0) return sizePlans;
 
+  const customMetricPlans = getRenderableMetricOptionGroups(product, specs, "subscription")
+    .flatMap((group) => group.options.map((option) => ({
+      id: option.toLowerCase().replace(/\s+/g, "-"),
+      label: option,
+      description: `${group.label} option.`,
+    })));
+
+  if (customMetricPlans.length > 0) return customMetricPlans.slice(0, 4);
+
   const defaults = ["Individual", "Family", "Shared", "Custom"];
-  return defaults.slice(0, product.colors.length > 2 ? 4 : 3).map((label) => ({
+  return defaults.slice(0, getProductOptionCount(product, specs, "subscription") > 2 ? 4 : 3).map((label) => ({
     id: label.toLowerCase(),
     label,
     description: label === "Custom" ? "Custom tailored access." : `${label} access.`,
@@ -119,7 +138,8 @@ export function SubscriptionProductCard({
   const currentStore = useOptionalStore();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
-  const planOptions = useMemo(() => buildPlanOptions(product, metadata), [metadata, product]);
+  const { specs } = useStoreProductPresentation(product);
+  const planOptions = useMemo(() => buildPlanOptions(product, specs, metadata), [metadata, product, specs]);
   const durationOptions = useMemo(() => buildDurationOptions(product, metadata), [metadata, product]);
   const [selectedPlanId, setSelectedPlanId] = useState(planOptions[0]?.id ?? "individual");
   const [selectedDurationId, setSelectedDurationId] = useState<"monthly" | "yearly">(durationOptions[0]?.id ?? "monthly");

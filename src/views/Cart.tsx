@@ -1,5 +1,6 @@
 import { Link } from "@/lib/react-router-dom-shim";
 import { useEffect, useRef } from "react";
+import { useAuth } from "@/hooks/auth-context";
 import { Minus, Plus, Trash2, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -13,6 +14,7 @@ import { storefrontPath } from "@/lib/slug";
 import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
+import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 
 interface DeliverySettings {
   enabled: boolean;
@@ -23,6 +25,7 @@ interface DeliverySettings {
 
 const Cart = () => {
   const { items, removeItem, updateQuantity } = useCart();
+  const { user } = useAuth();
   const currentStore = useOptionalStore();
   const currentStoreId = currentStore?.id;
   const currentStoreSlug = currentStore?.slug;
@@ -34,13 +37,24 @@ const Cart = () => {
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const preloadedDeliverySettings =
     currentStore?.id === cartStoreId ? (currentStore?.siteSettings?.delivery_settings as DeliverySettings | undefined) : undefined;
+  const preloadedStorefrontProfile =
+    currentStore?.id === cartStoreId && typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
+      ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+      : undefined;
   const { data: fetchedDeliveryData, isLoading: isDeliverySettingsLoading } = useSiteSettings<DeliverySettings>("delivery_settings", cartStoreId);
+  const { data: fetchedStorefrontProfile } = useSiteSettings<Record<string, unknown>>("storefront_profile", cartStoreId);
   const deliveryData = fetchedDeliveryData ?? preloadedDeliverySettings;
+  const storefrontProfile = fetchedStorefrontProfile ?? preloadedStorefrontProfile;
   const deliveryLoading = isDeliverySettingsLoading && !preloadedDeliverySettings;
+  const allowGuestCheckout = resolveAllowGuestCheckout(storefrontProfile);
   const digitalOnlyCart = isDigitalOnlyCart(cartItems);
   const experience = resolveStorefrontOrderExperience(currentStore, cartItems);
   const { trackEvent, visitorId, sessionId } = useStorefrontAnalytics();
   const trackedCartViewRef = useRef("");
+  const checkoutPath = storefrontPath("/checkout", currentStoreSlug);
+  const checkoutDestination = !allowGuestCheckout && !user
+    ? buildCustomerAuthPath(checkoutPath, currentStoreSlug)
+    : checkoutPath;
 
   const deliveryFee = (() => {
     if (digitalOnlyCart) return 0;
@@ -154,6 +168,11 @@ const Cart = () => {
             Your browser currently has items from more than one store. This page is showing only the active storefront items for a safe checkout.
           </div>
         ) : null}
+        {!allowGuestCheckout ? (
+          <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+            This store requires a customer account before checkout. You can still review your cart now, and we will return you to checkout after login.
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             {cartItems.map((item) => (
@@ -247,10 +266,10 @@ const Cart = () => {
               </div>
             </div>
             <Link
-              to={storefrontPath("/checkout", currentStoreSlug)}
+              to={checkoutDestination}
               className="mt-6 block w-full rounded-md bg-primary py-3 text-center font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow"
             >
-              {experience.labels.checkoutTitle}
+              {!allowGuestCheckout && !user ? "Login to Checkout" : experience.labels.checkoutTitle}
             </Link>
             <Link
               to={storefrontPath("/shop", currentStoreSlug)}

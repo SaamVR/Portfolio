@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   try {
     const ip = req.headers.get("x-forwarded-for") || "unknown";
-    const { success } = billingCheckoutRouteDeps.rateLimit(`checkout_${ip}`, {
+    const { success } = await billingCheckoutRouteDeps.rateLimit(`checkout_${ip}`, {
       limit: 5,
       windowMs: 60000,
     });
@@ -106,10 +106,13 @@ export async function POST(req: Request) {
     if (invoiceError) throw invoiceError;
     createdInvoiceId = invoice.id;
 
-    const isLive = configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true");
-    const bkashBaseUrl = isLive
+    const isLive = configuredConnection?.forceTestMode
+      ? false
+      : (configuredConnection?.isLive ?? (process.env.PLATFORM_BKASH_IS_LIVE === "true"));
+    const defaultBkashBaseUrl = isLive
       ? "https://tokenized.pay.bka.sh/v1.2.0-beta"
       : "https://tokenized.sandbox.bka.sh/v1.2.0-beta";
+    const bkashBaseUrl = configuredConnection?.baseUrl || defaultBkashBaseUrl;
 
     const tokenRes = await billingCheckoutRouteDeps.fetch(
       `${bkashBaseUrl}/tokenized/checkout/token/grant`,

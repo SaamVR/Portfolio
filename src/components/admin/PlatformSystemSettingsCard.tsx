@@ -51,6 +51,8 @@ type PlatformBkashConnectionSummary = {
   status: "draft" | "connected" | "revoked";
   metadata: {
     environment: "sandbox" | "live";
+    forceTestMode: boolean;
+    baseUrl: string | null;
     label: string;
     appKeyHint: string | null;
     usernameHint: string | null;
@@ -65,6 +67,8 @@ type PlatformBkashDraft = {
   username: string;
   password: string;
   isLive: boolean;
+  forceTestMode: boolean;
+  baseUrl: string;
 };
 
 const emptyPlatformBkashDraft: PlatformBkashDraft = {
@@ -73,6 +77,8 @@ const emptyPlatformBkashDraft: PlatformBkashDraft = {
   username: "",
   password: "",
   isLive: false,
+  forceTestMode: false,
+  baseUrl: "",
 };
 
 export function PlatformSystemSettingsCard({
@@ -228,7 +234,12 @@ export function PlatformSystemSettingsCard({
       }
 
       setPlatformBkashConnection(payload.connection ?? null);
-      setPlatformBkashDraft((prev) => ({ ...emptyPlatformBkashDraft, isLive: prev.isLive }));
+      setPlatformBkashDraft((prev) => ({
+        ...emptyPlatformBkashDraft,
+        isLive: prev.isLive,
+        forceTestMode: prev.forceTestMode,
+        baseUrl: prev.baseUrl,
+      }));
       setShowPlatformBkashRotateForm(false);
       toast.success(rotate ? "CMS subscription bKash credentials rotated." : "CMS subscription bKash gateway connected.");
     } catch (error: any) {
@@ -495,8 +506,18 @@ export function PlatformSystemSettingsCard({
                   <p className="mt-1 text-sm font-medium capitalize">{platformBkashConnection.metadata.environment}</p>
                 </div>
                 <div>
+                  <Label className="text-xs text-muted-foreground">Global test mode</Label>
+                  <p className="mt-1 text-sm font-medium">{platformBkashConnection.metadata.forceTestMode ? "Enabled" : "Disabled"}</p>
+                </div>
+                <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
                   <p className="mt-1 text-sm font-medium capitalize text-emerald-600">{platformBkashConnection.status}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">bKash Base URL</Label>
+                  <p className="mt-1 break-all text-xs font-medium">
+                    {platformBkashConnection.metadata.baseUrl || "Auto-select from environment"}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">App Key Hint</Label>
@@ -518,6 +539,8 @@ export function PlatformSystemSettingsCard({
                     setPlatformBkashDraft((prev) => ({
                       ...emptyPlatformBkashDraft,
                       isLive: platformBkashConnection.metadata.environment === "live" ? true : prev.isLive,
+                      forceTestMode: platformBkashConnection.metadata.forceTestMode,
+                      baseUrl: platformBkashConnection.metadata.baseUrl ?? "",
                     }));
                     setShowPlatformBkashRotateForm(true);
                   }}
@@ -551,6 +574,31 @@ export function PlatformSystemSettingsCard({
                 />
                 <Label className="text-xs font-medium text-foreground">Use live production credentials</Label>
               </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={platformBkashDraft.forceTestMode}
+                  disabled={!canModify || Boolean(platformBkashSavingAction)}
+                  onCheckedChange={(checked) => setPlatformBkashDraft((prev) => ({ ...prev, forceTestMode: checked }))}
+                />
+                <Label className="text-xs font-medium text-foreground">Global test mode for CMS subscription payments</Label>
+              </div>
+
+              {platformBkashDraft.forceTestMode ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">bKash Base URL</Label>
+                  <Input
+                    value={platformBkashDraft.baseUrl}
+                    disabled={!canModify || Boolean(platformBkashSavingAction)}
+                    onChange={(e) => setPlatformBkashDraft((prev) => ({ ...prev, baseUrl: e.target.value }))}
+                    placeholder="https://tokenized.sandbox.bka.sh/v1.2.0-beta"
+                    className="h-9 text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    When test mode is on, merchant subscription checkout will use these saved credentials and this base URL globally.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">

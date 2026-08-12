@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { uploadMediaAsset } from "@/lib/cloudinary-upload";
 import { collectMediaUrlsFromValue, createBackupZipBlob, inferBackupMediaFileName, inferBackupMediaFolder, parseBackupFile, replaceUrlsInValue, type StoreBackupMediaFile } from "@/lib/store-backup";
 import { inferMediaTypeFromUrl, normalizeMediaLibrary } from "@/lib/media-library";
+import { refreshStorefrontCacheForStore } from "@/lib/storefront-cache-client";
 
 type StoreOption = {
   id: string;
@@ -56,6 +57,7 @@ const OPERATIONAL_EXPORT_TABLES = {
   product_reviews: "store_id",
   contact_messages: "store_id",
   customer_addresses: "store_id",
+  store_customer_profiles: "store_id",
   store_analytics_events: "store_id",
 } as const;
 
@@ -78,6 +80,7 @@ const DELETE_ORDER = [
   "product_types",
   "contact_messages",
   "customer_addresses",
+  "store_customer_profiles",
   "site_settings",
   "store_staff_invites",
   "store_memberships",
@@ -917,6 +920,10 @@ export default function StoreBackupManager() {
         await upsertRows("product_reviews", importedReviews);
         await upsertRows("contact_messages", importedContactMessages);
         await upsertRows("customer_addresses", importedCustomerAddresses);
+        await upsertRows("store_customer_profiles", (rewrittenData.store_customer_profiles ?? []).map((row: any) => ({
+          ...row,
+          store_id: targetStore.id,
+        })));
         await upsertRows("store_analytics_events", (rewrittenData.store_analytics_events ?? []).map((row: any) => ({
           ...row,
           id: crypto.randomUUID(),
@@ -1001,6 +1008,7 @@ export default function StoreBackupManager() {
         queryClient.invalidateQueries({ queryKey: ["backup-stores"] }),
         queryClient.invalidateQueries({ queryKey: ["store-entitlements"] }),
       ]);
+      await refreshStorefrontCacheForStore(supabase, targetStore.id);
       await logBackupEvent({
         storeId: targetStore.id,
         action: "import",
@@ -1137,7 +1145,7 @@ export default function StoreBackupManager() {
             </div>
             {sourceStore ? (
               <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-                Exporting <span className="font-medium text-foreground">{sourceStore.name}</span> will capture CMS pages, blog posts, theme, site settings, products, coupons, orders, reviews, messages, addresses, media references, and optionally staff access metadata.
+                Exporting <span className="font-medium text-foreground">{sourceStore.name}</span> will capture CMS pages, blog posts, theme, site settings, products, coupons, orders, reviews, messages, saved customer profiles, addresses, media references, and optionally staff access metadata.
               </div>
             ) : null}
             <div className="rounded-lg border border-border bg-background/60 p-3">
@@ -1205,7 +1213,7 @@ export default function StoreBackupManager() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
                 <p className="text-sm font-medium text-foreground">Include operational data</p>
-                <p className="text-xs text-muted-foreground">Import orders, reviews, messages, saved customer addresses, and storefront analytics too.</p>
+                <p className="text-xs text-muted-foreground">Import orders, reviews, messages, saved customer profiles, addresses, and storefront analytics too.</p>
               </div>
               <Switch checked={includeOperationalData} onCheckedChange={setIncludeOperationalData} />
             </div>

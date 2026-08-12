@@ -34,7 +34,7 @@ function getTemplateId(store: Store): StorefrontTemplateId {
     : {};
 
   return resolveStorefrontTemplateId(storefrontProfile.template_id, {
-    blueprintId: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
 }

@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import { productUrl } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +17,14 @@ import {
   ProductCardTitle,
   ProductCardActions,
 } from "@/components/storefront/product/ProductCardFoundation";
+import {
+  getDisplayableProductType,
+  getPrimaryProductOptionValue,
+  getProductOptionSummaryLines,
+  getRenderableColorOptions,
+  getRenderableMetricOptionGroups,
+  getRenderableSizeOptions,
+} from "@/lib/cms/storefront-product-presentation";
 
 function resolveBadge(product: Product) {
   if (product.badge) return product.badge;
@@ -46,12 +55,16 @@ export function BeautyProductCard({
   const badge = resolveBadge(product);
   const roundedRating = Math.max(1, Math.min(5, Math.round(averageRating)));
   const url = productUrl(product.id, product.name, currentStore?.slug);
-
-  const visibleShades = product.colors.slice(0, 4);
-  const remainingShades = product.colors.length - visibleShades.length;
-
-  const visibleSizes = product.sizes.slice(0, 2);
-  const remainingSizes = product.sizes.length - visibleSizes.length;
+  const { specs } = useStoreProductPresentation(product);
+  const primaryOption = getPrimaryProductOptionValue(product, specs, "beauty");
+  const beautyColors = getRenderableColorOptions(product, specs, "beauty");
+  const beautySizes = getRenderableSizeOptions(product, specs, "beauty");
+  const visibleShades = beautyColors.slice(0, 4);
+  const remainingShades = beautyColors.length - visibleShades.length;
+  const visibleSizes = beautySizes.slice(0, 2);
+  const remainingSizes = beautySizes.length - visibleSizes.length;
+  const metricGroups = getRenderableMetricOptionGroups(product, specs, "beauty");
+  const optionSummary = getProductOptionSummaryLines(product, specs, "beauty")[0] ?? metricGroups[0]?.options[0] ?? "";
 
   return (
     <ProductCardShell>
@@ -65,10 +78,10 @@ export function BeautyProductCard({
         />
       </ProductCardMedia>
 
-      <ProductCardContent>
-        <p className="line-clamp-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground truncate min-w-0">
-          {product.category || product.type || "Beauty"}
-        </p>
+        <ProductCardContent>
+          <p className="line-clamp-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground truncate min-w-0">
+            {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Beauty"}
+          </p>
 
         <ProductCardTitle href={url}>
           {product.name}
@@ -80,15 +93,15 @@ export function BeautyProductCard({
               <Star key={index} className={cn("h-3.5 w-3.5", index < roundedRating ? "fill-current" : "fill-transparent text-muted-foreground/30")} />
             ))}
           </div>
-          <span className="text-xs text-muted-foreground">
-            {reviewCount > 0 ? `(${reviewCount})` : ""}
+          <span className="min-w-0 truncate text-xs text-muted-foreground">
+            {reviewCount > 0 ? `(${reviewCount})` : optionSummary}
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 min-h-[1.5rem]">
-          {visibleShades.map((color) => (
+          {visibleShades.map((color, index) => (
             <span
-              key={color}
+              key={`${color}-${index}`}
               title={color}
               className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10 shadow-sm"
               style={{ backgroundColor: color.toLowerCase() === "white" ? "#f3f4f6" : color.toLowerCase() }}
@@ -98,9 +111,9 @@ export function BeautyProductCard({
             <span className="text-[10px] font-semibold text-muted-foreground">+{remainingShades}</span>
           ) : null}
 
-          {visibleSizes.map((size) => (
+          {visibleSizes.map((size, index) => (
             <span
-              key={size}
+              key={`${size}-${index}`}
               className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
             >
               {size}
@@ -126,7 +139,7 @@ export function BeautyProductCard({
               name: product.name,
               price: product.price,
               image: product.image,
-              size: product.sizes[0] || "Standard",
+              size: primaryOption,
               storeId: currentStore?.id,
             })}
             className="inline-flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"

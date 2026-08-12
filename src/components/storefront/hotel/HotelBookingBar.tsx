@@ -25,7 +25,7 @@ export function HotelBookingBar({
 }) {
   return (
     <div className="rounded-[28px] border border-[#dfe8e1] bg-white p-3 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.2)] dark:border-white/10 dark:bg-card">
-      <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
         <label className="flex items-center gap-3 rounded-[20px] border border-[#e6ede8] px-4 py-3 dark:border-white/10">
           <CalendarDays className="h-4.5 w-4.5 text-[#285c46]" />
           <div className="min-w-0 flex-1">
@@ -52,7 +52,7 @@ export function HotelBookingBar({
           </div>
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 grid grid-cols-2 gap-3 lg:col-span-1">
           <label className="flex items-center gap-3 rounded-[20px] border border-[#e6ede8] px-4 py-3 dark:border-white/10">
             <Users className="h-4.5 w-4.5 text-[#285c46]" />
             <div className="min-w-0 flex-1">
@@ -89,7 +89,7 @@ export function HotelBookingBar({
         <button
           type="button"
           onClick={onSubmit}
-          className="inline-flex h-full min-h-14 items-center justify-center gap-2 rounded-[20px] bg-[#285c46] px-6 text-sm font-semibold text-white shadow-[0_18px_32px_-18px_rgba(40,92,70,0.55)] transition-transform hover:-translate-y-0.5"
+          className="col-span-2 inline-flex h-full min-h-14 items-center justify-center gap-2 rounded-[20px] bg-[#285c46] px-6 text-sm font-semibold text-white shadow-[0_18px_32px_-18px_rgba(40,92,70,0.55)] transition-transform hover:-translate-y-0.5 lg:col-span-1"
         >
           <Search className="h-4 w-4" />
           Check Availability
