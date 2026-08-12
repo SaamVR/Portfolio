@@ -9,6 +9,8 @@ import { buildStorePageMetadata } from "@/lib/cms/store-metadata";
 import { getEzcomoRequestHostname, getPreferredRequestHost } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
+import { SleekBentoLandingPage } from "@/components/marketing/SleekBentoLandingPage";
+
 function isPlatformHost(hostname?: string | null) {
   const normalized = getPreferredRequestHost({ host: hostname });
   if (!normalized) return true;
@@ -32,7 +34,7 @@ export async function generateMetadata() {
     return {};
   }
 
-  const store = await getRequestStore();
+  const store = await getRequestStore({ requestedPageSlug: "/" });
   if (!store) {
     return {};
   }
@@ -48,7 +50,7 @@ export default async function Page() {
   const requestHost = getEzcomoRequestHostname({ headers: requestHeaders });
 
   if (!isPlatformHost(requestHost)) {
-    const store = await getRequestStore();
+    const store = await getRequestStore({ requestedPageSlug: "/" });
     if (store) {
       return <StorefrontPage store={store} page={getHomepage(store)} />;
     }
@@ -57,9 +59,5 @@ export default async function Page() {
     return <StoreNotFoundView hostname={requestHost} reason="not_found" />;
   }
 
-  return (
-    <CmsLandingPage>
-      <CmsPricing />
-    </CmsLandingPage>
-  );
+  return <SleekBentoLandingPage />;
 }

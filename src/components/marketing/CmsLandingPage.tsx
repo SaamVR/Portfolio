@@ -418,7 +418,7 @@ function getMarketingPreviewStoreUrl(slug: string) {
 }
 
 export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme: nextTheme, resolvedTheme, setTheme } = useTheme();
   const [isThemeMounted, setIsThemeMounted] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>("emerald");
   const [activeFont, setActiveFont] = useState<FontKey>("modern");
@@ -443,7 +443,8 @@ export function CmsLandingPage({ children }: { children?: React.ReactNode }) {
   const siteProfile = siteProfiles[siteType];
   const previewSlug = createStoreSlug(storeName || siteProfile.storeName);
   const previewStoreUrl = getMarketingPreviewStoreUrl(previewSlug);
-  const isLightTheme = isThemeMounted ? resolvedTheme === "light" : false;
+  const currentTheme = nextTheme === "system" ? resolvedTheme : nextTheme;
+  const isLightTheme = isThemeMounted ? (currentTheme ? currentTheme === "light" : resolvedTheme === "light") : false;
   const previewNavItems = [
     { key: "home", label: "Home", icon: Home },
     { key: "shop", label: "Shop", icon: ShoppingBag },
