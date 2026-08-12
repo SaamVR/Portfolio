@@ -157,7 +157,7 @@ export function isBypassedPath(pathname: string, isStoreDomain: boolean) {
   }
 
   if (isStoreDomain) {
-    return false; // Do not bypass SEO and brand assets for store domains
+    return false;
   }
 
   return BYPASSED_EXACT.has(pathname) || BRAND_SEO_PREFIXES.test(pathname);
