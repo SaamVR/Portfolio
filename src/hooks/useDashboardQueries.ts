@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildStoreReadinessScore, type StoreReadinessState } from "@/lib/platform/store-readiness";
-import { getEffectiveSubscriptionStatus, getPlanTrialDays, getRemainingTrialDays } from "@/lib/billing/plans";
+import { getPlanTrialDays, getRemainingTrialDays, resolveStorePlanState } from "@/lib/billing/plans";
 import { toast } from "sonner";
 
 export interface OrderRow {
@@ -330,11 +330,16 @@ export function useStorePlanNotice(storeId?: string | null) {
     queryFn: async () => {
       if (!storeId) return null;
 
-      const [{ data: subscription }, { data: plans }] = await Promise.all([
+      const [{ data: subscription }, { data: store }, { data: plans }] = await Promise.all([
         supabase
           .from("store_subscriptions")
           .select("plan_id, status, trial_ends_at")
           .eq("store_id", storeId)
+          .maybeSingle(),
+        supabase
+          .from("stores")
+          .select("plan")
+          .eq("id", storeId)
           .maybeSingle(),
         supabase
           .from("cms_plans")
@@ -345,12 +350,21 @@ export function useStorePlanNotice(storeId?: string | null) {
 
       const typedPlans = (plans as PlanRecord[] | null) ?? [];
       const typedSubscription = (subscription as SubscriptionRecord | null) ?? null;
+      const resolvedPlanState = resolveStorePlanState({
+        subscription: typedSubscription,
+        legacyPlanId: typeof (store as { plan?: unknown } | null)?.plan === "string"
+          ? (store as { plan: string }).plan
+          : null,
+      });
       const defaultPlan = typedPlans.find((plan) => plan.id === "basic") ?? typedPlans[0] ?? null;
       const currentPlan =
-        typedPlans.find((plan) => plan.id === typedSubscription?.plan_id) ?? defaultPlan;
+        typedPlans.find((plan) => plan.id === resolvedPlanState.effectivePlanId)
+        ?? typedPlans.find((plan) => plan.id === resolvedPlanState.subscriptionPlanId)
+        ?? typedPlans.find((plan) => plan.id === resolvedPlanState.legacyPlanId)
+        ?? defaultPlan;
       const monthlyPrice = currentPlan?.monthly_price;
       const paidOrCustomPlan = currentPlan ? monthlyPrice !== 0 : false;
-      const effectiveStatus = getEffectiveSubscriptionStatus(typedSubscription);
+      const effectiveStatus = resolvedPlanState.subscriptionStatus;
       const subscriptionReady = effectiveStatus === "active" || effectiveStatus === "trialing";
       const trialDays = getPlanTrialDays(currentPlan as any);
       const remainingTrialDays = getRemainingTrialDays(typedSubscription?.trial_ends_at);

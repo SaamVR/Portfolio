@@ -28,11 +28,18 @@ export async function unseedTemplateCatalog(
         throw error;
       }
     }
+    const seededBlogPostIds = unique(Object.keys(metadata.blogPosts ?? {}));
+    if (seededBlogPostIds.length > 0) {
+      const blogDeleteBuilder = client.from("blog_posts").delete().eq("store_id", storeId);
+      const { error: blogErr } = await blogDeleteBuilder.in("id", seededBlogPostIds);
+      if (blogErr) {
+        console.warn("Unseed blog posts note:", blogErr.message);
+      }
+    }
   }
 
   // Aggressively purge any lingering hardcoded fallback seed data from `useSeedData`
-  // AND all known template demo products (e.g. from previous templates that were lost from the metadata tracker)
-  // so that NO fashion template or other demo data remains when a user clicks "Unseed"
+  // AND all known template demo products/posts so no stale demo data remains when unseeding
   const legacySeedProductNames = [
     "Classic Cotton T-Shirt",
     "Slim Fit Denim Jeans",
@@ -56,6 +63,18 @@ export async function unseedTemplateCatalog(
   if (legacyError) {
     throw legacyError;
   }
+
+  const demoBlogSlugs = [
+    "ultimate-fit-and-care-guide",
+    "behind-the-template-mobile-first-storefronts",
+    "5-style-essentials-for-the-season",
+    "behind-the-template-mobile-first-commerce",
+    "5-style-essentials-for-modern-season",
+    "welcome-story-and-launch-guide",
+    "essential-maintenance-and-product-care-tips",
+    "5-tips-for-choosing-the-perfect-fit"
+  ];
+  await client.from("blog_posts").delete().eq("store_id", storeId).in("slug", demoBlogSlugs);
 
   const { data: remainingProducts, error: remainingProductsError } = await client
     .from("products")
@@ -117,7 +136,7 @@ export async function reseedTemplateCatalog(
   await unseedTemplateCatalog(client, storeId, currentMetadata);
 
   const catalogSeed = buildTemplateCatalogSeedRows(storeId, templateId);
-  const [categoryResult, productTypeResult, productResult] = await Promise.all([
+  const [categoryResult, productTypeResult, productResult, blogResult] = await Promise.all([
     catalogSeed.categoryRows.length > 0
       ? client.from("product_categories").upsert(catalogSeed.categoryRows, { onConflict: "id" })
       : Promise.resolve({ error: null }),
@@ -127,10 +146,17 @@ export async function reseedTemplateCatalog(
     catalogSeed.productRows.length > 0
       ? client.from("products").upsert(catalogSeed.productRows, { onConflict: "id" })
       : Promise.resolve({ error: null }),
+    catalogSeed.blogPostRows && catalogSeed.blogPostRows.length > 0
+      ? client.from("blog_posts").upsert(catalogSeed.blogPostRows, { onConflict: "id" })
+      : Promise.resolve({ error: null }),
   ]);
 
   if (categoryResult.error || productTypeResult.error || productResult.error) {
     throw categoryResult.error ?? productTypeResult.error ?? productResult.error;
+  }
+
+  if (blogResult && blogResult.error) {
+    console.warn("Reseed blog posts note:", blogResult.error.message);
   }
 
   return catalogSeed;

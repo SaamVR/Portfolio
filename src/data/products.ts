@@ -16,6 +16,8 @@ export interface Product {
   badge?: "New" | "Sale" | string;
   stock?: number;
   isAvailable?: boolean;
+  metricValues?: Record<string, string[]>;
+  typeMetricSchema?: Array<{ key: string; label: string }>;
 }
 
 export const productTypes: { label: string; value: ProductType | "All" }[] = [

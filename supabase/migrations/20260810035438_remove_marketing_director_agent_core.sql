@@ -1,0 +1,12 @@
+drop function if exists public.marketing_agent_funnel_snapshot(integer);
+drop table if exists public.marketing_agent_competitor_findings;
+drop table if exists public.marketing_agent_content;
+drop table if exists public.marketing_agent_experiments;
+drop table if exists public.marketing_agent_actions;
+drop table if exists public.marketing_agent_approvals;
+drop table if exists public.marketing_agent_memory;
+drop table if exists public.marketing_agent_runs;
+drop table if exists public.marketing_agent_tasks;
+drop table if exists public.marketing_agent_plans;
+drop table if exists public.marketing_agent_goals;
+drop table if exists public.marketing_agent_settings;;

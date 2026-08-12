@@ -3,6 +3,7 @@ import type { StorePageBlock, StoreTheme } from "@/lib/cms/schema";
 import type { Json } from "@/integrations/supabase/types";
 
 export const storefrontTemplateIds = [
+  "blank",
   "landing",
   "beauty",
   "fashion",
@@ -41,19 +42,22 @@ export type StorefrontTypographyScale = "compact" | "balanced" | "display";
 export type StoreBusinessFamily = "commerce" | "booking" | "listing" | "service" | "donation";
 export type StoreCatalogMode = "single_product" | "multi_product" | "menu" | "inquiry_only" | "landing_only" | "digital_download" | "multi_vendor" | "pre_order" | "donation_tiers";
 export type OnboardingStepId =
-  | "blueprint"
+  | "template"
   | "brand"
   | "content"
   | "catalog"
   | "theme"
   | "payments"
   | "launch";
+export type StorefrontOnboardingMode = "template" | "blank";
 
-export interface BlueprintOnboardingStep {
+export interface TemplateOnboardingStep {
   id: OnboardingStepId;
   title: string;
   description: string;
 }
+
+export type BlueprintOnboardingStep = TemplateOnboardingStep;
 
 export interface StorefrontTemplatePresentation {
   sectionOrder: readonly StorefrontBlockType[];
@@ -84,6 +88,10 @@ export interface StorefrontTemplateDefinition {
   label: string;
   description: string;
   rendererKind: "fashion" | "generic";
+  onboardingMode: StorefrontOnboardingMode;
+  compatibleBlockSet: readonly StorefrontBlockType[];
+  recommendedBlockSet: readonly StorefrontBlockType[];
+  defaultBlockSet: readonly StorefrontBlockType[];
   presentation: StorefrontTemplatePresentation;
   supportsMapControls?: boolean;
   supportsSearchControls?: boolean;
@@ -105,8 +113,11 @@ export interface StorefrontTemplateSeedDefinition {
   businessFamily: StoreBusinessFamily;
   catalogMode: StoreCatalogMode;
   group: string;
+  onboardingMode: StorefrontOnboardingMode;
   recommendedPageSet: string[];
+  compatibleBlockSet: string[];
   recommendedBlockSet: string[];
+  defaultBlockSet: string[];
   defaultTheme: StoreTheme;
   storeDescription: string;
   hero: {
@@ -117,7 +128,7 @@ export interface StorefrontTemplateSeedDefinition {
   };
   capabilities: string[];
   onboarding: {
-    steps: BlueprintOnboardingStep[];
+    steps: TemplateOnboardingStep[];
   };
   defaultSiteSettings: Record<string, Json>;
 }
@@ -126,10 +137,20 @@ type StorefrontTemplateDefinitionOverride = {
   label?: string;
   description?: string;
   rendererKind?: StorefrontTemplateDefinition["rendererKind"];
+  onboardingMode?: StorefrontOnboardingMode;
+  compatibleBlockSet?: readonly StorefrontBlockType[];
+  recommendedBlockSet?: readonly StorefrontBlockType[];
+  defaultBlockSet?: readonly StorefrontBlockType[];
   presentation?: Partial<StorefrontTemplatePresentation>;
 };
 
-type StorefrontTemplateSeedOverride = Omit<StorefrontTemplateSeedDefinition, "id" | "defaultSiteSettings"> & {
+type StorefrontTemplateSeedOverride = Omit<
+  StorefrontTemplateSeedDefinition,
+  "id" | "defaultSiteSettings" | "onboardingMode" | "compatibleBlockSet" | "defaultBlockSet"
+> & {
+  onboardingMode?: StorefrontOnboardingMode;
+  compatibleBlockSet?: readonly string[];
+  defaultBlockSet?: readonly string[];
   storefrontProfile: Record<string, Json>;
 };
 
@@ -150,8 +171,8 @@ const allBlockTypes: readonly StorefrontBlockType[] = [
   "testimonials",
 ] as const;
 
-const defaultOnboardingSteps: BlueprintOnboardingStep[] = [
-  { id: "blueprint", title: "Template", description: "Pick the storefront template and launch pattern" },
+const defaultOnboardingSteps: TemplateOnboardingStep[] = [
+  { id: "template", title: "Template", description: "Pick the storefront template and launch pattern" },
   { id: "brand", title: "Brand", description: "Name, logo, slug, and brand summary" },
   { id: "content", title: "Content", description: "Front-page hero copy and media" },
   { id: "catalog", title: "Catalog", description: "Choose how products and buying work" },
@@ -187,8 +208,8 @@ function buildTemplateSiteSettings(
 ) {
   return {
     storefront_profile: {
+      allow_guest_checkout: true,
       ...storefrontProfile,
-      blueprint_id: templateId,
       template_id: templateId,
     },
     payment_settings: paymentSettingsFromLaunchTemplate(launchTemplateId),
@@ -199,11 +220,19 @@ function createTemplateDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateDefinitionOverride,
 ): StorefrontTemplateDefinition {
+  const compatibleBlockSet = overrides.compatibleBlockSet ?? allBlockTypes;
+  const recommendedBlockSet = overrides.recommendedBlockSet ?? compatibleBlockSet;
+  const defaultBlockSet = overrides.defaultBlockSet ?? recommendedBlockSet;
+
   return {
     id,
     label: overrides.label ?? id,
     description: overrides.description ?? "",
     rendererKind: overrides.rendererKind ?? "generic",
+    onboardingMode: overrides.onboardingMode ?? "template",
+    compatibleBlockSet,
+    recommendedBlockSet,
+    defaultBlockSet,
     presentation: {
       sectionOrder: overrides.presentation?.sectionOrder ?? allBlockTypes,
       visibleSections: overrides.presentation?.visibleSections ?? allBlockTypes,
@@ -234,6 +263,9 @@ function createTemplateSeedDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateSeedOverride,
 ): StorefrontTemplateSeedDefinition {
+  const compatibleBlockSet = overrides.compatibleBlockSet ?? overrides.recommendedBlockSet;
+  const defaultBlockSet = overrides.defaultBlockSet ?? overrides.recommendedBlockSet;
+
   return {
     id,
     legacyBlueprintIds: overrides.legacyBlueprintIds,
@@ -244,8 +276,11 @@ function createTemplateSeedDefinition(
     businessFamily: overrides.businessFamily,
     catalogMode: overrides.catalogMode,
     group: overrides.group,
+    onboardingMode: overrides.onboardingMode ?? "template",
     recommendedPageSet: [...overrides.recommendedPageSet],
+    compatibleBlockSet: [...compatibleBlockSet],
     recommendedBlockSet: [...overrides.recommendedBlockSet],
+    defaultBlockSet: [...defaultBlockSet],
     defaultTheme: {
       ...overrides.defaultTheme,
       customCssVars: { ...(overrides.defaultTheme.customCssVars ?? {}) },
@@ -265,6 +300,39 @@ function createTemplateSeedDefinition(
 }
 
 export const storefrontTemplateRegistry: Record<StorefrontTemplateId, StorefrontTemplateDefinition> = {
+  blank: createTemplateDefinition("blank", {
+    label: "Blank Builder",
+    description: "Start from a minimal storefront shell, then choose the sections and styles you want to launch with.",
+    onboardingMode: "blank",
+    compatibleBlockSet: allBlockTypes,
+    recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "rich-text", "trust-badges", "faq-accordion", "testimonials"],
+    defaultBlockSet: ["hero", "featured-products"],
+    presentation: {
+      sectionOrder: ["hero", "featured-products", "promo-banner", "category-showcase", "rich-text", "trust-badges", "faq-accordion", "testimonials", "social-feed", "video-reel", "comparison", "recommended-products", "recently-viewed", "countdown"],
+      visibleSections: ["hero", "featured-products", "promo-banner", "category-showcase", "rich-text", "trust-badges", "faq-accordion", "testimonials", "social-feed", "video-reel", "comparison", "recommended-products", "recently-viewed", "countdown"],
+      cardStyle: "clean-catalog",
+      imageRatio: "4:5",
+      borderRadius: "1rem",
+      spacingDensity: "comfortable",
+      typographyScale: "balanced",
+      navigationLabels: {
+        home: "Home",
+        shop: "Shop",
+        account: "Account",
+        wishlist: "Saved",
+        cart: "Cart",
+      },
+      ctaLabels: {
+        primary: "Start exploring",
+        secondary: "Learn more",
+        addToCart: "Add to cart",
+      },
+      blockLayoutVariants: {
+        hero: "split",
+        "featured-products": "3-col",
+      },
+    },
+  }),
   landing: createTemplateDefinition("landing", {
     label: "Landing",
     description: "CTA-first single-page flow for direct inquiries and assisted conversion.",
@@ -540,6 +608,35 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
 };
 
 export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, StorefrontTemplateSeedDefinition> = {
+  blank: createTemplateSeedDefinition("blank", {
+    legacyBlueprintIds: ["blank-template", "blank"],
+    legacyTemplateId: "general",
+    name: "Blank Builder",
+    shortName: "Blank",
+    description: "A minimal starter shell that lets merchants compose their own homepage from the shared block system.",
+    businessFamily: "commerce",
+    catalogMode: "multi_product",
+    group: "Blank Builder",
+    onboardingMode: "blank",
+    recommendedPageSet: ["home", "about", "policy"],
+    compatibleBlockSet: allBlockTypes,
+    recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "rich-text", "trust-badges", "faq-accordion", "testimonials"],
+    defaultBlockSet: ["hero", "featured-products"],
+    defaultTheme: themeFromLaunchTemplate("general"),
+    storeDescription: "A custom storefront built from shared sections, reusable layouts, and store-scoped content choices.",
+    hero: {
+      tagline: "Build your own flow",
+      title: "Start from a",
+      highlight: "blank canvas",
+      subtitle: "Choose the sections you want, keep the shared editor path, and launch without committing to a rigid preset.",
+    },
+    capabilities: ["catalog", "cart", "checkout"],
+    onboarding: { steps: defaultOnboardingSteps },
+    storefrontProfile: {
+      product_visibility: "catalog",
+      checkout_mode: "standard",
+    },
+  }),
   fashion: createTemplateSeedDefinition("fashion", {
     legacyBlueprintIds: ["clothing"],
     legacyTemplateId: "clothing",
@@ -1063,6 +1160,7 @@ export const storefrontTemplateOptions = storefrontTemplateIds.map((id) => ({
   value: id,
   label: storefrontTemplateRegistry[id].label,
   description: storefrontTemplateRegistry[id].description,
+  onboardingMode: storefrontTemplateRegistry[id].onboardingMode,
 }));
 
 export function isStorefrontTemplateId(value: unknown): value is StorefrontTemplateId {
@@ -1082,7 +1180,7 @@ export type ResolvedStorefrontTemplateProfile = {
   seedDefinition: StorefrontTemplateSeedDefinition;
   businessFamily: StoreBusinessFamily;
   catalogMode: StoreCatalogMode;
-  seedBlueprintId: string;
+  templateSeedId: string;
 };
 
 export function resolveCompatibleTemplateSeedId(
@@ -1118,7 +1216,7 @@ export function resolveCompatibleTemplateSeedId(
 export function resolveStorefrontTemplateId(
   candidate: unknown,
   options?: {
-    blueprintId?: string | null;
+    templateSeedId?: string | null;
     productVisibility?: string | null;
   },
 ): StorefrontTemplateId {
@@ -1129,11 +1227,11 @@ export function resolveStorefrontTemplateId(
     return directMatch;
   }
 
-  const blueprintMatch = resolveCompatibleTemplateSeedId(options?.blueprintId, {
+  const templateSeedMatch = resolveCompatibleTemplateSeedId(options?.templateSeedId, {
     productVisibility: options?.productVisibility ?? null,
   });
-  if (blueprintMatch) {
-    return blueprintMatch;
+  if (templateSeedMatch) {
+    return templateSeedMatch;
   }
 
   switch (options?.productVisibility) {
@@ -1153,7 +1251,7 @@ export function resolveStorefrontTemplateId(
 export function resolveStorefrontTemplateProfile(
   candidate: unknown,
   options?: {
-    blueprintId?: string | null;
+    templateSeedId?: string | null;
     productVisibility?: string | null;
   },
 ): ResolvedStorefrontTemplateProfile {
@@ -1165,12 +1263,8 @@ export function resolveStorefrontTemplateProfile(
     seedDefinition,
     businessFamily: seedDefinition.businessFamily,
     catalogMode: seedDefinition.catalogMode,
-    seedBlueprintId: seedDefinition.id,
+    templateSeedId: seedDefinition.id,
   };
-}
-
-export function resolveSeedBlueprintIdForTemplate(templateId: StorefrontTemplateId): string {
-  return getStorefrontTemplateSeedDefinition(templateId).id;
 }
 
 export function buildStorefrontTemplateSiteSettingsEntries(

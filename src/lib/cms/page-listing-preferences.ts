@@ -1,6 +1,6 @@
 import type { Store, StorePage } from "@/lib/cms/schema";
 
-export const PAGE_LISTING_PREFERENCES_KEY = "page_listing_preferences";
+const PAGE_LISTING_PREFERENCES_KEY = "page_listing_preferences";
 
 export type PageListingPreference = {
   showInNavbar?: boolean;
@@ -24,7 +24,7 @@ type FooterLink = {
   url: string;
 };
 
-export function normalizePageListingPreferences(value: unknown): PageListingPreferences {
+function normalizePageListingPreferences(value: unknown): PageListingPreferences {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
@@ -32,13 +32,13 @@ export function normalizePageListingPreferences(value: unknown): PageListingPref
   return value as PageListingPreferences;
 }
 
-export function getPageListingPreference(store: Store | null | undefined, page: Pick<StorePage, "slug"> | null | undefined): PageListingPreference {
+function getPageListingPreference(store: Store | null | undefined, page: Pick<StorePage, "slug"> | null | undefined): PageListingPreference {
   if (!store || !page) return {};
   const preferences = normalizePageListingPreferences(store.siteSettings?.[PAGE_LISTING_PREFERENCES_KEY]);
   return preferences[page.slug] ?? {};
 }
 
-export function updatePageListingPreference(
+function updatePageListingPreference(
   store: Store,
   pageSlug: string,
   patch: Partial<PageListingPreference>,

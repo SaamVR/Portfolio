@@ -1,4 +1,22 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { resolveStorePlanState, type SubscriptionRecordLike } from "@/lib/billing/plans";
+
+const PLATFORM_ROLE_PRIORITY = ["admin", "super_admin", "billing_admin", "support_agent", "co_admin"] as const;
+
+function resolvePlatformRole(rows: Array<{ role?: unknown }> | null | undefined) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return null;
+  }
+
+  for (const candidate of PLATFORM_ROLE_PRIORITY) {
+    const match = rows.find((row) => typeof row?.role === "string" && row.role === candidate);
+    if (match) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
 
 export function getRequiredEnv(name: string) {
   const value = process.env[name];
@@ -62,7 +80,7 @@ export async function canManageStore(
   userId: string,
   allowedStoreRoles: string[] = ["owner", "admin", "editor"],
 ) {
-  const [{ data: store }, { data: membership }, { data: platformRole }] = await Promise.all([
+  const [{ data: store }, { data: membership }, { data: platformRoleRows }] = await Promise.all([
     supabaseAdmin
       .from("stores")
       .select("id, owner_id")
@@ -77,12 +95,12 @@ export async function canManageStore(
     supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .in("role", ["admin", "super_admin", "billing_admin", "support_agent"])
-      .maybeSingle(),
+      .eq("user_id", userId),
   ]);
 
-  if (platformRole?.role) {
+  const platformRole = resolvePlatformRole(platformRoleRows as Array<{ role?: unknown }> | null | undefined);
+
+  if (platformRole) {
     return true;
   }
 
@@ -101,6 +119,55 @@ interface StoreSubscriptionWriteInput {
   providerSubscriptionId?: string | null;
   currentPeriodEndsAt?: string | null;
   trialEndsAt?: string | null;
+}
+
+type StorePlanStateRow = {
+  plan?: string | null;
+  is_published?: boolean | null;
+  store_subscriptions?: Array<SubscriptionRecordLike> | SubscriptionRecordLike | null;
+};
+
+export async function loadStorePlanState(
+  supabaseAdmin: SupabaseClient,
+  storeId: string,
+  options?: {
+    includePublished?: boolean;
+  },
+) {
+  const includePublished = options?.includePublished === true;
+  const selection = includePublished
+    ? "plan, is_published, store_subscriptions(plan_id, status, trial_ends_at, current_period_ends_at)"
+    : "plan, store_subscriptions(plan_id, status, trial_ends_at, current_period_ends_at)";
+
+  const { data, error } = await supabaseAdmin
+    .from("stores")
+    .select(selection)
+    .eq("id", storeId)
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const row = (data ?? null) as StorePlanStateRow | null;
+  const rawSubscription = Array.isArray(row?.store_subscriptions)
+    ? (row?.store_subscriptions[0] ?? null)
+    : (row?.store_subscriptions ?? null);
+
+  return {
+    data: row
+      ? {
+          legacyPlanId: typeof row.plan === "string" ? row.plan : null,
+          isPublished: includePublished ? row.is_published ?? null : null,
+          subscription: rawSubscription,
+          resolved: resolveStorePlanState({
+            subscription: rawSubscription,
+            legacyPlanId: typeof row.plan === "string" ? row.plan : null,
+          }),
+        }
+      : null,
+    error: null,
+  };
 }
 
 export async function upsertStoreSubscription(

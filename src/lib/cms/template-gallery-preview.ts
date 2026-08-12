@@ -1,5 +1,4 @@
 import { defaultStore } from "@/lib/cms/default-store";
-import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
@@ -27,11 +26,10 @@ export function personalizePreviewPages(pages: StorePage[], store: Store): Store
 
 export function createBuiltInBundle(
   templateId: string,
-  pageBlueprints: CmsPageBlueprint[],
   store: Store,
 ): ThemeExportBundle {
   const pages = personalizePreviewPages(
-    instantiateStorePagesFromTemplate(templateId, pageBlueprints, { blueprintId: templateId }),
+    instantiateStorePagesFromTemplate(templateId, { templateSeedId: templateId }),
     store,
   );
   return {
@@ -44,18 +42,17 @@ export function createBuiltInBundle(
 
 export function createBuiltInCardBundle(
   templateId: string,
-  pageBlueprints: CmsPageBlueprint[],
   store: Store,
 ): ThemeExportBundle {
   if (!isStorefrontTemplateId(templateId)) {
-    return createBuiltInBundle(templateId, pageBlueprints, store);
+    return createBuiltInBundle(templateId, store);
   }
 
   return {
     schemaVersion: 1,
     type: "theme-and-layout",
     theme: defaultStore.theme,
-    pages: instantiateStorePagesFromTemplate(templateId as StorefrontTemplateId, pageBlueprints, { blueprintId: templateId }),
+    pages: instantiateStorePagesFromTemplate(templateId as StorefrontTemplateId, { templateSeedId: templateId }),
   };
 }
 

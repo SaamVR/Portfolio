@@ -147,7 +147,7 @@ export function resolveStorefrontOrderExperience(
 ): StorefrontOrderExperience {
   const storefrontProfile = getStorefrontProfile(store);
   const profile = resolveStorefrontTemplateProfile(storefrontProfile.template_id, {
-    blueprintId: typeof storefrontProfile.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const checkoutMode = typeof storefrontProfile.checkout_mode === "string" ? storefrontProfile.checkout_mode : "standard";
@@ -169,7 +169,7 @@ export function resolveStorefrontOrderExperienceFromProfile(
   items?: OrderItemLike[],
 ): StorefrontOrderExperience {
   const profile = resolveStorefrontTemplateProfile(storefrontProfile?.template_id, {
-    blueprintId: typeof storefrontProfile?.blueprint_id === "string" ? storefrontProfile.blueprint_id : null,
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const checkoutMode = typeof storefrontProfile?.checkout_mode === "string" ? storefrontProfile.checkout_mode : "standard";

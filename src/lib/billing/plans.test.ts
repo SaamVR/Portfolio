@@ -3,6 +3,7 @@ import {
   getEffectiveSubscriptionStatus,
   getRemainingTrialDays,
   isSubscriptionLive,
+  resolveStorePlanState,
   resolveSignupPlanId,
 } from "@/lib/billing/plans";
 
@@ -47,5 +48,34 @@ describe("billing plan helpers", () => {
         "pro",
       ),
     ).toBe("basic");
+  });
+
+  it("keeps a legacy paid plan effective when no subscription row exists", () => {
+    const resolved = resolveStorePlanState({
+      subscription: null,
+      legacyPlanId: "advanced",
+    });
+
+    expect(resolved.hasSubscriptionRow).toBe(false);
+    expect(resolved.legacyPlanId).toBe("advanced");
+    expect(resolved.effectivePlanId).toBe("advanced");
+    expect(resolved.subscriptionStatus).toBe(null);
+    expect(resolved.live).toBe(false);
+  });
+
+  it("does not let a legacy paid plan override an explicit past_due subscription", () => {
+    const resolved = resolveStorePlanState({
+      subscription: {
+        plan_id: "advanced",
+        status: "past_due",
+        trial_ends_at: "2026-07-10T00:00:00.000Z",
+      },
+      legacyPlanId: "advanced",
+    }, new Date("2026-08-09T00:00:00.000Z"));
+
+    expect(resolved.hasSubscriptionRow).toBe(true);
+    expect(resolved.effectivePlanId).toBe(null);
+    expect(resolved.subscriptionStatus).toBe("past_due");
+    expect(resolved.live).toBe(false);
   });
 });

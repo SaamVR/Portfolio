@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getEzcomoRequestHostname } from "@/lib/platform/request-host";
+import { parse } from "tldts";
+import { getDomainRoutingKvAdapter } from "@/lib/domain-routing-kv";
+import { getEzcomoRequestHostname, getEzcomoRequestStoreSlug } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 
 export function normalizeHost(host?: string | null) {
@@ -49,6 +51,27 @@ export function resolveSubdomainStoreSlug(hostname: string, env: RoutingEnv = pr
 
 type StoreSlugLookup = (hostname: string, init?: RequestInit & { next?: { revalidate?: number } }) => Promise<string | null>;
 
+function shouldLookupCustomDomain(hostname: string, env: RoutingEnv = process.env) {
+  if (!hostname || hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return false;
+  }
+
+  if (resolveSubdomainStoreSlug(hostname, env)) {
+    return false;
+  }
+
+  if (getBaseDomains(env).includes(hostname)) {
+    return false;
+  }
+
+  const parsed = parse(hostname);
+  if (parsed.isIp || !parsed.isIcann || !parsed.hostname || !parsed.domain) {
+    return false;
+  }
+
+  return true;
+}
+
 async function fetchStoreSlugByCustomDomain(
   hostname: string,
   init?: RequestInit & { next?: { revalidate?: number } },
@@ -92,14 +115,20 @@ export async function resolveCustomDomainStoreSlug(
   hostname: string,
   lookupStoreSlug: StoreSlugLookup = fetchStoreSlugByCustomDomain,
 ) {
-  const cached = await lookupStoreSlug(hostname, { next: { revalidate: 300 } });
-  if (cached) {
-    return cached;
+  if (!shouldLookupCustomDomain(hostname)) {
+    return null;
   }
 
-  // Fresh retry so newly verified domains can start routing without waiting
-  // for the full cached lookup window to expire.
-  return lookupStoreSlug(hostname, { cache: "no-store" });
+  try {
+    const kvRecord = await getDomainRoutingKvAdapter().get(hostname);
+    if (kvRecord?.storeSlug) {
+      return kvRecord.storeSlug;
+    }
+  } catch {
+    // Fall back to the primary source of truth when KV is unavailable.
+  }
+
+  return lookupStoreSlug(hostname, { next: { revalidate: 300 } });
 }
 
 export async function resolveStoreSlug(
@@ -111,18 +140,27 @@ export async function resolveStoreSlug(
     return subdomainSlug;
   }
 
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
+  if (!shouldLookupCustomDomain(hostname)) {
     return null;
   }
 
   return resolveCustomDomain(hostname);
 }
 
-const BYPASSED_PREFIXES = /^\/(_next|api|admin|auth|plans|signup|stores|bkash|apple|manifest-icon|masked-icon|logo|site\.webmanifest)/;
+const BYPASSED_PREFIXES = /^\/(_next|api|admin|auth|plans|signup|stores|bkash)/;
+const BRAND_SEO_PREFIXES = /^\/(apple|manifest-icon|masked-icon|logo|site\.webmanifest)/;
 const BYPASSED_EXACT = new Set(["/favicon.ico", "/robots.txt", "/sitemap.xml", "/manifest.json"]);
 
-export function isBypassedPath(pathname: string) {
-  return BYPASSED_EXACT.has(pathname) || BYPASSED_PREFIXES.test(pathname);
+export function isBypassedPath(pathname: string, isStoreDomain: boolean) {
+  if (BYPASSED_PREFIXES.test(pathname)) {
+    return true;
+  }
+
+  if (isStoreDomain) {
+    return false; // Do not bypass SEO and brand assets for store domains
+  }
+
+  return BYPASSED_EXACT.has(pathname) || BRAND_SEO_PREFIXES.test(pathname);
 }
 
 export function getTenantRewritePath(storeSlug: string, pathname: string) {
@@ -135,13 +173,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const storeSlug = await resolveStoreSlug(hostname);
+  const trustedStoreSlug = getEzcomoRequestStoreSlug(request);
+  const storeSlug = trustedStoreSlug ?? await resolveStoreSlug(hostname);
   if (!storeSlug) {
     return NextResponse.next();
   }
 
   const { pathname, search } = request.nextUrl;
-  if (isBypassedPath(pathname)) {
+  if (isBypassedPath(pathname, true)) {
     return NextResponse.next();
   }
 
@@ -156,5 +195,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|woff|woff2|mp4|webm|pdf)$).*)",
+  ],
 };

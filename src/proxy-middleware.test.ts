@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { setDomainRoutingKvAdapter } from "@/lib/domain-routing-kv";
 import {
   getBaseDomains,
   getTenantRewritePath,
@@ -39,11 +40,11 @@ test("single tenant subdomains resolve to store slugs", () => {
 
 test("platform paths bypass tenant rewrites on tenant domains", () => {
   for (const path of ["/admin", "/admin/products", "/api/orders/create", "/auth", "/bkash/callback", "/plans", "/signup", "/stores/demo"]) {
-    assert.equal(isBypassedPath(path), true, `${path} should bypass tenant rewriting`);
+    assert.equal(isBypassedPath(path, true), true, `${path} should bypass tenant rewriting`);
   }
 
-  assert.equal(isBypassedPath("/shop"), false);
-  assert.equal(isBypassedPath("/product/classic-shirt"), false);
+  assert.equal(isBypassedPath("/shop", true), false);
+  assert.equal(isBypassedPath("/product/classic-shirt", true), false);
 });
 
 test("tenant paths rewrite into the store route shape", () => {
@@ -75,14 +76,87 @@ test("localhost never falls through to custom domain lookup", async () => {
   assert.equal(called, false);
 });
 
-test("custom domain lookup retries uncached after a cached miss", async () => {
+test("custom domain lookup does not retry uncached after a miss", async () => {
   const calls: Array<RequestInit & { next?: { revalidate?: number } } | undefined> = [];
 
   const slug = await resolveCustomDomainStoreSlug("fresh.example-store.com", async (_hostname, init) => {
     calls.push(init);
-    return calls.length === 1 ? null : "fresh-store";
+    return null;
   });
 
-  assert.equal(slug, "fresh-store");
-  assert.deepEqual(calls, [{ next: { revalidate: 300 } }, { cache: "no-store" }]);
+  assert.equal(slug, null);
+  assert.deepEqual(calls, [{ next: { revalidate: 300 } }]);
+});
+
+test("invalid custom hosts are rejected before remote lookup", async () => {
+  let called = false;
+
+  const slug = await resolveCustomDomainStoreSlug("not a real host", async () => {
+    called = true;
+    return "should-not-run";
+  });
+
+  assert.equal(slug, null);
+  assert.equal(called, false);
+});
+
+test("kv results short-circuit the database lookup path", async () => {
+  const originalAdapterReset = () => setDomainRoutingKvAdapter({
+    async get() {
+      return null;
+    },
+    async set() {},
+    async delete() {},
+  });
+
+  setDomainRoutingKvAdapter({
+    async get(hostname) {
+      assert.equal(hostname, "www.cached-store.com");
+      return { storeSlug: "cached-store" };
+    },
+    async set() {},
+    async delete() {},
+  });
+
+  let called = false;
+  const slug = await resolveCustomDomainStoreSlug("www.cached-store.com", async () => {
+    called = true;
+    return "db-store";
+  });
+
+  originalAdapterReset();
+
+  assert.equal(slug, "cached-store");
+  assert.equal(called, false);
+});
+
+test("kv lookup failures fall back to the database lookup path", async () => {
+  const originalAdapterReset = () => setDomainRoutingKvAdapter({
+    async get() {
+      return null;
+    },
+    async set() {},
+    async delete() {},
+  });
+
+  setDomainRoutingKvAdapter({
+    async get() {
+      throw new Error("kv unavailable");
+    },
+    async set() {},
+    async delete() {},
+  });
+
+  let called = false;
+  const slug = await resolveCustomDomainStoreSlug("www.fallback-store.com", async (hostname, init) => {
+    called = true;
+    assert.equal(hostname, "www.fallback-store.com");
+    assert.deepEqual(init, { next: { revalidate: 300 } });
+    return "db-fallback-store";
+  });
+
+  originalAdapterReset();
+
+  assert.equal(slug, "db-fallback-store");
+  assert.equal(called, true);
 });

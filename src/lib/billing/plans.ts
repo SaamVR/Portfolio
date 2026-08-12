@@ -22,6 +22,11 @@ export type SubscriptionRecordLike = {
   current_period_ends_at?: string | null;
 };
 
+export type StorePlanStateInput = {
+  subscription?: SubscriptionRecordLike | null;
+  legacyPlanId?: string | null;
+};
+
 export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
   {
     id: "free",
@@ -139,6 +144,32 @@ export function isSubscriptionLive(
 ) {
   const status = getEffectiveSubscriptionStatus(subscription, now);
   return status === "active" || status === "trialing";
+}
+
+export function resolveStorePlanState(
+  input: StorePlanStateInput,
+  now = new Date(),
+) {
+  const subscription = input.subscription ?? null;
+  const subscriptionPlanId = typeof subscription?.plan_id === "string" ? subscription.plan_id : null;
+  const legacyPlanId = typeof input.legacyPlanId === "string" && input.legacyPlanId.trim()
+    ? input.legacyPlanId.trim()
+    : null;
+  const subscriptionStatus = getEffectiveSubscriptionStatus(subscription, now) ?? null;
+  const hasSubscriptionRow = Boolean(subscription);
+  const live = subscriptionStatus === "active" || subscriptionStatus === "trialing";
+  const effectivePlanId = live
+    ? (subscriptionPlanId ?? legacyPlanId)
+    : (!hasSubscriptionRow && legacyPlanId && legacyPlanId !== "free" ? legacyPlanId : null);
+
+  return {
+    hasSubscriptionRow,
+    subscriptionPlanId,
+    legacyPlanId,
+    subscriptionStatus,
+    live,
+    effectivePlanId,
+  };
 }
 
 export function canUseCustomDomains(

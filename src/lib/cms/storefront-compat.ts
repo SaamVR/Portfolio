@@ -1,4 +1,4 @@
-import type { StoreBusinessFamily, StoreCatalogMode } from "@/lib/cms/store-blueprints";
+import type { StoreBusinessFamily, StoreCatalogMode } from "@/lib/cms/storefront-template-seeds";
 
 export const allStoreBusinessFamilies = [
   "commerce",

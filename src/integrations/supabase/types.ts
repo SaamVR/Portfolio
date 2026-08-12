@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -12,7 +12,7 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
+  graphql: {
     Tables: {
       [_ in never]: never
     }
@@ -20,15 +20,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
@@ -75,6 +67,62 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_posts: {
+        Row: {
+          content: string
+          created_at: string
+          excerpt: string | null
+          featured_image: string | null
+          id: string
+          published_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: string
+          store_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: string
+          store_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: string
+          store_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -120,100 +168,38 @@ export type Database = {
           },
         ]
       }
-      cms_marketplace_templates: {
+      cms_features: {
         Row: {
-          bundle_json: Json
-          aesthetic: string | null
-          best_for: string[]
           category: string
-          cover_image: string | null
           created_at: string
-          creator_id: string | null
-          description: string | null
-          id: string
-          install_count: number
-          mobile_ready: boolean
-          price: number
-          preview_asset_urls: string[]
-          pricing_mode: string
-          rating_count: number
-          rating_avg: number | null
-          rejection_reason: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          safety_findings: Json
-          safety_status: string
-          status: string
-          submitted_at: string | null
-          tags: string[]
-          title: string
+          default_visible: boolean
+          description: string
+          is_active: boolean
+          key: string
+          name: string
           updated_at: string
         }
         Insert: {
-          bundle_json: Json
-          aesthetic?: string | null
-          best_for?: string[]
           category?: string
-          cover_image?: string | null
           created_at?: string
-          creator_id?: string | null
-          description?: string | null
-          id?: string
-          install_count?: number
-          mobile_ready?: boolean
-          price?: number
-          preview_asset_urls?: string[]
-          pricing_mode?: string
-          rating_count?: number
-          rating_avg?: number | null
-          rejection_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          safety_findings?: Json
-          safety_status?: string
-          status?: string
-          submitted_at?: string | null
-          tags?: string[]
-          title: string
+          default_visible?: boolean
+          description: string
+          is_active?: boolean
+          key: string
+          name: string
           updated_at?: string
         }
         Update: {
-          bundle_json?: Json
-          aesthetic?: string | null
-          best_for?: string[]
           category?: string
-          cover_image?: string | null
           created_at?: string
-          creator_id?: string | null
-          description?: string | null
-          id?: string
-          install_count?: number
-          mobile_ready?: boolean
-          price?: number
-          preview_asset_urls?: string[]
-          pricing_mode?: string
-          rating_count?: number
-          rating_avg?: number | null
-          rejection_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          safety_findings?: Json
-          safety_status?: string
-          status?: string
-          submitted_at?: string | null
-          tags?: string[]
-          title?: string
+          default_visible?: boolean
+          description?: string
+          is_active?: boolean
+          key?: string
+          name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "cms_marketplace_templates_creator_id_fkey"
-            columns: ["creator_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       cms_marketplace_template_installs: {
         Row: {
@@ -239,17 +225,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "cms_marketplace_template_installs_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "cms_marketplace_templates"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "cms_marketplace_template_installs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_marketplace_template_installs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "cms_marketplace_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -292,35 +278,89 @@ export type Database = {
           },
         ]
       }
-      cms_features: {
+      cms_marketplace_templates: {
         Row: {
+          aesthetic: string | null
+          best_for: string[]
+          bundle_json: Json
           category: string
+          cover_image: string | null
           created_at: string
-          default_visible: boolean
-          description: string
-          is_active: boolean
-          key: string
-          name: string
+          creator_id: string | null
+          description: string | null
+          id: string
+          install_count: number
+          mobile_ready: boolean
+          preview_asset_urls: string[]
+          price: number
+          pricing_mode: string
+          rating_avg: number | null
+          rating_count: number
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          safety_findings: Json
+          safety_status: string
+          status: string
+          submitted_at: string | null
+          tags: string[]
+          title: string
           updated_at: string
         }
         Insert: {
+          aesthetic?: string | null
+          best_for?: string[]
+          bundle_json: Json
           category?: string
+          cover_image?: string | null
           created_at?: string
-          default_visible?: boolean
-          description: string
-          is_active?: boolean
-          key: string
-          name: string
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          install_count?: number
+          mobile_ready?: boolean
+          preview_asset_urls?: string[]
+          price?: number
+          pricing_mode?: string
+          rating_avg?: number | null
+          rating_count?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_findings?: Json
+          safety_status?: string
+          status?: string
+          submitted_at?: string | null
+          tags?: string[]
+          title: string
           updated_at?: string
         }
         Update: {
+          aesthetic?: string | null
+          best_for?: string[]
+          bundle_json?: Json
           category?: string
+          cover_image?: string | null
           created_at?: string
-          default_visible?: boolean
-          description?: string
-          is_active?: boolean
-          key?: string
-          name?: string
+          creator_id?: string | null
+          description?: string | null
+          id?: string
+          install_count?: number
+          mobile_ready?: boolean
+          preview_asset_urls?: string[]
+          price?: number
+          pricing_mode?: string
+          rating_avg?: number | null
+          rating_count?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_findings?: Json
+          safety_status?: string
+          status?: string
+          submitted_at?: string | null
+          tags?: string[]
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -605,8 +645,8 @@ export type Database = {
       }
       email_events: {
         Row: {
-          channel: string
           bounced_at: string | null
+          channel: string
           created_at: string
           dead_lettered_at: string | null
           delivered_at: string | null
@@ -616,9 +656,9 @@ export type Database = {
           last_attempt_at: string | null
           metadata: Json
           next_retry_at: string | null
-          order_id: string | null
           operator_escalated_at: string | null
           operator_escalation_reason: string | null
+          order_id: string | null
           provider: string | null
           provider_message_id: string | null
           recipient: string | null
@@ -628,8 +668,8 @@ export type Database = {
           template_name: string
         }
         Insert: {
-          channel: string
           bounced_at?: string | null
+          channel: string
           created_at?: string
           dead_lettered_at?: string | null
           delivered_at?: string | null
@@ -639,9 +679,9 @@ export type Database = {
           last_attempt_at?: string | null
           metadata?: Json
           next_retry_at?: string | null
-          order_id?: string | null
           operator_escalated_at?: string | null
           operator_escalation_reason?: string | null
+          order_id?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string | null
@@ -651,8 +691,8 @@ export type Database = {
           template_name: string
         }
         Update: {
-          channel?: string
           bounced_at?: string | null
+          channel?: string
           created_at?: string
           dead_lettered_at?: string | null
           delivered_at?: string | null
@@ -662,9 +702,9 @@ export type Database = {
           last_attempt_at?: string | null
           metadata?: Json
           next_retry_at?: string | null
-          order_id?: string | null
           operator_escalated_at?: string | null
           operator_escalation_reason?: string | null
+          order_id?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string | null
@@ -715,6 +755,136 @@ export type Database = {
           used_by?: string | null
         }
         Relationships: []
+      }
+      merchant_account_statuses: {
+        Row: {
+          banned_at: string | null
+          can_create_store: boolean
+          created_at: string
+          restored_at: string | null
+          status_note: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_at?: string | null
+          can_create_store?: boolean
+          created_at?: string
+          restored_at?: string | null
+          status_note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_at?: string | null
+          can_create_store?: boolean
+          created_at?: string
+          restored_at?: string | null
+          status_note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      order_shipments: {
+        Row: {
+          booked_at: string | null
+          booking_payload: Json
+          cash_collection_amount: number
+          consignment_id: string | null
+          courier_connection_id: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          destination_address: string | null
+          destination_city: string | null
+          id: string
+          latest_provider_payload: Json
+          order_id: string
+          picked_up_at: string | null
+          provider: string
+          recipient_name: string | null
+          recipient_phone: string | null
+          shipping_fee: number
+          status: string
+          store_id: string
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          booked_at?: string | null
+          booking_payload?: Json
+          cash_collection_amount?: number
+          consignment_id?: string | null
+          courier_connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          destination_address?: string | null
+          destination_city?: string | null
+          id?: string
+          latest_provider_payload?: Json
+          order_id: string
+          picked_up_at?: string | null
+          provider: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_fee?: number
+          status?: string
+          store_id: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booked_at?: string | null
+          booking_payload?: Json
+          cash_collection_amount?: number
+          consignment_id?: string | null
+          courier_connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          destination_address?: string | null
+          destination_city?: string | null
+          id?: string
+          latest_provider_payload?: Json
+          order_id?: string
+          picked_up_at?: string | null
+          provider?: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          shipping_fee?: number
+          status?: string
+          store_id?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_shipments_courier_connection_id_fkey"
+            columns: ["courier_connection_id"]
+            isOneToOne: false
+            referencedRelation: "store_courier_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
@@ -790,42 +960,42 @@ export type Database = {
           },
         ]
       }
-      page_blueprints: {
+      platform_audit_logs: {
         Row: {
-          business_family: string
-          catalog_modes: Json
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          actor_role: string | null
           created_at: string
-          description: string
+          details: Json
           id: string
-          is_active: boolean
-          name: string
-          page_payload: Json
-          schema_version: number
-          updated_at: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string
         }
         Insert: {
-          business_family?: string
-          catalog_modes?: Json
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
           created_at?: string
-          description?: string
-          id: string
-          is_active?: boolean
-          name: string
-          page_payload?: Json
-          schema_version?: number
-          updated_at?: string
+          details?: Json
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type: string
         }
         Update: {
-          business_family?: string
-          catalog_modes?: Json
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
           created_at?: string
-          description?: string
+          details?: Json
           id?: string
-          is_active?: boolean
-          name?: string
-          page_payload?: Json
-          schema_version?: number
-          updated_at?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string
         }
         Relationships: []
       }
@@ -1202,104 +1372,220 @@ export type Database = {
           },
         ]
       }
-      store_blueprints: {
+      store_analytics_events: {
         Row: {
-          business_family: string
-          catalog_mode: string
           created_at: string
-          default_site_settings: Json
-          default_theme: Json
-          description: string
-          group_name: string
-          hero_payload: Json
+          currency_code: string
+          customer_id: string | null
+          event_category: string
+          event_name: string
+          event_timestamp: string
           id: string
-          is_active: boolean
-          legacy_template_id: string | null
-          name: string
-          onboarding_schema: Json
-          recommended_block_set: Json
-          recommended_page_set: Json
-          required_capabilities: Json
-          schema_version: number
-          short_name: string
-          store_description: string
-          updated_at: string
+          metadata: Json
+          order_id: string | null
+          order_number: string | null
+          page_path: string | null
+          page_type: string | null
+          product_id: string | null
+          quantity: number | null
+          referrer: string | null
+          search_query: string | null
+          session_id: string | null
+          store_id: string
+          traffic_campaign: string | null
+          traffic_content: string | null
+          traffic_medium: string | null
+          traffic_source: string | null
+          traffic_term: string | null
+          user_agent: string | null
+          value: number | null
+          visitor_id: string | null
         }
         Insert: {
-          business_family?: string
-          catalog_mode?: string
           created_at?: string
-          default_site_settings?: Json
-          default_theme?: Json
-          description?: string
-          group_name?: string
-          hero_payload?: Json
-          id: string
-          is_active?: boolean
-          legacy_template_id?: string | null
-          name: string
-          onboarding_schema?: Json
-          recommended_block_set?: Json
-          recommended_page_set?: Json
-          required_capabilities?: Json
-          schema_version?: number
-          short_name: string
-          store_description?: string
-          updated_at?: string
+          currency_code?: string
+          customer_id?: string | null
+          event_category?: string
+          event_name: string
+          event_timestamp?: string
+          id?: string
+          metadata?: Json
+          order_id?: string | null
+          order_number?: string | null
+          page_path?: string | null
+          page_type?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          referrer?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          store_id: string
+          traffic_campaign?: string | null
+          traffic_content?: string | null
+          traffic_medium?: string | null
+          traffic_source?: string | null
+          traffic_term?: string | null
+          user_agent?: string | null
+          value?: number | null
+          visitor_id?: string | null
         }
         Update: {
-          business_family?: string
-          catalog_mode?: string
           created_at?: string
-          default_site_settings?: Json
-          default_theme?: Json
-          description?: string
-          group_name?: string
-          hero_payload?: Json
+          currency_code?: string
+          customer_id?: string | null
+          event_category?: string
+          event_name?: string
+          event_timestamp?: string
           id?: string
-          is_active?: boolean
-          legacy_template_id?: string | null
-          name?: string
-          onboarding_schema?: Json
-          recommended_block_set?: Json
-          recommended_page_set?: Json
-          required_capabilities?: Json
-          schema_version?: number
-          short_name?: string
-          store_description?: string
+          metadata?: Json
+          order_id?: string | null
+          order_number?: string | null
+          page_path?: string | null
+          page_type?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          referrer?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          store_id?: string
+          traffic_campaign?: string | null
+          traffic_content?: string | null
+          traffic_medium?: string | null
+          traffic_source?: string | null
+          traffic_term?: string | null
+          user_agent?: string | null
+          value?: number | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_analytics_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_analytics_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_analytics_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_analytics_ingestion_limits: {
+        Row: {
+          count: number
+          identifier: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          identifier: string
           updated_at?: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          identifier?: string
+          updated_at?: string
+          window_start?: string
         }
         Relationships: []
       }
+      store_backup_events: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          format: string
+          id: string
+          metadata: Json
+          source_store_id: string | null
+          store_id: string
+          target_store_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          format: string
+          id?: string
+          metadata?: Json
+          source_store_id?: string | null
+          store_id: string
+          target_store_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          format?: string
+          id?: string
+          metadata?: Json
+          source_store_id?: string | null
+          store_id?: string
+          target_store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_backup_events_source_store_id_fkey"
+            columns: ["source_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_backup_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_backup_events_target_store_id_fkey"
+            columns: ["target_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_business_profiles: {
         Row: {
-          blueprint_id: string | null
-          blueprint_version: number | null
           business_family: string
           catalog_mode: string
           created_at: string
           enabled_modules: Json
           store_id: string
+          template_id: string | null
           updated_at: string
         }
         Insert: {
-          blueprint_id?: string | null
-          blueprint_version?: number | null
           business_family?: string
           catalog_mode?: string
           created_at?: string
           enabled_modules?: Json
           store_id: string
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
-          blueprint_id?: string | null
-          blueprint_version?: number | null
           business_family?: string
           catalog_mode?: string
           created_at?: string
           enabled_modules?: Json
           store_id?: string
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1312,17 +1598,438 @@ export type Database = {
           },
         ]
       }
+      store_cart_recovery_leads: {
+        Row: {
+          abandoned_at: string | null
+          abandonment_window_minutes: number
+          attribution_campaign: string | null
+          attribution_medium: string | null
+          attribution_source: string | null
+          cart_snapshot: Json
+          cart_value: number
+          contact_capture_source: string
+          contact_consent_status: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          item_count: number
+          last_activity_at: string
+          last_contact_at: string | null
+          marketing_opt_out_at: string | null
+          metadata: Json
+          next_contact_at: string | null
+          recovered_order_id: string | null
+          recovered_revenue: number
+          recovery_coupon_code: string | null
+          recovery_stage: string
+          session_id: string | null
+          status: string
+          store_id: string
+          updated_at: string
+          user_id: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          abandoned_at?: string | null
+          abandonment_window_minutes?: number
+          attribution_campaign?: string | null
+          attribution_medium?: string | null
+          attribution_source?: string | null
+          cart_snapshot?: Json
+          cart_value?: number
+          contact_capture_source?: string
+          contact_consent_status?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          item_count?: number
+          last_activity_at?: string
+          last_contact_at?: string | null
+          marketing_opt_out_at?: string | null
+          metadata?: Json
+          next_contact_at?: string | null
+          recovered_order_id?: string | null
+          recovered_revenue?: number
+          recovery_coupon_code?: string | null
+          recovery_stage?: string
+          session_id?: string | null
+          status?: string
+          store_id: string
+          updated_at?: string
+          user_id?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          abandoned_at?: string | null
+          abandonment_window_minutes?: number
+          attribution_campaign?: string | null
+          attribution_medium?: string | null
+          attribution_source?: string | null
+          cart_snapshot?: Json
+          cart_value?: number
+          contact_capture_source?: string
+          contact_consent_status?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          item_count?: number
+          last_activity_at?: string
+          last_contact_at?: string | null
+          marketing_opt_out_at?: string | null
+          metadata?: Json
+          next_contact_at?: string | null
+          recovered_order_id?: string | null
+          recovered_revenue?: number
+          recovery_coupon_code?: string | null
+          recovery_stage?: string
+          session_id?: string | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+          user_id?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_cart_recovery_leads_recovered_order_id_fkey"
+            columns: ["recovered_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_cart_recovery_leads_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_cart_recovery_messages: {
+        Row: {
+          attributed_revenue: number
+          channel: string
+          coupon_code: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          metadata: Json
+          next_retry_at: string | null
+          provider: string | null
+          provider_message_id: string | null
+          retry_count: number
+          sent_at: string | null
+          status: string
+          store_id: string
+          template_key: string
+        }
+        Insert: {
+          attributed_revenue?: number
+          channel: string
+          coupon_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json
+          next_retry_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          store_id: string
+          template_key?: string
+        }
+        Update: {
+          attributed_revenue?: number
+          channel?: string
+          coupon_code?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          next_retry_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          retry_count?: number
+          sent_at?: string | null
+          status?: string
+          store_id?: string
+          template_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_cart_recovery_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "store_cart_recovery_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_cart_recovery_messages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_cod_reconciliation_entries: {
+        Row: {
+          amount_collected: number
+          amount_remitted: number
+          courier_fee: number
+          courier_provider: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json
+          note: string | null
+          order_id: string | null
+          reconciliation_status: string
+          settlement_date: string | null
+          settlement_reference: string | null
+          store_id: string
+          updated_at: string
+          variance_amount: number
+          verified_by: string | null
+        }
+        Insert: {
+          amount_collected?: number
+          amount_remitted?: number
+          courier_fee?: number
+          courier_provider?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          note?: string | null
+          order_id?: string | null
+          reconciliation_status?: string
+          settlement_date?: string | null
+          settlement_reference?: string | null
+          store_id: string
+          updated_at?: string
+          variance_amount?: number
+          verified_by?: string | null
+        }
+        Update: {
+          amount_collected?: number
+          amount_remitted?: number
+          courier_fee?: number
+          courier_provider?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          note?: string | null
+          order_id?: string | null
+          reconciliation_status?: string
+          settlement_date?: string | null
+          settlement_reference?: string | null
+          store_id?: string
+          updated_at?: string
+          variance_amount?: number
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_cod_reconciliation_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_cod_reconciliation_entries_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_courier_connections: {
+        Row: {
+          connection_key: string
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          id: string
+          last_error: Json | null
+          last_sync_at: string | null
+          provider: string
+          service_area_name: string | null
+          settings: Json
+          status: string
+          store_id: string
+          supports_city_delivery: boolean
+          supports_cod: boolean
+          updated_at: string
+          zone_label: string | null
+        }
+        Insert: {
+          connection_key?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          id?: string
+          last_error?: Json | null
+          last_sync_at?: string | null
+          provider: string
+          service_area_name?: string | null
+          settings?: Json
+          status?: string
+          store_id: string
+          supports_city_delivery?: boolean
+          supports_cod?: boolean
+          updated_at?: string
+          zone_label?: string | null
+        }
+        Update: {
+          connection_key?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          id?: string
+          last_error?: Json | null
+          last_sync_at?: string | null
+          provider?: string
+          service_area_name?: string | null
+          settings?: Json
+          status?: string
+          store_id?: string
+          supports_city_delivery?: boolean
+          supports_cod?: boolean
+          updated_at?: string
+          zone_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_courier_connections_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_courier_credentials_secure: {
+        Row: {
+          connection_id: string
+          created_at: string
+          created_by: string | null
+          provider: string
+          secret_payload: Json
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          created_by?: string | null
+          provider: string
+          secret_payload?: Json
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          created_by?: string | null
+          provider?: string
+          secret_payload?: Json
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_courier_credentials_secure_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "store_courier_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_courier_credentials_secure_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_deletion_records: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          deleted_by_user_id: string | null
+          deleted_store_id: string
+          deletion_source: string
+          id: string
+          merchant_visible_reason: string
+          owner_can_create_store: boolean | null
+          owner_user_id: string | null
+          store_name: string
+          store_slug: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          deleted_by_user_id?: string | null
+          deleted_store_id: string
+          deletion_source: string
+          id?: string
+          merchant_visible_reason: string
+          owner_can_create_store?: boolean | null
+          owner_user_id?: string | null
+          store_name: string
+          store_slug: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          deleted_by_user_id?: string | null
+          deleted_store_id?: string
+          deletion_source?: string
+          id?: string
+          merchant_visible_reason?: string
+          owner_can_create_store?: boolean | null
+          owner_user_id?: string | null
+          store_name?: string
+          store_slug?: string
+        }
+        Relationships: []
+      }
       store_domains: {
         Row: {
           activated_at: string | null
+          cloudflare_hostname_id: string | null
+          cloudflare_hostname_status: string | null
+          cloudflare_ssl_status: string | null
           configured_by: string | null
           created_at: string
           dns_records: Json
+          domain_type: string
           hostname: string
           id: string
           is_primary: boolean
           is_www_domain: boolean
           last_checked_at: string | null
+          last_cloudflare_error: Json | null
           last_vercel_error: Json | null
           status: string
           store_id: string
@@ -1333,14 +2040,19 @@ export type Database = {
         }
         Insert: {
           activated_at?: string | null
+          cloudflare_hostname_id?: string | null
+          cloudflare_hostname_status?: string | null
+          cloudflare_ssl_status?: string | null
           configured_by?: string | null
           created_at?: string
           dns_records?: Json
+          domain_type?: string
           hostname: string
           id?: string
           is_primary?: boolean
           is_www_domain?: boolean
           last_checked_at?: string | null
+          last_cloudflare_error?: Json | null
           last_vercel_error?: Json | null
           status?: string
           store_id: string
@@ -1351,14 +2063,19 @@ export type Database = {
         }
         Update: {
           activated_at?: string | null
+          cloudflare_hostname_id?: string | null
+          cloudflare_hostname_status?: string | null
+          cloudflare_ssl_status?: string | null
           configured_by?: string | null
           created_at?: string
           dns_records?: Json
+          domain_type?: string
           hostname?: string
           id?: string
           is_primary?: boolean
           is_www_domain?: boolean
           last_checked_at?: string | null
+          last_cloudflare_error?: Json | null
           last_vercel_error?: Json | null
           status?: string
           store_id?: string
@@ -1439,6 +2156,9 @@ export type Database = {
           plan_id: string
           provider: string | null
           provider_invoice_id: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
           store_id: string
           updated_at: string
@@ -1456,6 +2176,9 @@ export type Database = {
           plan_id: string
           provider?: string | null
           provider_invoice_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           store_id: string
           updated_at?: string
@@ -1473,6 +2196,9 @@ export type Database = {
           plan_id?: string
           provider?: string | null
           provider_invoice_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           store_id?: string
           updated_at?: string
@@ -1792,6 +2518,218 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "store_pages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_payment_connections_secure: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          provider: string
+          public_metadata: Json
+          revoked_at: string | null
+          revoked_by: string | null
+          secret_payload: Json
+          status: string
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          provider: string
+          public_metadata?: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          secret_payload?: Json
+          status?: string
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          provider?: string
+          public_metadata?: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          secret_payload?: Json
+          status?: string
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_payment_connections_secure_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_return_requests: {
+        Row: {
+          approved_amount: number
+          courier_status: string
+          created_at: string
+          created_by: string | null
+          customer_note: string | null
+          id: string
+          internal_note: string | null
+          metadata: Json
+          order_id: string
+          reason: string
+          refund_mode: string | null
+          request_type: string
+          requested_amount: number
+          requested_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+          rma_code: string | null
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_amount?: number
+          courier_status?: string
+          created_at?: string
+          created_by?: string | null
+          customer_note?: string | null
+          id?: string
+          internal_note?: string | null
+          metadata?: Json
+          order_id: string
+          reason: string
+          refund_mode?: string | null
+          request_type: string
+          requested_amount?: number
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rma_code?: string | null
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_amount?: number
+          courier_status?: string
+          created_at?: string
+          created_by?: string | null
+          customer_note?: string | null
+          id?: string
+          internal_note?: string | null
+          metadata?: Json
+          order_id?: string
+          reason?: string
+          refund_mode?: string | null
+          request_type?: string
+          requested_amount?: number
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rma_code?: string | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_return_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_revenue_events: {
+        Row: {
+          attribution_campaign: string | null
+          attribution_medium: string | null
+          attribution_source: string | null
+          created_at: string
+          currency_code: string
+          customer_id: string | null
+          event_timestamp: string
+          event_type: string
+          gross_amount: number
+          id: string
+          metadata: Json
+          net_amount: number
+          order_id: string
+          payment_method: string | null
+          refund_amount: number
+          status: string | null
+          store_id: string
+        }
+        Insert: {
+          attribution_campaign?: string | null
+          attribution_medium?: string | null
+          attribution_source?: string | null
+          created_at?: string
+          currency_code?: string
+          customer_id?: string | null
+          event_timestamp?: string
+          event_type: string
+          gross_amount?: number
+          id?: string
+          metadata?: Json
+          net_amount?: number
+          order_id: string
+          payment_method?: string | null
+          refund_amount?: number
+          status?: string | null
+          store_id: string
+        }
+        Update: {
+          attribution_campaign?: string | null
+          attribution_medium?: string | null
+          attribution_source?: string | null
+          created_at?: string
+          currency_code?: string
+          customer_id?: string | null
+          event_timestamp?: string
+          event_type?: string
+          gross_amount?: number
+          id?: string
+          metadata?: Json
+          net_amount?: number
+          order_id?: string
+          payment_method?: string | null
+          refund_amount?: number
+          status?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_revenue_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_revenue_events_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -2282,13 +3220,15 @@ export type Database = {
         }[]
       }
       get_user_id_by_email: { Args: { email_to_find: string }; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      has_role:
+        | {
+            Args: {
+              _role: Database["public"]["Enums"]["app_role"]
+              _user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_store_admin: {
         Args: { _store_id: string; _user_id: string }
@@ -2315,6 +3255,456 @@ export type Database = {
         | "pending_delete"
         | "deleted"
       store_member_role: "owner" | "admin" | "editor" | "viewer"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  storage: {
+    Tables: {
+      buckets: {
+        Row: {
+          allowed_mime_types: string[] | null
+          avif_autodetection: boolean | null
+          created_at: string | null
+          file_size_limit: number | null
+          id: string
+          name: string
+          owner: string | null
+          owner_id: string | null
+          public: boolean | null
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id: string
+          name: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id?: string
+          name?: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      buckets_analytics: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          format: string
+          id: string
+          name: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      buckets_vectors: {
+        Row: {
+          created_at: string
+          id: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      migrations: {
+        Row: {
+          executed_at: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Insert: {
+          executed_at?: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Update: {
+          executed_at?: string | null
+          hash?: string
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      objects: {
+        Row: {
+          bucket_id: string | null
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          metadata: Json | null
+          name: string | null
+          owner: string | null
+          owner_id: string | null
+          path_tokens: string[] | null
+          updated_at: string | null
+          user_metadata: Json | null
+          version: string | null
+        }
+        Insert: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Update: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objects_bucketId_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          in_progress_size: number
+          key: string
+          metadata: Json | null
+          owner_id: string | null
+          upload_signature: string
+          user_metadata: Json | null
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id: string
+          in_progress_size?: number
+          key: string
+          metadata?: Json | null
+          owner_id?: string | null
+          upload_signature: string
+          user_metadata?: Json | null
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          in_progress_size?: number
+          key?: string
+          metadata?: Json | null
+          owner_id?: string | null
+          upload_signature?: string
+          user_metadata?: Json | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads_parts: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          etag: string
+          id: string
+          key: string
+          owner_id: string | null
+          part_number: number
+          size: number
+          upload_id: string
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          etag: string
+          id?: string
+          key: string
+          owner_id?: string | null
+          part_number: number
+          size?: number
+          upload_id: string
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          etag?: string
+          id?: string
+          key?: string
+          owner_id?: string | null
+          part_number?: number
+          size?: number
+          upload_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "s3_multipart_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vector_indexes: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id: string
+          metadata_configuration: Json | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id?: string
+          metadata_configuration?: Json | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          data_type?: string
+          dimension?: number
+          distance_metric?: string
+          id?: string
+          metadata_configuration?: Json | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vector_indexes_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_vectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      allow_any_operation: {
+        Args: { expected_operations: string[] }
+        Returns: boolean
+      }
+      allow_only_operation: {
+        Args: { expected_operation: string }
+        Returns: boolean
+      }
+      can_insert_object: {
+        Args: { bucketid: string; metadata: Json; name: string; owner: string }
+        Returns: undefined
+      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_common_prefix: {
+        Args: { p_delimiter: string; p_key: string; p_prefix: string }
+        Returns: string
+      }
+      get_size_by_bucket: {
+        Args: never
+        Returns: {
+          bucket_id: string
+          size: number
+        }[]
+      }
+      list_multipart_uploads_with_delimiter: {
+        Args: {
+          bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_key_token?: string
+          next_upload_token?: string
+          prefix_param: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+        }[]
+      }
+      list_objects_with_delimiter: {
+        Args: {
+          _bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_token?: string
+          prefix_param: string
+          sort_order?: string
+          start_after?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      operation: { Args: never; Returns: string }
+      search: {
+        Args: {
+          bucketname: string
+          levels?: number
+          limits?: number
+          offsets?: number
+          prefix: string
+          search?: string
+          sortcolumn?: string
+          sortorder?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_by_timestamp: {
+        Args: {
+          p_bucket_id: string
+          p_level: number
+          p_limit: number
+          p_prefix: string
+          p_sort_column: string
+          p_sort_column_after: string
+          p_sort_order: string
+          p_start_after: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_v2: {
+        Args: {
+          bucket_name: string
+          levels?: number
+          limits?: number
+          prefix: string
+          sort_column?: string
+          sort_column_after?: string
+          sort_order?: string
+          start_after?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+    }
+    Enums: {
+      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2440,7 +3830,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
+  graphql: {
     Enums: {},
   },
   public: {
@@ -2455,6 +3845,11 @@ export const Constants = {
         "deleted",
       ],
       store_member_role: ["owner", "admin", "editor", "viewer"],
+    },
+  },
+  storage: {
+    Enums: {
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
     },
   },
 } as const

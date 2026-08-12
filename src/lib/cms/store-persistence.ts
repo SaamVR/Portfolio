@@ -2,13 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 import { resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
-import type { StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 
 type PersistStorefrontOptions = {
   client: SupabaseClient<any>;
   store: Store;
   ownerId?: string | null;
-  blueprint: StoreBlueprintDefinition;
+  templateSeed?: StorefrontTemplateSeedDefinition;
   themePackages: ThemePackageDefinition[];
   selectedPage?: StorePage | null;
   revisionLabel?: string;
@@ -69,12 +69,16 @@ export async function persistStorefrontState({
   client,
   store,
   ownerId,
-  blueprint,
+  templateSeed,
   themePackages,
   selectedPage,
   revisionLabel,
   changedBy,
 }: PersistStorefrontOptions) {
+  if (!templateSeed) {
+    return { error: new Error("A template seed is required to persist storefront state.") };
+  }
+  const activeTemplateSeed = templateSeed;
   const selectedThemePackage = resolveThemePackageById(store.theme.themePackageId, themePackages, store.theme.presetId);
 
   const { error: storeError } = await client.from("stores").upsert(
@@ -87,7 +91,7 @@ export async function persistStorefrontState({
       currency_code: store.currencyCode,
       locale: store.locale,
       is_published: store.isPublished,
-      store_type: blueprint.id,
+      store_type: activeTemplateSeed.id,
     },
     { onConflict: "id" },
   );
@@ -216,11 +220,10 @@ export async function persistStorefrontState({
   const { error: businessProfileError } = await client.from("store_business_profiles").upsert(
     {
       store_id: store.id,
-      blueprint_id: blueprint.id,
-      blueprint_version: 1,
-      business_family: blueprint.businessFamily,
-      catalog_mode: blueprint.catalogMode,
-      enabled_modules: blueprint.capabilities,
+      template_id: activeTemplateSeed.id,
+      business_family: activeTemplateSeed.businessFamily,
+      catalog_mode: activeTemplateSeed.catalogMode,
+      enabled_modules: activeTemplateSeed.capabilities,
     },
     { onConflict: "store_id" },
   );

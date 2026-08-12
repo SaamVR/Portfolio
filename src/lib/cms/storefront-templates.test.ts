@@ -2,7 +2,6 @@ import { describe, expect, it } from "@/test/test-utils";
 import {
   getStorefrontTemplateDefinition,
   getStorefrontTemplateSeedDefinition,
-  resolveSeedBlueprintIdForTemplate,
   resolveStorefrontTemplateId,
   storefrontTemplateIds,
 } from "@/lib/cms/storefront-templates";
@@ -10,6 +9,7 @@ import {
 describe("storefront template registry", () => {
   it("registers every required template id", () => {
     expect(storefrontTemplateIds).toEqual([
+      "blank",
       "landing",
       "beauty",
       "fashion",
@@ -28,24 +28,35 @@ describe("storefront template registry", () => {
     ]);
   });
 
-  it("maps legacy blueprint/template combinations onto the shared storefront ids", () => {
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "clothing" })).toBe("fashion");
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "gadgets" })).toBe("electronics");
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "general", productVisibility: "single_product" })).toBe("single-product");
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "general", productVisibility: "inquiry_only" })).toBe("inquiry-catalog");
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "general", productVisibility: "landing_only" })).toBe("landing");
-    expect(resolveStorefrontTemplateId(undefined, { blueprintId: "general", productVisibility: "catalog" })).toBe("general-catalog");
+  it("registers blank mode as a first-class shared builder preset", () => {
+    const template = getStorefrontTemplateDefinition("blank");
+    const seed = getStorefrontTemplateSeedDefinition("blank");
+
+    expect(template.onboardingMode).toBe("blank");
+    expect(seed.onboardingMode).toBe("blank");
+    expect(template.defaultBlockSet).toEqual(["hero", "featured-products"]);
+    expect(seed.compatibleBlockSet.includes("hero")).toBe(true);
+    expect(seed.compatibleBlockSet.includes("category-showcase")).toBe(true);
   });
 
-  it("maps storefront templates to seed blueprints for merchant-safe apply flows", () => {
-    expect(resolveSeedBlueprintIdForTemplate("fashion")).toBe("fashion");
-    expect(resolveSeedBlueprintIdForTemplate("beauty")).toBe("beauty");
-    expect(resolveSeedBlueprintIdForTemplate("electronics")).toBe("electronics");
-    expect(resolveSeedBlueprintIdForTemplate("food")).toBe("food");
-    expect(resolveSeedBlueprintIdForTemplate("landing")).toBe("landing");
-    expect(resolveSeedBlueprintIdForTemplate("booking")).toBe("booking");
-    expect(resolveSeedBlueprintIdForTemplate("hotel")).toBe("hotel");
-    expect(resolveSeedBlueprintIdForTemplate("real-estate")).toBe("real-estate");
+  it("maps legacy template aliases onto the shared storefront ids", () => {
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "clothing" })).toBe("fashion");
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "gadgets" })).toBe("electronics");
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "general", productVisibility: "single_product" })).toBe("single-product");
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "general", productVisibility: "inquiry_only" })).toBe("inquiry-catalog");
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "general", productVisibility: "landing_only" })).toBe("landing");
+    expect(resolveStorefrontTemplateId(undefined, { templateSeedId: "general", productVisibility: "catalog" })).toBe("general-catalog");
+  });
+
+  it("maps storefront templates to seed ids for merchant-safe apply flows", () => {
+    expect(getStorefrontTemplateSeedDefinition("fashion").id).toBe("fashion");
+    expect(getStorefrontTemplateSeedDefinition("beauty").id).toBe("beauty");
+    expect(getStorefrontTemplateSeedDefinition("electronics").id).toBe("electronics");
+    expect(getStorefrontTemplateSeedDefinition("food").id).toBe("food");
+    expect(getStorefrontTemplateSeedDefinition("landing").id).toBe("landing");
+    expect(getStorefrontTemplateSeedDefinition("booking").id).toBe("booking");
+    expect(getStorefrontTemplateSeedDefinition("hotel").id).toBe("hotel");
+    expect(getStorefrontTemplateSeedDefinition("real-estate").id).toBe("real-estate");
   });
 
   it("exposes template presentation metadata for future renderer specialization", () => {
@@ -56,14 +67,14 @@ describe("storefront template registry", () => {
     expect(template.presentation.navigationLabels.shop).toBe("Shop");
   });
 
-  it("keeps seed and business metadata in the template registry for blueprint compatibility", () => {
+  it("keeps seed and business metadata in the template registry for compatibility", () => {
     const template = getStorefrontTemplateSeedDefinition("service");
 
     expect(template.businessFamily).toBe("service");
     expect(template.catalogMode).toBe("inquiry_only");
     const storefrontProfile = template.defaultSiteSettings.storefront_profile as Record<string, unknown>;
     expect(storefrontProfile.template_id).toBe("service");
-    expect(storefrontProfile.blueprint_id).toBe("service");
+    expect(storefrontProfile.allow_guest_checkout).toBe(true);
   });
 
   it("keeps hotel and real-estate on the shared storefront system with their own business metadata", () => {

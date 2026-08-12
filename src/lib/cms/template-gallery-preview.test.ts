@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { defaultStore } from "@/lib/cms/default-store";
-import { fallbackPageBlueprints } from "@/lib/cms/page-blueprints";
 import {
   createBuiltInBundle,
   createBuiltInCardBundle,
@@ -10,7 +9,7 @@ import {
 
 describe("template gallery preview helpers", () => {
   it("personalizes the built-in preview bundle with merchant store identity", () => {
-    const bundle = createBuiltInBundle("landing", fallbackPageBlueprints, {
+    const bundle = createBuiltInBundle("landing", {
       ...defaultStore,
       name: "Thread BD",
       description: "Launch-ready merchant storefront",
@@ -24,7 +23,7 @@ describe("template gallery preview helpers", () => {
   });
 
   it("uses the neutral default-store theme for static card previews", () => {
-    const bundle = createBuiltInCardBundle("landing", fallbackPageBlueprints, {
+    const bundle = createBuiltInCardBundle("landing", {
       ...defaultStore,
       theme: {
         ...defaultStore.theme,

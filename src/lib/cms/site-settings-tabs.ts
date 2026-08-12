@@ -3,7 +3,7 @@ import {
   supportsLoyaltyAndUpsells,
   supportsTransactionalCheckout,
 } from "@/lib/cms/storefront-compat";
-import { getTemplateFeatureBlockDefinitions } from "@/lib/cms/template-feature-blocks";
+import { getOptionalTemplateHomepageSectionChoices } from "@/lib/cms/template-homepage-sections";
 import type {
   StoreBusinessFamily,
   StoreCatalogMode,
@@ -354,8 +354,8 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
     value: "template_features",
     category: "Storefront",
     keywords: "template feature custom block comparison special sections template blocks merchandising homepage modules",
-    resolveLabel: () => "Template Features",
-    isVisible: (_businessFamily, _catalogMode, templateId) => getTemplateFeatureBlockDefinitions(templateId).length > 0,
+    resolveLabel: () => "Homepage Sections",
+    isVisible: (_businessFamily, _catalogMode, templateId) => getOptionalTemplateHomepageSectionChoices(templateId).length > 0,
   },
   {
     value: "page_builder",

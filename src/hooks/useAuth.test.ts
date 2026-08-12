@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { deriveAppRole, resolvePlatformRole } from "@/hooks/useAuth";
+
+process.env.NEXT_PUBLIC_SUPABASE_URL ??= "https://example.supabase.co";
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= "test-publishable-key";
+
+const { deriveAppRole, resolvePlatformRole } = await import("@/hooks/useAuth");
 
 test("deriveAppRole grants dashboard access to merchant owners and staff", () => {
   assert.equal(deriveAppRole(null, "owner"), "admin");

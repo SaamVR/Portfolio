@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { absoluteStoreUrl, absoluteUrl } from "@/lib/siteUrl";
@@ -15,6 +16,14 @@ export interface ProductMetadataRecord {
 }
 
 const DEFAULT_OG_IMAGE = "/og-image.png";
+
+function buildProductMetadataTags(storeId: string, productId: string) {
+  return [
+    `store:${storeId}`,
+    `store:${storeId}:products`,
+    `product:${productId}`,
+  ];
+}
 
 function compact(value: string | null | undefined) {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -165,7 +174,7 @@ export function buildStoreProductMetadata(store: Store, product: ProductMetadata
     openGraph: {
       title,
       description,
-      type: "website",
+      type: "article",
       url: canonical,
       siteName: store.name,
       images: [{ url: image, width: 1200, height: 630, alt: product.name }],
@@ -179,7 +188,7 @@ export function buildStoreProductMetadata(store: Store, product: ProductMetadata
   };
 }
 
-export async function getProductMetadataBySlugId(storeId: string, slugId: string): Promise<ProductMetadataRecord | null> {
+async function getProductMetadataBySlugIdUncached(storeId: string, slugId: string): Promise<ProductMetadataRecord | null> {
   const productId = extractIdFromSlug(slugId);
   if (!isUuid(productId)) return null;
 
@@ -198,4 +207,20 @@ export async function getProductMetadataBySlugId(storeId: string, slugId: string
   }
 
   return data as ProductMetadataRecord;
+}
+
+export async function getProductMetadataBySlugId(storeId: string, slugId: string): Promise<ProductMetadataRecord | null> {
+  const productId = extractIdFromSlug(slugId);
+  const getProductMetadataBySlugIdCached = unstable_cache(
+    async () => getProductMetadataBySlugIdUncached(storeId, slugId),
+    ["storefront-product-metadata", storeId, slugId],
+    {
+      revalidate: 60,
+      tags: isUuid(productId)
+        ? buildProductMetadataTags(storeId, productId)
+        : [`store:${storeId}`, `store:${storeId}:products`],
+    },
+  );
+
+  return getProductMetadataBySlugIdCached();
 }

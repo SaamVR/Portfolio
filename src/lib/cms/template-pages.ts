@@ -1,5 +1,5 @@
 import { createDefaultBlock } from "@/lib/cms/block-library";
-import { fallbackPageBlueprints, instantiatePageBlueprint, type CmsPageBlueprint } from "@/lib/cms/page-blueprints";
+import { instantiateTemplate } from "@/lib/cms/page-templates";
 import {
   getStorefrontTemplateSeedDefinition,
   resolveStorefrontTemplateProfile,
@@ -10,10 +10,10 @@ import type { StorePage, StorePageBlock } from "@/lib/cms/schema";
 
 type TemplatePageSeedDefinition = Pick<
   StorefrontTemplateSeedDefinition,
-  "id" | "name" | "storeDescription" | "businessFamily" | "catalogMode" | "recommendedPageSet" | "recommendedBlockSet" | "hero"
+  "id" | "name" | "storeDescription" | "businessFamily" | "catalogMode" | "recommendedPageSet" | "defaultBlockSet" | "recommendedBlockSet" | "hero"
 >;
 
-const pageBlueprintAliasMap: Record<string, string> = {
+const pageTemplateAliasMap: Record<string, string> = {
   about: "about",
   "about-kitchen": "about",
   contact: "contact-us",
@@ -50,7 +50,7 @@ function isStorePageBlockType(value: string): value is StorePageBlock["type"] {
 }
 
 function buildHomepageFromTemplateSeed(seed: TemplatePageSeedDefinition): StorePage {
-  const homepageBlocks = seed.recommendedBlockSet
+  const homepageBlocks = seed.defaultBlockSet
     .filter(isStorePageBlockType)
     .map((blockType, index) => {
       const baseBlock = createDefaultBlock(blockType, index);
@@ -78,7 +78,7 @@ function buildHomepageFromTemplateSeed(seed: TemplatePageSeedDefinition): StoreP
     seoTitle: `${seed.name} Home`,
     seoDescription: seed.storeDescription,
     isHomepage: true,
-    blocks: homepageBlocks.length > 0 ? homepageBlocks : [createDefaultBlock("rich-text", 0)],
+    blocks: homepageBlocks.length > 0 ? homepageBlocks : [createDefaultBlock("hero", 0)],
   };
 }
 
@@ -116,21 +116,18 @@ function buildShopPageFromTemplateSeed(seed: TemplatePageSeedDefinition): StoreP
   };
 }
 
-function mapRecommendedPageToBlueprintId(
-  pageId: string,
-  pageBlueprints: CmsPageBlueprint[],
-): string | null {
-  if (pageId in pageBlueprintAliasMap) {
-    return pageBlueprintAliasMap[pageId] || null;
+function mapRecommendedPageTemplateId(pageId: string): string | null {
+  if (pageId in pageTemplateAliasMap) {
+    return pageTemplateAliasMap[pageId] || null;
   }
 
-  return pageBlueprints.some((blueprint) => blueprint.id === pageId) ? pageId : null;
+  return pageId;
 }
 
 function toTemplateSeedDefinition(
   input: string | TemplatePageSeedDefinition | ResolvedStorefrontTemplateProfile,
   options?: {
-    blueprintId?: string | null;
+    templateSeedId?: string | null;
     productVisibility?: string | null;
   },
 ): TemplatePageSeedDefinition {
@@ -150,7 +147,7 @@ export function ensureRequiredStoreFlowPagesForTemplate(
   pages: StorePage[],
   input: string | TemplatePageSeedDefinition | ResolvedStorefrontTemplateProfile,
   options?: {
-    blueprintId?: string | null;
+    templateSeedId?: string | null;
     productVisibility?: string | null;
   },
 ): StorePage[] {
@@ -164,9 +161,8 @@ export function ensureRequiredStoreFlowPagesForTemplate(
 
 export function instantiateStorePagesFromTemplate(
   input: string | TemplatePageSeedDefinition | ResolvedStorefrontTemplateProfile,
-  pageBlueprints: CmsPageBlueprint[] = fallbackPageBlueprints,
   options?: {
-    blueprintId?: string | null;
+    templateSeedId?: string | null;
     productVisibility?: string | null;
   },
 ): StorePage[] {
@@ -175,12 +171,12 @@ export function instantiateStorePagesFromTemplate(
   const recommendedPages = Array.from(new Set(seed.recommendedPageSet));
 
   for (const pageId of recommendedPages) {
-    const mappedBlueprintId = mapRecommendedPageToBlueprintId(pageId, pageBlueprints);
-    if (!mappedBlueprintId) {
+    const mappedTemplateId = mapRecommendedPageTemplateId(pageId);
+    if (!mappedTemplateId) {
       continue;
     }
 
-    const page = instantiatePageBlueprint(mappedBlueprintId, pages.length, pageBlueprints);
+    const page = instantiateTemplate(mappedTemplateId, pages.length);
     if (page) {
       pages.push(page);
     }

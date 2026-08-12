@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@/test/test-utils";
 import { mapPersistedPageIdsByLocalId, mapPersistedBlockIdsByLocalId, persistStorefrontState } from "@/lib/cms/store-persistence";
-import { fallbackStoreBlueprints } from "@/lib/cms/store-blueprints";
+import { fallbackStorefrontTemplateSeeds } from "@/lib/cms/storefront-template-seeds";
 import { fallbackThemePackages } from "@/lib/theme-packages";
 import type { Store } from "@/lib/cms/schema";
 
@@ -134,7 +134,7 @@ describe("storefront persistence", () => {
 
   it("saves twice with a minor edit and asserts unrelated blocks keep their original IDs", async () => {
     const { client, storePageBlocks } = createMockSupabaseClient();
-    const blueprint = fallbackStoreBlueprints[0];
+    const templateSeed = fallbackStorefrontTemplateSeeds[0];
 
     const initialStore: Store = {
       id: "store-123",
@@ -171,7 +171,7 @@ describe("storefront persistence", () => {
     const firstSaveResult = await persistStorefrontState({
       client,
       store: initialStore,
-      blueprint,
+      templateSeed,
       themePackages: fallbackThemePackages,
     });
     expect(firstSaveResult.error).toBeNull();
@@ -212,7 +212,7 @@ describe("storefront persistence", () => {
     const secondSaveResult = await persistStorefrontState({
       client,
       store: secondStore,
-      blueprint,
+      templateSeed,
       themePackages: fallbackThemePackages,
     });
     expect(secondSaveResult.error).toBeNull();
@@ -255,7 +255,7 @@ describe("storefront persistence", () => {
     const thirdSaveResult = await persistStorefrontState({
       client,
       store: thirdStore,
-      blueprint,
+      templateSeed,
       themePackages: fallbackThemePackages,
     });
     expect(thirdSaveResult.error).toBeNull();

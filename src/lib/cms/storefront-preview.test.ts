@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildBlueprintPreviewStore } from "@/lib/cms/storefront-preview";
+import { buildTemplatePreviewStore } from "@/lib/cms/storefront-preview";
 
-test("buildBlueprintPreviewStore creates a published preview seeded from blueprint data", () => {
-  const store = buildBlueprintPreviewStore("clothing");
+test("buildTemplatePreviewStore creates a published preview seeded from template data", () => {
+  const store = buildTemplatePreviewStore("fashion");
 
   assert.equal(store.isPublished, true);
   assert.equal(store.slug, "fashion");

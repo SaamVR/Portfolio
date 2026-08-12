@@ -1,4 +1,5 @@
 import { threadbdSeedData } from "./threadbd-local-seed-data.js";
+import { normalizeMetricLabel, normalizeProductMetricKey } from "./product-metrics";
 
 type FixtureCategory = {
   id: string;
@@ -163,6 +164,7 @@ export type TemplateSeedCatalogMetadata = {
     id: string;
     slug: string;
     productType: string;
+    typeMetricSchema?: Array<{ key: string; label: string }>;
     categorySlug: string | null;
     shortDescription: string;
     imageUrl: string | null;
@@ -171,6 +173,11 @@ export type TemplateSeedCatalogMetadata = {
     downloadPath: string | null;
     specs: Record<string, unknown>;
     variants: FixtureVariant[];
+  }>;
+  blogPosts?: Record<string, {
+    id: string;
+    slug: string;
+    title: string;
   }>;
 };
 
@@ -269,6 +276,25 @@ function getVariantValues(product: FixtureProduct, preferredNames: string[]) {
   return Array.from(new Set((source?.values ?? []).map((value) => value.label?.trim()).filter((value): value is string => Boolean(value))));
 }
 
+function getVariantMetricEntries(product: FixtureProduct) {
+  return (product.variants ?? [])
+    .map((variant) => {
+      const key = normalizeProductMetricKey(variant.name);
+      const options = Array.from(new Set(
+        (variant.values ?? [])
+          .map((value) => value.label?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ));
+
+      return {
+        key,
+        label: variant.name?.trim() || normalizeMetricLabel(key),
+        options,
+      };
+    })
+    .filter((entry) => entry.key && entry.options.length > 0);
+}
+
 function getProductColorHints(product: FixtureProduct) {
   const formats = (product.specs?.formats ?? product.specs?.file_formats ?? product.specs?.supported_formats) as unknown;
   if (Array.isArray(formats)) {
@@ -286,6 +312,50 @@ function getProductColorHints(product: FixtureProduct) {
 
 function getString(value: unknown, fallback: string | undefined): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function buildSeedMetricPayload({
+  product,
+  sizes,
+  colors,
+}: {
+  product: FixtureProduct;
+  sizes: string[];
+  colors: string[];
+}) {
+  const metricValues: Record<string, string[]> = {};
+  const schema: Array<{ key: string; label: string }> = [];
+  const seenKeys = new Set<string>();
+
+  const pushMetric = (key: string, label: string, values: string[]) => {
+    const normalizedKey = normalizeProductMetricKey(key);
+    const normalizedValues = Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+    if (!normalizedKey || normalizedValues.length === 0 || seenKeys.has(normalizedKey)) {
+      return;
+    }
+
+    seenKeys.add(normalizedKey);
+    schema.push({
+      key: normalizedKey,
+      label: label.trim() || normalizeMetricLabel(normalizedKey),
+    });
+    metricValues[normalizedKey] = normalizedValues;
+  };
+
+  pushMetric("size", "Size", sizes);
+  pushMetric("color", "Color", colors);
+
+  for (const variantMetric of getVariantMetricEntries(product)) {
+    if (variantMetric.key === "size" || variantMetric.key === "color") {
+      continue;
+    }
+    pushMetric(variantMetric.key, variantMetric.label, variantMetric.options);
+  }
+
+  return {
+    metricValues,
+    typeMetricSchema: schema,
+  };
 }
 
 export function buildTemplateCatalogSeedRows(storeId: string, templateId: string) {
@@ -360,11 +430,18 @@ export function buildTemplateCatalogSeedRows(storeId: string, templateId: string
         : [];
     const sizes = getVariantValues(product, preferredOptionNames);
     const colors = getProductColorHints(product);
+    const { metricValues, typeMetricSchema } = buildSeedMetricPayload({
+      product,
+      sizes,
+      colors,
+    });
+    const resolvedTypeName = humanizeProductType(product, category?.name ?? null);
 
     metadata.products[validProductId] = {
       id: validProductId,
       slug: product.slug,
       productType: product.product_type ?? "physical",
+      typeMetricSchema,
       categorySlug: product.category_slug ?? null,
       shortDescription: product.short_description ?? "",
       imageUrl: imageUrls[0] ?? null,
@@ -385,9 +462,11 @@ export function buildTemplateCatalogSeedRows(storeId: string, templateId: string
       image_url: imageUrls[0] ?? assets.fallback_product_image_url ?? "",
       images: imageUrls,
       category: category?.name ?? "General",
-      type: humanizeProductType(product, category?.name ?? null),
+      type: resolvedTypeName,
       sizes,
       colors,
+      metric_values: metricValues,
+      type_metric_schema: typeMetricSchema,
       featured: product.featured === true,
       badge: product.badge ?? null,
       stock: typeof product.inventory?.stock_quantity === "number"
@@ -398,6 +477,21 @@ export function buildTemplateCatalogSeedRows(storeId: string, templateId: string
       is_available: product.show_in_shop !== false && product.status !== "archived",
     };
   });
+
+  const metricSchemaByTypeName = new Map<string, Array<{ key: string; label: string }>>();
+  for (const productRow of productRows) {
+    if (!Array.isArray(productRow.type_metric_schema) || productRow.type_metric_schema.length === 0) {
+      continue;
+    }
+    if (!metricSchemaByTypeName.has(productRow.type)) {
+      metricSchemaByTypeName.set(productRow.type, productRow.type_metric_schema);
+    }
+  }
+
+  const enrichedProductTypeRows = productTypeRows.map((typeRow) => ({
+    ...typeRow,
+    metric_schema: metricSchemaByTypeName.get(typeRow.name) ?? [],
+  }));
 
   const homepage = (seedStore.pages ?? []).find((page) => page.is_homepage) ?? null;
   const homepageBlocks = Array.isArray(homepage?.blocks) ? homepage.blocks : [];
@@ -463,10 +557,68 @@ export function buildTemplateCatalogSeedRows(storeId: string, templateId: string
     })),
   };
 
+  const defaultBlogPosts = [
+    {
+      title: `Welcome to ${seedStore.name}: Our Story & Launch Guide`,
+      slug: "welcome-story-and-launch-guide",
+      excerpt: `Discover why we launched ${seedStore.name}, our commitment to quality, and what to expect from our latest drops.`,
+      content: `# Welcome to ${seedStore.name}\n\nWe are thrilled to officially introduce our online catalog! Built for speed, clarity, and exceptional quality, our store is designed to bring you the best experience possible.\n\n## Why Quality Matters\nEvery item in our collection undergoes rigorous selection to ensure top performance, style, and satisfaction.\n\n- **Curated Selection:** Hand-picked items tailored to your lifestyle.\n- **Express Delivery & Local Support:** Reliable shipping and dedicated support.\n- **Seamless Browsing:** Find items instantly with live search and smooth filters.\n\n> *Thank you for joining our community. Explore our new collection today!*`,
+      featured_image: assets.hero_image_url ?? assets.fallback_product_image_url ?? "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&q=80&w=800",
+      status: "published",
+      seo_title: `${seedStore.name} - Brand Story & Launch Guide`,
+      seo_description: `Learn about ${seedStore.name}, our values, and our commitment to bringing you top quality products.`,
+    },
+    {
+      title: "Essential Maintenance & Product Care Tips",
+      slug: "essential-maintenance-and-product-care-tips",
+      excerpt: "Simple steps to preserve the quality, durability, and aesthetics of your purchases.",
+      content: `# Care & Preservation Guidelines\n\nTaking good care of your purchases extends their lifespan and preserves their peak condition.\n\n1. **Read Handling Labels:** Always follow recommended care guidelines.\n2. **Proper Storage:** Keep products in dry, temperate environments away from harsh direct sunlight.\n3. **Routine Inspection:** Regular maintenance prevents unnecessary wear.\n\n> *Simple habits prolong product life and maximize your enjoyment.*`,
+      featured_image: assets.promo_image_url ?? assets.fallback_product_image_url ?? "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800",
+      status: "published",
+      seo_title: "Product Care & Maintenance Tips",
+      seo_description: "Best practices for maintaining your purchases from our store.",
+    },
+    {
+      title: "5 Tips for Choosing the Perfect Fit & Match",
+      slug: "5-tips-for-choosing-the-perfect-fit",
+      excerpt: "How to select the ideal option, size, or plan tailored specifically to your needs.",
+      content: `# Choosing Your Ideal Match\n\nSelecting the right option doesn't have to be complicated. Here is a simple 3-step decision checklist.\n\n- **Identify Key Needs:** Know your primary use case or style preference.\n- **Check Specifications:** Review size guides, dimensions, or plan features.\n- **Contact Support:** Reach out anytime via chat or WhatsApp if you need guidance.\n\n> *We are here to help you shop with complete confidence.*`,
+      featured_image: assets.story_image_url ?? assets.fallback_category_image_url ?? "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&q=80&w=800",
+      status: "published",
+      seo_title: "How to Choose the Ideal Option",
+      seo_description: "A practical guide to finding the right fit and features for your needs.",
+    },
+  ];
+
+  metadata.blogPosts = {};
+  const blogPostRows = defaultBlogPosts.map((post) => {
+    const validPostId = toValidUuid(`blog-${seedStore.slug}-${post.slug}`);
+    metadata.blogPosts![validPostId] = {
+      id: validPostId,
+      slug: post.slug,
+      title: post.title,
+    };
+
+    return {
+      id: validPostId,
+      store_id: storeId,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content,
+      featured_image: post.featured_image,
+      status: post.status,
+      seo_title: post.seo_title,
+      seo_description: post.seo_description,
+      published_at: new Date().toISOString(),
+    };
+  });
+
   return {
     categoryRows,
-    productTypeRows,
+    productTypeRows: enrichedProductTypeRows,
     productRows,
+    blogPostRows,
     siteSettings,
     metadata,
   };

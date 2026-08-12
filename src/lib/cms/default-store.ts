@@ -244,6 +244,7 @@ const defaultStoreData = {
       template_id: "fashion",
       product_visibility: "catalog",
       checkout_mode: "standard",
+      allow_guest_checkout: true,
     },
   },
 } satisfies Store;

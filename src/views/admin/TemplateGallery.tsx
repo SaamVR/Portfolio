@@ -10,8 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { loadPageBlueprints } from "@/lib/cms/page-blueprints";
-import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
@@ -62,7 +60,15 @@ type BuiltInTemplateItem = {
   capabilities: string[];
   catalogMode: string;
   referenceImage: string;
+  onboardingMode: "template" | "blank";
+  businessFamily: string;
+  defaultBlockCount: number;
+  compatibleBlockCount: number;
 };
+
+function formatOnboardingMode(mode: "template" | "blank") {
+  return mode === "blank" ? "Blank builder" : "Guided template";
+}
 
 function getTemplateCategory(templateId: StorefrontTemplateId): string {
   return getStorefrontTemplateSeedDefinition(templateId).group;
@@ -148,17 +154,14 @@ export function TemplateGallery({
           capabilities: seedDefinition.capabilities,
           catalogMode: seedDefinition.catalogMode,
           referenceImage: getStorefrontTemplateReferenceImage(option.value),
+          onboardingMode: seedDefinition.onboardingMode,
+          businessFamily: seedDefinition.businessFamily,
+          defaultBlockCount: seedDefinition.defaultBlockSet.length,
+          compatibleBlockCount: seedDefinition.compatibleBlockSet.length,
         };
       }),
     [],
   );
-
-  const { data: blueprints = [], isLoading: isLoadingBlueprints } = useQuery({
-    queryKey: ["page-blueprints"],
-    queryFn: async () => {
-      return loadPageBlueprints(supabase);
-    }
-  });
 
   const { data: communityTemplates = [], isLoading: isLoadingCommunity } = useQuery({
     queryKey: ["community-templates", platformRole],
@@ -207,7 +210,7 @@ export function TemplateGallery({
           id: templateId,
           name: selectedTemplate.name,
           category: selectedTemplate.category,
-          bundle: createBuiltInBundle(templateId, blueprints, store),
+          bundle: createBuiltInBundle(templateId, store),
           mobileReady: true,
           previewAssets: [selectedTemplate.referenceImage],
         });
@@ -221,7 +224,7 @@ export function TemplateGallery({
     try {
       setApplyingTemplateId(templateId);
       const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
-      const bundle = createBuiltInBundle(templateId, blueprints, store);
+      const bundle = createBuiltInBundle(templateId, store);
       const applied = applyThemeBundle(bundle);
       if (applied === false) return;
       toast.success(`${selectedTemplate?.name ?? "Template"} loaded into the draft.`);
@@ -320,7 +323,7 @@ export function TemplateGallery({
   const [page, setPage] = useState<number>(1);
   const TEMPLATES_PER_PAGE = 8;
 
-  const isLoading = activeTab === "built-in" ? isLoadingBlueprints : isLoadingCommunity;
+  const isLoading = isLoadingCommunity;
   const displayItems = activeTab === "built-in" ? filteredBuiltIn : filteredCommunity;
   const totalPages = Math.max(1, Math.ceil(displayItems.length / TEMPLATES_PER_PAGE));
   const paginatedItems = useMemo(() => {
@@ -446,8 +449,10 @@ export function TemplateGallery({
                 const status = isBuiltIn ? "published" : item.status ?? "draft";
                 const mobileReady = isBuiltIn ? item.mobileReady : item.mobile_ready !== false;
                 const aesthetic = isBuiltIn ? item.aesthetic : (item.aesthetic || "custom");
+                const onboardingMode = isBuiltIn ? item.onboardingMode : "template";
+                const businessFamily = isBuiltIn ? item.businessFamily : category;
                 const builtInCardBundle = isBuiltIn
-                  ? (previewWithData ? createBuiltInBundle(id, blueprints, store) : createBuiltInCardBundle(id, blueprints, store))
+                  ? (previewWithData ? createBuiltInBundle(id, store) : createBuiltInCardBundle(id, store))
                   : null;
                 const communityPreviewAsset = !isBuiltIn ? getCommunityPreviewAsset(item, "desktop") : "";
 
@@ -533,9 +538,21 @@ export function TemplateGallery({
                     </div>
                     
                     {isBuiltIn && item.capabilities && (
-                      <div className="flex flex-wrap gap-1 mb-4">
+                      <div className="mb-4 flex flex-wrap gap-1">
+                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {formatOnboardingMode(onboardingMode)}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                          {businessFamily}
+                        </span>
                         <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
                           {item.catalogMode.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                          {item.defaultBlockCount} starter blocks
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                          {item.compatibleBlockCount} compatible
                         </span>
                         {item.capabilities.slice(0, 3).map((tag: string) => (
                           <span key={tag} className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
@@ -645,7 +662,21 @@ export function TemplateGallery({
                     <Badge variant="secondary" className="capitalize">{previewState.category}</Badge>
                     <Badge variant="outline">{previewPages.length} page{previewPages.length === 1 ? "" : "s"}</Badge>
                     <Badge variant="outline">{previewState.mobileReady === false ? "Desktop first" : "Mobile ready"}</Badge>
+                    {previewState.kind === "built-in" ? (
+                      <Badge variant="outline">
+                        {formatOnboardingMode(
+                          builtInTemplates.find((template) => template.id === previewState.id)?.onboardingMode ?? "template",
+                        )}
+                      </Badge>
+                    ) : null}
                   </div>
+                ) : null}
+                {previewState?.kind === "built-in" ? (
+                  <p className="mt-3 max-w-3xl text-xs leading-5 text-muted-foreground">
+                    {builtInTemplates.find((template) => template.id === previewState.id)?.onboardingMode === "blank"
+                      ? "This starts from the shared blank-builder shell. Merchants can add compatible sections and choose section styles during onboarding before launch."
+                      : "This starts from a guided launch structure. Merchants can keep the starter layout, enable optional sections, and still re-edit everything later from onboarding and settings."}
+                  </p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">

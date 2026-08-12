@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDefaultBlock, cmsBlockTypeOptions } from "@/lib/cms/block-library";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { StoreBlueprintDefinition, StoreBusinessFamily } from "@/lib/cms/store-blueprints";
+import type { StorefrontTemplateSeedDefinition, StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
 
 export interface CmsBlockRegistryItem {
   value: StorePageBlock["type"];
@@ -11,23 +11,62 @@ export interface CmsBlockRegistryItem {
   layer: "core" | "commerce" | "extension";
   compatibleBusinessFamilies: StoreBusinessFamily[];
   requiredCapabilities: string[];
+  variantIds: string[];
+  presetIds: string[];
 }
 
-const allBusinessFamilies: StoreBusinessFamily[] = ["commerce", "booking", "listing", "service"];
+const allBusinessFamilies: StoreBusinessFamily[] = ["commerce", "booking", "listing", "service", "donation"];
+const coreBlockTypes = new Set<StorePageBlock["type"]>([
+  "hero",
+  "rich-text",
+  "social-feed",
+  "faq-accordion",
+  "testimonials",
+  "trust-badges",
+  "promo-banner",
+  "video-reel",
+]);
+const catalogBlockTypes = new Set<StorePageBlock["type"]>([
+  "category-showcase",
+  "comparison",
+  "recommended-products",
+  "recently-viewed",
+]);
+const blockVariantMap: Partial<Record<StorePageBlock["type"], string[]>> = {
+  hero: ["full-bleed", "split", "centered", "editorial"],
+  "featured-products": ["2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right"],
+  "category-showcase": ["cards", "carousel", "masonry", "compact-list"],
+  comparison: ["default", "tech-spec"],
+  "rich-text": ["default", "centered"],
+};
+
+function resolveFallbackBusinessFamilies(type: StorePageBlock["type"]): StoreBusinessFamily[] {
+  if (coreBlockTypes.has(type)) {
+    return allBusinessFamilies;
+  }
+
+  if (type === "featured-products") {
+    return ["commerce", "listing"];
+  }
+
+  return ["commerce"];
+}
+
+function resolveFallbackRequiredCapabilities(type: StorePageBlock["type"]): string[] {
+  if (catalogBlockTypes.has(type)) {
+    return ["catalog"];
+  }
+
+  return [];
+}
 
 export const fallbackBlockRegistry: CmsBlockRegistryItem[] = cmsBlockTypeOptions.map((option) => ({
   ...option,
-  layer: option.value === "hero" || option.value === "rich-text" || option.value === "social-feed" || option.value === "faq-accordion" || option.value === "testimonials" || option.value === "trust-badges"
-    ? "core"
-    : "commerce",
-  compatibleBusinessFamilies:
-    option.value === "hero" || option.value === "rich-text" || option.value === "social-feed" || option.value === "faq-accordion" || option.value === "testimonials" || option.value === "trust-badges"
-      ? allBusinessFamilies
-      : ["commerce"],
-  requiredCapabilities:
-    option.value === "featured-products" || option.value === "comparison" || option.value === "recommended-products" || option.value === "recently-viewed" || option.value === "category-showcase"
-      ? ["catalog"]
-      : [],
+  layer: coreBlockTypes.has(option.value) ? "core" : "commerce",
+  compatibleBusinessFamilies: resolveFallbackBusinessFamilies(option.value),
+  requiredCapabilities: resolveFallbackRequiredCapabilities(option.value),
+  variantIds: [...(blockVariantMap[option.value] ?? [])],
+  presetIds: [],
 }));
 
 type BlockRegistryRow = {
@@ -57,6 +96,8 @@ function mergeBlockRegistryRow(row: BlockRegistryRow): CmsBlockRegistryItem {
       ? row.compatible_business_families as StoreBusinessFamily[]
       : fallback.compatibleBusinessFamilies,
     requiredCapabilities: isStringArray(row.required_capabilities) ? row.required_capabilities : fallback.requiredCapabilities,
+    variantIds: fallback.variantIds,
+    presetIds: fallback.presetIds,
   };
 }
 
@@ -101,18 +142,33 @@ export function getCmsBlockRegistryItem(
   return registry.find((item) => item.value === type) ?? fallbackBlockRegistry.find((item) => item.value === type) ?? fallbackBlockRegistry[0];
 }
 
-export function filterBlockRegistryForBlueprint(
+export function filterBlockRegistryForTemplateSeed(
   registry: CmsBlockRegistryItem[],
-  blueprint: Pick<StoreBlueprintDefinition, "businessFamily" | "capabilities" | "recommendedBlockSet">,
+  templateSeed: Pick<StorefrontTemplateSeedDefinition, "businessFamily" | "capabilities">,
 ) {
-  const recommendedBlockSet = new Set(blueprint.recommendedBlockSet);
-
   return registry.filter(
     (block) =>
-      block.compatibleBusinessFamilies.includes(blueprint.businessFamily)
-      && block.requiredCapabilities.every((capability) => blueprint.capabilities.includes(capability))
-      && (recommendedBlockSet.size === 0 || recommendedBlockSet.has(block.value)),
+      block.compatibleBusinessFamilies.includes(templateSeed.businessFamily)
+      && block.requiredCapabilities.every((capability) => templateSeed.capabilities.includes(capability)),
   );
+}
+
+export function prioritizeRecommendedBlocks(
+  registry: CmsBlockRegistryItem[],
+  templateSeed: Pick<StorefrontTemplateSeedDefinition, "recommendedBlockSet">,
+) {
+  const recommendedBlockSet = new Set(templateSeed.recommendedBlockSet);
+
+  return [...registry].sort((left, right) => {
+    const leftRecommended = recommendedBlockSet.has(left.value);
+    const rightRecommended = recommendedBlockSet.has(right.value);
+
+    if (leftRecommended === rightRecommended) {
+      return left.label.localeCompare(right.label);
+    }
+
+    return leftRecommended ? -1 : 1;
+  });
 }
 
 export function createRegistryDefaultBlock(type: StorePageBlock["type"], sortOrder: number) {

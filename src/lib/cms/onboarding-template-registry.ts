@@ -1,8 +1,8 @@
-import type { StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { getStorefrontTemplateDefinition, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 export type OnboardingTemplateBehavior = {
-  allowedCatalogModes: readonly StoreBlueprintDefinition["catalogMode"][] | "all";
+  allowedCatalogModes: readonly StorefrontTemplateSeedDefinition["catalogMode"][] | "all";
   showDeliveryFields: boolean;
   showLeadContactFields: boolean;
   showMapFields: boolean;
@@ -23,15 +23,15 @@ export type OnboardingTemplateBehavior = {
   previewDescription: string;
   seedButton: string;
   setupBadge: string;
-  blueprintHelper: string;
+  templateHelper: string;
 };
 
 type OnboardingTemplateBehaviorFactory = (context: {
-  blueprint: StoreBlueprintDefinition;
+  templateSeed: StorefrontTemplateSeedDefinition;
   templateId: StorefrontTemplateId;
 }) => OnboardingTemplateBehavior;
 
-function createDefaultBehavior({ blueprint, templateId }: { blueprint: StoreBlueprintDefinition; templateId: StorefrontTemplateId }): OnboardingTemplateBehavior {
+function createDefaultBehavior({ templateSeed, templateId }: { templateSeed: StorefrontTemplateSeedDefinition; templateId: StorefrontTemplateId }): OnboardingTemplateBehavior {
   const templateDefinition = getStorefrontTemplateDefinition(templateId);
   return {
     allowedCatalogModes: "all",
@@ -67,7 +67,7 @@ function createDefaultBehavior({ blueprint, templateId }: { blueprint: StoreBlue
     previewDescription: `${templateDefinition.label} template with your current draft.`,
     seedButton: `Seed ${templateDefinition.label} Demo Data`,
     setupBadge: `${templateDefinition.label} template`,
-    blueprintHelper: "This template seeds store-local pages, blocks, defaults, and storefront metadata for this merchant only.",
+    templateHelper: "This template seeds store-local pages, blocks, defaults, and storefront metadata for this merchant only.",
   };
 }
 
@@ -225,7 +225,7 @@ const registry: Partial<Record<StorefrontTemplateId, Partial<OnboardingTemplateB
 };
 
 export function resolveOnboardingTemplateBehavior(context: {
-  blueprint: StoreBlueprintDefinition;
+  templateSeed: StorefrontTemplateSeedDefinition;
   templateId: StorefrontTemplateId;
 }): OnboardingTemplateBehavior {
   const base = createDefaultBehavior(context);

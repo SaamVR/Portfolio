@@ -20,7 +20,7 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-type BlueprintRecord = {
+type TemplateSeedRecord = {
   id: string;
   name?: string | null;
   business_family: string | null;
@@ -76,6 +76,7 @@ type ThemePackageRecord = {
 };
 
 const storefrontTemplateIds = new Set([
+  "blank",
   "landing",
   "beauty",
   "fashion",
@@ -92,6 +93,88 @@ const storefrontTemplateIds = new Set([
   "hotel",
   "real-estate",
 ]);
+
+const legacyTemplateAliases: Record<string, string> = {
+  clothing: "fashion",
+  gadgets: "electronics",
+  general: "general-catalog",
+  catalog: "general-catalog",
+};
+
+const templateSeedOverrides: Record<string, Partial<TemplateSeedRecord>> = {
+  blank: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "featured-products", "rich-text", "faq-accordion"] },
+  landing: { business_family: "commerce", catalog_mode: "landing_only", recommended_block_set: ["hero", "rich-text", "trust-badges", "faq-accordion", "testimonials"] },
+  beauty: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "category-showcase", "featured-products", "trust-badges", "testimonials", "faq-accordion"] },
+  fashion: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "promo-banner", "category-showcase", "featured-products", "trust-badges", "testimonials", "faq-accordion"] },
+  electronics: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "promo-banner", "category-showcase", "featured-products", "comparison", "recommended-products", "faq-accordion"] },
+  food: { business_family: "commerce", catalog_mode: "menu", recommended_block_set: ["hero", "promo-banner", "category-showcase", "featured-products", "trust-badges", "faq-accordion"] },
+  crafts: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "rich-text", "category-showcase", "featured-products", "testimonials", "faq-accordion"] },
+  subscriptions: { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "comparison", "featured-products", "trust-badges", "faq-accordion"] },
+  "digital-downloads": { business_family: "commerce", catalog_mode: "digital_download", recommended_block_set: ["hero", "featured-products", "comparison", "faq-accordion"] },
+  "single-product": { business_family: "commerce", catalog_mode: "single_product", recommended_block_set: ["hero", "promo-banner", "featured-products", "trust-badges", "faq-accordion"] },
+  "inquiry-catalog": { business_family: "commerce", catalog_mode: "inquiry_only", recommended_block_set: ["hero", "promo-banner", "category-showcase", "featured-products", "faq-accordion"] },
+  service: { business_family: "service", catalog_mode: "inquiry_only", recommended_block_set: ["hero", "rich-text", "featured-products", "testimonials", "faq-accordion"] },
+  "general-catalog": { business_family: "commerce", catalog_mode: "multi_product", recommended_block_set: ["hero", "promo-banner", "category-showcase", "featured-products", "faq-accordion"] },
+  booking: { business_family: "booking", catalog_mode: "inquiry_only", recommended_block_set: ["hero", "featured-products", "trust-badges", "faq-accordion"] },
+  hotel: { business_family: "booking", catalog_mode: "inquiry_only", recommended_block_set: ["hero", "featured-products", "rich-text", "testimonials", "faq-accordion"] },
+  "real-estate": { business_family: "listing", catalog_mode: "inquiry_only", recommended_block_set: ["hero", "category-showcase", "featured-products", "faq-accordion"] },
+};
+
+function resolveSignupTemplateId(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+  const aliased = legacyTemplateAliases[normalized] ?? normalized;
+  return storefrontTemplateIds.has(aliased) ? aliased : "general-catalog";
+}
+
+function titleFromTemplateId(templateId: string) {
+  return templateId
+    .split("-")
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function buildTemplateSeed(templateId: string): TemplateSeedRecord {
+  const safeTemplateId = resolveSignupTemplateId(templateId);
+  const label = titleFromTemplateId(safeTemplateId);
+  const override = templateSeedOverrides[safeTemplateId] ?? {};
+
+  return {
+    id: safeTemplateId,
+    name: label,
+    business_family: override.business_family ?? "commerce",
+    catalog_mode: override.catalog_mode ?? "multi_product",
+    store_description: `${label} storefront powered by EZComo.`,
+    default_theme: {
+      presetId: "default",
+      mode: "dark",
+      customCssVars: {},
+    },
+      default_site_settings: {
+        storefront_profile: {
+          template_id: safeTemplateId,
+          allow_guest_checkout: true,
+        },
+      },
+    recommended_page_set: ["about", "contact", "policy"],
+    recommended_block_set: override.recommended_block_set ?? ["hero", "promo-banner", "featured-products", "faq-accordion"],
+    hero_payload: {
+      tagline: `${label} template`,
+      title: "Launch your storefront",
+      highlight: storeTemplateHighlight(safeTemplateId),
+      subtitle: "Start with a focused storefront structure and adjust the content from your dashboard.",
+    },
+  };
+}
+
+function storeTemplateHighlight(templateId: string) {
+  if (templateId === "blank") return "blank canvas";
+  if (templateId === "booking" || templateId === "hotel") return "ready for bookings";
+  if (templateId === "service") return "built for services";
+  if (templateId === "real-estate") return "built for listings";
+  if (templateId === "food") return "ready for orders";
+  if (templateId === "landing") return "focused on conversion";
+  return "ready to sell";
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -441,14 +524,14 @@ function createTemplatePage(templateId: string): SeedPage | null {
   return null;
 }
 
-function shouldIncludeShopPage(blueprint: BlueprintRecord | null) {
-  return blueprint?.business_family === "commerce"
-    && blueprint.catalog_mode !== "single_product"
-    && shopEligibleCatalogModes.has(blueprint.catalog_mode ?? "");
+function shouldIncludeShopPage(templateSeed: TemplateSeedRecord | null) {
+  return templateSeed?.business_family === "commerce"
+    && templateSeed.catalog_mode !== "single_product"
+    && shopEligibleCatalogModes.has(templateSeed.catalog_mode ?? "");
 }
 
-function buildShopPage(storeName: string, blueprint: BlueprintRecord | null): SeedPage {
-  const isMenu = blueprint?.catalog_mode === "menu";
+function buildShopPage(storeName: string, templateSeed: TemplateSeedRecord | null): SeedPage {
+  const isMenu = templateSeed?.catalog_mode === "menu";
   return {
     id: crypto.randomUUID(),
     slug: "/shop",
@@ -475,10 +558,10 @@ function buildShopPage(storeName: string, blueprint: BlueprintRecord | null): Se
   };
 }
 
-function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): SeedPage[] {
-  const hero = isPlainObject(blueprint?.hero_payload) ? blueprint.hero_payload : null;
-  const recommendedBlockSet = Array.isArray(blueprint?.recommended_block_set)
-    ? blueprint.recommended_block_set.filter((item): item is string => typeof item === "string" && supportedBlockTypes.has(item))
+function buildSeedPages(storeName: string, templateSeed: TemplateSeedRecord | null): SeedPage[] {
+  const hero = isPlainObject(templateSeed?.hero_payload) ? templateSeed.hero_payload : null;
+  const recommendedBlockSet = Array.isArray(templateSeed?.recommended_block_set)
+    ? templateSeed.recommended_block_set.filter((item): item is string => typeof item === "string" && supportedBlockTypes.has(item))
     : [];
   const homepageBlocks = (recommendedBlockSet.length > 0 ? recommendedBlockSet : ["hero", "promo-banner", "featured-products", "rich-text", "faq-accordion"])
     .map((blockType, index) => {
@@ -493,7 +576,7 @@ function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): S
         };
       }
 
-      if (blueprint?.catalog_mode === "landing_only" && block.type === "hero") {
+      if (templateSeed?.catalog_mode === "landing_only" && block.type === "hero") {
         block.props = {
           ...block.props,
           ctaText: "Order via WhatsApp",
@@ -503,7 +586,7 @@ function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): S
         };
       }
 
-      if (blueprint?.catalog_mode === "landing_only" && block.type === "featured-products") {
+      if (templateSeed?.catalog_mode === "landing_only" && block.type === "featured-products") {
         block.props = {
           ...block.props,
           title: "Offerings",
@@ -511,7 +594,7 @@ function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): S
         };
       }
 
-      if (blueprint?.catalog_mode === "inquiry_only" && block.type === "promo-banner") {
+      if (templateSeed?.catalog_mode === "inquiry_only" && block.type === "promo-banner") {
         block.props = {
           ...block.props,
           title: "Talk with the seller before checkout",
@@ -528,15 +611,15 @@ function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): S
       id: crypto.randomUUID(),
       slug: "/",
       title: "Home",
-      seoTitle: `${blueprint?.name ?? storeName} Home`,
-      seoDescription: blueprint?.store_description ?? `${storeName} storefront`,
+      seoTitle: `${templateSeed?.name ?? storeName} Home`,
+      seoDescription: templateSeed?.store_description ?? `${storeName} storefront`,
       isHomepage: true,
       blocks: homepageBlocks,
     },
   ];
 
-  const recommendedPages = Array.isArray(blueprint?.recommended_page_set)
-    ? Array.from(new Set(blueprint.recommended_page_set.filter((item): item is string => typeof item === "string")))
+  const recommendedPages = Array.isArray(templateSeed?.recommended_page_set)
+    ? Array.from(new Set(templateSeed.recommended_page_set.filter((item): item is string => typeof item === "string")))
     : [];
 
   for (const pageId of recommendedPages) {
@@ -549,8 +632,8 @@ function buildSeedPages(storeName: string, blueprint: BlueprintRecord | null): S
     }
   }
 
-  if (shouldIncludeShopPage(blueprint) && !pages.some((page) => page.slug === "/shop")) {
-    pages.push(buildShopPage(storeName, blueprint));
+  if (shouldIncludeShopPage(templateSeed) && !pages.some((page) => page.slug === "/shop")) {
+    pages.push(buildShopPage(storeName, templateSeed));
   }
 
   return pages;
@@ -615,6 +698,7 @@ Deno.serve(async (req) => {
     const requestedSlug = String(payload.store_slug ?? "").trim();
     const businessType = String(payload.business_type ?? "general-catalog").trim() || "general-catalog";
     const requestedTemplateId = String(payload.storefront_template_id ?? "").trim();
+    const signupTemplateId = resolveSignupTemplateId(requestedTemplateId || businessType);
     const requestedPlanId = String(payload.plan_id ?? "").trim();
     const sourceStoreId = String(payload.source_store_id ?? "").trim();
     const intent = String(payload.intent ?? "").trim();
@@ -640,7 +724,6 @@ Deno.serve(async (req) => {
       { data: existingStoreBySlug },
       { data: ownedStores },
       { data: ownerMemberships },
-      { data: blueprintRecord },
     ] = await Promise.all([
       supabaseAdmin
         .from("merchant_account_statuses")
@@ -650,12 +733,6 @@ Deno.serve(async (req) => {
       supabaseAdmin.from("stores").select("id").eq("slug", storeSlug).maybeSingle(),
       supabaseAdmin.from("stores").select("id").eq("owner_id", user.id),
       supabaseAdmin.from("store_memberships").select("store_id").eq("user_id", user.id).eq("role", "owner"),
-      supabaseAdmin
-        .from("store_blueprints")
-        .select("id, name, business_family, catalog_mode, store_description, default_theme, default_site_settings, recommended_page_set, recommended_block_set, hero_payload")
-        .eq("id", businessType)
-        .eq("is_active", true)
-        .maybeSingle(),
     ]);
 
     if (merchantAccountStatus?.can_create_store === false) {
@@ -676,12 +753,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const blueprint = (blueprintRecord as BlueprintRecord | null) ?? null;
-    const resolvedBusinessType = blueprint?.id ?? "general-catalog";
-    const defaultTheme = isPlainObject(blueprint?.default_theme) ? blueprint.default_theme : null;
+    const templateSeed = buildTemplateSeed(signupTemplateId);
+    const resolvedBusinessType = templateSeed.id;
+    const defaultTheme = isPlainObject(templateSeed?.default_theme) ? templateSeed.default_theme : null;
     const defaultSiteSettings = mergeStorefrontTemplateSetting(
-      isPlainObject(blueprint?.default_site_settings) ? blueprint.default_site_settings : null,
-      requestedTemplateId || null,
+      isPlainObject(templateSeed?.default_site_settings) ? templateSeed.default_site_settings : null,
+      signupTemplateId,
     );
     const defaultThemePresetId = typeof defaultTheme?.presetId === "string" ? defaultTheme.presetId : null;
     const { data: themePackageRecord } = defaultThemePresetId
@@ -804,7 +881,7 @@ Deno.serve(async (req) => {
         owner_id: user.id,
         name: storeName,
         slug: storeSlug,
-        description: blueprint?.store_description ?? `${storeName} storefront powered by EZComo.`,
+        description: templateSeed?.store_description ?? `${storeName} storefront powered by EZComo.`,
         currency_code: "BDT",
         locale: "en-BD",
         plan: finalPlanId,
@@ -821,10 +898,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const resolvedTemplateSeedId = requestedTemplateId || resolvedBusinessType;
+    const resolvedTemplateSeedId = signupTemplateId;
     const catalogSeed = buildTemplateCatalogSeedRows(store.id, resolvedTemplateSeedId);
     const seededPages = applyTemplateDemoContentToPages(
-      buildSeedPages(storeName, blueprint),
+      buildSeedPages(storeName, templateSeed),
       resolvedTemplateSeedId,
     );
     const { pageRows, blockRows } = buildSeedRows(store.id, seededPages);
@@ -861,10 +938,10 @@ Deno.serve(async (req) => {
       }),
       supabaseAdmin.from("store_business_profiles").upsert({
         store_id: store.id,
-        blueprint_id: resolvedBusinessType,
-        blueprint_version: 1,
-        business_family: blueprint?.business_family ?? "commerce",
-        catalog_mode: blueprint?.catalog_mode ?? "multi_product",
+        template_id: resolvedTemplateSeedId,
+        business_family: templateSeed?.business_family ?? "commerce",
+        catalog_mode: templateSeed?.catalog_mode ?? "multi_product",
+        enabled_modules: templateSeed?.recommended_block_set ?? [],
       }, { onConflict: "store_id" }),
       supabaseAdmin.from("store_themes").upsert({
         store_id: store.id,

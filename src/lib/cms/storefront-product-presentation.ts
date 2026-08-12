@@ -1,5 +1,6 @@
 import type { Product } from "@/data/products";
 import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { normalizeMetricDefinitions } from "@/lib/cms/product-metrics";
 
 export type ProductCardVariant =
   | "generic"
@@ -33,6 +34,12 @@ export type ProductDetailVariant =
   | "single_product";
 
 export type ProductPresentationVariant = ProductCardVariant | ProductDetailVariant;
+
+export type ProductMetricOptionGroup = {
+  key: string;
+  label: string;
+  options: string[];
+};
 
 export type ProductPresentationSpecs = Partial<{
   product_type: string;
@@ -114,6 +121,18 @@ export function getProductPresentationSpecs(product: Product | null | undefined,
   if (typeof productType === "string" && productType.trim()) merged.product_type = productType;
   if (typeof brand === "string" && brand.trim()) merged.brand = brand;
   if (!merged.images?.length && product?.images?.length) merged.images = product.images;
+  for (const [metricKey, metricValues] of Object.entries(product?.metricValues ?? {})) {
+    if (!metricValues.length) continue;
+    if (merged[metricKey] === undefined) {
+      merged[metricKey] = metricValues;
+    }
+    if (merged.specs?.[metricKey] === undefined) {
+      merged.specs = {
+        ...(merged.specs ?? {}),
+        [metricKey]: metricValues,
+      };
+    }
+  }
 
   return merged;
 }
@@ -259,6 +278,18 @@ function normalizedOptions(values: string[] | undefined | null) {
   return (values ?? []).map((value) => value.trim()).filter(Boolean);
 }
 
+function getResolvedTypeMetricSchema(product: Product) {
+  return normalizeMetricDefinitions(product.typeMetricSchema ?? []);
+}
+
+function hasTypeMetricSchema(product: Product) {
+  return getResolvedTypeMetricSchema(product).length > 0;
+}
+
+function typeSchemaIncludesMetric(product: Product, metricKey: string) {
+  return getResolvedTypeMetricSchema(product).some((metric) => metric.key === metricKey);
+}
+
 function getStringListFromSpecs(specs: ProductPresentationSpecs, keys: string[]) {
   for (const key of keys) {
     const value = specs[key];
@@ -266,6 +297,25 @@ function getStringListFromSpecs(specs: ProductPresentationSpecs, keys: string[])
     if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   }
   return [];
+}
+
+function getMetricLabel(metricKey: string) {
+  return metricKey
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function getMetricNumericFallback(product: Product, keys: string[], fallback: number) {
+  for (const key of keys) {
+    const firstValue = product.metricValues?.[key]?.[0];
+    if (!firstValue) continue;
+    const parsed = Number.parseFloat(firstValue.replace(/[^\d.]/g, ""));
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
 }
 
 export function getStructuredSpecEntries(
@@ -332,9 +382,15 @@ function isApparelLikeProduct(product: Product, specs: ProductPresentationSpecs,
 }
 
 export function getRenderableColorOptions(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
-  const seededColors = getStringListFromSpecs(specs, ["color", "colors", "shade", "shades"]);
+  const hasSchema = hasTypeMetricSchema(product);
+  if (hasSchema && !typeSchemaIncludesMetric(product, "color")) {
+    return [];
+  }
+
+  const seededColors = hasSchema ? [] : getStringListFromSpecs(specs, ["color", "colors", "shade", "shades"]);
+  const metricColors = normalizedOptions(product.metricValues?.color);
   const productColors = normalizedOptions(product.colors);
-  const colors = [...new Set([...seededColors, ...productColors])].filter((value) => {
+  const colors = [...new Set([...seededColors, ...metricColors, ...productColors])].filter((value) => {
     const trimmed = value.trim();
     if (!trimmed) return false;
     if (isPhysicalDeliveryKeyword(trimmed)) return false;
@@ -379,9 +435,15 @@ export function getRenderableColorOptions(product: Product, specs: ProductPresen
 }
 
 export function getRenderableSizeOptions(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
-  const seededSizes = getStringListFromSpecs(specs, ["size", "sizes", "volume", "portion_sizes", "serving_sizes"]);
+  const hasSchema = hasTypeMetricSchema(product);
+  if (hasSchema && !typeSchemaIncludesMetric(product, "size")) {
+    return [];
+  }
+
+  const seededSizes = hasSchema ? [] : getStringListFromSpecs(specs, ["size", "sizes", "volume", "portion_sizes", "serving_sizes"]);
+  const metricSizes = normalizedOptions(product.metricValues?.size);
   const productSizes = normalizedOptions(product.sizes);
-  const sizes = [...new Set([...seededSizes, ...productSizes])].filter((value) => {
+  const sizes = [...new Set([...seededSizes, ...metricSizes, ...productSizes])].filter((value) => {
     const trimmed = value.trim();
     if (!trimmed) return false;
     if (isPhysicalDeliveryKeyword(trimmed)) return false;
@@ -413,6 +475,62 @@ export function getRenderableSizeOptions(product: Product, specs: ProductPresent
     return [];
   }
   return sizes;
+}
+
+export function getRenderableMetricOptionGroups(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant): ProductMetricOptionGroup[] {
+  if (variant === "digital" || variant === "subscription" || variant === "property" || variant === "hotel_room") {
+    return [];
+  }
+
+  const schema = getResolvedTypeMetricSchema(product)
+    .filter((metric) => metric.key !== "size" && metric.key !== "color");
+
+  if (schema.length > 0) {
+    return schema
+      .map((metric) => ({
+        key: metric.key,
+        label: metric.label || getMetricLabel(metric.key),
+        options: normalizedOptions(product.metricValues?.[metric.key]),
+      }))
+      .filter((group) => group.options.length > 0);
+  }
+
+  return Object.entries(product.metricValues ?? {})
+    .filter(([key]) => key !== "size" && key !== "color")
+    .map(([key, values]) => ({
+      key,
+      label: getMetricLabel(key),
+      options: values.map((value) => value.trim()).filter(Boolean),
+    }))
+    .filter((group) => group.options.length > 0);
+}
+
+export function getProductOptionSummaryLines(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
+  return [
+    ...getRenderableMetricOptionGroups(product, specs, variant).map((group) => `${group.label}: ${group.options.slice(0, 3).join(", ")}`),
+    ...(getRenderableColorOptions(product, specs, variant).length > 0 ? [`Colors: ${getRenderableColorOptions(product, specs, variant).slice(0, 4).join(", ")}`] : []),
+    ...(getRenderableSizeOptions(product, specs, variant).length > 0 ? [`Sizes: ${getRenderableSizeOptions(product, specs, variant).slice(0, 4).join(", ")}`] : []),
+  ].filter(Boolean);
+}
+
+export function getProductOptionCount(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
+  const metricOptionTotal = getRenderableMetricOptionGroups(product, specs, variant)
+    .reduce((total, group) => total + group.options.length, 0);
+
+  return metricOptionTotal + getRenderableColorOptions(product, specs, variant).length + getRenderableSizeOptions(product, specs, variant).length;
+}
+
+export function getPrimaryProductOptionValue(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {
+  const sizeOption = getRenderableSizeOptions(product, specs, variant)[0];
+  if (sizeOption) return sizeOption;
+
+  const colorOption = getRenderableColorOptions(product, specs, variant)[0];
+  if (colorOption) return colorOption;
+
+  const customMetricOption = getRenderableMetricOptionGroups(product, specs, variant)[0]?.options[0];
+  if (customMetricOption) return customMetricOption;
+
+  return "Default";
 }
 
 export function shouldShowColorOptions(product: Product, specs: ProductPresentationSpecs, variant: ProductPresentationVariant) {

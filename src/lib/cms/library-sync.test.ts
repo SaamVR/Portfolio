@@ -1,21 +1,11 @@
 import { describe, expect, it } from "@/test/test-utils";
 import {
   buildBlockRegistrySeedRows,
-  buildPageBlueprintSeedRows,
-  buildStoreBlueprintSeedRows,
+  buildPageTemplateSeedRows,
   buildThemePackageSeedRows,
 } from "@/lib/cms/library-sync";
 
 describe("cms library sync seeds", () => {
-  it("builds seed rows for every fallback blueprint", () => {
-    const rows = buildStoreBlueprintSeedRows();
-
-    expect(rows.some((row) => row.id === "electronics")).toBe(true);
-    expect(rows.some((row) => row.id === "crafts")).toBe(true);
-    expect(rows.some((row) => row.id === "single-product")).toBe(true);
-    expect(rows.some((row) => row.id === "inquiry-catalog")).toBe(true);
-  });
-
   it("builds seed rows for every fallback theme package", () => {
     const rows = buildThemePackageSeedRows();
 
@@ -25,7 +15,7 @@ describe("cms library sync seeds", () => {
   });
 
   it("builds page and block seed rows from fallback libraries", () => {
-    const pageRows = buildPageBlueprintSeedRows();
+    const pageRows = buildPageTemplateSeedRows();
     const blockRows = buildBlockRegistrySeedRows();
 
     expect(pageRows.some((row) => row.id === "landing")).toBe(true);

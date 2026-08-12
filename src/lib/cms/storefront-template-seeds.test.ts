@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { buildBlueprintDefinitionFromRow, buildBlueprintSiteSettingsEntries, fallbackStoreBlueprints, findStoreBlueprintById } from "@/lib/cms/store-blueprints";
+import { buildTemplateSeedDefinitionFromRow, buildTemplateSeedSiteSettingsEntries, fallbackStorefrontTemplateSeeds, findStorefrontTemplateSeedById } from "@/lib/cms/storefront-template-seeds";
 
-describe("store blueprint seeds", () => {
-  it("include payment settings in every fallback blueprint", () => {
-    for (const blueprint of fallbackStoreBlueprints) {
-      const paymentSettings = blueprint.defaultSiteSettings.payment_settings as Record<string, unknown> | undefined;
+describe("storefront template seed compatibility", () => {
+  it("includes payment settings in every fallback template seed", () => {
+    for (const templateSeed of fallbackStorefrontTemplateSeeds) {
+      const paymentSettings = templateSeed.defaultSiteSettings.payment_settings as Record<string, unknown> | undefined;
 
       expect(typeof paymentSettings?.cod_enabled).toBe("boolean");
       expect(typeof paymentSettings?.bkash_enabled).toBe("boolean");
@@ -16,7 +16,7 @@ describe("store blueprint seeds", () => {
   });
 
   it("merges partial default site settings from rows instead of replacing them wholesale", () => {
-    const blueprint = buildBlueprintDefinitionFromRow({
+    const templateSeed = buildTemplateSeedDefinitionFromRow({
       id: "general-catalog",
       name: "General Catalog",
       default_site_settings: {
@@ -26,8 +26,8 @@ describe("store blueprint seeds", () => {
       },
     });
 
-    const storefrontProfile = blueprint.defaultSiteSettings.storefront_profile as Record<string, unknown>;
-    const paymentSettings = blueprint.defaultSiteSettings.payment_settings as Record<string, unknown>;
+    const storefrontProfile = templateSeed.defaultSiteSettings.storefront_profile as Record<string, unknown>;
+    const paymentSettings = templateSeed.defaultSiteSettings.payment_settings as Record<string, unknown>;
 
     expect(storefrontProfile.product_visibility).toBe("catalog");
     expect(storefrontProfile.checkout_mode).toBe("whatsapp");
@@ -36,7 +36,7 @@ describe("store blueprint seeds", () => {
   });
 
   it("builds site setting entries and allows targeted overrides", () => {
-    const entries = buildBlueprintSiteSettingsEntries(fallbackStoreBlueprints[0], {
+    const entries = buildTemplateSeedSiteSettingsEntries(fallbackStorefrontTemplateSeeds[0], {
       payment_settings: {
         cod_enabled: false,
         bkash_enabled: true,
@@ -48,8 +48,8 @@ describe("store blueprint seeds", () => {
     expect(paymentSettings?.bkash_enabled).toBe(true);
   });
 
-  it("resolves custom blueprint rows from their legacy template or neutral fallback base", () => {
-    const blueprint = buildBlueprintDefinitionFromRow({
+  it("resolves legacy seed rows from their template alias or neutral fallback base", () => {
+    const templateSeed = buildTemplateSeedDefinitionFromRow({
       id: "luxury-hotel",
       legacy_template_id: "general",
       name: "Luxury Hotel",
@@ -58,20 +58,20 @@ describe("store blueprint seeds", () => {
       catalog_mode: "inquiry_only",
     });
 
-    expect(blueprint.id).toBe("luxury-hotel");
-    expect(blueprint.shortName).toBe("Hotel");
-    expect(blueprint.defaultSiteSettings.payment_settings).toBeDefined();
-    expect(blueprint.hero.subtitle.length).toBeGreaterThan(0);
+    expect(templateSeed.id).toBe("luxury-hotel");
+    expect(templateSeed.shortName).toBe("Hotel");
+    expect(templateSeed.defaultSiteSettings.payment_settings).toBeDefined();
+    expect(templateSeed.hero.subtitle.length).toBeGreaterThan(0);
   });
 
-  it("finds custom blueprints from a loaded blueprint collection", () => {
-    const customBlueprint = {
-      ...fallbackStoreBlueprints[0],
-      id: "custom-blueprint",
-      name: "Custom Blueprint",
+  it("finds custom seed definitions from an injected collection", () => {
+    const customTemplateSeed = {
+      ...fallbackStorefrontTemplateSeeds[0],
+      id: "custom-template-seed",
+      name: "Custom Template Seed",
       shortName: "Custom",
     };
 
-    expect(findStoreBlueprintById("custom-blueprint", [customBlueprint])).toEqual(customBlueprint);
+    expect(findStorefrontTemplateSeedById("custom-template-seed", [customTemplateSeed])).toEqual(customTemplateSeed);
   });
 });

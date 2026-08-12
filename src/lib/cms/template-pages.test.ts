@@ -1,13 +1,12 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { instantiateStorePagesFromBlueprint } from "@/lib/cms/blueprint-pages";
-import { normalizePageBlueprintPayload } from "@/lib/cms/page-blueprints";
-import type { CmsPageBlueprint } from "@/lib/cms/page-blueprints";
-import type { StoreBlueprintDefinition } from "@/lib/cms/store-blueprints";
+import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
+import { normalizePageTemplatePayload } from "@/lib/cms/page-templates";
+import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import assert from "node:assert/strict";
 
-describe("blueprint page instantiation", () => {
-  it("builds a homepage from the blueprint block set", () => {
-    const pages = instantiateStorePagesFromBlueprint("gadgets");
+describe("template page instantiation", () => {
+  it("builds a homepage from the template block set", () => {
+    const pages = instantiateStorePagesFromTemplate("gadgets", { templateSeedId: "gadgets" });
     const homepage = pages.find((page) => page.isHomepage);
 
     expect(homepage).toBeDefined();
@@ -16,15 +15,15 @@ describe("blueprint page instantiation", () => {
     expect((homepage?.blocks[0]?.props as { title?: string })?.title).toBe("Gear Up with");
   });
 
-  it("adds recommended secondary pages from page blueprints", () => {
-    const pages = instantiateStorePagesFromBlueprint("general-catalog");
+  it("adds recommended secondary pages from page templates", () => {
+    const pages = instantiateStorePagesFromTemplate("general-catalog");
 
     expect(pages.some((page) => page.slug === "/policy")).toBe(true);
     expect(pages.some((page) => page.slug === "/about-brand")).toBe(true);
   });
 
-  it("adds a shop page for catalog-style commerce blueprints", () => {
-    const pages = instantiateStorePagesFromBlueprint("general-catalog");
+  it("adds a shop page for catalog-style commerce template seeds", () => {
+    const pages = instantiateStorePagesFromTemplate("general-catalog");
     const shopPage = pages.find((page) => page.slug === "/shop");
 
     expect(shopPage).toBeDefined();
@@ -32,24 +31,27 @@ describe("blueprint page instantiation", () => {
     expect(shopPage?.isHomepage).toBe(false);
   });
 
-  it("does not add a shop page for single-product launch blueprints", () => {
-    const pages = instantiateStorePagesFromBlueprint("single-product");
+  it("does not add a shop page for single-product launch template seeds", () => {
+    const pages = instantiateStorePagesFromTemplate("single-product");
 
     expect(pages.some((page) => page.slug === "/shop")).toBe(false);
   });
 
-  it("instantiates custom recommended page blueprints from the provided collection", () => {
-    const blueprint = {
-      id: "custom-blueprint",
-      name: "Custom blueprint",
+  it("ignores recommended page ids that do not exist in the static template registry", () => {
+    const templateSeed = {
+      id: "custom-template",
+      name: "Custom template",
       shortName: "Custom",
-      description: "Custom blueprint description",
+      description: "Custom template seed description",
       businessFamily: "commerce",
       catalogMode: "multi_product",
       group: "Custom",
+      onboardingMode: "template",
       capabilities: [],
       recommendedPageSet: ["custom-lookbook"],
+      compatibleBlockSet: ["hero", "rich-text"],
       recommendedBlockSet: ["hero", "rich-text"],
+      defaultBlockSet: ["hero", "rich-text"],
       defaultTheme: {
         presetId: "minimal",
         mode: "light",
@@ -71,42 +73,15 @@ describe("blueprint page instantiation", () => {
         steps: [],
       },
       defaultSiteSettings: {},
-    } satisfies StoreBlueprintDefinition;
+    } satisfies StorefrontTemplateSeedDefinition;
 
-    const pageBlueprints: CmsPageBlueprint[] = [{
-      id: "custom-lookbook",
-      name: "Custom lookbook",
-      description: "Custom lookbook page",
-      businessFamily: "commerce",
-      catalogModes: ["multi_product"],
-      page: {
-        slug: "/lookbook",
-        title: "Lookbook",
-        seoTitle: "Lookbook",
-        seoDescription: "Custom lookbook page",
-        isHomepage: false,
-        blocks: [{
-          id: "lookbook-rich-text",
-          type: "rich-text",
-          isVisible: true,
-          visible: true,
-          sortOrder: 0,
-          props: {
-            title: "Lookbook",
-            body: "Curated styles",
-            align: "left",
-          },
-        }],
-      },
-    }];
+    const pages = instantiateStorePagesFromTemplate(templateSeed);
 
-    const pages = instantiateStorePagesFromBlueprint(blueprint, pageBlueprints);
-
-    expect(pages.some((page) => page.slug === "/lookbook")).toBe(true);
+    expect(pages.some((page) => page.slug === "/lookbook")).toBe(false);
   });
 
-  it("normalizes valid page blueprint payloads and drops invalid blocks", () => {
-    const payload = normalizePageBlueprintPayload({
+  it("normalizes valid page template payloads and drops invalid blocks", () => {
+    const payload = normalizePageTemplatePayload({
       slug: "/promo",
       title: "Promo",
       isHomepage: false,
@@ -141,8 +116,8 @@ describe("blueprint page instantiation", () => {
     expect(payload.blocks[0]?.sortOrder).toBe(0);
   });
 
-  it("rejects page blueprint payloads without valid blocks", () => {
-    assert.throws(() => normalizePageBlueprintPayload({
+  it("rejects page template payloads without valid blocks", () => {
+    assert.throws(() => normalizePageTemplatePayload({
       slug: "/promo",
       title: "Promo",
       blocks: [],
