@@ -8,62 +8,100 @@ export const enTranslation = {
     startTrial: "Start building",
   },
   hero: {
-    badge: "Meet The New Standard",
-    headlineWords: ["defy expectations.", "convert visitors.", "tell your story."],
-    titlePrefix: "Design stores that ",
-    subtitle: "A full-stack commerce engine with atomic design tokens, Supabase-backed RLS security, and native bKash/Nagad checkout — wrapped in a zero-code visual builder that renders at the edge in under 300ms.",
+    badge: "Built for modern merchants",
+    headlineWords: ["earn trust.", "convert faster.", "grow beautifully."],
+    titlePrefix: "Launch a storefront that helps you ",
+    subtitle:
+      "A full-stack commerce engine with visual editing, strong Supabase-backed security, native bKash and Nagad readiness, and a merchant workflow built for fast Bangladesh-first launches.",
     primaryCta: "Start Free Trial",
-    secondaryCta: "See it in action",
+    secondaryCta: "See the platform flow",
     trustBadges: [
       "No credit card required",
-      "Supabase RLS + Prisma ORM",
-      "bKash, Nagad & Stripe ready",
-      "Pathao & Steadfast couriers"
-    ]
+      "Supabase RLS + merchant-safe setup",
+      "bKash, Nagad, and Stripe ready",
+      "Pathao and Steadfast courier support",
+    ],
   },
-  trustBar: "Integrated with Bangladesh & Global Commerce Systems",
-
+  trustBar: "Connected to local and global commerce workflows",
   howItWorks: {
-    badge: "Seed → Customize → Ship",
-    titleMain: "From zero to ",
-    titleHighlight: "accepting payments",
-    titleSuffix: " in under an hour",
-    subtitle: "No developer, no deployment pipeline, no payment gateway paperwork. Pick a seed, drag your brand into place, and go live with bKash checkout and Pathao courier auto-booking.",
+    badge: "Choose a template, tailor it, and launch",
+    titleMain: "Go from idea to ",
+    titleHighlight: "taking real orders",
+    titleSuffix: " without a long setup cycle",
+    subtitle:
+      "Start from a template that already matches your business, adjust the visuals and content, then connect payments and delivery from one guided merchant flow.",
     step1: {
-      title: "Clone a Production-Ready Seed",
-      desc: "Choose from industry-optimized template seeds — Fashion, Beauty, Electronics, or Grocery — each pre-loaded with sample products, SEO metadata, navigation, hero banners, and category taxonomies."
+      title: "Choose a launch-ready template",
+      desc:
+        "Start with a storefront template already shaped for fashion, beauty, electronics, food, hospitality, services, and more, with real structure instead of a blank canvas.",
     },
     step2: {
-      title: "Visually Customize Every Token",
-      desc: "Adjust design tokens (primary colors, font stacks, border radii), re-order page blocks, and preview responsive layouts across desktop, tablet, and mobile breakpoints — all without touching code."
+      title: "Match it to your brand",
+      desc:
+        "Update colors, typography, sections, product storytelling, and homepage flow with visual controls built for mobile and desktop storefront review.",
     },
     step3: {
-      title: "Go Live with Local Infra",
-      desc: "Bind your custom domain with auto-provisioned SSL, activate bKash & Nagad payment webhooks, enable Pathao/Steadfast courier auto-booking, and start accepting orders — all from a single admin dashboard."
+      title: "Connect payments and operations",
+      desc:
+        "Turn on local payment methods, set delivery expectations, and prepare the store for real checkout and fulfillment without stitching tools together manually.",
     },
-    ctaBtn: "Explore Detailed Workflow & Live Architecture"
+    ctaBtn: "Explore the detailed workflow",
   },
   templates: {
-    badge: "Industry-Tuned Storefronts",
-    titleMain: "Pre-engineered for ",
-    titleHighlight: "your vertical",
-    subtitle: "Each template ships with industry-specific product schemas, checkout flows, SEO structures, and conversion-optimized block layouts — ready to customize via the token engine.",
+    badge: "Storefronts tuned to real business types",
+    titleMain: "Templates designed around ",
+    titleHighlight: "how you sell",
+    subtitle:
+      "Each storefront template starts with a stronger structure, clearer product presentation, and a more realistic merchant journey instead of generic demo blocks.",
     useTemplate: "Use the {name} template",
     templateFeatures: {
-      fashion: ["Size-chart variant picker with visual swatches", "Lookbook hero carousel with 60fps parallax", "Wishlist persistence via Supabase row-level security"],
-      beauty: ["Ingredient highlight blocks with expandable details", "Before/after slider component for product proof", "Subscription-ready recurring checkout flow"],
-      electronics: ["Spec-comparison table block with sortable columns", "Warranty badge and return policy trust signals", "Stock-level live indicator with Supabase realtime"],
-      food: ["Weight-based shipping calculator for perishables", "Freshness date badge with auto-expiry warnings", "Bulk order discount tiers with dynamic pricing"]
-    }
+      fashion: [
+        "Variant-first product browsing with sizes and swatches",
+        "Lookbook-friendly storytelling with collection emphasis",
+        "A stronger flow for repeat browsing and saved favorites",
+      ],
+      beauty: [
+        "Ingredient and routine-led product storytelling",
+        "Cleaner education and proof blocks for product trust",
+        "A layout that works well for bundles and repeat purchase habits",
+      ],
+      electronics: [
+        "Sharper specification and comparison-friendly presentation",
+        "Trust-building support for warranty and after-sales context",
+        "A catalog flow better suited to research-heavy shoppers",
+      ],
+      food: [
+        "Fast menu and catalog browsing for local ordering habits",
+        "Better support for freshness, delivery, and offer clarity",
+        "A layout that stays clear even with lots of repeatable items",
+      ],
+      hotel: [
+        "Room-led presentation with stronger trust and stay context",
+        "A browsing flow built for comparison and booking intent",
+        "Visual space for amenities, policies, and destination appeal",
+      ],
+      booking: [
+        "Service booking structure with clearer action paths",
+        "A layout that explains availability and next steps better",
+        "Good fit for appointment-heavy or schedule-based businesses",
+      ],
+      service: [
+        "Offer-led storytelling for consultative businesses",
+        "Space for proof, positioning, and lead capture",
+        "Better flow for service pages that need clarity over clutter",
+      ],
+    },
   },
   testimonials: {
-    badge: "Merchant Proof",
-    titleMain: "Trusted by merchants who ",
-    titleHighlight: "ship fast",
-    subtitle: "Real merchants. Real metrics. From first seed clone to processing thousands of bKash transactions monthly.",
+    badge: "Merchant proof",
+    titleMain: "Stories from merchants who want ",
+    titleHighlight: "a better launch experience",
+    subtitle:
+      "These examples reflect the kind of clarity, speed, and operational confidence the platform is designed to support.",
     list: [
       {
-        quote: "EZComo allowed us to launch our fashion store in 2 days. The mobile checkout with bKash improved our order conversion by 45%.",
+        quote:
+          "We moved from a messy patchwork setup to one storefront flow that felt easier to trust, edit, and launch quickly.",
         author: "Tariq Ahmed",
         role: "Founder, Urban Threads",
         template: "Fashion Catalog",
@@ -71,7 +109,8 @@ export const enTranslation = {
         avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80",
       },
       {
-        quote: "The live preview editor is game-changing. Changing colors and typography across our entire storefront takes seconds without breaking code.",
+        quote:
+          "The visual editing flow made it much easier to refine our brand presentation without breaking what was already working.",
         author: "Nusrat Jahan",
         role: "Marketing Director, Glow Beauty",
         template: "Beauty Glow",
@@ -79,7 +118,8 @@ export const enTranslation = {
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
       },
       {
-        quote: "Pathao courier pick-up integration right from our EZComo order dashboard saved our operations team 15+ hours per week.",
+        quote:
+          "What stood out was how much clearer the catalog, trust details, and merchant setup felt compared with generic store builders.",
         author: "Rahim Chowdhury",
         role: "Operations Lead, TechMart BD",
         template: "Electronics Hub",
@@ -87,51 +127,54 @@ export const enTranslation = {
         avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&q=80",
       },
       {
-        quote: "Moving from Shopify to EZComo was the best decision. Zero transaction fees and out-of-the-box local payment methods.",
+        quote:
+          "It felt much closer to a real storefront launch system than a basic theme installer, especially for mobile shoppers.",
         author: "Sarah Islam",
         role: "Owner, Minimalist Co",
         template: "Lifestyle Minimal",
         rating: 5,
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
-      }
-    ]
+      },
+    ],
   },
   metrics: {
-    templates: "Seed Templates & Block Primitives",
-    edge: "Edge-Rendered TTFB",
-    fee: "Platform Transaction Fee",
-    code: "Lines of Code to Ship"
+    templates: "Merchant-ready template directions",
+    edge: "Fast launch-ready storefront delivery",
+    fee: "Platform transaction fee",
+    code: "Code required to start",
   },
   comparison: {
-    badge: "Architecture Comparison",
-    titleMain: "EZComo vs. ",
-    titleHighlight: "legacy e-commerce stacks",
-    colFeature: "Feature",
+    badge: "Clearer than the usual stack",
+    titleMain: "Why merchants choose ",
+    titleHighlight: "a more guided commerce setup",
+    colFeature: "What matters",
     colEzcomo: "EZComo",
-    colDiy: "DIY Platforms",
+    colDiy: "Typical DIY setup",
     rows: [
-      { name: "Time to First Sale", ezcomo: "Under 1 Hour", diy: "2-6 Weeks" },
-      { name: "Page Builder", ezcomo: "Atomic Block Engine", diy: "Theme Code / Liquid" },
-      { name: "Design Token System", ezcomo: "Cascading Variables", diy: "Manual CSS Overrides" },
-      { name: "bKash / Nagad Checkout", ezcomo: "Native Webhook Integration", diy: "3rd-Party Plugin Fees" },
-      { name: "Courier Auto-Booking", ezcomo: "Pathao + Steadfast API", diy: "Manual Copy-Paste" },
-      { name: "Database Architecture", ezcomo: "Supabase RLS + Prisma", diy: "Shared MySQL / No RLS" },
-      { name: "TTFB Performance", ezcomo: "< 300ms Edge SSR", diy: "1-3s Server Rendered" },
-      { name: "Transaction Fees", ezcomo: "0% Platform Fee", diy: "2-5% Per Transaction" },
-    ]
+      { name: "Time to first launch", ezcomo: "Focused and guided", diy: "Often slow and fragmented" },
+      { name: "Store structure", ezcomo: "Template-aware", diy: "Generic starting point" },
+      { name: "Visual editing", ezcomo: "Built into the workflow", diy: "Often split across tools" },
+      { name: "Local commerce readiness", ezcomo: "Planned for BD needs", diy: "Usually pieced together" },
+      { name: "Merchant clarity", ezcomo: "More guided", diy: "More guesswork" },
+      { name: "Operational consistency", ezcomo: "Storefront and admin stay aligned", diy: "Higher mismatch risk" },
+      { name: "Performance direction", ezcomo: "Optimized for fast storefronts", diy: "Depends heavily on setup" },
+      { name: "Platform fee", ezcomo: "0%", diy: "Often charged per transaction" },
+    ],
   },
   cta: {
     titleMain: "Your store deserves ",
-    titleHighlight: "better architecture.",
-    subtitle: "Atomic design tokens. Supabase security. Native bKash checkout. Pathao auto-booking. Zero transaction fees. One dashboard.",
-    btn: "Create Your Store"
+    titleHighlight: "a sharper launch path.",
+    subtitle:
+      "Better structure, stronger visuals, cleaner operations, and a merchant flow built to help you launch with confidence.",
+    btn: "Create Your Store",
   },
   footer: {
-    desc: "Full-stack commerce CMS built on Next.js, Supabase, and Prisma. Atomic design tokens, zero-code visual builder, native Bangladesh payment & courier integrations, and edge-rendered storefronts.",
+    desc:
+      "A commerce platform built to help merchants launch, customize, and operate real storefronts without turning setup into a technical project.",
     product: "Product",
     integrations: "Integrations",
-    platform: "Platform"
-  }
+    platform: "Platform",
+  },
 };
 
 export type TranslationSchema = typeof enTranslation;

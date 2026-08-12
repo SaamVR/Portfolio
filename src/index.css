@@ -116,19 +116,30 @@
   /* Premium Bengali Typography & Layout System */
   [data-lang="bn"], [data-lang="bn"] body, [lang="bn"], [lang="bn"] body {
     font-family: var(--font-bengali);
-    line-height: 1.65;
+    line-height: 1.78;
+    word-spacing: 0.03em;
+    text-rendering: optimizeLegibility;
   }
 
   [data-lang="bn"] h1, [data-lang="bn"] h2, [data-lang="bn"] h3, [data-lang="bn"] h4, [data-lang="bn"] h5, [data-lang="bn"] h6,
   [lang="bn"] h1, [lang="bn"] h2, [lang="bn"] h3, [lang="bn"] h4, [lang="bn"] h5, [lang="bn"] h6 {
     font-family: var(--font-bengali);
     letter-spacing: 0em !important;
-    line-height: 1.3 !important;
+    line-height: 1.38 !important;
+    font-weight: 700;
   }
 
   [data-lang="bn"] p, [data-lang="bn"] span, [data-lang="bn"] button, [data-lang="bn"] a, [data-lang="bn"] li,
   [lang="bn"] p, [lang="bn"] span, [lang="bn"] button, [lang="bn"] a, [lang="bn"] li {
     letter-spacing: 0em !important;
+  }
+
+  .landing-bn :is(p, li, a, button, span) {
+    line-height: 1.8;
+  }
+
+  .landing-bn :is(h1, h2, h3) {
+    text-wrap: balance;
   }
 
   *, *::before, *::after {

@@ -50,7 +50,7 @@ export default function PlansPage() {
           </Button>
 
           <div className="flex items-center gap-3">
-            <Link href="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
+            <Link href="/admin/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
               Log in
             </Link>
             <Button asChild className="rounded-full shadow-lg shadow-emerald-500/20 bg-primary text-primary-foreground font-semibold">
