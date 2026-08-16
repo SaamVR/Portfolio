@@ -39,8 +39,8 @@ jobs:
             curl --fail-with-body -sS "${auth[@]}" "$url"
           }
 
-          echo '=== Token verification ==='
-          verify="$(cf_get "$api/user/tokens/verify")"
+          echo '=== Account token verification ==='
+          verify="$(cf_get "$api/accounts/$CF_ACCOUNT_ID/tokens/verify")"
           echo "$verify" | jq '{success, status: .result.status, errors}'
 
           echo '=== Resolve zone ==='
