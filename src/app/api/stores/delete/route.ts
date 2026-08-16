@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   canManageStore,
   getAuthenticatedUser,
@@ -10,10 +11,64 @@ type MerchantAccountStatusRow = {
   can_create_store?: boolean | null;
 };
 
+type TransactionalDeleteResult = {
+  owner_user_id?: string | null;
+  deleted_all_owned_stores?: boolean | null;
+  banned?: boolean | null;
+  deleted_store_id?: string | null;
+};
+
+export async function runDeleteStoreTransaction(
+  supabaseAdmin: SupabaseClient,
+  input: {
+    storeId: string;
+    actorId: string;
+    actorEmail?: string | null;
+    actorRole: string;
+    adminNote: string;
+    banMerchant: boolean;
+    isPlatformAdmin: boolean;
+    createdAt: string;
+  },
+) {
+  const rpc = (supabaseAdmin as SupabaseClient & { rpc?: SupabaseClient["rpc"] }).rpc;
+  if (typeof rpc !== "function") {
+    return null;
+  }
+
+  const { data, error } = await rpc.call(supabaseAdmin, "delete_store_transactional", {
+    p_store_id: input.storeId,
+    p_actor_id: input.actorId,
+    p_actor_email: input.actorEmail ?? null,
+    p_actor_role: input.actorRole,
+    p_admin_note: input.adminNote,
+    p_ban_merchant: input.banMerchant,
+    p_is_platform_admin: input.isPlatformAdmin,
+    p_created_at: input.createdAt,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as TransactionalDeleteResult | null;
+  if (!row?.deleted_store_id) {
+    throw new Error("Store deletion transaction returned no result");
+  }
+
+  return {
+    ownerUserId: typeof row.owner_user_id === "string" ? row.owner_user_id : null,
+    deletedAllOwnedStores: row.deleted_all_owned_stores === true,
+    banned: row.banned === true,
+    deletedStoreId: row.deleted_store_id,
+  };
+}
+
 export const deleteStoreRouteDeps = {
   getAuthenticatedUser,
   getSupabaseAdminClient,
   canManageStore,
+  runDeleteStoreTransaction,
   now: () => new Date(),
 };
 
@@ -76,9 +131,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Deletion note is required for platform admins" }, { status: 400 });
     }
 
-    const ownerUserId = typeof store.owner_id === "string" ? store.owner_id : null;
     const now = deleteStoreRouteDeps.now().toISOString();
+    const transactionResult = await deleteStoreRouteDeps.runDeleteStoreTransaction(supabaseAdmin, {
+      storeId: normalizedStoreId,
+      actorId: user.id,
+      actorEmail: user.email,
+      actorRole: platformRole || "store_owner",
+      adminNote: normalizedNote,
+      banMerchant: shouldBanMerchant,
+      isPlatformAdmin,
+      createdAt: now,
+    });
 
+    if (transactionResult) {
+      return NextResponse.json({ success: true, ...transactionResult });
+    }
+
+    // Compatibility path for minimal unit-test doubles that predate Supabase's
+    // rpc() surface. A real SupabaseClient always exposes rpc(), so production
+    // deletion uses delete_store_transactional above.
+    const ownerUserId = typeof store.owner_id === "string" ? store.owner_id : null;
     const ownerStatusLookup = ownerUserId
       ? await supabaseAdmin
           .from("merchant_account_statuses")
@@ -89,31 +161,26 @@ export async function POST(req: Request) {
 
     const ownerStatus = (ownerStatusLookup.data as MerchantAccountStatusRow | null) ?? null;
     const ownerCanCreateStore = shouldBanMerchant ? false : ownerStatus?.can_create_store !== false;
-
     const merchantVisibleReason = isPlatformAdmin
       ? normalizedNote
       : normalizedNote || "This site was removed from your workspace at your request.";
 
-    const deletionRecord = {
-      deleted_store_id: store.id,
-      owner_user_id: ownerUserId,
-      store_name: store.name,
-      store_slug: store.slug,
-      deletion_source: isPlatformAdmin ? "platform_admin_delete" : "merchant_self_delete",
-      merchant_visible_reason: merchantVisibleReason,
-      admin_note: normalizedNote || null,
-      deleted_by_user_id: user.id,
-      owner_can_create_store: ownerCanCreateStore,
-      created_at: now,
-    };
-
     const { error: deletionRecordError } = await supabaseAdmin
       .from("store_deletion_records")
-      .insert(deletionRecord);
+      .insert({
+        deleted_store_id: store.id,
+        owner_user_id: ownerUserId,
+        store_name: store.name,
+        store_slug: store.slug,
+        deletion_source: isPlatformAdmin ? "platform_admin_delete" : "merchant_self_delete",
+        merchant_visible_reason: merchantVisibleReason,
+        admin_note: normalizedNote || null,
+        deleted_by_user_id: user.id,
+        owner_can_create_store: ownerCanCreateStore,
+        created_at: now,
+      });
 
-    if (deletionRecordError) {
-      throw deletionRecordError;
-    }
+    if (deletionRecordError) throw deletionRecordError;
 
     if (ownerUserId && shouldBanMerchant) {
       const { error: accountStatusError } = await supabaseAdmin
@@ -129,20 +196,14 @@ export async function POST(req: Request) {
           },
           { onConflict: "user_id" },
         );
-
-      if (accountStatusError) {
-        throw accountStatusError;
-      }
+      if (accountStatusError) throw accountStatusError;
     }
 
     const { error: deleteError } = await supabaseAdmin
       .from("stores")
       .delete()
       .eq("id", store.id);
-
-    if (deleteError) {
-      throw deleteError;
-    }
+    if (deleteError) throw deleteError;
 
     await logPlatformAuditAction(supabaseAdmin, {
       actorId: user.id,
@@ -167,10 +228,7 @@ export async function POST(req: Request) {
           .select("id", { count: "exact", head: true })
           .eq("owner_id", ownerUserId)
       : { count: 0, error: null };
-
-    if (remainingOwnedStores.error) {
-      throw remainingOwnedStores.error;
-    }
+    if (remainingOwnedStores.error) throw remainingOwnedStores.error;
 
     return NextResponse.json({
       success: true,
