@@ -1,5 +1,5 @@
 import { threadbdSeedData } from "./threadbd-local-seed-data.js";
-import { normalizeMetricLabel, normalizeProductMetricKey } from "./product-metrics";
+import { normalizeMetricLabel, normalizeProductMetricKey } from "./product-metrics.ts";
 
 type FixtureCategory = {
   id: string;
