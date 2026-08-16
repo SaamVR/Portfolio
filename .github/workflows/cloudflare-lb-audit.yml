@@ -83,6 +83,18 @@ jobs:
           test -n "$ZONE_ID" || { echo "Could not resolve zone ${CF_ZONE_NAME}"; exit 1; }
           echo "Resolved zone ID: $ZONE_ID"
 
+          echo '=== Transform Rule access ==='
+          raw="$(request "$api/zones/$ZONE_ID/rulesets/phases/http_request_late_transform/entrypoint")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "$body" | jq '{success, ruleset: {id: .result.id, name: .result.name, phase: .result.phase, rule_count: (.result.rules | length)}, errors}'
+          elif [ "$code" = "404" ]; then
+            echo '{"success":true,"ruleset":null,"note":"No late-transform ruleset exists yet"}'
+          else
+            echo "$body" | jq '{success, errors}'
+          fi
+
           echo '=== DNS permission / relevant records ==='
           raw="$(request "$api/zones/$ZONE_ID/dns_records?per_page=100")"
           code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
