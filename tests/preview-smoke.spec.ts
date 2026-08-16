@@ -103,7 +103,7 @@ async function signupPreviewStore(
   storeName: string,
   storeSlug: string,
 ) {
-  await page.goto("/signup");
+  await page.goto("/signup?entry=dashboard");
   await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
   await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
   await page.getByTestId("merchant-signup-store-name").fill(storeName);
@@ -200,7 +200,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
       throw e;
     }
 
-    await page.goto("/signup");
+    await page.goto("/signup?entry=dashboard");
     await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
     await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
     await page.getByTestId("merchant-signup-store-name").fill(storeName);
