@@ -99,13 +99,11 @@ async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["p
 
 async function signupPreviewStore(
   page: Parameters<typeof test>[0]["page"],
-  ownerName: string,
   storeName: string,
   storeSlug: string,
 ) {
   await page.goto("/signup?entry=dashboard");
-  await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
-  await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
+  await expect(page.getByTestId("merchant-signup-store-name")).toBeVisible();
   await page.getByTestId("merchant-signup-store-name").fill(storeName);
   await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
   await continueSignupWhenSlugReady(page);
@@ -126,7 +124,6 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
   const password = `Preview-${suffix}-Pass123!`;
   const adminEmail = `preview-smoke-admin-${suffix}@example.com`;
   const adminPassword = `Preview-Admin-${suffix}-Pass123!`;
-  const ownerName = "Preview Smoke Owner";
   const storeName = `Preview Smoke ${suffix}`;
   const storeSlug = `preview-smoke-${suffix}`;
   const imageUrl =
@@ -201,8 +198,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     }
 
     await page.goto("/signup?entry=dashboard");
-    await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();
-    await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
+    await expect(page.getByTestId("merchant-signup-store-name")).toBeVisible();
     await page.getByTestId("merchant-signup-store-name").fill(storeName);
     await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
     await continueSignupWhenSlugReady(page);
@@ -732,7 +728,6 @@ test("admin hard refresh restores representative routes without getting stuck on
   page,
 }) => {
   const suffix = randomUUID().slice(0, 8);
-  const ownerName = "Refresh Smoke Owner";
   const storeName = `Refresh Smoke ${suffix}`;
   const storeSlug = `refresh-smoke-${suffix}`;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -748,7 +743,7 @@ test("admin hard refresh restores representative routes without getting stuck on
   try {
     credentials = await createPreviewUsers(supabaseAdmin, `${suffix}-refresh`);
     await loginAs(page, credentials.email, credentials.password);
-    const signupResult = await signupPreviewStore(page, ownerName, storeName, storeSlug);
+    const signupResult = await signupPreviewStore(page, storeName, storeSlug);
     storeId = signupResult.storeId;
 
     const representativeRoutes = [
@@ -781,7 +776,6 @@ test("admin hard refresh restores representative routes without getting stuck on
 
 test("merchant marketplace tail smoke: advanced editor, submit, install, moderate", async ({ page }, testInfo) => {
   const suffix = randomUUID().slice(0, 8);
-  const ownerName = "Preview Smoke Owner";
   const storeName = `Preview Tail ${suffix}`;
   const storeSlug = `preview-tail-${suffix}`;
   const imageUrl =
@@ -811,7 +805,7 @@ test("merchant marketplace tail smoke: advanced editor, submit, install, moderat
     page.on("pageerror", (err) => console.log("TAIL PAGE ERROR:", err.message));
 
     await loginAs(page, credentials.email, credentials.password);
-    const signup = await signupPreviewStore(page, ownerName, storeName, storeSlug);
+    const signup = await signupPreviewStore(page, storeName, storeSlug);
     storeId = signup.storeId;
 
     await page.goto(`/admin/onboarding?storeId=${storeId}&guide=continue&step=launch`);
