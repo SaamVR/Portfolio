@@ -614,10 +614,15 @@ export function buildTemplateCatalogSeedRows(storeId: string, templateId: string
     };
   });
 
+  const productRowsForInsert = productRows.map(({ type_metric_schema, ...productRow }) => {
+    void type_metric_schema;
+    return productRow;
+  });
+
   return {
     categoryRows,
     productTypeRows: enrichedProductTypeRows,
-    productRows,
+    productRows: productRowsForInsert,
     blogPostRows,
     siteSettings,
     metadata,
