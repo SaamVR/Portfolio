@@ -1,0 +1,66 @@
+name: Patch Preview Dashboard Owner Field
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-preview-dashboard-owner-field.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Align smoke with dashboard signup fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/preview-smoke.spec.ts')
+          text = path.read_text()
+
+          # Dashboard signup intentionally hides the owner-name input for authenticated users.
+          text = text.replace(
+              '''async function signupPreviewStore(\n  page: Parameters<typeof test>[0]["page"],\n  ownerName: string,\n  storeName: string,\n  storeSlug: string,\n) {\n  await page.goto("/signup?entry=dashboard");\n  await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();\n  await page.getByTestId("merchant-signup-owner-name").fill(ownerName);\n  await page.getByTestId("merchant-signup-store-name").fill(storeName);\n''',
+              '''async function signupPreviewStore(\n  page: Parameters<typeof test>[0]["page"],\n  storeName: string,\n  storeSlug: string,\n) {\n  await page.goto("/signup?entry=dashboard");\n  await expect(page.getByTestId("merchant-signup-store-name")).toBeVisible();\n  await page.getByTestId("merchant-signup-store-name").fill(storeName);\n''',
+              1,
+          )
+
+          direct_old = '''    await page.goto("/signup?entry=dashboard");\n    await expect(page.getByTestId("merchant-signup-owner-name")).toBeVisible();\n    await page.getByTestId("merchant-signup-owner-name").fill(ownerName);\n    await page.getByTestId("merchant-signup-store-name").fill(storeName);\n'''
+          direct_new = '''    await page.goto("/signup?entry=dashboard");\n    await expect(page.getByTestId("merchant-signup-store-name")).toBeVisible();\n    await page.getByTestId("merchant-signup-store-name").fill(storeName);\n'''
+          if direct_old not in text:
+              raise SystemExit('Direct dashboard signup block not found')
+          text = text.replace(direct_old, direct_new, 1)
+
+          text = text.replace('signupPreviewStore(page, ownerName, storeName, storeSlug)', 'signupPreviewStore(page, storeName, storeSlug)')
+
+          # These constants were only used for the now-hidden dashboard owner-name field.
+          text = text.replace('  const ownerName = "Preview Smoke Owner";\n', '')
+          text = text.replace('  const ownerName = "Refresh Smoke Owner";\n', '')
+
+          if 'merchant-signup-owner-name' in text:
+              raise SystemExit('Unexpected owner-name smoke expectation remains')
+
+          path.write_text(text)
+          PY
+          rm -f .github/workflows/patch-preview-dashboard-owner-field.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/preview-smoke.spec.ts .github/workflows/patch-preview-dashboard-owner-field.yml
+          git commit -m "Align preview smoke with authenticated signup fields"
+          git push origin HEAD:audit-fixes-2026-08-16
