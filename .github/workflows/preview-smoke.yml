@@ -88,13 +88,16 @@ jobs:
           fi
           exit 1
 
+      - name: Build Next app
+        run: npm run build
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Start Next app
         shell: bash
         run: |
-          PORT=8080 HOST=127.0.0.1 npm run dev > /tmp/ecomcms-preview.log 2>&1 &
+          PORT=8080 npm run start > /tmp/ecomcms-preview.log 2>&1 &
           for i in {1..60}; do
             if curl -fsS http://127.0.0.1:8080 >/dev/null; then
               exit 0
