@@ -26,13 +26,13 @@ test("package border radius remains the fallback when no radius scale is stored"
   assert.equal(style["--radius"], "1.75rem");
 });
 
-test("theme font families resolve to self-hosted font variables", () => {
+test("theme font families resolve to deployment-safe CSS font stacks", () => {
   const style = getStoreThemeStyle({
     ...defaultStore.theme,
     headingFont: "'Outfit', sans-serif",
     bodyFont: "'Plus Jakarta Sans', sans-serif",
   }) as Record<string, string>;
 
-  assert.equal(style["--font-heading"], "var(--font-outfit), sans-serif");
-  assert.equal(style["--font-body"], "var(--font-plus-jakarta-sans), sans-serif");
+  assert.equal(style["--font-heading"], '"Outfit", "Segoe UI", system-ui, sans-serif');
+  assert.equal(style["--font-body"], '"Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif');
 });
