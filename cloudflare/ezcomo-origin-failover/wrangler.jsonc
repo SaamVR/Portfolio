@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "989794656b19c8e292a184768fbbbb4a",
+  "name": "ezcomo-origin-failover",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-16",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "PRIMARY_ORIGIN_HOSTNAME": "ecomcms-xjw4.onrender.com",
+    "PLATFORM_DOMAIN": "ezcomo.shop",
+    "FAILOVER_TTL_SECONDS": "30",
+    "DEBUG_ORIGIN_HEADER": "0"
+  }
+}
