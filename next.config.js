@@ -20,7 +20,7 @@ const connectSrc = [
   'https://api.resend.com',
   'https://www.google-analytics.com',
   'https://analytics.google.com',
-  'https://stats.g.doubleclick.net',
+  'https://stats.g.doubleclick.com',
   ...(isDevelopment
     ? [
         'http://127.0.0.1:*',
