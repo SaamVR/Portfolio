@@ -100,8 +100,7 @@ AS $$
     );
 $$;
 
--- Storefront visitors use these routines before authentication.
-GRANT EXECUTE ON FUNCTION public.validate_coupon(text, integer) TO anon, authenticated;
+-- Storefront visitors use the current store-scoped coupon helper before authentication.
 GRANT EXECUTE ON FUNCTION public.validate_coupon(text, integer, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.check_contact_rate_limit(text) TO anon, authenticated;
 
