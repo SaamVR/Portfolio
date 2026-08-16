@@ -65,6 +65,38 @@ async function loginAs(page: Parameters<typeof test>[0]["page"], email: string, 
   await expect(page.getByText(`Signed in as ${email}`)).toBeVisible({ timeout: 15000 });
 }
 
+async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["page"]) {
+  const nextButton = page.getByTestId("merchant-signup-next");
+  await expect(nextButton).toBeEnabled({ timeout: 15000 });
+  await nextButton.click();
+  await expect(page.getByText("Choose template")).toBeVisible({ timeout: 15000 });
+}
+
+async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["page"]) {
+  const signupResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/functions/v1/merchant-signup")
+      && response.request().method() === "POST",
+    { timeout: 30000 },
+  );
+
+  await page.getByTestId("merchant-signup-submit").click();
+  const signupResponse = await signupResponsePromise;
+
+  if (!signupResponse.ok()) {
+    let responseBody = "<response body unavailable>";
+    try {
+      responseBody = await signupResponse.text();
+    } catch {
+      // Keep the status and URL even if Playwright cannot read the body.
+    }
+    throw new Error(
+      `merchant-signup failed with HTTP ${signupResponse.status()} ${signupResponse.url()}: ${responseBody}`,
+    );
+  }
+
+  await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible({ timeout: 30000 });
+}
+
 async function signupPreviewStore(
   page: Parameters<typeof test>[0]["page"],
   ownerName: string,
@@ -76,10 +108,8 @@ async function signupPreviewStore(
   await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
   await page.getByTestId("merchant-signup-store-name").fill(storeName);
   await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
-  await page.getByTestId("merchant-signup-next").click();
-  await expect(page.getByText("Choose template")).toBeVisible();
-  await page.getByTestId("merchant-signup-submit").click();
-  await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible();
+  await continueSignupWhenSlugReady(page);
+  await submitSignupAndRequireSuccess(page);
   const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
   expect(onboardingHref).toBeTruthy();
   const onboardingUrl = new URL(onboardingHref ?? "", "http://127.0.0.1:8080");
@@ -175,10 +205,8 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await page.getByTestId("merchant-signup-owner-name").fill(ownerName);
     await page.getByTestId("merchant-signup-store-name").fill(storeName);
     await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
-    await page.getByTestId("merchant-signup-next").click();
-    await expect(page.getByText("Choose template")).toBeVisible();
-    await page.getByTestId("merchant-signup-submit").click();
-    await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible();
+    await continueSignupWhenSlugReady(page);
+    await submitSignupAndRequireSuccess(page);
     await expect(page.getByText("Open Onboarding Wizard")).toBeVisible();
     const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
     expect(onboardingHref).toBeTruthy();
