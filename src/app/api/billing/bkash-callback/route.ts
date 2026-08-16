@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
+import { addMonths, getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 export const billingBkashCallbackRouteDeps = {
   getSupabaseAdminClient,
-  upsertStoreSubscription,
   now: () => new Date(),
   fetch: (...args: Parameters<typeof fetch>) => fetch(...args),
 };
@@ -21,6 +20,17 @@ function getBillingRedirectUrl(payment: "success" | "cancelled" | "error", messa
     billingUrl.searchParams.set("message", message);
   }
   return billingUrl;
+}
+
+async function markInvoiceFailed(supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>, invoiceId: string) {
+  const { error } = await supabaseAdmin
+    .from("store_invoices")
+    .update({ status: "failed" })
+    .eq("id", invoiceId);
+
+  if (error) {
+    console.error("Failed to mark bKash invoice failed:", error);
+  }
 }
 
 export async function GET(req: Request) {
@@ -47,33 +57,24 @@ export async function GET(req: Request) {
   }
 
   if (invoice.status === "paid") {
+    if (paymentID && invoice.provider_invoice_id && invoice.provider_invoice_id !== paymentID) {
+      return NextResponse.redirect(getBillingRedirectUrl("error", "Payment id mismatch."));
+    }
     return NextResponse.redirect(getBillingRedirectUrl("success"));
   }
 
   if (status !== "success") {
-    await supabaseAdmin
-      .from("store_invoices")
-      .update({ status: "failed" })
-      .eq("id", invoice.id);
-
+    await markInvoiceFailed(supabaseAdmin, invoice.id);
     return NextResponse.redirect(getBillingRedirectUrl("cancelled"));
   }
 
   if (!paymentID) {
-    await supabaseAdmin
-      .from("store_invoices")
-      .update({ status: "failed" })
-      .eq("id", invoice.id);
-
+    await markInvoiceFailed(supabaseAdmin, invoice.id);
     return NextResponse.redirect(getBillingRedirectUrl("error", "Missing bKash payment id."));
   }
 
   if (invoice.provider_invoice_id && invoice.provider_invoice_id !== paymentID) {
-    await supabaseAdmin
-      .from("store_invoices")
-      .update({ status: "failed" })
-      .eq("id", invoice.id);
-
+    await markInvoiceFailed(supabaseAdmin, invoice.id);
     return NextResponse.redirect(getBillingRedirectUrl("error", "Payment id mismatch."));
   }
 
@@ -101,16 +102,16 @@ export async function GET(req: Request) {
     const tokenRes = await billingBkashCallbackRouteDeps.fetch(
       `${bkashBaseUrl}/tokenized/checkout/token/grant`,
       {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        username,
-        password,
-      },
-      body: JSON.stringify({
-        app_key: appKey,
-        app_secret: appSecret,
-      }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          username,
+          password,
+        },
+        body: JSON.stringify({
+          app_key: appKey,
+          app_secret: appSecret,
+        }),
       },
     );
 
@@ -122,13 +123,13 @@ export async function GET(req: Request) {
     const executeRes = await billingBkashCallbackRouteDeps.fetch(
       `${bkashBaseUrl}/tokenized/checkout/execute`,
       {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: tokenData.id_token,
-        "X-APP-Key": appKey,
-      },
-      body: JSON.stringify({ paymentID }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: tokenData.id_token,
+          "X-APP-Key": appKey,
+        },
+        body: JSON.stringify({ paymentID }),
       },
     );
 
@@ -137,43 +138,50 @@ export async function GET(req: Request) {
       throw new Error(`bKash execute error: ${executeData.statusMessage || "unknown error"}`);
     }
 
+    // From this point onward the gateway has confirmed the payment. Never
+    // convert the invoice to "failed" because of a local/transient error.
     if (executeData.amount && Number(executeData.amount) !== Number(invoice.amount)) {
       throw new Error("Paid amount does not match invoice amount");
+    }
+
+    if (executeData.currency && String(executeData.currency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
+      throw new Error("Paid currency does not match invoice currency");
     }
 
     const now = billingBkashCallbackRouteDeps.now();
     const periodEnd = addMonths(now, invoice.billing_interval === "annual" ? 12 : 1);
 
-    await supabaseAdmin
+    // The database trigger sync_paid_invoice_entitlements_trigger performs the
+    // subscription + stores.plan writes in this same transaction. If any of
+    // those writes fail, this invoice update rolls back and can be retried.
+    const { error: settlementError } = await supabaseAdmin
       .from("store_invoices")
       .update({
         status: "paid",
         paid_at: now.toISOString(),
+        provider: "bkash",
         payment_method: "bkash",
         provider_invoice_id: paymentID,
         billing_period_start: now.toISOString(),
         billing_period_end: periodEnd.toISOString(),
       })
-      .eq("id", invoice.id);
+      .eq("id", invoice.id)
+      .eq("store_id", invoice.store_id);
 
-    await billingBkashCallbackRouteDeps.upsertStoreSubscription(supabaseAdmin, {
-      storeId: invoice.store_id,
-      planId: invoice.plan_id,
-      status: "active",
-      provider: "bkash",
-      providerSubscriptionId: paymentID,
-      currentPeriodEndsAt: periodEnd.toISOString(),
-    });
+    if (settlementError) {
+      throw settlementError;
+    }
 
     return NextResponse.redirect(getBillingRedirectUrl("success"));
   } catch (error) {
-    console.error("bKash callback execution error:", error);
+    console.error("bKash callback verification/settlement error:", error);
 
-    await supabaseAdmin
-      .from("store_invoices")
-      .update({ status: "failed" })
-      .eq("id", invoice.id);
-
-    return NextResponse.redirect(getBillingRedirectUrl("error", "Payment execution failed."));
+    // A callback marked success can fail locally because the gateway is
+    // temporarily unavailable, credentials cannot be loaded, or settlement
+    // writes fail. Leave the invoice pending/unchanged so the callback or a
+    // reconciliation job can safely retry instead of recording a false failure.
+    return NextResponse.redirect(
+      getBillingRedirectUrl("error", "Payment verification is pending. Please refresh billing shortly or contact support."),
+    );
   }
 }
