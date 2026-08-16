@@ -1,0 +1,42 @@
+name: Patch Preview Authenticated Signup Route
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-preview-authenticated-signup-route.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Use dashboard signup entry for authenticated smoke users
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(grep -F 'await page.goto("/signup");' tests/preview-smoke.spec.ts | wc -l | tr -d ' ')
+          if [ "$count" != "2" ]; then
+            echo "Expected exactly 2 authenticated /signup navigations, found $count"
+            exit 1
+          fi
+          sed -i 's#await page.goto("/signup");#await page.goto("/signup?entry=dashboard");#g' tests/preview-smoke.spec.ts
+          rm -f .github/workflows/patch-preview-authenticated-signup-route.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/preview-smoke.spec.ts .github/workflows/patch-preview-authenticated-signup-route.yml
+          git commit -m "Use authenticated dashboard signup flow in preview smoke"
+          git push origin HEAD:audit-fixes-2026-08-16
