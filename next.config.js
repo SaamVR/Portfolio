@@ -20,11 +20,15 @@ const connectSrc = [
   'https://api.resend.com',
   'https://www.google-analytics.com',
   'https://analytics.google.com',
-  'https://stats.g.doubleclick.com',
-  'http://127.0.0.1:*',
-  'http://localhost:*',
-  'ws://127.0.0.1:*',
-  'ws://localhost:*',
+  'https://stats.g.doubleclick.net',
+  ...(isDevelopment
+    ? [
+        'http://127.0.0.1:*',
+        'http://localhost:*',
+        'ws://127.0.0.1:*',
+        'ws://localhost:*',
+      ]
+    : []),
 ].join(' ');
 const contentSecurityPolicy = [
   "default-src 'self'",
