@@ -109,6 +109,7 @@ jobs:
           tail -n +1 /tmp/ecomcms-preview.log || true
           exit 1
 
+      # Authenticated no-store users enter signup through the dashboard create-site flow.
       - name: Run preview smoke
         run: npm run test:preview
 
