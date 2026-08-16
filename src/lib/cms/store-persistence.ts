@@ -4,6 +4,13 @@ import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 import { resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function resolvePersistedThemePackageId(packageId: string | null | undefined) {
+  const normalized = packageId?.trim() ?? "";
+  return UUID_PATTERN.test(normalized) ? normalized : null;
+}
+
 type PersistStorefrontOptions = {
   client: SupabaseClient<any>;
   store: Store;
@@ -101,7 +108,7 @@ export async function persistStorefrontState({
     {
       store_id: store.id,
       preset_id: selectedThemePackage.presetId,
-      theme_package_id: selectedThemePackage.id,
+      theme_package_id: resolvePersistedThemePackageId(selectedThemePackage.id),
       theme_package_version: selectedThemePackage.version,
       mode: store.theme.mode,
       colors: store.theme.customCssVars,

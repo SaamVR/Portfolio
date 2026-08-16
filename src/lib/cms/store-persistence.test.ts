@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { mapPersistedPageIdsByLocalId, mapPersistedBlockIdsByLocalId, persistStorefrontState } from "@/lib/cms/store-persistence";
+import { mapPersistedPageIdsByLocalId, mapPersistedBlockIdsByLocalId, persistStorefrontState, resolvePersistedThemePackageId } from "@/lib/cms/store-persistence";
 import { fallbackStorefrontTemplateSeeds } from "@/lib/cms/storefront-template-seeds";
 import { fallbackThemePackages } from "@/lib/theme-packages";
 import type { Store } from "@/lib/cms/schema";
@@ -94,6 +94,12 @@ function createMockSupabaseClient() {
 }
 
 describe("storefront persistence", () => {
+  it("stores only UUID theme package identifiers in the foreign key", () => {
+    expect(resolvePersistedThemePackageId("default")).toBeNull();
+    expect(resolvePersistedThemePackageId("midnight")).toBeNull();
+    expect(resolvePersistedThemePackageId("550e8400-e29b-41d4-a716-446655440000")).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
   it("reuses the existing page id when a draft page has the same slug", () => {
     const pageIds = mapPersistedPageIdsByLocalId(
       [
