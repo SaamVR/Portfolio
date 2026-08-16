@@ -16,7 +16,6 @@ const FAILOVER_HTTP_STATUSES = new Set([
   530,
 ]);
 const RESERVED_PLATFORM_LABELS = new Set([
-  "www",
   "origin",
   "customers",
   "mcp",
@@ -41,8 +40,12 @@ function getPlatformLabel(hostname, platformDomain) {
 }
 
 function shouldBypassFailover(hostname, platformDomain) {
+  if (hostname === platformDomain) return false;
+
   const label = getPlatformLabel(hostname, platformDomain);
-  return !label || RESERVED_PLATFORM_LABELS.has(label);
+  if (!label) return true;
+
+  return RESERVED_PLATFORM_LABELS.has(label);
 }
 
 function isSafeRetryMethod(method) {
@@ -75,7 +78,7 @@ function buildPrimaryRequest(request, env, originalHostname) {
   }
 
   // The URL hostname must control Host/SNI for Render. Carrying the public
-  // tenant Host through would make Render reject the request before Next.js.
+  // hostname through would make Render reject the request before Next.js.
   headers.delete("host");
 
   const init = {
@@ -157,13 +160,13 @@ function withOriginDebugHeader(response, origin, env) {
 
 async function fetchFallback(request, env) {
   // For a Worker Route, fetch(request) continues to the DNS-configured origin.
-  // Today that is the existing Vercel wildcard, preserving the public tenant Host.
+  // Today that is the existing Vercel origin, preserving the public Host.
   try {
     const response = await fetch(request);
     return withOriginDebugHeader(response, "vercel", env);
   } catch (error) {
     console.error("Ezcomo fallback origin request failed:", error);
-    return new Response("The Ezcomo storefront origins are unavailable.", {
+    return new Response("The Ezcomo platform origins are unavailable.", {
       status: 502,
       headers: {
         "content-type": "text/plain; charset=utf-8",
@@ -183,14 +186,14 @@ export default {
       DEFAULT_FAILOVER_TTL_SECONDS,
     );
 
-    // Reserved platform endpoints keep using their existing DNS/origin behavior.
+    // Internal/reserved platform endpoints keep using their existing origin behavior.
     if (shouldBypassFailover(originalHostname, platformDomain)) {
       return fetch(request);
     }
 
     if (!env.LB_PROXY_SECRET) {
       console.error("LB_PROXY_SECRET is missing from ezcomo-origin-failover.");
-      return new Response("Storefront proxy configuration is incomplete.", {
+      return new Response("Platform proxy configuration is incomplete.", {
         status: 503,
         headers: { "cache-control": "no-store" },
       });
@@ -218,7 +221,7 @@ export default {
 
       // Never replay mutation requests automatically. The origin may have
       // committed an order/payment before the connection failed.
-      return new Response("The storefront origin is temporarily unavailable.", {
+      return new Response("The platform origin is temporarily unavailable.", {
         status: 502,
         headers: {
           "content-type": "text/plain; charset=utf-8",
