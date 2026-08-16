@@ -51,18 +51,6 @@ jobs:
           -x supavisor
           -x mailpit
 
-      - name: Wait for Supabase to be ready
-        shell: bash
-        run: |
-          for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:54321 >/dev/null 2>&1; then
-              echo "Supabase ready"
-              break
-            fi
-            echo "Waiting for Supabase..."
-            sleep 2
-          done
-
       - name: Export local Supabase env
         shell: bash
         run: |
@@ -108,7 +96,7 @@ jobs:
         run: |
           echo "=== Server Output (Last 150 lines) ==="
           tail -n 150 /tmp/ecomcms-preview.log || true
-          
+
           echo -e "\n=== Checking for database errors ==="
           grep -i "error\|failed\|exception" /tmp/ecomcms-preview.log | tail -n 20 || true
 
