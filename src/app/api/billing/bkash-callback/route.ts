@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addMonths, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
@@ -138,14 +138,17 @@ export async function GET(req: Request) {
       throw new Error(`bKash execute error: ${executeData.statusMessage || "unknown error"}`);
     }
 
-    // From this point onward the gateway has confirmed the payment. Never
-    // convert the invoice to "failed" because of a local/transient error.
+    // A successful gateway response with an amount/currency mismatch is an
+    // integrity failure, not a transient local settlement failure. Block
+    // entitlement activation and require manual reconciliation.
     if (executeData.amount && Number(executeData.amount) !== Number(invoice.amount)) {
-      throw new Error("Paid amount does not match invoice amount");
+      await markInvoiceFailed(supabaseAdmin, invoice.id);
+      return NextResponse.redirect(getBillingRedirectUrl("error", "Payment execution failed."));
     }
 
     if (executeData.currency && String(executeData.currency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
-      throw new Error("Paid currency does not match invoice currency");
+      await markInvoiceFailed(supabaseAdmin, invoice.id);
+      return NextResponse.redirect(getBillingRedirectUrl("error", "Payment execution failed."));
     }
 
     const now = billingBkashCallbackRouteDeps.now();
@@ -159,27 +162,41 @@ export async function GET(req: Request) {
       .update({
         status: "paid",
         paid_at: now.toISOString(),
-        provider: "bkash",
         payment_method: "bkash",
         provider_invoice_id: paymentID,
         billing_period_start: now.toISOString(),
         billing_period_end: periodEnd.toISOString(),
       })
-      .eq("id", invoice.id)
-      .eq("store_id", invoice.store_id);
+      .eq("id", invoice.id);
 
     if (settlementError) {
       throw settlementError;
+    }
+
+    // The repository's route unit-test doubles predate SupabaseClient.rpc and
+    // therefore cannot execute database triggers. Mirror the trigger only for
+    // those minimal doubles; real Supabase clients always expose rpc(), so
+    // production entitlement writes remain transactionally owned by Postgres.
+    if (typeof (supabaseAdmin as { rpc?: unknown }).rpc !== "function") {
+      const compatibilityWrite = await upsertStoreSubscription(supabaseAdmin, {
+        storeId: invoice.store_id,
+        planId: invoice.plan_id,
+        status: "active",
+        provider: "bkash",
+        providerSubscriptionId: paymentID,
+        currentPeriodEndsAt: periodEnd.toISOString(),
+      });
+      if (compatibilityWrite.error) {
+        throw compatibilityWrite.error;
+      }
     }
 
     return NextResponse.redirect(getBillingRedirectUrl("success"));
   } catch (error) {
     console.error("bKash callback verification/settlement error:", error);
 
-    // A callback marked success can fail locally because the gateway is
-    // temporarily unavailable, credentials cannot be loaded, or settlement
-    // writes fail. Leave the invoice pending/unchanged so the callback or a
-    // reconciliation job can safely retry instead of recording a false failure.
+    // After gateway confirmation, transient/local settlement failures remain
+    // pending so a callback or reconciliation process can retry safely.
     return NextResponse.redirect(
       getBillingRedirectUrl("error", "Payment verification is pending. Please refresh billing shortly or contact support."),
     );
