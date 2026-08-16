@@ -63,6 +63,30 @@ jobs:
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080"
           } >> "$GITHUB_ENV"
 
+      - name: Verify merchant-signup Edge Function boots
+        shell: bash
+        run: |
+          set +e
+          eval "$(supabase status -o env)"
+          status=$(curl -sS -o /tmp/merchant-signup-probe.txt -w '%{http_code}' \
+            -X POST http://127.0.0.1:54321/functions/v1/merchant-signup \
+            -H "apikey: $ANON_KEY" \
+            -H 'Content-Type: application/json' \
+            --data '{}')
+          cat /tmp/merchant-signup-probe.txt || true
+          echo
+          if [ "$status" = "401" ]; then
+            echo "merchant-signup worker booted successfully"
+            exit 0
+          fi
+          echo "merchant-signup returned unexpected HTTP $status"
+          echo "=== edge runtime logs ==="
+          edge_container=$(docker ps --format '{{.Names}}' | grep -E 'edge[_-]runtime|edge-runtime' | head -n 1)
+          if [ -n "$edge_container" ]; then
+            docker logs "$edge_container" 2>&1 | tail -n 300
+          fi
+          exit 1
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
