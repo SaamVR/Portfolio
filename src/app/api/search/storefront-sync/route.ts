@@ -31,7 +31,12 @@ export async function POST(req: Request) {
     const expectedSecret = getWebhookSecret();
     const providedSecret = req.headers.get("x-commerce-webhook-secret")?.trim() || req.headers.get("x-storefront-search-secret")?.trim() || "";
 
-    if (expectedSecret && providedSecret !== expectedSecret) {
+    if (!expectedSecret) {
+      console.error("Storefront search sync webhook secret is not configured");
+      return jsonNoStore({ error: "Search sync is not configured" }, { status: 503 });
+    }
+
+    if (providedSecret !== expectedSecret) {
       return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
     }
 
