@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { resolveStorePlanState, type SubscriptionRecordLike } from "@/lib/billing/plans";
 
 const PLATFORM_ROLE_PRIORITY = ["admin", "super_admin", "billing_admin", "support_agent", "co_admin"] as const;
+const FULL_STORE_ACCESS_PLATFORM_ROLES = new Set(["admin", "super_admin"]);
 
 function resolvePlatformRole(rows: Array<{ role?: unknown }> | null | undefined) {
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -100,7 +101,10 @@ export async function canManageStore(
 
   const platformRole = resolvePlatformRole(platformRoleRows as Array<{ role?: unknown }> | null | undefined);
 
-  if (platformRole) {
+  // Only full platform administrators may bypass tenant membership. Other
+  // control-plane roles (billing/support/co-admin) must still be the owner or
+  // an explicitly allowed store member for merchant-facing store operations.
+  if (platformRole && FULL_STORE_ACCESS_PLATFORM_ROLES.has(platformRole)) {
     return true;
   }
 
