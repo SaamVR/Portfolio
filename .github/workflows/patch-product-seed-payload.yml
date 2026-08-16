@@ -23,39 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/lib/cms/template-demo-seeds.ts')
-          text = path.read_text()
-          old = '''  return {
-    categoryRows,
-    productTypeRows: enrichedProductTypeRows,
-    productRows,
-    blogPostRows,
-    siteSettings,
-    metadata,
-  };
-'''
-          new = '''  const productRowsForInsert = productRows.map(({ type_metric_schema, ...productRow }) => {
-    void type_metric_schema;
-    return productRow;
-  });
-
-  return {
-    categoryRows,
-    productTypeRows: enrichedProductTypeRows,
-    productRows: productRowsForInsert,
-    blogPostRows,
-    siteSettings,
-    metadata,
-  };
-'''
-          if old not in text:
-              raise SystemExit('Expected template seed return block not found')
-          path.write_text(text.replace(old, new, 1))
-          PY
-
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpwYXRoID0gUGF0aCgic3JjL2xpYi9jbXMvdGVtcGxhdGUtZGVtby1zZWVkcy50cyIpCnRleHQgPSBwYXRoLnJlYWRfdGV4dCgpCgpvbGQgPSAiIiIgIHJldHVybiB7CiAgICBjYXRlZ29yeVJvd3MsCiAgICBwcm9kdWN0VHlwZVJvd3M6IGVucmljaGVkUHJvZHVjdFR5cGVSb3dzLAogICAgcHJvZHVjdFJvd3MsCiAgICBibG9nUG9zdFJvd3MsCiAgICBzaXRlU2V0dGluZ3MsCiAgICBtZXRhZGF0YSwKICB9OwoiIiIKbmV3ID0gIiIiICBjb25zdCBwcm9kdWN0Um93c0Zvckluc2VydCA9IHByb2R1Y3RSb3dzLm1hcCgoeyB0eXBlX21ldHJpY19zY2hlbWEsIC4uLnByb2R1Y3RSb3cgfSkgPT4gewogICAgdm9pZCB0eXBlX21ldHJpY19zY2hlbWE7CiAgICByZXR1cm4gcHJvZHVjdFJvdzsKICB9KTsKCiAgcmV0dXJuIHsKICAgIGNhdGVnb3J5Um93cywKICAgIHByb2R1Y3RUeXBlUm93czogZW5yaWNoZWRQcm9kdWN0VHlwZVJvd3MsCiAgICBwcm9kdWN0Um93czogcHJvZHVjdFJvd3NGb3JJbnNlcnQsCiAgICBibG9nUG9zdFJvd3MsCiAgICBzaXRlU2V0dGluZ3MsCiAgICBtZXRhZGF0YSwKICB9OwoiIiIKCmlmIG9sZCBub3QgaW4gdGV4dDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoIkV4cGVjdGVkIHRlbXBsYXRlIHNlZWQgcmV0dXJuIGJsb2NrIG5vdCBmb3VuZCIpCgpwYXRoLndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKSkK' | base64 -d | python
           rm -f .github/workflows/patch-product-seed-payload.yml
 
       - name: Commit patch
