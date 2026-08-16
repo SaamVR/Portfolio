@@ -1,5 +1,6 @@
--- Keep lifecycle email automation aligned with the canonical enum value.
--- The enum uses pending_delete; older trigger definitions referenced deletion_queued.
+-- Keep lifecycle automation aligned with the canonical lifecycle table and enum.
+-- Older definitions referenced stores.lifecycle_status and deletion_queued, neither
+-- of which belongs to the current lifecycle model.
 CREATE OR REPLACE FUNCTION public.handle_store_lifecycle_update()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -64,3 +65,44 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.handle_store_lifecycle_update() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.handle_store_lifecycle_update() TO authenticated, service_role;
+
+-- The daily cron job created by the older migration calls this function by
+-- name. Replacing it here automatically repairs the scheduled job without
+-- creating a second cron entry.
+CREATE OR REPLACE FUNCTION public.check_store_lifecycles()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.store_lifecycle_states
+  SET
+    lifecycle_status = 'reminded',
+    reminder_count = reminder_count + 1,
+    last_reminder_at = now(),
+    updated_at = now()
+  WHERE lifecycle_status IN ('active', 'at_risk')
+    AND manual_hold = false
+    AND coalesce(last_activity_at, created_at) < now() - interval '30 days';
+
+  UPDATE public.store_lifecycle_states
+  SET
+    lifecycle_status = 'pending_delete',
+    scheduled_delete_at = coalesce(scheduled_delete_at, now() + interval '14 days'),
+    updated_at = now()
+  WHERE lifecycle_status = 'reminded'
+    AND manual_hold = false
+    AND coalesce(last_activity_at, created_at) < now() - interval '60 days';
+
+  UPDATE public.store_subscriptions
+  SET
+    status = 'cancelled',
+    updated_at = now()
+  WHERE status = 'past_due'
+    AND updated_at < now() - interval '14 days';
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.check_store_lifecycles() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_store_lifecycles() TO service_role;
