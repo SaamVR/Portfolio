@@ -51,7 +51,7 @@ jobs:
           supabase start
           -x studio
           -x imgproxy
-          -x inbucket
+          -x mailpit
           -x postgres-meta
           -x logflare
           -x vector
