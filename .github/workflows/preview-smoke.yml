@@ -61,6 +61,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080"
+            echo "EZCOMO_PREVIEW_LOCAL_CSP=1"
           } >> "$GITHUB_ENV"
 
       # Fail fast on Edge Runtime module-graph errors before starting the costly browser suite.
