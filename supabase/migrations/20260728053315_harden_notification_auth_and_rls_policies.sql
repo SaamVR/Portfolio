@@ -209,33 +209,9 @@ CREATE POLICY "Platform admins can manage CMS plan features"
   USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')))
   WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')));
 
--- invite_codes was removed from the canonical schema before this hardening
--- migration. Do not reference a relation that does not exist on a clean reset.
-
-DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
-CREATE POLICY "Users can view own profile"
-  ON public.profiles FOR SELECT
-  TO authenticated
-  USING (user_id = (SELECT auth.uid()));
-
-DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
-CREATE POLICY "Admins can view all profiles"
-  ON public.profiles FOR SELECT
-  TO authenticated
-  USING ((SELECT public.is_admin((SELECT auth.uid()))));
-
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-CREATE POLICY "Users can update own profile"
-  ON public.profiles FOR UPDATE
-  TO authenticated
-  USING (user_id = (SELECT auth.uid()))
-  WITH CHECK (user_id = (SELECT auth.uid()));
-
-DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
-CREATE POLICY "Users can insert own profile"
-  ON public.profiles FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = (SELECT auth.uid()));
+-- invite_codes and the old generic public.profiles table were removed from the
+-- canonical schema before this hardening migration. Do not reference relations
+-- that do not exist on a clean reset.
 
 DROP POLICY IF EXISTS "Public can view published store products" ON public.products;
 DROP POLICY IF EXISTS "Public can view store products" ON public.products;
