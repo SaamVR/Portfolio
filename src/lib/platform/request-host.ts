@@ -1,6 +1,8 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 const TRUSTED_STORE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 
 export function normalizeRequestHost(hostname?: string | null) {
   if (!hostname) {
@@ -32,11 +34,26 @@ function isTrustedEzcomoProxy(request: Pick<NextRequest, "headers">) {
     && receivedSecret === process.env.EZCOMO_PROXY_SECRET;
 }
 
+function isTrustedEzcomoLoadBalancer(request: Pick<NextRequest, "headers">) {
+  const receivedSecret = request.headers.get("x-ezcomo-lb-secret") ?? "";
+  const expectedHash = process.env.EZCOMO_LB_PROXY_SECRET_SHA256?.trim().toLowerCase() ?? "";
+
+  if (!receivedSecret || !SHA256_HEX_PATTERN.test(expectedHash)) {
+    return false;
+  }
+
+  const receivedHash = createHash("sha256").update(receivedSecret).digest();
+  const expectedHashBytes = Buffer.from(expectedHash, "hex");
+
+  return expectedHashBytes.length === receivedHash.length
+    && timingSafeEqual(receivedHash, expectedHashBytes);
+}
+
 export function getEzcomoRequestHostname(request: Pick<NextRequest, "headers">) {
   const directHostname = normalizeRequestHost(request.headers.get("host")) ?? "";
   const forwardedHostname = normalizeRequestHost(request.headers.get("x-ezcomo-hostname")) ?? "";
 
-  if (isTrustedEzcomoProxy(request) && forwardedHostname) {
+  if ((isTrustedEzcomoProxy(request) || isTrustedEzcomoLoadBalancer(request)) && forwardedHostname) {
     return forwardedHostname;
   }
 
