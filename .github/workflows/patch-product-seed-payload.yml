@@ -1,0 +1,69 @@
+name: Patch Product Seed Payload
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-product-seed-payload.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Strip product-type-only schema from product insert rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lib/cms/template-demo-seeds.ts')
+          text = path.read_text()
+          old = '''  return {
+    categoryRows,
+    productTypeRows: enrichedProductTypeRows,
+    productRows,
+    blogPostRows,
+    siteSettings,
+    metadata,
+  };
+'''
+          new = '''  const productRowsForInsert = productRows.map(({ type_metric_schema, ...productRow }) => {
+    void type_metric_schema;
+    return productRow;
+  });
+
+  return {
+    categoryRows,
+    productTypeRows: enrichedProductTypeRows,
+    productRows: productRowsForInsert,
+    blogPostRows,
+    siteSettings,
+    metadata,
+  };
+'''
+          if old not in text:
+              raise SystemExit('Expected template seed return block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          rm -f .github/workflows/patch-product-seed-payload.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/cms/template-demo-seeds.ts .github/workflows/patch-product-seed-payload.yml
+          git commit -m "Keep product type schema out of product seed rows"
+          git push origin HEAD:audit-fixes-2026-08-16
