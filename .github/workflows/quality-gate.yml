@@ -44,6 +44,11 @@ jobs:
       - name: Production build
         id: build
         continue-on-error: true
+        env:
+          # Build-only placeholders. Runtime deployments provide the real values.
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-key
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
         run: npm run build
 
       - name: Dependency audit
