@@ -1,0 +1,57 @@
+name: Patch Edge Import
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-edge-import.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Apply Deno-compatible shared import
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/cms/template-demo-seeds.ts')
+          text = path.read_text()
+          old = 'from "./product-metrics";'
+          new = 'from "./product-metrics.ts";'
+          if old not in text:
+              raise SystemExit('Expected product-metrics import not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'tsconfig.json';
+          const json = JSON.parse(fs.readFileSync(path, 'utf8'));
+          json.compilerOptions = json.compilerOptions || {};
+          json.compilerOptions.allowImportingTsExtensions = true;
+          fs.writeFileSync(path, JSON.stringify(json, null, 2) + '\n');
+          NODE
+
+          rm -f supabase/functions/merchant-signup/deno.json
+          rm -f .github/workflows/patch-edge-import.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/cms/template-demo-seeds.ts tsconfig.json supabase/functions/merchant-signup/deno.json .github/workflows/patch-edge-import.yml
+          git commit -m "Fix merchant signup Edge Function module resolution"
+          git push origin HEAD:audit-fixes-2026-08-16
