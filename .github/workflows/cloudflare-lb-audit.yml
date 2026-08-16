@@ -34,34 +34,67 @@ jobs:
           api='https://api.cloudflare.com/client/v4'
           auth=(-H "Authorization: Bearer ${CF_API_TOKEN}" -H 'Content-Type: application/json')
 
-          cf_get() {
+          request() {
             local url="$1"
-            curl --fail-with-body -sS "${auth[@]}" "$url"
+            local raw body code
+            raw="$(curl -sS "${auth[@]}" -w $'\n%{http_code}' "$url")"
+            code="${raw##*$'\n'}"
+            body="${raw%$'\n'*}"
+            printf '%s\n%s' "$code" "$body"
           }
 
           echo '=== Account token verification ==='
-          verify="$(cf_get "$api/accounts/$CF_ACCOUNT_ID/tokens/verify")"
-          echo "$verify" | jq '{success, status: .result.status, errors}'
+          raw="$(request "$api/accounts/$CF_ACCOUNT_ID/tokens/verify")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          echo "$body" | jq '{success, status: .result.status, errors}'
+          test "$code" = "200" || exit 1
 
           echo '=== Resolve zone ==='
-          zones="$(cf_get "$api/zones?name=${CF_ZONE_NAME}")"
-          echo "$zones" | jq '{success, matches: [.result[] | {id,name,status,account:{id:.account.id,name:.account.name}}], errors}'
-          ZONE_ID="$(echo "$zones" | jq -r '.result[0].id // empty')"
+          raw="$(request "$api/zones?name=${CF_ZONE_NAME}")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          echo "$body" | jq '{success, matches: [.result[]? | {id,name,status,account:{id:.account.id,name:.account.name}}], errors}'
+          ZONE_ID="$(echo "$body" | jq -r '.result[0].id // empty')"
           test -n "$ZONE_ID" || { echo "Could not resolve zone ${CF_ZONE_NAME}"; exit 1; }
           echo "Resolved zone ID: $ZONE_ID"
 
-          echo '=== Relevant DNS records ==='
-          dns="$(cf_get "$api/zones/$ZONE_ID/dns_records?per_page=100")"
-          echo "$dns" | jq '{success, records: [.result[] | select(.name=="ezcomo.shop" or .name=="www.ezcomo.shop" or .name=="origin.ezcomo.shop" or .name=="customers.ezcomo.shop" or .name=="*.ezcomo.shop") | {id,type,name,content,proxied,ttl}], errors}'
+          echo '=== DNS permission / relevant records ==='
+          raw="$(request "$api/zones/$ZONE_ID/dns_records?per_page=100")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "$body" | jq '{success, records: [.result[] | select(.name=="ezcomo.shop" or .name=="www.ezcomo.shop" or .name=="origin.ezcomo.shop" or .name=="customers.ezcomo.shop" or .name=="*.ezcomo.shop") | {id,type,name,content,proxied,ttl}], errors}'
+          else
+            echo "$body" | jq '{success, errors}'
+          fi
 
-          echo '=== Existing zone load balancers ==='
-          lbs="$(cf_get "$api/zones/$ZONE_ID/load_balancers")"
-          echo "$lbs" | jq '{success, load_balancers: [.result[] | {id,name,enabled,proxied,steering_policy,default_pools,fallback_pool,session_affinity,ttl}], errors}'
+          echo '=== Zone Load Balancer permission / existing LBs ==='
+          raw="$(request "$api/zones/$ZONE_ID/load_balancers")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "$body" | jq '{success, load_balancers: [.result[] | {id,name,enabled,proxied,steering_policy,default_pools,fallback_pool,session_affinity,ttl}], errors}'
+          else
+            echo "$body" | jq '{success, errors}'
+          fi
 
-          echo '=== Existing account pools ==='
-          pools="$(cf_get "$api/accounts/$CF_ACCOUNT_ID/load_balancers/pools")"
-          echo "$pools" | jq '{success, pools: [.result[] | {id,name,enabled,minimum_origins,monitor,origins:[.origins[] | {name,address,enabled,weight,header}]}], errors}'
+          echo '=== Account Pool permission / existing pools ==='
+          raw="$(request "$api/accounts/$CF_ACCOUNT_ID/load_balancers/pools")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "$body" | jq '{success, pools: [.result[] | {id,name,enabled,minimum_origins,monitor,origins:[.origins[] | {name,address,enabled,weight,header}]}], errors}'
+          else
+            echo "$body" | jq '{success, errors}'
+          fi
 
-          echo '=== Existing account monitors ==='
-          monitors="$(cf_get "$api/accounts/$CF_ACCOUNT_ID/load_balancers/monitors")"
-          echo "$monitors" | jq '{success, monitors: [.result[] | {id,type,description,method,path,port,timeout,retries,interval,expected_codes,follow_redirects,allow_insecure}], errors}'
+          echo '=== Account Monitor permission / existing monitors ==='
+          raw="$(request "$api/accounts/$CF_ACCOUNT_ID/load_balancers/monitors")"
+          code="${raw%%$'\n'*}"; body="${raw#*$'\n'}"
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "$body" | jq '{success, monitors: [.result[] | {id,type,description,method,path,port,timeout,retries,interval,expected_codes,follow_redirects,allow_insecure}], errors}'
+          else
+            echo "$body" | jq '{success, errors}'
+          fi
