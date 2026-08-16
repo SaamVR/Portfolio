@@ -63,6 +63,7 @@ jobs:
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080"
           } >> "$GITHUB_ENV"
 
+      # Fail fast on Edge Runtime module-graph errors before the browser suite.
       - name: Verify merchant-signup Edge Function boots
         shell: bash
         run: |
