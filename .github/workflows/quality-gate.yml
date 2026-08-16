@@ -20,29 +20,45 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
       - name: Typecheck
+        id: typecheck
+        continue-on-error: true
         run: npm run typecheck
 
       - name: Unit tests
+        id: tests
+        continue-on-error: true
         run: npm test
 
       - name: Lint
+        id: lint
+        continue-on-error: true
         run: npm run lint
 
       - name: Production build
+        id: build
+        continue-on-error: true
         run: npm run build
 
       - name: Dependency audit
+        id: audit
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Upload failure artifacts
-        if: failure()
+        if: >-
+          always() &&
+          (steps.typecheck.outcome != 'success' ||
+           steps.tests.outcome != 'success' ||
+           steps.lint.outcome != 'success' ||
+           steps.build.outcome != 'success' ||
+           steps.audit.outcome != 'success')
         uses: actions/upload-artifact@v4
         with:
           name: quality-gate-failure
@@ -53,3 +69,20 @@ jobs:
             test-results
             playwright-report
             npm-debug.log*
+
+      - name: Enforce quality gate
+        if: always()
+        shell: bash
+        run: |
+          failed=0
+          for outcome in \
+            "${{ steps.typecheck.outcome }}" \
+            "${{ steps.tests.outcome }}" \
+            "${{ steps.lint.outcome }}" \
+            "${{ steps.build.outcome }}" \
+            "${{ steps.audit.outcome }}"; do
+            if [ "$outcome" != "success" ]; then
+              failed=1
+            fi
+          done
+          exit "$failed"
