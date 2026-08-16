@@ -1,0 +1,98 @@
+name: Patch Preview Signup Diagnostics
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-preview-signup-diagnostics.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Patch signup smoke synchronization and diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/preview-smoke.spec.ts')
+          text = path.read_text()
+
+          marker = '''async function signupPreviewStore(
+'''
+          helper = '''async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["page"]) {
+  const nextButton = page.getByTestId("merchant-signup-next");
+  await expect(nextButton).toBeEnabled({ timeout: 15000 });
+  await nextButton.click();
+  await expect(page.getByText("Choose template")).toBeVisible({ timeout: 15000 });
+}
+
+async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["page"]) {
+  const signupResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/functions/v1/merchant-signup")
+      && response.request().method() === "POST",
+    { timeout: 30000 },
+  );
+
+  await page.getByTestId("merchant-signup-submit").click();
+  const signupResponse = await signupResponsePromise;
+
+  if (!signupResponse.ok()) {
+    let responseBody = "<response body unavailable>";
+    try {
+      responseBody = await signupResponse.text();
+    } catch {
+      // Keep the status and URL even if Playwright cannot read the body.
+    }
+    throw new Error(
+      `merchant-signup failed with HTTP ${signupResponse.status()} ${signupResponse.url()}: ${responseBody}`,
+    );
+  }
+
+  await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible({ timeout: 30000 });
+}
+
+'''
+          if helper not in text:
+              if marker not in text:
+                  raise SystemExit('signupPreviewStore marker not found')
+              text = text.replace(marker, helper + marker, 1)
+
+          old = '''  await page.getByTestId("merchant-signup-next").click();
+  await expect(page.getByText("Choose template")).toBeVisible();
+  await page.getByTestId("merchant-signup-submit").click();
+  await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible();
+'''
+          new = '''  await continueSignupWhenSlugReady(page);
+  await submitSignupAndRequireSuccess(page);
+'''
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f'Expected 2 signup sequences, found {count}')
+          text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+          rm -f .github/workflows/patch-preview-signup-diagnostics.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/preview-smoke.spec.ts .github/workflows/patch-preview-signup-diagnostics.yml
+          git commit -m "Stabilize signup preview smoke and expose function errors"
+          git push origin HEAD:audit-fixes-2026-08-16
