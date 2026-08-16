@@ -23,6 +23,7 @@ function getAppBaseUrl() {
 
 export async function POST(req: Request) {
   let createdInvoiceId: string | null = null;
+  let providerSessionCreated = false;
   let supabaseAdmin: ReturnType<typeof getSupabaseAdminClient> | null = null;
 
   try {
@@ -164,21 +165,34 @@ export async function POST(req: Request) {
     if (createData.statusCode !== "0000" || !createData.bkashURL) {
       throw new Error(`bKash create error: ${createData.statusMessage || "unknown error"}`);
     }
+    providerSessionCreated = true;
 
     if (createData.paymentID) {
-      await supabaseAdmin
+      const { error: providerIdError } = await supabaseAdmin
         .from("store_invoices")
         .update({ provider_invoice_id: createData.paymentID })
         .eq("id", invoice.id);
+
+      if (providerIdError) {
+        throw providerIdError;
+      }
     }
 
     return NextResponse.json({ paymentUrl: createData.bkashURL });
   } catch (error) {
-    if (createdInvoiceId && supabaseAdmin) {
-      await supabaseAdmin.from("store_invoices").delete().eq("id", createdInvoiceId);
+    // Before bKash creates an external payment session, removing a locally
+    // created invoice is safe. Once a provider session exists, preserve the
+    // invoice so a callback/reconciliation process still has a durable target.
+    if (createdInvoiceId && supabaseAdmin && !providerSessionCreated) {
+      const { error: cleanupError } = await supabaseAdmin
+        .from("store_invoices")
+        .delete()
+        .eq("id", createdInvoiceId);
+      if (cleanupError) {
+        console.error("Checkout invoice cleanup error:", cleanupError);
+      }
     }
     console.error("Checkout initialization error:", error);
     return NextResponse.json({ error: "Failed to initialize checkout" }, { status: 500 });
   }
 }
-
