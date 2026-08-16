@@ -120,7 +120,7 @@ BEGIN
             'storeName', v_store_name,
             'storeSlug', v_store_slug
           );
-        ELSIF NEW.lifecycle_status = 'deletion_queued' THEN
+        ELSIF NEW.lifecycle_status = 'pending_delete' THEN
           v_payload := json_build_object(
             'to', v_owner_email,
             'templateName', 'deletion-notice',
@@ -209,12 +209,8 @@ CREATE POLICY "Platform admins can manage CMS plan features"
   USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')))
   WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')));
 
-DROP POLICY IF EXISTS "Admins can manage invite codes" ON public.invite_codes;
-CREATE POLICY "Admins can manage invite codes"
-  ON public.invite_codes FOR ALL
-  TO authenticated
-  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')))
-  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')));
+-- invite_codes was removed from the canonical schema before this hardening
+-- migration. Do not reference a relation that does not exist on a clean reset.
 
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
