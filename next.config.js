@@ -5,6 +5,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const allowLocalPreviewCsp = process.env.EZCOMO_PREVIEW_LOCAL_CSP === '1';
 const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
@@ -28,7 +29,12 @@ const connectSrc = [
         'ws://127.0.0.1:*',
         'ws://localhost:*',
       ]
-    : []),
+    : allowLocalPreviewCsp
+      ? [
+          'http://127.0.0.1:54321',
+          'ws://127.0.0.1:54321',
+        ]
+      : []),
 ].join(' ');
 const contentSecurityPolicy = [
   "default-src 'self'",
