@@ -27,6 +27,30 @@ jobs:
           test -n "${CF_API_TOKEN:-}" || { echo "CLOUDFLARE_API_TOKEN is missing"; exit 1; }
           test -n "${CF_ACCOUNT_ID:-}" || { echo "CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
 
+      - name: Test origin Host routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe_host='probe.ezcomo.shop'
+
+          echo '=== Render direct health ==='
+          curl -sS -D /tmp/render-direct.headers -o /tmp/render-direct.body https://ecomcms-xjw4.onrender.com/api/health || true
+          head -n 1 /tmp/render-direct.headers || true
+          cat /tmp/render-direct.body || true
+          echo
+
+          echo '=== Render with tenant Host header ==='
+          curl -sS -D /tmp/render-host.headers -o /tmp/render-host.body -H "Host: ${probe_host}" https://ecomcms-xjw4.onrender.com/api/health || true
+          head -n 1 /tmp/render-host.headers || true
+          cat /tmp/render-host.body || true
+          echo
+
+          echo '=== Vercel origin with tenant Host header ==='
+          curl -sS -D /tmp/vercel-host.headers -o /tmp/vercel-host.body -H "Host: ${probe_host}" https://origin.ezcomo.shop/api/health || true
+          head -n 1 /tmp/vercel-host.headers || true
+          cat /tmp/vercel-host.body || true
+          echo
+
       - name: Audit Cloudflare configuration
         shell: bash
         run: |
