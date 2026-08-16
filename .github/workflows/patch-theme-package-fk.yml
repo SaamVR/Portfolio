@@ -1,0 +1,74 @@
+name: Patch Theme Package FK
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-theme-package-fk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+
+      - name: Patch theme package FK persistence and regression test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          persistence = Path('src/lib/cms/store-persistence.ts')
+          text = persistence.read_text()
+
+          import_marker = 'import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";\n'
+          helper = '''\nconst UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\n\nexport function resolvePersistedThemePackageId(packageId: string | null | undefined) {\n  const normalized = packageId?.trim() ?? "";\n  return UUID_PATTERN.test(normalized) ? normalized : null;\n}\n'''
+          if 'export function resolvePersistedThemePackageId' not in text:
+              if import_marker not in text:
+                  raise SystemExit('store-persistence import marker not found')
+              text = text.replace(import_marker, import_marker + helper, 1)
+
+          old = '      theme_package_id: selectedThemePackage.id,\n'
+          new = '      theme_package_id: resolvePersistedThemePackageId(selectedThemePackage.id),\n'
+          if old not in text and new not in text:
+              raise SystemExit('theme_package_id persistence line not found')
+          text = text.replace(old, new, 1)
+          persistence.write_text(text)
+
+          test_path = Path('src/lib/cms/store-persistence.test.ts')
+          test_text = test_path.read_text()
+          old_import = 'import { mapPersistedPageIdsByLocalId, mapPersistedBlockIdsByLocalId, persistStorefrontState } from "@/lib/cms/store-persistence";'
+          new_import = 'import { mapPersistedPageIdsByLocalId, mapPersistedBlockIdsByLocalId, persistStorefrontState, resolvePersistedThemePackageId } from "@/lib/cms/store-persistence";'
+          if old_import in test_text:
+              test_text = test_text.replace(old_import, new_import, 1)
+          elif new_import not in test_text:
+              raise SystemExit('store-persistence test import not found')
+
+          describe_marker = 'describe("storefront persistence", () => {\n'
+          regression = '''  it("stores only UUID theme package identifiers in the foreign key", () => {\n    expect(resolvePersistedThemePackageId("default")).toBeNull();\n    expect(resolvePersistedThemePackageId("midnight")).toBeNull();\n    expect(resolvePersistedThemePackageId("550e8400-e29b-41d4-a716-446655440000")).toBe("550e8400-e29b-41d4-a716-446655440000");\n  });\n\n'''
+          if regression not in test_text:
+              if describe_marker not in test_text:
+                  raise SystemExit('storefront persistence describe marker not found')
+              test_text = test_text.replace(describe_marker, describe_marker + regression, 1)
+          test_path.write_text(test_text)
+          PY
+
+          rm -f .github/workflows/patch-theme-package-fk.yml
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/cms/store-persistence.ts src/lib/cms/store-persistence.test.ts .github/workflows/patch-theme-package-fk.yml
+          git commit -m "Keep semantic theme presets out of UUID package FK"
+          git push origin HEAD:audit-fixes-2026-08-16
