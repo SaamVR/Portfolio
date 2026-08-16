@@ -73,15 +73,13 @@ SELECT
     addr.name,
     ord.customer_name,
     rev.author_name,
-    profiles.display_name,
     NULLIF(BTRIM(COALESCE(auth_users.raw_user_meta_data ->> 'full_name', auth_users.raw_user_meta_data ->> 'name', '')), ''),
     CASE
-      WHEN COALESCE(auth_users.email, profiles.email) IS NOT NULL THEN split_part(COALESCE(auth_users.email, profiles.email), '@', 1)
+      WHEN auth_users.email IS NOT NULL THEN split_part(auth_users.email, '@', 1)
       ELSE 'Customer'
     END
   ) AS display_name,
   COALESCE(
-    NULLIF(BTRIM(profiles.avatar_url), ''),
     NULLIF(BTRIM(auth_users.raw_user_meta_data ->> 'avatar_url'), ''),
     NULLIF(BTRIM(auth_users.raw_user_meta_data ->> 'picture'), '')
   ) AS avatar_url,
@@ -93,7 +91,6 @@ SELECT
   ) AS phone,
   COALESCE(
     NULLIF(BTRIM(ord.customer_email), ''),
-    NULLIF(BTRIM(profiles.email), ''),
     NULLIF(BTRIM(auth_users.email), '')
   ) AS email,
   'active' AS status,
@@ -103,8 +100,6 @@ SELECT
 FROM customer_pairs
 LEFT JOIN auth.users AS auth_users
   ON auth_users.id = customer_pairs.user_id
-LEFT JOIN public.profiles AS profiles
-  ON profiles.user_id = customer_pairs.user_id
 LEFT JOIN LATERAL (
   SELECT name, phone
   FROM public.customer_addresses
