@@ -73,13 +73,13 @@ export function getProductionEnvironmentIssues(): EnvironmentIssue[] {
     });
   }
 
-  if (process.env.ORDER_BACKGROUND_JOBS_TRANSPORT?.trim() !== "inline" && !has("CART_RECOVERY_PROCESSOR_SECRET")) {
+  if (!has("CART_RECOVERY_PROCESSOR_SECRET")) {
     issues.push({
       id: "env-cart-processor-secret",
       severity: "warning",
-      title: "Cart recovery processor secret may be missing",
-      detail: "Background processing is enabled and cart-recovery queue processing requires an authenticated processor path.",
-      action: "Verify CART_RECOVERY_PROCESSOR_SECRET is configured for the production background worker.",
+      title: "Cart recovery processor endpoint is disabled",
+      detail: "The cart-recovery queue processor fails closed when CART_RECOVERY_PROCESSOR_SECRET is not configured.",
+      action: "Set CART_RECOVERY_PROCESSOR_SECRET if scheduled or external cart-recovery processing is enabled.",
     });
   }
 
