@@ -41,8 +41,12 @@ export async function recordPlatformIncident(
   if (typeof rpc !== "function") return;
 
   try {
+    const scopedFingerprint = input.storeId
+      ? `${input.fingerprint}:${input.storeId}`
+      : input.fingerprint;
+
     const { error } = await rpc.call(supabaseAdmin, "record_platform_incident", {
-      p_fingerprint: input.fingerprint,
+      p_fingerprint: scopedFingerprint,
       p_severity: input.severity,
       p_source: input.source,
       p_title: input.title,
