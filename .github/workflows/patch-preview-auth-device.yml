@@ -1,0 +1,50 @@
+name: Patch Preview Auth And Device
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-preview-auth-device.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+      - name: Align auth helper and preview device selection
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/preview-smoke.spec.ts')
+          text = path.read_text()
+
+          old_login = '''  await page.getByTestId("admin-login-submit").click();\n  await page.waitForURL((url) => url.pathname !== "/admin/login", { timeout: 15000 });'''
+          new_login = '''  await page.getByTestId("admin-login-submit").click();\n  await expect.poll(async () => {\n    const pathname = new URL(page.url()).pathname;\n    if (pathname !== "/admin/login") return true;\n    return page.getByText(`Signed in as ${email}`).isVisible().catch(() => false);\n  }, { timeout: 15000 }).toBe(true);'''
+          if text.count(old_login) != 1:
+              raise SystemExit(f'Expected one current login helper block, found {text.count(old_login)}')
+          text = text.replace(old_login, new_login, 1)
+
+          old_device = '''    await page.getByTestId("basic-mobile-preview-button").click();\n    await expect(page.getByTestId("basic-preview-overlay")).toBeVisible({ timeout: 10000 });\n    await expect(page.getByTestId("basic-preview-device-mobile")).toHaveAttribute("data-active", "true");'''
+          new_device = '''    await page.getByTestId("basic-mobile-preview-button").click();\n    await expect(page.getByTestId("basic-preview-overlay")).toBeVisible({ timeout: 10000 });\n    await page.getByTestId("basic-preview-device-mobile").click();\n    await expect(page.getByTestId("basic-preview-device-mobile")).toHaveAttribute("data-active", "true");'''
+          if text.count(old_device) != 1:
+              raise SystemExit(f'Expected one current mobile preview block, found {text.count(old_device)}')
+          text = text.replace(old_device, new_device, 1)
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git diff -- tests/preview-smoke.spec.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/preview-smoke.spec.ts
+          git commit -m "test: support merchant login state and select mobile preview"
+          git push origin HEAD:audit-fixes-2026-08-16
