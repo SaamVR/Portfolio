@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
+import { getRequestId, recordCaughtIncident } from "@/lib/platform/incident-logger";
 import {
   canManageStore,
   getAuthenticatedUser,
@@ -24,6 +25,7 @@ function getAppBaseUrl() {
 export async function POST(req: Request) {
   let createdInvoiceId: string | null = null;
   let providerSessionCreated = false;
+  let requestedStoreId: string | null = null;
   let supabaseAdmin: ReturnType<typeof getSupabaseAdminClient> | null = null;
 
   try {
@@ -41,6 +43,7 @@ export async function POST(req: Request) {
     }
 
     const { storeId, planId, billingInterval } = await req.json();
+    requestedStoreId = typeof storeId === "string" ? storeId : null;
     if (!storeId || !planId) {
       return NextResponse.json({ error: "Missing storeId or planId" }, { status: 400 });
     }
@@ -191,6 +194,22 @@ export async function POST(req: Request) {
       if (cleanupError) {
         console.error("Checkout invoice cleanup error:", cleanupError);
       }
+    }
+    if (supabaseAdmin) {
+      await recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "billing.checkout.initialization",
+        severity: providerSessionCreated ? "critical" : "warning",
+        source: "billing",
+        title: providerSessionCreated ? "bKash checkout session needs reconciliation" : "bKash checkout initialization failed",
+        error,
+        route: "/api/billing/checkout",
+        storeId: requestedStoreId,
+        requestId: getRequestId(req),
+        metadata: {
+          invoiceId: createdInvoiceId,
+          providerSessionCreated,
+        },
+      });
     }
     console.error("Checkout initialization error:", error);
     return NextResponse.json({ error: "Failed to initialize checkout" }, { status: 500 });
