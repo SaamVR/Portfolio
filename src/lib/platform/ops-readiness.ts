@@ -17,6 +17,9 @@ export type OpsReadinessInput = {
   stalePendingInvoices: number;
   atRiskStores: number;
   pendingDeleteStores: number;
+  openCriticalIncidents: number;
+  openWarningIncidents: number;
+  openPrewarningIncidents: number;
   ciFailed: number;
   ciPending: number;
   deploymentFailed: number;
@@ -41,6 +44,35 @@ export function buildOperationalAlerts(input: OpsReadinessInput): OpsAlert[] {
       title: "Database connectivity is failing",
       detail: "The control plane could not complete its Supabase health query.",
       action: "Pause launches and checkout changes until database connectivity is restored.",
+    });
+  }
+
+  if (input.openCriticalIncidents > 0) {
+    alerts.push({
+      id: "open-critical-incidents",
+      severity: "critical",
+      title: "Open application incidents require investigation",
+      detail: `${input.openCriticalIncidents} critical incident${input.openCriticalIncidents === 1 ? " is" : "s are"} currently unresolved.`,
+      action: "Open the Error & incident center below, reconcile the underlying failure, then resolve the incident only after the service state is healthy.",
+      href: "/cms-admin#incident-center",
+    });
+  } else if (input.openWarningIncidents > 0) {
+    alerts.push({
+      id: "open-warning-incidents",
+      severity: "warning",
+      title: "Application incidents need operator attention",
+      detail: `${input.openWarningIncidents} warning incident${input.openWarningIncidents === 1 ? " is" : "s are"} currently unresolved.`,
+      action: "Review repeated failures and occurrence counts in the Error & incident center before increasing customer traffic.",
+      href: "/cms-admin#incident-center",
+    });
+  } else if (input.openPrewarningIncidents > 0) {
+    alerts.push({
+      id: "open-prewarning-incidents",
+      severity: "prewarning",
+      title: "Early application degradation signals are present",
+      detail: `${input.openPrewarningIncidents} pre-warning incident${input.openPrewarningIncidents === 1 ? " is" : "s are"} currently open.`,
+      action: "Review these early signals before they become customer-facing failures.",
+      href: "/cms-admin#incident-center",
     });
   }
 
