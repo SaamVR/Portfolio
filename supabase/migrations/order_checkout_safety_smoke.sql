@@ -57,7 +57,7 @@ values
   ('42000000-0000-4000-8000-000000000002', '41000000-0000-4000-8000-000000000002', 'Smoke Product B', 700, 'https://example.com/b.png', 'B', 'Smoke', 'Test', 4, true);
 
 -- First checkout decrements stock and creates one durable order.
-perform * from public.create_store_order_with_stock(
+select * from public.create_store_order_with_stock(
   '41000000-0000-4000-8000-000000000001',
   'checkout-smoke-idempotent',
   null,
@@ -85,7 +85,7 @@ select pg_temp.assert_true(
 
 -- Browser refresh/double-submit with the same key must return the durable order
 -- without touching stock again.
-perform * from public.create_store_order_with_stock(
+select * from public.create_store_order_with_stock(
   '41000000-0000-4000-8000-000000000001',
   'checkout-smoke-idempotent',
   null,
