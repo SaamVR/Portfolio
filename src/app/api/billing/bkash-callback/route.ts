@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { addMonths, getSupabaseAdminClient, upsertStoreSubscription } from "@/lib/api/supabase-route";
 import { getPlatformBkashCredentialsFromConnection, readPlatformBkashConnection } from "@/lib/payments/platform-connections";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
+import { getRequestId, recordCaughtIncident, recordPlatformIncident } from "@/lib/platform/incident-logger";
 
 export const billingBkashCallbackRouteDeps = {
   getSupabaseAdminClient,
@@ -75,6 +76,17 @@ export async function GET(req: Request) {
 
   if (invoice.provider_invoice_id && invoice.provider_invoice_id !== paymentID) {
     await markInvoiceFailed(supabaseAdmin, invoice.id);
+    await recordPlatformIncident(supabaseAdmin, {
+      fingerprint: "billing.bkash.payment-id-mismatch",
+      severity: "critical",
+      source: "billing",
+      title: "bKash callback payment ID mismatch",
+      message: "The callback payment ID did not match the durable invoice provider payment ID.",
+      route: "/api/billing/bkash-callback",
+      storeId,
+      requestId: getRequestId(req),
+      metadata: { invoiceId: invoice.id, expectedPaymentId: invoice.provider_invoice_id, receivedPaymentId: paymentID },
+    });
     return NextResponse.redirect(getBillingRedirectUrl("error", "Payment id mismatch."));
   }
 
@@ -143,11 +155,33 @@ export async function GET(req: Request) {
     // entitlement activation and require manual reconciliation.
     if (executeData.amount && Number(executeData.amount) !== Number(invoice.amount)) {
       await markInvoiceFailed(supabaseAdmin, invoice.id);
+      await recordPlatformIncident(supabaseAdmin, {
+        fingerprint: "billing.bkash.amount-mismatch",
+        severity: "critical",
+        source: "billing",
+        title: "bKash settlement amount mismatch",
+        message: "Gateway-confirmed payment amount does not match the invoice amount. Entitlement activation was blocked.",
+        route: "/api/billing/bkash-callback",
+        storeId,
+        requestId: getRequestId(req),
+        metadata: { invoiceId: invoice.id, invoiceAmount: invoice.amount, gatewayAmount: executeData.amount, paymentID },
+      });
       return NextResponse.redirect(getBillingRedirectUrl("error", "Payment execution failed."));
     }
 
     if (executeData.currency && String(executeData.currency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
       await markInvoiceFailed(supabaseAdmin, invoice.id);
+      await recordPlatformIncident(supabaseAdmin, {
+        fingerprint: "billing.bkash.currency-mismatch",
+        severity: "critical",
+        source: "billing",
+        title: "bKash settlement currency mismatch",
+        message: "Gateway-confirmed payment currency does not match the invoice currency. Entitlement activation was blocked.",
+        route: "/api/billing/bkash-callback",
+        storeId,
+        requestId: getRequestId(req),
+        metadata: { invoiceId: invoice.id, invoiceCurrency: invoice.currency, gatewayCurrency: executeData.currency, paymentID },
+      });
       return NextResponse.redirect(getBillingRedirectUrl("error", "Payment execution failed."));
     }
 
@@ -194,6 +228,17 @@ export async function GET(req: Request) {
     return NextResponse.redirect(getBillingRedirectUrl("success"));
   } catch (error) {
     console.error("bKash callback verification/settlement error:", error);
+    await recordCaughtIncident(supabaseAdmin, {
+      fingerprint: "billing.bkash.verification-settlement",
+      severity: "critical",
+      source: "billing",
+      title: "bKash payment verification or settlement is pending",
+      error,
+      route: "/api/billing/bkash-callback",
+      storeId,
+      requestId: getRequestId(req),
+      metadata: { invoiceId: invoice.id, paymentID },
+    });
 
     // After gateway confirmation, transient/local settlement failures remain
     // pending so a callback or reconciliation process can retry safely.
