@@ -35,8 +35,13 @@ export async function recordPlatformIncident(
   supabaseAdmin: SupabaseClient,
   input: PlatformIncidentInput,
 ) {
+  const rpc = (supabaseAdmin as SupabaseClient & { rpc?: SupabaseClient["rpc"] }).rpc;
+  // Minimal route-test doubles intentionally omit rpc(). Production Supabase
+  // clients always expose it, so silently skip persistence only for those doubles.
+  if (typeof rpc !== "function") return;
+
   try {
-    const { error } = await supabaseAdmin.rpc("record_platform_incident", {
+    const { error } = await rpc.call(supabaseAdmin, "record_platform_incident", {
       p_fingerprint: input.fingerprint,
       p_severity: input.severity,
       p_source: input.source,
