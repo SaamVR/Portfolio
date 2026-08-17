@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: audit-fixes-2026-08-16
-      - name: Accept marketplace apply confirmation in preview smoke
+      - name: Accept marketplace apply confirmations in preview smoke
         shell: bash
         run: |
           python - <<'PY'
@@ -26,16 +26,10 @@ jobs:
           path = Path('tests/preview-smoke.spec.ts')
           text = path.read_text()
           old = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();\n\n    await expect.poll(async () => {'''
-          new = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    const acceptTemplateApplyDialog = async (dialog: import("@playwright/test").Dialog) => {\n      expect(dialog.type()).toBe("confirm");\n      await dialog.accept();\n    };\n    page.on("dialog", acceptTemplateApplyDialog);\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();\n\n    await expect.poll(async () => {'''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected one marketplace apply block, found {text.count(old)}')
-          text = text.replace(old, new, 1)
-
-          old_tail = '''    }, { timeout: 20000 }).toBe(1);\n\n    const { data: rejectedTemplate, error: rejectedTemplateError } = await supabaseAdmin'''
-          new_tail = '''    }, { timeout: 20000 }).toBe(1);\n    page.off("dialog", acceptTemplateApplyDialog);\n\n    const { data: rejectedTemplate, error: rejectedTemplateError } = await supabaseAdmin'''
-          if text.count(old_tail) != 1:
-              raise SystemExit(f'Expected one install assertion tail, found {text.count(old_tail)}')
-          text = text.replace(old_tail, new_tail, 1)
+          new = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    page.on("dialog", async (dialog) => {\n      expect(dialog.type()).toBe("confirm");\n      await dialog.accept();\n    });\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();\n\n    await expect.poll(async () => {'''
+          if text.count(old) != 2:
+              raise SystemExit(f'Expected two marketplace apply blocks, found {text.count(old)}')
+          text = text.replace(old, new)
 
           path.write_text(text)
           PY
@@ -45,5 +39,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tests/preview-smoke.spec.ts
-          git commit -m "test: accept marketplace template apply confirmation"
+          git commit -m "test: accept marketplace template apply confirmations"
           git push origin HEAD:audit-fixes-2026-08-16
