@@ -10,6 +10,9 @@ const healthyInput = {
   stalePendingInvoices: 0,
   atRiskStores: 0,
   pendingDeleteStores: 0,
+  openCriticalIncidents: 0,
+  openWarningIncidents: 0,
+  openPrewarningIncidents: 0,
   ciFailed: 0,
   ciPending: 0,
   deploymentFailed: 0,
@@ -36,6 +39,18 @@ test("launch-blocking signals are prioritized above warnings and prewarnings", (
   assert.equal(alerts.some((alert) => alert.id === "stale-pending-invoices" && alert.severity === "warning"), true);
   assert.equal(alerts.some((alert) => alert.id === "at-risk-stores" && alert.severity === "prewarning"), true);
   assert.ok(calculateOperationalScore(alerts) < 100);
+});
+
+test("open critical incidents lower the safety score and surface the incident center", () => {
+  const alerts = buildOperationalAlerts({
+    ...healthyInput,
+    openCriticalIncidents: 2,
+  });
+
+  assert.equal(alerts[0]?.id, "open-critical-incidents");
+  assert.equal(alerts[0]?.severity, "critical");
+  assert.match(alerts[0]?.href ?? "", /incident-center/);
+  assert.equal(calculateOperationalScore(alerts), 65);
 });
 
 test("provider telemetry failures are surfaced without marking the database unhealthy", () => {
