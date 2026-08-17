@@ -34,9 +34,9 @@ jobs:
 
           old_advanced = '''    await page.goto(`/admin/page-builder/advanced?storeId=${storeId}`);\n    await expect(page.getByTestId("open-template-publish-dialog")).toBeVisible({ timeout: 45000 });'''
           new_advanced = '''    await page.goto(`/admin/page-builder/advanced?storeId=${storeId}&legacy=1`);\n    await expect(page.getByTestId("open-template-publish-dialog")).toBeVisible({ timeout: 45000 });'''
-          if text.count(old_advanced) != 1:
-              raise SystemExit(f'Expected exactly one stale Advanced publish block, found {text.count(old_advanced)}')
-          text = text.replace(old_advanced, new_advanced, 1)
+          if text.count(old_advanced) != 2:
+              raise SystemExit(f'Expected exactly two stale Advanced publish blocks, found {text.count(old_advanced)}')
+          text = text.replace(old_advanced, new_advanced)
 
           path.write_text(text)
           PY
