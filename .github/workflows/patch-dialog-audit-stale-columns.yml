@@ -1,0 +1,50 @@
+name: Patch Dialog And Audit Stale Columns
+
+on:
+  push:
+    branches:
+      - audit-fixes-2026-08-16
+    paths:
+      - ".github/workflows/patch-dialog-audit-stale-columns.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit-fixes-2026-08-16
+      - name: Remove duplicate dialog handler and locate stale queries
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/preview-smoke.spec.ts')
+          text = path.read_text()
+          old = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    page.on("dialog", async (dialog) => {\n      expect(dialog.type()).toBe("confirm");\n      await dialog.accept();\n    });\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();'''
+          new = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();'''
+          if text.count(old) != 2:
+              raise SystemExit(f'Expected two local marketplace dialog blocks, found {text.count(old)}')
+          # Only the first/main smoke already has a global dialog accept handler.
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git diff -- tests/preview-smoke.spec.ts
+
+          echo '=== references to thumbnail ==='
+          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' 'thumbnail' src supabase tests || true
+          echo '=== references to store_page_blocks ==='
+          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' 'store_page_blocks' src supabase tests || true
+          echo '=== references to block content selections ==='
+          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' -E 'store_page_blocks.*content|content.*store_page_blocks|id,store_id,page_id,is_visible,content' src supabase tests || true
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/preview-smoke.spec.ts
+          git commit -m "test: avoid duplicate marketplace dialog handling"
+          git push origin HEAD:audit-fixes-2026-08-16
