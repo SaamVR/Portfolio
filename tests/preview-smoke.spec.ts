@@ -62,7 +62,11 @@ async function loginAs(page: Parameters<typeof test>[0]["page"], email: string, 
   await page.getByTestId("admin-login-email").fill(email);
   await page.getByTestId("admin-login-password").fill(password);
   await page.getByTestId("admin-login-submit").click();
-  await page.waitForURL((url) => url.pathname !== "/admin/login", { timeout: 15000 });
+  await expect.poll(async () => {
+    const pathname = new URL(page.url()).pathname;
+    if (pathname !== "/admin/login") return true;
+    return page.getByText(`Signed in as ${email}`).isVisible().catch(() => false);
+  }, { timeout: 15000 }).toBe(true);
 }
 
 async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["page"]) {
@@ -547,6 +551,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await page.screenshot({ path: testInfo.outputPath("basic-editor-mobile.png"), fullPage: true });
     await page.getByTestId("basic-mobile-preview-button").click();
     await expect(page.getByTestId("basic-preview-overlay")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("basic-preview-device-mobile").click();
     await expect(page.getByTestId("basic-preview-device-mobile")).toHaveAttribute("data-active", "true");
     await page.waitForTimeout(300);
     await page.screenshot({ path: testInfo.outputPath("basic-preview-overlay-mobile.png"), fullPage: true });
