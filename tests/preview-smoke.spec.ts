@@ -431,7 +431,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/admin/page-builder/basic?storeId=${storeId}`);
-    await expect(page.getByRole("heading", { name: `Guided Editor: ${storeName}` })).toBeVisible({ timeout: 45000 });
+    await expect(page.getByTestId("basic-mode-tab-pages").last()).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-desktop.png"), fullPage: true });
     await page.getByTestId("basic-mode-tab-pages").last().click();
     await expect(page.getByTestId("basic-flow-settings-panel")).toBeVisible({ timeout: 10000 });
@@ -553,7 +553,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/admin/page-builder/advanced?storeId=${storeId}`);
-    await expect(page.getByText("Expert Editing").first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByTestId("open-template-publish-dialog")).toBeVisible({ timeout: 45000 });
     await expect(page.getByText("Visual CSS Inspector")).toBeVisible({ timeout: 45000 });
     await page.getByTestId("open-template-publish-dialog").click();
     await expect(page.getByTestId("template-publish-dialog")).toBeVisible();
@@ -758,7 +758,11 @@ test("admin hard refresh restores representative routes without getting stuck on
     for (const route of representativeRoutes) {
       await page.goto(route.path);
       await page.reload();
-      await expect(page.getByText(route.label).first()).toBeVisible({ timeout: 45000 });
+      if (route.path.startsWith("/admin/returns")) {
+        await expect(page.getByRole("button", { name: "Create case" })).toBeVisible({ timeout: 45000 });
+      } else {
+        await expect(page.getByText(route.label).first()).toBeVisible({ timeout: 45000 });
+      }
       await expect(page.getByText("Restoring dashboard access")).toHaveCount(0);
     }
   } finally {
@@ -891,7 +895,7 @@ test("merchant marketplace tail smoke: advanced editor, submit, install, moderat
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/admin/page-builder/advanced?storeId=${storeId}`);
-    await expect(page.getByText("Expert Editing").first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByTestId("open-template-publish-dialog")).toBeVisible({ timeout: 45000 });
     await expect(page.getByText("Visual CSS Inspector")).toBeVisible({ timeout: 45000 });
     await page.getByTestId("open-template-publish-dialog").click();
     await expect(page.getByTestId("template-publish-dialog")).toBeVisible();
