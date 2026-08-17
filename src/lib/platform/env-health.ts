@@ -12,6 +12,7 @@ function has(name: string) {
 
 export function getProductionEnvironmentIssues(): EnvironmentIssue[] {
   const issues: EnvironmentIssue[] = [];
+  const notificationTransport = process.env.NOTIFICATION_JOBS_TRANSPORT?.trim().toLowerCase() || "inline";
 
   if (!has("NEXT_PUBLIC_SUPABASE_URL")) {
     issues.push({
@@ -63,7 +64,7 @@ export function getProductionEnvironmentIssues(): EnvironmentIssue[] {
     });
   }
 
-  if (process.env.NOTIFICATION_JOBS_TRANSPORT?.trim() !== "inline" && !has("NOTIFICATION_PROCESSOR_SECRET")) {
+  if (notificationTransport !== "inline" && !has("NOTIFICATION_PROCESSOR_SECRET")) {
     issues.push({
       id: "env-notification-processor-secret",
       severity: "critical",
