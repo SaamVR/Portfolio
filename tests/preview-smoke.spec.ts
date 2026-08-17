@@ -584,6 +584,10 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await expect(page.getByTestId(`template-card-${marketplaceTemplateId}`)).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: testInfo.outputPath("template-gallery-desktop.png"), fullPage: true });
     await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();
+    page.on("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("confirm");
+      await dialog.accept();
+    });
     await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();
 
     await expect.poll(async () => {
@@ -925,6 +929,10 @@ test("merchant marketplace tail smoke: advanced editor, submit, install, moderat
     await page.getByTestId("template-gallery-community-tab").click();
     await expect(page.getByTestId(`template-card-${marketplaceTemplateId}`)).toBeVisible({ timeout: 45000 });
     await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();
+    page.on("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("confirm");
+      await dialog.accept();
+    });
     await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();
 
     await expect.poll(async () => {
