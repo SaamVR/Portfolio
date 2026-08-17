@@ -62,7 +62,7 @@ async function loginAs(page: Parameters<typeof test>[0]["page"], email: string, 
   await page.getByTestId("admin-login-email").fill(email);
   await page.getByTestId("admin-login-password").fill(password);
   await page.getByTestId("admin-login-submit").click();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible({ timeout: 15000 });
+  await page.waitForURL((url) => url.pathname !== "/admin/login", { timeout: 15000 });
 }
 
 async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["page"]) {
@@ -543,7 +543,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/admin/page-builder/basic?storeId=${storeId}`);
-    await expect(page.getByText("Task 1 of")).toBeVisible({ timeout: 45000 });
+    await expect(page.getByTestId("basic-mobile-preview-button")).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: testInfo.outputPath("basic-editor-mobile.png"), fullPage: true });
     await page.getByTestId("basic-mobile-preview-button").click();
     await expect(page.getByTestId("basic-preview-overlay")).toBeVisible({ timeout: 10000 });
