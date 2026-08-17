@@ -1,7 +1,7 @@
 import { triggerWhatsAppOrderNotify } from "@/lib/cms/whatsapp-order-notify";
+import { recordPlatformIncident } from "@/lib/platform/incident-logger";
 
 type SupabaseAdminClient = any;
-
 type OrderNotificationPayload = Parameters<typeof triggerWhatsAppOrderNotify>[1];
 
 type OrderAnalyticsInsertPayload = {
@@ -104,7 +104,45 @@ async function markRecoveryLeadRecovered({
     .eq("store_id", storeId);
 }
 
+function resultError(result: PromiseSettledResult<unknown>) {
+  if (result.status === "rejected") {
+    return result.reason instanceof Error ? result.reason.message : String(result.reason || "Unknown rejection");
+  }
+  const value = result.value as { error?: unknown } | null | undefined;
+  if (!value?.error) return null;
+  if (value.error instanceof Error) return value.error.message;
+  if (typeof value.error === "object" && value.error && "message" in value.error) {
+    return String((value.error as { message?: unknown }).message || "Unknown background error");
+  }
+  return String(value.error);
+}
+
+async function reportBackgroundFailures(
+  supabaseAdmin: SupabaseAdminClient,
+  storeId: string | null,
+  scope: string,
+  names: string[],
+  results: PromiseSettledResult<unknown>[],
+) {
+  await Promise.all(results.map(async (result, index) => {
+    const message = resultError(result);
+    if (!message) return;
+    const taskName = names[index] || `task-${index}`;
+    await recordPlatformIncident(supabaseAdmin, {
+      fingerprint: `orders.background.${scope}.${taskName}`,
+      severity: taskName === "merchant-notification" ? "warning" : "prewarning",
+      source: "orders",
+      title: `Order background task failed: ${taskName}`,
+      message,
+      route: scope === "created" ? "/api/orders/create" : "/api/orders/cancel",
+      storeId,
+      metadata: { task: taskName, scope },
+    });
+  }));
+}
+
 export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgroundJobsArgs) {
+  const taskNames = ["merchant-notification", "analytics", "revenue", "cart-recovery"];
   const tasks = [
     triggerWhatsAppOrderNotify(args.supabaseAdmin, args.notification),
     insertAnalyticsEvents({
@@ -125,14 +163,19 @@ export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgro
     }),
   ];
 
-  return Promise.allSettled(tasks);
+  const results = await Promise.allSettled(tasks);
+  await reportBackgroundFailures(args.supabaseAdmin, args.storeId, "created", taskNames, results);
+  return results;
 }
 
 export async function runOrderCancelledBackgroundJobs(args: RunOrderCancelledBackgroundJobsArgs) {
-  return Promise.allSettled([
+  const results = await Promise.allSettled([
     insertRevenueEvent({
       row: args.revenueEventRow,
       supabaseAdmin: args.supabaseAdmin,
     }),
   ]);
+  const storeId = typeof args.revenueEventRow.store_id === "string" ? args.revenueEventRow.store_id : null;
+  await reportBackgroundFailures(args.supabaseAdmin, storeId, "cancelled", ["revenue"], results);
+  return results;
 }
