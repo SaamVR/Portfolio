@@ -73,8 +73,9 @@ async function fetchGitHubStatus() {
   }
 
   try {
+    const [owner = "", name = ""] = repo.split("/");
     const payload = await readJson(
-      `https://api.github.com/repos/${encodeURIComponent(repo.split("/")[0] || "")}/${encodeURIComponent(repo.split("/")[1] || "")}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=40`,
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=40`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -91,7 +92,7 @@ async function fetchGitHubStatus() {
       latestByName.set(run.name, run);
     }
 
-    const requiredRuns = REQUIRED_WORKFLOWS.map((name) => latestByName.get(name)).filter(Boolean);
+    const requiredRuns = REQUIRED_WORKFLOWS.map((workflowName) => latestByName.get(workflowName)).filter(Boolean);
     const missing = REQUIRED_WORKFLOWS.length - requiredRuns.length;
     const failed = requiredRuns.filter((run) => run.status === "completed" && run.conclusion !== "success").length;
     const pending = requiredRuns.filter((run) => run.status !== "completed").length + missing;
@@ -245,12 +246,13 @@ export async function GET(req: Request) {
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
     const staleInvoiceCutoff = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
-    const [databaseProbe, notificationResult, invoiceResult, lifecycleResult, auditResult, github, vercel, render, cloudflare] = await Promise.all([
+    const [databaseProbe, notificationResult, invoiceResult, lifecycleResult, auditResult, incidentResult, github, vercel, render, cloudflare] = await Promise.all([
       supabaseAdmin.from("stores").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("email_events").select("id, store_id, status, template_name, recipient, created_at").gte("created_at", since24h).order("created_at", { ascending: false }).limit(100),
       supabaseAdmin.from("store_invoices").select("id, store_id, status, provider, provider_invoice_id, amount, currency, created_at, updated_at").gte("created_at", since24h).order("created_at", { ascending: false }).limit(100),
       supabaseAdmin.from("store_lifecycle_states").select("store_id, lifecycle_status, updated_at, scheduled_delete_at, last_activity_at").in("lifecycle_status", ["at_risk", "pending_delete"]).order("updated_at", { ascending: false }).limit(100),
       supabaseAdmin.from("platform_audit_logs").select("*").order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("platform_incidents").select("id, severity, status, last_seen_at").eq("status", "open").order("last_seen_at", { ascending: false }).limit(250),
       fetchGitHubStatus(),
       fetchVercelStatus(),
       fetchRenderStatus(),
@@ -261,6 +263,7 @@ export async function GET(req: Request) {
     const invoices = Array.isArray(invoiceResult.data) ? invoiceResult.data : [];
     const lifecycle = Array.isArray(lifecycleResult.data) ? lifecycleResult.data : [];
     const auditLogs = Array.isArray(auditResult.data) ? auditResult.data : [];
+    const incidents = Array.isArray(incidentResult.data) ? incidentResult.data : [];
 
     const failedNotifications = notifications.filter((event) => event.status === "failed");
     const pendingNotifications = notifications.filter((event) => ["pending", "queued", "processing"].includes(String(event.status || "")));
@@ -272,6 +275,9 @@ export async function GET(req: Request) {
     });
     const atRiskStores = lifecycle.filter((row) => row.lifecycle_status === "at_risk");
     const pendingDeleteStores = lifecycle.filter((row) => row.lifecycle_status === "pending_delete");
+    const openCriticalIncidents = incidents.filter((incident) => incident.severity === "critical").length;
+    const openWarningIncidents = incidents.filter((incident) => incident.severity === "warning").length;
+    const openPrewarningIncidents = incidents.filter((incident) => incident.severity === "prewarning").length;
 
     const providerErrors = [github.status, vercel.status, render.status, cloudflare]
       .filter((provider) => provider.state === "unknown")
@@ -285,6 +291,9 @@ export async function GET(req: Request) {
       stalePendingInvoices: stalePendingInvoices.length,
       atRiskStores: atRiskStores.length,
       pendingDeleteStores: pendingDeleteStores.length,
+      openCriticalIncidents,
+      openWarningIncidents,
+      openPrewarningIncidents,
       ciFailed: github.failed,
       ciPending: github.pending,
       deploymentFailed: vercel.failed + render.failed,
@@ -305,6 +314,9 @@ export async function GET(req: Request) {
         stalePendingInvoices: stalePendingInvoices.length,
         atRiskStores: atRiskStores.length,
         pendingDeleteStores: pendingDeleteStores.length,
+        openCriticalIncidents,
+        openWarningIncidents,
+        openPrewarningIncidents,
       },
       providers: [
         {
@@ -330,6 +342,7 @@ export async function GET(req: Request) {
         invoiceResult.error ? `store_invoices: ${invoiceResult.error.message}` : null,
         lifecycleResult.error ? `store_lifecycle_states: ${lifecycleResult.error.message}` : null,
         auditResult.error ? `platform_audit_logs: ${auditResult.error.message}` : null,
+        incidentResult.error ? `platform_incidents: ${incidentResult.error.message}` : null,
       ].filter(Boolean),
     });
   } catch (error) {
