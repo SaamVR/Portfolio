@@ -4,6 +4,8 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { rateLimit } from "@/lib/rate-limit";
+import { getRequestId, recordCaughtIncident } from "@/lib/platform/incident-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +18,7 @@ export const mediaUploadRouteDeps = {
   getAuthenticatedUser,
   getSupabaseAdminClient,
   canManageStore,
+  rateLimit,
   randomUUID: () => crypto.randomUUID(),
 };
 
@@ -60,10 +63,21 @@ async function ensureMediaBucket(supabaseAdmin: ReturnType<typeof getSupabaseAdm
 }
 
 export async function POST(req: Request) {
+  let supabaseAdmin: ReturnType<typeof getSupabaseAdminClient> | null = null;
+  let requestedStoreId: string | null = null;
+
   try {
     const user = await mediaUploadRouteDeps.getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const limit = await mediaUploadRouteDeps.rateLimit(`media_sign:${user.id}`, {
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (!limit.success) {
+      return NextResponse.json({ error: "Too many media upload attempts" }, { status: 429 });
     }
 
     const payload = await req.json();
@@ -72,6 +86,7 @@ export async function POST(req: Request) {
     const fileSize = Number(payload.fileSize || 0);
     const storeId = String(payload.storeId || "");
     const folder = sanitizePathSegment(String(payload.folder || "cms")) || "cms";
+    requestedStoreId = storeId || null;
 
     if (!storeId) {
       return NextResponse.json({ error: "Missing storeId" }, { status: 400 });
@@ -98,7 +113,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Only video files are allowed here" }, { status: 400 });
     }
 
-    const supabaseAdmin = mediaUploadRouteDeps.getSupabaseAdminClient();
+    supabaseAdmin = mediaUploadRouteDeps.getSupabaseAdminClient();
     const authorized = await mediaUploadRouteDeps.canManageStore(supabaseAdmin, storeId, user.id);
     if (!authorized) {
       return NextResponse.json({ error: "Store admin access required" }, { status: 403 });
@@ -137,6 +152,18 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    if (supabaseAdmin) {
+      await recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "media.signed-upload.failure",
+        severity: "warning",
+        source: "media",
+        title: "Media upload signing failed",
+        error,
+        route: "/api/media/upload",
+        storeId: requestedStoreId,
+        requestId: getRequestId(req),
+      });
+    }
     console.error("Media upload error:", error);
     return NextResponse.json({ error: "Failed to upload media" }, { status: 500 });
   }
