@@ -4,12 +4,21 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { rateLimit } from "@/lib/rate-limit";
+import { getRequestId, recordCaughtIncident } from "@/lib/platform/incident-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MEDIA_BUCKET = "store-media";
 const MAX_PROXY_BYTES = 4 * 1024 * 1024;
+
+export const mediaProxyUploadRouteDeps = {
+  getAuthenticatedUser,
+  getSupabaseAdminClient,
+  canManageStore,
+  rateLimit,
+};
 
 export function validateProxyUploadInput(input: {
   fileSize: number;
@@ -50,16 +59,28 @@ export function validateProxyUploadInput(input: {
 }
 
 export async function POST(req: Request) {
+  let supabaseAdmin: ReturnType<typeof getSupabaseAdminClient> | null = null;
+  let requestedStoreId: string | null = null;
+
   try {
-    const user = await getAuthenticatedUser(req);
+    const user = await mediaProxyUploadRouteDeps.getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const limit = await mediaProxyUploadRouteDeps.rateLimit(`media_proxy:${user.id}`, {
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (!limit.success) {
+      return NextResponse.json({ error: "Too many media upload attempts" }, { status: 429 });
     }
 
     const formData = await req.formData();
     const file = formData.get("file");
     const storeId = String(formData.get("storeId") || "");
     const path = String(formData.get("path") || "");
+    requestedStoreId = storeId || null;
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Missing media file" }, { status: 400 });
@@ -75,8 +96,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    const supabaseAdmin = getSupabaseAdminClient();
-    const authorized = await canManageStore(supabaseAdmin, storeId, user.id);
+    supabaseAdmin = mediaProxyUploadRouteDeps.getSupabaseAdminClient();
+    const authorized = await mediaProxyUploadRouteDeps.canManageStore(supabaseAdmin, storeId, user.id);
     if (!authorized) {
       return NextResponse.json({ error: "Store admin access required" }, { status: 403 });
     }
@@ -96,6 +117,18 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (supabaseAdmin) {
+      await recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "media.proxy-upload.failure",
+        severity: "warning",
+        source: "media",
+        title: "Media fallback upload failed",
+        error,
+        route: "/api/media/proxy-upload",
+        storeId: requestedStoreId,
+        requestId: getRequestId(req),
+      });
+    }
     console.error("Media proxy upload error:", error);
     return NextResponse.json({ error: "Failed to proxy media upload" }, { status: 500 });
   }
