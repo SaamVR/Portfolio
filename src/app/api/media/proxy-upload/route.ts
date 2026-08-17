@@ -11,6 +11,44 @@ export const dynamic = "force-dynamic";
 const MEDIA_BUCKET = "store-media";
 const MAX_PROXY_BYTES = 4 * 1024 * 1024;
 
+export function validateProxyUploadInput(input: {
+  fileSize: number;
+  fileType: string;
+  storeId: string;
+  path: string;
+}) {
+  const storeId = input.storeId.trim();
+  const path = input.path.trim();
+  const fileType = input.fileType.trim().toLowerCase();
+
+  if (!storeId || !path.startsWith(`stores/${storeId}/`)) {
+    return { ok: false as const, status: 400, error: "Invalid upload path" };
+  }
+
+  const pathSegments = path.split("/");
+  if (path.includes("\\") || pathSegments.some((segment) => segment === "." || segment === ".." || segment === "")) {
+    return { ok: false as const, status: 400, error: "Invalid upload path" };
+  }
+
+  if (!Number.isFinite(input.fileSize) || input.fileSize <= 0) {
+    return { ok: false as const, status: 400, error: "Missing media file size" };
+  }
+
+  if (input.fileSize > MAX_PROXY_BYTES) {
+    return {
+      ok: false as const,
+      status: 413,
+      error: "Direct storage upload failed, and this file is too large for server fallback. Try a file under 4MB or configure Cloudinary.",
+    };
+  }
+
+  if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+    return { ok: false as const, status: 415, error: "Only image or video media files are allowed" };
+  }
+
+  return { ok: true as const, contentType: fileType };
+}
+
 export async function POST(req: Request) {
   try {
     const user = await getAuthenticatedUser(req);
@@ -22,21 +60,19 @@ export async function POST(req: Request) {
     const file = formData.get("file");
     const storeId = String(formData.get("storeId") || "");
     const path = String(formData.get("path") || "");
-    const contentType = String(formData.get("contentType") || "application/octet-stream");
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Missing media file" }, { status: 400 });
     }
 
-    if (!storeId || !path.startsWith(`stores/${storeId}/`)) {
-      return NextResponse.json({ error: "Invalid upload path" }, { status: 400 });
-    }
-
-    if (file.size > MAX_PROXY_BYTES) {
-      return NextResponse.json(
-        { error: "Direct storage upload failed, and this file is too large for server fallback. Try a file under 4MB or configure Cloudinary." },
-        { status: 413 },
-      );
+    const validation = validateProxyUploadInput({
+      fileSize: file.size,
+      fileType: file.type,
+      storeId,
+      path,
+    });
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
@@ -48,7 +84,9 @@ export async function POST(req: Request) {
     const { error } = await supabaseAdmin.storage
       .from(MEDIA_BUCKET)
       .upload(path, file, {
-        contentType,
+        // Trust the uploaded File's browser/runtime MIME metadata rather than a
+        // separate caller-controlled form field.
+        contentType: validation.contentType,
         upsert: false,
       });
 
