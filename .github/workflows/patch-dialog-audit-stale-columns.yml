@@ -1,4 +1,4 @@
-name: Patch Dialog And Audit Stale Columns
+name: Patch Stale Control Plane Columns
 
 on:
   push:
@@ -11,40 +11,55 @@ permissions:
   contents: write
 
 jobs:
-  patch-and-audit:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: audit-fixes-2026-08-16
-      - name: Remove duplicate dialog handler and locate stale queries
+      - name: Remove retired control-plane columns
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('tests/preview-smoke.spec.ts')
+
+          path = Path('src/views/admin/PlatformControlPlane.tsx')
           text = path.read_text()
-          old = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    page.on("dialog", async (dialog) => {\n      expect(dialog.type()).toBe("confirm");\n      await dialog.accept();\n    });\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();'''
-          new = '''    await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();\n    await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();'''
-          if text.count(old) != 2:
-              raise SystemExit(f'Expected two local marketplace dialog blocks, found {text.count(old)}')
-          # Only the first/main smoke already has a global dialog accept handler.
-          text = text.replace(old, new, 1)
+          replacements = {
+            'products: Array<{ id: string; store_id: string; images?: any; thumbnail?: string | null; variants?: any; description?: string | null }>;':
+              'products: Array<{ id: string; store_id: string; images?: any; variants?: any; description?: string | null }>;',
+            'blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null; content?: any }>;':
+              'blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>;',
+            '.from("products").select("id, store_id, images, thumbnail, variants, description")':
+              '.from("products").select("id, store_id, images, variants, description")',
+            '.from("store_page_blocks").select("id, store_id, page_id, is_visible, content")':
+              '.from("store_page_blocks").select("id, store_id, page_id, is_visible")',
+            'products: (products ?? []) as Array<{ id: string; store_id: string; images?: any; thumbnail?: string | null; variants?: any; description?: string | null }>,':
+              'products: (products ?? []) as Array<{ id: string; store_id: string; images?: any; variants?: any; description?: string | null }>,',
+            'blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null; content?: any }>,':
+              'blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>,',
+          }
+          for old, new in replacements.items():
+            count = text.count(old)
+            if count != 1:
+              raise SystemExit(f'Expected one occurrence of {old!r}, found {count}')
+            text = text.replace(old, new, 1)
           path.write_text(text)
           PY
 
           git diff --check
-          git diff -- tests/preview-smoke.spec.ts
-
-          echo '=== references to thumbnail ==='
-          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' 'thumbnail' src supabase tests || true
-          echo '=== references to store_page_blocks ==='
-          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' 'store_page_blocks' src supabase tests || true
-          echo '=== references to block content selections ==='
-          grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude='*.map' -E 'store_page_blocks.*content|content.*store_page_blocks|id,store_id,page_id,is_visible,content' src supabase tests || true
+          git diff -- src/views/admin/PlatformControlPlane.tsx
+          if grep -n 'images, thumbnail, variants' src/views/admin/PlatformControlPlane.tsx; then
+            echo 'stale product thumbnail select remains' >&2
+            exit 1
+          fi
+          if grep -n 'page_id, is_visible, content' src/views/admin/PlatformControlPlane.tsx; then
+            echo 'stale block content select remains' >&2
+            exit 1
+          fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/preview-smoke.spec.ts
-          git commit -m "test: avoid duplicate marketplace dialog handling"
+          git add src/views/admin/PlatformControlPlane.tsx
+          git commit -m "fix: stop querying retired control-plane columns"
           git push origin HEAD:audit-fixes-2026-08-16
