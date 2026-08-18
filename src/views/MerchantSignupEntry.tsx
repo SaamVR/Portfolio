@@ -16,13 +16,15 @@ type AllowedSignupMode = "initial" | "additional" | null;
 export default function MerchantSignupEntry() {
   const { user, session, loading, authRecovery, signOut } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [checkingAccountType, setCheckingAccountType] = useState(false);
   const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
   const [allowedMode, setAllowedMode] = useState<AllowedSignupMode>(null);
   const [routingError, setRoutingError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
+  const searchKey = searchParams.toString();
+  const entry = searchParams.get("entry");
   const intent = searchParams.get("intent");
   const isAdditionalStoreRequest = intent === "new-store";
 
@@ -34,7 +36,7 @@ export default function MerchantSignupEntry() {
     const controller = new AbortController();
     setCheckingAccountType(true);
 
-    const nextParams = new URLSearchParams(searchParams);
+    const nextParams = new URLSearchParams(searchKey);
     nextParams.set("entry", "dashboard");
     const merchantOnboardingPath = `/signup?${nextParams.toString()}`;
 
@@ -57,10 +59,10 @@ export default function MerchantSignupEntry() {
         }
 
         if (destination.kind === "unassigned") {
-          const next = new URLSearchParams(searchParams);
-          next.set("entry", "dashboard");
           setAllowedMode("initial");
-          setSearchParams(next, { replace: true });
+          if (entry !== "dashboard") {
+            navigate(merchantOnboardingPath, { replace: true, scroll: false });
+          }
           return;
         }
 
@@ -77,14 +79,14 @@ export default function MerchantSignupEntry() {
   }, [
     attempt,
     authRecovery.reason,
+    entry,
     isAdditionalStoreRequest,
     loading,
     navigate,
     resolvedUserId,
     routingError,
-    searchParams,
+    searchKey,
     session?.access_token,
-    setSearchParams,
     user,
   ]);
 
@@ -130,6 +132,10 @@ export default function MerchantSignupEntry() {
         </Card>
       </main>
     );
+  }
+
+  if (user && allowedMode === "initial" && entry !== "dashboard") {
+    return <AdminRouteFallback label="Preparing merchant onboarding" fullScreen />;
   }
 
   if (user && allowedMode) {
