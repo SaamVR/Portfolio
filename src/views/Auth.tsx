@@ -19,6 +19,8 @@ import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-clien
 import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-client";
+import { sanitizeInternalReturnPath } from "@/lib/auth/post-auth-destination";
 
 type AuthMode = "login" | "signup";
 type PhoneIntent = "login" | "signup";
@@ -41,7 +43,16 @@ const Auth = () => {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const accountPath = storefrontPath("/account", currentStore?.slug);
-  const nextPath = searchParams.get("next") || accountPath;
+  const nextPath = sanitizeInternalReturnPath(searchParams.get("next")) || accountPath;
+  const redirectPath = buildAuthRedirectPath({
+    intent: "customer",
+    nextPath,
+    storeSlug: currentStore?.slug,
+  });
+  const oauthRedirectPath = buildAuthRedirectPath({
+    intent: "customer",
+    storeSlug: currentStore?.slug,
+  });
   const isPurchaseReturn = nextPath.includes("/checkout") || nextPath.includes("/cart") || nextPath.includes("/product");
   const LayoutWrapper = currentStore?.id ? StorefrontLayout : Layout;
 
@@ -54,9 +65,9 @@ const Auth = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      navigate(nextPath, { replace: true });
+      navigate(redirectPath, { replace: true });
     }
-  }, [loading, navigate, nextPath, user]);
+  }, [loading, navigate, redirectPath, user]);
 
   const update = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -77,7 +88,7 @@ const Auth = () => {
       });
       if (error) throw error;
       toast.success("Logged in successfully");
-      navigate(nextPath, { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -89,10 +100,9 @@ const Auth = () => {
     setGoogleLoading(true);
     try {
       await signInWithGoogle({
-        redirectPath: storefrontPath("/auth", currentStore?.slug),
+        redirectPath: oauthRedirectPath,
         nextPath,
       });
-      navigate(nextPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Google authentication failed");
       setGoogleLoading(false);
@@ -150,7 +160,7 @@ const Auth = () => {
       if (sessionError) throw sessionError;
 
       toast.success(phoneIntent === "signup" ? "Account created." : "Logged in successfully.");
-      navigate(nextPath, { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Phone verification failed");
     } finally {
