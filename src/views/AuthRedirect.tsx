@@ -11,6 +11,7 @@ import { fetchAuthDestination } from "@/lib/auth/auth-redirect-client";
 import { parseAuthEntryIntent } from "@/lib/auth/post-auth-destination";
 import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 import { shouldUseDedicatedStorefrontPaths } from "@/lib/slug";
+import { supabase } from "@/integrations/supabase/client";
 
 const destinationCopy = {
   platform: {
@@ -60,6 +61,44 @@ export default function AuthRedirect() {
     return "/admin/login";
   }, [intent, nextPath]);
 
+  const ensureVerifiedCustomerProfile = useCallback(async (storeId: string) => {
+    if (!user) throw new Error("Customer session was not available during account setup.");
+
+    const metadataDisplayName =
+      typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name
+        : typeof user.user_metadata?.name === "string"
+          ? user.user_metadata.name
+          : null;
+    const displayName = metadataDisplayName || user.email?.split("@")[0] || user.phone || "Customer";
+    const avatarUrl =
+      typeof user.user_metadata?.avatar_url === "string"
+        ? user.user_metadata.avatar_url
+        : typeof user.user_metadata?.picture === "string"
+          ? user.user_metadata.picture
+          : null;
+    const phone =
+      typeof user.user_metadata?.phone_number === "string"
+        ? user.user_metadata.phone_number
+        : user.phone || null;
+
+    const { error: profileError } = await (supabase as any)
+      .from("store_customer_profiles")
+      .upsert({
+        store_id: storeId,
+        user_id: user.id,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        phone,
+        email: user.email || null,
+        status: "active",
+      }, { onConflict: "store_id,user_id" });
+
+    if (profileError) {
+      throw new Error("Your login succeeded, but the storefront customer profile could not be prepared. Please retry.");
+    }
+  }, [user]);
+
   const resolveDestination = useCallback(async () => {
     if (!session?.access_token) return;
 
@@ -77,6 +116,11 @@ export default function AuthRedirect() {
         throw new Error("The login destination resolved back to the redirect page.");
       }
 
+      if (destination.kind === "unassigned" && intent === "customer" && destination.storeId) {
+        await ensureVerifiedCustomerProfile(destination.storeId);
+        setKind("customer");
+      }
+
       const isDashboardDestination = destination.kind === "platform" || destination.kind === "merchant";
       const isStorefrontOrigin = Boolean(storeSlug && shouldUseDedicatedStorefrontPaths(storeSlug));
       if (isDashboardDestination && isStorefrontOrigin) {
@@ -91,7 +135,7 @@ export default function AuthRedirect() {
     } finally {
       setResolving(false);
     }
-  }, [intent, navigate, nextPath, session?.access_token, storeSlug]);
+  }, [ensureVerifiedCustomerProfile, intent, navigate, nextPath, session?.access_token, storeSlug]);
 
   useEffect(() => {
     if (loading || !session?.access_token) return;
