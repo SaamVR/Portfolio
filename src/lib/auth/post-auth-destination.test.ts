@@ -119,15 +119,25 @@ test("unassigned identities preserve the explicit onboarding intent", () => {
 });
 
 test("customer return paths cannot escape into privileged application surfaces", () => {
-  const destination = resolvePostAuthDestination({
-    identity: {
-      platformRole: null,
-      hasMerchantAccess: false,
-      customerStores: [{ storeId: "store-a", slug: "alpha-shop" }],
-    },
-    intent: "customer",
-    requestedNext: "/cms-admin?tab=overview",
-  });
+  const identity = {
+    platformRole: null,
+    hasMerchantAccess: false,
+    customerStores: [{ storeId: "store-a", slug: "alpha-shop" }],
+  };
 
-  assert.equal(destination.path, "/stores/alpha-shop/account");
+  for (const requestedNext of [
+    "/cms-admin?tab=overview",
+    "/cms-admin#billing",
+    "/admin/orders",
+    "/admin#orders",
+    "/signup?entry=dashboard",
+    "/api/auth/destination",
+    "/auth/redirect?intent=dashboard",
+  ]) {
+    assert.equal(
+      resolvePostAuthDestination({ identity, intent: "customer", requestedNext }).path,
+      "/stores/alpha-shop/account",
+      `customer must not be redirected to ${requestedNext}`,
+    );
+  }
 });
