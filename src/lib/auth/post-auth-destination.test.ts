@@ -29,6 +29,14 @@ test("platform users always return to the control plane", () => {
     }).path,
     "/cms-admin?tab=billing",
   );
+
+  assert.equal(
+    resolvePostAuthDestination({
+      identity: { platformRole: "billing_admin", hasMerchantAccess: false },
+      requestedNext: "/admin/orders",
+    }).path,
+    "/cms-admin",
+  );
 });
 
 test("merchant users return to their store dashboard and preserve safe admin deep links", () => {
@@ -46,6 +54,14 @@ test("merchant users return to their store dashboard and preserve safe admin dee
       requestedNext: "/admin/orders?status=pending",
     }).path,
     "/admin/orders?status=pending",
+  );
+
+  assert.equal(
+    resolvePostAuthDestination({
+      identity: { platformRole: "co_admin", hasMerchantAccess: false },
+      requestedNext: "/cms-admin",
+    }).path,
+    "/admin",
   );
 });
 
