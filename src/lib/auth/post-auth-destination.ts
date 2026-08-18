@@ -48,25 +48,26 @@ export function sanitizeInternalReturnPath(value?: string | null): string | null
   }
 }
 
+function matchesPathPrefix(path: string, prefix: string) {
+  return path === prefix
+    || path.startsWith(`${prefix}/`)
+    || path.startsWith(`${prefix}?`)
+    || path.startsWith(`${prefix}#`);
+}
+
 function isCmsAdminPath(path: string | null) {
-  return Boolean(path && (path === "/cms-admin" || path.startsWith("/cms-admin?" ) || path.startsWith("/cms-admin#") || path.startsWith("/cms-admin/")));
+  return Boolean(path && matchesPathPrefix(path, "/cms-admin"));
 }
 
 function isMerchantAdminPath(path: string | null) {
-  if (!path) return false;
-  if (!(path === "/admin" || path.startsWith("/admin?") || path.startsWith("/admin#") || path.startsWith("/admin/"))) {
-    return false;
-  }
-  return !path.startsWith("/admin/login") && !path.startsWith("/admin/setup");
+  if (!path || !matchesPathPrefix(path, "/admin")) return false;
+  return !matchesPathPrefix(path, "/admin/login") && !matchesPathPrefix(path, "/admin/setup");
 }
 
 function isMerchantSignupPath(path: string | null) {
   return Boolean(
     path
-      && (path === "/signup"
-        || path.startsWith("/signup?")
-        || path.startsWith("/merchant-signup")
-      ),
+      && (matchesPathPrefix(path, "/signup") || matchesPathPrefix(path, "/merchant-signup")),
   );
 }
 
@@ -80,7 +81,7 @@ function isCustomerPath(path: string | null) {
     "/api",
     "/auth/redirect",
   ];
-  return !blockedPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}?`));
+  return !blockedPrefixes.some((prefix) => matchesPathPrefix(path, prefix));
 }
 
 function normalizeStoreSlug(value?: string | null) {
