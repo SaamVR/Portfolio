@@ -5,6 +5,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   Package,
+  PanelsTopLeft,
   Rocket,
   Settings,
   ShoppingCart,
@@ -12,9 +13,7 @@ import {
   Store,
   Users,
 } from "lucide-react";
-import { withStoreId } from "@/lib/admin-paths";
-
-
+import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 
 export type AdminNavigationSection = "primary" | "secondary";
 
@@ -129,6 +128,16 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
         "/admin/onboarding",
       ],
       description: "Customize design, pick themes, manage pages, blog, and media in one place.",
+      mobileShortLabel: "Website",
+    },
+    {
+      to: buildPageBuilderPath("basic", { storeId: context.activeStoreId }),
+      icon: PanelsTopLeft,
+      label: "Website editor",
+      section: "storefront",
+      show: context.cmsEnabled && !compact,
+      match: ["/admin/page-builder/basic", "/admin/page-builder"],
+      description: "Jump directly into the guided storefront editor.",
       mobileShortLabel: "Website",
     },
     {
