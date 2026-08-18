@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchAuthDestination } from "@/lib/auth/auth-redirect-client";
 import { parseAuthEntryIntent } from "@/lib/auth/post-auth-destination";
+import { getPlatformSiteUrl } from "@/lib/platform/site-config";
+import { shouldUseDedicatedStorefrontPaths } from "@/lib/slug";
 
 const destinationCopy = {
   platform: {
@@ -74,6 +76,15 @@ export default function AuthRedirect() {
       if (destination.path === "/auth/redirect" || destination.path.startsWith("/auth/redirect?")) {
         throw new Error("The login destination resolved back to the redirect page.");
       }
+
+      const isDashboardDestination = destination.kind === "platform" || destination.kind === "merchant";
+      const isStorefrontOrigin = Boolean(storeSlug && shouldUseDedicatedStorefrontPaths(storeSlug));
+      if (isDashboardDestination && isStorefrontOrigin) {
+        const platformUrl = new URL(destination.path, `${getPlatformSiteUrl().replace(/\/$/, "")}/`);
+        window.location.assign(platformUrl.toString());
+        return;
+      }
+
       navigate(destination.path, { replace: true });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Could not finish the login redirect.");
