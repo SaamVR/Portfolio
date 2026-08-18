@@ -130,6 +130,24 @@ export async function GET(req: Request) {
       storeSlugHint,
     });
 
+    if (destination.kind === "unassigned" && intent === "customer" && storeSlugHint) {
+      const { data: hintedStore, error: hintedStoreError } = await supabaseAdmin
+        .from("stores")
+        .select("id, slug")
+        .eq("slug", storeSlugHint)
+        .maybeSingle();
+
+      if (hintedStoreError) {
+        console.error("Auth destination hinted storefront lookup failed:", hintedStoreError);
+        return noStoreJson({ error: "Failed to resolve the storefront for this customer login" }, { status: 500 });
+      }
+
+      if (hintedStore?.id && hintedStore?.slug) {
+        destination.storeId = hintedStore.id;
+        destination.storeSlug = hintedStore.slug;
+      }
+    }
+
     return noStoreJson(destination);
   } catch (error) {
     console.error("Auth destination resolver failed:", error);
