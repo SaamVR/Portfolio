@@ -6,7 +6,7 @@ import { RefreshCw, ShieldAlert } from "lucide-react";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
-import MerchantSignupV2 from "@/views/MerchantSignupV2";
+import MerchantSignupV3 from "@/views/MerchantSignupV3";
 import { fetchAuthDestination } from "@/lib/auth/auth-redirect-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,7 +91,7 @@ export default function MerchantSignupEntry() {
   ]);
 
   if (!user && !loading) {
-    return <MerchantSignupV2 />;
+    return <MerchantSignupV3 />;
   }
 
   if (loading || checkingAccountType || (user && resolvedUserId !== user.id && !routingError)) {
@@ -135,11 +135,11 @@ export default function MerchantSignupEntry() {
   }
 
   if (user && allowedMode === "initial" && entry !== "dashboard") {
-    return <AdminRouteFallback label="Preparing merchant onboarding" fullScreen />;
+    return <AdminRouteFallback label="Preparing merchant registration" fullScreen />;
   }
 
   if (user && allowedMode) {
-    return <MerchantSignupV2 />;
+    return <MerchantSignupV3 />;
   }
 
   return <AdminRouteFallback label="Opening the correct account workspace" fullScreen />;
