@@ -93,6 +93,18 @@ describe("blog inline commerce directives", () => {
     expect(html.includes("source=sale")).toBe(false);
     expect(html.includes("layout=lookbook")).toBe(false);
   });
+
+  it("keeps CTA directive metadata out of automatic excerpts", () => {
+    expect(buildBlogExcerpt("Useful intro.\n\n[[cta kind=contact label=Ask%20us heading=Need%20help%3F text=Talk%20to%20the%20team.]]\n\nUseful ending."))
+      .toBe("Useful intro. Useful ending.");
+  });
+
+  it("renders CTA directives as preview placeholders instead of article text", () => {
+    const html = markdownToHtml("Before.\n\n[[cta kind=whatsapp label=Chat%20now heading=Need%20help%3F]]\n\nAfter.");
+    expect(html.includes("Call to action renders here.")).toBe(true);
+    expect(html.includes("kind=whatsapp")).toBe(false);
+    expect(html.includes("Need%20help")).toBe(false);
+  });
 });
 
 describe("blog table of contents", () => {

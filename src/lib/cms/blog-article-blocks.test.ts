@@ -80,6 +80,22 @@ describe("Blog article block adapter", () => {
     assert.equal(serializeBlogArticleBlocks(blocks), markdown);
   });
 
+  it("round-trips migration-free CTA directives as first-class structured blocks", () => {
+    const markdown = "Intro.\n\n[[cta kind=category label=Shop%20bags heading=Ready%20to%20browse%3F text=Explore%20the%20collection. category=Travel%20Bags]]\n\nClosing.";
+    const blocks = parseBlogArticleBlocks(markdown);
+    const ctaBlock = blocks.find((block) => block.type === "cta");
+
+    assert.deepEqual(ctaBlock, {
+      type: "cta",
+      kind: "category",
+      label: "Shop bags",
+      heading: "Ready to browse?",
+      text: "Explore the collection.",
+      category: "Travel Bags",
+    });
+    assert.equal(serializeBlogArticleBlocks(blocks), markdown);
+  });
+
   it("preserves fenced and unsupported Markdown as raw blocks", () => {
     const markdown = [
       "# Legacy body heading",
@@ -147,6 +163,13 @@ describe("Blog article block adapter", () => {
   it("creates supported starter blocks without introducing a new storage format", () => {
     assert.deepEqual(createBlogArticleBlock("heading"), { type: "heading", level: 2, text: "New section" });
     assert.deepEqual(createBlogArticleBlock("products"), { type: "products", source: "manual", limit: 4, layout: "grid" });
+    assert.deepEqual(createBlogArticleBlock("cta"), {
+      type: "cta",
+      kind: "shop",
+      heading: "Ready to explore?",
+      text: "Browse the products and options available from this store.",
+      label: "Shop now",
+    });
     assert.match(serializeBlogArticleBlocks([createBlogArticleBlock("table")]), /\| Option \| Details \|/);
   });
 });

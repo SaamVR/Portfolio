@@ -4,6 +4,12 @@ import {
   type BlogProductLayout,
   type BlogProductSource,
 } from "./blog";
+import {
+  defaultBlogCtaLabel,
+  parseBlogCtaDirective,
+  serializeBlogCtaDirective,
+  type BlogCtaKind,
+} from "./blog-cta";
 
 export type BlogArticleBlock =
   | { type: "heading"; level: 2 | 3; text: string }
@@ -12,6 +18,7 @@ export type BlogArticleBlock =
   | { type: "quote"; text: string }
   | { type: "table"; markdown: string }
   | { type: "products"; source: BlogProductSource; limit: number; layout: BlogProductLayout; category?: string }
+  | { type: "cta"; kind: BlogCtaKind; label: string; heading: string; text: string; category?: string }
   | { type: "markdown"; markdown: string };
 
 export type BlogArticleInsertion =
@@ -38,6 +45,7 @@ function startsStructuredBlock(lines: string[], index: number) {
   const line = lines[index] ?? "";
   const next = lines[index + 1] ?? "";
   if (parseBlogProductDirective(line.trim())) return true;
+  if (parseBlogCtaDirective(line.trim())) return true;
   if (/^#{2,3}\s+/.test(line)) return true;
   if (/^```/.test(line)) return true;
   if (/^>\s?/.test(line)) return true;
@@ -67,6 +75,20 @@ export function parseBlogArticleBlocks(markdown: string): BlogArticleBlock[] {
 
     if (productDirective) {
       blocks.push({ type: "products", ...productDirective });
+      index += 1;
+      continue;
+    }
+
+    const ctaDirective = parseBlogCtaDirective(trimmed);
+    if (ctaDirective) {
+      blocks.push({
+        type: "cta",
+        kind: ctaDirective.kind,
+        label: ctaDirective.label,
+        heading: ctaDirective.heading ?? "",
+        text: ctaDirective.text ?? "",
+        ...(ctaDirective.category ? { category: ctaDirective.category } : {}),
+      });
       index += 1;
       continue;
     }
@@ -169,6 +191,8 @@ export function serializeBlogArticleBlocks(blocks: BlogArticleBlock[]): string {
           return block.markdown.trim();
         case "products":
           return serializeBlogProductDirective(block);
+        case "cta":
+          return serializeBlogCtaDirective(block);
         case "markdown":
           return block.markdown.trim();
       }
@@ -250,6 +274,14 @@ export function createBlogArticleBlock(type: BlogArticleBlock["type"]): BlogArti
       return { type: "table", markdown: "| Option | Details |\n| --- | --- |\n| A | Add details |" };
     case "products":
       return { type: "products", source: "manual", limit: 4, layout: "grid" };
+    case "cta":
+      return {
+        type: "cta",
+        kind: "shop",
+        heading: "Ready to explore?",
+        text: "Browse the products and options available from this store.",
+        label: defaultBlogCtaLabel("shop"),
+      };
     case "markdown":
       return { type: "markdown", markdown: "" };
   }

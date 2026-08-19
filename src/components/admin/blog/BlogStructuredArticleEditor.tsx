@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowUpRight,
   ChevronDown,
   ChevronUp,
   Code2,
@@ -27,6 +28,7 @@ import {
   type BlogArticleInsertion,
 } from "@/lib/cms/blog-article-blocks";
 import type { BlogProductLayout, BlogProductSource } from "@/lib/cms/blog";
+import type { BlogCtaKind } from "@/lib/cms/blog-cta";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_SOURCE_OPTIONS: Array<{ value: BlogProductSource; label: string; description: string }> = [
@@ -46,6 +48,13 @@ const PRODUCT_LAYOUT_OPTIONS: Array<{ value: BlogProductLayout; label: string; d
   { value: "lookbook", label: "Lookbook", description: "Image-first merchandising for collections, styling, rooms, bundles, and visual stories." },
 ];
 
+const CTA_KIND_OPTIONS: Array<{ value: BlogCtaKind; label: string; description: string }> = [
+  { value: "shop", label: "Shop", description: "Send readers to this store's main catalog." },
+  { value: "category", label: "Shop category", description: "Open this store's catalog filtered to one category." },
+  { value: "contact", label: "Contact", description: "Send readers to this store's contact page." },
+  { value: "whatsapp", label: "WhatsApp", description: "Use this store's existing WhatsApp Support settings, with Contact as a safe fallback." },
+];
+
 function blockLabel(block: BlogArticleBlock) {
   switch (block.type) {
     case "heading": return `H${block.level} heading`;
@@ -54,6 +63,7 @@ function blockLabel(block: BlogArticleBlock) {
     case "quote": return "Quote";
     case "table": return "Comparison table";
     case "products": return "Product cards";
+    case "cta": return "Call to action";
     case "markdown": return "Raw Markdown";
   }
 }
@@ -66,6 +76,7 @@ function blockIcon(block: BlogArticleBlock) {
     case "quote": return Quote;
     case "table": return Table2;
     case "products": return ShoppingBag;
+    case "cta": return ArrowUpRight;
     case "markdown": return Code2;
   }
 }
@@ -323,6 +334,51 @@ export default function BlogStructuredArticleEditor({
                     </div>
                   ) : null}
 
+                  {block.type === "cta" ? (
+                    <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-4">
+                      <div className="flex items-start gap-3">
+                        <ArrowUpRight className="mt-0.5 h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Article call to action</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{CTA_KIND_OPTIONS.find((option) => option.value === block.kind)?.description}</p>
+                        </div>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Destination</p>
+                          <Select value={block.kind} onValueChange={(kind) => updateBlock(index, { ...block, kind: kind as BlogCtaKind })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {CTA_KIND_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Button label</p>
+                          <Input value={block.label} onChange={(event) => updateBlock(index, { ...block, label: event.target.value })} placeholder="Shop now" maxLength={80} />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-foreground">Heading</p>
+                        <Input value={block.heading} onChange={(event) => updateBlock(index, { ...block, heading: event.target.value })} placeholder="Ready to explore?" maxLength={140} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-foreground">Supporting text</p>
+                        <Textarea value={block.text} onChange={(event) => updateBlock(index, { ...block, text: event.target.value })} rows={3} placeholder="Give the reader a useful next step." maxLength={320} />
+                      </div>
+                      {block.kind === "category" ? (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Catalog category</p>
+                          <Input value={block.category ?? ""} onChange={(event) => updateBlock(index, { ...block, category: event.target.value })} placeholder="e.g. Backpacks" maxLength={120} />
+                          <p className="text-[11px] leading-4 text-muted-foreground">Leave blank to use the article category when one is available.</p>
+                        </div>
+                      ) : null}
+                      {block.kind === "whatsapp" ? (
+                        <p className="text-[11px] leading-4 text-muted-foreground">Uses this store's existing WhatsApp Support number/message at render time. If WhatsApp is disabled or missing, the button safely falls back to the store Contact page.</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {block.type === "markdown" ? (
                     <div className="space-y-2">
                       <p className="text-xs leading-5 text-muted-foreground">Preserved legacy/advanced Markdown. Edit it directly so unsupported syntax is never silently discarded.</p>
@@ -344,6 +400,7 @@ export default function BlogStructuredArticleEditor({
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("quote")}><Quote className="mr-1.5 h-3.5 w-3.5" /> Quote</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("table")}><Table2 className="mr-1.5 h-3.5 w-3.5" /> Table</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("products")} disabled={hasProductBlock}><ShoppingBag className="mr-1.5 h-3.5 w-3.5" /> Products</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => addBlock("cta")}><ArrowUpRight className="mr-1.5 h-3.5 w-3.5" /> CTA</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("markdown")}><Code2 className="mr-1.5 h-3.5 w-3.5" /> Raw</Button>
       </div>
     </div>

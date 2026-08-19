@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { slugify, storefrontPath } from "@/lib/slug";
+import { parseBlogCtaDirective, stripBlogCtaDirectives } from "@/lib/cms/blog-cta";
 
 export type BlogPostStatus = "draft" | "scheduled" | "published";
 export type BlogProductEmbedPosition = "before-content" | "after-intro" | "after-content";
@@ -253,6 +254,13 @@ export function markdownToHtml(markdown: string) {
       continue;
     }
 
+    if (parseBlogCtaDirective(line.trim())) {
+      flushParagraph();
+      closeList();
+      html.push("<blockquote><p>➡️ Call to action renders here.</p></blockquote>");
+      continue;
+    }
+
     const headerCells = parseMarkdownTableRow(line);
     const separatorCells = index + 1 < lines.length ? parseMarkdownTableRow(lines[index + 1]) : null;
     if (
@@ -350,7 +358,7 @@ export function splitBlogContentAtProductDirectives(content: string) {
 }
 
 export function stripMarkdown(markdown: string) {
-  return markdown
+  return stripBlogCtaDirectives(markdown)
     .replace(blogProductsDirectiveRegex("gi"), " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")

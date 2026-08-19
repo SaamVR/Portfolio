@@ -21,9 +21,10 @@ import {
   type BlogProductLayout,
   type BlogProductRecord,
 } from "@/lib/cms/blog";
+import { splitBlogContentAtCtaDirectives, type BlogCtaDirective } from "@/lib/cms/blog-cta";
 import type { BlogSettings } from "@/lib/cms/blog-settings";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
-import { productUrl } from "@/lib/slug";
+import { productUrl, storefrontPath } from "@/lib/slug";
 
 function money(value: number, store: Store) {
   try {
@@ -51,6 +52,63 @@ function blogAttributedProductUrl(store: Store, post: BlogPostRecord, product: B
     utm_content: post.id,
   });
   return `${base}${base.includes("?") ? "&" : "?"}${params.toString()}`;
+}
+
+function blogAttributedStorefrontUrl(
+  store: Store,
+  post: BlogPostRecord,
+  path: string,
+  extra: Record<string, string> = {},
+) {
+  const base = storefrontPath(path, store.slug);
+  const params = new URLSearchParams({
+    ...extra,
+    utm_source: "blog",
+    utm_medium: "editorial",
+    utm_campaign: post.slug,
+    utm_content: "cta",
+  });
+  return `${base}${base.includes("?") ? "&" : "?"}${params.toString()}`;
+}
+
+type WhatsAppSupportSettings = {
+  enabled?: boolean;
+  number?: string;
+  message?: string;
+};
+
+function getWhatsAppSupportSettings(store: Store): WhatsAppSupportSettings | null {
+  const siteSettings = (store as Store & { siteSettings?: Record<string, unknown> }).siteSettings;
+  const raw = siteSettings?.whatsapp_support;
+  return raw && typeof raw === "object" ? raw as WhatsAppSupportSettings : null;
+}
+
+function resolveBlogCtaDestination(store: Store, post: BlogPostRecord, directive: BlogCtaDirective) {
+  if (directive.kind === "whatsapp") {
+    const settings = getWhatsAppSupportSettings(store);
+    const phone = String(settings?.number ?? "").replace(/\D/g, "");
+    if (settings?.enabled && phone) {
+      const text = encodeURIComponent(
+        String(settings.message ?? "").trim() || `Hi! I have a question about ${post.title}.`,
+      );
+      return { href: `https://wa.me/${phone}?text=${text}`, external: true };
+    }
+    return { href: blogAttributedStorefrontUrl(store, post, "/contact"), external: false };
+  }
+
+  if (directive.kind === "contact") {
+    return { href: blogAttributedStorefrontUrl(store, post, "/contact"), external: false };
+  }
+
+  if (directive.kind === "category") {
+    const category = directive.category?.trim() || post.category?.trim() || "";
+    return {
+      href: blogAttributedStorefrontUrl(store, post, "/shop", category ? { category } : {}),
+      external: false,
+    };
+  }
+
+  return { href: blogAttributedStorefrontUrl(store, post, "/shop"), external: false };
 }
 
 function ProductImage({ product, className }: { product: BlogProductRecord; className: string }) {
@@ -199,6 +257,28 @@ function ProductMerchandising({
   );
 }
 
+function BlogConversionCta({ store, post, directive }: { store: Store; post: BlogPostRecord; directive: BlogCtaDirective }) {
+  const destination = resolveBlogCtaDestination(store, post, directive);
+  const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90";
+  const buttonContent = <>{directive.label}<ArrowRight className="h-4 w-4" /></>;
+
+  return (
+    <aside className="my-8 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-6 sm:p-8">
+      <div className="max-w-2xl">
+        {directive.heading ? <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">{directive.heading}</h2> : null}
+        {directive.text ? <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">{directive.text}</p> : null}
+        <div className={directive.heading || directive.text ? "mt-5" : undefined}>
+          {destination.external ? (
+            <a href={destination.href} target="_blank" rel="noopener noreferrer" className={buttonClass}>{buttonContent}</a>
+          ) : (
+            <Link href={destination.href} className={buttonClass}>{buttonContent}</Link>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function ArticleTableOfContents({ headings }: { headings: BlogHeading[] }) {
   if (headings.length < 2) return null;
 
@@ -221,12 +301,26 @@ function ArticleTableOfContents({ headings }: { headings: BlogHeading[] }) {
   );
 }
 
-function ArticleContent({ store, post, products, layout }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[]; layout: BlogProductLayout }) {
-  const chunks = splitBlogContentAtProductDirectives(post.content);
+function ArticleMarkdownAndProducts({
+  content,
+  store,
+  post,
+  products,
+  layout,
+  segmentKey,
+}: {
+  content: string;
+  store: Store;
+  post: BlogPostRecord;
+  products: BlogProductRecord[];
+  layout: BlogProductLayout;
+  segmentKey: string;
+}) {
+  const chunks = splitBlogContentAtProductDirectives(content);
   return (
     <>
       {chunks.map((chunk, index) => (
-        <div key={`${post.id}-chunk-${index}`}>
+        <div key={`${segmentKey}-product-chunk-${index}`}>
           {chunk.trim() ? (
             <div
               className="prose prose-neutral mt-9 max-w-none scroll-smooth dark:prose-invert prose-headings:scroll-mt-24 prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-8 prose-a:text-primary prose-a:underline-offset-4 prose-blockquote:border-primary prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-muted prose-pre:p-4 prose-ul:list-disc prose-ol:list-decimal"
@@ -235,6 +329,29 @@ function ArticleContent({ store, post, products, layout }: { store: Store; post:
           ) : null}
           {index < chunks.length - 1 ? <ProductMerchandising store={store} post={post} products={products} layout={layout} /> : null}
         </div>
+      ))}
+    </>
+  );
+}
+
+function ArticleContent({ store, post, products, layout }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[]; layout: BlogProductLayout }) {
+  const segments = splitBlogContentAtCtaDirectives(post.content);
+  return (
+    <>
+      {segments.map((segment, index) => (
+        segment.type === "cta" ? (
+          <BlogConversionCta key={`${post.id}-cta-${index}`} store={store} post={post} directive={segment.directive} />
+        ) : (
+          <ArticleMarkdownAndProducts
+            key={`${post.id}-content-${index}`}
+            content={segment.content}
+            store={store}
+            post={post}
+            products={products}
+            layout={layout}
+            segmentKey={`${post.id}-content-${index}`}
+          />
+        )
       ))}
     </>
   );
