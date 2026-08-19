@@ -20,9 +20,12 @@ export type StorefrontNavigationExperience = {
   useCatalogDropdown: boolean;
 };
 
-const compactNavigationLabels: Partial<Record<StorefrontTemplateId, Partial<Pick<StorefrontNavigationExperience,
+type CompactNavigationLabels = Partial<Pick<
+  StorefrontNavigationExperience,
   "catalogLabel" | "wishlistLabel" | "cartLabel" | "primaryActionLabel"
->>>> = {
+>>;
+
+const compactNavigationLabels: Partial<Record<StorefrontTemplateId, CompactNavigationLabels>> = {
   food: {
     catalogLabel: "Menu",
     wishlistLabel: "Favorites",
