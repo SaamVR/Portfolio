@@ -52,6 +52,56 @@ describe("storefront pricing", () => {
     expect(pricing.grandTotal).toBe(1200);
   });
 
+  it("prices digital checkout through the same engine without double-counting prepaid discounts", () => {
+    const pricing = getStorefrontPricing({
+      subtotal: 1000,
+      couponDiscount: 100,
+      deliverySettings: { enabled: false, delivery_fee: 80, free_threshold: 2000 },
+      paymentSettings: {
+        bkash_enabled: true,
+        nagad_enabled: true,
+        cod_enabled: true,
+        bkash_number: "",
+        nagad_number: "",
+        prepaid_badge_text: "",
+        prepayment_discount_type: "percentage",
+        prepayment_discount_value: 10,
+        bkash_gateway_enabled: false,
+      },
+      paymentMethod: "bkash_manual",
+    });
+
+    expect(pricing.deliveryFee).toBe(0);
+    expect(pricing.couponDiscount).toBe(100);
+    expect(pricing.orderDiscountAmount).toBe(100);
+    expect(pricing.paymentDiscount).toBe(100);
+    expect(pricing.grandTotal).toBe(800);
+  });
+
+  it("does not create a discount from a free-delivery offer when fulfillment is already delivery-free", () => {
+    const pricing = getStorefrontPricing({
+      subtotal: 1200,
+      deliverySettings: { enabled: false, delivery_fee: 80, delivery_fee_outside: 150, free_threshold: 2000 },
+      paymentSettings: {
+        bkash_enabled: true,
+        nagad_enabled: false,
+        cod_enabled: true,
+        bkash_number: "",
+        nagad_number: "",
+        prepaid_badge_text: "",
+        prepayment_discount_type: "free_delivery",
+        prepayment_discount_value: 0,
+        bkash_gateway_enabled: false,
+      },
+      paymentMethod: "bkash",
+    });
+
+    expect(pricing.originalDeliveryFee).toBe(0);
+    expect(pricing.paymentDiscount).toBe(0);
+    expect(pricing.orderDiscountAmount).toBe(0);
+    expect(pricing.grandTotal).toBe(1200);
+  });
+
   it("normalizes delivery defaults without inventing preview-only keys", () => {
     const deliverySettings = getNormalizedDeliverySettings(null);
 
