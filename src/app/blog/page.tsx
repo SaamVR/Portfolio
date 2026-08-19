@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { BlogIndexPage } from "@/components/storefront/blog/BlogIndexPage";
 import { getRequestStoreShell } from "@/lib/cms/request-store";
-import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
-import { getStoreBlogSettings } from "@/lib/cms/blog-settings";
-import type { BlogPostRecord } from "@/lib/cms/blog";
+import { loadPublishedBlogPosts, loadStoreBlogSettings } from "@/lib/cms/blog-server";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   const store = await getRequestStoreShell({ requestedPageSlug: "/blog" });
   if (!store) return {};
-  const settings = getStoreBlogSettings(store);
+  const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   const canonical = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain ?? null }, "/blog");
   const title = settings.seoTitle || `${store.name} Blog`;
   const description = settings.seoDescription || settings.indexDescription || `Stories, guides, and updates from ${store.name}.`;
@@ -37,21 +35,31 @@ export async function generateMetadata() {
   };
 }
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string; tag?: string }>;
+}) {
   const store = await getRequestStoreShell({ requestedPageSlug: "/blog" });
-  const supabase = getCmsSupabaseServerClient();
-  if (!store || !supabase) notFound();
-  const settings = getStoreBlogSettings(store);
+  if (!store) notFound();
+  const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) notFound();
 
-  const { data } = await (supabase as any)
-    .from("blog_posts")
-    .select("*")
-    .eq("store_id", store.id)
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .order("published_at", { ascending: false })
-    .limit(settings.postsPerPage);
+  const filters = await searchParams;
+  const posts = await loadPublishedBlogPosts(store.id, {
+    limit: settings.postsPerPage,
+    search: filters.q,
+    category: filters.category,
+    tag: filters.tag,
+  });
 
-  return <BlogIndexPage store={store} posts={(data ?? []) as BlogPostRecord[]} settings={settings} />;
+  const filteredSettings = filters.category
+    ? { ...settings, indexEyebrow: "Blog category", indexTitle: filters.category }
+    : filters.tag
+      ? { ...settings, indexEyebrow: "Tagged articles", indexTitle: `#${filters.tag}` }
+      : filters.q
+        ? { ...settings, indexEyebrow: "Search results", indexTitle: `Results for “${filters.q}”` }
+        : settings;
+
+  return <BlogIndexPage store={store} posts={posts} settings={filteredSettings} />;
 }
