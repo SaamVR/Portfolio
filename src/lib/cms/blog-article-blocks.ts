@@ -7,6 +7,10 @@ export type BlogArticleBlock =
   | { type: "products" }
   | { type: "markdown"; markdown: string };
 
+export type BlogArticleInsertion =
+  | { type: "markdown"; markdown: string }
+  | { type: "products" };
+
 const PRODUCT_DIRECTIVE = "[[products]]";
 const TABLE_SEPARATOR_CELL = /^:?-{3,}:?$/;
 
@@ -165,6 +169,60 @@ export function serializeBlogArticleBlocks(blocks: BlogArticleBlock[]): string {
     .filter(Boolean)
     .join("\n\n")
     .trim();
+}
+
+export function insertBlogArticleContent(
+  blocks: BlogArticleBlock[],
+  targetIndex: number | null,
+  insertion: BlogArticleInsertion,
+): BlogArticleBlock[] {
+  const validTarget = targetIndex !== null && targetIndex >= 0 && targetIndex < blocks.length
+    ? targetIndex
+    : null;
+
+  if (insertion.type === "products") {
+    if (blocks.some((block) => block.type === "products")) return blocks;
+    const insertAt = validTarget === null ? blocks.length : validTarget + 1;
+    return [...blocks.slice(0, insertAt), { type: "products" }, ...blocks.slice(insertAt)];
+  }
+
+  const markdown = insertion.markdown.trim();
+  if (!markdown) return blocks;
+
+  if (validTarget === null) {
+    return [...blocks, { type: "paragraph", markdown }];
+  }
+
+  const target = blocks[validTarget];
+  if (target.type === "paragraph") {
+    const next = [...blocks];
+    next[validTarget] = {
+      ...target,
+      markdown: [target.markdown.trim(), markdown].filter(Boolean).join(" "),
+    };
+    return next;
+  }
+
+  if (target.type === "quote") {
+    const next = [...blocks];
+    next[validTarget] = {
+      ...target,
+      text: [target.text.trim(), markdown].filter(Boolean).join(" "),
+    };
+    return next;
+  }
+
+  if (target.type === "markdown") {
+    const next = [...blocks];
+    next[validTarget] = {
+      ...target,
+      markdown: [target.markdown.trim(), markdown].filter(Boolean).join("\n"),
+    };
+    return next;
+  }
+
+  const insertAt = validTarget + 1;
+  return [...blocks.slice(0, insertAt), { type: "paragraph", markdown }, ...blocks.slice(insertAt)];
 }
 
 export function createBlogArticleBlock(type: BlogArticleBlock["type"]): BlogArticleBlock {

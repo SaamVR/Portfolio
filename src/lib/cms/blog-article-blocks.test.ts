@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   createBlogArticleBlock,
+  insertBlogArticleContent,
   parseBlogArticleBlocks,
   serializeBlogArticleBlocks,
 } from "./blog-article-blocks";
@@ -74,6 +75,44 @@ describe("Blog article block adapter", () => {
 
     assert.ok(productBlock);
     assert.equal(serializeBlogArticleBlocks(blocks), "Intro paragraph.\n\n[[products]]\n\nClosing paragraph.");
+  });
+
+  it("inserts assistant Markdown into the active text block", () => {
+    const blocks = parseBlogArticleBlocks("## Start\n\nHelpful paragraph.\n\n## Next");
+    const next = insertBlogArticleContent(blocks, 1, {
+      type: "markdown",
+      markdown: "[Related guide](/blog/related-guide)",
+    });
+
+    assert.equal(
+      serializeBlogArticleBlocks(next),
+      "## Start\n\nHelpful paragraph. [Related guide](/blog/related-guide)\n\n## Next",
+    );
+  });
+
+  it("inserts assistant Markdown after a non-text target instead of at article end", () => {
+    const blocks = parseBlogArticleBlocks("## Start\n\n- One\n- Two\n\n## Next");
+    const next = insertBlogArticleContent(blocks, 1, {
+      type: "markdown",
+      markdown: "[Related guide](/blog/related-guide)",
+    });
+
+    assert.equal(
+      serializeBlogArticleBlocks(next),
+      "## Start\n\n- One\n- Two\n\n[Related guide](/blog/related-guide)\n\n## Next",
+    );
+  });
+
+  it("places one product block after the active structured block and avoids duplicates", () => {
+    const blocks = parseBlogArticleBlocks("## Start\n\nIntro.\n\n## Next");
+    const withProducts = insertBlogArticleContent(blocks, 1, { type: "products" });
+    const duplicateAttempt = insertBlogArticleContent(withProducts, 0, { type: "products" });
+
+    assert.equal(
+      serializeBlogArticleBlocks(withProducts),
+      "## Start\n\nIntro.\n\n[[products]]\n\n## Next",
+    );
+    assert.deepEqual(duplicateAttempt, withProducts);
   });
 
   it("creates supported starter blocks without introducing a new storage format", () => {

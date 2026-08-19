@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -19,9 +19,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createBlogArticleBlock,
+  insertBlogArticleContent,
   parseBlogArticleBlocks,
   serializeBlogArticleBlocks,
   type BlogArticleBlock,
+  type BlogArticleInsertion,
 } from "@/lib/cms/blog-article-blocks";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,31 @@ function blockIcon(block: BlogArticleBlock) {
   }
 }
 
+function insertionTargetIndex(
+  blocks: BlogArticleBlock[],
+  targetIndex: number | null,
+  insertion: BlogArticleInsertion,
+) {
+  const validTarget = targetIndex !== null && targetIndex >= 0 && targetIndex < blocks.length
+    ? targetIndex
+    : null;
+  if (insertion.type === "products") return validTarget === null ? blocks.length : validTarget + 1;
+  if (validTarget === null) return blocks.length;
+  const target = blocks[validTarget];
+  return target.type === "paragraph" || target.type === "quote" || target.type === "markdown"
+    ? validTarget
+    : validTarget + 1;
+}
+
+function detectAppendedInsertion(currentMarkdown: string, nextMarkdown: string): BlogArticleInsertion | null {
+  if (!nextMarkdown.startsWith(currentMarkdown)) return null;
+  const appended = nextMarkdown.slice(currentMarkdown.length).trim();
+  if (!appended) return null;
+  if (appended.toLowerCase() === "[[products]]") return { type: "products" };
+  if (/^\[[^\]\n]+\]\([^\n)]+\)$/.test(appended)) return { type: "markdown", markdown: appended };
+  return null;
+}
+
 export default function BlogStructuredArticleEditor({
   value,
   onChange,
@@ -59,20 +86,53 @@ export default function BlogStructuredArticleEditor({
   selectedProductCount?: number;
 }) {
   const [blocks, setBlocks] = useState<BlogArticleBlock[]>(() => parseBlogArticleBlocks(value));
+  const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
+  const blocksRef = useRef(blocks);
+  const activeBlockIndexRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const currentSerialized = serializeBlogArticleBlocks(blocks);
-    if (currentSerialized !== value.trim()) {
-      setBlocks(parseBlogArticleBlocks(value));
-    }
-  }, [value]);
-
-  const hasProductBlock = useMemo(() => blocks.some((block) => block.type === "products"), [blocks]);
+  const selectBlock = (index: number | null) => {
+    activeBlockIndexRef.current = index;
+    setActiveBlockIndex(index);
+  };
 
   const commit = (next: BlogArticleBlock[]) => {
+    blocksRef.current = next;
     setBlocks(next);
     onChange(serializeBlogArticleBlocks(next));
   };
+
+  useEffect(() => {
+    const current = blocksRef.current;
+    const currentSerialized = serializeBlogArticleBlocks(current);
+    const normalizedValue = value.trim();
+    if (currentSerialized === normalizedValue) return;
+
+    const appendedInsertion = detectAppendedInsertion(currentSerialized, normalizedValue);
+    if (appendedInsertion) {
+      const target = activeBlockIndexRef.current;
+      const next = insertBlogArticleContent(current, target, appendedInsertion);
+      if (next === current) {
+        onChange(currentSerialized);
+        return;
+      }
+      const nextTarget = Math.min(insertionTargetIndex(current, target, appendedInsertion), next.length - 1);
+      blocksRef.current = next;
+      setBlocks(next);
+      selectBlock(next.length ? Math.max(0, nextTarget) : null);
+      const relocated = serializeBlogArticleBlocks(next);
+      if (relocated !== normalizedValue) onChange(relocated);
+      return;
+    }
+
+    const next = parseBlogArticleBlocks(value);
+    blocksRef.current = next;
+    setBlocks(next);
+    if (activeBlockIndexRef.current !== null && activeBlockIndexRef.current >= next.length) {
+      selectBlock(next.length ? next.length - 1 : null);
+    }
+  }, [value, onChange]);
+
+  const hasProductBlock = useMemo(() => blocks.some((block) => block.type === "products"), [blocks]);
 
   const updateBlock = (index: number, block: BlogArticleBlock) => {
     const next = [...blocks];
@@ -86,21 +146,28 @@ export default function BlogStructuredArticleEditor({
     const next = [...blocks];
     [next[index], next[target]] = [next[target], next[index]];
     commit(next);
+    if (activeBlockIndexRef.current === index) selectBlock(target);
+    else if (activeBlockIndexRef.current === target) selectBlock(index);
   };
 
   const removeBlock = (index: number) => {
-    commit(blocks.filter((_, blockIndex) => blockIndex !== index));
+    const next = blocks.filter((_, blockIndex) => blockIndex !== index);
+    commit(next);
+    if (activeBlockIndexRef.current === index) selectBlock(null);
+    else if (activeBlockIndexRef.current !== null && activeBlockIndexRef.current > index) selectBlock(activeBlockIndexRef.current - 1);
   };
 
   const addBlock = (type: BlogArticleBlock["type"]) => {
     if (type === "products" && hasProductBlock) return;
-    commit([...blocks, createBlogArticleBlock(type)]);
+    const next = [...blocks, createBlogArticleBlock(type)];
+    commit(next);
+    selectBlock(next.length - 1);
   };
 
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs leading-5 text-muted-foreground">
-        This editor saves back to the same Markdown article field. Existing posts, article templates, SEO analysis, RSS, and storefront rendering stay compatible.
+        This editor saves back to the same Markdown article field. Click or focus a block to make it the insertion target for assistant links and product cards.
       </div>
 
       {blocks.length === 0 ? (
@@ -112,12 +179,22 @@ export default function BlogStructuredArticleEditor({
         <div className="space-y-3">
           {blocks.map((block, index) => {
             const Icon = blockIcon(block);
+            const isActive = activeBlockIndex === index;
             return (
-              <div key={`${block.type}-${index}`} className="rounded-2xl border border-border bg-background/80 shadow-sm">
+              <div
+                key={`${block.type}-${index}`}
+                onMouseDown={() => selectBlock(index)}
+                onFocusCapture={() => selectBlock(index)}
+                className={cn(
+                  "rounded-2xl border bg-background/80 shadow-sm transition",
+                  isActive ? "border-primary/50 ring-1 ring-primary/20" : "border-border",
+                )}
+              >
                 <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
                   <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-3.5 w-3.5" /></span>
                     {blockLabel(block)}
+                    {isActive ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">Insertion target</span> : null}
                   </div>
                   <div className="ml-auto flex items-center gap-1">
                     <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveBlock(index, -1)} disabled={index === 0} title="Move up"><ChevronUp className="h-4 w-4" /></Button>
