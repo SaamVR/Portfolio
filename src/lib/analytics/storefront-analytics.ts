@@ -97,6 +97,8 @@ export function normalizeAnalyticsSettings(value: unknown): AnalyticsSettings {
 
 export function inferPageType(pathname: string) {
   if (pathname.includes("/product/")) return "product";
+  if (pathname.includes("/blog/")) return "blog_article";
+  if (pathname.endsWith("/blog")) return "blog_index";
   if (pathname.endsWith("/shop")) return "shop";
   if (pathname.endsWith("/cart")) return "cart";
   if (pathname.endsWith("/checkout")) return "checkout";
