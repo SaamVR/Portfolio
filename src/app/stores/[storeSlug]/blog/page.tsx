@@ -12,12 +12,16 @@ export async function generateMetadata({ params }: { params: Promise<{ storeSlug
   if (!store) return {};
   const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   const canonical = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain ?? null }, "/blog");
+  const rss = absoluteStoreUrl({ slug: store.slug, customDomain: store.customDomain ?? null }, "/blog/rss.xml");
   const title = settings.seoTitle || `${store.name} Blog`;
   const description = settings.seoDescription || settings.indexDescription || `Stories, guides, and updates from ${store.name}.`;
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      types: { "application/rss+xml": rss },
+    },
     robots: settings.enabled ? undefined : { index: false, follow: false },
     openGraph: {
       type: "website",
