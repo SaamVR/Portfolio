@@ -1,14 +1,17 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import { Button } from "@/components/ui/button";
 import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/lib/storefront-theme-customization";
+import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { storefrontPath } from "@/lib/slug";
+import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 
 const FeaturedProducts = ({
   limit = 6,
@@ -18,6 +21,9 @@ const FeaturedProducts = ({
   source = "featured-or-all",
   category,
   productType,
+  imagePosition,
+  focalX,
+  focalY,
   disableLegacyFallback = false,
 }: {
   limit?: number;
@@ -27,11 +33,14 @@ const FeaturedProducts = ({
   source?: "featured-or-all" | "featured" | "all" | "newest" | "category" | "type" | string;
   category?: string;
   productType?: string;
+  imagePosition?: string;
+  focalX?: number;
+  focalY?: number;
   disableLegacyFallback?: boolean;
 }) => {
   const currentStore = useOptionalStore();
-  const { data: featured = [], isLoading } = useFeaturedProducts(currentStore?.id);
-  const { data: allProducts = [] } = useProducts(currentStore?.id);
+  const { data: featured = [], isLoading: featuredLoading } = useFeaturedProducts(currentStore?.id);
+  const { data: allProducts = [], isLoading: productsLoading } = useProducts(currentStore?.id);
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_featured", currentStore?.id);
   const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
   const legacySettings = disableLegacyFallback ? null : settings;
@@ -41,8 +50,9 @@ const FeaturedProducts = ({
       case "featured":
         return featured;
       case "all":
-      case "newest":
         return availableProducts;
+      case "newest":
+        return [...availableProducts].reverse();
       case "category":
         return category ? availableProducts.filter((product) => product.category === category) : availableProducts;
       case "type":
@@ -55,13 +65,17 @@ const FeaturedProducts = ({
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const variantGridClass =
     layoutVariant === "2-col"
-      ? "grid-cols-1 sm:grid-cols-2"
+      ? "grid-cols-2"
       : layoutVariant === "3-col" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
-        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        ? "grid-cols-2 lg:grid-cols-3"
         : layoutVariant === "4-col"
-          ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-          : getStorefrontProductGridClass(themeCustomization?.product_grid);
+          ? "grid-cols-2 lg:grid-cols-4"
+          : getStorefrontProductGridClass(themeCustomization?.product_grid).replace("grid-cols-1", "grid-cols-2");
   const hasSidebar = layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right";
+  const objectPosition = resolveStorefrontImageObjectPosition({ position: imagePosition, focalX, focalY });
+  const sectionStyle = {
+    ["--storefront-product-image-position" as string]: objectPosition,
+  } as CSSProperties;
   const sidebar = (
     <aside className="rounded-lg border border-border bg-card p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Shop guide</p>
@@ -79,54 +93,26 @@ const FeaturedProducts = ({
     </aside>
   );
 
-  if (isLoading) {
-    return (
-      <section className="py-14 md:py-20">
-        <div className={`mx-auto flex justify-center px-4 ${containerClass}`}>
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </section>
-    );
+  if (featuredLoading || productsLoading) {
+    return <StorefrontSectionSkeleton title={title ?? "Loading products"} cards={4} />;
   }
 
   if (productsToRender.length === 0) {
     return (
-      <section className="py-14 md:py-20">
-        <div className={`mx-auto px-4 ${containerClass}`}>
-          <div className="mx-auto max-w-4xl rounded-lg border border-border bg-card px-6 py-8 shadow-sm md:px-8 md:py-10">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Catalog coming together</p>
-                <h2 className="mt-3 font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  {title ?? legacySettings?.title ?? "Products will appear here soon"}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-                  The storefront structure is already live. Add the first real items to turn this space into a browsable catalog, menu, booking list, or offer gallery.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
-                <Button asChild className="gap-2">
-                  <Link href={storefrontPath("/shop", currentStore?.slug)}>
-                    Browse store
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="gap-2">
-                  <Link href={storefrontPath("/contact", currentStore?.slug)}>
-                    <Sparkles className="h-4 w-4" />
-                    Contact the store
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <StorefrontSectionEmpty
+        eyebrow="Catalog coming together"
+        title={title ?? legacySettings?.title ?? "Products will appear here soon"}
+        description="Add the first real items to turn this space into a browsable catalog, menu, booking list, or offer gallery."
+        primaryLabel="Browse store"
+        primaryHref={storefrontPath("/shop", currentStore?.slug)}
+        secondaryLabel="Contact the store"
+        secondaryHref={storefrontPath("/contact", currentStore?.slug)}
+      />
     );
   }
 
   return (
-    <section className="py-14 md:py-20">
+    <section className="py-14 md:py-20" style={sectionStyle}>
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
           <div className="mb-8 text-left md:mb-12 md:text-center">
@@ -149,9 +135,9 @@ const FeaturedProducts = ({
           }
         >
           {hasSidebar && layoutVariant !== "3-col-sidebar-right" ? sidebar : null}
-          <div className={`grid gap-4 md:gap-6 ${variantGridClass}`}>
+          <div className={`grid gap-3 sm:gap-4 md:gap-6 ${variantGridClass}`}>
             {productsToRender.slice(0, limit).map((product, i) => (
-              <AnimatedSection key={product.id} delay={i * 100} animation="blur">
+              <AnimatedSection key={product.id} delay={Math.min(i, 4) * 80} animation="blur">
                 <ProductCard product={product} />
               </AnimatedSection>
             ))}
