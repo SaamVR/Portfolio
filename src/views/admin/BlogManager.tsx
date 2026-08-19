@@ -133,6 +133,31 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
+function isMissingBlogUpgradeSchemaError(error: unknown) {
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = typeof record.code === "string" ? record.code : "";
+  const text = [record.message, record.details, record.hint]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+  return code === "PGRST204"
+    || text.includes("schema cache")
+    || (text.includes("column") && [
+      "featured_image_alt",
+      "category",
+      "tags",
+      "author_name",
+      "is_featured",
+      "embedded_product_ids",
+      "product_embed_title",
+      "product_embed_position",
+      "seo_keywords",
+      "canonical_url",
+      "og_image",
+      "noindex",
+    ].some((column) => text.includes(column)));
+}
+
 function SettingSwitch({ checked, onCheckedChange, title, description }: {
   checked: boolean;
   onCheckedChange: (value: boolean) => void;
@@ -304,11 +329,12 @@ export default function BlogManager() {
       const publishTime = editingPost.status === "published"
         ? (editingPost.published_at || new Date().toISOString())
         : null;
+      const excerpt = buildBlogExcerpt(editingPost.content, editingPost.excerpt);
       const payload = {
         store_id: activeStoreId,
         title: editingPost.title.trim(),
         slug,
-        excerpt: buildBlogExcerpt(editingPost.content, editingPost.excerpt),
+        excerpt,
         content: editingPost.content.trim(),
         featured_image: editingPost.featured_image.trim() || null,
         featured_image_alt: editingPost.featured_image_alt.trim() || null,
@@ -320,7 +346,7 @@ export default function BlogManager() {
         product_embed_title: editingPost.product_embed_title.trim() || null,
         product_embed_position: editingPost.product_embed_position,
         seo_title: editingPost.seo_title.trim() || editingPost.title.trim(),
-        seo_description: editingPost.seo_description.trim() || buildBlogExcerpt(editingPost.content, editingPost.excerpt),
+        seo_description: editingPost.seo_description.trim() || excerpt,
         seo_keywords: normalizeBlogStringList(editingPost.seo_keywords),
         canonical_url: editingPost.canonical_url.trim() || null,
         og_image: editingPost.og_image.trim() || editingPost.featured_image.trim() || null,
@@ -328,20 +354,44 @@ export default function BlogManager() {
         status: editingPost.status,
         published_at: publishTime,
       };
+      const legacyPayload = {
+        store_id: activeStoreId,
+        title: editingPost.title.trim(),
+        slug,
+        excerpt,
+        content: editingPost.content.trim(),
+        featured_image: editingPost.featured_image.trim() || null,
+        status: editingPost.status,
+        seo_title: editingPost.seo_title.trim() || editingPost.title.trim(),
+        seo_description: editingPost.seo_description.trim() || excerpt,
+        published_at: publishTime,
+      };
 
-      if (editingPost.id) {
-        const { error } = await (supabase as any)
-          .from("blog_posts")
-          .update(payload)
-          .eq("id", editingPost.id)
-          .eq("store_id", activeStoreId);
-        if (error) throw error;
-      } else {
-        const { error } = await (supabase as any).from("blog_posts").insert(payload);
-        if (error) throw error;
+      const persist = async (values: Record<string, unknown>) => {
+        if (editingPost.id) {
+          return (supabase as any)
+            .from("blog_posts")
+            .update(values)
+            .eq("id", editingPost.id)
+            .eq("store_id", activeStoreId);
+        }
+        return (supabase as any).from("blog_posts").insert(values);
+      };
+
+      let { error: persistError } = await persist(payload);
+      let usedLegacyFallback = false;
+      if (persistError && isMissingBlogUpgradeSchemaError(persistError)) {
+        const fallbackResult = await persist(legacyPayload);
+        persistError = fallbackResult.error;
+        usedLegacyFallback = !persistError;
       }
+      if (persistError) throw persistError;
 
-      toast.success(editingPost.id ? "Blog post updated." : "Blog post created.");
+      if (usedLegacyFallback) {
+        toast.warning("Article saved on the current Blog schema. Category, tags, product embeds, author, social image, and advanced SEO fields will persist after the pending Blog database upgrade is applied.");
+      } else {
+        toast.success(editingPost.id ? "Blog post updated." : "Blog post created.");
+      }
       setEditingPost(emptyPost);
       await queryClient.invalidateQueries({ queryKey: ["blog-posts", activeStoreId] });
     } catch (saveError) {
