@@ -17,8 +17,8 @@ const startCommand = process.platform === "win32" ? "npm.cmd run start" : "npm r
 
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "merchant-registration-dashboard.spec.ts",
-  timeout: 180000,
+  testMatch: ["merchant-registration-dashboard.spec.ts", "merchant-customer-e2e.spec.ts"],
+  timeout: 240000,
   outputDir: "test-results-merchant-flow",
   expect: { timeout: 15000 },
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report-merchant-flow" }]],
