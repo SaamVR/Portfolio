@@ -54,7 +54,7 @@ Call out common buying mistakes, misleading specifications, poor-fit choices, or
 
 ## Final buying advice
 
-Give the shopper a simple decision rule and link to another useful [guide](/blog/related-guide) or the relevant [shop page](/shop) when it genuinely helps.`,
+Give the shopper a simple decision rule. Use the internal link assistant to add a real related guide, product, or shop destination when it genuinely helps.`,
   },
   {
     id: "comparison",
@@ -98,7 +98,7 @@ Explain the shared strengths so the comparison stays fair and useful.
 
 ## Which should you choose?
 
-End with a decision rule based on shopper priorities, not a generic winner. Link to a related [buying guide](/blog/related-guide) if it adds context.`,
+End with a decision rule based on shopper priorities, not a generic winner. Use the internal link assistant to add a real related buying guide if it adds context.`,
   },
   {
     id: "how-to-care",
@@ -137,7 +137,7 @@ Explain how often to repeat the process, how to store or clean the item, and wha
 
 ## Quick checklist
 
-Summarize the process in a few actionable points and link to a related [guide](/blog/related-guide) if the reader needs more detail.`,
+Summarize the process in a few actionable points. Use the internal link assistant to add a real related guide or product when the reader needs more detail.`,
   },
   {
     id: "product-launch",
@@ -176,7 +176,7 @@ Connect the product back to a real shopper problem, routine, workflow, style, or
 
 ## Availability and next step
 
-Explain variants, sizing, compatibility, stock, delivery, or launch details that affect the purchase. Link to the relevant [shop page](/shop) if needed.`,
+Explain variants, sizing, compatibility, stock, delivery, or launch details that affect the purchase. Use the internal link assistant to add a real shop or product destination if needed.`,
   },
   {
     id: "collection-story",
@@ -213,7 +213,7 @@ Explain styling, pairing, routines, bundles, setups, recipes, rooms, workflows, 
 
 ## Explore more
 
-Finish with a useful next step, such as the broader [shop](/shop) or a related [guide](/blog/related-guide).`,
+Finish with a useful next step. Use the internal link assistant to add a real product, shop, or related guide destination instead of a placeholder URL.`,
   },
 ];
 

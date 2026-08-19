@@ -36,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import BlogArticleTemplateChooser from "@/components/admin/blog/BlogArticleTemplateChooser";
+import BlogInternalLinkAssistant from "@/components/admin/blog/BlogInternalLinkAssistant";
 import BlogQualityPanel from "@/components/admin/blog/BlogQualityPanel";
 import {
   buildBlogExcerpt,
@@ -771,7 +772,7 @@ export default function BlogManager() {
                       value={editingPost.content}
                       onChange={(event) => setEditingPost((current) => ({ ...current, content: event.target.value }))}
                       rows={18}
-                      placeholder={"## The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty\n\nLink to a related [guide](/blog/related-guide) or [product](/product/example--id) when it helps."}
+                      placeholder={"## The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty\n\nLink to a related guide or product when it genuinely helps the shopper."}
                     />
                   </div>
 
@@ -783,6 +784,21 @@ export default function BlogManager() {
               </Card>
 
               <BlogQualityPanel report={qualityReport} />
+
+              {store ? (
+                <BlogInternalLinkAssistant
+                  storeSlug={store.slug}
+                  currentPostId={editingPost.id}
+                  title={editingPost.title}
+                  category={editingPost.category}
+                  tags={editingPost.tags}
+                  content={editingPost.content}
+                  embeddedProductIds={editingPost.embedded_product_ids}
+                  posts={posts}
+                  products={products}
+                  onInsert={(suggestion) => insertMarkdown("[", `](${suggestion.url})`, suggestion.label)}
+                />
+              ) : null}
 
               <Card className="border-border bg-card/50">
                 <CardHeader>
