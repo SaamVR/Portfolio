@@ -1,5 +1,6 @@
 "use client";
 
+import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { StorefrontShell } from "@/components/storefront/StorefrontShell";
@@ -14,16 +15,10 @@ import { cn } from "@/lib/utils";
 
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
-  template: StorefrontTemplateDefinition,
-  options?: { preserveEditorOrder?: boolean },
+  _template: StorefrontTemplateDefinition,
 ): StorePageBlock[] {
-  // Once a merchant has an explicit block order, that order is authoritative on every
-  // template. Template sectionOrder remains a seed/default concern rather than a second
-  // runtime ordering system that can fight the page builder.
-  if (options?.preserveEditorOrder) {
-    return [...blocks].sort((left, right) => left.sortOrder - right.sortOrder);
-  }
-
+  // Persisted page-builder order is authoritative on every template. Template sectionOrder
+  // is used when a template seeds the page, not as a competing runtime ordering system.
   return [...blocks].sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
@@ -72,9 +67,10 @@ export function StorefrontTemplateRenderer({
   embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
-  const blocksToRender = sortBlocksForTemplate(blocks, template, {
-    preserveEditorOrder: true,
-  }).filter(isBlockVisible);
+  const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
+  const hasComposableBlogBlock = blocksToRender.some(
+    (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
+  );
 
   return (
     <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
@@ -105,6 +101,7 @@ export function StorefrontTemplateRenderer({
           </div>
         ))}
       </div>
+      {page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
     </StorefrontShell>
   );
 }
