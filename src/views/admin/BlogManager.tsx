@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
+import { useBlogDraftRecovery } from "@/hooks/useBlogDraftRecovery";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -258,6 +259,13 @@ export default function BlogManager() {
     setBlogSettings(normalizeBlogSettings(rawBlogSettings));
   }, [rawBlogSettings]);
 
+  const { clearCurrentDraft } = useBlogDraftRecovery({
+    activeStoreId,
+    editingPost,
+    posts,
+    setEditingPost,
+  });
+
   const filteredPosts = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return posts;
@@ -415,6 +423,7 @@ export default function BlogManager() {
       } else {
         toast.success(editingPost.id ? "Blog post updated." : "Blog post created.");
       }
+      clearCurrentDraft();
       setEditingPost(emptyPost);
       await queryClient.invalidateQueries({ queryKey: ["blog-posts", activeStoreId] });
     } catch (saveError) {
@@ -436,6 +445,7 @@ export default function BlogManager() {
         .eq("id", editingPost.id)
         .eq("store_id", activeStoreId);
       if (error) throw error;
+      clearCurrentDraft();
       setEditingPost(emptyPost);
       await queryClient.invalidateQueries({ queryKey: ["blog-posts", activeStoreId] });
       toast.success("Blog post deleted.");
