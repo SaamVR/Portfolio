@@ -26,19 +26,28 @@ function normalizeText(value?: string | null) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-async function isStorePublic(client: SupabaseClient, storeId: string) {
-  const { data, error } = await (client as any)
-    .from("stores")
-    .select("id")
-    .eq("id", storeId)
-    .eq("is_published", true)
-    .maybeSingle();
+async function canExposeBlog(client: SupabaseClient, storeId: string) {
+  const [{ data: store, error: storeError }, { data: setting, error: settingError }] = await Promise.all([
+    (client as any)
+      .from("stores")
+      .select("id")
+      .eq("id", storeId)
+      .eq("is_published", true)
+      .maybeSingle(),
+    (client as any)
+      .from("site_settings")
+      .select("value")
+      .eq("store_id", storeId)
+      .eq("key", "blog")
+      .maybeSingle(),
+  ]);
 
-  if (error) {
-    console.error("[blog] failed to verify public store", error);
+  if (storeError || settingError) {
+    console.error("[blog] failed to verify public blog access", storeError ?? settingError);
     return false;
   }
-  return Boolean(data?.id);
+
+  return Boolean(store?.id) && normalizeBlogSettings(setting?.value).enabled;
 }
 
 export function isBlogPostPublicNow(post: Pick<BlogPostRecord, "status" | "published_at">, now = Date.now()) {
@@ -75,7 +84,7 @@ export async function loadPublishedBlogPosts(
   options: PublicBlogQuery = {},
 ): Promise<BlogPostRecord[]> {
   const client = getBlogReadClient();
-  if (!client || !(await isStorePublic(client, storeId))) return [];
+  if (!client || !(await canExposeBlog(client, storeId))) return [];
 
   const limit = Math.min(48, Math.max(1, Math.round(options.limit ?? 12)));
   const fetchLimit = Math.min(96, Math.max(limit * 3, 24));
@@ -113,7 +122,7 @@ export async function loadPublishedBlogPosts(
 
 export async function loadPublishedBlogPost(storeId: string, slug: string): Promise<BlogPostRecord | null> {
   const client = getBlogReadClient();
-  if (!client || !(await isStorePublic(client, storeId))) return null;
+  if (!client || !(await canExposeBlog(client, storeId))) return null;
 
   const { data, error } = await (client as any)
     .from("blog_posts")
@@ -136,7 +145,7 @@ export async function loadBlogProducts(storeId: string, productIds: string[]): P
   const ids = Array.from(new Set(productIds.filter(Boolean))).slice(0, 12);
   if (ids.length === 0) return [];
   const client = getBlogReadClient();
-  if (!client || !(await isStorePublic(client, storeId))) return [];
+  if (!client || !(await canExposeBlog(client, storeId))) return [];
 
   const { data, error } = await (client as any)
     .from("products")
