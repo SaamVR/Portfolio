@@ -10,8 +10,10 @@ import {
   buildBlogPostUrl,
   calculateBlogReadingTime,
   formatBlogDate,
+  hasInlineBlogProducts,
   markdownToHtml,
   resolveBlogProductEmbedPosition,
+  splitBlogContentAtProductDirectives,
   type BlogPostRecord,
   type BlogProductRecord,
 } from "@/lib/cms/blog";
@@ -70,6 +72,25 @@ function ProductMerchandising({ store, post, products }: { store: Store; post: B
   );
 }
 
+function ArticleContent({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+  const chunks = splitBlogContentAtProductDirectives(post.content);
+  return (
+    <>
+      {chunks.map((chunk, index) => (
+        <div key={`${post.id}-chunk-${index}`}>
+          {chunk.trim() ? (
+            <div
+              className="prose prose-neutral mt-9 max-w-none dark:prose-invert prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-8 prose-a:text-primary prose-a:underline-offset-4 prose-blockquote:border-primary prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-muted prose-pre:p-4 prose-ul:list-disc prose-ol:list-decimal"
+              dangerouslySetInnerHTML={{ __html: markdownToHtml(chunk) }}
+            />
+          ) : null}
+          {index < chunks.length - 1 ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function RelatedArticles({ store, posts }: { store: Store; posts: BlogPostRecord[] }) {
   if (!posts.length) return null;
   return (
@@ -90,7 +111,7 @@ function RelatedArticles({ store, posts }: { store: Store; posts: BlogPostRecord
               <div className="flex aspect-[16/10] items-center justify-center bg-muted"><Tag className="h-7 w-7 text-muted-foreground" /></div>
             )}
             <div className="p-4">
-              <p className="text-xs text-muted-foreground">{formatBlogDate(post.published_at)}</p>
+              <p className="text-xs text-muted-foreground">{formatBlogDate(post.published_at || post.created_at)}</p>
               <h3 className="mt-2 line-clamp-2 font-heading text-lg font-semibold text-foreground transition group-hover:text-primary">{post.title}</h3>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{buildBlogExcerpt(post.content, post.excerpt)}</p>
             </div>
@@ -115,6 +136,7 @@ export function BlogPostPage({
   relatedPosts?: BlogPostRecord[];
 }) {
   const embedPosition = resolveBlogProductEmbedPosition(post.product_embed_position);
+  const hasInlineProducts = hasInlineBlogProducts(post.content);
   const canonical = post.canonical_url || absoluteStoreUrl(
     { slug: store.slug, customDomain: store.customDomain ?? null },
     `/blog/${encodeURIComponent(post.slug)}`,
@@ -175,20 +197,17 @@ export function BlogPostPage({
                   <p className="mt-5 max-w-3xl text-base leading-8 text-muted-foreground sm:text-lg">{post.excerpt || post.seo_description}</p>
                 ) : null}
 
-                {embedPosition === "before-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+                {!hasInlineProducts && embedPosition === "before-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 
                 {post.featured_image ? (
                   <img src={post.featured_image} alt={post.featured_image_alt || post.title} className="mt-8 max-h-[640px] w-full rounded-[28px] border border-border object-cover" />
                 ) : null}
 
-                {embedPosition === "after-intro" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+                {!hasInlineProducts && embedPosition === "after-intro" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 
-                <div
-                  className="prose prose-neutral mt-9 max-w-none dark:prose-invert prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-8 prose-a:text-primary prose-a:underline-offset-4 prose-blockquote:border-primary prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-muted prose-pre:p-4 prose-ul:list-disc prose-ol:list-decimal"
-                  dangerouslySetInnerHTML={{ __html: markdownToHtml(post.content) }}
-                />
+                <ArticleContent store={store} post={post} products={products} />
 
-                {embedPosition === "after-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+                {!hasInlineProducts && embedPosition === "after-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 
                 {settings.showTags && (post.tags ?? []).length > 0 ? (
                   <div className="mt-9 flex flex-wrap items-center gap-2 border-t border-border pt-6">
