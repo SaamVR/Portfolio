@@ -295,15 +295,15 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const pricing = getStorefrontPricing({
     subtotal: checkoutSubtotal,
     couponDiscount,
-    deliverySettings,
+    deliverySettings: digitalOnlyCheckout
+      ? { ...deliverySettings, enabled: false }
+      : deliverySettings,
     paymentSettings,
     paymentMethod: form.paymentMethod,
     location: "primary",
   });
-  const deliveryFee = digitalOnlyCheckout ? 0 : pricing.deliveryFee;
-  const grandTotal = digitalOnlyCheckout
-    ? Math.max(0, checkoutSubtotal - couponDiscount - pricing.orderDiscountAmount - pricing.paymentDiscount)
-    : pricing.grandTotal;
+  const deliveryFee = pricing.deliveryFee;
+  const grandTotal = pricing.grandTotal;
 
   const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
   const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual" || form.paymentMethod === "nagad";
