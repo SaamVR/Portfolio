@@ -33,7 +33,7 @@ function safeRecord(value: unknown) {
 }
 
 function mapOrderError(message: string) {
-  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed/i.test(message)) {
     return { message, status: 400 };
   }
 
@@ -120,11 +120,23 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: mapped.message }, { status: mapped.status });
     }
 
-    const order = Array.isArray(data) ? data[0] : data;
-    if (!order?.order_number) {
+    const rpcOrder = Array.isArray(data) ? data[0] : data;
+    if (!rpcOrder?.id || !rpcOrder?.order_number) {
       return jsonNoStore({ error: "Failed to create order" }, { status: 500 });
     }
 
+    const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
+      .from("orders")
+      .select("id, order_number, subtotal, delivery_fee, total, items, status")
+      .eq("id", rpcOrder.id)
+      .eq("store_id", storeId)
+      .maybeSingle();
+
+    if (persistedOrderError) {
+      console.error("Failed to hydrate created order details:", persistedOrderError);
+    }
+
+    const order = persistedOrder ?? rpcOrder;
     const orderItems = Array.isArray(order.items) ? order.items : items;
     const productRevenueWeight = orderItems.reduce((sum: number, item: any) => {
       const quantity = Number(item?.quantity ?? 0);
@@ -214,7 +226,7 @@ export async function POST(req: Request) {
           shipping_address: shippingAddress,
           shipping_city: shippingCity,
           total: Number(order.total ?? 0),
-          items: order.items || items,
+          items: orderItems,
         },
         purchaseEventRows,
         recoveryOrderId: order.id,
