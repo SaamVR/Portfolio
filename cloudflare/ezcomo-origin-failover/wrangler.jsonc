@@ -9,6 +9,11 @@
   },
   "vars": {
     "PRIMARY_ORIGIN_HOSTNAME": "ecomcms-xjw4.onrender.com",
+    // Set this to the verified stable production hostname of the healthy
+    // Vercel fallback project (for example: project-team.vercel.app).
+    // Leave it unset until that deployment is green; the Worker will keep
+    // using the existing DNS fallback behavior for backward compatibility.
+    // "FALLBACK_ORIGIN_HOSTNAME": "verified-production.vercel.app",
     "PLATFORM_DOMAIN": "ezcomo.shop",
     "FAILOVER_TTL_SECONDS": "30",
     "DEBUG_ORIGIN_HEADER": "0"

@@ -22,7 +22,7 @@ const RESERVED_PLATFORM_LABELS = new Set([
 ]);
 
 function normalizeHostname(hostname) {
-  return hostname.trim().toLowerCase().replace(/\.$/, "");
+  return String(hostname || "").trim().toLowerCase().replace(/\.$/, "");
 }
 
 function parsePositiveInt(value, fallback) {
@@ -56,15 +56,12 @@ function shouldFailOverStatus(status) {
   return FAILOVER_HTTP_STATUSES.has(status);
 }
 
-function buildPrimaryRequest(request, env, originalHostname) {
+function buildOriginRequest(request, env, originalHostname, originHostname) {
   const incomingUrl = new URL(request.url);
-  const primaryOriginHostname = normalizeHostname(
-    env.PRIMARY_ORIGIN_HOSTNAME || DEFAULT_PRIMARY_ORIGIN_HOSTNAME,
-  );
-  const primaryUrl = new URL(request.url);
-  primaryUrl.protocol = "https:";
-  primaryUrl.hostname = primaryOriginHostname;
-  primaryUrl.port = "";
+  const originUrl = new URL(request.url);
+  originUrl.protocol = "https:";
+  originUrl.hostname = originHostname;
+  originUrl.port = "";
 
   const headers = new Headers(request.headers);
   headers.set("x-ezcomo-hostname", originalHostname);
@@ -77,8 +74,8 @@ function buildPrimaryRequest(request, env, originalHostname) {
     headers.delete("x-ezcomo-lb-secret");
   }
 
-  // The URL hostname must control Host/SNI for Render. Carrying the public
-  // hostname through would make Render reject the request before Next.js.
+  // The URL hostname controls Host/SNI for both Render and Vercel. Preserve
+  // the shopper/merchant hostname only in trusted forwarding headers.
   headers.delete("host");
 
   const init = {
@@ -92,20 +89,19 @@ function buildPrimaryRequest(request, env, originalHostname) {
   }
 
   return {
-    primaryOriginHostname,
-    primaryUrl,
-    request: new Request(primaryUrl.toString(), init),
+    originUrl,
+    request: new Request(originUrl.toString(), init),
   };
 }
 
-function rewritePrimaryRedirect(response, primaryOriginHostname, originalHostname, incomingProtocol) {
+function rewriteOriginRedirect(response, originHostname, originalHostname, incomingProtocol) {
   const responseHeaders = new Headers(response.headers);
   const location = responseHeaders.get("location");
 
   if (location) {
     try {
       const redirectUrl = new URL(location);
-      if (normalizeHostname(redirectUrl.hostname) === primaryOriginHostname) {
+      if (normalizeHostname(redirectUrl.hostname) === originHostname) {
         redirectUrl.hostname = originalHostname;
         redirectUrl.protocol = incomingProtocol;
         responseHeaders.set("location", redirectUrl.toString());
@@ -158,14 +154,47 @@ function withOriginDebugHeader(response, origin, env) {
   });
 }
 
-async function fetchFallback(request, env) {
-  // For a Worker Route, fetch(request) continues to the DNS-configured origin.
-  // Today that is the existing Vercel origin, preserving the public Host.
+async function fetchFallback(request, env, originalHostname) {
+  const fallbackOriginHostname = normalizeHostname(env.FALLBACK_ORIGIN_HOSTNAME);
+
+  // Backward-compatible safety while the new Vercel project is being repaired:
+  // if no explicit fallback hostname is configured, continue to the DNS origin
+  // instead of guessing a stale Vercel deployment hostname in code.
+  if (!fallbackOriginHostname) {
+    try {
+      const response = await fetch(request);
+      return withOriginDebugHeader(response, "dns-fallback", env);
+    } catch (error) {
+      console.error("Ezcomo DNS fallback request failed:", error);
+      return new Response("The Ezcomo platform origins are unavailable.", {
+        status: 502,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store",
+        },
+      });
+    }
+  }
+
+  const incomingUrl = new URL(request.url);
+  const { request: fallbackRequest } = buildOriginRequest(
+    request,
+    env,
+    originalHostname,
+    fallbackOriginHostname,
+  );
+
   try {
-    const response = await fetch(request);
-    return withOriginDebugHeader(response, "vercel", env);
+    const response = await fetch(fallbackRequest);
+    const rewritten = rewriteOriginRedirect(
+      response,
+      fallbackOriginHostname,
+      originalHostname,
+      incomingUrl.protocol,
+    );
+    return withOriginDebugHeader(rewritten, "vercel", env);
   } catch (error) {
-    console.error("Ezcomo fallback origin request failed:", error);
+    console.error("Ezcomo explicit fallback origin request failed:", error);
     return new Response("The Ezcomo platform origins are unavailable.", {
       status: 502,
       headers: {
@@ -200,13 +229,18 @@ export default {
     }
 
     if (await isPrimaryMarkedDown()) {
-      return fetchFallback(request, env);
+      return fetchFallback(request, env, originalHostname);
     }
 
-    const {
+    const primaryOriginHostname = normalizeHostname(
+      env.PRIMARY_ORIGIN_HOSTNAME || DEFAULT_PRIMARY_ORIGIN_HOSTNAME,
+    );
+    const { request: primaryRequest } = buildOriginRequest(
+      request,
+      env,
+      originalHostname,
       primaryOriginHostname,
-      request: primaryRequest,
-    } = buildPrimaryRequest(request, env, originalHostname);
+    );
 
     let primaryResponse;
     try {
@@ -216,7 +250,7 @@ export default {
       ctx.waitUntil(markPrimaryDown(failoverTtlSeconds));
 
       if (isSafeRetryMethod(request.method)) {
-        return fetchFallback(request, env);
+        return fetchFallback(request, env, originalHostname);
       }
 
       // Never replay mutation requests automatically. The origin may have
@@ -239,11 +273,11 @@ export default {
         } catch {
           // Response cleanup is best-effort.
         }
-        return fetchFallback(request, env);
+        return fetchFallback(request, env, originalHostname);
       }
     }
 
-    const rewritten = rewritePrimaryRedirect(
+    const rewritten = rewriteOriginRedirect(
       primaryResponse,
       primaryOriginHostname,
       originalHostname,
