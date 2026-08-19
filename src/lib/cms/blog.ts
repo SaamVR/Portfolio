@@ -4,6 +4,8 @@ import { slugify, storefrontPath } from "@/lib/slug";
 export type BlogPostStatus = "draft" | "scheduled" | "published";
 export type BlogProductEmbedPosition = "before-content" | "after-intro" | "after-content";
 
+export const BLOG_PRODUCTS_DIRECTIVE = "[[products]]";
+
 export type BlogPostRecord = {
   id: string;
   store_id: string;
@@ -152,8 +154,17 @@ export function markdownToHtml(markdown: string) {
   return html.join("\n");
 }
 
+export function hasInlineBlogProducts(content: string) {
+  return /\[\[products\]\]/i.test(content);
+}
+
+export function splitBlogContentAtProductDirectives(content: string) {
+  return content.split(/\[\[products\]\]/gi);
+}
+
 export function stripMarkdown(markdown: string) {
   return markdown
+    .replace(/\[\[products\]\]/gi, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
