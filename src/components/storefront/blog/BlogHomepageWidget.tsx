@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, Clock3 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -37,27 +36,39 @@ export function BlogHomepageWidget() {
   const store = useOptionalStore();
   const { data: rawSettings } = useSiteSettings<BlogSettings>("blog", store?.id);
   const settings = normalizeBlogSettings(rawSettings ?? store?.siteSettings?.blog);
+  const hasComposablePlacement = Boolean(
+    store?.pages?.some((page) =>
+      page.isHomepage
+      && page.blocks.some(
+        (block) =>
+          block.type === "rich-text"
+          && block.layoutVariant === "blog-posts"
+          && (block.isVisible ?? block.visible ?? true) !== false,
+      ),
+    ),
+  );
+  const shouldRender = Boolean(store?.id && settings.enabled && (settings.homepageWidgetEnabled || hasComposablePlacement));
 
   const postsQuery = useQuery({
     queryKey: ["storefront-blog-home-widget", store?.id, settings.homepageWidgetLimit],
-    enabled: Boolean(store?.id && settings.enabled && settings.homepageWidgetEnabled),
+    enabled: shouldRender,
     queryFn: async () => {
       if (!store?.id) return [];
-      const { data, error } = await (supabase as any)
-        .from("blog_posts")
-        .select("id,title,slug,excerpt,content,featured_image,published_at")
-        .eq("store_id", store.id)
-        .eq("status", "published")
-        .lte("published_at", new Date().toISOString())
-        .order("published_at", { ascending: false })
-        .limit(settings.homepageWidgetLimit);
-      if (error) throw error;
-      return (data ?? []) as BlogWidgetPost[];
+      const params = new URLSearchParams({
+        storeId: store.id,
+        limit: String(settings.homepageWidgetLimit),
+      });
+      const response = await fetch(`/api/storefront/blog?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`Blog request failed with ${response.status}`);
+      const payload = await response.json() as { posts?: BlogWidgetPost[] };
+      return Array.isArray(payload.posts) ? payload.posts : [];
     },
     staleTime: 120_000,
   });
 
-  if (!store || !settings.enabled || !settings.homepageWidgetEnabled) return null;
+  if (!store || !shouldRender) return null;
   if (postsQuery.isLoading) return <StorefrontSectionSkeleton title={settings.homepageWidgetTitle || "Loading articles"} cards={3} />;
   if (postsQuery.isError) return <StorefrontSectionError title="Articles could not load" description="The rest of the storefront is available. Try this section again shortly." onRetry={() => void postsQuery.refetch()} />;
 
