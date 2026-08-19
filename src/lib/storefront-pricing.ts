@@ -49,6 +49,14 @@ function sanitizeMoney(value: number) {
   return Math.max(0, Math.round(value));
 }
 
+function normalizeFreeDeliveryThreshold(value: number | undefined) {
+  if (value == null || !Number.isFinite(value) || value <= 0) {
+    return DEFAULT_FREE_THRESHOLD;
+  }
+
+  return sanitizeMoney(value);
+}
+
 function isPrepaidMethod(paymentMethod?: StorefrontPaymentMethod) {
   return paymentMethod === "bkash" || paymentMethod === "bkash_manual" || paymentMethod === "nagad";
 }
@@ -62,7 +70,7 @@ export function getNormalizedDeliverySettings(
     secondary_zone_label: deliverySettings?.secondary_zone_label,
     delivery_fee: sanitizeMoney(deliverySettings?.delivery_fee ?? DEFAULT_PRIMARY_DELIVERY_FEE),
     delivery_fee_outside: sanitizeMoney(deliverySettings?.delivery_fee_outside ?? DEFAULT_SECONDARY_DELIVERY_FEE),
-    free_threshold: sanitizeMoney(deliverySettings?.free_threshold ?? DEFAULT_FREE_THRESHOLD),
+    free_threshold: normalizeFreeDeliveryThreshold(deliverySettings?.free_threshold),
   };
 }
 
