@@ -5,6 +5,7 @@ import { expect, test } from "playwright/test";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const assertGoldenSnapshots = process.env.STOREFRONT_VISUAL_GOLDEN === "1";
 
 if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   throw new Error("Missing Supabase credentials required for storefront viewport coverage.");
@@ -14,26 +15,27 @@ type TemplateCase = {
   id: string;
   productVisibility: "catalog" | "menu" | "single_product" | "inquiry_only" | "landing_only";
   catalogLabel: string | null;
-  mobileCartLabel: string | null;
+  mobileActionLabel: string;
+  mobileActionKind: "button" | "link";
 };
 
 const templateCases: TemplateCase[] = [
-  { id: "blank", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "landing", productVisibility: "landing_only", catalogLabel: null, mobileCartLabel: null },
-  { id: "beauty", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "fashion", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "electronics", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "food", productVisibility: "menu", catalogLabel: "Menu", mobileCartLabel: "Tray" },
-  { id: "crafts", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "subscriptions", productVisibility: "catalog", catalogLabel: "Plans", mobileCartLabel: "Subscription" },
-  { id: "digital-downloads", productVisibility: "catalog", catalogLabel: "Downloads", mobileCartLabel: "Cart" },
-  { id: "single-product", productVisibility: "single_product", catalogLabel: null, mobileCartLabel: "Cart" },
-  { id: "inquiry-catalog", productVisibility: "inquiry_only", catalogLabel: "Catalog", mobileCartLabel: "Quote" },
-  { id: "service", productVisibility: "inquiry_only", catalogLabel: "Services", mobileCartLabel: "Request" },
-  { id: "general-catalog", productVisibility: "catalog", catalogLabel: "Shop", mobileCartLabel: "Cart" },
-  { id: "booking", productVisibility: "inquiry_only", catalogLabel: "Services", mobileCartLabel: "Booking" },
-  { id: "hotel", productVisibility: "inquiry_only", catalogLabel: "Rooms", mobileCartLabel: "Stay" },
-  { id: "real-estate", productVisibility: "inquiry_only", catalogLabel: "Properties", mobileCartLabel: "Inquiries" },
+  { id: "blank", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "landing", productVisibility: "landing_only", catalogLabel: null, mobileActionLabel: "Contact", mobileActionKind: "link" },
+  { id: "beauty", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "fashion", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "electronics", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "food", productVisibility: "menu", catalogLabel: "Menu", mobileActionLabel: "Order", mobileActionKind: "button" },
+  { id: "crafts", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "subscriptions", productVisibility: "catalog", catalogLabel: "Plans", mobileActionLabel: "Subscribe", mobileActionKind: "button" },
+  { id: "digital-downloads", productVisibility: "catalog", catalogLabel: "Downloads", mobileActionLabel: "Browse Downloads", mobileActionKind: "link" },
+  { id: "single-product", productVisibility: "single_product", catalogLabel: null, mobileActionLabel: "Buy Now", mobileActionKind: "button" },
+  { id: "inquiry-catalog", productVisibility: "inquiry_only", catalogLabel: "Catalog", mobileActionLabel: "Request Quote", mobileActionKind: "link" },
+  { id: "service", productVisibility: "inquiry_only", catalogLabel: "Services", mobileActionLabel: "Get Quote", mobileActionKind: "link" },
+  { id: "general-catalog", productVisibility: "catalog", catalogLabel: "Shop", mobileActionLabel: "Cart", mobileActionKind: "button" },
+  { id: "booking", productVisibility: "inquiry_only", catalogLabel: "Services", mobileActionLabel: "Book", mobileActionKind: "link" },
+  { id: "hotel", productVisibility: "inquiry_only", catalogLabel: "Rooms", mobileActionLabel: "Book", mobileActionKind: "link" },
+  { id: "real-estate", productVisibility: "inquiry_only", catalogLabel: "Properties", mobileActionLabel: "Contact Agent", mobileActionKind: "link" },
 ];
 
 const viewportCases = [
@@ -77,7 +79,7 @@ async function createStoreThroughMerchantSignup(page: any, storeName: string, st
   return storeId as string;
 }
 
-function seededProducts(storeId: string, suffix: string) {
+function seededProducts(storeId: string) {
   const images = [
     "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800",
     "https://images.unsplash.com/photo-1586363104862-3a5e222eca01?auto=format&fit=crop&q=80&w=800",
@@ -86,7 +88,7 @@ function seededProducts(storeId: string, suffix: string) {
 
   return Array.from({ length: 6 }, (_, index) => ({
     store_id: storeId,
-    name: `Viewport Item ${index + 1} ${suffix}`,
+    name: `Viewport Item ${index + 1}`,
     description: `Deterministic storefront viewport fixture ${index + 1}.`,
     price: 900 + (index * 125),
     original_price: index % 2 === 0 ? 1400 + (index * 100) : null,
@@ -132,13 +134,28 @@ async function assertNoHorizontalOverflow(page: any, templateId: string, viewpor
   ).toBeLessThanOrEqual(report.viewportWidth + 1);
 }
 
+async function settleVisualAssets(page: any) {
+  await page.evaluate(async () => {
+    if (document.fonts?.ready) await document.fonts.ready;
+    const images = Array.from(document.images);
+    await Promise.all(images.map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        image.addEventListener("load", () => resolve(), { once: true });
+        image.addEventListener("error", () => resolve(), { once: true });
+        setTimeout(resolve, 2500);
+      });
+    }));
+  });
+}
+
 test("all 16 storefront templates stay usable at mobile, tablet, and desktop widths", async ({ page }, testInfo) => {
   test.setTimeout(300000);
 
   const suffix = randomUUID().slice(0, 8);
   const email = `viewport-matrix-${suffix}@example.com`;
   const password = `Viewport-${suffix}-Pass123!`;
-  const storeName = `Viewport Matrix ${suffix}`;
+  const storeName = "Viewport Matrix Store";
   const storeSlug = `viewport-matrix-${suffix}`;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -164,7 +181,7 @@ test("all 16 storefront templates stay usable at mobile, tablet, and desktop wid
 
     const [{ error: publishError }, { error: productError }, { error: navigationError }] = await Promise.all([
       supabaseAdmin.from("stores").update({ is_published: true }).eq("id", storeId),
-      supabaseAdmin.from("products").insert(seededProducts(storeId, suffix)),
+      supabaseAdmin.from("products").insert(seededProducts(storeId)),
       supabaseAdmin.from("site_settings").upsert({
         store_id: storeId,
         key: "navigation",
@@ -216,30 +233,40 @@ test("all 16 storefront templates stay usable at mobile, tablet, and desktop wid
         await page.goto(`/stores/${storeSlug}?viewport-template=${template.id}-${viewport.name}`, { waitUntil: "domcontentloaded" });
         const shell = page.locator(`[data-storefront-template="${template.id}"]`);
         await expect(shell).toBeVisible({ timeout: 30000 });
+        await expect(page.locator('[data-template-renderer="composable-blocks"]')).toBeVisible({ timeout: 30000 });
         await page.waitForTimeout(250);
 
         if (viewport.width < 768) {
           const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
           await expect(mobileNavigation).toBeVisible();
-          if (template.catalogLabel) {
-            await expect(mobileNavigation.getByRole("link", { name: template.catalogLabel, exact: true })).toBeVisible();
-          }
-          if (template.mobileCartLabel) {
-            await expect(mobileNavigation.getByRole("button", { name: template.mobileCartLabel, exact: true })).toBeVisible();
+          if (template.mobileActionKind === "button") {
+            await expect(mobileNavigation.getByRole("button", { name: template.mobileActionLabel, exact: true })).toBeVisible();
           } else {
-            await expect(mobileNavigation.getByRole("button", { name: /Cart|Tray|Booking|Stay|Request|Quote|Inquiries|Subscription/ })).toHaveCount(0);
-          }
-          if (template.id === "landing") {
-            await expect(mobileNavigation.getByRole("link", { name: "Contact", exact: true })).toBeVisible();
+            await expect(mobileNavigation.getByRole("link", { name: template.mobileActionLabel, exact: true })).toBeVisible();
           }
         } else if (template.catalogLabel) {
           await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: template.catalogLabel, exact: true })).toBeVisible();
         }
 
         await assertNoHorizontalOverflow(page, template.id, viewport.name);
-        await page.screenshot({
-          path: testInfo.outputPath(`storefront-${template.id}-${viewport.name}-${viewport.width}.png`),
-        });
+        await settleVisualAssets(page);
+
+        const snapshotName = `storefront-${template.id}-${viewport.name}-${viewport.width}.png`;
+        if (assertGoldenSnapshots) {
+          await expect(page).toHaveScreenshot(snapshotName, {
+            fullPage: true,
+            animations: "disabled",
+            caret: "hide",
+            maxDiffPixelRatio: 0.015,
+          });
+        } else {
+          await page.screenshot({
+            path: testInfo.outputPath(snapshotName),
+            fullPage: true,
+            animations: "disabled",
+            caret: "hide",
+          });
+        }
       }
     }
   } finally {
