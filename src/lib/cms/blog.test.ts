@@ -32,8 +32,8 @@ describe("blog table of contents", () => {
     ]);
 
     const html = markdownToHtml(content);
-    expect(html).toContain('<h2 id="section-what-to-compare">What to compare</h2>');
-    expect(html).toContain('<h3 id="section-fit-sizing">Fit &amp; sizing</h3>');
+    expect(html.includes('<h2 id="section-what-to-compare">What to compare</h2>')).toBe(true);
+    expect(html.includes('<h3 id="section-fit-sizing">Fit &amp; sizing</h3>')).toBe(true);
   });
 
   it("keeps duplicate heading anchors out of the generated contents list", () => {
