@@ -59,4 +59,24 @@ describe("storefront pricing", () => {
     expect(deliverySettings.delivery_fee_outside).toBe(150);
     expect(deliverySettings.free_threshold).toBe(2000);
   });
+
+  it("treats a legacy zero free-delivery threshold as not configured", () => {
+    const deliverySettings = getNormalizedDeliverySettings({
+      enabled: true,
+      delivery_fee: 80,
+      delivery_fee_outside: 150,
+      free_threshold: 0,
+    });
+
+    expect(deliverySettings.free_threshold).toBe(2000);
+
+    const pricing = getStorefrontPricing({
+      subtotal: 1000,
+      deliverySettings,
+      location: "primary",
+    });
+
+    expect(pricing.qualifiesForThresholdFreeDelivery).toBe(false);
+    expect(pricing.deliveryFee).toBe(80);
+  });
 });
