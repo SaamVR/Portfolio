@@ -5,6 +5,7 @@ import {
   parseBlogArticleBlocks,
   serializeBlogArticleBlocks,
 } from "./blog-article-blocks";
+import { blogArticleTemplates } from "./blog-templates";
 
 describe("Blog article block adapter", () => {
   it("round-trips existing ecommerce Markdown without changing its meaning", () => {
@@ -40,6 +41,13 @@ describe("Blog article block adapter", () => {
       "table",
     ]);
     assert.equal(serializeBlogArticleBlocks(blocks), markdown);
+  });
+
+  it("round-trips every current ecommerce article template exactly", () => {
+    for (const template of blogArticleTemplates) {
+      const serialized = serializeBlogArticleBlocks(parseBlogArticleBlocks(template.content));
+      assert.equal(serialized, template.content, `structured editor changed the ${template.id} template body`);
+    }
   });
 
   it("preserves fenced and unsupported Markdown as raw blocks", () => {
