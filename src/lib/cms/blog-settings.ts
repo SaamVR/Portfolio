@@ -27,7 +27,7 @@ export type BlogSettings = {
 export const defaultBlogSettings: BlogSettings = {
   enabled: true,
   indexEyebrow: "Stories & guides",
-  indexTitle: "Journal",
+  indexTitle: "Blog",
   indexDescription: "Buying guides, product education, launch stories, and useful updates from the store.",
   indexLayout: "magazine",
   postsPerPage: 12,
@@ -41,8 +41,8 @@ export const defaultBlogSettings: BlogSettings = {
   ogImage: "",
   homepageWidgetEnabled: false,
   homepageWidgetLayout: "featured-grid",
-  homepageWidgetEyebrow: "From the journal",
-  homepageWidgetTitle: "Stories worth reading",
+  homepageWidgetEyebrow: "From the blog",
+  homepageWidgetTitle: "Latest from the blog",
   homepageWidgetSubtitle: "Helpful guides, product stories, and updates before you shop.",
   homepageWidgetLimit: 3,
 };
@@ -67,6 +67,10 @@ function numberValue(value: unknown, fallback: number, min: number, max: number)
   return Math.min(max, Math.max(min, Math.round(parsed)));
 }
 
+function normalizeLegacyBlogCopy(value: string, legacy: string, replacement: string) {
+  return value.trim().toLowerCase() === legacy.toLowerCase() ? replacement : value;
+}
+
 export function normalizeBlogSettings(value: unknown): BlogSettings {
   const raw = asRecord(value);
   const indexLayout = raw.indexLayout === "grid" || raw.indexLayout === "compact" || raw.indexLayout === "magazine"
@@ -78,11 +82,21 @@ export function normalizeBlogSettings(value: unknown): BlogSettings {
     || raw.homepageWidgetLayout === "featured-grid"
     ? raw.homepageWidgetLayout
     : defaultBlogSettings.homepageWidgetLayout;
+  const indexTitle = normalizeLegacyBlogCopy(
+    stringValue(raw.indexTitle, defaultBlogSettings.indexTitle),
+    "Journal",
+    "Blog",
+  );
+  const homepageWidgetEyebrow = normalizeLegacyBlogCopy(
+    stringValue(raw.homepageWidgetEyebrow, defaultBlogSettings.homepageWidgetEyebrow),
+    "From the journal",
+    "From the blog",
+  );
 
   return {
     enabled: booleanValue(raw.enabled, defaultBlogSettings.enabled),
     indexEyebrow: stringValue(raw.indexEyebrow, defaultBlogSettings.indexEyebrow),
-    indexTitle: stringValue(raw.indexTitle, defaultBlogSettings.indexTitle),
+    indexTitle,
     indexDescription: stringValue(raw.indexDescription, defaultBlogSettings.indexDescription),
     indexLayout,
     postsPerPage: numberValue(raw.postsPerPage, defaultBlogSettings.postsPerPage, 3, 48),
@@ -96,7 +110,7 @@ export function normalizeBlogSettings(value: unknown): BlogSettings {
     ogImage: stringValue(raw.ogImage, defaultBlogSettings.ogImage),
     homepageWidgetEnabled: booleanValue(raw.homepageWidgetEnabled, defaultBlogSettings.homepageWidgetEnabled),
     homepageWidgetLayout,
-    homepageWidgetEyebrow: stringValue(raw.homepageWidgetEyebrow, defaultBlogSettings.homepageWidgetEyebrow),
+    homepageWidgetEyebrow,
     homepageWidgetTitle: stringValue(raw.homepageWidgetTitle, defaultBlogSettings.homepageWidgetTitle),
     homepageWidgetSubtitle: stringValue(raw.homepageWidgetSubtitle, defaultBlogSettings.homepageWidgetSubtitle),
     homepageWidgetLimit: numberValue(raw.homepageWidgetLimit, defaultBlogSettings.homepageWidgetLimit, 2, 8),
