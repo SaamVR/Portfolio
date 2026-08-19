@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+import BlogQualityPanel from "@/components/admin/blog/BlogQualityPanel";
 import {
   buildBlogExcerpt,
   buildBlogIndexUrl,
@@ -49,6 +50,7 @@ import {
   type BlogPostRecord,
   type BlogProductEmbedPosition,
 } from "@/lib/cms/blog";
+import { buildBlogQualityReport } from "@/lib/cms/blog-quality";
 import {
   defaultBlogSettings,
   normalizeBlogSettings,
@@ -275,6 +277,22 @@ export default function BlogManager() {
   const readingMinutes = calculateBlogReadingTime(editingPost.content);
   const seoTitlePreview = editingPost.seo_title.trim() || editingPost.title.trim() || "Your article title";
   const seoDescriptionPreview = editingPost.seo_description.trim() || buildBlogExcerpt(editingPost.content, editingPost.excerpt) || "A useful description of this article.";
+  const qualityReport = useMemo(() => buildBlogQualityReport({
+    title: editingPost.title,
+    slug: editingPost.slug,
+    excerpt: editingPost.excerpt,
+    content: editingPost.content,
+    featuredImage: editingPost.featured_image,
+    featuredImageAlt: editingPost.featured_image_alt,
+    category: editingPost.category,
+    tags: editingPost.tags,
+    embeddedProductIds: editingPost.embedded_product_ids,
+    seoTitle: editingPost.seo_title,
+    seoDescription: editingPost.seo_description,
+    canonicalUrl: editingPost.canonical_url,
+    noindex: editingPost.noindex,
+    status: editingPost.status,
+  }), [editingPost]);
 
   const updateSettings = <K extends keyof BlogSettings>(key: K, value: BlogSettings[K]) => {
     setBlogSettings((current) => ({ ...current, [key]: value }));
@@ -646,9 +664,7 @@ export default function BlogManager() {
                             <p className="line-clamp-2 text-sm font-semibold text-foreground">{post.title}</p>
                             <p className="mt-1 truncate text-xs text-muted-foreground">/{post.slug}</p>
                           </div>
-                          <span className="shrink-0 rounded-full border border-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            {resolvedStatus}
-                          </span>
+                          <span className="shrink-0 rounded-full border border-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{resolvedStatus}</span>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
                           {post.category ? <span className="rounded-full bg-muted px-2 py-1">{post.category}</span> : null}
@@ -677,65 +693,33 @@ export default function BlogManager() {
                         value={editingPost.title}
                         onChange={(event) => {
                           const title = event.target.value;
-                          setEditingPost((current) => ({
-                            ...current,
-                            title,
-                            slug: current.id ? current.slug : normalizeBlogSlug("", title),
-                          }));
+                          setEditingPost((current) => ({ ...current, title, slug: current.id ? current.slug : normalizeBlogSlug("", title) }));
                         }}
                         placeholder="How to choose the right everyday backpack"
                       />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="blog-slug">URL slug</Label>
-                      <Input
-                        id="blog-slug"
-                        value={editingPost.slug}
-                        onChange={(event) => setEditingPost((current) => ({ ...current, slug: normalizeBlogSlug(event.target.value, current.title) }))}
-                        placeholder="choose-the-right-backpack"
-                      />
+                      <Input id="blog-slug" value={editingPost.slug} onChange={(event) => setEditingPost((current) => ({ ...current, slug: normalizeBlogSlug(event.target.value, current.title) }))} placeholder="choose-the-right-backpack" />
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div className="grid gap-2">
-                      <Label>Category</Label>
-                      <Input value={editingPost.category} onChange={(event) => setEditingPost((current) => ({ ...current, category: event.target.value }))} placeholder="Buying Guides" />
-                    </div>
-                    <div className="grid gap-2 md:col-span-2">
-                      <Label>Tags <span className="font-normal text-muted-foreground">(comma separated)</span></Label>
-                      <Input value={editingPost.tags} onChange={(event) => setEditingPost((current) => ({ ...current, tags: event.target.value }))} placeholder="backpacks, travel, everyday carry" />
-                    </div>
+                    <div className="grid gap-2"><Label>Category</Label><Input value={editingPost.category} onChange={(event) => setEditingPost((current) => ({ ...current, category: event.target.value }))} placeholder="Buying Guides" /></div>
+                    <div className="grid gap-2 md:col-span-2"><Label>Tags <span className="font-normal text-muted-foreground">(comma separated)</span></Label><Input value={editingPost.tags} onChange={(event) => setEditingPost((current) => ({ ...current, tags: event.target.value }))} placeholder="backpacks, travel, everyday carry" /></div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label>Author name</Label>
-                      <Input value={editingPost.author_name} onChange={(event) => setEditingPost((current) => ({ ...current, author_name: event.target.value }))} placeholder={store?.name || "Store team"} />
-                    </div>
-                    <SettingSwitch
-                      checked={editingPost.is_featured}
-                      onCheckedChange={(value) => setEditingPost((current) => ({ ...current, is_featured: value }))}
-                      title="Featured article"
-                      description="Give this post priority in magazine-style layouts."
-                    />
+                    <div className="grid gap-2"><Label>Author name</Label><Input value={editingPost.author_name} onChange={(event) => setEditingPost((current) => ({ ...current, author_name: event.target.value }))} placeholder={store?.name || "Store team"} /></div>
+                    <SettingSwitch checked={editingPost.is_featured} onCheckedChange={(value) => setEditingPost((current) => ({ ...current, is_featured: value }))} title="Featured article" description="Give this post priority in magazine-style layouts." />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label>Featured image URL</Label>
-                      <Input value={editingPost.featured_image} onChange={(event) => setEditingPost((current) => ({ ...current, featured_image: event.target.value }))} placeholder="https://..." />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Image alt text</Label>
-                      <Input value={editingPost.featured_image_alt} onChange={(event) => setEditingPost((current) => ({ ...current, featured_image_alt: event.target.value }))} placeholder="Describe the image for accessibility and SEO" />
-                    </div>
+                    <div className="grid gap-2"><Label>Featured image URL</Label><Input value={editingPost.featured_image} onChange={(event) => setEditingPost((current) => ({ ...current, featured_image: event.target.value }))} placeholder="https://..." /></div>
+                    <div className="grid gap-2"><Label>Image alt text</Label><Input value={editingPost.featured_image_alt} onChange={(event) => setEditingPost((current) => ({ ...current, featured_image_alt: event.target.value }))} placeholder="Describe the image for accessibility and SEO" /></div>
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label>Excerpt</Label>
-                    <Textarea value={editingPost.excerpt} onChange={(event) => setEditingPost((current) => ({ ...current, excerpt: event.target.value }))} rows={3} placeholder="A useful one- or two-sentence summary shown on cards and search previews." />
-                  </div>
+                  <div className="grid gap-2"><Label>Excerpt</Label><Textarea value={editingPost.excerpt} onChange={(event) => setEditingPost((current) => ({ ...current, excerpt: event.target.value }))} rows={3} placeholder="A useful one- or two-sentence summary shown on cards and search previews." /></div>
 
                   <div className="grid gap-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -747,7 +731,7 @@ export default function BlogManager() {
                       <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("**", "**", "bold text")} title="Bold"><Bold className="h-4 w-4" /></Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("*", "*", "italic text")} title="Italic"><Italic className="h-4 w-4" /></Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("- ", "", "list item")} title="List"><List className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")} title="Link"><Link2 className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")} title="Link — use /blog/... or /product/... for internal links"><Link2 className="h-4 w-4" /></Button>
                       <Button type="button" size="sm" variant="ghost" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0} title="Insert selected product cards here"><ShoppingBag className="h-4 w-4" /></Button>
                       <span className="ml-auto px-2 py-1 text-xs text-muted-foreground">Markdown + commerce</span>
                     </div>
@@ -757,37 +741,27 @@ export default function BlogManager() {
                       value={editingPost.content}
                       onChange={(event) => setEditingPost((current) => ({ ...current, content: event.target.value }))}
                       rows={18}
-                      placeholder={"# The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty"}
+                      placeholder={"## The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty\n\nLink to a related [guide](/blog/related-guide) or [product](/product/example--id) when it helps."}
                     />
                   </div>
 
                   <div className="rounded-2xl border border-border bg-background/60 p-5">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">Article preview</p>
-                    </div>
-                    <div
-                      className="prose prose-sm mt-4 max-w-none dark:prose-invert prose-p:leading-7"
-                      dangerouslySetInnerHTML={{ __html: previewHtml }}
-                    />
+                    <div className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /><p className="text-sm font-semibold text-foreground">Article preview</p></div>
+                    <div className="prose prose-sm mt-4 max-w-none dark:prose-invert prose-p:leading-7" dangerouslySetInnerHTML={{ __html: previewHtml }} />
                   </div>
                 </CardContent>
               </Card>
 
+              <BlogQualityPanel report={qualityReport} />
+
               <Card className="border-border bg-card/50">
                 <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                    <CardTitle>Shoppable product section</CardTitle>
-                  </div>
+                  <div className="flex items-center gap-2"><ShoppingBag className="h-5 w-5 text-primary" /><CardTitle>Shoppable product section</CardTitle></div>
                   <CardDescription>Select up to eight real catalog products, then place their product cards exactly where they should appear in the article.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label>Section heading</Label>
-                      <Input value={editingPost.product_embed_title} onChange={(event) => setEditingPost((current) => ({ ...current, product_embed_title: event.target.value }))} placeholder="Shop products from this guide" />
-                    </div>
+                    <div className="grid gap-2"><Label>Section heading</Label><Input value={editingPost.product_embed_title} onChange={(event) => setEditingPost((current) => ({ ...current, product_embed_title: event.target.value }))} placeholder="Shop products from this guide" /></div>
                     <div className="grid gap-2">
                       <Label>Fallback placement</Label>
                       <Select value={editingPost.product_embed_position} onValueChange={(value) => setEditingPost((current) => ({ ...current, product_embed_position: value as BlogProductEmbedPosition }))}>
@@ -801,24 +775,15 @@ export default function BlogManager() {
                     </div>
                   </div>
 
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search your products" className="pl-9" />
-                  </div>
+                  <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search your products" className="pl-9" /></div>
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3">
                     <div>
                       <p className="text-xs font-semibold text-foreground">{editingPost.embedded_product_ids.length}/8 products selected</p>
                       <p className="mt-1 text-xs text-muted-foreground">Place the cursor in Article content, then insert the cards there. If you do not insert them inline, fallback placement is used.</p>
                     </div>
-                    <Button type="button" size="sm" variant="outline" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0}>
-                      <ShoppingBag className="mr-2 h-4 w-4" /> Insert selected products here
-                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0}><ShoppingBag className="mr-2 h-4 w-4" /> Insert selected products here</Button>
                   </div>
-                  {editingPost.content.includes("[[products]]") ? (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
-                      Inline product placement is active. The selected product cards will render where the product marker appears in the article preview.
-                    </div>
-                  ) : null}
+                  {editingPost.content.includes("[[products]]") ? <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">Inline product placement is active. The selected product cards will render where the product marker appears in the article preview.</div> : null}
                   {products.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">Add products to your catalog first, then return here to make articles shoppable.</div>
                   ) : (
@@ -826,15 +791,7 @@ export default function BlogManager() {
                       {filteredProducts.map((product) => {
                         const selected = editingPost.embedded_product_ids.includes(product.id);
                         return (
-                          <button
-                            key={product.id}
-                            type="button"
-                            onClick={() => toggleProduct(product.id)}
-                            className={cn(
-                              "overflow-hidden rounded-xl border text-left transition",
-                              selected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border bg-background hover:border-primary/30",
-                            )}
-                          >
+                          <button key={product.id} type="button" onClick={() => toggleProduct(product.id)} className={cn("overflow-hidden rounded-xl border text-left transition", selected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border bg-background hover:border-primary/30")}>
                             {product.image_url ? <img src={product.image_url} alt="" className="aspect-[4/3] w-full object-cover" /> : <div className="flex aspect-[4/3] items-center justify-center bg-muted"><ImageIcon className="h-6 w-6 text-muted-foreground" /></div>}
                             <div className="p-3">
                               <p className="line-clamp-2 text-sm font-semibold text-foreground">{product.name}</p>
@@ -856,25 +813,15 @@ export default function BlogManager() {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                      <div className="flex justify-between gap-2"><Label>SEO title</Label><span className="text-xs text-muted-foreground">{editingPost.seo_title.length}/60</span></div>
-                      <Input value={editingPost.seo_title} onChange={(event) => setEditingPost((current) => ({ ...current, seo_title: event.target.value }))} placeholder="Optional search-specific title" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>SEO keywords <span className="font-normal text-muted-foreground">(comma separated)</span></Label>
-                      <Input value={editingPost.seo_keywords} onChange={(event) => setEditingPost((current) => ({ ...current, seo_keywords: event.target.value }))} placeholder="travel backpack, carry-on backpack" />
-                    </div>
+                    <div className="grid gap-2"><div className="flex justify-between gap-2"><Label>SEO title</Label><span className="text-xs text-muted-foreground">{editingPost.seo_title.length}/60</span></div><Input value={editingPost.seo_title} onChange={(event) => setEditingPost((current) => ({ ...current, seo_title: event.target.value }))} placeholder="Optional search-specific title" /></div>
+                    <div className="grid gap-2"><Label>SEO keywords <span className="font-normal text-muted-foreground">(comma separated)</span></Label><Input value={editingPost.seo_keywords} onChange={(event) => setEditingPost((current) => ({ ...current, seo_keywords: event.target.value }))} placeholder="travel backpack, carry-on backpack" /></div>
                   </div>
-                  <div className="grid gap-2">
-                    <div className="flex justify-between gap-2"><Label>Meta description</Label><span className="text-xs text-muted-foreground">{editingPost.seo_description.length}/160</span></div>
-                    <Textarea value={editingPost.seo_description} onChange={(event) => setEditingPost((current) => ({ ...current, seo_description: event.target.value }))} rows={3} placeholder="Describe why this article is useful and what the shopper will learn." />
-                  </div>
+                  <div className="grid gap-2"><div className="flex justify-between gap-2"><Label>Meta description</Label><span className="text-xs text-muted-foreground">{editingPost.seo_description.length}/160</span></div><Textarea value={editingPost.seo_description} onChange={(event) => setEditingPost((current) => ({ ...current, seo_description: event.target.value }))} rows={3} placeholder="Describe why this article is useful and what the shopper will learn." /></div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2"><Label>Canonical URL</Label><Input value={editingPost.canonical_url} onChange={(event) => setEditingPost((current) => ({ ...current, canonical_url: event.target.value }))} placeholder="Leave blank to use this store's article URL" /></div>
                     <div className="grid gap-2"><Label>Social / OG image URL</Label><Input value={editingPost.og_image} onChange={(event) => setEditingPost((current) => ({ ...current, og_image: event.target.value }))} placeholder="Defaults to featured image" /></div>
                   </div>
                   <SettingSwitch checked={editingPost.noindex} onCheckedChange={(value) => setEditingPost((current) => ({ ...current, noindex: value }))} title="Hide this article from search engines" description="Adds noindex metadata. Useful for temporary, private-ish, or duplicate campaign content." />
-
                   <div className="rounded-xl border border-border bg-background p-4">
                     <p className="truncate text-sm text-emerald-600">{editingPost.canonical_url || (store ? buildBlogPostUrl(store.slug, editingPost.slug || "article") : "/blog/article")}</p>
                     <p className="mt-1 line-clamp-2 text-lg font-medium text-blue-600">{seoTitlePreview}</p>
@@ -893,27 +840,13 @@ export default function BlogManager() {
                         <Button type="button" variant={editingPost.status === "published" ? "default" : "outline"} onClick={() => setEditingPost((current) => ({ ...current, status: "published", published_at: current.published_at || new Date().toISOString().slice(0, 16) }))}>Publish</Button>
                       </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label>Publish date / schedule</Label>
-                      <Input type="datetime-local" value={editingPost.published_at} onChange={(event) => setEditingPost((current) => ({ ...current, published_at: event.target.value }))} disabled={editingPost.status === "draft"} />
-                    </div>
+                    <div className="grid gap-2"><Label>Publish date / schedule</Label><Input type="datetime-local" value={editingPost.published_at} onChange={(event) => setEditingPost((current) => ({ ...current, published_at: event.target.value }))} disabled={editingPost.status === "draft"} /></div>
                   </div>
                   <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-4">
-                    <div>
-                      {editingPost.id ? (
-                        <Button type="button" variant="destructive" onClick={deletePost} disabled={deletingPost}>
-                          {deletingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Delete
-                        </Button>
-                      ) : null}
-                    </div>
+                    <div>{editingPost.id ? <Button type="button" variant="destructive" onClick={deletePost} disabled={deletingPost}>{deletingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Delete</Button> : null}</div>
                     <div className="flex flex-wrap gap-2">
-                      {editingPost.id && store ? (
-                        <Button type="button" variant="outline" asChild><a href={buildBlogPostUrl(store.slug, editingPost.slug)} target="_blank" rel="noreferrer">Preview live <ArrowUpRight className="ml-2 h-4 w-4" /></a></Button>
-                      ) : null}
-                      <Button type="button" onClick={savePost} disabled={savingPost}>
-                        {savingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        {editingPost.id ? "Update article" : "Save article"}
-                      </Button>
+                      {editingPost.id && store ? <Button type="button" variant="outline" asChild><a href={buildBlogPostUrl(store.slug, editingPost.slug)} target="_blank" rel="noreferrer">Preview live <ArrowUpRight className="ml-2 h-4 w-4" /></a></Button> : null}
+                      <Button type="button" onClick={savePost} disabled={savingPost}>{savingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{editingPost.id ? "Update article" : "Save article"}</Button>
                     </div>
                   </div>
                 </CardContent>
@@ -930,7 +863,6 @@ export default function BlogManager() {
             </CardHeader>
             <CardContent className="space-y-6">
               <SettingSwitch checked={blogSettings.homepageWidgetEnabled} onCheckedChange={(value) => updateSettings("homepageWidgetEnabled", value)} title="Show blog on homepage" description="Displays the latest published stories only when the Blog feature itself is enabled." />
-
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {widgetLayouts.map((layout) => (
                   <button key={layout.id} type="button" onClick={() => updateSettings("homepageWidgetLayout", layout.id)} className={cn("rounded-2xl border p-4 text-left transition", blogSettings.homepageWidgetLayout === layout.id ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border bg-background hover:border-primary/25")}>
@@ -939,7 +871,6 @@ export default function BlogManager() {
                   </button>
                 ))}
               </div>
-
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2"><Label>Eyebrow</Label><Input value={blogSettings.homepageWidgetEyebrow} onChange={(event) => updateSettings("homepageWidgetEyebrow", event.target.value)} /></div>
                 <div className="grid gap-2"><Label>Section title</Label><Input value={blogSettings.homepageWidgetTitle} onChange={(event) => updateSettings("homepageWidgetTitle", event.target.value)} /></div>
@@ -955,10 +886,7 @@ export default function BlogManager() {
 
         <TabsContent value="seo" className="space-y-6">
           <Card className="border-border bg-card/50">
-            <CardHeader>
-              <CardTitle>Blog index page</CardTitle>
-              <CardDescription>Choose how the main blog page reads, looks, and appears to search engines.</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>Blog index page</CardTitle><CardDescription>Choose how the main blog page reads, looks, and appears to search engines.</CardDescription></CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-3 md:grid-cols-3">
                 {indexLayouts.map((layout) => (
@@ -968,14 +896,12 @@ export default function BlogManager() {
                   </button>
                 ))}
               </div>
-
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2"><Label>Eyebrow</Label><Input value={blogSettings.indexEyebrow} onChange={(event) => updateSettings("indexEyebrow", event.target.value)} /></div>
                 <div className="grid gap-2"><Label>Page title</Label><Input value={blogSettings.indexTitle} onChange={(event) => updateSettings("indexTitle", event.target.value)} placeholder={`${store?.name || "Store"} journal`} /></div>
               </div>
               <div className="grid gap-2"><Label>Page description</Label><Textarea rows={3} value={blogSettings.indexDescription} onChange={(event) => updateSettings("indexDescription", event.target.value)} /></div>
               <div className="grid gap-2 md:max-w-xs"><Label>Posts per page</Label><Input type="number" min={3} max={48} value={blogSettings.postsPerPage} onChange={(event) => updateSettings("postsPerPage", Math.min(48, Math.max(3, Number(event.target.value) || 12)))} /></div>
-
               <div>
                 <p className="mb-3 text-sm font-semibold text-foreground">Article card information</p>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -986,7 +912,6 @@ export default function BlogManager() {
                   <SettingSwitch checked={blogSettings.showTags} onCheckedChange={(value) => updateSettings("showTags", value)} title="Tags" description="Show useful topic tags on article pages." />
                 </div>
               </div>
-
               <div className="rounded-2xl border border-border bg-background/60 p-5">
                 <div className="mb-4 flex items-center gap-2"><Search className="h-4 w-4 text-primary" /><p className="text-sm font-semibold text-foreground">Blog-level SEO</p></div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -995,7 +920,6 @@ export default function BlogManager() {
                 </div>
                 <div className="mt-4 grid gap-2"><Label>SEO description</Label><Textarea rows={3} value={blogSettings.seoDescription} onChange={(event) => updateSettings("seoDescription", event.target.value)} placeholder="What useful content can shoppers find in this blog?" /></div>
               </div>
-
               <div className="flex justify-end"><Button onClick={saveBlogSettings} disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save blog page</Button></div>
             </CardContent>
           </Card>

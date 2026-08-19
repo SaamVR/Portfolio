@@ -43,3 +43,16 @@ describe("blog table of contents", () => {
     ]);
   });
 });
+
+describe("blog markdown links", () => {
+  it("renders safe relative storefront links without forcing a new tab", () => {
+    const html = markdownToHtml("Read the [size guide](/blog/size-guide) or [shop](/shop?fit=travel).");
+    expect(html.includes('<a href="/blog/size-guide">size guide</a>')).toBe(true);
+    expect(html.includes('<a href="/shop?fit=travel">shop</a>')).toBe(true);
+  });
+
+  it("does not turn protocol-relative links into anchors", () => {
+    const html = markdownToHtml("Do not render [unsafe](//example.com/path).");
+    expect(html.includes('<a href="//example.com/path">')).toBe(false);
+  });
+});
