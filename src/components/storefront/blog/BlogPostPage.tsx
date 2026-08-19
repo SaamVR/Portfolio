@@ -51,15 +51,27 @@ function blogAttributedProductUrl(store: Store, post: BlogPostRecord, product: B
   return `${base}${base.includes("?") ? "&" : "?"}${params.toString()}`;
 }
 
-function ProductMerchandising({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+function ProductMerchandising({
+  store,
+  post,
+  products,
+  title,
+  description,
+}: {
+  store: Store;
+  post: BlogPostRecord;
+  products: BlogProductRecord[];
+  title?: string;
+  description?: string;
+}) {
   if (!products.length) return null;
   return (
     <section className="my-8 rounded-3xl border border-border bg-gradient-to-br from-primary/[0.06] via-card to-card p-5 sm:p-7">
       <div className="flex items-center gap-2">
         <ShoppingBag className="h-5 w-5 text-primary" />
-        <h2 className="font-heading text-2xl font-bold text-foreground">{post.product_embed_title || "Shop products from this story"}</h2>
+        <h2 className="font-heading text-2xl font-bold text-foreground">{title || post.product_embed_title || "Shop products from this story"}</h2>
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">Explore the products mentioned or recommended in this article.</p>
+      <p className="mt-2 text-sm text-muted-foreground">{description || "Explore the products mentioned or recommended in this article."}</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => (
           <Link key={product.id} href={blogAttributedProductUrl(store, post, product)} className="group overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
@@ -162,12 +174,14 @@ export function BlogPostPage({
   post,
   settings,
   products,
+  smartProducts = [],
   relatedPosts = [],
 }: {
   store: Store;
   post: BlogPostRecord;
   settings: BlogSettings;
   products: BlogProductRecord[];
+  smartProducts?: BlogProductRecord[];
   relatedPosts?: BlogPostRecord[];
 }) {
   const embedPosition = resolveBlogProductEmbedPosition(post.product_embed_position);
@@ -276,6 +290,16 @@ export function BlogPostPage({
                 <ArticleContent store={store} post={post} products={products} />
 
                 {!hasInlineProducts && embedPosition === "after-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+
+                {products.length === 0 && smartProducts.length > 0 ? (
+                  <ProductMerchandising
+                    store={store}
+                    post={post}
+                    products={smartProducts}
+                    title="Recommended from this store"
+                    description="Relevant catalog picks based on this article, current featured products, offers, and availability."
+                  />
+                ) : null}
 
                 {settings.showTags && (post.tags ?? []).length > 0 ? (
                   <div className="mt-9 flex flex-wrap items-center gap-2 border-t border-border pt-6">

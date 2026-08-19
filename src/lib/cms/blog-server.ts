@@ -12,6 +12,18 @@ type PublicBlogQuery = {
   excludeId?: string | null;
 };
 
+type SmartBlogProductCandidate = BlogProductRecord & {
+  type?: string | null;
+  featured?: boolean | null;
+  created_at?: string | null;
+};
+
+const BLOG_PRODUCT_STOP_WORDS = new Set([
+  "about", "after", "best", "buy", "buying", "choose", "from", "guide", "into", "more",
+  "product", "products", "right", "shop", "shopping", "that", "their", "this", "tips", "what",
+  "when", "where", "which", "with", "your",
+]);
+
 function getBlogReadClient(): SupabaseClient | null {
   try {
     // Server-only service-role reads let the application repair legacy visibility
@@ -24,6 +36,44 @@ function getBlogReadClient(): SupabaseClient | null {
 
 function normalizeText(value?: string | null) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function tokenizeBlogProductContext(post: BlogPostRecord) {
+  const priorityTerms = [post.category ?? "", ...(post.tags ?? [])]
+    .map(normalizeText)
+    .filter(Boolean);
+  const titleTerms = normalizeText(post.title)
+    .split(/[^a-z0-9]+/)
+    .filter((term) => term.length >= 3 && !BLOG_PRODUCT_STOP_WORDS.has(term));
+  return {
+    priorityTerms: Array.from(new Set(priorityTerms)),
+    titleTerms: Array.from(new Set(titleTerms)),
+  };
+}
+
+function scoreBlogProduct(post: BlogPostRecord, product: SmartBlogProductCandidate) {
+  const { priorityTerms, titleTerms } = tokenizeBlogProductContext(post);
+  const name = normalizeText(product.name);
+  const type = normalizeText(product.type);
+  const description = normalizeText(product.description);
+  let score = 0;
+
+  for (const term of priorityTerms) {
+    if (type === term) score += 8;
+    else if (type.includes(term) || term.includes(type)) score += type ? 5 : 0;
+    if (name.includes(term)) score += 5;
+    if (description.includes(term)) score += 2;
+  }
+
+  for (const term of titleTerms) {
+    if (name.includes(term)) score += 3;
+    if (type.includes(term)) score += 3;
+    if (description.includes(term)) score += 1;
+  }
+
+  if (product.featured) score += 1;
+  if (product.original_price && product.original_price > product.price) score += 1;
+  return score;
 }
 
 async function canExposeBlog(client: SupabaseClient, storeId: string) {
@@ -161,6 +211,43 @@ export async function loadBlogProducts(storeId: string, productIds: string[]): P
 
   const byId = new Map(((data ?? []) as BlogProductRecord[]).map((product) => [product.id, product]));
   return ids.map((id) => byId.get(id)).filter((product): product is BlogProductRecord => Boolean(product));
+}
+
+export async function loadSmartBlogProducts(storeId: string, post: BlogPostRecord, limit = 4): Promise<BlogProductRecord[]> {
+  const client = getBlogReadClient();
+  if (!client || !(await canExposeBlog(client, storeId))) return [];
+
+  const resolvedLimit = Math.min(8, Math.max(1, Math.round(limit)));
+  const excludedIds = new Set(post.embedded_product_ids ?? []);
+  const { data, error } = await (client as any)
+    .from("products")
+    .select("id,name,price,original_price,image_url,description,is_available,type,featured,created_at")
+    .eq("store_id", storeId)
+    .eq("is_available", true)
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (error) {
+    console.error("[blog] failed to load smart product candidates", error);
+    return [];
+  }
+
+  return ((data ?? []) as SmartBlogProductCandidate[])
+    .filter((product) => !excludedIds.has(product.id))
+    .map((product, index) => ({
+      product,
+      score: scoreBlogProduct(post, product),
+      recencyRank: index,
+    }))
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      if (Boolean(right.product.featured) !== Boolean(left.product.featured)) {
+        return Number(Boolean(right.product.featured)) - Number(Boolean(left.product.featured));
+      }
+      return left.recencyRank - right.recencyRank;
+    })
+    .slice(0, resolvedLimit)
+    .map(({ product }) => product);
 }
 
 export async function loadRelatedBlogPosts(storeId: string, post: BlogPostRecord, limit = 3) {

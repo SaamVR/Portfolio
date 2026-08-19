@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/components/storefront/blog/BlogPostPage";
 import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
-import { loadBlogProducts, loadPublishedBlogPost, loadRelatedBlogPosts, loadStoreBlogSettings } from "@/lib/cms/blog-server";
+import {
+  loadBlogProducts,
+  loadPublishedBlogPost,
+  loadRelatedBlogPosts,
+  loadSmartBlogProducts,
+  loadStoreBlogSettings,
+} from "@/lib/cms/blog-server";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +68,18 @@ export default async function Page({ params }: { params: Promise<{ storeSlug: st
     loadBlogProducts(store.id, post.embedded_product_ids ?? []),
     loadRelatedBlogPosts(store.id, post, 3),
   ]);
+  const smartProducts = products.length === 0
+    ? await loadSmartBlogProducts(store.id, post, 4)
+    : [];
 
-  return <BlogPostPage store={store} post={post} settings={settings} products={products} relatedPosts={relatedPosts} />;
+  return (
+    <BlogPostPage
+      store={store}
+      post={post}
+      settings={settings}
+      products={products}
+      smartProducts={smartProducts}
+      relatedPosts={relatedPosts}
+    />
+  );
 }
