@@ -179,6 +179,7 @@ function sanitizeBlock(block: StorePageBlock, blockIndex: number, findings: Temp
     "overlayColor", "overlayOpacity", "cardOpacity", "limit", "mediaFit",
     "enableGlow", "enableParticles", "enableOrbs",
     "faqs", "badges", "reviews", "mediaType", "source", "category", "productType", "specLabels",
+    "imageAlt", "imagePosition", "focalX", "focalY",
   ];
   const sourceProps = block.props as Record<string, unknown>;
   const sanitizedProps: Record<string, unknown> = {};
@@ -191,8 +192,10 @@ function sanitizeBlock(block: StorePageBlock, blockIndex: number, findings: Temp
   }
 
   const mediaUrl = sanitizeUrl(sourceProps.mediaUrl, `${basePath}.props.mediaUrl`, findings);
+  const imageUrl = sanitizeUrl(sourceProps.imageUrl, `${basePath}.props.imageUrl`, findings);
   const videoUrl = sanitizeUrl(sourceProps.videoUrl, `${basePath}.props.videoUrl`, findings);
   if (mediaUrl) sanitizedProps.mediaUrl = mediaUrl;
+  if (imageUrl) sanitizedProps.imageUrl = imageUrl;
   if (videoUrl) sanitizedProps.videoUrl = videoUrl;
   if (Array.isArray(sourceProps.images)) {
     sanitizedProps.images = sourceProps.images
