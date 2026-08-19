@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   Check,
-  CheckCircle2,
   Circle,
   LayoutTemplate,
   ListChecks,
@@ -84,9 +83,16 @@ export default function MerchantSetupJourney() {
       if (error) throw error;
 
       const settings = new Map((data ?? []).map((row) => [row.key, row.value]));
+      const registrationValue = settings.get("registration_onboarding");
+      const onboardingValue = settings.get("onboarding_status");
+
       return {
-        registration: readObject(settings.get("registration_onboarding")) as RegistrationSnapshot,
-        onboarding: readObject(settings.get("onboarding_status")) as OnboardingSnapshot,
+        registration: registrationValue === undefined
+          ? null
+          : readObject(registrationValue) as RegistrationSnapshot,
+        onboarding: onboardingValue === undefined
+          ? null
+          : readObject(onboardingValue) as OnboardingSnapshot,
       };
     },
     enabled: Boolean(activeStoreId),
@@ -99,21 +105,30 @@ export default function MerchantSetupJourney() {
   const healthScore = healthData?.score ?? 0;
   const registration = setupState?.registration ?? null;
   const onboarding = setupState?.onboarding ?? null;
+  const hasRegistrationSnapshot = registration !== null;
   const registrationDone = Boolean(registration?.completed);
   const onboardingDone = Boolean(onboarding?.completed);
 
   const steps = useMemo<JourneyStep[]>(() => {
     if (!activeStoreId) return [];
+    const registrationStepSatisfied = registrationDone || !hasRegistrationSnapshot;
+
     return [
       {
         id: "registration-wizard",
         label: "Registration Onboarding Wizard",
         description: registrationDone
           ? "Your quick design, section, and starter-input choices were saved."
-          : "No registration questionnaire snapshot was found for this store.",
-        complete: registrationDone,
+          : !hasRegistrationSnapshot
+            ? "Not applicable for this legacy or manually-created store. Continue with full Onboarding."
+            : "The registration questionnaire exists but is not marked complete yet.",
+        complete: registrationStepSatisfied,
         href: withStoreId("/admin/onboarding", activeStoreId),
-        action: registrationDone ? "Review in Onboarding" : "Open Onboarding",
+        action: registrationDone
+          ? "Review in Onboarding"
+          : !hasRegistrationSnapshot
+            ? "Continue Onboarding"
+            : "Open Onboarding",
         icon: WandSparkles,
       },
       {
@@ -161,7 +176,7 @@ export default function MerchantSetupJourney() {
         icon: Rocket,
       },
     ];
-  }, [activeStoreId, healthScore, onboardingDone, productCount, registrationDone, visibleHomepageBlocks]);
+  }, [activeStoreId, hasRegistrationSnapshot, healthScore, onboardingDone, productCount, registrationDone, visibleHomepageBlocks]);
 
   if (!activeStoreId) return null;
 
@@ -187,6 +202,7 @@ export default function MerchantSetupJourney() {
                   <Sparkles className="mr-1 h-3 w-3" /> Setup journey
                 </Badge>
                 {registrationDone ? <Badge variant="secondary">Registration ready</Badge> : null}
+                {!hasRegistrationSnapshot ? <Badge variant="secondary">Legacy store</Badge> : null}
               </div>
               <h2 className="mt-3 font-heading text-xl font-bold text-foreground sm:text-2xl">Continue from where registration left off</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -256,11 +272,17 @@ export default function MerchantSetupJourney() {
                 <div className="flex items-center justify-between rounded-xl bg-background/55 px-3 py-2"><span>Delivery starter</span><span className="font-semibold text-foreground">{registration?.delivery_enabled ? "Enabled" : "Skipped"}</span></div>
               </div>
             </>
+          ) : hasRegistrationSnapshot ? (
+            <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <WandSparkles className="h-5 w-5 text-amber-600" />
+              <p className="mt-3 text-sm font-semibold text-foreground">Registration questionnaire needs review</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">A registration snapshot exists but is not marked complete. Continue in full Onboarding to verify the store setup.</p>
+            </div>
           ) : (
             <div className="mt-4 rounded-2xl border border-dashed border-border p-4">
               <Circle className="h-5 w-5 text-muted-foreground" />
               <p className="mt-3 text-sm font-semibold text-foreground">Legacy or manually created store</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">There is no Registration Onboarding Wizard snapshot. Nothing is broken—continue using full Onboarding.</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">There is no Registration Onboarding Wizard snapshot. Nothing is broken, and this step does not reduce your setup progress. Continue using full Onboarding.</p>
             </div>
           )}
 
