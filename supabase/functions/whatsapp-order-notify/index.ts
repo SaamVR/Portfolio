@@ -4,7 +4,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://ezcomo.shop";
+const APP_BASE_URL = (Deno.env.get("APP_BASE_URL") || Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://ezcomo.shop").replace(/\/$/, "");
+const WHATSAPP_CLOUD_ACCESS_TOKEN = Deno.env.get("WHATSAPP_CLOUD_ACCESS_TOKEN")?.trim() ?? "";
+const WHATSAPP_CLOUD_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID")?.trim() ?? "";
+const WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME = Deno.env.get("WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME")?.trim() ?? "";
+const WHATSAPP_MERCHANT_ORDER_TEMPLATE_LANGUAGE = Deno.env.get("WHATSAPP_MERCHANT_ORDER_TEMPLATE_LANGUAGE")?.trim() || "en_US";
+const WHATSAPP_GRAPH_API_VERSION = /^v\d+\.\d+$/.test(Deno.env.get("WHATSAPP_GRAPH_API_VERSION")?.trim() ?? "")
+  ? Deno.env.get("WHATSAPP_GRAPH_API_VERSION")!.trim()
+  : "v25.0";
+const WHATSAPP_DEFAULT_COUNTRY_CODE = (Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE")?.trim() || "880").replace(/\D/g, "") || "880";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +32,7 @@ interface WhatsAppNotifyPayload {
   store_id: string;
   order_id: string;
   order_number?: string;
+  store_name?: string;
   customer_name: string;
   customer_phone: string;
   shipping_address: string;
@@ -32,36 +41,70 @@ interface WhatsAppNotifyPayload {
   items?: OrderItemPayload[];
 }
 
-function formatWhatsAppMessage(payload: WhatsAppNotifyPayload, adminLink: string): string {
-  const orderRef = payload.order_number ? `#${payload.order_number}` : payload.order_id;
-  const itemsText = Array.isArray(payload.items) && payload.items.length > 0
-    ? payload.items
-        .map((item) => {
-          const name = item.name || item.product_name || item.title || "Item";
-          const size = item.size ? ` (${item.size})` : "";
-          const qty = item.quantity ?? 1;
-          const price = item.price != null ? ` - ৳${item.price * qty}` : "";
-          return `• ${qty}x ${name}${size}${price}`;
-        })
-        .join("\n")
-    : "• Order items";
-
-  const address = [payload.shipping_address, payload.shipping_city].filter(Boolean).join(", ");
-
-  return (
-    `📦 *NEW ORDER RECEIVED*\n\n` +
-    `*Order Number:* ${orderRef}\n` +
-    `*Customer:* ${payload.customer_name} (${payload.customer_phone})\n\n` +
-    `*Items:*\n${itemsText}\n\n` +
-    `*Total:* ৳${payload.total}\n` +
-    `*Delivery Address:* ${address}\n\n` +
-    `🔗 *Admin Link:* ${adminLink}`
-  );
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
-function generateWaMeUrl(phoneNumber: string, message: string): string {
-  const digitsOnly = phoneNumber.replace(/\D/g, "");
-  return `https://wa.me/${digitsOnly}?text=${encodeURIComponent(message)}`;
+function normalizeRecipient(phoneNumber: string) {
+  const raw = phoneNumber.trim();
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (raw.startsWith("+") || raw.startsWith("00")) return digits;
+  if (digits.startsWith("0") && digits.length >= 10) {
+    return `${WHATSAPP_DEFAULT_COUNTRY_CODE}${digits.slice(1)}`;
+  }
+  return digits;
+}
+
+function clampText(value: string, maxLength = 1000) {
+  const trimmed = value.trim();
+  return trimmed.length <= maxLength ? trimmed : `${trimmed.slice(0, maxLength - 1)}…`;
+}
+
+function summarizeItems(items: OrderItemPayload[] | undefined) {
+  if (!Array.isArray(items) || items.length === 0) return "Order items";
+  return clampText(items.map((item) => {
+    const name = item.name || item.product_name || item.title || "Item";
+    const size = item.size ? ` (${item.size})` : "";
+    return `${Math.max(1, Number(item.quantity ?? 1))}x ${name}${size}`;
+  }).join(", "), 900);
+}
+
+async function logDelivery(
+  supabase: ReturnType<typeof createClient>,
+  payload: WhatsAppNotifyPayload,
+  event: {
+    status: "sent" | "skipped" | "failed";
+    recipient?: string;
+    provider: string;
+    providerMessageId?: string;
+    error?: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  try {
+    const { error } = await supabase.from("email_events").insert({
+      store_id: payload.store_id,
+      order_id: payload.order_id,
+      template_name: "whatsapp-merchant-order-notify",
+      recipient: event.recipient || null,
+      channel: "whatsapp",
+      status: event.status,
+      provider: event.provider,
+      provider_message_id: event.providerMessageId || null,
+      error: event.error || null,
+      metadata: {
+        order_number: payload.order_number || null,
+        ...event.metadata,
+      },
+    });
+    if (error) console.error("[WhatsApp Notify] Failed to log event:", error.message);
+  } catch (error) {
+    console.error("[WhatsApp Notify] Failed to log event:", error);
+  }
 }
 
 serve(async (req) => {
@@ -71,17 +114,11 @@ serve(async (req) => {
 
   try {
     const payload: WhatsAppNotifyPayload = await req.json();
-
     if (!payload.store_id || !payload.order_id) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Missing store_id or order_id" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Missing store_id or order_id" }, 400);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // 1. Fetch store's whatsapp_support setting
     const { data: settingsRow, error: settingsError } = await supabase
       .from("site_settings")
       .select("value")
@@ -90,72 +127,123 @@ serve(async (req) => {
       .maybeSingle();
 
     if (settingsError) {
-      console.error("[WhatsApp Notify] Error reading site_settings:", settingsError.message);
+      throw new Error(settingsError.message || "Failed to load merchant WhatsApp settings");
     }
 
-    const whatsappSettings = settingsRow?.value as { enabled?: boolean; number?: string; message?: string } | undefined;
-
-    if (!whatsappSettings || whatsappSettings.enabled === false || !whatsappSettings.number) {
-      console.log("[WhatsApp Notify] WhatsApp support disabled or number missing for store:", payload.store_id);
-      return new Response(
-        JSON.stringify({ success: true, status: "skipped", reason: "WhatsApp support not enabled or number missing" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const whatsappSettings = settingsRow?.value as { enabled?: boolean; number?: string } | undefined;
+    if (!whatsappSettings || whatsappSettings.enabled === false || !whatsappSettings.number?.trim()) {
+      await logDelivery(supabase, payload, {
+        status: "skipped",
+        provider: "meta-cloud",
+        error: "WhatsApp support is disabled or no merchant number is configured",
+      });
+      return jsonResponse({ success: true, status: "skipped", reason: "WhatsApp support is disabled or number missing" });
     }
 
-    const cleanNumber = whatsappSettings.number.replace(/\D/g, "");
-    if (!cleanNumber) {
-      return new Response(
-        JSON.stringify({ success: true, status: "skipped", reason: "Invalid phone number digits" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const recipient = normalizeRecipient(whatsappSettings.number);
+    if (!recipient) {
+      await logDelivery(supabase, payload, {
+        status: "skipped",
+        provider: "meta-cloud",
+        error: "Merchant WhatsApp number has no usable digits",
+      });
+      return jsonResponse({ success: true, status: "skipped", reason: "Invalid merchant WhatsApp number" });
     }
 
-    // 2. Build admin link and message template
+    if (!WHATSAPP_CLOUD_ACCESS_TOKEN || !WHATSAPP_CLOUD_PHONE_NUMBER_ID || !WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME) {
+      const reason = "WhatsApp Cloud API is not configured; no automatic message was sent";
+      await logDelivery(supabase, payload, {
+        status: "skipped",
+        recipient,
+        provider: "meta-cloud",
+        error: reason,
+      });
+      return jsonResponse({ success: true, status: "skipped", recipient, reason });
+    }
+
+    const orderRef = payload.order_number ? `#${payload.order_number}` : payload.order_id;
+    const address = [payload.shipping_address, payload.shipping_city].filter(Boolean).join(", ") || "Not provided";
     const adminLink = `${APP_BASE_URL}/admin/orders`;
-    const message = formatWhatsAppMessage(payload, adminLink);
-    const waMeUrl = generateWaMeUrl(cleanNumber, message);
+    const parameters = [
+      payload.store_name || "EZComo Store",
+      orderRef,
+      payload.customer_name,
+      payload.customer_phone,
+      summarizeItems(payload.items),
+      `BDT ${Number(payload.total || 0).toLocaleString("en-US")}`,
+      address,
+      adminLink,
+    ];
 
-    // 3. Log notification event into email_events (fail-safe)
-    try {
-      await supabase.from("email_events").insert({
-        store_id: payload.store_id,
-        order_id: payload.order_id,
-        template_name: "whatsapp-merchant-order-notify",
-        recipient: cleanNumber,
-        channel: "whatsapp",
-        status: "sent",
-        provider: "wa.me",
+    const response = await fetch(
+      `https://graph.facebook.com/${WHATSAPP_GRAPH_API_VERSION}/${encodeURIComponent(WHATSAPP_CLOUD_PHONE_NUMBER_ID)}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_CLOUD_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipient,
+          type: "template",
+          template: {
+            name: WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME,
+            language: { code: WHATSAPP_MERCHANT_ORDER_TEMPLATE_LANGUAGE },
+            components: [{
+              type: "body",
+              parameters: parameters.map((text) => ({ type: "text", text: clampText(String(text)) })),
+            }],
+          },
+        }),
+      },
+    );
+
+    const responsePayload = await response.json().catch(() => null) as {
+      messages?: Array<{ id?: string }>;
+      error?: { message?: string; code?: number; error_subcode?: number };
+    } | null;
+    const providerMessageId = responsePayload?.messages?.[0]?.id?.trim();
+
+    if (!response.ok || !providerMessageId) {
+      const message = responsePayload?.error?.message || `WhatsApp Cloud API returned HTTP ${response.status}`;
+      await logDelivery(supabase, payload, {
+        status: "failed",
+        recipient,
+        provider: "meta-cloud",
+        error: message,
         metadata: {
-          whatsapp_url: waMeUrl,
-          order_number: payload.order_number,
-          customer_name: payload.customer_name,
-          customer_phone: payload.customer_phone,
-          total: payload.total,
+          template_name: WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME,
+          http_status: response.status,
+          provider_error_code: responsePayload?.error?.code ?? null,
+          provider_error_subcode: responsePayload?.error?.error_subcode ?? null,
         },
       });
-    } catch (logErr) {
-      console.error("[WhatsApp Notify] Failed to log event:", logErr);
+      return jsonResponse({ success: false, status: "failed", error: message }, 502);
     }
 
-    console.log(`[WhatsApp Notify] Formatted wa.me URL for merchant (${cleanNumber}): ${waMeUrl}`);
+    await logDelivery(supabase, payload, {
+      status: "sent",
+      recipient,
+      provider: "meta-cloud",
+      providerMessageId,
+      metadata: {
+        template_name: WHATSAPP_MERCHANT_ORDER_TEMPLATE_NAME,
+        template_language: WHATSAPP_MERCHANT_ORDER_TEMPLATE_LANGUAGE,
+      },
+    });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        status: "sent",
-        provider: "wa.me",
-        recipient: cleanNumber,
-        whatsapp_url: waMeUrl,
-        message,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error: any) {
-    console.error("[WhatsApp Notify] Exception encountered (fail-safe):", error.message);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: true,
+      status: "sent",
+      provider: "meta-cloud",
+      recipient,
+      provider_message_id: providerMessageId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown WhatsApp notification error";
+    console.error("[WhatsApp Notify] Exception:", message);
+    return jsonResponse({ success: false, status: "failed", error: message }, 500);
   }
 });
