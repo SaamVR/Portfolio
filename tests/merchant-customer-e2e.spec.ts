@@ -86,12 +86,12 @@ test("merchant creates store/product and clean customer places COD order", async
     await merchantPage.goto(`/admin/products?storeId=${encodeURIComponent(storeId as string)}`);
     await expect(merchantPage.getByTestId("products-add-button")).toBeVisible({ timeout: 30000 });
     await merchantPage.getByTestId("products-add-button").click();
+    await expect(merchantPage.getByTestId("products-form-stock")).toHaveValue("1");
     await merchantPage.getByTestId("products-form-name").fill(productName);
     await merchantPage.getByTestId("products-form-price").fill(String(productPrice));
     await merchantPage.getByTestId("products-form-image-url").fill(IMAGE_URL);
     await merchantPage.getByTestId("products-form-description").fill("Product created by the merchant/customer journey test.");
-    const stockRow = merchantPage.getByText("Stock *", { exact: true }).locator("..");
-    await stockRow.locator("input[type=number]").fill(String(initialStock));
+    await merchantPage.getByTestId("products-form-stock").fill(String(initialStock));
     await merchantPage.getByTestId("products-save-button").click();
     await expect(merchantPage.getByText(productName)).toBeVisible({ timeout: 15000 });
 
