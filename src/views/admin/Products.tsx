@@ -67,7 +67,7 @@ const emptyProduct = {
   type: "T-Shirt",
   featured: false,
   badge: null as string | null,
-  stock: 0,
+  stock: 1,
   metric_values: {} as Record<string, string[]>,
 };
 
@@ -495,6 +495,14 @@ const AdminProducts = () => {
       toast.error("Name, image URL, and price are required");
       return;
     }
+    if (!Number.isFinite(form.stock) || form.stock < 0) {
+      toast.error("Stock must be 0 or more");
+      return;
+    }
+    if (!editing && form.stock <= 0) {
+      toast.error("Set stock to at least 1 before adding a new product. You can mark it sold out later.");
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
@@ -517,7 +525,7 @@ const AdminProducts = () => {
         await refreshStorefrontProductCache(supabase, activeStoreId as string, {
           products: [{ id: editing.id, name: payload.name }],
         });
-        toast.success("Product updated");
+        toast.success(payload.stock === 0 ? "Product updated and marked sold out" : "Product updated");
       } else {
         const productId = crypto.randomUUID();
         const { error } = await (supabase.from("products") as any).insert({
@@ -531,7 +539,7 @@ const AdminProducts = () => {
         await refreshStorefrontProductCache(supabase, activeStoreId as string, {
           products: [{ id: productId, name: payload.name }],
         });
-        toast.success("Product added");
+        toast.success("Product added and ready to sell");
       }
     } catch (error) {
       console.error("Failed to save product:", error);
@@ -852,7 +860,19 @@ const AdminProducts = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Stock *</Label>
-                <Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
+                <Input
+                  data-testid="products-form-stock"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {editing
+                    ? "Set stock to 0 to mark this product sold out and unavailable to customers."
+                    : "New products need at least 1 in stock so they are available to customers after saving."}
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label>Badge</Label>
