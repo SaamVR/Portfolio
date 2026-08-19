@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@/test/test-utils";
 import {
   buildBlogExcerpt,
+  extractBlogHeadings,
   hasInlineBlogProducts,
+  markdownToHtml,
   splitBlogContentAtProductDirectives,
 } from "@/lib/cms/blog";
 
@@ -17,5 +19,27 @@ describe("blog inline commerce directives", () => {
 
   it("keeps product directives out of automatic excerpts", () => {
     expect(buildBlogExcerpt("Useful intro.\n\n[[products]]\n\nUseful ending.")).toBe("Useful intro. Useful ending.");
+  });
+});
+
+describe("blog table of contents", () => {
+  it("extracts H2/H3 headings and creates matching anchor ids", () => {
+    const content = "# Article title\n\n## What to compare\n\n### Fit & sizing\n\n## Final choice";
+    expect(extractBlogHeadings(content)).toEqual([
+      { level: 2, text: "What to compare", id: "section-what-to-compare" },
+      { level: 3, text: "Fit & sizing", id: "section-fit-sizing" },
+      { level: 2, text: "Final choice", id: "section-final-choice" },
+    ]);
+
+    const html = markdownToHtml(content);
+    expect(html).toContain('<h2 id="section-what-to-compare">What to compare</h2>');
+    expect(html).toContain('<h3 id="section-fit-sizing">Fit &amp; sizing</h3>');
+  });
+
+  it("keeps duplicate heading anchors out of the generated contents list", () => {
+    const content = "## Details\n\nText.\n\n## Details\n\nMore text.";
+    expect(extractBlogHeadings(content)).toEqual([
+      { level: 2, text: "Details", id: "section-details" },
+    ]);
   });
 });

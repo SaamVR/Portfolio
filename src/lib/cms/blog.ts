@@ -44,6 +44,12 @@ export type BlogProductRecord = {
   is_available?: boolean | null;
 };
 
+export type BlogHeading = {
+  level: 2 | 3;
+  text: string;
+  id: string;
+};
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -60,6 +66,34 @@ function renderInlineMarkdown(value: string) {
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+export function blogHeadingId(value: string) {
+  return `section-${slugify(value) || "section"}`;
+}
+
+export function extractBlogHeadings(markdown: string): BlogHeading[] {
+  const headings: BlogHeading[] = [];
+  const seenIds = new Set<string>();
+
+  for (const rawLine of markdown.replace(/\r\n/g, "\n").split("\n")) {
+    const match = rawLine.trim().match(/^(#{2,3})\s+(.*)$/);
+    if (!match) continue;
+
+    const text = stripMarkdown(match[2]).trim();
+    if (!text) continue;
+
+    const id = blogHeadingId(match[2]);
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    headings.push({
+      level: match[1].length as 2 | 3,
+      text,
+      id,
+    });
+  }
+
+  return headings;
 }
 
 export function markdownToHtml(markdown: string) {
@@ -108,7 +142,8 @@ export function markdownToHtml(markdown: string) {
       flushParagraph();
       closeList();
       const level = headingMatch[1].length;
-      html.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      const id = blogHeadingId(headingMatch[2]);
+      html.push(`<h${level} id="${escapeHtml(id)}">${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
       continue;
     }
 

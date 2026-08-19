@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronRight, Clock3, ShoppingBag, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Clock3, ListTree, ShoppingBag, Tag } from "lucide-react";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -9,11 +9,13 @@ import {
   buildBlogIndexUrl,
   buildBlogPostUrl,
   calculateBlogReadingTime,
+  extractBlogHeadings,
   formatBlogDate,
   hasInlineBlogProducts,
   markdownToHtml,
   resolveBlogProductEmbedPosition,
   splitBlogContentAtProductDirectives,
+  type BlogHeading,
   type BlogPostRecord,
   type BlogProductRecord,
 } from "@/lib/cms/blog";
@@ -83,6 +85,28 @@ function ProductMerchandising({ store, post, products }: { store: Store; post: B
   );
 }
 
+function ArticleTableOfContents({ headings }: { headings: BlogHeading[] }) {
+  if (headings.length < 2) return null;
+
+  return (
+    <nav aria-label="Table of contents" className="mt-8 rounded-2xl border border-border bg-muted/30 p-5 sm:p-6">
+      <div className="flex items-center gap-2">
+        <ListTree className="h-4 w-4 text-primary" />
+        <p className="text-sm font-semibold text-foreground">In this article</p>
+      </div>
+      <ol className="mt-4 space-y-2 text-sm">
+        {headings.map((heading) => (
+          <li key={heading.id} className={heading.level === 3 ? "pl-4" : undefined}>
+            <a href={`#${heading.id}`} className="text-muted-foreground transition hover:text-primary hover:underline hover:underline-offset-4">
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 function ArticleContent({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
   const chunks = splitBlogContentAtProductDirectives(post.content);
   return (
@@ -91,7 +115,7 @@ function ArticleContent({ store, post, products }: { store: Store; post: BlogPos
         <div key={`${post.id}-chunk-${index}`}>
           {chunk.trim() ? (
             <div
-              className="prose prose-neutral mt-9 max-w-none dark:prose-invert prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-8 prose-a:text-primary prose-a:underline-offset-4 prose-blockquote:border-primary prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-muted prose-pre:p-4 prose-ul:list-disc prose-ol:list-decimal"
+              className="prose prose-neutral mt-9 max-w-none scroll-smooth dark:prose-invert prose-headings:scroll-mt-24 prose-headings:font-heading prose-headings:tracking-tight prose-p:leading-8 prose-a:text-primary prose-a:underline-offset-4 prose-blockquote:border-primary prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-muted prose-pre:p-4 prose-ul:list-disc prose-ol:list-decimal"
               dangerouslySetInnerHTML={{ __html: markdownToHtml(chunk) }}
             />
           ) : null}
@@ -148,9 +172,14 @@ export function BlogPostPage({
 }) {
   const embedPosition = resolveBlogProductEmbedPosition(post.product_embed_position);
   const hasInlineProducts = hasInlineBlogProducts(post.content);
+  const headings = extractBlogHeadings(post.content);
   const canonical = post.canonical_url || absoluteStoreUrl(
     { slug: store.slug, customDomain: store.customDomain ?? null },
     `/blog/${encodeURIComponent(post.slug)}`,
+  );
+  const blogIndexCanonical = absoluteStoreUrl(
+    { slug: store.slug, customDomain: store.customDomain ?? null },
+    "/blog",
   );
   const schema = {
     "@context": "https://schema.org",
@@ -169,12 +198,38 @@ export function BlogPostPage({
     mainEntityOfPage: canonical,
     keywords: [...(post.seo_keywords ?? []), ...(post.tags ?? [])].join(", ") || undefined,
   };
+  const breadcrumbItems = [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Blog",
+      item: blogIndexCanonical,
+    },
+    ...(post.category ? [{
+      "@type": "ListItem",
+      position: 2,
+      name: post.category,
+      item: `${blogIndexCanonical}?${new URLSearchParams({ category: post.category }).toString()}`,
+    }] : []),
+    {
+      "@type": "ListItem",
+      position: post.category ? 3 : 2,
+      name: post.title,
+      item: canonical,
+    },
+  ];
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbItems,
+  };
 
   return (
     <StoreProvider store={store}>
       <StoreThemeScope theme={store.theme}>
         <StorefrontLayout>
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c") }} />
           <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
             <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
               <Link href={buildBlogIndexUrl(store.slug)} className="font-medium hover:text-primary">Blog</Link>
@@ -213,6 +268,8 @@ export function BlogPostPage({
                 {post.featured_image ? (
                   <img src={post.featured_image} alt={post.featured_image_alt || post.title} className="mt-8 max-h-[640px] w-full rounded-[28px] border border-border object-cover" />
                 ) : null}
+
+                <ArticleTableOfContents headings={headings} />
 
                 {!hasInlineProducts && embedPosition === "after-intro" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 
