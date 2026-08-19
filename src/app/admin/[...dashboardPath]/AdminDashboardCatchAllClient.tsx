@@ -14,6 +14,7 @@ import NotificationsCenterPage from "@/views/admin/NotificationsCenter";
 import OperationsDiagnosticsPage from "@/views/admin/OperationsDiagnostics";
 import CouriersPage from "@/views/admin/Couriers";
 import BlogManager from "@/views/admin/BlogManager";
+import BlogPerformance from "@/views/admin/BlogPerformance";
 import QrCodeGeneratorPage from "@/views/admin/QrCodeGenerator";
 import CartRecoveryPage from "@/views/admin/CartRecovery";
 import Categories from "@/views/admin/Categories";
@@ -62,6 +63,8 @@ function AdminDashboardRoute({ route }: { route: string }) {
       return <AnalyticsPage />;
     case "blog":
       return <BlogManager />;
+    case "blog-performance":
+      return <BlogPerformance />;
     case "launch":
       return <LaunchReadinessPage />;
     case "categories":
