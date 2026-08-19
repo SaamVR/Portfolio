@@ -66,7 +66,7 @@ const FeaturedProducts = ({
   const variantGridClass =
     layoutVariant === "2-col"
       ? "grid-cols-2"
-      : layoutVariant === "3-col" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
+      : layoutVariant === "3-col" || layoutVariant === "grid" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
         ? "grid-cols-2 lg:grid-cols-3"
         : layoutVariant === "4-col"
           ? "grid-cols-2 lg:grid-cols-4"
