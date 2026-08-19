@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { normalizeBlogSettings, type BlogSettings } from "@/lib/cms/blog-settings";
-import type { BlogPostRecord } from "@/lib/cms/blog";
+import type { BlogPostRecord, BlogProductRecord } from "@/lib/cms/blog";
 
 type PublicBlogQuery = {
   limit?: number;
@@ -115,4 +115,46 @@ export async function loadPublishedBlogPost(storeId: string, slug: string): Prom
 
   const post = (data ?? null) as BlogPostRecord | null;
   return post && isBlogPostPublicNow(post) ? post : null;
+}
+
+export async function loadBlogProducts(storeId: string, productIds: string[]): Promise<BlogProductRecord[]> {
+  const ids = Array.from(new Set(productIds.filter(Boolean))).slice(0, 12);
+  if (ids.length === 0) return [];
+  const client = getBlogReadClient();
+  if (!client) return [];
+
+  const { data, error } = await (client as any)
+    .from("products")
+    .select("id,name,price,original_price,image_url,description,is_available")
+    .eq("store_id", storeId)
+    .in("id", ids)
+    .eq("is_available", true);
+
+  if (error) {
+    console.error("[blog] failed to load embedded products", error);
+    return [];
+  }
+
+  const byId = new Map(((data ?? []) as BlogProductRecord[]).map((product) => [product.id, product]));
+  return ids.map((id) => byId.get(id)).filter((product): product is BlogProductRecord => Boolean(product));
+}
+
+export async function loadRelatedBlogPosts(storeId: string, post: BlogPostRecord, limit = 3) {
+  const candidates = await loadPublishedBlogPosts(storeId, { limit: 24, excludeId: post.id });
+  const category = normalizeText(post.category);
+  const tags = new Set((post.tags ?? []).map(normalizeText).filter(Boolean));
+
+  return candidates
+    .map((candidate) => {
+      const sameCategory = Boolean(category && normalizeText(candidate.category) === category);
+      const sharedTags = (candidate.tags ?? []).reduce((count, tag) => count + (tags.has(normalizeText(tag)) ? 1 : 0), 0);
+      return { candidate, score: (sameCategory ? 4 : 0) + sharedTags };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return new Date(right.candidate.published_at || right.candidate.created_at).getTime()
+        - new Date(left.candidate.published_at || left.candidate.created_at).getTime();
+    })
+    .slice(0, Math.min(6, Math.max(1, limit)))
+    .map(({ candidate }) => candidate);
 }
