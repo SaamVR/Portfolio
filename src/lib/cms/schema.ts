@@ -39,6 +39,19 @@ const baseBlockFields = {
   customCss: z.string().optional(),
 };
 
+const focalCoordinateSchema = z.union([z.number(), z.string()]).optional();
+const imagePositionSchema = z.enum([
+  "center",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+]).optional();
+
 const countdownBlockSchema = z.object({
   ...baseBlockFields,
   type: z.literal("countdown"),
@@ -68,6 +81,9 @@ const heroBlockSchema = z.object({
     mediaUrl: z.string().optional(),
     mediaType: z.enum(["image", "video"]).optional(),
     mediaFit: z.enum(["cover", "contain"]).optional(),
+    imagePosition: imagePositionSchema,
+    focalX: focalCoordinateSchema,
+    focalY: focalCoordinateSchema,
     overlayColor: z.string().optional(),
     overlayOpacity: z.number().int().min(0).max(100).optional(),
   }).default({}),
@@ -100,6 +116,9 @@ const categoryShowcaseBlockSchema = z.object({
     title: z.string().optional(),
     source: z.enum(["auto", "categories", "types"]).optional(),
     limit: z.number().int().positive().max(24).optional(),
+    imagePosition: imagePositionSchema,
+    focalX: focalCoordinateSchema,
+    focalY: focalCoordinateSchema,
   }).default({}),
 });
 
@@ -113,6 +132,9 @@ const featuredProductsBlockSchema = z.object({
     source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
     category: z.string().optional(),
     productType: z.string().optional(),
+    imagePosition: imagePositionSchema,
+    focalX: focalCoordinateSchema,
+    focalY: focalCoordinateSchema,
   }).default({}),
 });
 
@@ -141,6 +163,9 @@ const recommendedProductsBlockSchema = z.object({
     source: z.enum(["featured-or-all", "featured", "all", "newest", "category", "type"]).optional(),
     category: z.string().optional(),
     productType: z.string().optional(),
+    imagePosition: imagePositionSchema,
+    focalX: focalCoordinateSchema,
+    focalY: focalCoordinateSchema,
   }).default({}),
 });
 
@@ -190,6 +215,11 @@ const richTextBlockSchema = z.object({
     title: z.string().min(1),
     body: richTextBodySchema,
     align: z.enum(["left", "center"]).default("center"),
+    imageUrl: z.string().optional(),
+    imageAlt: z.string().optional(),
+    imagePosition: imagePositionSchema,
+    focalX: focalCoordinateSchema,
+    focalY: focalCoordinateSchema,
   }),
 });
 
@@ -246,6 +276,8 @@ const testimonialsBlockSchema = z.object({
   props: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
+    source: z.enum(["manual", "live"]).optional(),
+    limit: z.number().int().positive().max(12).optional(),
     reviews: z.array(z.object({
       name: z.string(),
       rating: z.number().int().min(1).max(5).default(5),
