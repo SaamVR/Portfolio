@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { normalizeBlogSettings, type BlogSettings } from "@/lib/cms/blog-settings";
 import type { BlogPostRecord, BlogProductDirective, BlogProductRecord } from "@/lib/cms/blog";
@@ -78,13 +78,8 @@ function scoreBlogProduct(post: BlogPostRecord, product: SmartBlogProductCandida
 }
 
 async function canExposeBlog(client: SupabaseClient, storeId: string) {
-  const [{ data: store, error: storeError }, { data: setting, error: settingError }] = await Promise.all([
-    (client as any)
-      .from("stores")
-      .select("id")
-      .eq("id", storeId)
-      .eq("is_published", true)
-      .maybeSingle(),
+  const [{ data: planState, error: planStateError }, { data: setting, error: settingError }] = await Promise.all([
+    loadStorePlanState(client, storeId, { includePublished: true }),
     (client as any)
       .from("site_settings")
       .select("value")
@@ -93,12 +88,22 @@ async function canExposeBlog(client: SupabaseClient, storeId: string) {
       .maybeSingle(),
   ]);
 
-  if (storeError || settingError) {
-    console.error("[blog] failed to verify public blog access", storeError ?? settingError);
+  if (planStateError || settingError) {
+    console.error("[blog] failed to verify public blog access", planStateError ?? settingError);
     return false;
   }
 
-  return Boolean(store?.id) && normalizeBlogSettings(setting?.value).enabled;
+  if (!planState) return false;
+
+  // Keep Blog visibility aligned with the same storefront-access semantics used
+  // by the store resolver. A live trial/paid storefront can remain reachable
+  // while `stores.is_published` is false, so Blog must not disappear solely
+  // because of that legacy flag.
+  const storeAccessible = planState.isPublished
+    ? (!planState.subscription || planState.resolved.live)
+    : planState.resolved.live;
+
+  return storeAccessible && normalizeBlogSettings(setting?.value).enabled;
 }
 
 async function loadAvailableBlogProductCandidates(client: SupabaseClient, storeId: string, limit = 80) {
