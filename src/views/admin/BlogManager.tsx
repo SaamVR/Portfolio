@@ -243,10 +243,10 @@ export default function BlogManager() {
   const publishedCount = posts.filter((post) => resolveBlogPostStatus(post) === "published").length;
   const scheduledCount = posts.filter((post) => resolveBlogPostStatus(post) === "scheduled").length;
   const draftCount = posts.filter((post) => resolveBlogPostStatus(post) === "draft").length;
-  const previewHtml = useMemo(
-    () => markdownToHtml(editingPost.content || "Write useful buying advice, product education, comparisons, or brand stories here."),
-    [editingPost.content],
-  );
+  const previewHtml = useMemo(() => {
+    const source = editingPost.content || "Write useful buying advice, product education, comparisons, or brand stories here.";
+    return markdownToHtml(source.replace(/\[\[products\]\]/gi, "\n\n> 🛍️ Selected product cards render here.\n\n"));
+  }, [editingPost.content]);
   const readingMinutes = calculateBlogReadingTime(editingPost.content);
   const seoTitlePreview = editingPost.seo_title.trim() || editingPost.title.trim() || "Your article title";
   const seoDescriptionPreview = editingPost.seo_description.trim() || buildBlogExcerpt(editingPost.content, editingPost.excerpt) || "A useful description of this article.";
@@ -414,6 +414,25 @@ export default function BlogManager() {
       const caret = start + prefix.length + selected.length + suffix.length;
       textarea?.setSelectionRange(caret, caret);
     });
+  };
+
+  const insertProductSectionAtCursor = () => {
+    if (editingPost.embedded_product_ids.length === 0) {
+      toast.error("Select at least one product first.");
+      return;
+    }
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? editingPost.content.length;
+    const end = textarea?.selectionEnd ?? start;
+    const directive = "\n\n[[products]]\n\n";
+    const next = `${editingPost.content.slice(0, start)}${directive}${editingPost.content.slice(end)}`;
+    setEditingPost((current) => ({ ...current, content: next }));
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      const caret = start + directive.length;
+      textarea?.setSelectionRange(caret, caret);
+    });
+    toast.success("Product cards inserted at the article cursor.");
   };
 
   const toggleProduct = (id: string) => {
@@ -674,12 +693,13 @@ export default function BlogManager() {
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> {readingMinutes} min read</span>
                     </div>
                     <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-2">
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("## ", "", "Section heading")}><Heading2 className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("**", "**", "bold text")}><Bold className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("*", "*", "italic text")}><Italic className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("- ", "", "list item")}><List className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")}><Link2 className="h-4 w-4" /></Button>
-                      <span className="ml-auto px-2 py-1 text-xs text-muted-foreground">Markdown</span>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("## ", "", "Section heading")} title="Heading"><Heading2 className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("**", "**", "bold text")} title="Bold"><Bold className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("*", "*", "italic text")} title="Italic"><Italic className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("- ", "", "list item")} title="List"><List className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")} title="Link"><Link2 className="h-4 w-4" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0} title="Insert selected product cards here"><ShoppingBag className="h-4 w-4" /></Button>
+                      <span className="ml-auto px-2 py-1 text-xs text-muted-foreground">Markdown + commerce</span>
                     </div>
                     <Textarea
                       ref={contentRef}
@@ -710,7 +730,7 @@ export default function BlogManager() {
                     <ShoppingBag className="h-5 w-5 text-primary" />
                     <CardTitle>Shoppable product section</CardTitle>
                   </div>
-                  <CardDescription>Select up to eight real catalog products to display as product cards inside the article.</CardDescription>
+                  <CardDescription>Select up to eight real catalog products, then place their product cards exactly where they should appear in the article.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -719,7 +739,7 @@ export default function BlogManager() {
                       <Input value={editingPost.product_embed_title} onChange={(event) => setEditingPost((current) => ({ ...current, product_embed_title: event.target.value }))} placeholder="Shop products from this guide" />
                     </div>
                     <div className="grid gap-2">
-                      <Label>Placement</Label>
+                      <Label>Fallback placement</Label>
                       <Select value={editingPost.product_embed_position} onValueChange={(value) => setEditingPost((current) => ({ ...current, product_embed_position: value as BlogProductEmbedPosition }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -735,7 +755,20 @@ export default function BlogManager() {
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search your products" className="pl-9" />
                   </div>
-                  <p className="text-xs text-muted-foreground">{editingPost.embedded_product_ids.length}/8 selected</p>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">{editingPost.embedded_product_ids.length}/8 products selected</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Place the cursor in Article content, then insert the cards there. If you do not insert them inline, fallback placement is used.</p>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0}>
+                      <ShoppingBag className="mr-2 h-4 w-4" /> Insert selected products here
+                    </Button>
+                  </div>
+                  {editingPost.content.includes("[[products]]") ? (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
+                      Inline product placement is active. The selected product cards will render where the product marker appears in the article preview.
+                    </div>
+                  ) : null}
                   {products.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">Add products to your catalog first, then return here to make articles shoppable.</div>
                   ) : (
