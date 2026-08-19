@@ -38,6 +38,7 @@ import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import BlogArticleTemplateChooser from "@/components/admin/blog/BlogArticleTemplateChooser";
 import BlogInternalLinkAssistant from "@/components/admin/blog/BlogInternalLinkAssistant";
 import BlogQualityPanel from "@/components/admin/blog/BlogQualityPanel";
+import BlogStructuredArticleEditor from "@/components/admin/blog/BlogStructuredArticleEditor";
 import {
   buildBlogExcerpt,
   buildBlogIndexUrl,
@@ -188,6 +189,7 @@ export default function BlogManager() {
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [editingPost, setEditingPost] = useState<EditablePost>(emptyPost);
+  const [contentEditorMode, setContentEditorMode] = useState<"structured" | "markdown">("structured");
   const [blogSettings, setBlogSettings] = useState<BlogSettings>(defaultBlogSettings);
   const [savingPost, setSavingPost] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -752,28 +754,45 @@ export default function BlogManager() {
 
                   <div className="grid gap-2"><Label>Excerpt</Label><Textarea value={editingPost.excerpt} onChange={(event) => setEditingPost((current) => ({ ...current, excerpt: event.target.value }))} rows={3} placeholder="A useful one- or two-sentence summary shown on cards and search previews." /></div>
 
-                  <div className="grid gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Label htmlFor="blog-content">Article content</Label>
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> {readingMinutes} min read</span>
+                  <div className="grid gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <Label htmlFor={contentEditorMode === "markdown" ? "blog-content" : undefined}>Article content</Label>
+                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> {readingMinutes} min read</p>
+                      </div>
+                      <div className="flex rounded-xl border border-border bg-muted/20 p-1">
+                        <Button type="button" size="sm" variant={contentEditorMode === "structured" ? "default" : "ghost"} onClick={() => setContentEditorMode("structured")}>Structured</Button>
+                        <Button type="button" size="sm" variant={contentEditorMode === "markdown" ? "default" : "ghost"} onClick={() => setContentEditorMode("markdown")}>Markdown</Button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-2">
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("## ", "", "Section heading")} title="Heading"><Heading2 className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("**", "**", "bold text")} title="Bold"><Bold className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("*", "*", "italic text")} title="Italic"><Italic className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("- ", "", "list item")} title="List"><List className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")} title="Link — use /blog/... or /product/... for internal links"><Link2 className="h-4 w-4" /></Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0} title="Insert selected product cards here"><ShoppingBag className="h-4 w-4" /></Button>
-                      <span className="ml-auto px-2 py-1 text-xs text-muted-foreground">Markdown + commerce</span>
-                    </div>
-                    <Textarea
-                      ref={contentRef}
-                      id="blog-content"
-                      value={editingPost.content}
-                      onChange={(event) => setEditingPost((current) => ({ ...current, content: event.target.value }))}
-                      rows={18}
-                      placeholder={"## The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty\n\nLink to a related guide or product when it genuinely helps the shopper."}
-                    />
+
+                    {contentEditorMode === "structured" ? (
+                      <BlogStructuredArticleEditor
+                        value={editingPost.content}
+                        onChange={(content) => setEditingPost((current) => ({ ...current, content }))}
+                        selectedProductCount={editingPost.embedded_product_ids.length}
+                      />
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-2">
+                          <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("## ", "", "Section heading")} title="Heading"><Heading2 className="h-4 w-4" /></Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("**", "**", "bold text")} title="Bold"><Bold className="h-4 w-4" /></Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("*", "*", "italic text")} title="Italic"><Italic className="h-4 w-4" /></Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("- ", "", "list item")} title="List"><List className="h-4 w-4" /></Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => insertMarkdown("[", "](https://example.com)", "link text")} title="Link — use /blog/... or /product/... for internal links"><Link2 className="h-4 w-4" /></Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={insertProductSectionAtCursor} disabled={editingPost.embedded_product_ids.length === 0} title="Insert selected product cards here"><ShoppingBag className="h-4 w-4" /></Button>
+                          <span className="ml-auto px-2 py-1 text-xs text-muted-foreground">Markdown + commerce</span>
+                        </div>
+                        <Textarea
+                          ref={contentRef}
+                          id="blog-content"
+                          value={editingPost.content}
+                          onChange={(event) => setEditingPost((current) => ({ ...current, content: event.target.value }))}
+                          rows={18}
+                          placeholder={"## The short answer\n\nExplain what the shopper needs to know.\n\n## What to compare\n\n- Fit\n- Material\n- Price\n- Warranty\n\nLink to a related guide or product when it genuinely helps the shopper."}
+                        />
+                      </>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-border bg-background/60 p-5">
