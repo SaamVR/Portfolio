@@ -1,34 +1,18 @@
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/components/storefront/blog/BlogPostPage";
 import { getRequestStoreShell } from "@/lib/cms/request-store";
-import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
-import { getStoreBlogSettings } from "@/lib/cms/blog-settings";
-import type { BlogPostRecord, BlogProductRecord } from "@/lib/cms/blog";
+import { loadBlogProducts, loadPublishedBlogPost, loadRelatedBlogPosts, loadStoreBlogSettings } from "@/lib/cms/blog-server";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export const dynamic = "force-dynamic";
-
-async function loadPublishedPost(storeId: string, slug: string) {
-  const supabase = getCmsSupabaseServerClient();
-  if (!supabase) return null;
-  const { data } = await (supabase as any)
-    .from("blog_posts")
-    .select("*")
-    .eq("store_id", storeId)
-    .eq("slug", slug)
-    .eq("status", "published")
-    .lte("published_at", new Date().toISOString())
-    .maybeSingle();
-  return (data ?? null) as BlogPostRecord | null;
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await getRequestStoreShell({ requestedPageSlug: `/blog/${slug}` });
   if (!store) return {};
-  const settings = getStoreBlogSettings(store);
+  const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) return { robots: { index: false, follow: false } };
-  const post = await loadPublishedPost(store.id, slug);
+  const post = await loadPublishedBlogPost(store.id, slug);
   if (!post) return {};
 
   const canonical = post.canonical_url || absoluteStoreUrl(
@@ -50,8 +34,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       url: canonical,
       siteName: store.name,
-      publishedTime: post.published_at || undefined,
-      modifiedTime: post.updated_at || undefined,
+      publishedTime: post.published_at || post.created_at || undefined,
+      modifiedTime: post.updated_at || post.published_at || undefined,
       authors: post.author_name ? [post.author_name] : undefined,
       tags: post.tags ?? undefined,
       images: socialImage ? [{ url: socialImage, alt: post.featured_image_alt || post.title }] : undefined,
@@ -68,25 +52,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await getRequestStoreShell({ requestedPageSlug: `/blog/${slug}` });
-  const supabase = getCmsSupabaseServerClient();
-  if (!store || !supabase) notFound();
-  const settings = getStoreBlogSettings(store);
+  if (!store) notFound();
+  const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) notFound();
-  const post = await loadPublishedPost(store.id, slug);
+  const post = await loadPublishedBlogPost(store.id, slug);
   if (!post) notFound();
 
-  const productIds = (post.embedded_product_ids ?? []).filter(Boolean).slice(0, 8);
-  let products: BlogProductRecord[] = [];
-  if (productIds.length) {
-    const { data } = await (supabase as any)
-      .from("products")
-      .select("id,name,price,original_price,image_url,description,is_available")
-      .eq("store_id", store.id)
-      .in("id", productIds)
-      .eq("is_available", true);
-    const byId = new Map(((data ?? []) as BlogProductRecord[]).map((product) => [product.id, product]));
-    products = productIds.map((id) => byId.get(id)).filter((product): product is BlogProductRecord => Boolean(product));
-  }
+  const [products, relatedPosts] = await Promise.all([
+    loadBlogProducts(store.id, post.embedded_product_ids ?? []),
+    loadRelatedBlogPosts(store.id, post, 3),
+  ]);
 
-  return <BlogPostPage store={store} post={post} settings={settings} products={products} />;
+  return <BlogPostPage store={store} post={post} settings={settings} products={products} relatedPosts={relatedPosts} />;
 }
