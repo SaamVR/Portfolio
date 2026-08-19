@@ -125,7 +125,7 @@ export function PropertyListingCard({
         </div>
 
         <div className="flex items-baseline gap-1.5 pt-1 min-w-0">
-          <span className="text-xl font-bold text-primary truncate min-w-0">${product.price.toLocaleString()}</span>
+          <span className="text-xl font-bold text-primary truncate min-w-0">BDT {product.price.toLocaleString()}</span>
           {listingMode === "For Rent" ? <span className="text-xs text-muted-foreground">/mo</span> : null}
         </div>
 

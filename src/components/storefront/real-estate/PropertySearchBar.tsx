@@ -62,13 +62,15 @@ export function PropertySearchBar({
         <input
           value={filters.minPrice}
           onChange={(event) => update("minPrice", event.target.value)}
-          placeholder="$ Min"
+          placeholder="BDT Min"
+          inputMode="numeric"
           className="rounded-[18px] border border-[#dce8dd] bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:border-white/10 dark:bg-card dark:text-foreground"
         />
         <input
           value={filters.maxPrice}
           onChange={(event) => update("maxPrice", event.target.value)}
-          placeholder="$ Max"
+          placeholder="BDT Max"
+          inputMode="numeric"
           className="rounded-[18px] border border-[#dce8dd] bg-white px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:border-white/10 dark:bg-card dark:text-foreground"
         />
         <select

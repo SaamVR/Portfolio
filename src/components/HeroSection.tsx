@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { RealEstatePropertySearchSection } from "@/components/storefront/real-estate/RealEstatePropertySearchSection";
 import { storefrontPath } from "@/lib/slug";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
@@ -66,6 +68,13 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
   const legacyHero = overrides?.disableLegacyFallback ? null : hero;
   const storeName = currentStore?.name?.trim() || "your storefront";
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
 
   const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Now available";
   const title = overrides?.title ?? legacyHero?.title ?? "Built for";
@@ -160,6 +169,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   };
 
   return (
+    <>
     <section
       id={overrides?.anchorId}
       ref={sectionRef}
@@ -291,6 +301,8 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
         ) : null}
       </div>
     </section>
+    {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
+    </>
   );
 };
 
