@@ -5,6 +5,7 @@ import { ArrowRight, BookOpen, Clock3 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildBlogExcerpt, buildBlogIndexUrl, buildBlogPostUrl, calculateBlogReadingTime, formatBlogDate } from "@/lib/cms/blog";
 import { normalizeBlogSettings, type BlogSettings } from "@/lib/cms/blog-settings";
@@ -37,7 +38,7 @@ export function BlogHomepageWidget() {
   const { data: rawSettings } = useSiteSettings<BlogSettings>("blog", store?.id);
   const settings = normalizeBlogSettings(rawSettings ?? store?.siteSettings?.blog);
 
-  const { data: posts = [] } = useQuery({
+  const postsQuery = useQuery({
     queryKey: ["storefront-blog-home-widget", store?.id, settings.homepageWidgetLimit],
     enabled: Boolean(store?.id && settings.enabled && settings.homepageWidgetEnabled),
     queryFn: async () => {
@@ -56,11 +57,24 @@ export function BlogHomepageWidget() {
     staleTime: 120_000,
   });
 
-  if (!store || !settings.enabled || !settings.homepageWidgetEnabled || posts.length === 0) {
-    return null;
+  if (!store || !settings.enabled || !settings.homepageWidgetEnabled) return null;
+  if (postsQuery.isLoading) return <StorefrontSectionSkeleton title={settings.homepageWidgetTitle || "Loading articles"} cards={3} />;
+  if (postsQuery.isError) return <StorefrontSectionError title="Articles could not load" description="The rest of the storefront is available. Try this section again shortly." onRetry={() => void postsQuery.refetch()} />;
+
+  const posts = postsQuery.data ?? [];
+  const indexHref = buildBlogIndexUrl(store.slug);
+  if (posts.length === 0) {
+    return (
+      <StorefrontSectionEmpty
+        eyebrow={settings.homepageWidgetEyebrow || "Journal"}
+        title={settings.homepageWidgetTitle || "Articles are coming soon"}
+        description="Published stories, guides, and product inspiration will appear here automatically."
+        primaryLabel="Open Blog"
+        primaryHref={indexHref}
+      />
+    );
   }
 
-  const indexHref = buildBlogIndexUrl(store.slug);
   const layout = settings.homepageWidgetLayout;
 
   return (
@@ -68,17 +82,9 @@ export function BlogHomepageWidget() {
       <div className="container mx-auto px-4">
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-              {settings.homepageWidgetEyebrow}
-            </p>
-            <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              {settings.homepageWidgetTitle}
-            </h2>
-            {settings.homepageWidgetSubtitle ? (
-              <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-                {settings.homepageWidgetSubtitle}
-              </p>
-            ) : null}
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{settings.homepageWidgetEyebrow}</p>
+            <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{settings.homepageWidgetTitle}</h2>
+            {settings.homepageWidgetSubtitle ? <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">{settings.homepageWidgetSubtitle}</p> : null}
           </div>
           <Link href={indexHref} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
             View all articles <ArrowRight className="h-4 w-4" />
@@ -102,11 +108,7 @@ export function BlogHomepageWidget() {
           <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
             {posts[0] ? (
               <Link href={buildBlogPostUrl(store.slug, posts[0].slug)} className="group overflow-hidden rounded-3xl border border-border bg-card/70 shadow-sm">
-                {posts[0].featured_image ? (
-                  <img src={posts[0].featured_image} alt="" className="aspect-[16/9] w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" />
-                ) : (
-                  <div className="flex aspect-[16/9] items-center justify-center bg-muted"><BookOpen className="h-10 w-10 text-muted-foreground" /></div>
-                )}
+                {posts[0].featured_image ? <img src={posts[0].featured_image} alt="" className="aspect-[16/9] w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" /> : <div className="flex aspect-[16/9] items-center justify-center bg-muted"><BookOpen className="h-10 w-10 text-muted-foreground" /></div>}
                 <div className="p-6">
                   <PostMeta post={posts[0]} />
                   <h3 className="mt-3 font-heading text-2xl font-bold text-foreground group-hover:text-primary">{posts[0].title}</h3>
@@ -117,11 +119,7 @@ export function BlogHomepageWidget() {
             <div className="grid gap-4">
               {posts.slice(1).map((post) => (
                 <Link key={post.id} href={buildBlogPostUrl(store.slug, post.slug)} className="group grid grid-cols-[110px_1fr] overflow-hidden rounded-2xl border border-border bg-card/70 shadow-sm sm:grid-cols-[150px_1fr]">
-                  {post.featured_image ? (
-                    <img src={post.featured_image} alt="" className="h-full min-h-32 w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="flex min-h-32 items-center justify-center bg-muted"><BookOpen className="h-7 w-7 text-muted-foreground" /></div>
-                  )}
+                  {post.featured_image ? <img src={post.featured_image} alt="" className="h-full min-h-32 w-full object-cover" loading="lazy" /> : <div className="flex min-h-32 items-center justify-center bg-muted"><BookOpen className="h-7 w-7 text-muted-foreground" /></div>}
                   <div className="p-4">
                     <PostMeta post={post} />
                     <h3 className="mt-2 line-clamp-2 font-heading text-base font-semibold text-foreground group-hover:text-primary">{post.title}</h3>
@@ -133,29 +131,25 @@ export function BlogHomepageWidget() {
           </div>
         ) : (
           <div className={cn(
-            "gap-5",
+            "gap-3 sm:gap-5",
             layout === "carousel"
               ? "flex snap-x snap-mandatory overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : "grid md:grid-cols-2 xl:grid-cols-3",
+              : "grid grid-cols-2 xl:grid-cols-3",
           )}>
             {posts.map((post) => (
               <Link
                 key={post.id}
                 href={buildBlogPostUrl(store.slug, post.slug)}
                 className={cn(
-                  "group overflow-hidden rounded-3xl border border-border bg-card/70 shadow-sm",
+                  "group overflow-hidden rounded-2xl border border-border bg-card/70 shadow-sm sm:rounded-3xl",
                   layout === "carousel" && "min-w-[82vw] snap-center sm:min-w-[360px] lg:min-w-[390px]",
                 )}
               >
-                {post.featured_image ? (
-                  <img src={post.featured_image} alt="" className="aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" />
-                ) : (
-                  <div className="flex aspect-[16/10] items-center justify-center bg-muted"><BookOpen className="h-9 w-9 text-muted-foreground" /></div>
-                )}
-                <div className="p-5">
+                {post.featured_image ? <img src={post.featured_image} alt="" className="aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" /> : <div className="flex aspect-[16/10] items-center justify-center bg-muted"><BookOpen className="h-9 w-9 text-muted-foreground" /></div>}
+                <div className="p-3 sm:p-5">
                   <PostMeta post={post} />
-                  <h3 className="mt-3 font-heading text-xl font-semibold text-foreground group-hover:text-primary">{post.title}</h3>
-                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{buildBlogExcerpt(post.content, post.excerpt)}</p>
+                  <h3 className="mt-2 line-clamp-2 font-heading text-base font-semibold text-foreground group-hover:text-primary sm:mt-3 sm:text-xl">{post.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{buildBlogExcerpt(post.content, post.excerpt)}</p>
                 </div>
               </Link>
             ))}
