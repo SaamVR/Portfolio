@@ -3,8 +3,29 @@ import { slugify, storefrontPath } from "@/lib/slug";
 
 export type BlogPostStatus = "draft" | "scheduled" | "published";
 export type BlogProductEmbedPosition = "before-content" | "after-intro" | "after-content";
+export type BlogProductSource = "manual" | "related" | "featured" | "newest" | "sale" | "bestsellers" | "category";
+
+export type BlogProductDirective = {
+  source: BlogProductSource;
+  limit: number;
+  category?: string;
+};
 
 export const BLOG_PRODUCTS_DIRECTIVE = "[[products]]";
+const BLOG_PRODUCTS_DIRECTIVE_SOURCE = String.raw`\[\[products(?:\s+[^\]]+)?\]\]`;
+const BLOG_PRODUCT_SOURCES = new Set<BlogProductSource>([
+  "manual",
+  "related",
+  "featured",
+  "newest",
+  "sale",
+  "bestsellers",
+  "category",
+]);
+
+function blogProductsDirectiveRegex(flags = "gi") {
+  return new RegExp(BLOG_PRODUCTS_DIRECTIVE_SOURCE, flags);
+}
 
 export type BlogPostRecord = {
   id: string;
@@ -42,6 +63,11 @@ export type BlogProductRecord = {
   image_url?: string | null;
   description?: string | null;
   is_available?: boolean | null;
+  category?: string | null;
+  type?: string | null;
+  featured?: boolean | null;
+  badge?: string | null;
+  created_at?: string | null;
 };
 
 export type BlogHeading = {
@@ -80,6 +106,61 @@ function parseMarkdownTableRow(line: string) {
 
 function isMarkdownTableSeparator(cells: string[] | null) {
   return Boolean(cells?.length && cells.every((cell) => /^:?-{3,}:?$/.test(cell)));
+}
+
+function clampBlogProductLimit(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.min(8, Math.max(1, Math.round(parsed)));
+}
+
+function decodeDirectiveValue(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export function parseBlogProductDirective(value: string): BlogProductDirective | null {
+  const match = value.trim().match(/^\[\[products(?:\s+([^\]]+))?\]\]$/i);
+  if (!match) return null;
+
+  const attributes = new Map<string, string>();
+  for (const attribute of String(match[1] ?? "").matchAll(/([a-z_]+)=([^\s]+)/gi)) {
+    attributes.set(attribute[1].toLowerCase(), decodeDirectiveValue(attribute[2]));
+  }
+
+  const requestedSource = String(attributes.get("source") ?? "manual").toLowerCase() as BlogProductSource;
+  const source = BLOG_PRODUCT_SOURCES.has(requestedSource) ? requestedSource : "manual";
+  const category = attributes.get("category")?.trim();
+  return {
+    source,
+    limit: clampBlogProductLimit(attributes.get("limit")),
+    ...(category ? { category } : {}),
+  };
+}
+
+export function serializeBlogProductDirective(directive: Partial<BlogProductDirective> = {}) {
+  const source = directive.source && BLOG_PRODUCT_SOURCES.has(directive.source) ? directive.source : "manual";
+  const limit = clampBlogProductLimit(directive.limit);
+  const category = directive.category?.trim();
+  if (source === "manual" && limit === 4 && !category) return BLOG_PRODUCTS_DIRECTIVE;
+
+  const attributes = [`source=${source}`];
+  if (source === "category" && category) attributes.push(`category=${encodeURIComponent(category)}`);
+  if (limit !== 4) attributes.push(`limit=${limit}`);
+  return `[[products ${attributes.join(" ")}]]`;
+}
+
+export function extractBlogProductDirectives(content: string): BlogProductDirective[] {
+  return Array.from(content.matchAll(blogProductsDirectiveRegex("gi")))
+    .map((match) => parseBlogProductDirective(match[0]))
+    .filter((directive): directive is BlogProductDirective => Boolean(directive));
+}
+
+export function getPrimaryBlogProductDirective(content: string): BlogProductDirective | null {
+  return extractBlogProductDirectives(content)[0] ?? null;
 }
 
 export function blogHeadingId(value: string) {
@@ -149,6 +230,13 @@ export function markdownToHtml(markdown: string) {
     if (!line.trim()) {
       flushParagraph();
       closeList();
+      continue;
+    }
+
+    if (parseBlogProductDirective(line.trim())) {
+      flushParagraph();
+      closeList();
+      html.push("<blockquote><p>🛍️ Product cards render here.</p></blockquote>");
       continue;
     }
 
@@ -241,16 +329,16 @@ export function markdownToHtml(markdown: string) {
 }
 
 export function hasInlineBlogProducts(content: string) {
-  return /\[\[products\]\]/i.test(content);
+  return blogProductsDirectiveRegex("i").test(content);
 }
 
 export function splitBlogContentAtProductDirectives(content: string) {
-  return content.split(/\[\[products\]\]/gi);
+  return content.split(blogProductsDirectiveRegex("gi"));
 }
 
 export function stripMarkdown(markdown: string) {
   return markdown
-    .replace(/\[\[products\]\]/gi, " ")
+    .replace(blogProductsDirectiveRegex("gi"), " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")

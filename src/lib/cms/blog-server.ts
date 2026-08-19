@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { normalizeBlogSettings, type BlogSettings } from "@/lib/cms/blog-settings";
-import type { BlogPostRecord, BlogProductRecord } from "@/lib/cms/blog";
+import type { BlogPostRecord, BlogProductDirective, BlogProductRecord } from "@/lib/cms/blog";
 
 type PublicBlogQuery = {
   limit?: number;
@@ -12,11 +12,7 @@ type PublicBlogQuery = {
   excludeId?: string | null;
 };
 
-type SmartBlogProductCandidate = BlogProductRecord & {
-  type?: string | null;
-  featured?: boolean | null;
-  created_at?: string | null;
-};
+type SmartBlogProductCandidate = BlogProductRecord;
 
 const BLOG_PRODUCT_STOP_WORDS = new Set([
   "about", "after", "best", "buy", "buying", "choose", "from", "guide", "into", "more",
@@ -38,6 +34,10 @@ function normalizeText(value?: string | null) {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function looselyMatches(value: string, term: string) {
+  return Boolean(value && term && (value.includes(term) || term.includes(value)));
+}
+
 function tokenizeBlogProductContext(post: BlogPostRecord) {
   const priorityTerms = [post.category ?? "", ...(post.tags ?? [])]
     .map(normalizeText)
@@ -55,19 +55,20 @@ function scoreBlogProduct(post: BlogPostRecord, product: SmartBlogProductCandida
   const { priorityTerms, titleTerms } = tokenizeBlogProductContext(post);
   const name = normalizeText(product.name);
   const type = normalizeText(product.type);
+  const category = normalizeText(product.category);
   const description = normalizeText(product.description);
   let score = 0;
 
   for (const term of priorityTerms) {
-    if (type === term) score += 8;
-    else if (type.includes(term) || term.includes(type)) score += type ? 5 : 0;
+    if (type === term || category === term) score += 8;
+    else if (looselyMatches(type, term) || looselyMatches(category, term)) score += 5;
     if (name.includes(term)) score += 5;
     if (description.includes(term)) score += 2;
   }
 
   for (const term of titleTerms) {
     if (name.includes(term)) score += 3;
-    if (type.includes(term)) score += 3;
+    if (type.includes(term) || category.includes(term)) score += 3;
     if (description.includes(term)) score += 1;
   }
 
@@ -98,6 +99,22 @@ async function canExposeBlog(client: SupabaseClient, storeId: string) {
   }
 
   return Boolean(store?.id) && normalizeBlogSettings(setting?.value).enabled;
+}
+
+async function loadAvailableBlogProductCandidates(client: SupabaseClient, storeId: string, limit = 80) {
+  const { data, error } = await (client as any)
+    .from("products")
+    .select("id,name,price,original_price,image_url,description,is_available,category,type,featured,badge,created_at")
+    .eq("store_id", storeId)
+    .eq("is_available", true)
+    .order("created_at", { ascending: false })
+    .limit(Math.min(100, Math.max(8, limit)));
+
+  if (error) {
+    console.error("[blog] failed to load product source candidates", error);
+    return [] as BlogProductRecord[];
+  }
+  return (data ?? []) as BlogProductRecord[];
 }
 
 export function isBlogPostPublicNow(post: Pick<BlogPostRecord, "status" | "published_at">, now = Date.now()) {
@@ -199,7 +216,7 @@ export async function loadBlogProducts(storeId: string, productIds: string[]): P
 
   const { data, error } = await (client as any)
     .from("products")
-    .select("id,name,price,original_price,image_url,description,is_available")
+    .select("id,name,price,original_price,image_url,description,is_available,category,type,featured,badge,created_at")
     .eq("store_id", storeId)
     .in("id", ids)
     .eq("is_available", true);
@@ -219,20 +236,9 @@ export async function loadSmartBlogProducts(storeId: string, post: BlogPostRecor
 
   const resolvedLimit = Math.min(8, Math.max(1, Math.round(limit)));
   const excludedIds = new Set(post.embedded_product_ids ?? []);
-  const { data, error } = await (client as any)
-    .from("products")
-    .select("id,name,price,original_price,image_url,description,is_available,type,featured,created_at")
-    .eq("store_id", storeId)
-    .eq("is_available", true)
-    .order("created_at", { ascending: false })
-    .limit(60);
+  const candidates = await loadAvailableBlogProductCandidates(client, storeId, 60);
 
-  if (error) {
-    console.error("[blog] failed to load smart product candidates", error);
-    return [];
-  }
-
-  return ((data ?? []) as SmartBlogProductCandidate[])
+  return candidates
     .filter((product) => !excludedIds.has(product.id))
     .map((product, index) => ({
       product,
@@ -248,6 +254,72 @@ export async function loadSmartBlogProducts(storeId: string, post: BlogPostRecor
     })
     .slice(0, resolvedLimit)
     .map(({ product }) => product);
+}
+
+export async function loadBlogProductsForDirective(
+  storeId: string,
+  post: BlogPostRecord,
+  directive: BlogProductDirective,
+): Promise<BlogProductRecord[]> {
+  if (directive.source === "manual") {
+    return loadBlogProducts(storeId, post.embedded_product_ids ?? []);
+  }
+  if (directive.source === "related") {
+    return loadSmartBlogProducts(storeId, post, directive.limit);
+  }
+
+  const client = getBlogReadClient();
+  if (!client || !(await canExposeBlog(client, storeId))) return [];
+  const limit = Math.min(8, Math.max(1, Math.round(directive.limit || 4)));
+
+  if (directive.source === "bestsellers") {
+    const { data, error } = await (client as any)
+      .from("store_analytics_events")
+      .select("product_id,quantity,created_at")
+      .eq("store_id", storeId)
+      .eq("event_name", "purchase_item")
+      .not("product_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (error) {
+      console.error("[blog] failed to load bestseller purchase events", error);
+      return [];
+    }
+
+    const quantities = new Map<string, number>();
+    for (const event of data ?? []) {
+      const productId = typeof event.product_id === "string" ? event.product_id : "";
+      if (!productId) continue;
+      const quantity = Number(event.quantity ?? 1);
+      quantities.set(productId, (quantities.get(productId) ?? 0) + (Number.isFinite(quantity) ? Math.max(quantity, 1) : 1));
+    }
+    const rankedIds = Array.from(quantities.entries())
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 12)
+      .map(([productId]) => productId);
+    return (await loadBlogProducts(storeId, rankedIds)).slice(0, limit);
+  }
+
+  const candidates = await loadAvailableBlogProductCandidates(client, storeId, 80);
+  if (directive.source === "featured") {
+    return candidates.filter((product) => Boolean(product.featured)).slice(0, limit);
+  }
+  if (directive.source === "sale") {
+    return candidates
+      .filter((product) => (product.original_price ?? 0) > product.price || normalizeText(product.badge) === "sale")
+      .slice(0, limit);
+  }
+  if (directive.source === "category") {
+    const category = normalizeText(directive.category || post.category);
+    if (!category) return [];
+    return candidates.filter((product) => normalizeText(product.category) === category).slice(0, limit);
+  }
+  if (directive.source === "newest") {
+    return candidates.slice(0, limit);
+  }
+
+  return [];
 }
 
 export async function loadRelatedBlogPosts(storeId: string, post: BlogPostRecord, limit = 3) {

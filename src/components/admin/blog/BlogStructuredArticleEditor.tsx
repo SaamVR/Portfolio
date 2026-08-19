@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createBlogArticleBlock,
@@ -25,7 +26,18 @@ import {
   type BlogArticleBlock,
   type BlogArticleInsertion,
 } from "@/lib/cms/blog-article-blocks";
+import type { BlogProductSource } from "@/lib/cms/blog";
 import { cn } from "@/lib/utils";
+
+const PRODUCT_SOURCE_OPTIONS: Array<{ value: BlogProductSource; label: string; description: string }> = [
+  { value: "manual", label: "Selected products", description: "Use the products selected in the Shoppable product section." },
+  { value: "related", label: "Related to article", description: "Rank products against this article's category, tags, title, and description context." },
+  { value: "featured", label: "Featured products", description: "Pull products currently marked Featured in the catalog." },
+  { value: "newest", label: "Newest products", description: "Show the most recently created available products." },
+  { value: "sale", label: "Products on sale", description: "Show available products with a real markdown/original price or Sale badge." },
+  { value: "bestsellers", label: "Bestsellers", description: "Rank products by real purchase-item quantities already captured in store analytics." },
+  { value: "category", label: "Catalog category", description: "Pull available products from one exact catalog category." },
+];
 
 function blockLabel(block: BlogArticleBlock) {
   switch (block.type) {
@@ -243,16 +255,52 @@ export default function BlogStructuredArticleEditor({
                   ) : null}
 
                   {block.type === "products" ? (
-                    <div className={cn("rounded-xl border px-4 py-4", selectedProductCount > 0 ? "border-primary/20 bg-primary/5" : "border-amber-500/30 bg-amber-500/5")}>
+                    <div className={cn(
+                      "space-y-4 rounded-xl border px-4 py-4",
+                      block.source !== "manual" || selectedProductCount > 0
+                        ? "border-primary/20 bg-primary/5"
+                        : "border-amber-500/30 bg-amber-500/5",
+                    )}>
                       <div className="flex items-start gap-3">
                         <ShoppingBag className="mt-0.5 h-5 w-5 text-primary" />
                         <div>
-                          <p className="text-sm font-semibold text-foreground">Selected product cards render here</p>
+                          <p className="text-sm font-semibold text-foreground">Product cards render here</p>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            {selectedProductCount > 0 ? `${selectedProductCount} selected product${selectedProductCount === 1 ? "" : "s"} will use this inline position.` : "Select products in the Shoppable product section below before publishing this inline block."}
+                            {PRODUCT_SOURCE_OPTIONS.find((option) => option.value === block.source)?.description}
                           </p>
                         </div>
                       </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Product source</p>
+                          <Select value={block.source} onValueChange={(source) => updateBlock(index, { ...block, source: source as BlogProductSource })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_SOURCE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {block.source !== "manual" ? (
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium text-foreground">Products to show</p>
+                            <Input type="number" min={1} max={8} value={block.limit} onChange={(event) => updateBlock(index, { ...block, limit: Math.min(8, Math.max(1, Number(event.target.value) || 4)) })} />
+                          </div>
+                        ) : null}
+                      </div>
+                      {block.source === "category" ? (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Catalog category</p>
+                          <Input value={block.category ?? ""} onChange={(event) => updateBlock(index, { ...block, category: event.target.value })} placeholder="e.g. Backpacks" />
+                          <p className="text-[11px] leading-4 text-muted-foreground">Leave blank to reuse the article category when it matches your catalog category.</p>
+                        </div>
+                      ) : null}
+                      {block.source === "manual" ? (
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          {selectedProductCount > 0
+                            ? `${selectedProductCount} selected product${selectedProductCount === 1 ? "" : "s"} will render here.`
+                            : "Select products in the Shoppable product section below, or switch this block to a dynamic source."}
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
 
@@ -276,7 +324,7 @@ export default function BlogStructuredArticleEditor({
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("list")}><List className="mr-1.5 h-3.5 w-3.5" /> List</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("quote")}><Quote className="mr-1.5 h-3.5 w-3.5" /> Quote</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("table")}><Table2 className="mr-1.5 h-3.5 w-3.5" /> Table</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => addBlock("products")} disabled={selectedProductCount === 0 || hasProductBlock}><ShoppingBag className="mr-1.5 h-3.5 w-3.5" /> Products</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => addBlock("products")} disabled={hasProductBlock}><ShoppingBag className="mr-1.5 h-3.5 w-3.5" /> Products</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => addBlock("markdown")}><Code2 className="mr-1.5 h-3.5 w-3.5" /> Raw</Button>
       </div>
     </div>

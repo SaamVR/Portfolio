@@ -2,8 +2,11 @@ import { describe, expect, it } from "@/test/test-utils";
 import {
   buildBlogExcerpt,
   extractBlogHeadings,
+  getPrimaryBlogProductDirective,
   hasInlineBlogProducts,
   markdownToHtml,
+  parseBlogProductDirective,
+  serializeBlogProductDirective,
   splitBlogContentAtProductDirectives,
 } from "@/lib/cms/blog";
 
@@ -17,8 +20,56 @@ describe("blog inline commerce directives", () => {
     ]);
   });
 
+  it("detects parameterized directives repeatedly without regex state leakage", () => {
+    const content = "Intro.\n\n[[products source=featured limit=6]]\n\nEnding.";
+    expect(hasInlineBlogProducts(content)).toBe(true);
+    expect(hasInlineBlogProducts(content)).toBe(true);
+    expect(hasInlineBlogProducts(content)).toBe(true);
+    expect(splitBlogContentAtProductDirectives(content)).toEqual([
+      "Intro.\n\n",
+      "\n\nEnding.",
+    ]);
+  });
+
+  it("parses and serializes dynamic product source configuration", () => {
+    expect(parseBlogProductDirective("[[products source=category category=Travel%20Bags limit=6]]")).toEqual({
+      source: "category",
+      category: "Travel Bags",
+      limit: 6,
+    });
+    expect(serializeBlogProductDirective({ source: "category", category: "Travel Bags", limit: 6 }))
+      .toBe("[[products source=category category=Travel%20Bags limit=6]]");
+    expect(getPrimaryBlogProductDirective("Before\n\n[[products source=bestsellers limit=5]]\n\nAfter")).toEqual({
+      source: "bestsellers",
+      limit: 5,
+    });
+  });
+
+  it("keeps the legacy directive as the manual backward-compatible default", () => {
+    expect(parseBlogProductDirective("[[products]]")).toEqual({ source: "manual", limit: 4 });
+    expect(serializeBlogProductDirective()).toBe("[[products]]");
+  });
+
+  it("clamps invalid limits and falls back unknown sources to manual", () => {
+    expect(parseBlogProductDirective("[[products source=unknown limit=99]]")).toEqual({
+      source: "manual",
+      limit: 8,
+    });
+    expect(parseBlogProductDirective("[[products source=newest limit=0]]")).toEqual({
+      source: "newest",
+      limit: 1,
+    });
+  });
+
   it("keeps product directives out of automatic excerpts", () => {
-    expect(buildBlogExcerpt("Useful intro.\n\n[[products]]\n\nUseful ending.")).toBe("Useful intro. Useful ending.");
+    expect(buildBlogExcerpt("Useful intro.\n\n[[products source=related limit=5]]\n\nUseful ending."))
+      .toBe("Useful intro. Useful ending.");
+  });
+
+  it("renders product directives as preview placeholders instead of article text", () => {
+    const html = markdownToHtml("Before.\n\n[[products source=sale limit=4]]\n\nAfter.");
+    expect(html.includes("Product cards render here.")).toBe(true);
+    expect(html.includes("source=sale")).toBe(false);
   });
 });
 

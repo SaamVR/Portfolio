@@ -3,11 +3,13 @@ import { BlogPostPage } from "@/components/storefront/blog/BlogPostPage";
 import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
 import {
   loadBlogProducts,
+  loadBlogProductsForDirective,
   loadPublishedBlogPost,
   loadRelatedBlogPosts,
   loadSmartBlogProducts,
   loadStoreBlogSettings,
 } from "@/lib/cms/blog-server";
+import { getPrimaryBlogProductDirective } from "@/lib/cms/blog";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 
 export const dynamic = "force-dynamic";
@@ -64,11 +66,14 @@ export default async function Page({ params }: { params: Promise<{ storeSlug: st
   const post = await loadPublishedBlogPost(store.id, slug);
   if (!post) notFound();
 
+  const productDirective = getPrimaryBlogProductDirective(post.content);
   const [products, relatedPosts] = await Promise.all([
-    loadBlogProducts(store.id, post.embedded_product_ids ?? []),
+    productDirective
+      ? loadBlogProductsForDirective(store.id, post, productDirective)
+      : loadBlogProducts(store.id, post.embedded_product_ids ?? []),
     loadRelatedBlogPosts(store.id, post, 3),
   ]);
-  const smartProducts = products.length === 0
+  const smartProducts = products.length === 0 && (!productDirective || productDirective.source === "manual")
     ? await loadSmartBlogProducts(store.id, post, 4)
     : [];
 

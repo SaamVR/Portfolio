@@ -51,6 +51,20 @@ describe("Blog article block adapter", () => {
     }
   });
 
+  it("round-trips dynamic product source directives as first-class product blocks", () => {
+    const markdown = "Intro.\n\n[[products source=category category=Travel%20Bags limit=6]]\n\nClosing.";
+    const blocks = parseBlogArticleBlocks(markdown);
+    const productBlock = blocks.find((block) => block.type === "products");
+
+    assert.deepEqual(productBlock, {
+      type: "products",
+      source: "category",
+      category: "Travel Bags",
+      limit: 6,
+    });
+    assert.equal(serializeBlogArticleBlocks(blocks), markdown);
+  });
+
   it("preserves fenced and unsupported Markdown as raw blocks", () => {
     const markdown = [
       "# Legacy body heading",
@@ -69,11 +83,11 @@ describe("Blog article block adapter", () => {
     assert.equal(serializeBlogArticleBlocks(blocks), markdown);
   });
 
-  it("keeps product directives as first-class blocks", () => {
+  it("keeps manual product directives as backward-compatible first-class blocks", () => {
     const blocks = parseBlogArticleBlocks("Intro paragraph.\n\n[[products]]\n\nClosing paragraph.");
     const productBlock = blocks.find((block) => block.type === "products");
 
-    assert.ok(productBlock);
+    assert.deepEqual(productBlock, { type: "products", source: "manual", limit: 4 });
     assert.equal(serializeBlogArticleBlocks(blocks), "Intro paragraph.\n\n[[products]]\n\nClosing paragraph.");
   });
 
@@ -103,7 +117,7 @@ describe("Blog article block adapter", () => {
     );
   });
 
-  it("places one product block after the active structured block and avoids duplicates", () => {
+  it("places one manual product block after the active structured block and avoids duplicates", () => {
     const blocks = parseBlogArticleBlocks("## Start\n\nIntro.\n\n## Next");
     const withProducts = insertBlogArticleContent(blocks, 1, { type: "products" });
     const duplicateAttempt = insertBlogArticleContent(withProducts, 0, { type: "products" });
@@ -117,7 +131,7 @@ describe("Blog article block adapter", () => {
 
   it("creates supported starter blocks without introducing a new storage format", () => {
     assert.deepEqual(createBlogArticleBlock("heading"), { type: "heading", level: 2, text: "New section" });
-    assert.deepEqual(createBlogArticleBlock("products"), { type: "products" });
+    assert.deepEqual(createBlogArticleBlock("products"), { type: "products", source: "manual", limit: 4 });
     assert.match(serializeBlogArticleBlocks([createBlogArticleBlock("table")]), /\| Option \| Details \|/);
   });
 });

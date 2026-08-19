@@ -1,17 +1,22 @@
+import {
+  parseBlogProductDirective,
+  serializeBlogProductDirective,
+  type BlogProductSource,
+} from "./blog";
+
 export type BlogArticleBlock =
   | { type: "heading"; level: 2 | 3; text: string }
   | { type: "paragraph"; markdown: string }
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "quote"; text: string }
   | { type: "table"; markdown: string }
-  | { type: "products" }
+  | { type: "products"; source: BlogProductSource; limit: number; category?: string }
   | { type: "markdown"; markdown: string };
 
 export type BlogArticleInsertion =
   | { type: "markdown"; markdown: string }
   | { type: "products" };
 
-const PRODUCT_DIRECTIVE = "[[products]]";
 const TABLE_SEPARATOR_CELL = /^:?-{3,}:?$/;
 
 function isBlank(line: string) {
@@ -31,7 +36,7 @@ function isTableSeparator(line: string) {
 function startsStructuredBlock(lines: string[], index: number) {
   const line = lines[index] ?? "";
   const next = lines[index + 1] ?? "";
-  if (line.trim().toLowerCase() === PRODUCT_DIRECTIVE) return true;
+  if (parseBlogProductDirective(line.trim())) return true;
   if (/^#{2,3}\s+/.test(line)) return true;
   if (/^```/.test(line)) return true;
   if (/^>\s?/.test(line)) return true;
@@ -57,9 +62,10 @@ export function parseBlogArticleBlocks(markdown: string): BlogArticleBlock[] {
 
     const line = lines[index];
     const trimmed = line.trim();
+    const productDirective = parseBlogProductDirective(trimmed);
 
-    if (trimmed.toLowerCase() === PRODUCT_DIRECTIVE) {
-      blocks.push({ type: "products" });
+    if (productDirective) {
+      blocks.push({ type: "products", ...productDirective });
       index += 1;
       continue;
     }
@@ -161,7 +167,7 @@ export function serializeBlogArticleBlocks(blocks: BlogArticleBlock[]): string {
         case "table":
           return block.markdown.trim();
         case "products":
-          return PRODUCT_DIRECTIVE;
+          return serializeBlogProductDirective(block);
         case "markdown":
           return block.markdown.trim();
       }
@@ -183,7 +189,11 @@ export function insertBlogArticleContent(
   if (insertion.type === "products") {
     if (blocks.some((block) => block.type === "products")) return blocks;
     const insertAt = validTarget === null ? blocks.length : validTarget + 1;
-    return [...blocks.slice(0, insertAt), { type: "products" }, ...blocks.slice(insertAt)];
+    return [
+      ...blocks.slice(0, insertAt),
+      { type: "products", source: "manual", limit: 4 },
+      ...blocks.slice(insertAt),
+    ];
   }
 
   const markdown = insertion.markdown.trim();
@@ -238,7 +248,7 @@ export function createBlogArticleBlock(type: BlogArticleBlock["type"]): BlogArti
     case "table":
       return { type: "table", markdown: "| Option | Details |\n| --- | --- |\n| A | Add details |" };
     case "products":
-      return { type: "products" };
+      return { type: "products", source: "manual", limit: 4 };
     case "markdown":
       return { type: "markdown", markdown: "" };
   }
