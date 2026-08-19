@@ -53,13 +53,20 @@ export default async function Page({
     tag: filters.tag,
   });
 
-  const filteredSettings = filters.category
-    ? { ...settings, indexEyebrow: "Blog category", indexTitle: filters.category }
+  const activeFilter = filters.category
+    ? { type: "category" as const, value: filters.category }
     : filters.tag
-      ? { ...settings, indexEyebrow: "Tagged articles", indexTitle: `#${filters.tag}` }
+      ? { type: "tag" as const, value: filters.tag }
       : filters.q
-        ? { ...settings, indexEyebrow: "Search results", indexTitle: `Results for “${filters.q}”` }
+        ? { type: "search" as const, value: filters.q }
+        : null;
+  const filteredSettings = activeFilter?.type === "category"
+    ? { ...settings, indexEyebrow: "Blog category", indexTitle: activeFilter.value }
+    : activeFilter?.type === "tag"
+      ? { ...settings, indexEyebrow: "Tagged articles", indexTitle: `#${activeFilter.value}` }
+      : activeFilter?.type === "search"
+        ? { ...settings, indexEyebrow: "Search results", indexTitle: `Results for “${activeFilter.value}”` }
         : settings;
 
-  return <BlogIndexPage store={store} posts={posts} settings={filteredSettings} />;
+  return <BlogIndexPage store={store} posts={posts} settings={filteredSettings} activeFilter={activeFilter} />;
 }
