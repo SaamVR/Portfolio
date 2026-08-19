@@ -35,6 +35,16 @@ const StorefrontAnalyticsContext = createContext<StorefrontAnalyticsContextValue
 const analyticsBatchSize = 10;
 const analyticsFlushDelayMs = 1_500;
 
+function parseAttribution(value: string | null): AnalyticsAttribution {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed as AnalyticsAttribution : {};
+  } catch {
+    return {};
+  }
+}
+
 function callGlobalTrackers(event: StorefrontAnalyticsEvent, settings: AnalyticsSettings) {
   if (typeof window === "undefined") return;
 
@@ -76,12 +86,16 @@ export function StorefrontAnalyticsProvider({
   const queueRef = useRef<Array<Record<string, unknown>>>([]);
   const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const readSessionAttribution = useCallback((): AnalyticsAttribution => {
+    if (typeof window === "undefined") return {};
+    return parseAttribution(window.sessionStorage.getItem(buildAnalyticsStorageKey(store.id, "session-attribution")));
+  }, [store.id]);
+
   const resolveAttribution = useCallback((queryString: string) => {
     if (typeof window === "undefined") return {};
     const sessionKey = buildAnalyticsStorageKey(store.id, "session-attribution");
     const firstTouchKey = buildAnalyticsStorageKey(store.id, "first-touch-attribution");
-    const existingSessionRaw = window.sessionStorage.getItem(sessionKey);
-    const existingSession = existingSessionRaw ? JSON.parse(existingSessionRaw) as AnalyticsAttribution : {};
+    const existingSession = parseAttribution(window.sessionStorage.getItem(sessionKey));
     const nextAttribution = extractAttribution(
       new URLSearchParams(queryString),
       document.referrer,
@@ -148,6 +162,11 @@ export function StorefrontAnalyticsProvider({
     if (!shouldTrack(settings, event.eventName)) return;
 
     const fullPath = event.pagePath || `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
+    const persistedAttribution = settings.trackTrafficSources !== false ? readSessionAttribution() : {};
+    const metadata = {
+      ...persistedAttribution,
+      ...(event.metadata || {}),
+    };
     const payload = {
       storeId: store.id,
       visitorId,
@@ -164,7 +183,7 @@ export function StorefrontAnalyticsProvider({
       quantity: event.quantity,
       value: event.value,
       currencyCode: event.currencyCode || store.currencyCode || "BDT",
-      metadata: event.metadata || {},
+      metadata,
     };
 
     if (settings.firstPartyEnabled !== false && !event.skipFirstParty) {
@@ -177,10 +196,11 @@ export function StorefrontAnalyticsProvider({
         pagePath: payload.pagePath,
         pageType: payload.pageType,
         currencyCode: payload.currencyCode,
+        metadata,
       },
       settings,
     );
-  }, [enqueueEvent, pathname, searchParams, sessionId, settings, store.currencyCode, store.id, visitorId]);
+  }, [enqueueEvent, pathname, readSessionAttribution, searchParams, sessionId, settings, store.currencyCode, store.id, visitorId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
