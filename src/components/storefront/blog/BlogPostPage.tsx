@@ -38,6 +38,17 @@ function blogFilterUrl(storeSlug: string, key: "category" | "tag", value: string
   return `${buildBlogIndexUrl(storeSlug)}?${params.toString()}`;
 }
 
+function blogAttributedProductUrl(store: Store, post: BlogPostRecord, product: BlogProductRecord) {
+  const base = productUrl(product.id, product.name, store.slug);
+  const params = new URLSearchParams({
+    utm_source: "blog",
+    utm_medium: "editorial",
+    utm_campaign: post.slug,
+    utm_content: post.id,
+  });
+  return `${base}${base.includes("?") ? "&" : "?"}${params.toString()}`;
+}
+
 function ProductMerchandising({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
   if (!products.length) return null;
   return (
@@ -49,7 +60,7 @@ function ProductMerchandising({ store, post, products }: { store: Store; post: B
       <p className="mt-2 text-sm text-muted-foreground">Explore the products mentioned or recommended in this article.</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => (
-          <Link key={product.id} href={productUrl(product.id, product.name, store.slug)} className="group overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
+          <Link key={product.id} href={blogAttributedProductUrl(store, post, product)} className="group overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
             {product.image_url ? (
               <img src={product.image_url} alt={product.name} className="aspect-[4/3] w-full object-cover" loading="lazy" />
             ) : (
