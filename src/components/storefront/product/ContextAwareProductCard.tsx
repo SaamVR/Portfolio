@@ -8,6 +8,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { BeautyProductCard } from "@/components/storefront/beauty/BeautyProductCard";
+import { BookingServiceCard } from "@/components/storefront/booking/BookingServiceCard";
 import { CraftProductCard } from "@/components/storefront/crafts/CraftProductCard";
 import { DigitalProductCard } from "@/components/storefront/digital-downloads/DigitalProductCard";
 import { ElectronicsProductCard } from "@/components/storefront/electronics/ElectronicsProductCard";
@@ -187,7 +188,7 @@ const productCardRegistry: Record<ProductCardVariant, ({ product, onQuickView }:
   crafts: ({ product }) => <CraftProductCard product={product} reviewStats={undefined} />,
   inquiry: ({ product }) => <InquiryProductCard product={product} reviewStats={undefined} onRequestQuote={() => {}} />,
   service: ({ product }) => <ServiceProductCard product={product} reviewStats={undefined} onBook={() => {}} />,
-  booking: ({ product }) => <ServiceProductCard product={product} reviewStats={undefined} onBook={() => {}} />,
+  booking: ({ product }) => <BookingServiceCard product={product} reviewStats={undefined} onBook={() => {}} />,
   subscription: ({ product }) => <SubscriptionProductCard product={product} reviewStats={undefined} />,
   digital: ({ product }) => <DigitalProductCard product={product} reviewStats={undefined} />,
   hotel_room: ({ product }) => <RoomProductCard product={product} reviewStats={undefined} />,
@@ -212,7 +213,7 @@ export default function ContextAwareProductCard({
     crafts: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <CraftProductCard product={currentProduct} reviewStats={reviewStats} />,
     inquiry: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <InquiryProductCard product={currentProduct} reviewStats={reviewStats} onRequestQuote={() => { window.location.href = contactHref; }} />,
     service: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <ServiceProductCard product={currentProduct} reviewStats={reviewStats} onBook={() => { window.location.href = contactHref; }} />,
-    booking: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <ServiceProductCard product={currentProduct} reviewStats={reviewStats} onBook={() => { window.location.href = contactHref; }} />,
+    booking: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <BookingServiceCard product={currentProduct} reviewStats={reviewStats} onBook={() => { window.location.href = contactHref; }} />,
     subscription: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <SubscriptionProductCard product={currentProduct} reviewStats={reviewStats} metadata={metadata ?? undefined} />,
     digital: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <DigitalProductCard product={currentProduct} reviewStats={reviewStats} metadata={metadata ?? undefined} />,
     hotel_room: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <RoomProductCard product={currentProduct} reviewStats={reviewStats} metadata={metadata ?? undefined} />,
