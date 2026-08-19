@@ -1,17 +1,36 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
-import { Home, ShoppingBag, Heart, User, Store } from "lucide-react";
+import { Home, ShoppingBag, Heart, User, Store, MessageCircle } from "lucide-react";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { cn } from "@/lib/utils";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { resolveStorefrontNavigationExperience } from "@/lib/cms/storefront-navigation-experience";
+
+interface NavigationSettings {
+  shop_label?: string;
+  show_account?: boolean;
+  show_wishlist?: boolean;
+  show_cart?: boolean;
+}
+
+type BottomNavLink = {
+  to: string;
+  icon: typeof Home;
+  label: string;
+  exact: boolean;
+  badge?: number;
+  kind?: "cart";
+};
 
 const MobileBottomNav = () => {
   const location = useLocation();
   const { totalItems, setIsCartOpen } = useCart();
   const { items: wishlistItems } = useWishlist();
   const currentStore = useOptionalStore();
+  const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
   const wishlistCount = wishlistItems.length;
 
   const [mounted, setMounted] = useState(false);
@@ -21,13 +40,50 @@ const MobileBottomNav = () => {
 
   const displayTotalItems = mounted ? totalItems : 0;
   const displayWishlistCount = mounted ? wishlistCount : 0;
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const experience = resolveStorefrontNavigationExperience(storefrontProfile);
+  const catalogLabel = navigation?.shop_label?.trim() || experience.catalogLabel;
+  const showAccount = navigation?.show_account ?? true;
+  const showWishlist = navigation?.show_wishlist ?? experience.showWishlistByDefault;
+  const showCart = navigation?.show_cart ?? experience.showCartByDefault;
 
-  const links = [
-    { to: storefrontPath("/", currentStore?.slug), icon: Home, label: "Home", exact: true },
-    { to: storefrontPath("/shop", currentStore?.slug), icon: Store, label: "Shop", exact: false },
-    { to: storefrontPath("/cart", currentStore?.slug), icon: ShoppingBag, label: "Cart", exact: false, badge: displayTotalItems },
-    { to: storefrontPath("/wishlist", currentStore?.slug), icon: Heart, label: "Wishlist", exact: false, badge: displayWishlistCount },
-    { to: storefrontPath("/account", currentStore?.slug), icon: User, label: "Account", exact: false },
+  const links: BottomNavLink[] = [
+    { to: storefrontPath("/", currentStore?.slug), icon: Home, label: experience.homeLabel, exact: true },
+    ...(experience.showCatalog
+      ? [{ to: storefrontPath("/shop", currentStore?.slug), icon: Store, label: catalogLabel, exact: false }]
+      : []),
+    ...(showCart
+      ? [{
+          to: storefrontPath("/cart", currentStore?.slug),
+          icon: ShoppingBag,
+          label: experience.cartLabel,
+          exact: false,
+          badge: displayTotalItems,
+          kind: "cart" as const,
+        }]
+      : []),
+    ...(showWishlist
+      ? [{
+          to: storefrontPath("/wishlist", currentStore?.slug),
+          icon: Heart,
+          label: experience.wishlistLabel,
+          exact: false,
+          badge: displayWishlistCount,
+        }]
+      : []),
+    ...(!experience.showCatalog && !showCart
+      ? [{
+          to: storefrontPath("/contact", currentStore?.slug),
+          icon: MessageCircle,
+          label: experience.primaryActionLabel,
+          exact: false,
+        }]
+      : []),
+    ...(showAccount
+      ? [{ to: storefrontPath("/account", currentStore?.slug), icon: User, label: experience.accountLabel, exact: false }]
+      : []),
   ];
 
   const isActive = (to: string, exact: boolean) =>
@@ -39,9 +95,8 @@ const MobileBottomNav = () => {
       aria-label="Mobile navigation"
     >
       <div className="safe-area-inset-bottom flex min-h-[72px] items-center justify-around px-3 py-2">
-        {links.map(({ to, icon: Icon, label, exact, badge }) => {
+        {links.map(({ to, icon: Icon, label, exact, badge, kind }) => {
           const active = isActive(to, exact);
-          const isCart = label === "Cart";
           const innerContent = (
             <>
               <div className="relative">
@@ -52,19 +107,19 @@ const MobileBottomNav = () => {
                   </span>
                 )}
               </div>
-              <span className={cn("text-[11px] font-medium leading-none transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("max-w-[72px] truncate text-[11px] font-medium leading-none transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}>
                 {label}
               </span>
               {active && <span className="absolute -top-px left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />}
             </>
           );
 
-          if (isCart) {
+          if (kind === "cart") {
             return (
               <button
-                key={to}
+                key={`${kind}-${to}`}
                 onClick={() => setIsCartOpen(true)}
-                className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
+                className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
                 aria-label={label}
               >
                 {innerContent}
@@ -76,7 +131,7 @@ const MobileBottomNav = () => {
             <Link
               key={to}
               to={to}
-              className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-3 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
+              className={cn("relative flex min-h-14 min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 transition-all duration-200", active ? "text-primary" : "text-muted-foreground")}
               aria-label={label}
               aria-current={active ? "page" : undefined}
             >
