@@ -14,7 +14,7 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
-import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { resolveStorefrontNavigationExperience } from "@/lib/cms/storefront-navigation-experience";
 import { buildAutoNavbarItems } from "@/lib/cms/page-listing-preferences";
 import { cn } from "@/lib/utils";
 
@@ -94,15 +94,14 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
     ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
     : null;
-  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
-    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
-    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
-  });
+  const experience = resolveStorefrontNavigationExperience(storefrontProfile);
+  const templateId = experience.templateId;
   const brandName = brand?.name || fallbackBrandName;
   const brandHighlight = brand?.highlight || "";
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
+  const catalogLabel = navigation?.shop_label?.trim() || experience.catalogLabel;
   const fallbackCategoryLinks = [
-    { label: "Browse Catalog", to: storefrontPath("/shop", currentStore?.slug) },
+    { label: `Browse ${catalogLabel}`, to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
     { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
   ];
@@ -116,8 +115,14 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const displayWishlistCount = mounted ? wishlistCount : 0;
   const displayTotalItems = mounted ? totalItems : 0;
   const defaultNavLinks = [
-    { label: "Home", to: storefrontPath("/", currentStore?.slug), hasDropdown: false },
-    { label: "Shop", to: storefrontPath("/shop", currentStore?.slug), hasDropdown: true },
+    { label: experience.homeLabel, to: storefrontPath("/", currentStore?.slug), hasDropdown: false },
+    ...(experience.showCatalog
+      ? [{
+          label: catalogLabel,
+          to: storefrontPath("/shop", currentStore?.slug),
+          hasDropdown: experience.useCatalogDropdown,
+        }]
+      : []),
     { label: "About", to: storefrontPath("/about", currentStore?.slug), hasDropdown: false },
     { label: "Contact", to: storefrontPath("/contact", currentStore?.slug), hasDropdown: false },
   ] satisfies NavbarLink[];
@@ -142,18 +147,20 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               to: storefrontPath(child.url, currentStore?.slug),
             }))
           : undefined,
-        hasDropdown: link.url === "/shop" || (Array.isArray(link.children) && link.children.length > 0),
+        hasDropdown:
+          (link.url === "/shop" && experience.useCatalogDropdown)
+          || (Array.isArray(link.children) && link.children.length > 0),
       }))
     : defaultNavLinks;
   const autoLinkKeys = new Set(autoPageLinks.map((link) => link.to));
   const navLinks: NavbarLink[] = [...manualNavLinks, ...autoPageLinks.filter((link) => !manualNavLinks.some((manualLink) => manualLink.to === link.to || autoLinkKeys.has(manualLink.to) && manualLink.label === link.label))];
-  const shopLabel = navigation?.shop_label?.trim() || "Shop";
+  const shopLabel = catalogLabel;
   const navLayout = navigation?.nav_layout ?? "brand-left";
-  const showSearch = navigation?.show_search ?? true;
+  const showSearch = navigation?.show_search ?? experience.showSearchByDefault;
   const showThemeToggle = navigation?.show_theme_toggle ?? true;
   const showAccount = navigation?.show_account ?? true;
-  const showWishlist = navigation?.show_wishlist ?? true;
-  const showCart = navigation?.show_cart ?? true;
+  const showWishlist = navigation?.show_wishlist ?? experience.showWishlistByDefault;
+  const showCart = navigation?.show_cart ?? experience.showCartByDefault;
   const foodLocationLabel = deliverySettings?.primary_zone_label?.trim() || contactSettings?.address?.trim() || "";
   const showFoodLocation = templateId === "food" && foodLocationLabel.length > 0;
 
@@ -220,7 +227,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {link.hasDropdown ? shopLabel : link.label}
+                  {link.to.endsWith("/shop") ? shopLabel : link.label}
                   {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
                 </Link>
 
@@ -235,7 +242,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                             to={storefrontPath("/shop", currentStore?.slug)}
                             className="rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
                           >
-                            All Products
+                            All {shopLabel}
                           </Link>
                           {dynamicProductTypes.map((t: any) => (
                             <Link
@@ -372,7 +379,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               <Link
                 to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
                 className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label={user ? "My account" : "Sign in"}
+                aria-label={user ? `My ${experience.accountLabel}` : "Sign in"}
               >
                 <User className="h-5 w-5" />
               </Link>
@@ -382,7 +389,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               <Link
                 to={storefrontPath("/wishlist", currentStore?.slug)}
                 className="relative flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label={`Wishlist with ${displayWishlistCount} items`}
+                aria-label={`${experience.wishlistLabel} with ${displayWishlistCount} items`}
               >
                 <Heart className="h-5 w-5" />
                 {displayWishlistCount > 0 && (
@@ -400,7 +407,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label={`Shopping cart with ${displayTotalItems} items`}
+                aria-label={`${experience.cartLabel} with ${displayTotalItems} items`}
               >
                 <ShoppingBag className="h-5 w-5" />
                 {displayTotalItems > 0 && (
