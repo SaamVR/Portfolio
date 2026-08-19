@@ -22,8 +22,14 @@ const presetPositions: Record<StorefrontImagePositionPreset, string> = {
 };
 
 function normalizePercent(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return Math.max(0, Math.min(100, value));
+  const numericValue = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim().length > 0
+      ? Number(value)
+      : Number.NaN;
+
+  if (!Number.isFinite(numericValue)) return null;
+  return Math.max(0, Math.min(100, numericValue));
 }
 
 export function resolveStorefrontImageObjectPosition(options?: {
