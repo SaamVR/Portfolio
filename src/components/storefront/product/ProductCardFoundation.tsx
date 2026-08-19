@@ -64,7 +64,7 @@ export function ProductCardMedia({
           src={src}
           fallbackSrc={fallbackSrc}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
           alt={alt}
           onLoad={() => setLoaded(true)}
           className={cn(
@@ -72,6 +72,7 @@ export function ProductCardMedia({
             fit === "contain" ? "object-contain p-4" : "object-cover",
             loaded ? "opacity-100" : "opacity-0",
           )}
+          style={{ objectPosition: "var(--storefront-product-image-position, 50% 50%)" }}
         />
       </Link>
       {children}
