@@ -69,14 +69,16 @@ Give the shopper a simple decision rule. Use the internal link assistant to add 
 
 State the simplest useful conclusion first: who should choose each option and why.
 
-## The important differences
+## Side-by-side comparison
 
-Explain only meaningful differences. Avoid repeating specifications that do not change the buying decision.
+Replace the placeholders with the few differences that actually change the buying decision.
 
-- **Best for:** Option A — [use case]. Option B — [use case].
-- **Main advantage:** Option A — [advantage]. Option B — [advantage].
-- **Main tradeoff:** Option A — [tradeoff]. Option B — [tradeoff].
-- **Price and value:** Explain what the shopper gains or gives up at each price point.
+| Factor | Option A | Option B |
+| --- | --- | --- |
+| Best for | [Use case] | [Use case] |
+| Main advantage | [Advantage] | [Advantage] |
+| Main tradeoff | [Tradeoff] | [Tradeoff] |
+| Price and value | [Value note] | [Value note] |
 
 ## Best for different shoppers
 

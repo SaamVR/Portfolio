@@ -56,3 +56,47 @@ describe("blog markdown links", () => {
     expect(html.includes('<a href="//example.com/path">')).toBe(false);
   });
 });
+
+describe("blog markdown comparison tables", () => {
+  it("renders a header and body rows inside a mobile overflow wrapper", () => {
+    const html = markdownToHtml([
+      "| Factor | Option A | Option B |",
+      "| --- | --- | --- |",
+      "| Best for | Travel | Office |",
+      "| Price | ৳2,000 | ৳2,500 |",
+    ].join("\n"));
+
+    expect(html.includes('<div class="overflow-x-auto">')).toBe(true);
+    expect(html.includes("<table>")).toBe(true);
+    expect(html.includes('<th scope="col">Factor</th>')).toBe(true);
+    expect(html.includes("<td>Travel</td>")).toBe(true);
+    expect(html.includes("<td>৳2,500</td>")).toBe(true);
+  });
+
+  it("supports safe inline formatting and links inside cells", () => {
+    const html = markdownToHtml([
+      "| Choice | Details |",
+      "| --- | --- |",
+      "| **A** | [See product](/product/example--1) |",
+    ].join("\n"));
+
+    expect(html.includes("<strong>A</strong>")).toBe(true);
+    expect(html.includes('<a href="/product/example--1">See product</a>')).toBe(true);
+  });
+
+  it("escapes raw HTML inside table cells", () => {
+    const html = markdownToHtml([
+      "| Choice | Details |",
+      "| --- | --- |",
+      "| A | <script>alert(1)</script> |",
+    ].join("\n"));
+
+    expect(html.includes("<script>")).toBe(false);
+    expect(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;")).toBe(true);
+  });
+
+  it("does not treat pipe text as a table without a valid separator", () => {
+    const html = markdownToHtml("Factor | Option A | Option B\nnot a separator");
+    expect(html.includes("<table>")).toBe(false);
+  });
+});

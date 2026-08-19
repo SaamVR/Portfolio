@@ -25,6 +25,12 @@ describe("ecommerce Blog article templates", () => {
     }
   });
 
+  it("gives the comparison template a side-by-side Markdown table", () => {
+    const comparison = getBlogArticleTemplate("comparison");
+    expect(comparison?.content.includes("| Factor | Option A | Option B |")).toBe(true);
+    expect(comparison?.content.includes("| --- | --- | --- |")).toBe(true);
+  });
+
   it("resolves templates by stable id", () => {
     expect(getBlogArticleTemplate("buying-guide")?.title).toBe("Buying guide");
     expect(getBlogArticleTemplate("collection-story")?.category).toBe("Collections");

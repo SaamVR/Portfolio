@@ -69,6 +69,19 @@ function renderInlineMarkdown(value: string) {
     .replace(/\[([^\]]+)\]\((\/(?!\/)[^\s)]*)\)/g, '<a href="$2">$1</a>');
 }
 
+function parseMarkdownTableRow(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return null;
+
+  const withoutOuterPipes = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+  const cells = withoutOuterPipes.split("|").map((cell) => cell.trim());
+  return cells.length >= 2 ? cells : null;
+}
+
+function isMarkdownTableSeparator(cells: string[] | null) {
+  return Boolean(cells?.length && cells.every((cell) => /^:?-{3,}:?$/.test(cell)));
+}
+
 export function blogHeadingId(value: string) {
   return `section-${slugify(value) || "section"}`;
 }
@@ -116,7 +129,8 @@ export function markdownToHtml(markdown: string) {
     listType = null;
   };
 
-  for (const rawLine of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trimEnd();
 
     if (line.startsWith("```")) {
@@ -135,6 +149,42 @@ export function markdownToHtml(markdown: string) {
     if (!line.trim()) {
       flushParagraph();
       closeList();
+      continue;
+    }
+
+    const headerCells = parseMarkdownTableRow(line);
+    const separatorCells = index + 1 < lines.length ? parseMarkdownTableRow(lines[index + 1]) : null;
+    if (
+      headerCells
+      && separatorCells
+      && headerCells.length === separatorCells.length
+      && isMarkdownTableSeparator(separatorCells)
+    ) {
+      flushParagraph();
+      closeList();
+
+      const rows: string[][] = [];
+      let rowIndex = index + 2;
+      while (rowIndex < lines.length && lines[rowIndex].trim()) {
+        const row = parseMarkdownTableRow(lines[rowIndex]);
+        if (!row || row.length !== headerCells.length) break;
+        rows.push(row);
+        rowIndex += 1;
+      }
+
+      html.push('<div class="overflow-x-auto">');
+      html.push("<table>");
+      html.push(`<thead><tr>${headerCells.map((cell) => `<th scope="col">${renderInlineMarkdown(cell)}</th>`).join("")}</tr></thead>`);
+      if (rows.length > 0) {
+        html.push("<tbody>");
+        for (const row of rows) {
+          html.push(`<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join("")}</tr>`);
+        }
+        html.push("</tbody>");
+      }
+      html.push("</table>");
+      html.push("</div>");
+      index = rowIndex - 1;
       continue;
     }
 
@@ -204,7 +254,7 @@ export function stripMarkdown(markdown: string) {
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-    .replace(/[*_>#-]/g, " ")
+    .replace(/[*_>#|-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
