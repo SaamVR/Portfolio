@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronRight, Clock3, ListTree, ShoppingBag, Tag } from "lucide-react";
+import BlogTrackedCtaLink from "@/components/storefront/blog/BlogTrackedCtaLink";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
@@ -259,8 +260,9 @@ function ProductMerchandising({
 
 function BlogConversionCta({ store, post, directive }: { store: Store; post: BlogPostRecord; directive: BlogCtaDirective }) {
   const destination = resolveBlogCtaDestination(store, post, directive);
-  const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90";
-  const buttonContent = <>{directive.label}<ArrowRight className="h-4 w-4" /></>;
+  const effectiveCategory = directive.kind === "category"
+    ? directive.category?.trim() || post.category?.trim() || undefined
+    : undefined;
 
   return (
     <aside className="my-8 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-6 sm:p-8">
@@ -268,11 +270,15 @@ function BlogConversionCta({ store, post, directive }: { store: Store; post: Blo
         {directive.heading ? <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">{directive.heading}</h2> : null}
         {directive.text ? <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">{directive.text}</p> : null}
         <div className={directive.heading || directive.text ? "mt-5" : undefined}>
-          {destination.external ? (
-            <a href={destination.href} target="_blank" rel="noopener noreferrer" className={buttonClass}>{buttonContent}</a>
-          ) : (
-            <Link href={destination.href} className={buttonClass}>{buttonContent}</Link>
-          )}
+          <BlogTrackedCtaLink
+            href={destination.href}
+            external={destination.external}
+            label={directive.label}
+            postId={post.id}
+            postSlug={post.slug}
+            kind={directive.kind}
+            category={effectiveCategory}
+          />
         </div>
       </div>
     </aside>

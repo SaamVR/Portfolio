@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { extractAttribution, inferPageType } from "@/lib/analytics/storefront-analytics";
+import {
+  extractAttribution,
+  inferPageType,
+  mapEventToGa4,
+  mapEventToMeta,
+} from "@/lib/analytics/storefront-analytics";
 
 describe("storefront Blog analytics", () => {
   it("recognizes Blog index and article page types", () => {
@@ -26,5 +31,29 @@ describe("storefront Blog analytics", () => {
       term: undefined,
       content: "post-123",
     });
+  });
+
+  it("keeps Blog CTA clicks as a GA4/first-party custom event without a Meta standard-event mapping", () => {
+    const event = {
+      eventName: "blog_cta_click" as const,
+      pageType: "blog_article",
+      metadata: {
+        source: "blog",
+        medium: "editorial",
+        campaign: "buying-guide",
+        content: "cta",
+        ctaKind: "whatsapp",
+      },
+    };
+
+    expect(mapEventToGa4(event)).toMatchObject({
+      page_type: "blog_article",
+      source: "blog",
+      medium: "editorial",
+      campaign: "buying-guide",
+      content: "cta",
+      ctaKind: "whatsapp",
+    });
+    expect(mapEventToMeta(event)).toBeNull();
   });
 });

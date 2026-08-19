@@ -13,6 +13,7 @@ const allowedAnalyticsEvents = new Set<AnalyticsEventName | "purchase_item">([
   "search_result_click",
   "filter_used",
   "sort_changed",
+  "blog_cta_click",
   "add_to_cart",
   "remove_from_cart",
   "cart_quantity_changed",

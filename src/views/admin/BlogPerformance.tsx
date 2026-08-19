@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, BookOpen, Eye, Loader2, ShoppingBag, ShoppingCart, WalletCards } from "lucide-react";
+import { ArrowLeft, BarChart3, BookOpen, Eye, Loader2, MousePointerClick, ShoppingBag, ShoppingCart, WalletCards } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ type RevenueEvent = {
 
 type ArticlePerformance = BlogPostSummary & {
   views: number;
+  ctaClicks: number;
   productViews: number;
   carts: number;
   checkouts: number;
@@ -110,7 +111,7 @@ export default function BlogPerformance() {
           .select("event_name,page_path,page_type,traffic_source,traffic_medium,traffic_campaign,value,event_timestamp")
           .eq("store_id", activeStoreId as string)
           .gte("event_timestamp", sinceIso)
-          .in("event_name", ["page_view", "view_item", "add_to_cart", "begin_checkout", "purchase"])
+          .in("event_name", ["page_view", "blog_cta_click", "view_item", "add_to_cart", "begin_checkout", "purchase"])
           .order("event_timestamp", { ascending: false })
           .limit(10000),
         (supabase as any)
@@ -145,6 +146,7 @@ export default function BlogPerformance() {
       return {
         ...post,
         views: analytics.filter((event) => event.event_name === "page_view" && event.page_type === "blog_article" && matchesBlogArticlePath(event.page_path, post.slug)).length,
+        ctaClicks: attributed.filter((event) => event.event_name === "blog_cta_click").length,
         productViews: attributed.filter((event) => event.event_name === "view_item").length,
         carts: attributed.filter((event) => event.event_name === "add_to_cart").length,
         checkouts: attributed.filter((event) => event.event_name === "begin_checkout").length,
@@ -157,12 +159,13 @@ export default function BlogPerformance() {
   const totals = useMemo(() => rows.reduce(
     (summary, row) => ({
       views: summary.views + row.views,
+      ctaClicks: summary.ctaClicks + row.ctaClicks,
       productViews: summary.productViews + row.productViews,
       carts: summary.carts + row.carts,
       orders: summary.orders + row.orders,
       revenue: summary.revenue + row.revenue,
     }),
-    { views: 0, productViews: 0, carts: 0, orders: 0, revenue: 0 },
+    { views: 0, ctaClicks: 0, productViews: 0, carts: 0, orders: 0, revenue: 0 },
   ), [rows]);
 
   if (!activeStoreId) {
@@ -200,7 +203,7 @@ export default function BlogPerformance() {
             <h1 className="font-heading text-3xl font-bold text-foreground">Blog performance</h1>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            See which articles attract readers, move them into products, and contribute to revenue through the existing storefront attribution pipeline.
+            See which articles attract readers, generate CTA engagement, move shoppers into products, and contribute to revenue through the existing storefront attribution pipeline.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -214,9 +217,10 @@ export default function BlogPerformance() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {[
           { label: "Article views", value: totals.views.toLocaleString(), icon: Eye },
+          { label: "CTA clicks", value: totals.ctaClicks.toLocaleString(), icon: MousePointerClick },
           { label: "Product visits", value: totals.productViews.toLocaleString(), icon: ShoppingBag },
           { label: "Add to carts", value: totals.carts.toLocaleString(), icon: ShoppingCart },
           { label: "Attributed orders", value: totals.orders.toLocaleString(), icon: WalletCards },
@@ -238,21 +242,23 @@ export default function BlogPerformance() {
         <AdminEmptyState
           icon={BookOpen}
           title="No Blog posts to measure"
-          description="Create and publish an article first. Performance will appear here as shoppers read and click through to products."
+          description="Create and publish an article first. Performance will appear here as shoppers read and click through to products or article calls to action."
           actions={[{ label: "Open Blog editor", href: "/admin/blog" }]}
         />
       ) : (
         <Card className="border-border bg-card/50">
           <CardHeader>
             <CardTitle>Article performance</CardTitle>
-            <CardDescription>Revenue is attributed when the shopper entered a product journey from a shoppable Blog link and later completed a sale.</CardDescription>
+            <CardDescription>CTA clicks and downstream commerce are tied to the article slug through the existing Blog editorial attribution convention.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-sm">
+            <table className="w-full min-w-[1080px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="py-3 pr-4 font-medium">Article</th>
                   <th className="px-3 py-3 text-right font-medium">Views</th>
+                  <th className="px-3 py-3 text-right font-medium">CTA clicks</th>
+                  <th className="px-3 py-3 text-right font-medium">CTA CTR</th>
                   <th className="px-3 py-3 text-right font-medium">Product visits</th>
                   <th className="px-3 py-3 text-right font-medium">Product CTR</th>
                   <th className="px-3 py-3 text-right font-medium">Carts</th>
@@ -268,6 +274,8 @@ export default function BlogPerformance() {
                       <p className="mt-1 text-xs text-muted-foreground">/{row.slug} · {row.status}</p>
                     </td>
                     <td className="px-3 py-4 text-right tabular-nums">{row.views.toLocaleString()}</td>
+                    <td className="px-3 py-4 text-right tabular-nums">{row.ctaClicks.toLocaleString()}</td>
+                    <td className="px-3 py-4 text-right tabular-nums">{percent(row.ctaClicks, row.views)}</td>
                     <td className="px-3 py-4 text-right tabular-nums">{row.productViews.toLocaleString()}</td>
                     <td className="px-3 py-4 text-right tabular-nums">{percent(row.productViews, row.views)}</td>
                     <td className="px-3 py-4 text-right tabular-nums">{row.carts.toLocaleString()}</td>
@@ -284,11 +292,11 @@ export default function BlogPerformance() {
       <Card className="border-border bg-card/50">
         <CardHeader>
           <CardTitle>How to read this report</CardTitle>
-          <CardDescription>Article views measure readership. Product visits, carts, and attributed sales only count journeys carrying Blog editorial attribution, so ordinary store browsing does not inflate Blog performance.</CardDescription>
+          <CardDescription>Article views measure readership. CTA clicks, product visits, carts, and attributed sales only count Blog editorial journeys, so ordinary store browsing does not inflate Blog performance.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-border bg-background/60 p-4"><p className="text-sm font-semibold">High views, low product CTR</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Improve product relevance, placement, comparison tables, or calls to action inside the article.</p></div>
-          <div className="rounded-xl border border-border bg-background/60 p-4"><p className="text-sm font-semibold">High product visits, low carts</p><p className="mt-1 text-xs leading-5 text-muted-foreground">The article is creating intent, but product value, price, stock, or landing-page clarity may be weak.</p></div>
+          <div className="rounded-xl border border-border bg-background/60 p-4"><p className="text-sm font-semibold">High views, low CTA or product CTR</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Improve CTA relevance, product placement, comparison clarity, or the next-step promise inside the article.</p></div>
+          <div className="rounded-xl border border-border bg-background/60 p-4"><p className="text-sm font-semibold">High clicks, low carts</p><p className="mt-1 text-xs leading-5 text-muted-foreground">The article is creating intent, but product value, price, stock, or landing-page clarity may be weak.</p></div>
           <div className="rounded-xl border border-border bg-background/60 p-4"><p className="text-sm font-semibold">Revenue-producing articles</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Refresh and internally link these pieces first; they have demonstrated commercial value rather than traffic alone.</p></div>
         </CardContent>
       </Card>
