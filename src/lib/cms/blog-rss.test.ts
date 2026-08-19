@@ -4,13 +4,11 @@ import { defaultBlogSettings } from "@/lib/cms/blog-settings";
 import type { BlogPostRecord } from "@/lib/cms/blog";
 
 function post(overrides: Partial<BlogPostRecord> & Pick<BlogPostRecord, "id" | "title" | "slug">): BlogPostRecord {
+  const { id, title, slug, ...rest } = overrides;
   return {
-    id: overrides.id,
     store_id: "store-1",
-    title: overrides.title,
-    slug: overrides.slug,
-    excerpt: overrides.excerpt ?? "Useful article summary.",
-    content: overrides.content ?? "Useful article content.",
+    excerpt: "Useful article summary.",
+    content: "Useful article content.",
     featured_image: null,
     status: "published",
     seo_title: null,
@@ -18,7 +16,10 @@ function post(overrides: Partial<BlogPostRecord> & Pick<BlogPostRecord, "id" | "
     published_at: "2026-08-10T12:00:00.000Z",
     created_at: "2026-08-10T12:00:00.000Z",
     updated_at: "2026-08-11T12:00:00.000Z",
-    ...overrides,
+    ...rest,
+    id,
+    title,
+    slug,
   };
 }
 
