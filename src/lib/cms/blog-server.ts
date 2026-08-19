@@ -26,6 +26,21 @@ function normalizeText(value?: string | null) {
   return String(value ?? "").trim().toLowerCase();
 }
 
+async function isStorePublic(client: SupabaseClient, storeId: string) {
+  const { data, error } = await (client as any)
+    .from("stores")
+    .select("id")
+    .eq("id", storeId)
+    .eq("is_published", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[blog] failed to verify public store", error);
+    return false;
+  }
+  return Boolean(data?.id);
+}
+
 export function isBlogPostPublicNow(post: Pick<BlogPostRecord, "status" | "published_at">, now = Date.now()) {
   if (post.status !== "published") return false;
   if (!post.published_at) return true;
@@ -60,7 +75,7 @@ export async function loadPublishedBlogPosts(
   options: PublicBlogQuery = {},
 ): Promise<BlogPostRecord[]> {
   const client = getBlogReadClient();
-  if (!client) return [];
+  if (!client || !(await isStorePublic(client, storeId))) return [];
 
   const limit = Math.min(48, Math.max(1, Math.round(options.limit ?? 12)));
   const fetchLimit = Math.min(96, Math.max(limit * 3, 24));
@@ -98,7 +113,7 @@ export async function loadPublishedBlogPosts(
 
 export async function loadPublishedBlogPost(storeId: string, slug: string): Promise<BlogPostRecord | null> {
   const client = getBlogReadClient();
-  if (!client) return null;
+  if (!client || !(await isStorePublic(client, storeId))) return null;
 
   const { data, error } = await (client as any)
     .from("blog_posts")
@@ -121,7 +136,7 @@ export async function loadBlogProducts(storeId: string, productIds: string[]): P
   const ids = Array.from(new Set(productIds.filter(Boolean))).slice(0, 12);
   if (ids.length === 0) return [];
   const client = getBlogReadClient();
-  if (!client) return [];
+  if (!client || !(await isStorePublic(client, storeId))) return [];
 
   const { data, error } = await (client as any)
     .from("products")
