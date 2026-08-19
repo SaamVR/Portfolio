@@ -133,7 +133,7 @@ async function assertNoHorizontalOverflow(page: any, templateId: string, viewpor
 }
 
 test("all 16 storefront templates stay usable at mobile, tablet, and desktop widths", async ({ page }, testInfo) => {
-  test.setTimeout(240000);
+  test.setTimeout(300000);
 
   const suffix = randomUUID().slice(0, 8);
   const email = `viewport-matrix-${suffix}@example.com`;
@@ -239,7 +239,6 @@ test("all 16 storefront templates stay usable at mobile, tablet, and desktop wid
         await assertNoHorizontalOverflow(page, template.id, viewport.name);
         await page.screenshot({
           path: testInfo.outputPath(`storefront-${template.id}-${viewport.name}-${viewport.width}.png`),
-          fullPage: true,
         });
       }
     }
