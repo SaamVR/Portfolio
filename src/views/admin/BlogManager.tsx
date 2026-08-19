@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+import BlogArticleTemplateChooser from "@/components/admin/blog/BlogArticleTemplateChooser";
 import BlogQualityPanel from "@/components/admin/blog/BlogQualityPanel";
 import {
   buildBlogExcerpt,
@@ -58,6 +59,7 @@ import {
   type BlogIndexLayout,
   type BlogSettings,
 } from "@/lib/cms/blog-settings";
+import type { BlogArticleTemplate } from "@/lib/cms/blog-templates";
 import { cn } from "@/lib/utils";
 
 type EditablePost = {
@@ -470,6 +472,32 @@ export default function BlogManager() {
     setActiveTab("posts");
   };
 
+  const applyArticleTemplate = (template: BlogArticleTemplate) => {
+    if (editingPost.id) return;
+    const hasUnsavedDraft = Boolean(
+      editingPost.title.trim()
+      || editingPost.content.trim()
+      || editingPost.excerpt.trim()
+      || editingPost.featured_image.trim()
+      || editingPost.category.trim()
+      || editingPost.tags.trim()
+      || editingPost.seo_title.trim()
+      || editingPost.seo_description.trim()
+      || editingPost.embedded_product_ids.length > 0,
+    );
+    if (hasUnsavedDraft && typeof window !== "undefined" && !window.confirm("Replace the current unsaved article draft with this template?")) return;
+
+    setEditingPost({
+      ...emptyPost,
+      category: template.category,
+      tags: template.tags.join(", "),
+      content: template.content,
+      product_embed_title: template.productEmbedTitle,
+    });
+    setProductSearch("");
+    toast.success(`${template.title} template applied. Replace the prompts with your store's real content, products, and SEO copy.`);
+  };
+
   const insertMarkdown = (prefix: string, suffix = "", placeholder = "text") => {
     const textarea = contentRef.current;
     const start = textarea?.selectionStart ?? editingPost.content.length;
@@ -679,6 +707,8 @@ export default function BlogManager() {
             </Card>
 
             <div className="space-y-6">
+              {!editingPost.id ? <BlogArticleTemplateChooser onApply={applyArticleTemplate} /> : null}
+
               <Card className="border-border bg-card/50">
                 <CardHeader>
                   <CardTitle>{editingPost.id ? "Edit article" : "Create article"}</CardTitle>
