@@ -6,6 +6,7 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
+import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 
 interface HeroSettings {
   tagline?: string;
@@ -22,6 +23,9 @@ interface HeroSettings {
   overlay_opacity?: number;
   image_url?: string;
   mobile_image_url?: string;
+  image_position?: string;
+  focal_x?: number;
+  focal_y?: number;
 }
 
 interface DeliverySettings {
@@ -44,6 +48,9 @@ interface HeroSectionProps {
     mediaUrl?: string;
     mediaType?: "image" | "video";
     mediaFit?: "cover" | "contain";
+    imagePosition?: string;
+    focalX?: number;
+    focalY?: number;
     overlayColor?: string;
     overlayOpacity?: number;
     layoutVariant?: "full-bleed" | "split" | "centered" | "editorial" | string;
@@ -74,6 +81,11 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
   const mediaFit = overrides?.mediaFit ?? "cover";
+  const imageObjectPosition = resolveStorefrontImageObjectPosition({
+    position: overrides?.imagePosition ?? legacyHero?.image_position,
+    focalX: overrides?.focalX ?? legacyHero?.focal_x,
+    focalY: overrides?.focalY ?? legacyHero?.focal_y,
+  });
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
   const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
   const layoutVariant = overrides?.layoutVariant ?? "full-bleed";
@@ -110,9 +122,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
 
   const isVideo = mediaType === "video" && mediaUrl;
   const renderMedia = (className: string) => {
-    const mediaTransform = useContainedMedia
-      ? undefined
-      : { transform: `translateY(${scrollY}px) scale(1.08)` };
+    const transform = useContainedMedia ? undefined : `translateY(${scrollY}px) scale(1.08)`;
 
     if (isVideo) {
       return (
@@ -124,7 +134,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
             loop
             playsInline
             className={`h-full w-full ${useContainedMedia ? "object-contain" : "object-cover"}`}
-            style={mediaTransform}
+            style={{ transform, objectPosition: imageObjectPosition }}
           />
         </div>
       );
@@ -140,7 +150,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
             priority
             alt="Storefront hero media"
             className={`${useContainedMedia ? "object-contain" : "object-cover"} transition-transform duration-100`}
-            style={mediaTransform}
+            style={{ transform, objectPosition: imageObjectPosition }}
           />
         </div>
       );
