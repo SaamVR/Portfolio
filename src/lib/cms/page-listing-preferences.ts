@@ -1,4 +1,5 @@
 import type { Store, StorePage } from "@/lib/cms/schema";
+import { getStoreBlogSettings } from "@/lib/cms/blog-settings";
 
 const PAGE_LISTING_PREFERENCES_KEY = "page_listing_preferences";
 
@@ -89,6 +90,11 @@ export function buildAutoNavbarItems(store: Store | null | undefined): AutoNavIt
     direct.push({ label, url });
   }
 
+  const blogSettings = getStoreBlogSettings(store);
+  if (blogSettings.enabled && !direct.some((item) => item.url === "/blog")) {
+    direct.push({ label: "Blog", url: "/blog" });
+  }
+
   const groupedItems = Array.from(grouped.entries()).map(([group, children]) => (
     children.length === 1
       ? { label: children[0].label, url: children[0].url }
@@ -129,6 +135,11 @@ export function buildAutoFooterLinks(store: Store | null | undefined): {
     } else {
       company.push(link);
     }
+  }
+
+  const blogSettings = getStoreBlogSettings(store);
+  if (blogSettings.enabled && !company.some((item) => item.url === "/blog") && !extra.some((item) => item.url === "/blog")) {
+    company.push({ label: "Blog", url: "/blog" });
   }
 
   return {

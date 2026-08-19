@@ -17,6 +17,7 @@ import { RealEstateStorefrontRenderer } from "@/components/storefront/real-estat
 import { ServiceStorefrontRenderer } from "@/components/storefront/service/ServiceStorefrontRenderer";
 import { SingleProductStorefrontRenderer } from "@/components/storefront/single-product/SingleProductStorefrontRenderer";
 import { SubscriptionsStorefrontRenderer } from "@/components/storefront/subscriptions/SubscriptionsStorefrontRenderer";
+import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { StorefrontShell } from "@/components/storefront/StorefrontShell";
 import { getSpecializedTemplateConsumedBlocks } from "@/lib/cms/template-renderer-context";
@@ -175,6 +176,7 @@ export function StorefrontTemplateRenderer({
           {fallbackBlockNodes}
         </div>
       ) : null}
+      {page.isHomepage ? <BlogHomepageWidget /> : null}
     </StorefrontShell>
   );
 }

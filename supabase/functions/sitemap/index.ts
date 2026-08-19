@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
+  const nowIso = new Date().toISOString();
 
   const { data: stores } = await supabase
     .from("stores")
@@ -50,6 +51,19 @@ Deno.serve(async (req) => {
     .eq("is_available", true)
     .order("updated_at", { ascending: false });
 
+  const { data: blogSettingsRows } = await supabase
+    .from("site_settings")
+    .select("store_id, value")
+    .eq("key", "blog");
+
+  const { data: blogPosts } = await supabase
+    .from("blog_posts")
+    .select("store_id, slug, updated_at, noindex")
+    .eq("status", "published")
+    .lte("published_at", nowIso)
+    .eq("noindex", false)
+    .order("updated_at", { ascending: false });
+
   const staticPages = [
     { loc: "/", priority: "1.0", changefreq: "daily" },
     { loc: "/plans", priority: "0.8", changefreq: "monthly" },
@@ -59,63 +73,64 @@ Deno.serve(async (req) => {
 
   const urls = staticPages
     .map(
-      (p) => `  <url>
-    <loc>${SITE_URL}${p.loc}</loc>
-    <changefreq>${p.changefreq}</changefreq>
-    <priority>${p.priority}</priority>
-  </url>`
+      (p) => `  <url>\n    <loc>${SITE_URL}${p.loc}</loc>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
     )
     .join("\n");
 
   const storeBaseUrl = (store: { slug: string; custom_domain?: string | null }) =>
-    store.custom_domain ? `https://${store.custom_domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : `${SITE_URL}/stores/${store.slug}`;
+    store.custom_domain
+      ? `https://${store.custom_domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`
+      : `${SITE_URL}/stores/${store.slug}`;
+
+  const isBlogEnabled = (storeId: string) => {
+    const row = (blogSettingsRows || []).find((candidate) => candidate.store_id === storeId);
+    const value = row?.value;
+    return !(value && typeof value === "object" && !Array.isArray(value) && (value as Record<string, unknown>).enabled === false);
+  };
 
   const storeUrls = (stores || [])
     .flatMap((store) => {
       const baseUrl = storeBaseUrl(store);
       const storePages = (pages || []).filter((page) => page.store_id === store.id);
+      const blogEnabled = isBlogEnabled(store.id);
+      const latestBlogUpdate = (blogPosts || []).find((post) => post.store_id === store.id)?.updated_at;
 
       return [
-        `  <url>
-    <loc>${baseUrl}</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`,
+        `  <url>\n    <loc>${baseUrl}</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>`,
         ...storePages
-          .filter((page) => page.slug !== "/")
-          .map((page) => `  <url>
-    <loc>${joinUrl(baseUrl, page.slug)}</loc>
-    <lastmod>${page.updated_at ? page.updated_at.split("T")[0] : ""}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>`),
+          .filter((page) => page.slug !== "/" && page.slug !== "/blog")
+          .map((page) => `  <url>\n    <loc>${joinUrl(baseUrl, page.slug)}</loc>\n    <lastmod>${page.updated_at ? page.updated_at.split("T")[0] : ""}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`),
+        ...(blogEnabled
+          ? [`  <url>\n    <loc>${joinUrl(baseUrl, "/blog")}</loc>\n    <lastmod>${latestBlogUpdate ? latestBlogUpdate.split("T")[0] : (store.updated_at ? store.updated_at.split("T")[0] : "")}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`]
+          : []),
       ];
     })
     .join("\n");
 
   const productUrls = (products || [])
-    .map((p) => {
-      const store = (stores || []).find((candidate) => candidate.id === p.store_id);
+    .map((product) => {
+      const store = (stores || []).find((candidate) => candidate.id === product.store_id);
       if (!store) return "";
       const baseUrl = storeBaseUrl(store);
-      const slug = slugify(p.name);
-      const lastmod = p.updated_at ? p.updated_at.split("T")[0] : "";
-      return `  <url>
-    <loc>${joinUrl(baseUrl, `/product/${slug}-${p.id}`)}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`;
+      const slug = slugify(product.name);
+      const lastmod = product.updated_at ? product.updated_at.split("T")[0] : "";
+      return `  <url>\n    <loc>${joinUrl(baseUrl, `/product/${slug}--${product.id}`)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`;
     })
     .filter(Boolean)
     .join("\n");
 
-  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
-${storeUrls}
-${productUrls}
-</urlset>`;
+  const blogUrls = (blogPosts || [])
+    .map((post) => {
+      const store = (stores || []).find((candidate) => candidate.id === post.store_id);
+      if (!store || !isBlogEnabled(store.id)) return "";
+      const baseUrl = storeBaseUrl(store);
+      const lastmod = post.updated_at ? post.updated_at.split("T")[0] : "";
+      return `  <url>\n    <loc>${joinUrl(baseUrl, `/blog/${encodeURIComponent(post.slug)}`)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n${storeUrls}\n${productUrls}\n${blogUrls}\n</urlset>`;
 
   return new Response(sitemap, {
     headers: {

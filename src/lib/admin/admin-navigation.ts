@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   BarChart2,
+  BookOpen,
   CreditCard,
   HelpCircle,
   LayoutDashboard,
@@ -112,6 +113,16 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       mobileShortLabel: "Growth",
     },
     {
+      to: "/admin/blog",
+      icon: BookOpen,
+      label: "Blog",
+      section: "primary",
+      show: context.cmsEnabled && !compact,
+      match: ["/admin/blog"],
+      description: "Publish SEO articles, buying guides, product stories, and shoppable content.",
+      mobileShortLabel: "Blog",
+    },
+    {
       to: "/admin/online-store",
       icon: Store,
       label: "Online Store",
@@ -124,10 +135,9 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
         "/admin/page-builder/advanced",
         "/admin/templates",
         "/admin/media",
-        "/admin/blog",
         "/admin/onboarding",
       ],
-      description: "Customize design, pick themes, manage pages, blog, and media in one place.",
+      description: "Customize design, pick themes, manage pages, and organize storefront media.",
       mobileShortLabel: "Website",
     },
     {

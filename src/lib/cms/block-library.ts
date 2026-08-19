@@ -7,6 +7,7 @@ export const reservedCmsSlugs = new Set([
   "/admin",
   "/auth",
   "/bkash",
+  "/blog",
   "/cart",
   "/checkout",
   "/contact",
@@ -51,9 +52,7 @@ export function createDefaultBlock(type: StorePageBlock["type"], sortOrder: numb
         sortOrder,
         isVisible: true,
         visible: true,
-        props: {
-          limit: 6,
-        },
+        props: { limit: 6 },
       };
     case "comparison":
       return {

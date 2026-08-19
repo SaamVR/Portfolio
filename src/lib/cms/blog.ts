@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { slugify, storefrontPath } from "@/lib/slug";
 
 export type BlogPostStatus = "draft" | "scheduled" | "published";
+export type BlogProductEmbedPosition = "before-content" | "after-intro" | "after-content";
 
 export type BlogPostRecord = {
   id: string;
@@ -11,12 +12,34 @@ export type BlogPostRecord = {
   excerpt: string | null;
   content: string;
   featured_image: string | null;
+  featured_image_alt?: string | null;
   status: string;
+  category?: string | null;
+  tags?: string[] | null;
+  author_name?: string | null;
+  is_featured?: boolean | null;
+  embedded_product_ids?: string[] | null;
+  product_embed_title?: string | null;
+  product_embed_position?: BlogProductEmbedPosition | string | null;
   seo_title: string | null;
   seo_description: string | null;
+  seo_keywords?: string[] | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
+  noindex?: boolean | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type BlogProductRecord = {
+  id: string;
+  name: string;
+  price: number;
+  original_price?: number | null;
+  image_url?: string | null;
+  description?: string | null;
+  is_available?: boolean | null;
 };
 
 function escapeHtml(value: string) {
@@ -34,7 +57,7 @@ function renderInlineMarkdown(value: string) {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
 export function markdownToHtml(markdown: string) {
@@ -62,11 +85,7 @@ export function markdownToHtml(markdown: string) {
     if (line.startsWith("```")) {
       flushParagraph();
       closeList();
-      if (inCodeBlock) {
-        html.push("</pre>");
-      } else {
-        html.push("<pre>");
-      }
+      html.push(inCodeBlock ? "</pre>" : "<pre>");
       inCodeBlock = !inCodeBlock;
       continue;
     }
@@ -153,10 +172,26 @@ export function buildBlogExcerpt(content: string, explicitExcerpt?: string | nul
   return source.length > 180 ? `${source.slice(0, 177).trimEnd()}...` : source;
 }
 
+export function normalizeBlogStringList(value: string | string[] | null | undefined) {
+  const source = Array.isArray(value) ? value : String(value ?? "").split(",");
+  return Array.from(new Set(source.map((item) => item.trim()).filter(Boolean))).slice(0, 20);
+}
+
+export function calculateBlogReadingTime(content: string) {
+  const words = stripMarkdown(content).split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 220));
+}
+
 export function resolveBlogPostStatus(post: Pick<BlogPostRecord, "status" | "published_at">): BlogPostStatus {
   if (post.status === "draft") return "draft";
   if (post.published_at && new Date(post.published_at).getTime() > Date.now()) return "scheduled";
   return "published";
+}
+
+export function resolveBlogProductEmbedPosition(value?: string | null): BlogProductEmbedPosition {
+  return value === "before-content" || value === "after-intro" || value === "after-content"
+    ? value
+    : "after-content";
 }
 
 export function buildBlogPostUrl(storeSlug: string, slug: string) {
