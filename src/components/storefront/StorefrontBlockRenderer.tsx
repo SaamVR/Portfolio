@@ -10,7 +10,7 @@ import RecentlyViewed from "@/components/RecentlyViewed";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
-import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
+import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { buildTechnicalSpecs } from "@/components/storefront/electronics/ElectronicsProductCard";
 import type { RichTextDoc, RichTextNode, StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontTemplateDefinition } from "@/lib/cms/storefront-templates";
@@ -321,6 +321,15 @@ function TestimonialsBlock({
   });
 
   if (source === "live" && liveQuery.isLoading) return <StorefrontSectionSkeleton title={title || "Loading customer reviews"} cards={3} />;
+  if (source === "live" && liveQuery.isError) {
+    return (
+      <StorefrontSectionError
+        title={title || "Customer reviews could not load"}
+        description="Approved customer reviews are temporarily unavailable. The rest of the storefront is still available."
+        onRetry={() => void liveQuery.refetch()}
+      />
+    );
+  }
 
   const displayReviews: Testimonial[] = source === "live" ? (liveQuery.data ?? []) : (reviews ?? []);
   if (displayReviews.length === 0) {
@@ -396,8 +405,8 @@ function ComparisonBlock({
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id ?? "";
   const storeSlug = currentStore?.slug;
-  const { data: allProducts = [] } = useProducts(storeId);
-  const { data: featuredProducts = [] } = useFeaturedProducts(storeId);
+  const { data: allProducts = [], isLoading: allProductsLoading } = useProducts(storeId);
+  const { data: featuredProducts = [], isLoading: featuredProductsLoading } = useFeaturedProducts(storeId);
 
   const productsToCompare = useMemo(() => {
     const availableProducts = allProducts.filter((product) => product.isAvailable !== false);
@@ -409,7 +418,20 @@ function ComparisonBlock({
     return filtered.slice(0, Math.min(Math.max(limit ?? 2, 2), 4));
   }, [allProducts, category, featuredProducts, limit, productType, source]);
 
-  if (productsToCompare.length < 2) return null;
+  if (allProductsLoading || featuredProductsLoading) {
+    return <StorefrontSectionSkeleton title={title || "Loading comparison"} cards={2} />;
+  }
+  if (productsToCompare.length < 2) {
+    return (
+      <StorefrontSectionEmpty
+        eyebrow="Comparison"
+        title={title || "Add another item to compare"}
+        description="This section needs at least two matching items before a useful side-by-side comparison can be shown."
+        primaryLabel="Browse store"
+        primaryHref={storefrontPath("/shop", storeSlug)}
+      />
+    );
+  }
 
   return (
     <section className="bg-background py-14 md:py-24">
