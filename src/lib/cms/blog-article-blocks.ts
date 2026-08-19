@@ -1,6 +1,7 @@
 import {
   parseBlogProductDirective,
   serializeBlogProductDirective,
+  type BlogProductLayout,
   type BlogProductSource,
 } from "./blog";
 
@@ -10,7 +11,7 @@ export type BlogArticleBlock =
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "quote"; text: string }
   | { type: "table"; markdown: string }
-  | { type: "products"; source: BlogProductSource; limit: number; category?: string }
+  | { type: "products"; source: BlogProductSource; limit: number; layout: BlogProductLayout; category?: string }
   | { type: "markdown"; markdown: string };
 
 export type BlogArticleInsertion =
@@ -191,7 +192,7 @@ export function insertBlogArticleContent(
     const insertAt = validTarget === null ? blocks.length : validTarget + 1;
     return [
       ...blocks.slice(0, insertAt),
-      { type: "products", source: "manual", limit: 4 },
+      { type: "products", source: "manual", limit: 4, layout: "grid" },
       ...blocks.slice(insertAt),
     ];
   }
@@ -248,7 +249,7 @@ export function createBlogArticleBlock(type: BlogArticleBlock["type"]): BlogArti
     case "table":
       return { type: "table", markdown: "| Option | Details |\n| --- | --- |\n| A | Add details |" };
     case "products":
-      return { type: "products", source: "manual", limit: 4 };
+      return { type: "products", source: "manual", limit: 4, layout: "grid" };
     case "markdown":
       return { type: "markdown", markdown: "" };
   }

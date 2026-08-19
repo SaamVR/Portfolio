@@ -4,15 +4,17 @@ import { slugify, storefrontPath } from "@/lib/slug";
 export type BlogPostStatus = "draft" | "scheduled" | "published";
 export type BlogProductEmbedPosition = "before-content" | "after-intro" | "after-content";
 export type BlogProductSource = "manual" | "related" | "featured" | "newest" | "sale" | "bestsellers" | "category";
+export type BlogProductLayout = "grid" | "spotlight" | "comparison" | "lookbook";
 
 export type BlogProductDirective = {
   source: BlogProductSource;
   limit: number;
+  layout: BlogProductLayout;
   category?: string;
 };
 
 export const BLOG_PRODUCTS_DIRECTIVE = "[[products]]";
-const BLOG_PRODUCTS_DIRECTIVE_SOURCE = String.raw`\[\[products(?:\s+[^\]]+)?\]\]`;
+const BLOG_PRODUCTS_DIRECTIVE_SOURCE = String.raw`\[\[products(?:\s+[^\]\r\n]+)?\]\]`;
 const BLOG_PRODUCT_SOURCES = new Set<BlogProductSource>([
   "manual",
   "related",
@@ -21,6 +23,12 @@ const BLOG_PRODUCT_SOURCES = new Set<BlogProductSource>([
   "sale",
   "bestsellers",
   "category",
+]);
+const BLOG_PRODUCT_LAYOUTS = new Set<BlogProductLayout>([
+  "grid",
+  "spotlight",
+  "comparison",
+  "lookbook",
 ]);
 
 function blogProductsDirectiveRegex(flags = "gi") {
@@ -123,7 +131,7 @@ function decodeDirectiveValue(value: string) {
 }
 
 export function parseBlogProductDirective(value: string): BlogProductDirective | null {
-  const match = value.trim().match(/^\[\[products(?:\s+([^\]]+))?\]\]$/i);
+  const match = value.trim().match(/^\[\[products(?:\s+([^\]\r\n]+))?\]\]$/i);
   if (!match) return null;
 
   const attributes = new Map<string, string>();
@@ -133,10 +141,13 @@ export function parseBlogProductDirective(value: string): BlogProductDirective |
 
   const requestedSource = String(attributes.get("source") ?? "manual").toLowerCase() as BlogProductSource;
   const source = BLOG_PRODUCT_SOURCES.has(requestedSource) ? requestedSource : "manual";
+  const requestedLayout = String(attributes.get("layout") ?? "grid").toLowerCase() as BlogProductLayout;
+  const layout = BLOG_PRODUCT_LAYOUTS.has(requestedLayout) ? requestedLayout : "grid";
   const category = attributes.get("category")?.trim();
   return {
     source,
     limit: clampBlogProductLimit(attributes.get("limit")),
+    layout,
     ...(category ? { category } : {}),
   };
 }
@@ -144,12 +155,14 @@ export function parseBlogProductDirective(value: string): BlogProductDirective |
 export function serializeBlogProductDirective(directive: Partial<BlogProductDirective> = {}) {
   const source = directive.source && BLOG_PRODUCT_SOURCES.has(directive.source) ? directive.source : "manual";
   const limit = clampBlogProductLimit(directive.limit);
+  const layout = directive.layout && BLOG_PRODUCT_LAYOUTS.has(directive.layout) ? directive.layout : "grid";
   const category = directive.category?.trim();
-  if (source === "manual" && limit === 4 && !category) return BLOG_PRODUCTS_DIRECTIVE;
+  if (source === "manual" && limit === 4 && layout === "grid" && !category) return BLOG_PRODUCTS_DIRECTIVE;
 
   const attributes = [`source=${source}`];
   if (source === "category" && category) attributes.push(`category=${encodeURIComponent(category)}`);
   if (limit !== 4) attributes.push(`limit=${limit}`);
+  if (layout !== "grid") attributes.push(`layout=${layout}`);
   return `[[products ${attributes.join(" ")}]]`;
 }
 

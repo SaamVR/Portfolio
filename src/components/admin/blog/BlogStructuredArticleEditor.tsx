@@ -26,17 +26,24 @@ import {
   type BlogArticleBlock,
   type BlogArticleInsertion,
 } from "@/lib/cms/blog-article-blocks";
-import type { BlogProductSource } from "@/lib/cms/blog";
+import type { BlogProductLayout, BlogProductSource } from "@/lib/cms/blog";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_SOURCE_OPTIONS: Array<{ value: BlogProductSource; label: string; description: string }> = [
   { value: "manual", label: "Selected products", description: "Use the products selected in the Shoppable product section." },
-  { value: "related", label: "Related to article", description: "Rank products against this article's category, tags, title, and description context." },
+  { value: "related", label: "Related to article", description: "Rank products against this article's category, tags, and title." },
   { value: "featured", label: "Featured products", description: "Pull products currently marked Featured in the catalog." },
   { value: "newest", label: "Newest products", description: "Show the most recently created available products." },
-  { value: "sale", label: "Products on sale", description: "Show available products with a real markdown/original price or Sale badge." },
+  { value: "sale", label: "Products on sale", description: "Show available products with a real original/compare-at price or Sale badge." },
   { value: "bestsellers", label: "Bestsellers", description: "Rank products by real purchase-item quantities already captured in store analytics." },
   { value: "category", label: "Catalog category", description: "Pull available products from one exact catalog category." },
+];
+
+const PRODUCT_LAYOUT_OPTIONS: Array<{ value: BlogProductLayout; label: string; description: string }> = [
+  { value: "grid", label: "Product grid", description: "Balanced multi-card layout for general recommendations and collections." },
+  { value: "spotlight", label: "Spotlight", description: "Give the first product editorial prominence, with supporting products below." },
+  { value: "comparison", label: "Comparison", description: "Side-by-side product cards emphasizing real price and description differences." },
+  { value: "lookbook", label: "Lookbook", description: "Image-first merchandising for collections, styling, rooms, bundles, and visual stories." },
 ];
 
 function blockLabel(block: BlogArticleBlock) {
@@ -270,13 +277,22 @@ export default function BlogStructuredArticleEditor({
                           </p>
                         </div>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="space-y-1.5">
                           <p className="text-xs font-medium text-foreground">Product source</p>
                           <Select value={block.source} onValueChange={(source) => updateBlock(index, { ...block, source: source as BlogProductSource })}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {PRODUCT_SOURCE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-foreground">Presentation</p>
+                          <Select value={block.layout} onValueChange={(layout) => updateBlock(index, { ...block, layout: layout as BlogProductLayout })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_LAYOUT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
@@ -287,6 +303,9 @@ export default function BlogStructuredArticleEditor({
                           </div>
                         ) : null}
                       </div>
+                      <p className="text-[11px] leading-4 text-muted-foreground">
+                        {PRODUCT_LAYOUT_OPTIONS.find((option) => option.value === block.layout)?.description}
+                      </p>
                       {block.source === "category" ? (
                         <div className="space-y-1.5">
                           <p className="text-xs font-medium text-foreground">Catalog category</p>

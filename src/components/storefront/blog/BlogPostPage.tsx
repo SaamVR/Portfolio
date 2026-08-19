@@ -11,12 +11,14 @@ import {
   calculateBlogReadingTime,
   extractBlogHeadings,
   formatBlogDate,
+  getPrimaryBlogProductDirective,
   hasInlineBlogProducts,
   markdownToHtml,
   resolveBlogProductEmbedPosition,
   splitBlogContentAtProductDirectives,
   type BlogHeading,
   type BlogPostRecord,
+  type BlogProductLayout,
   type BlogProductRecord,
 } from "@/lib/cms/blog";
 import type { BlogSettings } from "@/lib/cms/blog-settings";
@@ -51,16 +53,133 @@ function blogAttributedProductUrl(store: Store, post: BlogPostRecord, product: B
   return `${base}${base.includes("?") ? "&" : "?"}${params.toString()}`;
 }
 
+function ProductImage({ product, className }: { product: BlogProductRecord; className: string }) {
+  return product.image_url ? (
+    <img src={product.image_url} alt={product.name} className={className} loading="lazy" />
+  ) : (
+    <div className={`${className} flex items-center justify-center bg-muted`}><ShoppingBag className="h-8 w-8 text-muted-foreground" /></div>
+  );
+}
+
+function ProductPrice({ store, product, className = "text-sm" }: { store: Store; product: BlogProductRecord; className?: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`${className} font-bold text-foreground`}>{money(product.price, store)}</span>
+      {product.original_price && product.original_price > product.price ? (
+        <span className="text-xs text-muted-foreground line-through">{money(product.original_price, store)}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductGrid({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {products.map((product) => (
+        <Link key={product.id} href={blogAttributedProductUrl(store, post, product)} className="group overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
+          <ProductImage product={product} className="aspect-[4/3] w-full object-cover" />
+          <div className="p-4">
+            <h3 className="line-clamp-2 text-sm font-semibold text-foreground transition group-hover:text-primary">{product.name}</h3>
+            <div className="mt-2"><ProductPrice store={store} product={product} /></div>
+            <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">View product <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function ProductSpotlight({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+  const [lead, ...supporting] = products;
+  if (!lead) return null;
+  return (
+    <div className="mt-5 space-y-4">
+      <Link href={blogAttributedProductUrl(store, post, lead)} className="group grid overflow-hidden rounded-3xl border border-border bg-background shadow-sm transition hover:border-primary/30 hover:shadow-md md:grid-cols-[1.1fr_0.9fr]">
+        <ProductImage product={lead} className="min-h-[260px] h-full w-full object-cover sm:min-h-[340px]" />
+        <div className="flex flex-col justify-center p-6 sm:p-8">
+          {(lead.category || lead.type) ? <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{lead.category || lead.type}</p> : null}
+          <h3 className="mt-2 font-heading text-2xl font-bold text-foreground transition group-hover:text-primary sm:text-3xl">{lead.name}</h3>
+          {lead.description ? <p className="mt-3 line-clamp-4 text-sm leading-6 text-muted-foreground">{lead.description}</p> : null}
+          <div className="mt-5"><ProductPrice store={store} product={lead} className="text-lg" /></div>
+          <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary">View product <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
+        </div>
+      </Link>
+      {supporting.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {supporting.map((product) => (
+            <Link key={product.id} href={blogAttributedProductUrl(store, post, product)} className="group flex gap-3 rounded-2xl border border-border bg-background p-3 transition hover:border-primary/30">
+              <ProductImage product={product} className="h-24 w-24 shrink-0 rounded-xl object-cover" />
+              <div className="min-w-0 py-1">
+                <h4 className="line-clamp-2 text-sm font-semibold text-foreground transition group-hover:text-primary">{product.name}</h4>
+                <div className="mt-2"><ProductPrice store={store} product={product} /></div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductComparison({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {products.map((product) => (
+        <div key={product.id} className="flex min-h-full flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+          <ProductImage product={product} className="aspect-[4/3] w-full object-cover" />
+          <div className="flex flex-1 flex-col p-5">
+            <h3 className="font-heading text-lg font-bold text-foreground">{product.name}</h3>
+            <div className="mt-3 border-y border-border py-3"><ProductPrice store={store} product={product} className="text-base" /></div>
+            {(product.category || product.type) ? (
+              <dl className="mt-3 space-y-2 text-xs">
+                {product.category ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Category</dt><dd className="text-right font-medium text-foreground">{product.category}</dd></div> : null}
+                {product.type && product.type !== product.category ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Type</dt><dd className="text-right font-medium text-foreground">{product.type}</dd></div> : null}
+              </dl>
+            ) : null}
+            {product.description ? <p className="mt-4 line-clamp-4 text-sm leading-6 text-muted-foreground">{product.description}</p> : null}
+            <Link href={blogAttributedProductUrl(store, post, product)} className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-primary hover:underline">View product <ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProductLookbook({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
+      {products.map((product, index) => (
+        <Link
+          key={product.id}
+          href={blogAttributedProductUrl(store, post, product)}
+          className={`group relative overflow-hidden rounded-2xl border border-border bg-muted ${index === 0 && products.length > 2 ? "col-span-2 sm:col-span-1 sm:row-span-2" : ""}`}
+        >
+          <ProductImage product={product} className={`w-full object-cover transition duration-500 group-hover:scale-[1.02] ${index === 0 && products.length > 2 ? "aspect-[16/10] h-full min-h-[280px] sm:aspect-auto sm:min-h-[420px]" : "aspect-[4/5]"}`} />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/45 to-transparent p-4 pt-12 text-white sm:p-5 sm:pt-16">
+            <h3 className="line-clamp-2 text-sm font-semibold sm:text-base">{product.name}</h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-bold">
+              <span>{money(product.price, store)}</span>
+              {product.original_price && product.original_price > product.price ? <span className="text-xs text-white/70 line-through">{money(product.original_price, store)}</span> : null}
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function ProductMerchandising({
   store,
   post,
   products,
+  layout = "grid",
   title,
   description,
 }: {
   store: Store;
   post: BlogPostRecord;
   products: BlogProductRecord[];
+  layout?: BlogProductLayout;
   title?: string;
   description?: string;
 }) {
@@ -72,27 +191,10 @@ function ProductMerchandising({
         <h2 className="font-heading text-2xl font-bold text-foreground">{title || post.product_embed_title || "Shop products from this story"}</h2>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{description || "Explore the products mentioned or recommended in this article."}</p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <Link key={product.id} href={blogAttributedProductUrl(store, post, product)} className="group overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="aspect-[4/3] w-full object-cover" loading="lazy" />
-            ) : (
-              <div className="flex aspect-[4/3] items-center justify-center bg-muted"><ShoppingBag className="h-8 w-8 text-muted-foreground" /></div>
-            )}
-            <div className="p-4">
-              <h3 className="line-clamp-2 text-sm font-semibold text-foreground transition group-hover:text-primary">{product.name}</h3>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-foreground">{money(product.price, store)}</span>
-                {product.original_price && product.original_price > product.price ? (
-                  <span className="text-xs text-muted-foreground line-through">{money(product.original_price, store)}</span>
-                ) : null}
-              </div>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">View product <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {layout === "spotlight" ? <ProductSpotlight store={store} post={post} products={products} /> : null}
+      {layout === "comparison" ? <ProductComparison store={store} post={post} products={products} /> : null}
+      {layout === "lookbook" ? <ProductLookbook store={store} post={post} products={products} /> : null}
+      {layout === "grid" ? <ProductGrid store={store} post={post} products={products} /> : null}
     </section>
   );
 }
@@ -119,7 +221,7 @@ function ArticleTableOfContents({ headings }: { headings: BlogHeading[] }) {
   );
 }
 
-function ArticleContent({ store, post, products }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[] }) {
+function ArticleContent({ store, post, products, layout }: { store: Store; post: BlogPostRecord; products: BlogProductRecord[]; layout: BlogProductLayout }) {
   const chunks = splitBlogContentAtProductDirectives(post.content);
   return (
     <>
@@ -131,7 +233,7 @@ function ArticleContent({ store, post, products }: { store: Store; post: BlogPos
               dangerouslySetInnerHTML={{ __html: markdownToHtml(chunk) }}
             />
           ) : null}
-          {index < chunks.length - 1 ? <ProductMerchandising store={store} post={post} products={products} /> : null}
+          {index < chunks.length - 1 ? <ProductMerchandising store={store} post={post} products={products} layout={layout} /> : null}
         </div>
       ))}
     </>
@@ -185,6 +287,8 @@ export function BlogPostPage({
   relatedPosts?: BlogPostRecord[];
 }) {
   const embedPosition = resolveBlogProductEmbedPosition(post.product_embed_position);
+  const productDirective = getPrimaryBlogProductDirective(post.content);
+  const productLayout = productDirective?.layout ?? "grid";
   const hasInlineProducts = hasInlineBlogProducts(post.content);
   const headings = extractBlogHeadings(post.content);
   const canonical = post.canonical_url || absoluteStoreUrl(
@@ -287,7 +391,7 @@ export function BlogPostPage({
 
                 {!hasInlineProducts && embedPosition === "after-intro" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 
-                <ArticleContent store={store} post={post} products={products} />
+                <ArticleContent store={store} post={post} products={products} layout={productLayout} />
 
                 {!hasInlineProducts && embedPosition === "after-content" ? <ProductMerchandising store={store} post={post} products={products} /> : null}
 

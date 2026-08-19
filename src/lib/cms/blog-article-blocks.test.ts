@@ -61,6 +61,21 @@ describe("Blog article block adapter", () => {
       source: "category",
       category: "Travel Bags",
       limit: 6,
+      layout: "grid",
+    });
+    assert.equal(serializeBlogArticleBlocks(blocks), markdown);
+  });
+
+  it("round-trips non-grid merchandising layouts exactly", () => {
+    const markdown = "Intro.\n\n[[products source=featured limit=3 layout=lookbook]]\n\nClosing.";
+    const blocks = parseBlogArticleBlocks(markdown);
+    const productBlock = blocks.find((block) => block.type === "products");
+
+    assert.deepEqual(productBlock, {
+      type: "products",
+      source: "featured",
+      limit: 3,
+      layout: "lookbook",
     });
     assert.equal(serializeBlogArticleBlocks(blocks), markdown);
   });
@@ -87,7 +102,7 @@ describe("Blog article block adapter", () => {
     const blocks = parseBlogArticleBlocks("Intro paragraph.\n\n[[products]]\n\nClosing paragraph.");
     const productBlock = blocks.find((block) => block.type === "products");
 
-    assert.deepEqual(productBlock, { type: "products", source: "manual", limit: 4 });
+    assert.deepEqual(productBlock, { type: "products", source: "manual", limit: 4, layout: "grid" });
     assert.equal(serializeBlogArticleBlocks(blocks), "Intro paragraph.\n\n[[products]]\n\nClosing paragraph.");
   });
 
@@ -117,7 +132,7 @@ describe("Blog article block adapter", () => {
     );
   });
 
-  it("places one manual product block after the active structured block and avoids duplicates", () => {
+  it("places one manual grid product block after the active structured block and avoids duplicates", () => {
     const blocks = parseBlogArticleBlocks("## Start\n\nIntro.\n\n## Next");
     const withProducts = insertBlogArticleContent(blocks, 1, { type: "products" });
     const duplicateAttempt = insertBlogArticleContent(withProducts, 0, { type: "products" });
@@ -131,7 +146,7 @@ describe("Blog article block adapter", () => {
 
   it("creates supported starter blocks without introducing a new storage format", () => {
     assert.deepEqual(createBlogArticleBlock("heading"), { type: "heading", level: 2, text: "New section" });
-    assert.deepEqual(createBlogArticleBlock("products"), { type: "products", source: "manual", limit: 4 });
+    assert.deepEqual(createBlogArticleBlock("products"), { type: "products", source: "manual", limit: 4, layout: "grid" });
     assert.match(serializeBlogArticleBlocks([createBlogArticleBlock("table")]), /\| Option \| Details \|/);
   });
 });

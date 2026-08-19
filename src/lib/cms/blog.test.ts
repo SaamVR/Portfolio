@@ -36,40 +36,62 @@ describe("blog inline commerce directives", () => {
       source: "category",
       category: "Travel Bags",
       limit: 6,
+      layout: "grid",
     });
-    expect(serializeBlogProductDirective({ source: "category", category: "Travel Bags", limit: 6 }))
+    expect(serializeBlogProductDirective({ source: "category", category: "Travel Bags", limit: 6, layout: "grid" }))
       .toBe("[[products source=category category=Travel%20Bags limit=6]]");
     expect(getPrimaryBlogProductDirective("Before\n\n[[products source=bestsellers limit=5]]\n\nAfter")).toEqual({
       source: "bestsellers",
       limit: 5,
+      layout: "grid",
     });
+  });
+
+  it("round-trips product merchandising layouts without changing grid defaults", () => {
+    expect(parseBlogProductDirective("[[products source=featured limit=6 layout=spotlight]]")).toEqual({
+      source: "featured",
+      limit: 6,
+      layout: "spotlight",
+    });
+    expect(serializeBlogProductDirective({ source: "featured", limit: 6, layout: "spotlight" }))
+      .toBe("[[products source=featured limit=6 layout=spotlight]]");
+    expect(serializeBlogProductDirective({ source: "featured", limit: 6, layout: "grid" }))
+      .toBe("[[products source=featured limit=6]]");
   });
 
   it("keeps the legacy directive as the manual backward-compatible default", () => {
-    expect(parseBlogProductDirective("[[products]]")).toEqual({ source: "manual", limit: 4 });
+    expect(parseBlogProductDirective("[[products]]")).toEqual({ source: "manual", limit: 4, layout: "grid" });
     expect(serializeBlogProductDirective()).toBe("[[products]]");
   });
 
-  it("clamps invalid limits and falls back unknown sources to manual", () => {
-    expect(parseBlogProductDirective("[[products source=unknown limit=99]]")).toEqual({
+  it("clamps invalid limits and falls back unknown source/layout values", () => {
+    expect(parseBlogProductDirective("[[products source=unknown limit=99 layout=unknown]]")).toEqual({
       source: "manual",
       limit: 8,
+      layout: "grid",
     });
-    expect(parseBlogProductDirective("[[products source=newest limit=0]]")).toEqual({
+    expect(parseBlogProductDirective("[[products source=newest limit=0 layout=lookbook]]")).toEqual({
       source: "newest",
       limit: 1,
+      layout: "lookbook",
     });
   });
 
+  it("does not match a product directive across multiple article lines", () => {
+    const content = "Before [[products source=featured\nlimit=4]] after";
+    expect(hasInlineBlogProducts(content)).toBe(false);
+  });
+
   it("keeps product directives out of automatic excerpts", () => {
-    expect(buildBlogExcerpt("Useful intro.\n\n[[products source=related limit=5]]\n\nUseful ending."))
+    expect(buildBlogExcerpt("Useful intro.\n\n[[products source=related limit=5 layout=comparison]]\n\nUseful ending."))
       .toBe("Useful intro. Useful ending.");
   });
 
   it("renders product directives as preview placeholders instead of article text", () => {
-    const html = markdownToHtml("Before.\n\n[[products source=sale limit=4]]\n\nAfter.");
+    const html = markdownToHtml("Before.\n\n[[products source=sale limit=4 layout=lookbook]]\n\nAfter.");
     expect(html.includes("Product cards render here.")).toBe(true);
     expect(html.includes("source=sale")).toBe(false);
+    expect(html.includes("layout=lookbook")).toBe(false);
   });
 });
 
