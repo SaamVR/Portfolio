@@ -13,6 +13,7 @@ for (const envFile of [".env.local", ".env"]) {
 }
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:8080";
+const startCommand = process.platform === "win32" ? "npm.cmd run start" : "npm run start";
 
 export default defineConfig({
   testDir: "./tests",
@@ -28,7 +29,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm.cmd run start",
+    command: startCommand,
     url: baseURL,
     reuseExistingServer: true,
     timeout: 120000,
