@@ -16,7 +16,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:8080";
 
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "preview-smoke.spec.ts",
+  testMatch: ["preview-smoke.spec.ts", "storefront-template-viewport.spec.ts"],
   timeout: 240000,
   outputDir: "test-results",
   expect: {
