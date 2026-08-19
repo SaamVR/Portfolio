@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 
@@ -20,9 +20,16 @@ interface PromoBannerSettings {
   card_opacity?: number;
 }
 
+interface WhatsAppSettings {
+  enabled?: boolean;
+  number?: string;
+  message?: string;
+}
+
 interface PromoBannerProps {
   overrides?: {
     disableLegacyFallback?: boolean;
+    layoutVariant?: string;
     title?: string;
     subtitle?: string;
     ctaText?: string;
@@ -154,8 +161,12 @@ const SparkleSVG = ({ className }: { className: string }) => (
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const currentStore = useOptionalStore();
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
+  const preloadedWhatsApp = currentStore?.siteSettings?.whatsapp_support as WhatsAppSettings | undefined;
+  const { data: fetchedWhatsApp } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
+  const whatsapp = fetchedWhatsApp ?? preloadedWhatsApp;
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const useLegacyThemeOverrides = hasExplicitPromoThemeOverrides(legacySettings);
+  const isContactVariant = overrides?.layoutVariant === "contact-cta";
 
   if (legacySettings?.enabled === false) return null;
 
@@ -166,14 +177,23 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const orbCls = getOrbColors(bg ?? "accent");
   const borderGrad = getBorderGradient(bg ?? "accent");
 
-  const badgeText = overrides?.badgeText ?? legacySettings?.badge_text ?? "";
-  const title = overrides?.title ?? legacySettings?.title ?? "Spotlight What Matters Most";
+  const badgeText = overrides?.badgeText ?? legacySettings?.badge_text ?? (isContactVariant ? "Talk to us" : "");
+  const title = overrides?.title ?? legacySettings?.title ?? (isContactVariant ? "Questions before you decide?" : "Spotlight What Matters Most");
   const subtitle =
     overrides?.subtitle ??
     legacySettings?.subtitle ??
-    "Use this section for one timely reason to act now: a launch, a seasonal offer, a service push, or a direct contact moment.";
-  const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? "See the offer";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
+    (isContactVariant
+      ? "Reach the store directly for product questions, bookings, quotes, availability, or help choosing the right option."
+      : "Use this section for one timely reason to act now: a launch, a seasonal offer, a service push, or a direct contact moment.");
+  const contactNumber = whatsapp?.enabled && whatsapp.number ? whatsapp.number.replace(/\D/g, "") : "";
+  const contactHref = contactNumber
+    ? `https://wa.me/${contactNumber}?text=${encodeURIComponent(whatsapp?.message || "Hi! I would like more information.")}`
+    : storefrontPath("/contact", currentStore?.slug);
+  const ctaText = overrides?.ctaText ?? legacySettings?.cta_text ?? (isContactVariant ? (contactNumber ? "Chat on WhatsApp" : "Contact us") : "See the offer");
+  const ctaLink = isContactVariant
+    ? contactHref
+    : storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
+  const isExternalContact = isContactVariant && Boolean(contactNumber);
 
   const align = overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
@@ -210,11 +230,17 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
     ? "bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text text-transparent"
     : "text-foreground";
 
+  const actionClass = `mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-xs md:mt-8 md:px-8 md:py-4 md:text-sm font-bold tracking-wider uppercase transition-all duration-500 hover:scale-105 active:scale-100 shadow-md ${buttonGlowCls} ${
+    bg === "luxury-gold"
+      ? "bg-accent text-accent-foreground hover:bg-accent/90 border-accent/20"
+      : "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20"
+  }`;
+
   return (
     <section
       style={style}
       className={`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`}
-      aria-label="Promotional banner"
+      aria-label={isContactVariant ? "Contact call to action" : "Promotional banner"}
     >
       {usesCustomBannerTheme ? <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
       {usesCustomBannerTheme ? <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
@@ -254,7 +280,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
           <div className={`flex flex-col ${containerAlignCls} ${alignCls} relative z-10`}>
             {badgeText ? (
               <span className={`mb-5 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-bold tracking-widest uppercase shadow-sm border ${badgeBgCls} backdrop-blur-md transition-all duration-300`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                {isContactVariant ? <MessageCircle className="h-3.5 w-3.5 text-primary" /> : <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />}
                 {badgeText}
               </span>
             ) : null}
@@ -270,17 +296,17 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
             ) : null}
 
             {ctaLink && ctaText ? (
-              <Link
-                href={ctaLink}
-                className={`mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-xs md:mt-8 md:px-8 md:py-4 md:text-sm font-bold tracking-wider uppercase transition-all duration-500 hover:scale-105 active:scale-100 shadow-md ${buttonGlowCls} ${
-                  bg === "luxury-gold"
-                    ? "bg-accent text-accent-foreground hover:bg-accent/90 border-accent/20"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20"
-                }`}
-              >
-                {ctaText}
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+              isExternalContact ? (
+                <a href={ctaLink} target="_blank" rel="noopener noreferrer" className={actionClass}>
+                  {ctaText}
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </a>
+              ) : (
+                <Link href={ctaLink} className={actionClass}>
+                  {ctaText}
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+              )
             ) : null}
           </div>
         </div>
