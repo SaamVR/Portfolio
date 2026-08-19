@@ -32,7 +32,8 @@ describe("storefront navigation experience", () => {
     ["inquiry-catalog", "Catalog", "Quote", "Request Quote"],
     ["subscriptions", "Plans", "Subscription", "Subscribe"],
     ["digital-downloads", "Downloads", "Cart", "Browse Downloads"],
-  ] as const)("uses business-aware labels for %s", (templateId, catalogLabel, cartLabel, primaryActionLabel) => {
+  ] as const)("uses business-aware labels for %s", (row) => {
+    const [templateId, catalogLabel, cartLabel, primaryActionLabel] = row;
     const navigation = resolveStorefrontNavigationExperience({ template_id: templateId });
 
     expect(navigation.catalogLabel).toBe(catalogLabel);
