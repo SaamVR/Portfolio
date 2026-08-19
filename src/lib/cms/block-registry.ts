@@ -35,9 +35,13 @@ const catalogBlockTypes = new Set<StorePageBlock["type"]>([
 const blockVariantMap: Partial<Record<StorePageBlock["type"], string[]>> = {
   hero: ["full-bleed", "split", "centered", "editorial"],
   "featured-products": ["2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right"],
+  "recommended-products": ["2-col", "3-col", "4-col"],
   "category-showcase": ["cards", "carousel", "masonry", "compact-list"],
   comparison: ["default", "tech-spec"],
-  "rich-text": ["default", "centered"],
+  "promo-banner": ["standard", "contact-cta"],
+  "trust-badges": ["cards", "stats"],
+  "social-feed": ["gallery", "logo-strip", "before-after"],
+  "rich-text": ["standard", "brand-story", "blog-posts"],
 };
 
 function resolveFallbackBusinessFamilies(type: StorePageBlock["type"]): StoreBusinessFamily[] {
