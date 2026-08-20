@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BlogIndexPage } from "@/components/storefront/blog/BlogIndexPage";
 import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
+import { getStorePreviewTokenFromRequest } from "@/lib/cms/store-preview-request";
 import { loadPublishedBlogPosts, loadStoreBlogSettings } from "@/lib/cms/blog-server";
 import { buildBlogIndexMetadata, resolveBlogIndexFilter, type BlogIndexFilters } from "@/lib/cms/blog-index-metadata";
 
@@ -14,7 +15,8 @@ export async function generateMetadata({
   searchParams: Promise<BlogIndexFilters>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/blog" });
+  const previewToken = await getStorePreviewTokenFromRequest(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, previewToken, { requestedPageSlug: "/blog" });
   if (!store) return {};
   const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   const filters = await searchParams;
@@ -29,7 +31,8 @@ export default async function Page({
   searchParams: Promise<BlogIndexFilters>;
 }) {
   const { storeSlug } = await params;
-  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: "/blog" });
+  const previewToken = await getStorePreviewTokenFromRequest(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, previewToken, { requestedPageSlug: "/blog" });
   if (!store) notFound();
   const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) notFound();

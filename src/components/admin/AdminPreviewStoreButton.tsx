@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, ExternalLink, Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/auth-context";
-import { supabase } from "@/integrations/supabase/client";
-import { createPreviewToken, buildStorePreviewUrl } from "@/lib/cms/preview-token";
+import { createPreviewSession } from "@/lib/cms/preview-token";
 import { toast } from "sonner";
 
 interface AdminPreviewStoreButtonProps {
@@ -25,29 +24,13 @@ export function AdminPreviewStoreButton({ className = "", variant = "header" }: 
     setLoading(true);
 
     try {
-      // 1. Fetch active store slug
-      const { data: store, error } = await (supabase as any)
-        .from("stores")
-        .select("slug")
-        .eq("id", activeStoreId)
-        .single();
-
-      if (error || !store?.slug) {
-        toast.error("Could not find active store slug.");
+      const session = await createPreviewSession(activeStoreId);
+      if (!session) {
+        toast.error("Failed to generate store preview. Please try again.");
         return;
       }
 
-      // 2. Generate 24h TTL preview token
-      const token = await createPreviewToken(activeStoreId);
-
-      if (!token) {
-        toast.error("Failed to generate store preview token.");
-        return;
-      }
-
-      // 3. Build preview URL and open in new tab
-      const url = buildStorePreviewUrl(store.slug, token);
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(session.previewUrl, "_blank", "noopener,noreferrer");
     } catch {
       toast.error("An error occurred while generating store preview.");
     } finally {
@@ -75,7 +58,7 @@ export function AdminPreviewStoreButton({ className = "", variant = "header" }: 
       onClick={handlePreview}
       disabled={loading}
       className={`inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50 ${className}`}
-      title="Preview Store (Bypasses is_published with 24h preview token)"
+      title="Preview the saved storefront with a private 24-hour link"
       aria-label="Preview Store"
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}

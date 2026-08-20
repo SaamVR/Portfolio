@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/components/storefront/blog/BlogPostPage";
 import { getStoreShellBySlug } from "@/lib/cms/store-resolver";
+import { getStorePreviewTokenFromRequest } from "@/lib/cms/store-preview-request";
 import {
   loadBlogProducts,
   loadBlogProductsForDirective,
@@ -16,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ storeSlug: string; slug: string }> }) {
   const { storeSlug, slug } = await params;
-  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: `/blog/${slug}` });
+  const previewToken = await getStorePreviewTokenFromRequest(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, previewToken, { requestedPageSlug: `/blog/${slug}` });
   if (!store) return {};
   const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) return { robots: { index: false, follow: false } };
@@ -59,7 +61,8 @@ export async function generateMetadata({ params }: { params: Promise<{ storeSlug
 
 export default async function Page({ params }: { params: Promise<{ storeSlug: string; slug: string }> }) {
   const { storeSlug, slug } = await params;
-  const store = await getStoreShellBySlug(storeSlug, undefined, { requestedPageSlug: `/blog/${slug}` });
+  const previewToken = await getStorePreviewTokenFromRequest(storeSlug);
+  const store = await getStoreShellBySlug(storeSlug, previewToken, { requestedPageSlug: `/blog/${slug}` });
   if (!store) notFound();
   const settings = await loadStoreBlogSettings(store.id, store.siteSettings?.blog);
   if (!settings.enabled) notFound();

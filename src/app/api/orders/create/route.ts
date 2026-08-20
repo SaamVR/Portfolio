@@ -40,6 +40,10 @@ function mapOrderError(message: string) {
   return { message: "Failed to create order", status: 500 };
 }
 
+export function canStoreAcceptOrders(store: { is_published?: boolean | null } | null | undefined) {
+  return store?.is_published === true;
+}
+
 export async function POST(req: Request) {
   try {
     const limit = await rateLimit(`order_create:${getClientIp(req)}`, {
@@ -83,7 +87,7 @@ export async function POST(req: Request) {
     const [{ data: store }, { data: storefrontSetting }] = await Promise.all([
       supabaseAdmin
         .from("stores")
-        .select("name")
+        .select("name, is_published")
         .eq("id", storeId)
         .maybeSingle(),
       supabaseAdmin
@@ -93,6 +97,14 @@ export async function POST(req: Request) {
         .eq("key", "storefront_profile")
         .maybeSingle(),
     ]);
+
+    // Preview links may intentionally reveal an unpublished storefront to an
+    // authorized merchant. They must never turn that draft into a transactional
+    // storefront or consume inventory through the public order API.
+    if (!canStoreAcceptOrders(store as { is_published?: boolean | null } | null)) {
+      return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
+    }
+
     const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
       ? storefrontSetting.value as Record<string, unknown>
       : null;

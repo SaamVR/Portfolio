@@ -1,27 +1,34 @@
-import { supabase } from "@/integrations/supabase/client";
+export interface StorePreviewSession {
+  previewUrl: string;
+  expiresAt: string;
+}
 
-export async function createPreviewToken(storeId: string): Promise<string | null> {
+export async function createPreviewSession(storeId: string): Promise<StorePreviewSession | null> {
   if (!storeId) return null;
 
   try {
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await (supabase as any)
-      .from("store_preview_tokens")
-      .insert({
-        store_id: storeId,
-        expires_at: expiresAt,
-      })
-      .select("id")
-      .single();
+    const response = await fetch("/api/stores/preview-token", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ storeId }),
+    });
 
-    if (error || !data?.id) {
-      console.error("Failed to create preview token:", error);
+    if (!response.ok) {
       return null;
     }
 
-    return data.id as string;
-  } catch (err) {
-    console.error("Error creating preview token:", err);
+    const payload = (await response.json()) as Partial<StorePreviewSession>;
+    if (!payload.previewUrl || !payload.expiresAt) {
+      return null;
+    }
+
+    return {
+      previewUrl: payload.previewUrl,
+      expiresAt: payload.expiresAt,
+    };
+  } catch {
     return null;
   }
 }
