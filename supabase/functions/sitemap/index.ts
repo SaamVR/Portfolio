@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     .from("blog_posts")
     .select("store_id, slug, updated_at, noindex")
     .eq("status", "published")
-    .lte("published_at", nowIso)
+    .or(`published_at.is.null,published_at.lte.${nowIso}`)
     .eq("noindex", false)
     .order("updated_at", { ascending: false });
 
