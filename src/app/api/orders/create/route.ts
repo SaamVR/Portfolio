@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getAuthenticatedUser, getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
 import { normalizeOrderItems } from "@/lib/cms/order-input";
 import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
@@ -40,8 +40,27 @@ function mapOrderError(message: string) {
   return { message: "Failed to create order", status: 500 };
 }
 
-export function canStoreAcceptOrders(store: { is_published?: boolean | null } | null | undefined) {
-  return store?.is_published === true;
+type StoreOrderAccessState = {
+  isPublished?: boolean | null;
+  hasSubscription?: boolean;
+  planLive?: boolean;
+};
+
+export function canStoreAcceptOrders(access: StoreOrderAccessState | null | undefined) {
+  if (!access) return false;
+
+  // Match storefront access semantics exactly: a live trial/active plan may make
+  // the storefront public before the legacy is_published flag is flipped.
+  if (!access.isPublished) {
+    return access.planLive === true;
+  }
+
+  // Published legacy stores with no subscription record remain accessible.
+  if (!access.hasSubscription) {
+    return true;
+  }
+
+  return access.planLive === true;
 }
 
 export async function POST(req: Request) {
@@ -84,7 +103,7 @@ export async function POST(req: Request) {
     const items = normalizeOrderItems(body?.items);
     const user = await getAuthenticatedUser(req);
     const supabaseAdmin = getSupabaseAdminClient();
-    const [{ data: store }, { data: storefrontSetting }] = await Promise.all([
+    const [{ data: store }, { data: storefrontSetting }, storePlanResult] = await Promise.all([
       supabaseAdmin
         .from("stores")
         .select("name, is_published")
@@ -96,12 +115,25 @@ export async function POST(req: Request) {
         .eq("store_id", storeId)
         .eq("key", "storefront_profile")
         .maybeSingle(),
+      loadStorePlanState(supabaseAdmin, storeId, { includePublished: true }),
     ]);
 
-    // Preview links may intentionally reveal an unpublished storefront to an
-    // authorized merchant. They must never turn that draft into a transactional
-    // storefront or consume inventory through the public order API.
-    if (!canStoreAcceptOrders(store as { is_published?: boolean | null } | null)) {
+    if (storePlanResult.error) {
+      throw storePlanResult.error;
+    }
+
+    const storePlanState = storePlanResult.data;
+    const orderAccess = {
+      isPublished: store?.is_published ?? storePlanState?.isPublished ?? null,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    };
+
+    // Private preview links may reveal a non-public draft to an authorized
+    // merchant, but must never make that draft transactional. Live trial/active
+    // stores remain orderable because they are already publicly accessible by
+    // the canonical storefront resolver.
+    if (!canStoreAcceptOrders(orderAccess)) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
 
