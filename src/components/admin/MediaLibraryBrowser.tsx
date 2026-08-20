@@ -125,9 +125,17 @@ export function MediaLibraryBrowser({
     }
   };
 
-  const handleDelete = async (assetId: string) => {
+  const handleDelete = async (asset: MediaLibraryAsset) => {
+    const assetName = asset.originalFilename || asset.publicId || "this asset";
+    if (
+      typeof window !== "undefined"
+      && !window.confirm(`Remove ${assetName} from this store's media library? The uploaded file will remain available at its current URL.`)
+    ) {
+      return;
+    }
+
     try {
-      await persistAssets(assets.filter((asset) => asset.id !== assetId));
+      await persistAssets(assets.filter((candidate) => candidate.id !== asset.id));
       toast.success("Asset removed from library.");
     } catch (error: any) {
       toast.error(error?.message || "Failed to remove asset");
@@ -135,8 +143,12 @@ export function MediaLibraryBrowser({
   };
 
   const handleCopy = async (url: string) => {
-    await navigator.clipboard.writeText(url);
-    toast.success("Asset URL copied.");
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Asset URL copied.");
+    } catch {
+      toast.error("Could not copy the asset URL.");
+    }
   };
 
   const handleSelectAsset = (asset: MediaLibraryAsset) => {
@@ -152,7 +164,7 @@ export function MediaLibraryBrowser({
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <input
             ref={fileInputRef}
             type="file"
@@ -161,7 +173,12 @@ export function MediaLibraryBrowser({
             multiple
             onChange={handleUpload}
           />
-          <Button type="button" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || !effectiveStoreId}>
+          <Button
+            type="button"
+            className="w-full gap-2 sm:w-auto"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || !effectiveStoreId}
+          >
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Upload Media
           </Button>
@@ -220,6 +237,7 @@ export function MediaLibraryBrowser({
         {visibleAssets.map((asset) => {
           const isSelected = selectedUrl === asset.url;
           const isSelectable = showSelectionActions && Boolean(onSelect);
+          const assetName = asset.originalFilename || asset.publicId || "uploaded asset";
 
           return (
             <div
@@ -252,7 +270,7 @@ export function MediaLibraryBrowser({
               </div>
               <div className="space-y-3 p-4">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{asset.originalFilename || asset.publicId || "Uploaded asset"}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{assetName}</p>
                   <p className="truncate text-xs text-muted-foreground">{new Date(asset.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -273,6 +291,8 @@ export function MediaLibraryBrowser({
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label={`Copy URL for ${assetName}`}
+                    title="Copy asset URL"
                     onClick={(event) => {
                       event.stopPropagation();
                       void handleCopy(asset.url);
@@ -284,6 +304,8 @@ export function MediaLibraryBrowser({
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label={`Open ${assetName}`}
+                    title="Open asset"
                     onClick={(event) => {
                       event.stopPropagation();
                       window.open(asset.url, "_blank", "noopener,noreferrer");
@@ -295,6 +317,8 @@ export function MediaLibraryBrowser({
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label={`Show ${asset.folder} folder`}
+                    title="Filter to this folder"
                     onClick={(event) => {
                       event.stopPropagation();
                       setFolderFilter(asset.folder);
@@ -307,9 +331,11 @@ export function MediaLibraryBrowser({
                     size="sm"
                     variant="outline"
                     className="text-destructive hover:text-destructive"
+                    aria-label={`Remove ${assetName} from media library`}
+                    title="Remove from media library"
                     onClick={(event) => {
                       event.stopPropagation();
-                      void handleDelete(asset.id);
+                      void handleDelete(asset);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
