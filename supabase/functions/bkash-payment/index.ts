@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
+import {
+  appendBkashPaymentNote,
+  assertBkashOrderAwaitingPayment,
+  assertBkashProviderPaymentMatchesOrder,
+  type BkashOrderPaymentContext,
+} from "./authority.ts"
 
 const fallbackOrigin = Deno.env.get("CMS_PUBLIC_URL") || "https://commerce-engine.local";
 const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || `${fallbackOrigin},http://localhost:8080,http://localhost:8081,http://localhost:8082`)
@@ -7,13 +13,12 @@ const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || `${fallbackOrigin},ht
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const getCorsHeaders = (origin: string | null) => {
-  const isAllowed = origin && allowedOrigins.includes(origin);
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : fallbackOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-};
+const getAllowedOrigin = (origin: string | null) => origin && allowedOrigins.includes(origin) ? origin : fallbackOrigin;
+
+const getCorsHeaders = (origin: string | null) => ({
+  'Access-Control-Allow-Origin': getAllowedOrigin(origin),
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+});
 
 interface BkashConfig {
   app_key: string;
@@ -21,13 +26,6 @@ interface BkashConfig {
   username: string;
   password: string;
   is_live: boolean;
-}
-
-interface OrderPaymentContext {
-  store_id: string;
-  total: number;
-  status: string;
-  payment_method: string;
 }
 
 serve(async (req) => {
@@ -49,49 +47,56 @@ serve(async (req) => {
     const payload = await req.json()
     const { action, order_id, amount, paymentID, store_id } = payload
 
-    if (!action) {
-      throw new Error("Action is required ('create' or 'execute')")
+    if (action !== 'create' && action !== 'execute') {
+      throw new Error("Action must be 'create' or 'execute'")
     }
 
-    let resolvedStoreId = store_id as string | undefined;
-    let orderContext: OrderPaymentContext | null = null;
+    if (!order_id || typeof order_id !== 'string') {
+      throw new Error("order_id is required")
+    }
 
-    if (!resolvedStoreId && order_id) {
-      const { data: orderRecord } = await supabaseClient
+    let resolvedStoreId = typeof store_id === 'string' && store_id.trim() ? store_id.trim() : undefined;
+    let orderContext: BkashOrderPaymentContext | null = null;
+
+    if (!resolvedStoreId) {
+      const { data: orderRecord, error: orderError } = await supabaseClient
         .from('orders')
-        .select('store_id, total, status, payment_method')
+        .select('store_id, total, status, payment_method, notes')
         .eq('order_number', order_id)
         .maybeSingle()
-      orderContext = orderRecord as OrderPaymentContext | null;
+
+      if (orderError) {
+        throw new Error("Could not resolve order context for payment")
+      }
+
+      orderContext = orderRecord as BkashOrderPaymentContext | null;
       resolvedStoreId = orderContext?.store_id;
-    } else if (order_id) {
-      const { data: orderRecord } = await supabaseClient
+    } else {
+      const { data: orderRecord, error: orderError } = await supabaseClient
         .from('orders')
-        .select('store_id, total, status, payment_method')
+        .select('store_id, total, status, payment_method, notes')
         .eq('order_number', order_id)
         .eq('store_id', resolvedStoreId)
         .maybeSingle()
-      orderContext = orderRecord as OrderPaymentContext | null;
+
+      if (orderError) {
+        throw new Error("Could not load tenant-scoped order context for payment")
+      }
+
+      orderContext = orderRecord as BkashOrderPaymentContext | null;
     }
 
-    if (action === 'create') {
-      if (!order_id) throw new Error("order_id is required for create");
-      if (!orderContext) throw new Error("Order could not be found for payment");
-      if (orderContext.payment_method !== 'bkash') throw new Error("Order is not configured for bKash payment");
-      if (orderContext.status === 'confirmed') throw new Error("Order is already confirmed");
+    if (!resolvedStoreId || !orderContext) {
+      throw new Error("Order context is required for tenant-scoped bKash payment")
+    }
 
+    assertBkashOrderAwaitingPayment(orderContext)
+
+    if (action === 'create') {
       const requestedAmount = Number(amount);
       if (Number.isFinite(requestedAmount) && Math.abs(requestedAmount - Number(orderContext.total)) > 0.01) {
         throw new Error("Payment amount does not match the order total");
       }
-    }
-
-    if (action === 'execute' && !resolvedStoreId && order_id) {
-      throw new Error("Order context is required to execute tenant-scoped bKash payment");
-    }
-
-    if (!resolvedStoreId) {
-      throw new Error("Store context is required to initialize tenant-scoped bKash payment")
     }
 
     const { data: connection, error: connectionError } = await supabaseClient
@@ -119,8 +124,8 @@ serve(async (req) => {
       throw new Error("bKash API credentials are not configured in the dashboard")
     }
 
-    const baseURL = bkashConfig.is_live 
-      ? 'https://tokenized.pay.bka.sh/v1.2.0-beta' 
+    const baseURL = bkashConfig.is_live
+      ? 'https://tokenized.pay.bka.sh/v1.2.0-beta'
       : 'https://tokenized.sandbox.bka.sh/v1.2.0-beta'
 
     // Helper to get Token
@@ -145,12 +150,10 @@ serve(async (req) => {
     }
 
     if (action === 'create') {
-      if (!order_id || !orderContext) throw new Error("Order context is required for create");
-      
       const idToken = await grantToken();
-      const callbackUrl = new URL(`${origin || fallbackOrigin}/bkash/callback`);
+      const callbackUrl = new URL(`${getAllowedOrigin(origin)}/bkash/callback`);
       callbackUrl.searchParams.set("order_id", order_id);
-      if (resolvedStoreId) callbackUrl.searchParams.set("store_id", resolvedStoreId);
+      callbackUrl.searchParams.set("store_id", resolvedStoreId);
 
       const createResponse = await fetch(`${baseURL}/tokenized/checkout/create`, {
         method: 'POST',
@@ -171,82 +174,84 @@ serve(async (req) => {
       });
 
       const createData = await createResponse.json();
-      
+
       if (createData.statusCode !== "0000") {
         throw new Error(`bKash Create Error: ${createData.statusMessage}`)
       }
 
-      return new Response(JSON.stringify({ 
-        success: true, 
+      assertBkashProviderPaymentMatchesOrder(orderContext, order_id, createData)
+
+      if (typeof createData.bkashURL !== 'string' || !createData.bkashURL.trim()) {
+        throw new Error("bKash did not return a checkout URL")
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
         paymentID: createData.paymentID,
-        bkashURL: createData.bkashURL 
+        bkashURL: createData.bkashURL
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       })
     }
 
-    if (action === 'execute') {
-      if (!paymentID) throw new Error("paymentID is required for execute");
+    if (!paymentID || typeof paymentID !== 'string') {
+      throw new Error("paymentID is required for execute");
+    }
 
-      const idToken = await grantToken();
+    const idToken = await grantToken();
 
-      const executeResponse = await fetch(`${baseURL}/tokenized/checkout/execute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': idToken,
-          'X-APP-Key': bkashConfig.app_key,
-        },
-        body: JSON.stringify({ paymentID })
+    const executeResponse = await fetch(`${baseURL}/tokenized/checkout/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': idToken,
+        'X-APP-Key': bkashConfig.app_key,
+      },
+      body: JSON.stringify({ paymentID })
+    });
+
+    const executeData = await executeResponse.json();
+
+    if (executeData.statusCode !== "0000") {
+      return new Response(JSON.stringify({ success: false, error: executeData.statusMessage }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       });
-
-      const executeData = await executeResponse.json();
-
-      if (executeData.statusCode !== "0000") {
-        return new Response(JSON.stringify({ success: false, error: executeData.statusMessage }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-
-      // Find the order by invoice number and mark as Paid
-      const orderId = executeData.merchantInvoiceNumber;
-      if (orderId) {
-        if (order_id && order_id !== orderId) {
-          throw new Error("Payment invoice did not match the expected order");
-        }
-
-        let orderUpdate = supabaseClient
-          .from('orders')
-          .update({ 
-            status: 'confirmed',
-            notes: `Paid via bKash. TrxID: ${executeData.trxID}`
-          })
-          .eq('order_number', orderId)
-
-        if (resolvedStoreId) {
-          orderUpdate = orderUpdate.eq('store_id', resolvedStoreId);
-        }
-
-        const { error: updateError } = await orderUpdate;
-        if (updateError) {
-          throw new Error("Payment succeeded but order confirmation failed");
-        }
-      }
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        trxID: executeData.trxID,
-        order_number: orderId
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
     }
 
-    throw new Error("Invalid action");
+    assertBkashProviderPaymentMatchesOrder(orderContext, order_id, executeData, { requireCompleted: true })
 
+    const trxID = String(executeData.trxID).trim();
+    const { data: confirmedOrder, error: updateError } = await supabaseClient
+      .from('orders')
+      .update({
+        status: 'confirmed',
+        notes: appendBkashPaymentNote(orderContext.notes, trxID)
+      })
+      .eq('order_number', order_id)
+      .eq('store_id', resolvedStoreId)
+      .eq('status', 'pending')
+      .eq('payment_method', 'bkash')
+      .select('order_number')
+      .maybeSingle()
+
+    if (updateError) {
+      throw new Error("Payment succeeded but order confirmation failed")
+    }
+
+    if (!confirmedOrder) {
+      throw new Error(`Payment succeeded but order state changed before confirmation. Contact support with bKash TrxID ${trxID}`)
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      trxID,
+      order_number: confirmedOrder.order_number
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    })
   } catch (error) {
     return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
