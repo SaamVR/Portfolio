@@ -1,21 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, LayoutTemplate, Star, Download, Wand2, Loader2, Globe, Monitor, Smartphone, Tablet, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Eye,
+  Globe,
+  LayoutTemplate,
+  Loader2,
+  Search,
+  Star,
+  Wand2,
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import type { Store, StorePage } from "@/lib/cms/schema";
+import type { Store } from "@/lib/cms/schema";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { StorefrontPreviewFrame } from "@/components/storefront/StorefrontPreviewFrame";
 import { toast } from "sonner";
-import { Eye } from "lucide-react";
 import { fetchMarketplaceTemplate, type ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,7 +48,16 @@ import {
   type TemplatePreviewViewport,
 } from "@/lib/cms/template-gallery-preview";
 
-const CATEGORIES = ["All", ...Array.from(new Set(storefrontTemplateOptions.map((option) => getStorefrontTemplateSeedDefinition(option.value).group)))];
+const CATEGORIES = [
+  "All",
+  ...Array.from(
+    new Set(
+      storefrontTemplateOptions.map((option) => getStorefrontTemplateSeedDefinition(option.value).group),
+    ),
+  ),
+];
+
+const TEMPLATES_PER_PAGE = 8;
 
 type PreviewState = {
   kind: "built-in" | "community";
@@ -70,14 +89,8 @@ function formatOnboardingMode(mode: "template" | "blank") {
   return mode === "blank" ? "Blank builder" : "Guided template";
 }
 
-function getTemplateCategory(templateId: StorefrontTemplateId): string {
-  return getStorefrontTemplateSeedDefinition(templateId).group;
-}
-
-function getPreviewWidthClass(viewport: TemplatePreviewViewport) {
-  if (viewport === "mobile") return "max-w-[390px]";
-  if (viewport === "tablet") return "max-w-[760px]";
-  return "max-w-5xl";
+function formatLabel(value: string) {
+  return value.replace(/[_-]+/g, " ");
 }
 
 function TemplatePreviewCanvas({
@@ -123,10 +136,10 @@ function TemplatePreviewCanvas({
   );
 }
 
-export function TemplateGallery({ 
+export function TemplateGallery({
   store = defaultStore,
-  applyThemeBundle
-}: { 
+  applyThemeBundle,
+}: {
   store?: Store;
   applyThemeBundle?: (bundle: ThemeExportBundle) => boolean | void;
 }) {
@@ -138,28 +151,30 @@ export function TemplateGallery({
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
   const [previewViewport, setPreviewViewport] = useState<TemplatePreviewViewport>("desktop");
   const [moderatingTemplateId, setModeratingTemplateId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const { platformRole } = useAuth();
+  const canApplyTemplate = typeof applyThemeBundle === "function";
+
   const builtInTemplates = useMemo<BuiltInTemplateItem[]>(
-    () =>
-      storefrontTemplateOptions.map((option) => {
-        const templateDefinition = getStorefrontTemplateDefinition(option.value);
-        const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
-        return {
-          id: option.value,
-          name: option.label,
-          description: option.description,
-          category: seedDefinition.group,
-          aesthetic: seedDefinition.defaultTheme.aesthetic || "template",
-          mobileReady: true,
-          capabilities: seedDefinition.capabilities,
-          catalogMode: seedDefinition.catalogMode,
-          referenceImage: getStorefrontTemplateReferenceImage(option.value),
-          onboardingMode: seedDefinition.onboardingMode,
-          businessFamily: seedDefinition.businessFamily,
-          defaultBlockCount: seedDefinition.defaultBlockSet.length,
-          compatibleBlockCount: seedDefinition.compatibleBlockSet.length,
-        };
-      }),
+    () => storefrontTemplateOptions.map((option) => {
+      const templateDefinition = getStorefrontTemplateDefinition(option.value);
+      const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
+      return {
+        id: option.value,
+        name: option.label,
+        description: option.description,
+        category: seedDefinition.group,
+        aesthetic: seedDefinition.defaultTheme.aesthetic || "template",
+        mobileReady: true,
+        capabilities: seedDefinition.capabilities,
+        catalogMode: seedDefinition.catalogMode,
+        referenceImage: getStorefrontTemplateReferenceImage(option.value),
+        onboardingMode: seedDefinition.onboardingMode,
+        businessFamily: seedDefinition.businessFamily,
+        defaultBlockCount: seedDefinition.defaultBlockSet.length,
+        compatibleBlockCount: templateDefinition.compatibleBlockSet.length,
+      };
+    }),
     [],
   );
 
@@ -176,61 +191,63 @@ export function TemplateGallery({
       }
 
       const { data, error } = await query;
-        
       if (error) throw error;
       return data || [];
-    }
+    },
   });
 
-  const filteredBuiltIn = useMemo(() => {
-    return builtInTemplates.filter((tpl) => {
-      const matchesSearch = tpl.name.toLowerCase().includes(searchQuery.toLowerCase())
-        || tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const category = tpl.category;
-      const matchesCategory = activeCategory === "All" || category === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [activeCategory, builtInTemplates, searchQuery]);
+  const filteredBuiltIn = useMemo(() => builtInTemplates.filter((template) => {
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = template.name.toLowerCase().includes(query)
+      || template.description.toLowerCase().includes(query);
+    const matchesCategory = activeCategory === "All" || template.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  }), [activeCategory, builtInTemplates, searchQuery]);
 
-  const filteredCommunity = useMemo(() => {
-    return communityTemplates.filter((tpl: any) => {
-      const matchesSearch = tpl.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            (tpl.description && tpl.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      const category = tpl.category || "commerce";
-      const matchesCategory = activeCategory === "All" || category === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [communityTemplates, searchQuery, activeCategory]);
+  const filteredCommunity = useMemo(() => communityTemplates.filter((template: any) => {
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = template.title.toLowerCase().includes(query)
+      || Boolean(template.description?.toLowerCase().includes(query));
+    const category = template.category || "commerce";
+    const matchesCategory = activeCategory === "All" || category === activeCategory;
+    return matchesSearch && matchesCategory;
+  }), [activeCategory, communityTemplates, searchQuery]);
 
-  const handlePreviewBuiltIn = (templateId: string) => {
+  const displayItems = activeTab === "built-in" ? filteredBuiltIn : filteredCommunity;
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / TEMPLATES_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedItems = useMemo(() => {
+    const start = (safePage - 1) * TEMPLATES_PER_PAGE;
+    return displayItems.slice(start, start + TEMPLATES_PER_PAGE);
+  }, [displayItems, safePage]);
+
+  const handlePreviewBuiltIn = (templateId: StorefrontTemplateId) => {
     const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
     if (!selectedTemplate) return;
-        setPreviewState({
-          kind: "built-in",
-          id: templateId,
-          name: selectedTemplate.name,
-          category: selectedTemplate.category,
-          bundle: createBuiltInBundle(templateId, store),
-          mobileReady: true,
-          previewAssets: [selectedTemplate.referenceImage],
-        });
+    setPreviewState({
+      kind: "built-in",
+      id: templateId,
+      name: selectedTemplate.name,
+      category: selectedTemplate.category,
+      bundle: createBuiltInBundle(templateId, store),
+      mobileReady: true,
+      previewAssets: [selectedTemplate.referenceImage],
+    });
   };
 
-  const handleApplyBuiltIn = async (templateId: string) => {
-    if (!applyThemeBundle) {
-      toast.error("Template application logic is missing.");
-      return;
-    }
+  const handleApplyBuiltIn = async (templateId: StorefrontTemplateId) => {
+    if (!applyThemeBundle) return false;
     try {
       setApplyingTemplateId(templateId);
       const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
-      const bundle = createBuiltInBundle(templateId, store);
-      const applied = applyThemeBundle(bundle);
-      if (applied === false) return;
+      const applied = applyThemeBundle(createBuiltInBundle(templateId, store));
+      if (applied === false) return false;
       toast.success(`${selectedTemplate?.name ?? "Template"} loaded into the draft.`);
+      return true;
     } catch (error) {
       console.error(error);
       toast.error("Failed to apply template. Please try again.");
+      return false;
     } finally {
       setApplyingTemplateId(null);
     }
@@ -239,24 +256,26 @@ export function TemplateGallery({
   const handlePreviewCommunity = async (item: any) => {
     try {
       setApplyingTemplateId(item.id);
-      const res = await fetchMarketplaceTemplate(supabase, item.id);
-      if (res.success) {
-        setPreviewState({
-          kind: "community",
-          id: item.id,
-          name: item.title,
-          category: item.category || "commerce",
-          bundle: {
-            ...res.bundle,
-            theme: store.theme,
-            pages: res.bundle.pages ? personalizePreviewPages(res.bundle.pages, store) : res.bundle.pages,
-          },
-          mobileReady: item.mobile_ready !== false,
-          previewAssets: Array.isArray(item.preview_asset_urls) ? item.preview_asset_urls.filter(Boolean) : (item.cover_image ? [item.cover_image] : []),
-        });
-      } else {
-        toast.error(res.error);
+      const result = await fetchMarketplaceTemplate(supabase, item.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
       }
+      setPreviewState({
+        kind: "community",
+        id: item.id,
+        name: item.title,
+        category: item.category || "commerce",
+        bundle: {
+          ...result.bundle,
+          theme: store.theme,
+          pages: result.bundle.pages ? personalizePreviewPages(result.bundle.pages, store) : result.bundle.pages,
+        },
+        mobileReady: item.mobile_ready !== false,
+        previewAssets: Array.isArray(item.preview_asset_urls)
+          ? item.preview_asset_urls.filter(Boolean)
+          : (item.cover_image ? [item.cover_image] : []),
+      });
     } catch {
       toast.error("Failed to preview template from marketplace.");
     } finally {
@@ -265,28 +284,30 @@ export function TemplateGallery({
   };
 
   const handleApplyCommunity = async (templateId: string) => {
-    if (!applyThemeBundle) {
-      toast.error("Theme application logic is missing.");
-      return;
-    }
+    if (!applyThemeBundle) return false;
     try {
       setApplyingTemplateId(templateId);
-      const res = await fetchMarketplaceTemplate(supabase, templateId);
-      if (res.success) {
-        const applied = applyThemeBundle(res.bundle);
-        if (applied === false) return;
-        const { error: installError } = await supabase.from("cms_marketplace_template_installs" as any).insert({
+      const result = await fetchMarketplaceTemplate(supabase, templateId);
+      if (!result.success) {
+        toast.error(result.error);
+        return false;
+      }
+      const applied = applyThemeBundle(result.bundle);
+      if (applied === false) return false;
+      const { data: userData } = await supabase.auth.getUser();
+      const { error: installError } = await supabase
+        .from("cms_marketplace_template_installs" as any)
+        .insert({
           template_id: templateId,
           store_id: store.id,
-          installed_by: (await supabase.auth.getUser()).data.user?.id ?? null,
+          installed_by: userData.user?.id ?? null,
         });
-        if (installError) throw installError;
-        toast.success("Marketplace template loaded into the draft.");
-      } else {
-        toast.error(res.error);
-      }
-    } catch (e: any) {
+      if (installError) throw installError;
+      toast.success("Marketplace template loaded into the draft.");
+      return true;
+    } catch {
       toast.error("Failed to download template from marketplace.");
+      return false;
     } finally {
       setApplyingTemplateId(null);
     }
@@ -310,7 +331,6 @@ export function TemplateGallery({
           rejection_reason: status === "rejected" ? "Rejected during marketplace review." : null,
         } as any)
         .eq("id", templateId);
-
       if (error) throw error;
       toast.success(status === "published" ? "Template published." : "Template rejected.");
     } catch (error: any) {
@@ -319,17 +339,6 @@ export function TemplateGallery({
       setModeratingTemplateId(null);
     }
   };
-
-  const [page, setPage] = useState<number>(1);
-  const TEMPLATES_PER_PAGE = 8;
-
-  const isLoading = isLoadingCommunity;
-  const displayItems = activeTab === "built-in" ? filteredBuiltIn : filteredCommunity;
-  const totalPages = Math.max(1, Math.ceil(displayItems.length / TEMPLATES_PER_PAGE));
-  const paginatedItems = useMemo(() => {
-    const start = (page - 1) * TEMPLATES_PER_PAGE;
-    return displayItems.slice(start, start + TEMPLATES_PER_PAGE);
-  }, [displayItems, page]);
 
   const previewPages = previewState?.bundle.pages ?? [];
   const previewBlocks = previewPages[0]?.blocks ?? [];
@@ -342,71 +351,74 @@ export function TemplateGallery({
         previewViewport,
       )
     : "";
+  const isLoading = activeTab === "community" && isLoadingCommunity;
 
   return (
-    <div className="flex flex-col h-full bg-background" data-testid="template-gallery">
-      {/* Header */}
-      <div className="flex-none p-6 border-b bg-card">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <LayoutTemplate className="h-6 w-6 text-primary" />
+    <div className="flex h-full flex-col bg-background" data-testid="template-gallery">
+      <div className="flex-none border-b bg-card p-4 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-xl font-bold sm:text-2xl">
+              <LayoutTemplate className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
               Template Gallery
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Browse and apply high-converting designs for your storefront.
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Preview storefront structures first. Applying a template loads it into this store's draft so you can review before saving.
             </p>
           </div>
-          
-          <div className="flex flex-col sm:flex-row w-full md:w-auto items-start sm:items-center gap-4">
+
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
             <Tabs
               value={activeTab}
-              onValueChange={(val: any) => {
-                setActiveTab(val);
+              onValueChange={(value) => {
+                setActiveTab(value as "built-in" | "community");
+                setActiveCategory("All");
                 setPage(1);
               }}
-              className="w-[300px]"
+              className="w-full sm:w-[300px]"
             >
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="built-in"><LayoutTemplate className="mr-2 h-4 w-4" /> Built-In</TabsTrigger>
-                <TabsTrigger value="community" data-testid="template-gallery-community-tab"><Globe className="mr-2 h-4 w-4" /> Community</TabsTrigger>
+                <TabsTrigger value="built-in"><LayoutTemplate className="mr-2 h-4 w-4" />Built-In</TabsTrigger>
+                <TabsTrigger value="community" data-testid="template-gallery-community-tab"><Globe className="mr-2 h-4 w-4" />Community</TabsTrigger>
               </TabsList>
             </Tabs>
-            
-            <div className="flex items-center space-x-2 bg-secondary/50 p-2 rounded-lg border">
-              <Switch 
-                id="preview-data" 
-                checked={previewWithData}
-                onCheckedChange={setPreviewWithData}
-              />
-              <Label htmlFor="preview-data" className="text-sm font-medium flex items-center gap-1 cursor-pointer">
-                <Wand2 className="w-3.5 h-3.5 text-primary" />
-                Live Preview
-              </Label>
-            </div>
+
+            {activeTab === "built-in" ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-secondary/40 px-3 py-2 sm:justify-start">
+                <div className="min-w-0">
+                  <Label htmlFor="preview-data" className="flex cursor-pointer items-center gap-1.5 text-sm font-medium">
+                    <Wand2 className="h-3.5 w-3.5 text-primary" />
+                    Use store data
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Show your current store in card previews.</p>
+                </div>
+                <Switch id="preview-data" checked={previewWithData} onCheckedChange={setPreviewWithData} />
+              </div>
+            ) : null}
           </div>
         </div>
-        
-        {/* Search & Categories */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 mt-6">
-          <div className="relative flex-1 w-full max-w-sm">
+
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              type="search" 
-              placeholder="Search templates..." 
+            <Input
+              type="search"
+              placeholder="Search templates..."
               className="pl-8"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
                 setPage(1);
               }}
             />
           </div>
-          <ScrollArea className="w-full pb-2 whitespace-nowrap">
-            <div className="flex space-x-2">
-              {CATEGORIES.map(category => (
+          <ScrollArea className="w-full whitespace-nowrap pb-2">
+            <div className="flex gap-2">
+              {CATEGORIES.map((category) => (
                 <Button
                   key={category}
+                  type="button"
+                  size="sm"
                   variant={activeCategory === category ? "default" : "secondary"}
                   className="rounded-full"
                   onClick={() => {
@@ -422,316 +434,267 @@ export function TemplateGallery({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Loader2 className="h-12 w-12 text-primary mb-4 animate-spin" />
-            <h3 className="text-lg font-medium">Loading templates...</h3>
+          <div className="flex min-h-64 flex-col items-center justify-center text-center">
+            <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
+            <h3 className="font-medium">Loading community templates...</h3>
           </div>
         ) : displayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <LayoutTemplate className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-lg font-medium">No templates found</h3>
-            <p className="text-muted-foreground mt-1">Try adjusting your search or filters.</p>
+          <div className="flex min-h-64 flex-col items-center justify-center text-center">
+            <LayoutTemplate className="mb-4 h-10 w-10 text-muted-foreground/30" />
+            <h3 className="font-medium">No templates found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Try a different search or category.</p>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 sm:gap-5">
               {paginatedItems.map((item: any) => {
                 const isBuiltIn = activeTab === "built-in";
-                const id = item.id;
+                const id = item.id as string;
+                const builtInId = id as StorefrontTemplateId;
                 const name = isBuiltIn ? item.name : item.title;
+                const description = isBuiltIn ? item.description : item.description;
                 const category = isBuiltIn ? item.category : (item.category || "commerce");
-                const rating = isBuiltIn ? "4.8" : (item.rating_avg ? Number(item.rating_avg).toFixed(1) : "New");
-                const downloads = isBuiltIn ? (id.length * 123) + 400 : Number(item.install_count ?? 0);
-                const isPremium = !isBuiltIn && item.pricing_mode === "premium";
                 const status = isBuiltIn ? "published" : item.status ?? "draft";
                 const mobileReady = isBuiltIn ? item.mobileReady : item.mobile_ready !== false;
-                const aesthetic = isBuiltIn ? item.aesthetic : (item.aesthetic || "custom");
-                const onboardingMode = isBuiltIn ? item.onboardingMode : "template";
-                const businessFamily = isBuiltIn ? item.businessFamily : category;
+                const isPremium = !isBuiltIn && item.pricing_mode === "premium";
                 const builtInCardBundle = isBuiltIn
-                  ? (previewWithData ? createBuiltInBundle(id, store) : createBuiltInCardBundle(id, store))
+                  ? (previewWithData ? createBuiltInBundle(builtInId, store) : createBuiltInCardBundle(builtInId, store))
                   : null;
                 const communityPreviewAsset = !isBuiltIn ? getCommunityPreviewAsset(item, "desktop") : "";
+                const ratingCount = !isBuiltIn ? Number(item.rating_count ?? 0) : 0;
+                const installCount = !isBuiltIn ? Number(item.install_count ?? 0) : 0;
 
                 return (
-                <div key={id} className="group flex flex-col rounded-xl border bg-card text-card-foreground overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50" data-testid={`template-card-${id}`}>
-                  <div className="relative aspect-video bg-muted overflow-hidden">
-                    {isBuiltIn && previewWithData && builtInCardBundle ? (
-                      <TemplatePreviewCanvas bundle={builtInCardBundle} viewport="desktop" />
-                    ) : isBuiltIn && item.referenceImage ? (
-                      <img
-                        src={item.referenceImage}
-                        alt={name}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : communityPreviewAsset ? (
-                      <img 
-                        src={communityPreviewAsset} 
-                        alt={name} 
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center bg-background p-5 text-center">
-                        <LayoutTemplate className="h-8 w-8 text-primary/60" />
-                        <p className="mt-3 text-sm font-semibold text-foreground">Preview asset coming soon</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Open the template preview to inspect the live layout before applying it.
+                  <article
+                    key={id}
+                    className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground transition-shadow hover:shadow-md"
+                    data-testid={`template-card-${id}`}
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-muted">
+                      {isBuiltIn && previewWithData && builtInCardBundle ? (
+                        <TemplatePreviewCanvas bundle={builtInCardBundle} viewport="desktop" />
+                      ) : isBuiltIn && item.referenceImage ? (
+                        <img src={item.referenceImage} alt={name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                      ) : communityPreviewAsset ? (
+                        <img src={communityPreviewAsset} alt={name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center p-5 text-center">
+                          <LayoutTemplate className="h-8 w-8 text-primary/60" />
+                          <p className="mt-3 text-sm font-semibold">Preview asset coming soon</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Open the live preview to inspect the layout.</p>
+                        </div>
+                      )}
+
+                      <Badge className="absolute left-3 top-3 max-w-[60%] truncate bg-background/85 text-foreground backdrop-blur-md hover:bg-background/90">
+                        {category}
+                      </Badge>
+                      <div className="absolute right-3 top-3 flex max-w-[45%] flex-wrap justify-end gap-1.5">
+                        {isPremium ? <Badge className="bg-amber-500 text-white">${item.price}</Badge> : null}
+                        <Badge className={mobileReady ? "bg-primary/90 text-primary-foreground" : "bg-background/85 text-foreground"}>
+                          {mobileReady ? "Mobile ready" : "Desktop first"}
+                        </Badge>
+                      </div>
+                      {!isBuiltIn && isPlatformRole(platformRole) && status !== "published" ? (
+                        <Badge variant="secondary" className="absolute bottom-3 left-3 capitalize">{formatLabel(String(status))}</Badge>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-1 flex-col p-4">
+                      <div>
+                        <h3 className="line-clamp-1 text-lg font-semibold">{name}</h3>
+                        <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                          {description || "Storefront template ready to preview."}
                         </p>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center gap-2 p-4">
-                       <Button
-                         variant="secondary"
-                         className="w-full gap-2"
-                         data-testid={`template-preview-${id}`}
-                         onClick={() => isBuiltIn ? handlePreviewBuiltIn(id) : handlePreviewCommunity(item)}
-                         disabled={applyingTemplateId === id}
-                       >
-                         Preview <Eye className="h-4 w-4" />
-                       </Button>
-                       <Button 
-                          className="w-full gap-2" 
-                          data-testid={`template-apply-${id}`}
-                          onClick={() => isBuiltIn ? handleApplyBuiltIn(id) : handleApplyCommunity(id)} 
+
+                      {isBuiltIn ? (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">{formatOnboardingMode(item.onboardingMode)}</span>
+                            {" · "}{item.defaultBlockCount} starter sections{" · "}{formatLabel(item.businessFamily)}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="secondary" className="font-normal capitalize">{formatLabel(item.catalogMode)}</Badge>
+                            {item.capabilities.slice(0, 2).map((capability: string) => (
+                              <Badge key={capability} variant="outline" className="font-normal capitalize">{formatLabel(capability)}</Badge>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{item.compatibleBlockCount} compatible section types</p>
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {(item.best_for ?? []).slice(0, 3).map((tag: string) => (
+                              <Badge key={tag} variant="secondary" className="font-normal">{tag}</Badge>
+                            ))}
+                          </div>
+                          {(ratingCount > 0 || installCount > 0) ? (
+                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                              {ratingCount > 0 ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                  <span className="font-medium text-foreground">{Number(item.rating_avg ?? 0).toFixed(1)}</span>
+                                  <span>({ratingCount})</span>
+                                </span>
+                              ) : null}
+                              {installCount > 0 ? (
+                                <span className="inline-flex items-center gap-1"><Download className="h-3.5 w-3.5" />{installCount.toLocaleString()} installs</span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      <div className={cn("mt-auto grid gap-2 pt-4", canApplyTemplate ? "grid-cols-2" : "grid-cols-1")}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="gap-2"
+                          data-testid={`template-preview-${id}`}
+                          onClick={() => isBuiltIn ? handlePreviewBuiltIn(builtInId) : void handlePreviewCommunity(item)}
                           disabled={applyingTemplateId === id}
-                       >
-                         {applyingTemplateId === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
-                         Apply
-                       </Button>
-                    </div>
-                      <Badge className="absolute top-3 left-3 bg-background/80 backdrop-blur-md text-foreground hover:bg-background/90 capitalize">
-                      {category}
-                    </Badge>
-                    <div className="absolute right-3 top-3 flex gap-2">
-                      <Badge variant="secondary" className="bg-background/80 backdrop-blur-md capitalize text-foreground">
-                        {String(aesthetic).replace("-", " ")}
-                      </Badge>
-                      <Badge className={mobileReady ? "bg-primary/90 text-primary-foreground" : "bg-background/80 text-foreground"}>
-                        {mobileReady ? "mobile ready" : "desktop first"}
-                      </Badge>
-                    </div>
-                    {!isBuiltIn && (
-                      <Badge variant={status === "published" ? "default" : "secondary"} className="absolute bottom-3 left-3 capitalize">
-                        {String(status).replace("_", " ")}
-                      </Badge>
-                    )}
-                    {isPremium && (
-                      <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
-                        ${item.price}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="p-4 flex flex-col flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-lg line-clamp-1">{name}</h3>
-                    </div>
-                    <div className="mb-3 grid grid-cols-3 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      <span className="rounded bg-secondary px-2 py-1 capitalize">{category}</span>
-                      <span className="rounded bg-secondary px-2 py-1 capitalize">{String(aesthetic).replace("-", " ")}</span>
-                      <span className={mobileReady ? "rounded bg-primary/10 px-2 py-1 text-primary" : "rounded bg-secondary px-2 py-1"}>
-                        {mobileReady ? "mobile" : "desktop"}
-                      </span>
-                    </div>
-                    
-                    {isBuiltIn && item.capabilities && (
-                      <div className="mb-4 flex flex-wrap gap-1">
-                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {formatOnboardingMode(onboardingMode)}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                          {businessFamily}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                          {item.catalogMode.replace('_', ' ')}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                          {item.defaultBlockCount} starter blocks
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                          {item.compatibleBlockCount} compatible
-                        </span>
-                        {item.capabilities.slice(0, 3).map((tag: string) => (
-                          <span key={tag} className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                            {tag.replace('_', ' ')}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {!isBuiltIn && (
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{item.description}</p>
-                    )}
-                    {!isBuiltIn && (
-                      <div className="mb-4 flex flex-wrap gap-1">
-                        {(item.best_for ?? []).slice(0, 3).map((tag: string) => (
-                          <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-secondary-foreground">
-                            {tag}
-                          </span>
-                        ))}
-                        {mobileReady ? (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
-                            mobile ready
-                          </span>
+                        >
+                          <Eye className="h-4 w-4" />Preview
+                        </Button>
+                        {canApplyTemplate ? (
+                          <Button
+                            type="button"
+                            className="gap-2"
+                            data-testid={`template-apply-${id}`}
+                            onClick={() => isBuiltIn ? void handleApplyBuiltIn(builtInId) : void handleApplyCommunity(id)}
+                            disabled={applyingTemplateId === id}
+                          >
+                            {applyingTemplateId === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
+                            Apply
+                          </Button>
                         ) : null}
                       </div>
-                    )}
 
-                    <div className="mt-auto pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                        <span className="font-medium text-foreground">{rating}</span>
-                        {!isBuiltIn && item.rating_count ? <span>({item.rating_count})</span> : null}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Download className="h-4 w-4" />
-                        <span>{downloads.toLocaleString()}</span>
-                      </div>
+                      {!canApplyTemplate ? (
+                        <p className="mt-2 text-center text-[11px] text-muted-foreground">Choose a store to enable template application.</p>
+                      ) : null}
+
+                      {!isBuiltIn && isPlatformRole(platformRole) && status === "in_review" ? (
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            data-testid={`template-approve-${id}`}
+                            onClick={() => void handleModerateTemplate(id, "published")}
+                            disabled={moderatingTemplateId === id || item.safety_status !== "passed"}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-testid={`template-reject-${id}`}
+                            onClick={() => void handleModerateTemplate(id, "rejected")}
+                            disabled={moderatingTemplateId === id}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
-                    {!isBuiltIn && isPlatformRole(platformRole) && status === "in_review" ? (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <Button type="button" size="sm" data-testid={`template-approve-${id}`} onClick={() => handleModerateTemplate(id, "published")} disabled={moderatingTemplateId === id || item.safety_status !== "passed"}>
-                          Approve
-                        </Button>
-                        <Button type="button" size="sm" variant="outline" data-testid={`template-reject-${id}`} onClick={() => handleModerateTemplate(id, "rejected")} disabled={moderatingTemplateId === id}>
-                          Reject
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              )})}
+                  </article>
+                );
+              })}
             </div>
 
-            {/* Pagination Controls Footer */}
-            {displayItems.length > TEMPLATES_PER_PAGE && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-5 mt-6">
+            {displayItems.length > TEMPLATES_PER_PAGE ? (
+              <div className="flex flex-col items-center justify-between gap-4 border-t pt-5 sm:flex-row">
                 <p className="text-xs text-muted-foreground">
-                  Showing <span className="font-semibold text-foreground">{(page - 1) * TEMPLATES_PER_PAGE + 1}</span>–<span className="font-semibold text-foreground">{Math.min(page * TEMPLATES_PER_PAGE, displayItems.length)}</span> of <span className="font-semibold text-foreground">{displayItems.length}</span> templates
+                  Showing <span className="font-semibold text-foreground">{(safePage - 1) * TEMPLATES_PER_PAGE + 1}</span>–<span className="font-semibold text-foreground">{Math.min(safePage * TEMPLATES_PER_PAGE, displayItems.length)}</span> of <span className="font-semibold text-foreground">{displayItems.length}</span> templates
                 </p>
-
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="h-8 gap-1 text-xs rounded-lg"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                  <Button type="button" variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="gap-1">
+                    <ChevronLeft className="h-3.5 w-3.5" />Previous
                   </Button>
-
-                  <div className="flex items-center gap-1 px-3 text-xs font-semibold text-foreground">
-                    Page {page} of {totalPages}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className="h-8 gap-1 text-xs rounded-lg"
-                  >
-                    Next <ChevronRight className="h-3.5 w-3.5" />
+                  <span className="px-2 text-xs font-semibold">{safePage} / {totalPages}</span>
+                  <Button type="button" variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))} className="gap-1">
+                    Next<ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
 
       <Dialog open={Boolean(previewState)} onOpenChange={(open) => !open && setPreviewState(null)}>
         <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col overflow-hidden p-0">
-          <DialogHeader className="border-b px-6 py-4">
+          <DialogHeader className="border-b px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
+              <div className="min-w-0">
                 <DialogTitle className="flex items-center gap-2">
                   <Eye className="h-5 w-5 text-primary" />
                   {previewState?.name ?? "Template Preview"}
                 </DialogTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Previewed as {store.name} with your current theme and sample storefront content.
+                  Previewed as {store.name} with storefront content and responsive viewport controls.
                 </p>
                 {previewState ? (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="capitalize">{previewState.category}</Badge>
+                    <Badge variant="secondary">{previewState.category}</Badge>
                     <Badge variant="outline">{previewPages.length} page{previewPages.length === 1 ? "" : "s"}</Badge>
                     <Badge variant="outline">{previewState.mobileReady === false ? "Desktop first" : "Mobile ready"}</Badge>
                     {previewState.kind === "built-in" ? (
                       <Badge variant="outline">
-                        {formatOnboardingMode(
-                          builtInTemplates.find((template) => template.id === previewState.id)?.onboardingMode ?? "template",
-                        )}
+                        {formatOnboardingMode(builtInTemplates.find((template) => template.id === previewState.id)?.onboardingMode ?? "template")}
                       </Badge>
                     ) : null}
                   </div>
                 ) : null}
-                {previewState?.kind === "built-in" ? (
-                  <p className="mt-3 max-w-3xl text-xs leading-5 text-muted-foreground">
-                    {builtInTemplates.find((template) => template.id === previewState.id)?.onboardingMode === "blank"
-                      ? "This starts from the shared blank-builder shell. Merchants can add compatible sections and choose section styles during onboarding before launch."
-                      : "This starts from a guided launch structure. Merchants can keep the starter layout, enable optional sections, and still re-edit everything later from onboarding and settings."}
-                  </p>
-                ) : null}
               </div>
-              <div className="flex items-center gap-2">
+
+              {canApplyTemplate ? (
                 <Button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!previewState) return;
-                    if (previewState.kind === "built-in") {
-                      void handleApplyBuiltIn(previewState.id);
-                    } else {
-                      void handleApplyCommunity(previewState.id);
-                    }
-                    setPreviewState(null);
+                    const applied = previewState.kind === "built-in"
+                      ? await handleApplyBuiltIn(previewState.id as StorefrontTemplateId)
+                      : await handleApplyCommunity(previewState.id);
+                    if (applied) setPreviewState(null);
                   }}
                   disabled={Boolean(previewState && applyingTemplateId === previewState.id)}
                   className="gap-2"
                 >
-                  {previewState && applyingTemplateId === previewState.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <LayoutTemplate className="h-4 w-4" />
-                  )}
+                  {previewState && applyingTemplateId === previewState.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
                   Apply Template
                 </Button>
-              </div>
+              ) : (
+                <Badge variant="outline" className="w-fit">Preview only</Badge>
+              )}
             </div>
           </DialogHeader>
-          <div className="overflow-y-auto bg-muted/30 p-4">
+
+          <div className="overflow-y-auto bg-muted/30 p-3 sm:p-4">
             <StorefrontPreviewFrame
               viewport={previewViewport}
-              onViewportChange={(v) => setPreviewViewport(v as TemplatePreviewViewport)}
-              showToolbar={true}
+              onViewportChange={(value) => setPreviewViewport(value as TemplatePreviewViewport)}
+              showToolbar
               title={`${previewState?.name ?? "Template"} preview`}
             >
               {previewBlocks.length > 0 && previewState ? (
                 <StoreThemeScope theme={previewState.bundle.theme}>
                   <div className="min-h-[620px] bg-background">
-                    {previewBlocks.map((block) => (
-                      <StorefrontBlockRenderer key={block.id} block={block} />
-                    ))}
+                    {previewBlocks.map((block) => <StorefrontBlockRenderer key={block.id} block={block} />)}
                   </div>
                 </StoreThemeScope>
               ) : previewAssetFallback ? (
                 <div className="flex min-h-[420px] items-center justify-center bg-muted/20 p-6">
-                  <img
-                    src={previewAssetFallback}
-                    alt={`${previewState?.name ?? "Template"} preview`}
-                    className="max-h-[70vh] w-full rounded-lg object-contain"
-                  />
+                  <img src={previewAssetFallback} alt={`${previewState?.name ?? "Template"} preview`} className="max-h-[70vh] w-full rounded-lg object-contain" />
                 </div>
               ) : (
                 <div className="flex min-h-[420px] flex-col items-center justify-center p-8 text-center">
                   <LayoutTemplate className="h-10 w-10 text-muted-foreground/50" />
-                  <p className="mt-3 text-sm font-medium text-foreground">This template has no page layout preview.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Theme-only templates can still be applied to your current layout.</p>
+                  <p className="mt-3 text-sm font-medium">This template has no page layout preview.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Theme-only templates can still be applied to the current layout.</p>
                 </div>
               )}
             </StorefrontPreviewFrame>

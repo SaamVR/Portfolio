@@ -10,18 +10,18 @@ import { Link, useSearchParams } from "@/lib/react-router-dom-shim";
 import {
   AlertTriangle,
   CheckCircle2,
-  Compass,
-  Palette,
-  LayoutTemplate,
-  FileText,
-  FileCode2,
-  Image as ImageIcon,
-  ExternalLink,
-  ShieldCheck,
   ChevronRight,
+  Compass,
+  ExternalLink,
+  FileCode2,
+  FileText,
+  Image as ImageIcon,
+  LayoutTemplate,
+  Palette,
   Rocket,
-  Shapes,
   Settings2,
+  Shapes,
+  ShieldCheck,
   Store as StoreIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,6 @@ import { Badge } from "@/components/ui/badge";
 import CmsPagesManager from "./CmsPagesManager";
 import BlogManager from "./BlogManager";
 import MediaLibraryManager from "@/components/admin/MediaLibraryManager";
-import { TemplateGallery } from "./TemplateGallery";
 import { StorefrontSectionStyleStudio } from "@/components/admin/StorefrontSectionStyleStudio";
 import type { StorePageBlock } from "@/lib/cms/schema";
 
@@ -130,7 +129,6 @@ function buildReadinessSnapshot(storeId: string, homepageBlocks: ReadinessBlockR
       actionLabel: "Edit promo",
     });
   }
-
   if (socialFeed && (!Array.isArray(socialFeed.props?.images) || socialFeed.props.images.length === 0)) {
     issues.push({
       id: "social-feed-empty",
@@ -140,7 +138,6 @@ function buildReadinessSnapshot(storeId: string, homepageBlocks: ReadinessBlockR
       actionLabel: "Edit social feed",
     });
   }
-
   if (faq && (!Array.isArray(faq.props?.faqs) || faq.props.faqs.length === 0)) {
     issues.push({
       id: "faq-empty",
@@ -150,7 +147,6 @@ function buildReadinessSnapshot(storeId: string, homepageBlocks: ReadinessBlockR
       actionLabel: "Add FAQs",
     });
   }
-
   if (trust && (!Array.isArray(trust.props?.badges) || trust.props.badges.length === 0)) {
     issues.push({
       id: "trust-empty",
@@ -160,7 +156,6 @@ function buildReadinessSnapshot(storeId: string, homepageBlocks: ReadinessBlockR
       actionLabel: "Add trust signals",
     });
   }
-
   if (testimonials && (!Array.isArray(testimonials.props?.reviews) || testimonials.props.reviews.length === 0)) {
     issues.push({
       id: "testimonials-empty",
@@ -236,10 +231,7 @@ export default function OnlineStoreHub() {
     : "#";
 
   const changeTab = (tab: HubTab) => {
-    setSearchParams(
-      activeStoreId ? { tab, storeId: activeStoreId } : { tab },
-      { replace: true },
-    );
+    setSearchParams(activeStoreId ? { tab, storeId: activeStoreId } : { tab }, { replace: true });
   };
 
   if (!activeStoreId) {
@@ -259,6 +251,8 @@ export default function OnlineStoreHub() {
       </div>
     );
   }
+
+  const templateWorkspaceHref = `/admin/templates?storeId=${encodeURIComponent(activeStoreId)}`;
 
   return (
     <div className="space-y-6">
@@ -285,15 +279,13 @@ export default function OnlineStoreHub() {
           {storeMeta?.slug ? (
             <Button variant="outline" asChild className="flex-1 gap-2 sm:flex-none">
               <a href={storeUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                View store
+                <ExternalLink className="h-4 w-4" />View store
               </a>
             </Button>
           ) : null}
           <Button asChild className="flex-1 gap-2 sm:flex-none">
             <Link to={buildPageBuilderPath("basic", { storeId: activeStoreId })}>
-              <Palette className="h-4 w-4" />
-              Edit homepage
+              <Palette className="h-4 w-4" />Edit homepage
             </Link>
           </Button>
         </div>
@@ -366,9 +358,11 @@ export default function OnlineStoreHub() {
                   <Shapes className="h-5 w-5 shrink-0 text-primary" />
                   <span><span className="block font-semibold">Section styles</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Hero, promo, catalog and shared variants</span></span>
                 </Button>
-                <Button variant="outline" className="h-auto justify-start gap-3 p-4 text-left" onClick={() => changeTab("templates")}>
-                  <LayoutTemplate className="h-5 w-5 shrink-0 text-primary" />
-                  <span><span className="block font-semibold">Template</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Preview or switch the storefront preset</span></span>
+                <Button variant="outline" className="h-auto justify-start gap-3 p-4 text-left" asChild>
+                  <Link to={templateWorkspaceHref}>
+                    <LayoutTemplate className="h-5 w-5 shrink-0 text-primary" />
+                    <span><span className="block font-semibold">Template</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Preview and apply a storefront preset safely</span></span>
+                  </Link>
                 </Button>
                 <Button variant="outline" className="h-auto justify-start gap-3 p-4 text-left" asChild>
                   <Link to={buildSiteSettingsPath("navigation", activeStoreId)}>
@@ -414,7 +408,24 @@ export default function OnlineStoreHub() {
         </TabsContent>
 
         <TabsContent value="styles" className="space-y-6"><StorefrontSectionStyleStudio /></TabsContent>
-        <TabsContent value="templates" className="space-y-4"><TemplateGallery /></TabsContent>
+        <TabsContent value="templates" className="space-y-4">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base"><LayoutTemplate className="h-4 w-4 text-primary" />Template workspace</CardTitle>
+              <CardDescription>
+                Preview templates here, then apply them through the storefront editor so the selected layout is loaded into a real store draft before saving.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="gap-2">
+                <Link to={templateWorkspaceHref}>Browse & apply templates <ChevronRight className="h-4 w-4" /></Link>
+              </Button>
+              <Button variant="outline" asChild className="gap-2">
+                <Link to={buildPageBuilderPath("basic", { storeId: activeStoreId })}>Edit current homepage <Palette className="h-4 w-4" /></Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="pages" className="space-y-4"><CmsPagesManager /></TabsContent>
         <TabsContent value="blog" className="space-y-4"><BlogManager /></TabsContent>
         <TabsContent value="media" className="space-y-4"><MediaLibraryManager /></TabsContent>
