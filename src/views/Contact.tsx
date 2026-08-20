@@ -1,5 +1,6 @@
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useState } from "react";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
@@ -11,6 +12,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import {
+  formatStorefrontInquiryMessage,
+  getStorefrontInquiryHeading,
+  parseStorefrontInquiryContext,
+} from "@/lib/cms/storefront-inquiry-context";
 
 interface ContactSettings {
   badge?: string;
@@ -41,9 +47,13 @@ const Contact = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
   const storeName = currentStore?.name ?? "this store";
+  const [searchParams] = useSearchParams();
+  const inquiryContext = parseStorefrontInquiryContext(searchParams);
+  const inquiryMessage = inquiryContext ? formatStorefrontInquiryMessage(inquiryContext) : "";
+  const inquiryHeading = inquiryContext ? getStorefrontInquiryHeading(inquiryContext) : "";
 
   const { data: contact, isLoading } = useSiteSettings<ContactSettings>("contact_page", storeId);
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState(() => ({ name: "", email: "", message: inquiryMessage }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -82,7 +92,7 @@ const Contact = () => {
           store_id: storeId ?? null,
         });
       if (error) throw error;
-      toast.success("Message sent! We'll get back to you soon.");
+      toast.success(inquiryContext ? "Request sent! We'll get back to you soon." : "Message sent! We'll get back to you soon.");
       setForm({ name: "", email: "", message: "" });
     } catch {
       toast.error("Failed to send message. Please try again.");
@@ -103,12 +113,13 @@ const Contact = () => {
   const badge = contact?.badge || "Get in Touch";
   const title = contact?.title || `Contact ${storeName}`;
   const description = contact?.description || currentStore?.description || `Reach ${storeName}.`;
-  const formButtonLabel = contact?.form_button_label || "Send Message";
+  const formButtonLabel = contact?.form_button_label || (inquiryContext ? "Send Request" : "Send Message");
   const responseTimeLabel = contact?.response_time_label?.trim() || "Response Time";
   const responseTimeText = contact?.response_time_text?.trim() || "";
   const whatsappDigits = whatsapp.replace(/[^0-9]/g, "");
+  const whatsappText = inquiryMessage ? `Hi ${storeName}\n\n${inquiryMessage}` : `Hi ${storeName}`;
   const whatsappHref = whatsappDigits
-    ? `https://wa.me/${whatsappDigits.startsWith("0") && whatsappDigits.length === 11 ? `88${whatsappDigits}` : whatsappDigits}?text=${encodeURIComponent(`Hi ${storeName}`)}`
+    ? `https://wa.me/${whatsappDigits.startsWith("0") && whatsappDigits.length === 11 ? `88${whatsappDigits}` : whatsappDigits}?text=${encodeURIComponent(whatsappText)}`
     : "";
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
 
@@ -263,11 +274,21 @@ const Contact = () => {
               <AnimatedSection delay={100}>
                 <div className="rounded-[1.8rem] border border-border bg-background p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
                   <div className="mb-6">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Send a message</p>
-                    <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground">Tell us what you need</h2>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{inquiryContext ? inquiryHeading : "Send a message"}</p>
+                    <h2 className="mt-2 font-heading text-2xl font-semibold text-foreground">
+                      {inquiryContext ? inquiryContext.itemName : "Tell us what you need"}
+                    </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Share your question, order issue, or sales inquiry and the team will get back to you.
+                      {inquiryContext
+                        ? "Your selected item and request details are already attached below. Add or edit anything the merchant should know before sending."
+                        : "Share your question, order issue, or sales inquiry and the team will get back to you."}
                     </p>
+                    {inquiryContext ? (
+                      <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Request context</p>
+                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-foreground">{inquiryMessage}</p>
+                      </div>
+                    ) : null}
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-5">

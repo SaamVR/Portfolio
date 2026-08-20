@@ -23,6 +23,7 @@ import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { saveBuyNowPayload } from "@/lib/storefront-buy-now";
 import { resolveAllowGuestCheckoutForStore } from "@/lib/storefront-customer-access";
+import { buildStorefrontInquiryHref } from "@/lib/cms/storefront-inquiry-context";
 import { cn } from "@/lib/utils";
 import {
   getDigitalCompatibility,
@@ -460,7 +461,45 @@ function GenericProductDetailsContent({
     : variant === "digital"
       ? (selectedLicense?.price ?? product.price)
       : product.price * quantity;
-  const contactHref = storefrontPath("/contact", currentStore?.slug);
+  const contactBaseHref = storefrontPath("/contact", currentStore?.slug);
+  const generalInquiryHref = buildStorefrontInquiryHref(contactBaseHref, {
+    intent: variant === "inquiry" ? "quote" : "service_booking",
+    itemId: product.id,
+    itemName: product.name,
+  });
+  const hotelAvailabilityHref = buildStorefrontInquiryHref(contactBaseHref, {
+    intent: "hotel_availability",
+    itemId: product.id,
+    itemName: product.name,
+    checkIn: selectedCheckIn,
+    checkOut: selectedCheckOut,
+    guests: guestCount,
+    rooms: roomCount,
+  });
+  const propertyContactHref = buildStorefrontInquiryHref(contactBaseHref, {
+    intent: "property_contact",
+    itemId: product.id,
+    itemName: product.name,
+  });
+  const propertyVisitHref = buildStorefrontInquiryHref(contactBaseHref, {
+    intent: "property_visit",
+    itemId: product.id,
+    itemName: product.name,
+  });
+  const contactActionHref = variant === "hotel_room"
+    ? hotelAvailabilityHref
+    : variant === "property"
+      ? propertyContactHref
+      : generalInquiryHref;
+  const contactActionLabel = variant === "property"
+    ? "Contact Agent"
+    : variant === "hotel_room"
+      ? "Check Availability"
+      : variant === "inquiry"
+        ? "Request Quote"
+        : variant === "service" || variant === "booking"
+          ? "Book Now"
+          : "Contact";
   const allowGuestCheckout = resolveAllowGuestCheckoutForStore(currentStore);
   const wishlisted = isInWishlist(product.id);
   const technicalSpecItems = getStructuredSpecEntries(specs, ["technical_specs", "specifications"]);
@@ -1001,23 +1040,23 @@ function GenericProductDetailsContent({
 
       <div className="space-y-3">
         {variant === "inquiry" ? (
-          <Link href={contactHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
+          <Link href={generalInquiryHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
             Request Quote
           </Link>
         ) : variant === "service" || variant === "booking" ? (
-          <Link href={contactHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
+          <Link href={generalInquiryHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
             Book Now
           </Link>
         ) : variant === "hotel_room" ? (
-          <Link href={contactHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
+          <Link href={hotelAvailabilityHref} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
             Check Availability
           </Link>
         ) : variant === "property" ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href={contactHref} className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
+            <Link href={propertyContactHref} className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground">
               Contact Agent
             </Link>
-            <Link href={contactHref} className="inline-flex h-12 items-center justify-center rounded-md border border-border px-5 text-sm font-semibold text-foreground">
+            <Link href={propertyVisitHref} className="inline-flex h-12 items-center justify-center rounded-md border border-border px-5 text-sm font-semibold text-foreground">
               Schedule Visit
             </Link>
           </div>
@@ -1053,9 +1092,9 @@ function GenericProductDetailsContent({
       <ProductMetaList items={metaItems} />
       <SizeGuide open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
       <StickyMobileAction
-        label={variant === "property" ? "Contact Agent" : supportsBuyNow ? "Buy Now" : addToCartLabel}
+        label={supportsBuyNow ? "Buy Now" : contactActionLabel}
         price={variant === "property" || variant === "hotel_room" ? product.price : totalPrice}
-        onClick={variant === "property" || variant === "hotel_room" || variant === "service" || variant === "booking" || variant === "inquiry" ? () => { window.location.href = contactHref; } : supportsBuyNow ? handleBuyNow : primaryAction}
+        onClick={variant === "property" || variant === "hotel_room" || variant === "service" || variant === "booking" || variant === "inquiry" ? () => { window.location.href = contactActionHref; } : supportsBuyNow ? handleBuyNow : primaryAction}
         wishlisted={wishlisted}
         onToggleWishlist={() => toggleItem(product.id)}
       />
