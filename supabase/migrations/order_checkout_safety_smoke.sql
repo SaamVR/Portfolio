@@ -141,4 +141,31 @@ select pg_temp.assert_true(
   'out-of-stock checkout must not create a partial order'
 );
 
+-- Cancellation must restore exactly the inventory reserved by the order and
+-- must re-enable a product that becomes sellable again.
+update public.orders
+set status = 'cancelled'
+where store_id = '41000000-0000-4000-8000-000000000001'
+  and client_request_id = 'checkout-smoke-idempotent';
+
+select pg_temp.assert_true(
+  (select stock from public.products where id = '42000000-0000-4000-8000-000000000001') = 5,
+  'cancellation must restore the decremented stock'
+);
+select pg_temp.assert_true(
+  (select is_available from public.products where id = '42000000-0000-4000-8000-000000000001') = true,
+  'cancellation must re-enable product availability when stock is positive'
+);
+
+-- A repeated write of the same cancelled state must be a no-op for inventory.
+update public.orders
+set status = 'cancelled'
+where store_id = '41000000-0000-4000-8000-000000000001'
+  and client_request_id = 'checkout-smoke-idempotent';
+
+select pg_temp.assert_true(
+  (select stock from public.products where id = '42000000-0000-4000-8000-000000000001') = 5,
+  'repeated cancelled status must not restore stock twice'
+);
+
 rollback;
