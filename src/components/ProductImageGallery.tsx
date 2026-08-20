@@ -28,6 +28,8 @@ const ProductImageGallery = ({
     setActiveIndex((current) => (current === safeImages.length - 1 ? 0 : current + 1));
   };
 
+  const activeImage = safeImages[activeIndex];
+
   return (
     <div className="space-y-4">
       {/* Main Image Container */}
@@ -104,6 +106,8 @@ const ProductImageGallery = ({
             >
               <img
                 src={src}
+                srcSet={src.startsWith("http") ? generateCloudinarySrcSet(src, [160, 240, 320]) : undefined}
+                sizes="80px"
                 alt={`${alt} thumbnail ${i + 1}`}
                 loading="lazy"
                 className="h-full w-full object-contain rounded-xl"
@@ -145,7 +149,9 @@ const ProductImageGallery = ({
             </>
           )}
           <img
-            src={safeImages[activeIndex]}
+            src={activeImage}
+            srcSet={activeImage.startsWith("http") ? generateCloudinarySrcSet(activeImage, [800, 1200, 1600]) : undefined}
+            sizes="90vw"
             alt={alt}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"

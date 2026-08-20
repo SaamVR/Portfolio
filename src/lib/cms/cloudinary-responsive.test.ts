@@ -35,6 +35,19 @@ describe("Cloudinary URL optimization and responsive srcset helpers", () => {
     }
   });
 
+  it("respects custom responsive widths for compact thumbnails and large lightboxes", () => {
+    const cloudinaryUrl = "https://res.cloudinary.com/demo/image/upload/w_800,q_auto,f_webp/v1721612345/stores/products/panjabi.jpg";
+    const thumbnailSrcSet = generateCloudinarySrcSet(cloudinaryUrl, [160, 240, 320]);
+    const lightboxSrcSet = generateCloudinarySrcSet(cloudinaryUrl, [800, 1200, 1600]);
+
+    expect(thumbnailSrcSet?.includes("w_160,q_auto,f_webp")).toBe(true);
+    expect(thumbnailSrcSet?.includes("w_240,q_auto,f_webp")).toBe(true);
+    expect(thumbnailSrcSet?.includes("w_320,q_auto,f_webp")).toBe(true);
+    expect(lightboxSrcSet?.includes("w_800,q_auto,f_webp")).toBe(true);
+    expect(lightboxSrcSet?.includes("w_1200,q_auto,f_webp")).toBe(true);
+    expect(lightboxSrcSet?.includes("w_1600,q_auto,f_webp")).toBe(true);
+  });
+
   it("returns undefined for non-Cloudinary URLs in generateCloudinarySrcSet", () => {
     const nonCloudinaryUrl = "/placeholder.svg";
     const srcSet = generateCloudinarySrcSet(nonCloudinaryUrl);

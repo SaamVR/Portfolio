@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import {
   getDisplayableProductType,
@@ -75,10 +76,12 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
         <DialogTitle className="sr-only">{product.name}</DialogTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2">
           <div className="relative aspect-square overflow-hidden bg-secondary">
-            <img
+            <SafeStorefrontImage
               src={product.image}
               alt={product.name}
-              className="h-full w-full object-contain p-4"
+              fill
+              sizes="(max-width: 640px) 100vw, 50vw"
+              className="object-contain p-4"
             />
             {product.featured ? (
               <span className="absolute left-3 top-3 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">

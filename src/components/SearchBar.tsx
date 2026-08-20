@@ -6,6 +6,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { Badge } from "@/components/ui/badge";
+import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
@@ -238,8 +239,8 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   return (
     <>
       {showDropdown && (
-        <div 
-          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity" 
+        <div
+          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity"
           onClick={() => setOpen(false)}
         />
       )}
@@ -288,7 +289,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       {showDropdown && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
           {!isEmptyState && filtered.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <SearchX className="h-8 w-8 opacity-40" />
               <p className="text-sm">No items found</p>
               <p className="text-xs">Try a product name, category, or type.</p>
@@ -311,9 +312,12 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
                       : "hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
-                  <img
+                  <SafeStorefrontImage
                     src={product.image}
                     alt={product.name}
+                    width={40}
+                    height={40}
+                    sizes="40px"
                     className="h-10 w-10 rounded-md object-cover border border-border"
                   />
                   <div className="flex flex-1 flex-col gap-0.5 min-w-0">
@@ -384,4 +388,3 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 };
 
 export default SearchBar;
-
