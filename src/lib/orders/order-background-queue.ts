@@ -1,5 +1,6 @@
 import { send } from "@vercel/queue";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { triggerWhatsAppOrderStatusNotify, type WhatsAppOrderStatusPayload } from "@/lib/cms/whatsapp-order-status-notify";
 import { recordCaughtIncident } from "@/lib/platform/incident-logger";
 import {
   runOrderCancelledBackgroundJobs,
@@ -10,6 +11,13 @@ import {
 
 type OrderCreatedQueuePayload = Omit<RunOrderCreatedBackgroundJobsArgs, "supabaseAdmin">;
 type OrderCancelledQueuePayload = Omit<RunOrderCancelledBackgroundJobsArgs, "supabaseAdmin">;
+type OrderStatusChangedQueuePayload = {
+  notification: WhatsAppOrderStatusPayload;
+};
+
+export type DispatchOrderStatusChangedBackgroundJobsArgs = OrderStatusChangedQueuePayload & {
+  supabaseAdmin: any;
+};
 
 export type OrderBackgroundQueueMessage =
   | {
@@ -19,6 +27,10 @@ export type OrderBackgroundQueueMessage =
   | {
       type: "order_cancelled";
       payload: OrderCancelledQueuePayload;
+    }
+  | {
+      type: "order_status_changed";
+      payload: OrderStatusChangedQueuePayload;
     };
 
 const ORDER_BACKGROUND_QUEUE_TOPIC = "order-background-events";
@@ -29,6 +41,7 @@ export const orderBackgroundQueueDeps = {
   getSupabaseAdminClient,
   runOrderCreatedBackgroundJobs,
   runOrderCancelledBackgroundJobs,
+  triggerWhatsAppOrderStatusNotify,
 };
 
 function shouldUseOrderBackgroundQueue() {
@@ -114,13 +127,76 @@ export async function dispatchOrderCancelledBackgroundJobs(args: RunOrderCancell
   return { mode: "inline" as const };
 }
 
+async function runOrderStatusNotificationInline(args: DispatchOrderStatusChangedBackgroundJobsArgs) {
+  try {
+    await orderBackgroundQueueDeps.triggerWhatsAppOrderStatusNotify(
+      args.supabaseAdmin,
+      args.notification,
+    );
+  } catch (error) {
+    await recordCaughtIncident(args.supabaseAdmin, {
+      fingerprint: "orders.background.status.customer-whatsapp",
+      severity: "warning",
+      source: "orders",
+      title: "Customer order-status WhatsApp notification failed",
+      error,
+      route: "/api/orders/status",
+      storeId: args.notification.store_id,
+      metadata: {
+        orderId: args.notification.order_id,
+        status: args.notification.status,
+      },
+    });
+  }
+}
+
+export async function dispatchOrderStatusChangedBackgroundJobs(
+  args: DispatchOrderStatusChangedBackgroundJobsArgs,
+) {
+  const { supabaseAdmin, ...payload } = args;
+  const idempotencyKey = `order-status:${args.notification.order_id}:${args.notification.status}`;
+
+  if (shouldUseOrderBackgroundQueue()) {
+    try {
+      await enqueueOrderBackgroundMessage(
+        {
+          type: "order_status_changed",
+          payload,
+        },
+        idempotencyKey,
+      );
+      return { mode: "queue" as const };
+    } catch (error) {
+      await recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "orders.queue.publish.status-changed",
+        severity: "prewarning",
+        source: "orders",
+        title: "Order-status queue publish failed; inline fallback used",
+        error,
+        route: "/api/orders/status",
+        storeId: args.notification.store_id,
+        metadata: {
+          orderId: args.notification.order_id,
+          status: args.notification.status,
+        },
+      });
+      console.error("Order status queue publish failed, falling back to inline execution:", error);
+    }
+  }
+
+  await runOrderStatusNotificationInline(args);
+  return { mode: "inline" as const };
+}
+
 export async function processOrderBackgroundQueueMessage(message: OrderBackgroundQueueMessage) {
   const supabaseAdmin = orderBackgroundQueueDeps.getSupabaseAdminClient();
   const storeId = message.type === "order_created"
     ? message.payload.storeId
-    : typeof message.payload.revenueEventRow.store_id === "string"
-      ? message.payload.revenueEventRow.store_id
-      : null;
+    : message.type === "order_cancelled"
+      ? typeof message.payload.revenueEventRow.store_id === "string"
+        ? message.payload.revenueEventRow.store_id
+        : null
+      : message.payload.notification.store_id;
 
   try {
     if (message.type === "order_created") {
@@ -131,10 +207,18 @@ export async function processOrderBackgroundQueueMessage(message: OrderBackgroun
       return;
     }
 
-    await orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs({
-      ...message.payload,
+    if (message.type === "order_cancelled") {
+      await orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs({
+        ...message.payload,
+        supabaseAdmin,
+      });
+      return;
+    }
+
+    await orderBackgroundQueueDeps.triggerWhatsAppOrderStatusNotify(
       supabaseAdmin,
-    });
+      message.payload.notification,
+    );
   } catch (error) {
     await recordCaughtIncident(supabaseAdmin, {
       fingerprint: `orders.queue.consumer.${message.type}`,

@@ -15,6 +15,7 @@ import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyt
 
 const STATUS_STEPS = [
   { key: "pending", label: "Order Placed", icon: Clock },
+  { key: "confirmed", label: "Confirmed", icon: CheckCircle },
   { key: "processing", label: "Processing", icon: Package },
   { key: "shipped", label: "Shipped", icon: Truck },
   { key: "delivered", label: "Delivered", icon: CheckCircle },
