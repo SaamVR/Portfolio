@@ -12,6 +12,7 @@ import {
   type ProductCardVariant,
   type ProductDetailVariant,
 } from "@/lib/cms/storefront-product-presentation";
+import { normalizePresentationMetricSpecs } from "@/lib/cms/product-metrics";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 export function useStoreProductPresentation(product: Product | null | undefined) {
@@ -31,7 +32,10 @@ export function useStoreProductPresentation(product: Product | null | undefined)
   }, [currentStore, storefrontProfile]);
 
   const metadata = product ? catalogSeedMetadata?.products?.[product.id] ?? null : null;
-  const specs = useMemo(() => getProductPresentationSpecs(product, metadata), [metadata, product]);
+  const specs = useMemo(
+    () => normalizePresentationMetricSpecs(getProductPresentationSpecs(product, metadata)),
+    [metadata, product],
+  );
   const displayVariant = typeof specs.display_variant === "string" ? specs.display_variant : null;
   const detailVariant = typeof specs.detail_variant === "string" ? specs.detail_variant : null;
   const productType = typeof specs.product_type === "string" ? specs.product_type : product?.type ?? null;
