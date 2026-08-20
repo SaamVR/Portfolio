@@ -1,9 +1,11 @@
 import type { Store } from "@/lib/cms/schema";
+import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import {
   getStorefrontTemplateSeedDefinition,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
+import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 import { fallbackThemePackages, resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 
 export function buildTemplatePreviewStore(
@@ -12,6 +14,13 @@ export function buildTemplatePreviewStore(
 ): Store {
   const seed = getStorefrontTemplateSeedDefinition(templateId);
   const themePackage = resolveThemePackageById(seed.defaultTheme.themePackageId, themePackages, seed.defaultTheme.presetId);
+  const pages = applyTemplateDemoContentToPages(
+    instantiateStorePagesFromTemplate(templateId),
+    templateId,
+  ).map((page) => ({
+    ...page,
+    blocks: sanitizeStoreBlocks(page.blocks),
+  }));
 
   return {
     id: `preview-${templateId}`,
@@ -35,7 +44,7 @@ export function buildTemplatePreviewStore(
       },
       customCss: seed.defaultTheme.customCss ?? themePackage.customCss,
     },
-    pages: instantiateStorePagesFromTemplate(templateId),
+    pages,
     siteSettings: seed.defaultSiteSettings,
   };
 }

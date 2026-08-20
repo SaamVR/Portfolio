@@ -1,10 +1,22 @@
 import { defaultStore } from "@/lib/cms/default-store";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
+import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { isStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 
 export type TemplatePreviewViewport = "desktop" | "tablet" | "mobile";
+
+function instantiateDemoPreviewPages(templateId: string): StorePage[] {
+  return applyTemplateDemoContentToPages(
+    instantiateStorePagesFromTemplate(templateId, { templateSeedId: templateId }),
+    templateId,
+  ).map((page) => ({
+    ...page,
+    blocks: sanitizeStoreBlocks(page.blocks),
+  }));
+}
 
 export function personalizePreviewPages(pages: StorePage[], store: Store): StorePage[] {
   return pages.map((page, pageIndex) => ({
@@ -29,7 +41,7 @@ export function createBuiltInBundle(
   store: Store,
 ): ThemeExportBundle {
   const pages = personalizePreviewPages(
-    instantiateStorePagesFromTemplate(templateId, { templateSeedId: templateId }),
+    instantiateDemoPreviewPages(templateId),
     store,
   );
   return {
@@ -52,7 +64,7 @@ export function createBuiltInCardBundle(
     schemaVersion: 1,
     type: "theme-and-layout",
     theme: defaultStore.theme,
-    pages: instantiateStorePagesFromTemplate(templateId as StorefrontTemplateId, { templateSeedId: templateId }),
+    pages: instantiateDemoPreviewPages(templateId as StorefrontTemplateId),
   };
 }
 

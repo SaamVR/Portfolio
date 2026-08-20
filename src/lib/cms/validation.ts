@@ -41,6 +41,33 @@ function normalizeBlockOrder(block: StorePageBlock, sortOrder: number): StorePag
   };
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function normalizeLegacyStoreBlockAliases(block: unknown): unknown {
+  if (!isPlainObject(block) || block.type !== "hero" || !isPlainObject(block.props)) {
+    return block;
+  }
+
+  const props = block.props;
+  const hasCanonicalMedia = Object.prototype.hasOwnProperty.call(props, "mediaUrl");
+  const legacyImageUrl = typeof props.imageUrl === "string" ? props.imageUrl.trim() : "";
+
+  if (hasCanonicalMedia || !legacyImageUrl) {
+    return block;
+  }
+
+  return {
+    ...block,
+    props: {
+      ...props,
+      mediaUrl: legacyImageUrl,
+      mediaType: props.mediaType === "video" ? "video" : "image",
+    },
+  };
+}
+
 export function sanitizeStoreBlockCustomCss(customCss?: string | null) {
   if (!customCss?.trim()) return undefined;
   if (unsafeBlockCustomCssPatterns.some((pattern) => pattern.test(customCss))) {
@@ -103,7 +130,7 @@ function sanitizeBlockContent(block: StorePageBlock, options?: { allowAdvanced?:
 
 export function sanitizeStoreBlocks(blocks: unknown[], options?: { allowAdvanced?: boolean }): StorePageBlock[] {
   return blocks
-    .map((block) => storePageBlockSchema.safeParse(block))
+    .map((block) => storePageBlockSchema.safeParse(normalizeLegacyStoreBlockAliases(block)))
     .filter((result): result is Extract<typeof result, { success: true }> => result.success)
     .map((result, index) => normalizeBlockOrder(sanitizeBlockContent(result.data, options), index));
 }
