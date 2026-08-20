@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
+import ProductQA from "@/components/ProductQA";
 import { useProduct } from "@/hooks/useProducts";
 import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -98,6 +99,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         </button>
 
         <ContextAwareProductDetails product={product} />
+        {storeId ? <ProductQA productId={product.id} /> : null}
       </div>
     </LayoutWrapper>
   );
