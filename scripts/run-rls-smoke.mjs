@@ -11,6 +11,7 @@ const sqlFiles = [
   path.join(repoRoot, "supabase", "migrations", "rls_smoke_cross_tenant.sql"),
   path.join(repoRoot, "supabase", "migrations", "platform_incidents_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "order_checkout_safety_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "order_authority_smoke.sql"),
 ];
 
 const databaseUrl =
