@@ -83,19 +83,23 @@ describe("marketplace template publisher", () => {
     store.pages[0].blocks.push(makeBrandStory("https://images.example.com/story.jpg"));
 
     const review = buildMarketplaceTemplateReview(store);
-    const publishedHero = review.bundle.pages[0]?.blocks.find((block) => block.type === "hero");
-    const publishedStory = review.bundle.pages[0]?.blocks.find((block) => block.type === "rich-text" && block.layoutVariant === "brand-story");
+    const publishedHero = review.bundle.pages?.[0]?.blocks.find((block) => block.type === "hero");
+    const publishedStory = review.bundle.pages?.[0]?.blocks.find((block) => block.type === "rich-text" && block.layoutVariant === "brand-story");
 
     assert.equal(review.safetyStatus, "passed");
     assert.equal(publishedHero?.props.mediaUrl, "https://images.example.com/hero.jpg");
     assert.equal(publishedHero?.props.imagePosition, "top-right");
     assert.equal(publishedHero?.props.focalX, 23);
     assert.equal(publishedHero?.props.focalY, "71");
-    assert.equal(publishedStory?.props.imageUrl, "https://images.example.com/story.jpg");
-    assert.equal(publishedStory?.props.imageAlt, "Founder at work");
-    assert.equal(publishedStory?.props.imagePosition, "bottom-left");
-    assert.equal(publishedStory?.props.focalX, 33);
-    assert.equal(publishedStory?.props.focalY, "82");
+
+    if (!publishedStory || publishedStory.type !== "rich-text") {
+      assert.fail("Expected a published rich-text brand-story block");
+    }
+    assert.equal(publishedStory.props.imageUrl, "https://images.example.com/story.jpg");
+    assert.equal(publishedStory.props.imageAlt, "Founder at work");
+    assert.equal(publishedStory.props.imagePosition, "bottom-left");
+    assert.equal(publishedStory.props.focalX, 33);
+    assert.equal(publishedStory.props.focalY, "82");
   });
 
   it("still strips merchant-private brand-story image URLs", () => {
@@ -103,9 +107,12 @@ describe("marketplace template publisher", () => {
     store.pages[0].blocks.push(makeBrandStory("https://tenant.supabase.co/storage/v1/object/sign/private/story.jpg"));
 
     const review = buildMarketplaceTemplateReview(store);
-    const publishedStory = review.bundle.pages[0]?.blocks.find((block) => block.type === "rich-text" && block.layoutVariant === "brand-story");
+    const publishedStory = review.bundle.pages?.[0]?.blocks.find((block) => block.type === "rich-text" && block.layoutVariant === "brand-story");
 
-    assert.equal(publishedStory?.props.imageUrl, undefined);
+    if (!publishedStory || publishedStory.type !== "rich-text") {
+      assert.fail("Expected a published rich-text brand-story block");
+    }
+    assert.equal(publishedStory.props.imageUrl, undefined);
     assert.equal(review.safetyStatus, "failed");
     assert.ok(review.safetyFindings.some((finding) => finding.path.endsWith("props.imageUrl")));
   });

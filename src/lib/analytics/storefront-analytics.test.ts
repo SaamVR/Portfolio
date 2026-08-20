@@ -46,14 +46,13 @@ describe("storefront Blog analytics", () => {
       },
     };
 
-    expect(mapEventToGa4(event)).toMatchObject({
-      page_type: "blog_article",
-      source: "blog",
-      medium: "editorial",
-      campaign: "buying-guide",
-      content: "cta",
-      ctaKind: "whatsapp",
-    });
+    const ga4Event = mapEventToGa4(event);
+    expect(ga4Event.page_type).toBe("blog_article");
+    expect(ga4Event.source).toBe("blog");
+    expect(ga4Event.medium).toBe("editorial");
+    expect(ga4Event.campaign).toBe("buying-guide");
+    expect(ga4Event.content).toBe("cta");
+    expect(ga4Event.ctaKind).toBe("whatsapp");
     expect(mapEventToMeta(event)).toBeNull();
   });
 });
