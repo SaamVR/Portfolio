@@ -77,19 +77,36 @@ const compactNavigationLabels: Partial<Record<StorefrontTemplateId, CompactNavig
   },
 };
 
+const contactFirstTemplates = new Set<StorefrontTemplateId>([
+  "service",
+  "booking",
+  "hotel",
+  "real-estate",
+]);
+
 function hasBrowsableCatalog(catalogMode: StoreCatalogMode) {
   return catalogMode !== "landing_only" && catalogMode !== "single_product";
 }
 
 function defaultsToWishlist(templateId: StorefrontTemplateId, catalogMode: StoreCatalogMode) {
-  if (catalogMode === "landing_only" || catalogMode === "single_product" || catalogMode === "inquiry_only" || catalogMode === "menu") {
+  if (
+    contactFirstTemplates.has(templateId)
+    || catalogMode === "landing_only"
+    || catalogMode === "single_product"
+    || catalogMode === "inquiry_only"
+    || catalogMode === "menu"
+  ) {
     return false;
   }
 
   return templateId !== "subscriptions";
 }
 
-function defaultsToCart(catalogMode: StoreCatalogMode) {
+function defaultsToCart(templateId: StorefrontTemplateId, catalogMode: StoreCatalogMode) {
+  if (contactFirstTemplates.has(templateId)) {
+    return false;
+  }
+
   return catalogMode !== "landing_only";
 }
 
@@ -144,7 +161,7 @@ export function resolveStorefrontNavigationExperience(
     showCatalog,
     showSearchByDefault: defaultsToSearch(resolved.catalogMode),
     showWishlistByDefault: defaultsToWishlist(resolved.templateId, resolved.catalogMode),
-    showCartByDefault: defaultsToCart(resolved.catalogMode),
+    showCartByDefault: defaultsToCart(resolved.templateId, resolved.catalogMode),
     useCatalogDropdown: showCatalog && defaultsToCatalogDropdown(resolved.templateId, resolved.catalogMode),
   };
 }

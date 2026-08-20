@@ -41,6 +41,28 @@ describe("storefront navigation experience", () => {
     expect(navigation.primaryActionLabel).toBe(primaryActionLabel);
   });
 
+  it.each(["service", "booking", "hotel", "real-estate"] as const)(
+    "keeps %s contact-first by removing cart and wishlist chrome by default",
+    (templateId) => {
+      const navigation = resolveStorefrontNavigationExperience({ template_id: templateId });
+
+      expect(navigation.showCatalog).toBe(true);
+      expect(navigation.showSearchByDefault).toBe(true);
+      expect(navigation.showWishlistByDefault).toBe(false);
+      expect(navigation.showCartByDefault).toBe(false);
+      expect(navigation.useCatalogDropdown).toBe(false);
+    },
+  );
+
+  it("keeps quote-cart behavior for inquiry catalogs", () => {
+    const navigation = resolveStorefrontNavigationExperience({ template_id: "inquiry-catalog" });
+
+    expect(navigation.showWishlistByDefault).toBe(false);
+    expect(navigation.showCartByDefault).toBe(true);
+    expect(navigation.cartLabel).toBe("Quote");
+    expect(navigation.primaryActionLabel).toBe("Request Quote");
+  });
+
   it("removes catalog, search, cart and wishlist defaults from landing-only storefronts", () => {
     const navigation = resolveStorefrontNavigationExperience({ template_id: "landing" });
 
