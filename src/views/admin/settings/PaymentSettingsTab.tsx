@@ -5,8 +5,243 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, KeyRound, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, KeyRound, AlertTriangle, ShieldCheck, PlugZap } from "lucide-react";
 import type { usePaymentGateway } from "@/hooks/usePaymentGateway";
+import type { PaymentProviderManifest } from "@/lib/payments/provider-registry";
+import type { ProviderSetupField } from "@/lib/integrations/provider-contract";
+
+function humanizeMetadataKey(value: string) {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function displayMetadataEntries(metadata: Record<string, unknown>) {
+  return Object.entries(metadata).filter(([, value]) =>
+    value !== null && value !== undefined && ["string", "number", "boolean"].includes(typeof value),
+  );
+}
+
+function fieldHasValue(value: unknown) {
+  if (typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function ProviderField({
+  providerId,
+  field,
+  value,
+  onChange,
+}: {
+  providerId: string;
+  field: ProviderSetupField;
+  value: unknown;
+  onChange: (value: string | number | boolean | null) => void;
+}) {
+  if (field.kind === "boolean") {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <Switch
+          id={`${providerId}-${field.key}`}
+          checked={value === true}
+          onCheckedChange={onChange}
+        />
+        <div className="space-y-1">
+          <Label htmlFor={`${providerId}-${field.key}`}>{field.label}</Label>
+          {field.helpText ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (field.kind === "select") {
+    const serialized = value === null || value === undefined ? "" : String(value);
+    return (
+      <div className="grid gap-2">
+        <Label htmlFor={`${providerId}-${field.key}`}>
+          {field.label}{field.required ? " *" : ""}
+        </Label>
+        <Select
+          value={serialized}
+          onValueChange={(next) => {
+            const option = field.options?.find((candidate) => String(candidate.value) === next);
+            onChange(option?.value ?? next);
+          }}
+        >
+          <SelectTrigger id={`${providerId}-${field.key}`}>
+            <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options ?? []).map((option) => (
+              <SelectItem key={String(option.value)} value={String(option.value)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {field.helpText ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={`${providerId}-${field.key}`}>
+        {field.label}{field.required ? " *" : ""}
+      </Label>
+      <Input
+        id={`${providerId}-${field.key}`}
+        type={field.kind === "password" ? "password" : field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"}
+        inputMode={field.kind === "number" ? "decimal" : undefined}
+        placeholder={field.placeholder}
+        value={value === null || value === undefined ? "" : String(value)}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={field.scope === "secret" ? "new-password" : undefined}
+      />
+      {field.helpText ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null}
+    </div>
+  );
+}
+
+function ProviderConnectionCard({
+  manifest,
+  paymentGateway,
+  editingProvider,
+  setEditingProvider,
+}: {
+  manifest: PaymentProviderManifest;
+  paymentGateway: ReturnType<typeof usePaymentGateway>;
+  editingProvider: string | null;
+  setEditingProvider: (provider: string | null) => void;
+}) {
+  const connection = paymentGateway.connections[manifest.id];
+  const loading = paymentGateway.loadingByProvider[manifest.id] ?? false;
+  const draft = paymentGateway.providerDrafts[manifest.id] ?? {};
+  const rotating = editingProvider === manifest.id;
+  const showForm = !connection?.configured || rotating;
+  const actionBusy = paymentGateway.savingAction?.startsWith(`${manifest.id}_`) ?? false;
+  const metadataEntries = displayMetadataEntries(connection?.metadata ?? {});
+  const missingRequired = !connection?.configured && manifest.fields.some((field) =>
+    field.required && !fieldHasValue(draft[field.key]),
+  );
+
+  return (
+    <Card className="border-border">
+      <CardHeader>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <PlugZap className="h-4 w-4 text-primary" />
+              {manifest.label} Payment Gateway
+            </CardTitle>
+            <CardDescription className="mt-1">{manifest.description}</CardDescription>
+          </div>
+          {connection?.configured ? (
+            <div className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Connected
+            </div>
+          ) : manifest.runtimeStatus !== "active" ? (
+            <div className="w-fit rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              Setup only
+            </div>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center p-6 text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Loading {manifest.label} connection status...
+          </div>
+        ) : connection?.configured && !showForm ? (
+          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+              {metadataEntries.map(([key, value]) => (
+                <div key={key}>
+                  <Label className="text-xs text-muted-foreground">{humanizeMetadataKey(key)}</Label>
+                  <p className="break-all font-medium">{typeof value === "boolean" ? (value ? "Yes" : "No") : String(value)}</p>
+                </div>
+              ))}
+              <div>
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <p className="font-medium capitalize text-emerald-600 dark:text-emerald-400">{connection.status}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingProvider(manifest.id)}
+                disabled={Boolean(paymentGateway.savingAction)}
+              >
+                <KeyRound className="mr-1 h-3.5 w-3.5" />
+                Rotate / Update
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => paymentGateway.revokeProviderConnection(manifest.id)}
+                disabled={Boolean(paymentGateway.savingAction)}
+              >
+                {paymentGateway.savingAction === `${manifest.id}_revoke` ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+                )}
+                Revoke Connection
+              </Button>
+            </div>
+          </div>
+        ) : manifest.runtimeStatus !== "active" ? (
+          <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            This provider manifest is installed for setup only. Checkout remains disabled until its reviewed runtime adapter is activated.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {manifest.guide ? (
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <p className="text-sm font-medium">{manifest.guide.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{manifest.guide.body}</p>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {manifest.fields.map((field) => (
+                <ProviderField
+                  key={field.key}
+                  providerId={manifest.id}
+                  field={field}
+                  value={draft[field.key]}
+                  onChange={(value) => paymentGateway.updateProviderDraft(manifest.id, field.key, value)}
+                />
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <Button
+                onClick={() => paymentGateway.saveProviderConnection(manifest.id, rotating)}
+                disabled={Boolean(paymentGateway.savingAction) || missingRequired}
+              >
+                {actionBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                {rotating ? "Save Updated Credentials" : `Connect ${manifest.label}`}
+              </Button>
+              {rotating ? (
+                <Button variant="ghost" onClick={() => setEditingProvider(null)} disabled={Boolean(paymentGateway.savingAction)}>
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function PaymentSettingsTab({
   paymentGateway,
@@ -19,163 +254,21 @@ export function PaymentSettingsTab({
   update: (category: string, field: string, value: any) => void;
   SaveButton: React.ComponentType<{ settingKey: string }>;
 }) {
-  const {
-    bkashConnectionDraft,
-    setBkashConnectionDraft,
-    bkashConnection,
-    bkashConnectionLoading,
-    savingAction,
-    saveBkashConnection,
-    revokeBkashConnection,
-  } = paymentGateway;
-
-  const [showRotateForm, setShowRotateForm] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
 
   return (
     <TabsContent value="payment">
       <div className="space-y-6">
-        {/* bKash Connection Card */}
-        <Card className="border-border">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <span className="font-bold text-[#E2136E]">bKash</span> Payment Gateway
-                </CardTitle>
-                <CardDescription>
-                  Merchant bKash connection via direct API integration.
-                </CardDescription>
-              </div>
-              {bkashConnection?.configured && (
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Connected
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {bkashConnectionLoading ? (
-              <div className="flex items-center justify-center p-6 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading bKash connection status...
-              </div>
-            ) : bkashConnection?.configured && !showRotateForm ? (
-              <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Environment</Label>
-                    <p className="font-medium capitalize">{bkashConnection.metadata.environment}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">App Key Hint</Label>
-                    <p className="font-mono text-xs">{bkashConnection.metadata.appKeyHint || "••••••••"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Username Hint</Label>
-                    <p className="font-mono text-xs">{bkashConnection.metadata.usernameHint || "••••••••"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Status</Label>
-                    <p className="font-medium capitalize text-emerald-600 dark:text-emerald-400">{bkashConnection.status}</p>
-                  </div>
-                </div>
+        {paymentGateway.providerManifests.map((manifest) => (
+          <ProviderConnectionCard
+            key={manifest.id}
+            manifest={manifest}
+            paymentGateway={paymentGateway}
+            editingProvider={editingProvider}
+            setEditingProvider={setEditingProvider}
+          />
+        ))}
 
-                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRotateForm(true)}
-                    disabled={Boolean(savingAction)}
-                  >
-                    <KeyRound className="h-3.5 w-3.5 mr-1" />
-                    Rotate Credentials
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => revokeBkashConnection()}
-                    disabled={Boolean(savingAction)}
-                  >
-                    {savingAction === "bkash_connection_revoke" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                    ) : (
-                      <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Revoke Connection
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Switch
-                    checked={bkashConnectionDraft.isLive}
-                    onCheckedChange={(val) => setBkashConnectionDraft((p) => ({ ...p, isLive: val }))}
-                  />
-                  <Label>Live Production Mode (uncheck for Sandbox)</Label>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>App Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter bKash App Key"
-                      value={bkashConnectionDraft.appKey}
-                      onChange={(e) => setBkashConnectionDraft((p) => ({ ...p, appKey: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>App Secret</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter bKash App Secret"
-                      value={bkashConnectionDraft.appSecret}
-                      onChange={(e) => setBkashConnectionDraft((p) => ({ ...p, appSecret: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Username</Label>
-                    <Input
-                      placeholder="Merchant bKash Username"
-                      value={bkashConnectionDraft.username}
-                      onChange={(e) => setBkashConnectionDraft((p) => ({ ...p, username: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Password</Label>
-                    <Input
-                      type="password"
-                      placeholder="Merchant bKash Password"
-                      value={bkashConnectionDraft.password}
-                      onChange={(e) => setBkashConnectionDraft((p) => ({ ...p, password: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <Button
-                    onClick={() => saveBkashConnection(showRotateForm)}
-                    disabled={Boolean(savingAction) || !bkashConnectionDraft.appKey || !bkashConnectionDraft.username}
-                  >
-                    {savingAction ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : null}
-                    {showRotateForm ? "Save Rotated Credentials" : "Connect bKash Gateway"}
-                  </Button>
-                  {showRotateForm && (
-                    <Button variant="ghost" onClick={() => setShowRotateForm(false)}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Manual Payment Methods */}
         <Card className="border-border">
           <CardHeader>
             <CardTitle>Manual Payment Instructions</CardTitle>

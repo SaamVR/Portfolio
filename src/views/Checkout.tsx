@@ -22,13 +22,14 @@ import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-exp
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 import { buildCustomerAuthPath, getCurrentRelativePath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 import { clearBuyNowPayload, loadBuyNowPayload } from "@/lib/storefront-buy-now";
+import { initializeRedirectPayment } from "@/lib/payments/checkout-runtime";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   phone: z.string().trim().min(11, "Valid phone number required").max(14),
   address: z.string().trim().min(5, "Address is required").max(500),
   city: z.string().trim().min(1, "City is required").max(100),
-  paymentMethod: z.enum(["bkash", "bkash_manual", "nagad", "cod"]),
+  paymentMethod: z.string().trim().min(1, "Payment method is required").max(64).regex(/^[a-z][a-z0-9_-]*$/, "Invalid payment method"),
   trxId: z.string().trim().max(50).optional(),
 });
 
@@ -85,6 +86,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const digitalOnlyCheckout = isDigitalOnlyCart(checkoutItems);
   const { data: paymentSettings } = usePublicPaymentSettings(checkoutStoreId);
+  const gatewayProviders = paymentSettings?.gateway_providers ?? [];
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", checkoutStoreId);
   const preloadedStorefrontProfile =
     currentStore?.id === checkoutStoreId && typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
@@ -102,7 +104,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     phone: "",
     address: "",
     city: "",
-    paymentMethod: "cod" as "bkash" | "bkash_manual" | "nagad" | "cod",
+    paymentMethod: "cod",
     trxId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -138,6 +140,19 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     toast.info("Please sign in to continue this store's checkout.");
     navigate(buildCustomerAuthPath(getCurrentRelativePath(storefrontPath("/checkout", storeSlug)), storeSlug), { replace: true });
   }, [allowGuestCheckout, checkoutStoreId, navigate, storeSlug, storefrontProfileLoading, user]);
+
+  useEffect(() => {
+    const enabledPaymentMethods = [
+      ...gatewayProviders.map((provider) => provider.payment_method),
+      ...(paymentSettings?.bkash_enabled ? ["bkash_manual"] : []),
+      ...(paymentSettings?.nagad_enabled ? ["nagad"] : []),
+      ...(paymentSettings?.cod_enabled !== false ? ["cod"] : []),
+    ];
+
+    if (enabledPaymentMethods.length > 0 && !enabledPaymentMethods.includes(form.paymentMethod)) {
+      setForm((previous) => ({ ...previous, paymentMethod: enabledPaymentMethods[0] }));
+    }
+  }, [form.paymentMethod, gatewayProviders, paymentSettings?.bkash_enabled, paymentSettings?.cod_enabled, paymentSettings?.nagad_enabled]);
 
   useEffect(() => {
     if (!checkoutItems.length) return;
@@ -305,14 +320,42 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const deliveryFee = pricing.deliveryFee;
   const grandTotal = pricing.grandTotal;
 
-  const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
-  const isMobilePayment = form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual" || form.paymentMethod === "nagad";
+  const selectedGateway = gatewayProviders.find((provider) => provider.payment_method === form.paymentMethod) ?? null;
+  const isManualMobilePayment = form.paymentMethod === "bkash_manual" || form.paymentMethod === "nagad";
+  const manualPaymentLabel = form.paymentMethod === "bkash_manual" ? "bKash" : form.paymentMethod === "nagad" ? "Nagad" : "";
   const merchantNumber =
-    (form.paymentMethod === "bkash" || form.paymentMethod === "bkash_manual")
+    form.paymentMethod === "bkash_manual"
       ? paymentSettings?.bkash_number
       : form.paymentMethod === "nagad"
         ? paymentSettings?.nagad_number
         : "";
+
+  const paymentOptions = [
+    ...gatewayProviders.map((provider) => ({
+      value: provider.payment_method,
+      label: provider.label,
+      desc: provider.description || `Pay securely with ${provider.label}`,
+      enabled: true,
+    })),
+    {
+      value: "bkash_manual",
+      label: "bKash (Manual / Send Money)",
+      desc: "Send Money to our bKash number",
+      enabled: paymentSettings?.bkash_enabled ?? false,
+    },
+    {
+      value: "nagad",
+      label: "Nagad",
+      desc: "Send Money to our Nagad number",
+      enabled: paymentSettings?.nagad_enabled ?? false,
+    },
+    {
+      value: "cod",
+      label: "Cash on Delivery",
+      desc: "Pay when you receive",
+      enabled: paymentSettings?.cod_enabled ?? true,
+    },
+  ].filter((method) => method.enabled);
 
   const copyNumber = () => {
     if (merchantNumber) {
@@ -369,6 +412,12 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       toast.error("Please checkout one store at a time.");
       return;
     }
+
+    if (!paymentOptions.some((method) => method.value === form.paymentMethod)) {
+      toast.error("Please choose an available payment method.");
+      return;
+    }
+
     const result = checkoutSchema.safeParse({
       ...form,
       address: digitalOnlyCheckout ? (form.address.trim() || "Digital delivery") : form.address,
@@ -383,9 +432,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       return;
     }
 
-    const hasBkashGateway = !!paymentSettings?.bkash_gateway_enabled;
-    const requiresTrxId = isMobilePayment && !(form.paymentMethod === "bkash" && hasBkashGateway);
-    if (requiresTrxId && !form.trxId.trim()) {
+    if (isManualMobilePayment && !form.trxId.trim()) {
       setErrors((prev) => ({ ...prev, trxId: "Transaction ID is required" }));
       return;
     }
@@ -394,14 +441,13 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
     try {
       const notesParts: string[] = [];
-      const isBkashGateway = form.paymentMethod === "bkash" && hasBkashGateway;
 
-      if (isMobilePayment && !isBkashGateway) {
-        notesParts.push(`Payment: ${form.paymentMethod.toUpperCase()} | TrxID: ${form.trxId.trim()}`);
-      } else if (isBkashGateway) {
-        notesParts.push(`Payment: bKash PGW (Automated)`);
+      if (isManualMobilePayment) {
+        notesParts.push(`Payment: ${manualPaymentLabel} | TrxID: ${form.trxId.trim()}`);
+      } else if (selectedGateway) {
+        notesParts.push(`Payment: ${selectedGateway.label} (Automated)`);
       }
-      
+
       if (appliedCoupon) notesParts.push(`Coupon: ${appliedCoupon.code} (-BDT ${couponDiscount})`);
       if (pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel) {
         notesParts.push(`${pricing.paymentDiscountLabel}: -BDT ${pricing.paymentDiscount}`);
@@ -439,32 +485,44 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
 
-      if (isBkashGateway) {
+      if (selectedGateway?.checkout_mode === "redirect") {
         setIsRedirecting(true);
-        toast.info("Initializing bKash payment...");
+        toast.info(`Initializing ${selectedGateway.label} payment...`);
 
-        const { data, error } = await supabase.functions.invoke("bkash-payment", {
-          body: {
-            action: "create",
-            order_id: order.order_number,
-            amount: order.total ?? grandTotal,
-            store_id: checkoutStoreId,
-          },
-        });
+        try {
+          const redirect = await initializeRedirectPayment(
+            {
+              invokeFunction: async (functionName, body) => {
+                const { data, error } = await supabase.functions.invoke(functionName, { body });
+                return {
+                  data: data && typeof data === "object" ? data as Record<string, unknown> : null,
+                  error: error ? { message: error.message } : null,
+                };
+              },
+            },
+            {
+              providerId: selectedGateway.id,
+              storeId: checkoutStoreId,
+              orderNumber: order.order_number,
+              amount: order.total ?? grandTotal,
+            },
+          );
 
-        if (error || !data?.success || !data?.bkashURL) {
+          if (buyNowMode) {
+            clearBuyNowPayload(checkoutStoreId);
+          } else {
+            clearCart(checkoutStoreId);
+          }
+          window.location.href = redirect.redirectUrl;
+          return;
+        } catch (gatewayError) {
           setIsRedirecting(false);
-          toast.error(data?.error || error?.message || "Failed to initialize bKash payment. Please choose manual pay or COD.");
+          const message = gatewayError instanceof Error
+            ? gatewayError.message
+            : `Failed to initialize ${selectedGateway.label} payment.`;
+          toast.error(message);
           return;
         }
-
-        if (buyNowMode) {
-          clearBuyNowPayload(checkoutStoreId);
-        } else {
-          clearCart(checkoutStoreId);
-        }
-        window.location.href = data.bkashURL;
-        return;
       }
 
       setOrderRequestKey(createCheckoutRequestKey());
@@ -484,8 +542,8 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         }));
       }
 
-      if (isMobilePayment) {
-        toast.success("Order placed!", { description: `Your ${form.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment will be verified shortly.` });
+      if (isManualMobilePayment) {
+        toast.success("Order placed!", { description: `Your ${manualPaymentLabel} payment will be verified shortly.` });
       } else {
         toast.success("Order placed!", { description: "Cash on Delivery confirmed. We'll call you to confirm." });
       }
@@ -575,53 +633,41 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           <div className="rounded-lg border border-border bg-card p-6">
             <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.paymentTitle}</h2>
             <div className="space-y-3">
-              {[
-                ...(hasBkashGateway ? [{ 
-                  value: "bkash", 
-                  label: "bKash (Automated)", 
-                  desc: "Pay instantly via bKash Account", 
-                  enabled: paymentSettings?.bkash_enabled ?? false 
-                }] : []),
-                { 
-                  value: "bkash_manual", 
-                  label: "bKash (Manual / Send Money)", 
-                  desc: "Send Money to our bKash number", 
-                  enabled: paymentSettings?.bkash_enabled ?? false 
-                },
-                { value: "nagad", label: "Nagad", desc: "Send Money to our Nagad number", enabled: paymentSettings?.nagad_enabled ?? false },
-                { value: "cod", label: "Cash on Delivery", desc: "Pay when you receive", enabled: true },
-              ]
-                .filter((m) => m.enabled)
-                .map(({ value, label, desc }) => (
-                  <label
-                    key={value}
-                    className={`flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-all ${
-                      form.paymentMethod === value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      value={value}
-                      checked={form.paymentMethod === value}
-                      onChange={(e) => update("paymentMethod", e.target.value)}
-                      className="accent-primary"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                  </label>
-                ))}
+              {paymentOptions.map(({ value, label, desc }) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-all ${
+                    form.paymentMethod === value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    value={value}
+                    checked={form.paymentMethod === value}
+                    onChange={(e) => update("paymentMethod", e.target.value)}
+                    className="accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                </label>
+              ))}
             </div>
 
-            {isMobilePayment && merchantNumber && !(form.paymentMethod === "bkash" && hasBkashGateway) && (
+            {paymentOptions.length === 0 && (
+              <p className="mt-3 text-xs text-destructive">
+                No payment method is currently available for this store. Please contact the merchant.
+              </p>
+            )}
+
+            {isManualMobilePayment && merchantNumber && (
               <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <p className="text-sm font-medium text-foreground">
-                  Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this{" "}
-                  {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} number:
+                  Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this {manualPaymentLabel} number:
                 </p>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-primary" />
@@ -636,7 +682,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   </button>
                 </div>
                 <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
-                  <li>Open your {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} app</li>
+                  <li>Open your {manualPaymentLabel} app</li>
                   <li>Select &quot;Send Money&quot;</li>
                   <li>Enter the number above and send BDT {grandTotal}</li>
                   <li>Enter the Transaction ID (TrxID) below</li>
@@ -655,9 +701,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               </div>
             )}
 
-            {isMobilePayment && !merchantNumber && !(form.paymentMethod === "bkash" && hasBkashGateway) && (
+            {isManualMobilePayment && !merchantNumber && (
               <p className="mt-3 text-xs text-destructive">
-                {form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"} payment is currently unavailable. Please choose another method.
+                {manualPaymentLabel} payment is currently unavailable. Please choose another method.
               </p>
             )}
           </div>
@@ -713,7 +759,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                 <span>-BDT {couponDiscount}</span>
               </div>
             )}
-              <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-sm text-muted-foreground">
               <span>{experience.labels.deliveryLabel}</span>
               <span className={deliveryFee === 0 ? "text-primary" : ""}>
                 {digitalOnlyCheckout ? experience.labels.includedFulfillmentLabel : deliveryFee === 0 ? experience.labels.freeDeliveryLabel : `BDT ${deliveryFee}`}
@@ -747,16 +793,16 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 
           <button
             type="submit"
-            disabled={createOrder.isPending || isRedirecting}
+            disabled={createOrder.isPending || isRedirecting || paymentOptions.length === 0}
             className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow disabled:opacity-50"
           >
             {createOrder.isPending || isRedirecting
-              ? (isRedirecting ? "Redirecting to bKash..." : "Placing Order...")
+              ? (isRedirecting ? `Redirecting to ${selectedGateway?.label ?? "payment provider"}...` : "Placing Order...")
               : form.paymentMethod === "cod"
                 ? `${experience.labels.placeOrderLabel} - BDT ${grandTotal}`
-                : form.paymentMethod === "bkash" && hasBkashGateway
-                  ? `Pay BDT ${grandTotal} with bKash`
-                  : `Pay BDT ${grandTotal} with ${form.paymentMethod.startsWith("bkash") ? "bKash" : "Nagad"}`}
+                : selectedGateway
+                  ? `Pay BDT ${grandTotal} with ${selectedGateway.label}`
+                  : `Pay BDT ${grandTotal} with ${manualPaymentLabel}`}
           </button>
         </form>
       </div>
@@ -765,4 +811,3 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
 };
 
 export default Checkout;
-

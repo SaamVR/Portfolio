@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useOptionalStore } from "@/components/storefront/store-context";
 
+export interface PublicGatewayProvider {
+  id: string;
+  label: string;
+  payment_method: string;
+  checkout_mode: "redirect" | "manual" | "offline";
+  description?: string;
+}
+
 export interface PublicPaymentSettings {
   bkash_enabled: boolean;
   nagad_enabled: boolean;
@@ -11,6 +19,7 @@ export interface PublicPaymentSettings {
   prepayment_discount_type: "none" | "percentage" | "fixed" | "free_delivery";
   prepayment_discount_value: number;
   bkash_gateway_enabled: boolean;
+  gateway_providers?: PublicGatewayProvider[];
 }
 
 export const defaultPaymentSettings: PublicPaymentSettings = {
@@ -23,6 +32,7 @@ export const defaultPaymentSettings: PublicPaymentSettings = {
   prepayment_discount_type: "none",
   prepayment_discount_value: 0,
   bkash_gateway_enabled: false,
+  gateway_providers: [],
 };
 
 export function usePublicPaymentSettings(storeId?: string | null) {
@@ -36,22 +46,27 @@ export function usePublicPaymentSettings(storeId?: string | null) {
     queryFn: async () => {
       if (!storeId) return defaultPaymentSettings;
 
-       if (hasScopedValue) {
-        return { ...defaultPaymentSettings, ...scopedValue };
-      }
-
       try {
         const response = await fetch(`/api/store-payment-settings?storeId=${encodeURIComponent(storeId)}`);
         if (response.status === 400 || response.status === 404) {
-          return defaultPaymentSettings;
+          return hasScopedValue
+            ? { ...defaultPaymentSettings, ...scopedValue }
+            : defaultPaymentSettings;
         }
 
         if (!response.ok) throw new Error(`Payment settings request failed: ${response.status}`);
 
         const data = (await response.json()) as Partial<PublicPaymentSettings>;
-        return { ...defaultPaymentSettings, ...data };
+        return {
+          ...defaultPaymentSettings,
+          ...(hasScopedValue ? scopedValue : null),
+          ...data,
+          gateway_providers: data.gateway_providers ?? [],
+        };
       } catch {
-        return defaultPaymentSettings;
+        return hasScopedValue
+          ? { ...defaultPaymentSettings, ...scopedValue }
+          : defaultPaymentSettings;
       }
     },
     enabled: !!storeId,

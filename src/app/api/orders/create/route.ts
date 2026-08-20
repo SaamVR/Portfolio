@@ -5,9 +5,9 @@ import { normalizeOrderItems } from "@/lib/cms/order-input";
 import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
+import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allowedPaymentMethods = new Set(["bkash", "bkash_manual", "nagad", "cod"]);
 
 function getClientIp(req: Request) {
   return (
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
-    const paymentMethod = readText(body?.paymentMethod, 30);
+    const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
     const customerEmail = readText(body?.customerEmail, 180);
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "Missing required customer or shipping fields" }, { status: 400 });
     }
 
-    if (!allowedPaymentMethods.has(paymentMethod)) {
+    if (!isAllowedStorefrontPaymentMethod(paymentMethod)) {
       return jsonNoStore({ error: "Invalid payment method" }, { status: 400 });
     }
 

@@ -4,15 +4,13 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import { buildCourierConnectionKey, type CourierConnectionRow, type CourierCredentialRow } from "@/lib/couriers/server";
 import {
-  buildCourierConnectionKey,
-  buildCourierConnectionResponse,
-  safeObject,
-  splitCourierSettings,
-  type CourierConnectionRow,
-  type CourierCredentialRow,
-} from "@/lib/couriers/server";
-import { courierProviders, type CourierProvider } from "@/lib/couriers/shared";
+  buildCourierProviderConnectionResponse,
+  getCourierProviderServerAdapter,
+  safeCourierProviderObject,
+} from "@/lib/couriers/provider-server";
+import { getCourierProviderManifest } from "@/lib/couriers/provider-registry";
 
 export const courierConnectionsRouteDeps = {
   getAuthenticatedUser,
@@ -44,10 +42,6 @@ async function requireCourierManager(req: Request, storeId: string) {
   return { supabaseAdmin, userId: user.id };
 }
 
-function isCourierProvider(value: unknown): value is CourierProvider {
-  return typeof value === "string" && courierProviders.includes(value as CourierProvider);
-}
-
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -74,15 +68,15 @@ export async function GET(req: Request) {
     if (connectionsError) throw connectionsError;
     if (credentialsError) throw credentialsError;
 
-    const secretByConnection = new Map(
-      ((credentials ?? []) as CourierCredentialRow[]).map((row) => [row.connection_id, safeObject(row.secret_payload)]),
+    const credentialByConnection = new Map(
+      ((credentials ?? []) as CourierCredentialRow[]).map((row) => [row.connection_id, row]),
     );
 
-    return NextResponse.json({
-      connections: ((connections ?? []) as CourierConnectionRow[]).map((row) =>
-        buildCourierConnectionResponse(row, secretByConnection.get(row.id) ?? {}),
-      ),
-    });
+    const resolvedConnections = ((connections ?? []) as CourierConnectionRow[])
+      .filter((row) => Boolean(getCourierProviderServerAdapter(row.provider)))
+      .map((row) => buildCourierProviderConnectionResponse(row, credentialByConnection.get(row.id) ?? null));
+
+    return NextResponse.json({ connections: resolvedConnections });
   } catch (error) {
     console.error("Courier connections load error:", error);
     return NextResponse.json({ error: "Failed to load courier connections" }, { status: 500 });
@@ -93,31 +87,32 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const storeId = typeof body?.storeId === "string" ? body.storeId.trim() : "";
-    const provider = body?.provider;
+    const manifest = getCourierProviderManifest(body?.provider);
+    const adapter = manifest ? getCourierProviderServerAdapter(manifest.id) : null;
 
-    if (!storeId || !isCourierProvider(provider)) {
-      return NextResponse.json({ error: "Missing storeId or provider" }, { status: 400 });
+    if (!storeId || !manifest || !adapter || manifest.runtimeStatus === "disabled") {
+      return NextResponse.json({ error: "Missing storeId or unsupported courier provider" }, { status: 400 });
     }
 
     const guard = await requireCourierManager(req, storeId);
     if ("error" in guard) return guard.error;
 
     const { supabaseAdmin, userId } = guard;
-    const { publicSettings, secretSettings } = splitCourierSettings(provider, body?.settings);
-    const connectionKey = buildCourierConnectionKey(provider, body?.settings);
+    const { publicSettings, secretSettings } = adapter.splitSettings(body?.settings);
+    const connectionKey = buildCourierConnectionKey(manifest.id, body?.settings);
 
     const { data: connection, error: connectionError } = await (supabaseAdmin as any)
       .from("store_courier_connections")
       .insert({
         store_id: storeId,
-        provider,
+        provider: manifest.id,
         connection_key: connectionKey,
         zone_label: typeof publicSettings.zone_label === "string" ? publicSettings.zone_label : null,
         service_area_name: typeof publicSettings.service_area_name === "string" ? publicSettings.service_area_name : null,
         status: typeof body?.status === "string" ? body.status : "draft",
         display_name: typeof body?.displayName === "string" ? body.displayName.trim() || null : null,
-        supports_cod: body?.supportsCod !== false,
-        supports_city_delivery: body?.supportsCityDelivery !== false,
+        supports_cod: typeof body?.supportsCod === "boolean" ? body.supportsCod : manifest.defaultSupportsCod,
+        supports_city_delivery: typeof body?.supportsCityDelivery === "boolean" ? body.supportsCityDelivery : manifest.defaultSupportsCityDelivery,
         settings: publicSettings,
         created_by: userId,
       })
@@ -127,13 +122,13 @@ export async function POST(req: Request) {
     if (connectionError) throw connectionError;
 
     const { data: existingCredential, error: credentialReadError } = await fromCourierCredentials(supabaseAdmin as any)
-      .select("connection_id, secret_payload")
+      .select("connection_id, store_id, provider, secret_payload")
       .eq("connection_id", connection.id)
       .maybeSingle();
     if (credentialReadError) throw credentialReadError;
 
     const mergedSecretPayload = {
-      ...safeObject(existingCredential?.secret_payload),
+      ...safeCourierProviderObject(existingCredential?.secret_payload),
       ...secretSettings,
     };
 
@@ -142,7 +137,7 @@ export async function POST(req: Request) {
         {
           connection_id: connection.id,
           store_id: storeId,
-          provider,
+          provider: manifest.id,
           secret_payload: mergedSecretPayload,
           created_by: userId,
           updated_by: userId,
@@ -153,7 +148,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      connection: buildCourierConnectionResponse(connection as CourierConnectionRow, mergedSecretPayload),
+      connection: buildCourierProviderConnectionResponse(
+        connection as CourierConnectionRow,
+        {
+          connection_id: connection.id,
+          store_id: storeId,
+          provider: manifest.id,
+          secret_payload: mergedSecretPayload,
+        },
+      ),
     });
   } catch (error) {
     console.error("Courier connection save error:", error);
@@ -186,25 +189,29 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Courier connection not found" }, { status: 404 });
     }
 
-    const { publicSettings, secretSettings } = splitCourierSettings(existingConnection.provider, body?.settings);
+    const adapter = getCourierProviderServerAdapter(existingConnection.provider);
+    if (!adapter || adapter.manifest.runtimeStatus === "disabled") {
+      return NextResponse.json({ error: "Courier provider is no longer available" }, { status: 409 });
+    }
 
     const { data: existingCredential, error: credentialReadError } = await fromCourierCredentials(supabaseAdmin as any)
-      .select("connection_id, secret_payload")
+      .select("connection_id, store_id, provider, secret_payload")
       .eq("connection_id", connectionId)
       .maybeSingle();
     if (credentialReadError) throw credentialReadError;
 
-    const mergedSecretPayload = {
-      ...safeObject(existingCredential?.secret_payload),
-      ...secretSettings,
-    };
+    const settingsPatch = body?.settings ? adapter.splitSettings(body.settings) : null;
+    const mergedSecretPayload = settingsPatch
+      ? { ...safeCourierProviderObject(existingCredential?.secret_payload), ...settingsPatch.secretSettings }
+      : safeCourierProviderObject(existingCredential?.secret_payload);
+    const publicSettings = settingsPatch?.publicSettings ?? existingConnection.settings;
 
     const { data: updatedConnection, error: updateError } = await (supabaseAdmin as any)
       .from("store_courier_connections")
       .update({
         status: typeof body?.status === "string" ? body.status : existingConnection.status,
-        zone_label: typeof publicSettings.zone_label === "string" ? publicSettings.zone_label : existingConnection.zone_label,
-        service_area_name: typeof publicSettings.service_area_name === "string" ? publicSettings.service_area_name : existingConnection.service_area_name,
+        zone_label: typeof publicSettings?.zone_label === "string" ? publicSettings.zone_label : existingConnection.zone_label,
+        service_area_name: typeof publicSettings?.service_area_name === "string" ? publicSettings.service_area_name : existingConnection.service_area_name,
         display_name:
           typeof body?.displayName === "string"
             ? body.displayName.trim() || null
@@ -217,7 +224,7 @@ export async function PATCH(req: Request) {
           typeof body?.supportsCityDelivery === "boolean"
             ? body.supportsCityDelivery
             : existingConnection.supports_city_delivery,
-        settings: body?.settings ? publicSettings : existingConnection.settings,
+        settings: publicSettings,
       })
       .eq("id", connectionId)
       .eq("store_id", storeId)
@@ -240,7 +247,15 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({
       success: true,
-      connection: buildCourierConnectionResponse(updatedConnection as CourierConnectionRow, mergedSecretPayload),
+      connection: buildCourierProviderConnectionResponse(
+        updatedConnection as CourierConnectionRow,
+        {
+          connection_id: connectionId,
+          store_id: storeId,
+          provider: existingConnection.provider,
+          secret_payload: mergedSecretPayload,
+        },
+      ),
     });
   } catch (error) {
     console.error("Courier connection update error:", error);

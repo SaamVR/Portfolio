@@ -1,5 +1,10 @@
-export const courierProviders = ["pathao", "steadfast", "redx", "ecourier", "paperfly", "manual"] as const;
-export type CourierProvider = typeof courierProviders[number];
+import {
+  getCourierProviderManifest,
+  listCourierProviderManifests,
+} from "@/lib/couriers/provider-registry";
+
+export const courierProviders = listCourierProviderManifests().map((provider) => provider.id);
+export type CourierProvider = string;
 
 export const courierConnectionStatuses = ["draft", "connected", "disabled"] as const;
 export type CourierConnectionStatus = typeof courierConnectionStatuses[number];
@@ -39,6 +44,7 @@ export type CourierSettingsSummary = {
   hasAccessToken?: boolean;
   hasApiKey?: boolean;
   hasSecretKey?: boolean;
+  secretPresence?: Record<string, boolean>;
 };
 
 export type CourierConnectionRecord = {
@@ -75,22 +81,7 @@ export type ShipmentSummary = {
 };
 
 export function getCourierProviderLabel(provider: CourierProvider) {
-  switch (provider) {
-    case "pathao":
-      return "Pathao";
-    case "steadfast":
-      return "Steadfast";
-    case "redx":
-      return "REDX";
-    case "ecourier":
-      return "eCourier";
-    case "paperfly":
-      return "Paperfly";
-    case "manual":
-      return "Manual / Phone booking";
-    default:
-      return provider;
-  }
+  return getCourierProviderManifest(provider)?.label ?? provider;
 }
 
 export function formatCourierConnectionLabel(input: {

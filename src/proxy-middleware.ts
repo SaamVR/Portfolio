@@ -152,7 +152,7 @@ export async function resolveStoreSlug(
   return resolveCustomDomain(hostname);
 }
 
-const BYPASSED_PREFIXES = /^\/(_next|api|admin|auth|plans|signup|stores|bkash)/;
+const BYPASSED_PREFIXES = /^\/(_next|api|admin|auth|plans|signup|stores|bkash|payment)/;
 const BRAND_SEO_PREFIXES = /^\/(apple|manifest-icon|masked-icon|logo|site\.webmanifest)/;
 const BYPASSED_EXACT = new Set(["/favicon.ico", "/robots.txt", "/sitemap.xml", "/manifest.json"]);
 

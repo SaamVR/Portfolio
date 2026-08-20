@@ -5,14 +5,15 @@ import {
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
 import {
-  buildManualShipmentPayload,
-  createPathaoBooking,
-  safeObject,
   type CourierBookingInput,
   type CourierConnectionRow,
   type CourierCredentialRow,
   type CourierOrderRow,
 } from "@/lib/couriers/server";
+import {
+  getCourierProviderServerAdapter,
+  safeCourierProviderObject,
+} from "@/lib/couriers/provider-server";
 
 export const courierBookingRouteDeps = {
   getAuthenticatedUser,
@@ -25,6 +26,8 @@ export const courierBookingRouteDeps = {
 function fromCourierCredentials(client: any) {
   return client.from("store_courier_credentials_secure");
 }
+
+const bookableOrderStatuses = new Set(["confirmed", "processing"]);
 
 export async function POST(req: Request) {
   try {
@@ -87,51 +90,43 @@ export async function POST(req: Request) {
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-
     if (!connection) {
       return NextResponse.json({ error: "Courier connection not found" }, { status: 404 });
     }
-
     if (connection.status === "disabled") {
       return NextResponse.json({ error: "This courier connection is disabled" }, { status: 400 });
     }
+    if (!bookableOrderStatuses.has(String(order.status))) {
+      return NextResponse.json(
+        { error: "Confirm the order before courier booking. Delivered, shipped, cancelled, or unconfirmed orders cannot be booked." },
+        { status: 409 },
+      );
+    }
 
-    const bookingInput = safeObject(body?.booking) as CourierBookingInput;
+    const adapter = getCourierProviderServerAdapter(connection.provider);
+    if (!adapter || adapter.manifest.runtimeStatus !== "active" || !adapter.book) {
+      return NextResponse.json(
+        { error: `${connection.provider} automated booking is not active. Use a manual courier connection or install its provider adapter.` },
+        { status: 400 },
+      );
+    }
+
+    if (credential && credential.provider !== connection.provider) {
+      return NextResponse.json({ error: "Courier credential/provider mismatch" }, { status: 409 });
+    }
+
+    const bookingInput = safeCourierProviderObject(body?.booking) as CourierBookingInput;
     const now = courierBookingRouteDeps.now();
-    const shipmentStatus = "booked";
-    let trackingNumber: string | null = null;
-    let consignmentId: string | null = null;
-    let bookingPayload: Record<string, unknown>;
-    let providerPayload: Record<string, unknown>;
+    let bookingResult;
 
     try {
-      if (connection.provider === "manual") {
-        const manualPayload = buildManualShipmentPayload(order as CourierOrderRow, connection as CourierConnectionRow, bookingInput);
-        bookingPayload = manualPayload;
-        providerPayload = {
-          provider: "manual",
-          booked_at: now,
-          note: "Manual courier booking recorded by operator.",
-        };
-        trackingNumber = manualPayload.merchantOrderId;
-      } else if (connection.provider === "pathao") {
-        const pathaoResult = await createPathaoBooking(
-          { fetch: courierBookingRouteDeps.fetch },
-          order as CourierOrderRow,
-          connection as CourierConnectionRow,
-          (credential as CourierCredentialRow | null)?.secret_payload ?? {},
-          bookingInput,
-        );
-        bookingPayload = pathaoResult.requestPayload;
-        providerPayload = pathaoResult.responsePayload;
-        consignmentId = pathaoResult.consignmentId ?? null;
-        trackingNumber = pathaoResult.trackingNumber ?? null;
-      } else {
-        return NextResponse.json(
-          { error: `${connection.provider} booking is not wired yet. Use manual booking for now or finish that provider adapter next.` },
-          { status: 400 },
-        );
-      }
+      bookingResult = await adapter.book({
+        deps: { fetch: courierBookingRouteDeps.fetch, now: courierBookingRouteDeps.now },
+        order: order as CourierOrderRow,
+        connection: connection as CourierConnectionRow,
+        credential: credential as CourierCredentialRow | null,
+        booking: bookingInput,
+      });
     } catch (providerError) {
       const providerMessage = providerError instanceof Error ? providerError.message : "Courier booking failed";
       await (supabaseAdmin as any)
@@ -148,14 +143,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: providerMessage }, { status: 400 });
     }
 
+    const bookingPayload = bookingResult.requestPayload;
     const shipmentPayload = {
       order_id: order.id,
       store_id: storeId,
       courier_connection_id: connectionId,
       provider: connection.provider,
-      status: shipmentStatus,
-      tracking_number: trackingNumber,
-      consignment_id: consignmentId,
+      status: "booked",
+      tracking_number: bookingResult.trackingNumber,
+      consignment_id: bookingResult.consignmentId,
       recipient_name: order.customer_name,
       recipient_phone: order.customer_phone,
       destination_city: order.shipping_city,
@@ -171,7 +167,7 @@ export async function POST(req: Request) {
           ? bookingPayload.shippingFee
           : order.delivery_fee,
       booking_payload: bookingPayload,
-      latest_provider_payload: providerPayload,
+      latest_provider_payload: bookingResult.responsePayload,
       created_by: user.id,
       booked_at: now,
     };
@@ -191,28 +187,29 @@ export async function POST(req: Request) {
           .single();
     if (shipmentWrite.error) throw shipmentWrite.error;
 
-    await Promise.all([
+    const tasks: Promise<unknown>[] = [
       (supabaseAdmin as any)
         .from("store_courier_connections")
-        .update({
-          last_sync_at: now,
-          last_error: null,
-        })
+        .update({ last_sync_at: now, last_error: null })
         .eq("id", connectionId)
         .eq("store_id", storeId),
-      ["pending", "confirmed"].includes(String(order.status))
-        ? (supabaseAdmin as any)
-            .from("orders")
-            .update({ status: "processing" })
-            .eq("id", orderId)
-            .eq("store_id", storeId)
-        : Promise.resolve(),
-    ]);
+    ];
+
+    if (String(order.status) === "confirmed") {
+      tasks.push(
+        (supabaseAdmin as any)
+          .from("orders")
+          .update({ status: "processing" })
+          .eq("id", orderId)
+          .eq("store_id", storeId),
+      );
+    }
+    await Promise.all(tasks);
 
     return NextResponse.json({
       success: true,
       shipment: shipmentWrite.data,
-      orderStatus: ["pending", "confirmed"].includes(String(order.status)) ? "processing" : order.status,
+      orderStatus: String(order.status) === "confirmed" ? "processing" : order.status,
     });
   } catch (error) {
     console.error("Courier booking error:", error);

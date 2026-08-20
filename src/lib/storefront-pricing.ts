@@ -1,4 +1,5 @@
 import type { PublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
+import { isPrepaidStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 
 export interface StorefrontDeliverySettings {
   enabled?: boolean;
@@ -10,7 +11,7 @@ export interface StorefrontDeliverySettings {
 }
 
 export type StorefrontLocation = "primary" | "secondary";
-export type StorefrontPaymentMethod = "bkash" | "bkash_manual" | "nagad" | "cod";
+export type StorefrontPaymentMethod = string;
 
 export interface StorefrontPricingInput {
   subtotal: number;
@@ -57,8 +58,10 @@ function normalizeFreeDeliveryThreshold(value: number | undefined) {
   return sanitizeMoney(value);
 }
 
-function isPrepaidMethod(paymentMethod?: StorefrontPaymentMethod) {
-  return paymentMethod === "bkash" || paymentMethod === "bkash_manual" || paymentMethod === "nagad";
+function isPrepaidMethod(paymentMethod?: StorefrontPaymentMethod, paymentSettings?: PublicPaymentSettings | null) {
+  if (!paymentMethod) return false;
+  if (isPrepaidStorefrontPaymentMethod(paymentMethod)) return true;
+  return Boolean(paymentSettings?.gateway_providers?.some((provider) => provider.payment_method === paymentMethod));
 }
 
 export function getNormalizedDeliverySettings(
@@ -98,7 +101,7 @@ export function getStorefrontPricing({
   let paymentDiscount = 0;
   let orderDiscountAmount = 0;
   let paymentDiscountLabel: string | null = null;
-  const prepaidSelected = isPrepaidMethod(paymentMethod);
+  const prepaidSelected = isPrepaidMethod(paymentMethod, paymentSettings);
 
   if (prepaidSelected && paymentSettings) {
     switch (paymentSettings.prepayment_discount_type) {

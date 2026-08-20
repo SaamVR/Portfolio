@@ -12,7 +12,7 @@ import AnalyticsPage from "@/views/admin/Analytics";
 import LaunchReadinessPage from "@/views/admin/LaunchReadiness";
 import NotificationsCenterPage from "@/views/admin/NotificationsCenter";
 import OperationsDiagnosticsPage from "@/views/admin/OperationsDiagnostics";
-import CouriersPage from "@/views/admin/Couriers";
+import CouriersPluginManager from "@/views/admin/CouriersPluginManager";
 import BlogManager from "@/views/admin/BlogManager";
 import BlogPerformance from "@/views/admin/BlogPerformance";
 import QrCodeGeneratorPage from "@/views/admin/QrCodeGenerator";
@@ -121,7 +121,7 @@ function AdminDashboardRoute({ route }: { route: string }) {
     case "diagnostics":
       return <OperationsDiagnosticsPage />;
     case "couriers":
-      return <CouriersPage />;
+      return <CouriersPluginManager />;
     case "platform":
       return <PlatformControlPlane />;
     case "products":

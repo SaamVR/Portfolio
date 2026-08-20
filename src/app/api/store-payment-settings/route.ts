@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
-import { hasCompleteBkashSecrets } from "@/lib/payments/merchant-connections";
+import { listPaymentProviderManifests } from "@/lib/payments/provider-registry";
+import { getPaymentProviderServerAdapter, type PaymentConnectionRow } from "@/lib/payments/provider-server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -41,26 +42,57 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
-    const [{ data, error }, { data: connection, error: connectionError }] = await Promise.all([
+    const redirectProviders = listPaymentProviderManifests().filter((manifest) =>
+      manifest.runtimeStatus === "active"
+      && manifest.checkoutMode === "redirect"
+      && manifest.connectionRequired,
+    );
+
+    const [settingsResult, ...connectionResults] = await Promise.all([
       supabaseAdmin
-      .from("site_settings")
-      .select("value")
-      .eq("store_id", storeId)
-      .eq("key", "payment_settings")
-        .maybeSingle(),
-      (supabaseAdmin as any)
-        .from("store_payment_connections_secure")
-        .select("status, secret_payload")
+        .from("site_settings")
+        .select("value")
         .eq("store_id", storeId)
-        .eq("provider", "bkash")
+        .eq("key", "payment_settings")
         .maybeSingle(),
+      ...redirectProviders.map((manifest) =>
+        (supabaseAdmin as any)
+          .from("store_payment_connections_secure")
+          .select("id, store_id, provider, status, public_metadata, secret_payload, created_at, updated_at, revoked_at")
+          .eq("store_id", storeId)
+          .eq("provider", manifest.id)
+          .maybeSingle(),
+      ),
     ]);
 
-    if (error) throw error;
-    if (connectionError) throw connectionError;
+    if (settingsResult.error) throw settingsResult.error;
+    for (const result of connectionResults) {
+      if (result.error) throw result.error;
+    }
 
-    const value = (data?.value ?? {}) as Record<string, unknown>;
-    const bkashGatewayEnabled = connection?.status === "connected" && hasCompleteBkashSecrets(connection.secret_payload);
+    const gatewayProviders = redirectProviders.flatMap((manifest, index) => {
+      const connection = connectionResults[index]?.data as PaymentConnectionRow | null | undefined;
+      const adapter = getPaymentProviderServerAdapter(manifest.id);
+      if (
+        !connection
+        || connection.status !== "connected"
+        || !adapter
+        || !adapter.hasCompleteSecrets(connection.secret_payload)
+      ) {
+        return [];
+      }
+
+      return [{
+        id: manifest.id,
+        label: manifest.checkoutLabel,
+        description: manifest.checkoutDescription,
+        payment_method: manifest.paymentMethod,
+        checkout_mode: manifest.checkoutMode,
+      }];
+    });
+
+    const value = (settingsResult.data?.value ?? {}) as Record<string, unknown>;
+    const bkashGatewayEnabled = gatewayProviders.some((provider) => provider.id === "bkash");
     return NextResponse.json({
       bkash_enabled: asBoolean(value.bkash_enabled),
       nagad_enabled: asBoolean(value.nagad_enabled),
@@ -71,6 +103,7 @@ export async function GET(req: Request) {
       prepayment_discount_type: asString(value.prepayment_discount_type, "none"),
       prepayment_discount_value: asNumber(value.prepayment_discount_value),
       bkash_gateway_enabled: bkashGatewayEnabled,
+      gateway_providers: gatewayProviders,
     });
   } catch (error) {
     console.error("Public payment settings error:", error);

@@ -32,7 +32,6 @@ serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -43,7 +42,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Parse the request
     const payload = await req.json()
     const { action, order_id, amount, paymentID, store_id } = payload
 
@@ -128,7 +126,6 @@ serve(async (req) => {
       ? 'https://tokenized.pay.bka.sh/v1.2.0-beta'
       : 'https://tokenized.sandbox.bka.sh/v1.2.0-beta'
 
-    // Helper to get Token
     const grantToken = async () => {
       const response = await fetch(`${baseURL}/tokenized/checkout/token/grant`, {
         method: 'POST',
@@ -151,7 +148,8 @@ serve(async (req) => {
 
     if (action === 'create') {
       const idToken = await grantToken();
-      const callbackUrl = new URL(`${getAllowedOrigin(origin)}/bkash/callback`);
+      const callbackUrl = new URL(`${getAllowedOrigin(origin)}/payment/callback`);
+      callbackUrl.searchParams.set("provider", "bkash");
       callbackUrl.searchParams.set("order_id", order_id);
       callbackUrl.searchParams.set("store_id", resolvedStoreId);
 
