@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
-const SITE_URL = (Deno.env.get("CMS_PUBLIC_URL") || Deno.env.get("SITE_URL") || "https://commerce-engine.local").replace(/\/$/, "");
+const SITE_URL = (Deno.env.get("CMS_PUBLIC_URL") || Deno.env.get("SITE_URL") || "https://ezcomo.shop").replace(/\/$/, "");
 
 function slugify(text: string): string {
   return text
