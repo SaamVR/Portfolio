@@ -41,20 +41,23 @@ export default function PlansPage() {
     <main className="min-h-screen bg-background text-foreground font-sans">
       {/* Top Header */}
       <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <Button asChild variant="ghost" className="gap-2 -ml-2">
-            <Link href="/">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
+          <Button asChild variant="ghost" className="shrink-0 gap-2 px-2 sm:-ml-2 sm:px-4">
+            <Link href="/" aria-label={`Back to ${PLATFORM_BRAND_NAME}`}>
               <ArrowLeft className="h-4 w-4" />
-              Back to {PLATFORM_BRAND_NAME}
+              <span className="hidden sm:inline">Back to {PLATFORM_BRAND_NAME}</span>
             </Link>
           </Button>
 
-          <div className="flex items-center gap-3">
-            <Link href="/admin/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+            <Link href="/admin/login" className="shrink-0 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3">
               Log in
             </Link>
-            <Button asChild className="rounded-full shadow-lg shadow-emerald-500/20 bg-primary text-primary-foreground font-semibold">
-              <Link href="/signup">Start Free Trial</Link>
+            <Button asChild className="shrink-0 rounded-full bg-primary px-3 font-semibold text-primary-foreground shadow-lg shadow-emerald-500/20 sm:px-4">
+              <Link href="/signup">
+                <span className="sm:hidden">Start Free</span>
+                <span className="hidden sm:inline">Start Free Trial</span>
+              </Link>
             </Button>
           </div>
         </div>
