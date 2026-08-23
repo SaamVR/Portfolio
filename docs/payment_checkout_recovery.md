@@ -6,7 +6,8 @@ Storefront order creation is authoritative and inventory-reserving. Redirect-pay
 
 - `create_store_order_with_stock_v2` serializes each `(store_id, client_request_id)` attempt.
 - A matching retry returns the existing persisted order with `replayed = true`.
-- A changed payment method, customer/shipping payload, item identity, notes, delivery fee, or effective discount conflicts instead of mutating/reinterpreting the existing order.
+- A changed payment method, customer/shipping payload, item identity, notes, or delivery fee conflicts instead of mutating/reinterpreting the existing order.
+- Browser `_discount_amount` is deliberately not replay-authoritative; fresh creation still delegates pricing to `create_store_order_with_stock`, which remains the canonical pricing/stock/coupon authority.
 - A cancelled attempt cannot be replayed with the same key.
 - Fresh creation still delegates to `create_store_order_with_stock`, so price, stock, coupon and inventory authority remain unchanged.
 - `/api/orders/create` returns the persisted `payment_method` and skips order-created notification/analytics/revenue/recovery work when `replayed = true`.
