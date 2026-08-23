@@ -12,6 +12,7 @@ export interface CartItem {
 
 export interface CartContextType {
   items: CartItem[];
+  isCartReady: boolean;
   addItem: (item: Omit<CartItem, "quantity">) => void;
   removeItem: (productId: string, size: string, storeId?: string) => void;
   updateQuantity: (productId: string, size: string, quantity: number, storeId?: string) => void;
