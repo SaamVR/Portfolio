@@ -91,7 +91,7 @@ test("bKash callback execution is dispatched through the same provider runtime",
   });
 });
 
-test("provider callback cancellation does not execute settlement", async () => {
+test("provider callback cancellation does not execute settlement and is safe to retry", async () => {
   let invokeCount = 0;
   const result = await handleRedirectPaymentCallback(
     {
@@ -113,6 +113,55 @@ test("provider callback cancellation does not execute settlement", async () => {
   assert.equal(invokeCount, 0);
   assert.equal(result.status, "cancelled");
   assert.equal(result.storeId, "store_1");
+  assert.equal(result.retryable, true);
+});
+
+test("an explicit provider failure is safe to retry without executing settlement", async () => {
+  let invokeCount = 0;
+  const result = await handleRedirectPaymentCallback(
+    {
+      invokeFunction: async () => {
+        invokeCount += 1;
+        return { data: null, error: null };
+      },
+    },
+    {
+      providerId: "bkash",
+      params: {
+        status: "failure",
+        order_id: "ORD-1001",
+        store_id: "store_1",
+      },
+    },
+  );
+
+  assert.equal(invokeCount, 0);
+  assert.equal(result.status, "error");
+  assert.equal(result.retryable, true);
+});
+
+test("settlement verification errors are not declared retry-safe", async () => {
+  const result = await handleRedirectPaymentCallback(
+    {
+      invokeFunction: async () => ({
+        data: { success: false, error: "Payment succeeded but order confirmation failed" },
+        error: null,
+      }),
+    },
+    {
+      providerId: "bkash",
+      params: {
+        paymentID: "payment-1",
+        status: "success",
+        order_id: "ORD-1001",
+        store_id: "store_1",
+      },
+    },
+  );
+
+  assert.equal(result.status, "error");
+  assert.equal(result.retryable, false);
+  assert.match(result.message, /order confirmation failed/i);
 });
 
 test("inactive or unknown checkout providers fail closed", async () => {
@@ -140,7 +189,7 @@ test("inactive or unknown checkout providers fail closed", async () => {
   assert.equal(callback.status, "error");
 });
 
-test("provider initialization errors remain generic to checkout callers", async () => {
+test("provider initialization failures preserve the provider error and tell shoppers how to recover", async () => {
   await assert.rejects(
     initializeRedirectPayment(
       {
@@ -156,6 +205,12 @@ test("provider initialization errors remain generic to checkout callers", async 
         amount: 1490,
       },
     ),
-    /Provider rejected payment initialization/,
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /Provider rejected payment initialization/);
+      assert.match(error.message, /order is reserved/i);
+      assert.match(error.message, /retry the same payment method/i);
+      return true;
+    },
   );
 });

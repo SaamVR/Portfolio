@@ -13,6 +13,7 @@ const sqlFiles = [
   path.join(repoRoot, "supabase", "migrations", "order_checkout_safety_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "order_authority_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "provider_plugin_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "order_checkout_recovery_smoke.sql"),
 ];
 
 const databaseUrl =

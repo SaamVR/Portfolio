@@ -33,6 +33,10 @@ function safeRecord(value: unknown) {
 }
 
 function mapOrderError(message: string) {
+  if (/checkout recovery conflict/i.test(message)) {
+    return { message, status: 409 };
+  }
+
   if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed/i.test(message)) {
     return { message, status: 400 };
   }
@@ -63,9 +67,17 @@ export function canStoreAcceptOrders(access: StoreOrderAccessState | null | unde
   return access.planLive === true;
 }
 
+export const orderCreateRouteDeps = {
+  rateLimit,
+  getAuthenticatedUser,
+  getSupabaseAdminClient,
+  loadStorePlanState,
+  dispatchOrderCreatedBackgroundJobs,
+};
+
 export async function POST(req: Request) {
   try {
-    const limit = await rateLimit(`order_create:${getClientIp(req)}`, {
+    const limit = await orderCreateRouteDeps.rateLimit(`order_create:${getClientIp(req)}`, {
       limit: 12,
       windowMs: 60_000,
     });
@@ -101,8 +113,8 @@ export async function POST(req: Request) {
     }
 
     const items = normalizeOrderItems(body?.items);
-    const user = await getAuthenticatedUser(req);
-    const supabaseAdmin = getSupabaseAdminClient();
+    const user = await orderCreateRouteDeps.getAuthenticatedUser(req);
+    const supabaseAdmin = orderCreateRouteDeps.getSupabaseAdminClient();
     const [{ data: store }, { data: storefrontSetting }, storePlanResult] = await Promise.all([
       supabaseAdmin
         .from("stores")
@@ -115,7 +127,7 @@ export async function POST(req: Request) {
         .eq("store_id", storeId)
         .eq("key", "storefront_profile")
         .maybeSingle(),
-      loadStorePlanState(supabaseAdmin, storeId, { includePublished: true }),
+      orderCreateRouteDeps.loadStorePlanState(supabaseAdmin, storeId, { includePublished: true }),
     ]);
 
     if (storePlanResult.error) {
@@ -142,7 +154,7 @@ export async function POST(req: Request) {
       : null;
     const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
 
-    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock", {
+    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock_v2", {
       _store_id: storeId,
       _client_request_id: idempotencyKey,
       _user_id: user?.id ?? null,
@@ -171,7 +183,7 @@ export async function POST(req: Request) {
 
     const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, subtotal, delivery_fee, total, items, status")
+      .select("id, order_number, subtotal, delivery_fee, total, items, status, payment_method, client_request_id")
       .eq("id", rpcOrder.id)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -181,6 +193,26 @@ export async function POST(req: Request) {
     }
 
     const order = persistedOrder ?? rpcOrder;
+    const persistedPaymentMethod = readText(order.payment_method, 30).toLowerCase() || paymentMethod;
+
+    // Defense in depth: the v2 RPC already rejects this mismatch while holding
+    // the checkout-attempt lock. Do not let a drifted database function turn a
+    // changed-method retry into a false success at the HTTP boundary.
+    if (persistedPaymentMethod !== paymentMethod) {
+      return jsonNoStore(
+        { error: "checkout recovery conflict: payment method does not match the existing order" },
+        { status: 409 },
+      );
+    }
+
+    const replayed = rpcOrder.replayed === true;
+    if (replayed) {
+      // Idempotent retries resume the already-authoritative order. Inventory was
+      // reserved on the original call, and order-created notifications/analytics
+      // must not be emitted a second time.
+      return jsonNoStore({ order, replayed: true });
+    }
+
     const orderItems = Array.isArray(order.items) ? order.items : items;
     const productRevenueWeight = orderItems.reduce((sum: number, item: any) => {
       const quantity = Number(item?.quantity ?? 0);
@@ -204,7 +236,7 @@ export async function POST(req: Request) {
         currency_code: "BDT",
         search_query: null,
         metadata: {
-          payment_method: paymentMethod,
+          payment_method: persistedPaymentMethod,
           customer_name: customerName,
           shipping_city: shippingCity,
           items: orderItems,
@@ -250,7 +282,7 @@ export async function POST(req: Request) {
     ];
 
     after(async () => {
-      await dispatchOrderCreatedBackgroundJobs({
+      await orderCreateRouteDeps.dispatchOrderCreatedBackgroundJobs({
         customerEmail,
         customerPhone,
         notification: {
@@ -284,7 +316,7 @@ export async function POST(req: Request) {
           refund_amount: 0,
           net_amount: Number(order.total ?? 0),
           currency_code: "BDT",
-          payment_method: paymentMethod,
+          payment_method: persistedPaymentMethod,
           status: typeof order.status === "string" ? order.status : "pending",
           attribution_source: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.source, 120) || null,
           attribution_medium: readText((purchaseEventRows[0]?.metadata as Record<string, unknown> | undefined)?.medium, 120) || null,
@@ -299,7 +331,7 @@ export async function POST(req: Request) {
       });
     });
 
-    return jsonNoStore({ order });
+    return jsonNoStore({ order, replayed: false });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create order";
     const mapped = mapOrderError(message);

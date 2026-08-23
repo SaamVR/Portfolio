@@ -7,22 +7,32 @@ import SEOHead from "@/components/SEOHead";
 import PageTransition from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/auth-context";
 import { storefrontPath } from "@/lib/slug";
 import { getPaymentProviderManifest } from "@/lib/payments/provider-registry";
 import {
   handleRedirectPaymentCallback,
   type PaymentCallbackStatus,
 } from "@/lib/payments/checkout-runtime";
+import {
+  completeRedirectCheckoutRecoveryState,
+  restoreRedirectCheckoutRecoveryState,
+} from "@/lib/payments/redirect-checkout-recovery";
 import { toast } from "sonner";
+
+const retrySamePaymentGuidance = "Your checkout is restored. Retry the same payment method to continue.";
+const ambiguousSettlementGuidance = "Your checkout items were restored, but payment status is uncertain. If you were charged, do not submit another payment; contact the store with your order number.";
 
 const PaymentCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const executeCalled = useRef(false);
   const providerId = searchParams.get("provider")?.trim().toLowerCase() ?? "";
   const provider = getPaymentProviderManifest(providerId);
   const providerLabel = provider?.label ?? "Payment";
   const initialStoreId = searchParams.get("store_id")?.trim() || undefined;
+  const callbackOrderNumber = searchParams.get("order_id")?.trim() || undefined;
   const [storeId, setStoreId] = useState<string | undefined>(initialStoreId);
   const [status, setStatus] = useState<"loading" | PaymentCallbackStatus>("loading");
   const [message, setMessage] = useState(`Processing your ${providerLabel} payment...`);
@@ -39,14 +49,24 @@ const PaymentCallback = () => {
     return data?.slug ?? undefined;
   }, [storeId]);
 
+  const restoreCheckout = useCallback((resolvedStoreId?: string, resolvedOrderNumber?: string) => {
+    if (!resolvedStoreId || !resolvedOrderNumber) return false;
+    return restoreRedirectCheckoutRecoveryState(resolvedStoreId, resolvedOrderNumber);
+  }, []);
+
   useEffect(() => {
     if (executeCalled.current) return;
     executeCalled.current = true;
 
     const settle = async () => {
       if (!providerId || !provider) {
+        const restored = restoreCheckout(initialStoreId, callbackOrderNumber);
         setStatus("error");
-        setMessage("This payment provider is not available. Please contact support.");
+        setMessage(
+          restored
+            ? `This payment provider is not available. ${ambiguousSettlementGuidance}`
+            : "This payment provider is not available. Please contact support.",
+        );
         return;
       }
 
@@ -68,37 +88,104 @@ const PaymentCallback = () => {
           { providerId, params },
         );
 
-        if (result.storeId) setStoreId(result.storeId);
-        setStatus(result.status);
-        setMessage(result.message);
+        const resolvedStoreId = result.storeId ?? initialStoreId;
+        const resolvedOrderNumber = result.orderNumber ?? callbackOrderNumber;
+        if (resolvedStoreId) setStoreId(resolvedStoreId);
 
-        if (result.status === "success" && result.orderNumber) {
-          toast.success(`${providerLabel} payment verified successfully!`);
-          window.setTimeout(() => {
-            void (async () => {
-              const slug = result.storeId
-                ? await supabase
-                    .from("stores")
-                    .select("slug")
-                    .eq("id", result.storeId)
-                    .maybeSingle()
-                    .then(({ data }) => data?.slug ?? undefined)
-                : await resolveStoreSlug();
-              navigate(storefrontPath(`/order-success?order=${encodeURIComponent(result.orderNumber as string)}`, slug));
-            })();
-          }, 1500);
+        if (result.status === "success") {
+          const completedSource = resolvedStoreId && resolvedOrderNumber
+            ? completeRedirectCheckoutRecoveryState(resolvedStoreId, resolvedOrderNumber)
+            : null;
+
+          // CartProvider's debounced signed-in sync can be interrupted by the
+          // immediate provider redirect. Make the verified-success cleanup
+          // durable in the customer's own RLS-scoped cart table as well.
+          if (completedSource === "cart" && user?.id && resolvedStoreId) {
+            const { error: cartClearError } = await supabase
+              .from("cart_items")
+              .delete()
+              .eq("user_id", user.id)
+              .eq("store_id", resolvedStoreId);
+            if (cartClearError) {
+              console.error("Failed to finalize signed-in cart after payment success:", cartClearError);
+            }
+          }
+
+          setStatus(result.status);
+          setMessage(result.message);
+
+          if (result.orderNumber) {
+            toast.success(`${providerLabel} payment verified successfully!`);
+            window.setTimeout(() => {
+              void (async () => {
+                const slug = result.storeId
+                  ? await supabase
+                      .from("stores")
+                      .select("slug")
+                      .eq("id", result.storeId)
+                      .maybeSingle()
+                      .then(({ data }) => data?.slug ?? undefined)
+                  : await resolveStoreSlug();
+                navigate(storefrontPath(`/order-success?order=${encodeURIComponent(result.orderNumber as string)}`, slug));
+              })();
+            }, 1500);
+          }
+          return;
+        }
+
+        const restored = restoreCheckout(resolvedStoreId, resolvedOrderNumber);
+        setStatus(result.status);
+        if (result.retryable === true) {
+          setMessage(
+            restored
+              ? `${result.message} ${retrySamePaymentGuidance}`
+              : `${result.message} Retry the same payment method to continue your reserved order.`,
+          );
+        } else {
+          setMessage(
+            restored
+              ? `${result.message} ${ambiguousSettlementGuidance}`
+              : `${result.message} Payment status may be uncertain. If you were charged, do not pay again; contact the store with your order number.`,
+          );
         }
       } catch (error) {
+        const restored = restoreCheckout(initialStoreId, callbackOrderNumber);
+        const errorMessage = error instanceof Error ? error.message : "An unexpected payment verification error occurred.";
         setStatus("error");
-        setMessage(error instanceof Error ? error.message : "An unexpected payment verification error occurred.");
+        setMessage(
+          restored
+            ? `${errorMessage} ${ambiguousSettlementGuidance}`
+            : `${errorMessage} Payment status may be uncertain. If you were charged, do not pay again; contact the store with your order number.`,
+        );
       }
     };
 
     void settle();
-  }, [navigate, provider, providerId, providerLabel, resolveStoreSlug, searchParams]);
+  }, [
+    callbackOrderNumber,
+    initialStoreId,
+    navigate,
+    provider,
+    providerId,
+    providerLabel,
+    resolveStoreSlug,
+    restoreCheckout,
+    searchParams,
+    user?.id,
+  ]);
 
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
-  const returnToCheckout = async () => navigate(storefrontPath("/checkout", await resolveStoreSlug()));
+  const returnToCheckout = async () => {
+    const path = storefrontPath("/checkout", await resolveStoreSlug());
+    // Recovery writes the original cart/Buy Now payload back to browser storage.
+    // A full navigation makes the CartProvider reload that restored state rather
+    // than retaining the already-cleared in-memory cart from before redirect.
+    if (typeof window !== "undefined") {
+      window.location.assign(path);
+      return;
+    }
+    navigate(path);
+  };
   const returnHome = async () => navigate(storefrontPath("/", await resolveStoreSlug()));
 
   return (
@@ -151,7 +238,7 @@ const PaymentCallback = () => {
                       Go Home
                     </Button>
                     <Button className="flex-1" onClick={() => void returnToCheckout()}>
-                      Try Again
+                      Review Checkout
                     </Button>
                   </div>
                 </div>
