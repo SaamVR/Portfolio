@@ -78,7 +78,7 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
       style={inlineStyle ?? { backgroundColor: "hsl(var(--primary))" }}
     >
       <p
-        className={`text-xs font-medium tracking-wide transition-opacity duration-300 ${textClass} ${
+        className={`px-12 text-xs font-medium tracking-wide transition-opacity duration-300 ${textClass} ${
           fade ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -86,7 +86,7 @@ const AnnouncementBar = ({ onVisibilityChange }: { onVisibilityChange?: (visible
       </p>
       <button
         onClick={handleDismiss}
-        className={`absolute right-3 top-1/2 -translate-y-1/2 smooth-hover ${textClass} opacity-70 hover:opacity-100`}
+        className={`absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded smooth-hover ${textClass} opacity-70 hover:opacity-100`}
         aria-label="Dismiss announcement"
       >
         <X className="h-3.5 w-3.5" />

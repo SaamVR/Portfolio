@@ -189,7 +189,7 @@ const Cart = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)}
-                        className="flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                        className="flex h-10 w-10 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Decrease quantity of ${item.name}`}
                       >
                         <Minus className="h-3 w-3" />
@@ -197,7 +197,7 @@ const Cart = () => {
                       <span className="w-6 text-center text-sm font-medium text-foreground">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)}
-                        className="flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                        className="flex h-10 w-10 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Increase quantity of ${item.name}`}
                       >
                         <Plus className="h-3 w-3" />
@@ -206,7 +206,7 @@ const Cart = () => {
                     <p className="font-heading font-bold text-primary">BDT {item.price * item.quantity}</p>
                     <button
                       onClick={() => removeItem(item.productId, item.size, item.storeId)}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:text-destructive"
                       aria-label={`Remove ${item.name} from cart`}
                     >
                       <Trash2 className="h-4 w-4" />
