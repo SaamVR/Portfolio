@@ -75,6 +75,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const expectedCartScope = storeId || GLOBAL_CART_KEY;
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartScope, setCartScope] = useState(expectedCartScope);
+  const [readyCartScope, setReadyCartScope] = useState<string | null>(null);
+  const isCartReady = readyCartScope === expectedCartScope;
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [couponCode, setCouponCodeState] = useState<string | null>(() => {
     try {
@@ -142,6 +144,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     itemsRef.current = nextItems;
     setItems(nextItems);
     setCartScope(expectedCartScope);
+    setReadyCartScope(expectedCartScope);
   }, [expectedCartScope, storeId]);
 
   useEffect(() => {
@@ -153,12 +156,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     itemsRef.current = nextItems;
     setItems(nextItems);
     setCartScope(expectedCartScope);
+    setReadyCartScope(expectedCartScope);
     setIsCartOpen(false);
   }, [cartScope, expectedCartScope, storeId]);
 
   // Cart Recovery check on mount
   useEffect(() => {
-    if (cartScope !== expectedCartScope) return;
+    if (!isCartReady || cartScope !== expectedCartScope) return;
 
     const initialItems = initialItemsRef.current;
 
@@ -184,11 +188,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     if (initialItems.length > 0) {
       saveCart(initialItems, storeId);
     }
-  }, [cartScope, expectedCartScope, storeId]);
+  }, [cartScope, expectedCartScope, isCartReady, storeId]);
 
   // Sync on login / auth change
   useEffect(() => {
-    if (cartScope !== expectedCartScope) return;
+    if (!isCartReady || cartScope !== expectedCartScope) return;
     if (!user) return;
 
     const loadAndMergeCart = async () => {
@@ -275,11 +279,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     };
 
     loadAndMergeCart();
-  }, [cartScope, expectedCartScope, storeId, user]);
+  }, [cartScope, expectedCartScope, isCartReady, storeId, user]);
 
   // Persist to localStorage and database whenever items change
   useEffect(() => {
-    if (cartScope !== expectedCartScope) return;
+    if (!isCartReady || cartScope !== expectedCartScope) return;
 
     saveCart(items, storeId);
 
@@ -343,7 +347,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
 
     const timer = setTimeout(syncToDb, 800); // 800ms debounce
     return () => clearTimeout(timer);
-  }, [cartScope, expectedCartScope, items, storeId, user]);
+  }, [cartScope, expectedCartScope, isCartReady, items, storeId, user]);
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     const scopedItem = { ...item, storeId: item.storeId ?? storeId };
@@ -451,7 +455,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen, couponCode, setCouponCode }}>
+    <CartContext.Provider value={{ items, isCartReady, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isCartOpen, setIsCartOpen, couponCode, setCouponCode }}>
       {children}
     </CartContext.Provider>
   );
