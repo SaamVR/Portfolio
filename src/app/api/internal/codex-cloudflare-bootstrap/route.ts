@@ -21,7 +21,7 @@ async function cf(path: string, init: RequestInit = {}) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body?.success === false) {
     const msg = body?.errors?.map((e: any) => e?.message).filter(Boolean).join(", ") || `HTTP ${res.status}`;
-    throw new Error(msg);
+    throw new Error(`${res.status}: ${msg}`);
   }
   return body;
 }
@@ -31,50 +31,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID;
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  if (!zoneId || !accountId) {
-    return NextResponse.json({ error: "cloudflare ids missing" }, { status: 500 });
-  }
-
-  const target = `${TUNNEL_ID}.cfargotunnel.com`;
-  const result: Record<string, unknown> = { tunnelId: TUNNEL_ID, hostname: HOSTNAME, target };
-
   try {
-    const config = await cf(`/accounts/${accountId}/cfd_tunnel/${TUNNEL_ID}/configurations`, {
-      method: "PUT",
-      body: JSON.stringify({
-        config: {
-          ingress: [
-            { hostname: HOSTNAME, service: SERVICE },
-            { service: "http_status:404" },
-          ],
-        },
-      }),
-    });
-    result.tunnelConfig = config?.success !== false ? "ok" : "failed";
-  } catch (error) {
-    result.tunnelConfig = `skipped: ${error instanceof Error ? error.message : "unknown"}`;
-  }
-
-  const records = await cf(`/zones/${zoneId}/dns_records?name=${encodeURIComponent(HOSTNAME)}`);
-  const exact = Array.isArray(records?.result) ? records.result : [];
-  const cname = exact.find((r: any) => r?.type === "CNAME");
-
-  for (const record of exact) {
-    if (["A", "AAAA"].includes(record?.type)) {
-      await cf(`/zones/${zoneId}/dns_records/${record.id}`, { method: "DELETE" });
+    const zoneId = process.env.CLOUDFLARE_ZONE_ID;
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    if (!zoneId || !accountId) {
+      return NextResponse.json({
+        error: "cloudflare ids missing",
+        hasZoneId: Boolean(zoneId),
+        hasAccountId: Boolean(accountId),
+        hasToken: Boolean(process.env.CLOUDFLARE_API_TOKEN),
+      }, { status: 500 });
     }
-  }
 
-  const payload = JSON.stringify({ type: "CNAME", name: HOSTNAME, content: target, ttl: 1, proxied: true });
-  if (cname) {
-    await cf(`/zones/${zoneId}/dns_records/${cname.id}`, { method: "PUT", body: payload });
-    result.dns = "updated";
-  } else {
-    await cf(`/zones/${zoneId}/dns_records`, { method: "POST", body: payload });
-    result.dns = "created";
-  }
+    const target = `${TUNNEL_ID}.cfargotunnel.com`;
+    const result: Record<string, unknown> = { tunnelId: TUNNEL_ID, hostname: HOSTNAME, target };
 
-  return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    try {
+      await cf(`/accounts/${accountId}/cfd_tunnel/${TUNNEL_ID}/configurations`, {
+        method: "PUT",
+        body: JSON.stringify({ config: { ingress: [
+          { hostname: HOSTNAME, service: SERVICE },
+          { service: "http_status:404" },
+        ] } }),
+      });
+      result.tunnelConfig = "ok";
+    } catch (error) {
+      result.tunnelConfig = `skipped: ${error instanceof Error ? error.message : "unknown"}`;
+    }
+
+    const records = await cf(`/zones/${zoneId}/dns_records?name=${encodeURIComponent(HOSTNAME)}`);
+    const exact = Array.isArray(records?.result) ? records.result : [];
+    const cname = exact.find((r: any) => r?.type === "CNAME");
+    result.previous = exact.map((r: any) => ({ type: r?.type, content: r?.content, proxied: r?.proxied }));
+
+    for (const record of exact) {
+      if (["A", "AAAA"].includes(record?.type)) {
+        await cf(`/zones/${zoneId}/dns_records/${record.id}`, { method: "DELETE" });
+      }
+    }
+
+    const payload = JSON.stringify({ type: "CNAME", name: HOSTNAME, content: target, ttl: 1, proxied: true });
+    if (cname) {
+      await cf(`/zones/${zoneId}/dns_records/${cname.id}`, { method: "PUT", body: payload });
+      result.dns = "updated";
+    } else {
+      await cf(`/zones/${zoneId}/dns_records`, { method: "POST", body: payload });
+      result.dns = "created";
+    }
+
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "unknown" }, { status: 500 });
+  }
 }
