@@ -765,7 +765,11 @@ Deno.serve(async (req) => {
       ? await supabaseAdmin
         .from("theme_packages")
         .select("id, version, preset_id, mode, tokens, custom_css")
-        .or(`id.eq.${defaultThemePresetId},preset_id.eq.${defaultThemePresetId},slug.eq.${defaultThemePresetId}`)
+        .or(
+          /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(defaultThemePresetId)
+            ? `id.eq.${defaultThemePresetId},preset_id.eq.${defaultThemePresetId},slug.eq.${defaultThemePresetId}`
+            : `preset_id.eq.${defaultThemePresetId},slug.eq.${defaultThemePresetId}`,
+        )
         .limit(1)
         .maybeSingle()
       : { data: null };
