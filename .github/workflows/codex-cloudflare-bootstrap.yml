@@ -1,0 +1,68 @@
+name: Codex Cloudflare Bootstrap
+
+on:
+  push:
+    paths:
+      - .github/workflows/codex-cloudflare-bootstrap.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      HOSTNAME: codex-api.ezcomo.shop
+      TUNNEL_ID: f961031f-a93d-427b-a8e1-047a1138c5f6
+    steps:
+      - name: Validate Cloudflare secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_API_TOKEN secret is missing"
+            exit 1
+          fi
+          echo "Cloudflare token is present"
+
+      - name: Configure tunnel and DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          API='https://api.cloudflare.com/client/v4'
+          AUTH=(-H "Authorization: Bearer $CF_TOKEN" -H 'Content-Type: application/json')
+
+          ZONES=$(curl -fsS "${AUTH[@]}" "$API/zones?name=ezcomo.shop")
+          ZONE_ID=$(jq -r '.result[0].id // empty' <<<"$ZONES")
+          ACCOUNT_ID=$(jq -r '.result[0].account.id // empty' <<<"$ZONES")
+          test -n "$ZONE_ID" && test -n "$ACCOUNT_ID"
+          echo "Resolved Cloudflare zone and account"
+
+          curl -fsS -X PUT "${AUTH[@]}" \
+            "$API/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/configurations" \
+            --data "{\"config\":{\"ingress\":[{\"hostname\":\"$HOSTNAME\",\"service\":\"http://localhost:8765\"},{\"service\":\"http_status:404\"}]}}" \
+            | jq -e '.success == true' >/dev/null
+          echo "Tunnel ingress configured"
+
+          RECORDS=$(curl -fsS "${AUTH[@]}" "$API/zones/$ZONE_ID/dns_records?name=$HOSTNAME")
+          while read -r ID; do
+            [ -z "$ID" ] && continue
+            curl -fsS -X DELETE "${AUTH[@]}" "$API/zones/$ZONE_ID/dns_records/$ID" | jq -e '.success == true' >/dev/null
+          done < <(jq -r '.result[] | select(.type=="A" or .type=="AAAA") | .id' <<<"$RECORDS")
+
+          CNAME_ID=$(jq -r '.result[] | select(.type=="CNAME") | .id' <<<"$RECORDS" | head -n1)
+          TARGET="$TUNNEL_ID.cfargotunnel.com"
+          PAYLOAD=$(jq -nc --arg n "$HOSTNAME" --arg t "$TARGET" '{type:"CNAME",name:$n,content:$t,ttl:1,proxied:true}')
+          if [ -n "$CNAME_ID" ]; then
+            curl -fsS -X PUT "${AUTH[@]}" "$API/zones/$ZONE_ID/dns_records/$CNAME_ID" --data "$PAYLOAD" | jq -e '.success == true' >/dev/null
+            echo "DNS CNAME updated"
+          else
+            curl -fsS -X POST "${AUTH[@]}" "$API/zones/$ZONE_ID/dns_records" --data "$PAYLOAD" | jq -e '.success == true' >/dev/null
+            echo "DNS CNAME created"
+          fi
+
+          VERIFY=$(curl -fsS "${AUTH[@]}" "$API/zones/$ZONE_ID/dns_records?type=CNAME&name=$HOSTNAME")
+          ACTUAL=$(jq -r '.result[0].content // empty' <<<"$VERIFY")
+          test "$ACTUAL" = "$TARGET"
+          echo "DNS target verified: $ACTUAL"
