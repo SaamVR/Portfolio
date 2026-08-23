@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { CustomerReturnRequestForm } from "@/components/storefront/CustomerReturnRequestForm";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import SEOHead from "@/components/SEOHead";
@@ -29,18 +30,23 @@ const Returns = () => {
             </div>
           ))}
         </div>
+        {currentStore?.id ? (
+          <div className="container mx-auto max-w-4xl px-4 pb-16">
+            <CustomerReturnRequestForm storeId={currentStore.id} storeName={storeName} />
+          </div>
+        ) : null}
       </LayoutWrapper>
     );
   }
 
   return (
     <LayoutWrapper>
-      <SEOHead 
-        title="Returns & Exchanges" 
-        description={`${storeName}'s return, exchange, and refund guidelines.`} 
+      <SEOHead
+        title="Returns & Exchanges"
+        description={`${storeName}'s return, exchange, and refund guidelines.`}
         canonical={absoluteStoreUrl(currentStore, "/returns")}
       />
-      
+
       <div className="container mx-auto max-w-4xl px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="font-heading text-4xl font-bold text-foreground mb-4">Returns & Exchanges</h1>
@@ -49,7 +55,7 @@ const Returns = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           <div className="bg-card border border-border p-6 rounded-lg text-center">
             <div className="h-12 w-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="h-6 w-6" />
@@ -59,7 +65,7 @@ const Returns = () => {
               Use this page as the current reference for when return or exchange requests should be submitted after delivery.
             </p>
           </div>
-          
+
           <div className="bg-card border border-border p-6 rounded-lg text-center">
             <div className="h-12 w-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <ShieldCheck className="h-6 w-6" />
@@ -81,6 +87,12 @@ const Returns = () => {
           </div>
         </div>
 
+        {currentStore?.id ? (
+          <div className="mb-12">
+            <CustomerReturnRequestForm storeId={currentStore.id} storeName={storeName} />
+          </div>
+        ) : null}
+
         <div className="space-y-12">
           <section>
             <h2 className="font-heading text-2xl font-bold text-foreground mb-4 border-b border-border pb-2">How to Request Help</h2>
@@ -88,8 +100,8 @@ const Returns = () => {
               <div className="flex gap-4">
                 <div className="flex-shrink-0 h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">1</div>
                 <div>
-                  <h4 className="font-bold text-foreground">Contact {storeName}</h4>
-                  <p className="text-muted-foreground">Send us a message through the store's support channel with your Order ID and photos of the product.</p>
+                  <h4 className="font-bold text-foreground">Submit your order details</h4>
+                  <p className="text-muted-foreground">Use the request form above with the order number and mobile number used at checkout. If the store has customized this policy, follow those instructions as well.</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -134,7 +146,7 @@ const Returns = () => {
               </p>
             </div>
           </section>
-          
+
           <section>
             <h2 className="font-heading text-2xl font-bold text-foreground mb-4 border-b border-border pb-2">Non-Returnable Items</h2>
             <p className="text-muted-foreground">
