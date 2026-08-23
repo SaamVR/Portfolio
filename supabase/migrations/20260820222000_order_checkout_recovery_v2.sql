@@ -40,8 +40,6 @@ DECLARE
   _created record;
   _requested_items_identity jsonb := '[]'::jsonb;
   _existing_items_identity jsonb := '[]'::jsonb;
-  _requested_discount integer := greatest(coalesce(_discount_amount, 0), 0);
-  _existing_discount integer := 0;
 BEGIN
   IF _store_id IS NULL THEN
     RAISE EXCEPTION 'store_id is required' USING ERRCODE = '22023';
@@ -135,14 +133,13 @@ BEGIN
       GROUP BY 1, 2
     ) persisted;
 
-    _existing_discount := greatest(
-      coalesce(_existing.subtotal, 0) + coalesce(_existing.delivery_fee, 0) - coalesce(_existing.total, 0),
-      0
-    );
-
-    IF _requested_items_identity IS DISTINCT FROM _existing_items_identity
-      OR _requested_discount IS DISTINCT FROM _existing_discount
-    THEN
+    -- Do not compare the browser _discount_amount with the persisted effective
+    -- discount here. The canonical create_store_order_with_stock function is the
+    -- pricing authority and recomputes discounts itself; the browser-provided
+    -- value is not authoritative. Other checkout identity fields (including
+    -- notes/coupon context) still fail closed when a request key is reused with
+    -- a materially different checkout payload.
+    IF _requested_items_identity IS DISTINCT FROM _existing_items_identity THEN
       RAISE EXCEPTION 'checkout recovery conflict: checkout payload does not match the existing order'
         USING ERRCODE = 'P0001';
     END IF;
