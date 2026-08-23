@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - .github/workflows/codex-cloudflare-bootstrap.yml
+  pull_request:
+    paths:
+      - ops/codex-cloudflare-trigger.txt
 
 permissions:
   contents: write
@@ -94,6 +97,7 @@ jobs:
           cat /tmp/codex-cloudflare-bootstrap-result.json
 
       - name: Publish sanitized result branch
+        if: github.event_name == 'push'
         shell: bash
         run: |
           git config user.name 'Codex Cloudflare Bootstrap'
