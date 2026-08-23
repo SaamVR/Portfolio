@@ -4,9 +4,15 @@ import { normalizeTrackingPhone, orderTrackRouteDeps, POST } from "./route";
 
 const storeId = "11111111-1111-4111-8111-111111111111";
 
+type QueryCalls = {
+  table?: string;
+  select?: string;
+  eq: Array<[string, unknown]>;
+};
+
 function makeAdminResult(
   data: Record<string, unknown> | null,
-  calls: { table?: string; select?: string; eq: Array<[string, unknown]> },
+  calls: QueryCalls,
   error: unknown = null,
 ) {
   const chain: Record<string, any> = {};
@@ -49,7 +55,7 @@ test("guest order tracking is tenant-scoped, generic on mismatch, sanitized, and
 
   try {
     await t.test("returns only the customer-safe projection for a verified guest order", async () => {
-      const calls = { eq: [] as Array<[string, unknown]> };
+      const calls: QueryCalls = { eq: [] };
       orderTrackRouteDeps.rateLimit = async () => ({
         success: true,
         limit: 12,
