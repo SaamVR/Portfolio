@@ -62,6 +62,13 @@ export type PaymentCallbackResult = {
   message: string;
   orderNumber?: string;
   storeId?: string;
+  /**
+   * True only when the provider result proves that another payment attempt is
+   * safe (for example, an explicit cancellation/failed-payment status). Leave
+   * false/undefined for ambiguous verification/settlement errors where a charge
+   * may already have occurred.
+   */
+  retryable?: boolean;
 };
 
 export type PaymentCheckoutRuntimeDeps = {

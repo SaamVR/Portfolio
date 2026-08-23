@@ -178,8 +178,9 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
         return {
           providerId: request.providerId,
           status: "cancelled",
-          message: "Payment was cancelled. You can try checkout again.",
+          message: "Payment was cancelled.",
           storeId: storeId || undefined,
+          retryable: true,
         };
       }
 
@@ -187,8 +188,9 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
         return {
           providerId: request.providerId,
           status: "error",
-          message: "Payment failed. Please try again.",
+          message: "bKash reported that the payment failed.",
           storeId: storeId || undefined,
+          retryable: true,
         };
       }
 
@@ -198,6 +200,7 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
           status: "error",
           message: "Payment verification details are incomplete. Please contact support.",
           storeId: storeId || undefined,
+          retryable: false,
         };
       }
 
@@ -215,6 +218,7 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
           status: "error",
           message: providerMessage || error?.message || "Failed to verify payment with bKash.",
           storeId,
+          retryable: false,
         };
       }
 
