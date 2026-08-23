@@ -5,7 +5,6 @@ import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
 import { Package, Search, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react";
 import type { Order } from "@/hooks/useOrders";
@@ -21,6 +20,11 @@ const STATUS_STEPS = [
   { key: "delivered", label: "Delivered", icon: CheckCircle },
 ];
 
+type TrackedOrder = Pick<
+  Order,
+  "id" | "order_number" | "status" | "items" | "subtotal" | "delivery_fee" | "total" | "payment_method" | "created_at"
+>;
+
 const TrackOrder = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
@@ -28,7 +32,7 @@ const TrackOrder = () => {
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [notFound, setNotFound] = useState(false);
   const { trackEvent } = useStorefrontAnalytics();
   const experience = resolveStorefrontOrderExperience(currentStore, order?.items);
@@ -54,17 +58,47 @@ const TrackOrder = () => {
     setOrder(null);
     setNotFound(false);
 
-    const { data, error } = await supabase
-      .from("orders")
-      .select("id, order_number, status, items, subtotal, delivery_fee, total, payment_method, created_at")
-      .eq("store_id", storeId)
-      .eq("order_number", trimmed)
-      .eq("customer_phone", trimmedPhone)
-      .maybeSingle();
+    try {
+      const response = await fetch("/api/orders/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId,
+          orderNumber: trimmed,
+          phone: trimmedPhone,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
 
-    setLoading(false);
+      if (!response.ok || !payload?.order) {
+        setNotFound(true);
+        trackEvent({
+          eventName: "track_order_result",
+          eventCategory: "support",
+          orderNumber: trimmed,
+          metadata: {
+            source: "track_order_page",
+            success: false,
+          },
+        });
+        return;
+      }
 
-    if (error || !data) {
+      const trackedOrder = payload.order as TrackedOrder;
+      trackEvent({
+        eventName: "track_order_result",
+        eventCategory: "support",
+        orderId: trackedOrder.id,
+        orderNumber: trackedOrder.order_number,
+        value: Number(trackedOrder.total ?? 0),
+        metadata: {
+          source: "track_order_page",
+          success: true,
+          status: trackedOrder.status,
+        },
+      });
+      setOrder(trackedOrder);
+    } catch {
       setNotFound(true);
       trackEvent({
         eventName: "track_order_result",
@@ -75,22 +109,9 @@ const TrackOrder = () => {
           success: false,
         },
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    trackEvent({
-      eventName: "track_order_result",
-      eventCategory: "support",
-      orderId: data.id,
-      orderNumber: trimmed,
-      value: Number(data.total ?? 0),
-      metadata: {
-        source: "track_order_page",
-        success: true,
-        status: data.status,
-      },
-    });
-    setOrder(data as unknown as Order);
   };
 
   const currentStepIndex = order
