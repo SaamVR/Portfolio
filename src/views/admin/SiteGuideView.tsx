@@ -626,7 +626,7 @@ export default function SiteGuideView() {
                   </div>
 
                   {/* Bottom Navigation Buttons */}
-                  <div className="flex items-center justify-between border-t border-border pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
                     <Button
                       variant="outline"
                       disabled={selectedStepIndex === 0}
@@ -636,16 +636,27 @@ export default function SiteGuideView() {
                       ← Previous Step
                     </Button>
 
-                    <div className="flex items-center gap-1.5">
-                      {creationStepsDetailed.map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setSelectedStepIndex(idx)}
-                          className={`h-2.5 rounded-full transition-all ${
-                            selectedStepIndex === idx ? "w-8 bg-primary" : "w-2.5 bg-muted-foreground/30"
-                          }`}
-                        />
-                      ))}
+                    <div className="order-last flex w-full items-center justify-center gap-0.5 sm:order-none sm:w-auto">
+                      {creationStepsDetailed.map((_, idx) => {
+                        const isSelected = selectedStepIndex === idx;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setSelectedStepIndex(idx)}
+                            aria-label={`Go to step ${idx + 1}`}
+                            aria-current={isSelected ? "step" : undefined}
+                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`h-2.5 rounded-full transition-all ${
+                                isSelected ? "w-8 bg-primary" : "w-2.5 bg-muted-foreground/30"
+                              }`}
+                            />
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <Button
