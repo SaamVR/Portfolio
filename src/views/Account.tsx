@@ -346,8 +346,10 @@ const ProfileHeader = ({
                   {profile?.display_name || "Set your name"}
                 </h1>
                 <button
+                  type="button"
                   onClick={() => { setDisplayName(profile?.display_name || ""); setEditing(true); }}
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="Edit profile name"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Edit2 className="h-4 w-4" />
                 </button>
