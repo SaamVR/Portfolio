@@ -149,6 +149,20 @@ async function settleVisualAssets(page: any) {
   });
 }
 
+async function waitForVisiblePageTransition(page: any, templateId: string) {
+  await page.waitForFunction((id: string) => {
+    let node = document.querySelector<HTMLElement>(`[data-storefront-template="${id}"]`);
+    if (!node) return false;
+
+    while (node) {
+      if (Number.parseFloat(getComputedStyle(node).opacity || "1") < 0.99) return false;
+      node = node.parentElement;
+    }
+    return true;
+  }, templateId, { timeout: 10000 });
+  await page.waitForTimeout(50);
+}
+
 test("all 16 storefront templates stay usable at mobile, tablet, and desktop widths", async ({ page }, testInfo) => {
   test.setTimeout(300000);
 
@@ -234,7 +248,6 @@ test("all 16 storefront templates stay usable at mobile, tablet, and desktop wid
         const shell = page.locator(`[data-storefront-template="${template.id}"]`);
         await expect(shell).toBeVisible({ timeout: 30000 });
         await expect(page.locator('[data-template-renderer="composable-blocks"]')).toBeVisible({ timeout: 30000 });
-        await page.waitForTimeout(250);
 
         if (viewport.width < 768) {
           const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
@@ -248,8 +261,9 @@ test("all 16 storefront templates stay usable at mobile, tablet, and desktop wid
           await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: template.catalogLabel, exact: true })).toBeVisible();
         }
 
-        await assertNoHorizontalOverflow(page, template.id, viewport.name);
         await settleVisualAssets(page);
+        await waitForVisiblePageTransition(page, template.id);
+        await assertNoHorizontalOverflow(page, template.id, viewport.name);
 
         const snapshotName = `storefront-${template.id}-${viewport.name}-${viewport.width}.png`;
         if (assertGoldenSnapshots) {
