@@ -1,0 +1,47 @@
+name: Storefront Visual Golden
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/storefront-visual-golden.yml"
+      - "playwright.preview.config.ts"
+      - "tests/storefront-template-viewport.spec.ts"
+      - "tests/storefront-template-viewport.spec.ts-snapshots/**"
+  workflow_dispatch:
+
+jobs:
+  golden:
+    if: startsWith(github.head_ref, 'fix/accept-storefront-visual-baselines-') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production storefront goldens
+        env:
+          STOREFRONT_VISUAL_GOLDEN: "1"
+          PLAYWRIGHT_BASE_URL: https://ecomcms-xjw4.onrender.com
+        run: npx playwright test tests/storefront-template-viewport.spec.ts --config=playwright.preview.config.ts
+
+      - name: Upload golden artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-visual-golden-artifacts
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
