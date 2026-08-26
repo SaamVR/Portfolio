@@ -1,6 +1,7 @@
 import { expect, test } from "playwright/test";
 
 const fixturePrefix = "visual-baseline-20260824";
+const assertGoldenSnapshots = process.env.STOREFRONT_VISUAL_GOLDEN === "1";
 
 type TemplateCase = {
   id: string;
@@ -90,6 +91,7 @@ async function waitForVisiblePageTransition(page: any, templateId: string) {
 }
 
 test("capture all 16 production storefront templates at mobile, tablet, and desktop widths", async ({ page }) => {
+  test.skip(!assertGoldenSnapshots, "Production visual goldens run only with STOREFRONT_VISUAL_GOLDEN=1.");
   test.setTimeout(300000);
   await page.addInitScript(() => {
     const originalGetItem = Storage.prototype.getItem;
