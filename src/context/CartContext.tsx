@@ -238,6 +238,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
         const { data: dbProducts } = await supabase
           .from("products")
           .select("id, name, price, image_url")
+          .eq("store_id", storeId)
           .in("id", productIds);
 
         const productsMap = new Map((dbProducts as ProductLookupRow[] | null | undefined)?.map((p) => [p.id, p]));
