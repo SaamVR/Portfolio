@@ -36,6 +36,11 @@ jobs:
         continue-on-error: true
         run: npm test
 
+      - name: Production migration drift
+        id: migration-drift
+        continue-on-error: true
+        run: npm run migrations:drift
+
       - name: Lint
         id: lint
         continue-on-error: true
@@ -61,6 +66,7 @@ jobs:
           always() &&
           (steps.typecheck.outcome != 'success' ||
            steps.tests.outcome != 'success' ||
+           steps.migration-drift.outcome != 'success' ||
            steps.lint.outcome != 'success' ||
            steps.build.outcome != 'success' ||
            steps.audit.outcome != 'success')
@@ -83,6 +89,7 @@ jobs:
           for outcome in \
             "${{ steps.typecheck.outcome }}" \
             "${{ steps.tests.outcome }}" \
+            "${{ steps.migration-drift.outcome }}" \
             "${{ steps.lint.outcome }}" \
             "${{ steps.build.outcome }}" \
             "${{ steps.audit.outcome }}"; do
