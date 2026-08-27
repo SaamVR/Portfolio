@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { uploadMediaAsset } from "@/lib/cloudinary-upload";
-import { collectMediaUrlsFromValue, createBackupZipBlob, inferBackupMediaFileName, inferBackupMediaFolder, parseBackupFile, replaceUrlsInValue, type StoreBackupMediaFile } from "@/lib/store-backup";
+import { assertBackupReviewReferences, collectMediaUrlsFromValue, createBackupZipBlob, inferBackupMediaFileName, inferBackupMediaFolder, parseBackupFile, replaceUrlsInValue, type StoreBackupMediaFile } from "@/lib/store-backup";
 import { inferMediaTypeFromUrl, normalizeMediaLibrary } from "@/lib/media-library";
 import { refreshStorefrontCacheForStore } from "@/lib/storefront-cache-client";
 
@@ -634,6 +634,10 @@ export default function StoreBackupManager() {
 
     try {
       const parsedPackage = pendingImportPackage;
+      if (includeOperationalData) {
+        assertBackupReviewReferences(parsedPackage.data);
+      }
+
       const urlMap = includeMediaFiles && parsedPackage.mediaFiles.length > 0
         ? await importMediaFiles(targetStore.id, parsedPackage.mediaFiles)
         : new Map<string, string>();
@@ -795,13 +799,28 @@ export default function StoreBackupManager() {
         : [];
 
       const importedReviews = includeOperationalData
-        ? (rewrittenData.product_reviews ?? []).map((row: any) => ({
-            ...row,
-            id: crypto.randomUUID(),
-            store_id: targetStore.id,
-            product_id: typeof row?.product_id === "string" ? (productIdMap.get(row.product_id) ?? row.product_id) : row?.product_id,
-            order_id: typeof row?.order_id === "string" ? (orderIdMap.get(row.order_id) ?? null) : null,
-          }))
+        ? (rewrittenData.product_reviews ?? []).map((row: any, index: number) => {
+            const mappedProductId = typeof row?.product_id === "string" ? productIdMap.get(row.product_id) : null;
+            if (!mappedProductId) {
+              throw new Error(`Backup review ${index + 1} could not be remapped to an imported product.`);
+            }
+
+            let mappedOrderId: string | null = null;
+            if (row?.order_id !== null && row?.order_id !== undefined) {
+              mappedOrderId = typeof row.order_id === "string" ? (orderIdMap.get(row.order_id) ?? null) : null;
+              if (!mappedOrderId) {
+                throw new Error(`Backup review ${index + 1} could not be remapped to an imported order.`);
+              }
+            }
+
+            return {
+              ...row,
+              id: crypto.randomUUID(),
+              store_id: targetStore.id,
+              product_id: mappedProductId,
+              order_id: mappedOrderId,
+            };
+          })
         : [];
 
       const importedBlocks = (rewrittenData.store_page_blocks ?? []).map((row: any) => {
