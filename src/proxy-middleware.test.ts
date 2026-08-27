@@ -45,12 +45,14 @@ test("platform paths bypass tenant rewrites on tenant domains", () => {
 
   assert.equal(isBypassedPath("/shop", true), false);
   assert.equal(isBypassedPath("/product/classic-shirt", true), false);
+  assert.equal(isBypassedPath("/order-success", true), false);
 });
 
 test("tenant paths rewrite into the store route shape", () => {
   assert.equal(getTenantRewritePath("ezcomo", "/"), "/stores/ezcomo");
   assert.equal(getTenantRewritePath("ezcomo", "/shop"), "/stores/ezcomo/shop");
   assert.equal(getTenantRewritePath("ezcomo", "/about-us"), "/stores/ezcomo/about-us");
+  assert.equal(getTenantRewritePath("ezcomo", "/order-success"), "/stores/ezcomo/order-success");
 });
 
 test("custom domains resolve only when the custom domain resolver finds a store", async () => {
