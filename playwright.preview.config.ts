@@ -21,6 +21,9 @@ export default defineConfig({
   outputDir: "test-results",
   expect: {
     timeout: 15000,
+    toHaveScreenshot: {
+      pathTemplate: "{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{ext}",
+    },
   },
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {

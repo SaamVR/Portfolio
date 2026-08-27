@@ -66,13 +66,19 @@ async function settleVisualAssets(page: any) {
   await page.evaluate(async () => {
     if (document.fonts?.ready) await document.fonts.ready;
     const images = Array.from(document.images);
-    await Promise.all(images.map((image) => {
-      if (image.complete) return Promise.resolve();
-      return new Promise<void>((resolve) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener("error", () => resolve(), { once: true });
-        setTimeout(resolve, 2500);
-      });
+    for (const image of images) {
+      if (image.loading === "lazy") image.loading = "eager";
+    }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await Promise.all(images.map(async (image) => {
+      if (!image.complete) {
+        await new Promise<void>((resolve) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => resolve(), { once: true });
+          setTimeout(resolve, 2500);
+        });
+      }
+      if (image.complete && image.naturalWidth > 0) await image.decode?.().catch(() => undefined);
     }));
   });
 }
@@ -99,9 +105,23 @@ test("capture all 16 production storefront templates at mobile, tablet, and desk
       return key.startsWith("cookie-consent:") ? "accepted" : originalGetItem.call(this, key);
     };
   });
+
+  let holdProductRequests = false;
+  const releaseHeldProductRequests: Array<() => void> = [];
+  await page.route("**/api/storefront/products**", async (route) => {
+    if (holdProductRequests) await new Promise<void>((resolve) => releaseHeldProductRequests.push(resolve));
+    await route.continue();
+  });
+  const releaseProducts = () => {
+    holdProductRequests = false;
+    for (const release of releaseHeldProductRequests.splice(0)) release();
+  };
+
   for (const template of templateCases) {
     const storeSlug = `${fixturePrefix}-${template.id}`;
     for (const viewport of viewportCases) {
+      const captureLoadingProducts = viewport.name === "mobile";
+      holdProductRequests = captureLoadingProducts;
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto(`/stores/${storeSlug}?visual-baseline=${template.id}-${viewport.name}`, { waitUntil: "domcontentloaded" });
       const shell = page.locator(`[data-storefront-template="${template.id}"]`).first();
@@ -124,14 +144,27 @@ test("capture all 16 production storefront templates at mobile, tablet, and desk
 
       await settleVisualAssets(page);
       await waitForVisiblePageTransition(page, template.id);
+      if (captureLoadingProducts) {
+        await expect(page.locator('[aria-label="Loading categories"]')).toHaveCount(0, { timeout: 15000 });
+      } else {
+        await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 30000 });
+      }
+      await settleVisualAssets(page);
       await assertNoHorizontalOverflow(page, template.id, viewport.name);
       const snapshotName = `storefront-${template.id}-${viewport.name}-${viewport.width}.png`;
-      await expect(page).toHaveScreenshot(snapshotName, {
-        fullPage: true,
-        animations: "disabled",
-        caret: "hide",
-        maxDiffPixelRatio: 0.015,
-      });
+      try {
+        await expect(page).toHaveScreenshot(snapshotName, {
+          fullPage: true,
+          animations: "disabled",
+          caret: "hide",
+          maxDiffPixelRatio: 0.015,
+        });
+      } finally {
+        if (captureLoadingProducts) {
+          releaseProducts();
+          await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 30000 });
+        }
+      }
     }
   }
 });

@@ -6,6 +6,7 @@ on:
       - ".github/workflows/storefront-visual-golden.yml"
       - "playwright.preview.config.ts"
       - "tests/storefront-template-viewport.spec.ts"
+      - "tests/storefront-visual-golden-fontconfig.xml"
       - "tests/storefront-template-viewport.spec.ts-snapshots/**"
   workflow_dispatch:
 
@@ -30,10 +31,19 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
+      - name: Match hardened capture fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-freefont-ttf
+          mkdir -p "$RUNNER_TEMP/storefront-visual-xdg"
+          fc-cache -f
+
       - name: Run production storefront goldens
         env:
           STOREFRONT_VISUAL_GOLDEN: "1"
           PLAYWRIGHT_BASE_URL: https://ecomcms-xjw4.onrender.com
+          FONTCONFIG_FILE: ${{ github.workspace }}/tests/storefront-visual-golden-fontconfig.xml
+          XDG_DATA_HOME: ${{ runner.temp }}/storefront-visual-xdg
         run: npx playwright test tests/storefront-template-viewport.spec.ts --config=playwright.preview.config.ts
 
       - name: Upload golden artifacts on failure
