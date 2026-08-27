@@ -18,6 +18,7 @@
     "test:watch": "tsx --test --watch \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "test:preview": "playwright test -c playwright.preview.config.ts",
     "validate:env": "tsx scripts/validate-production-env.ts",
+    "migrations:drift": "tsx scripts/check-migration-drift.ts",
     "domain-routing-kv:backfill": "tsx scripts/backfill-domain-routing-kv.ts",
     "sync:cms-library": "tsx scripts/sync-cms-library.ts",
     "storefront-search:setup": "tsx scripts/setup-storefront-search.ts",

@@ -1,0 +1,9 @@
+{
+  "exceptions": [
+    {
+      "name": "seed_demo_blog_posts",
+      "classification": "non-production",
+      "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    }
+  ]
+}
