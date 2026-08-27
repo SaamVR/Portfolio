@@ -34,6 +34,41 @@ export const storeBackupPackageSchema = z.object({
 export type StoreBackupPackage = z.infer<typeof storeBackupPackageSchema>;
 export type StoreBackupMediaFile = z.infer<typeof storeBackupMediaFileSchema>;
 
+function backupRows(data: Record<string, unknown>, key: string) {
+  const value = data[key];
+  return Array.isArray(value) ? value : [];
+}
+
+function backupRowId(row: unknown) {
+  if (!row || typeof row !== "object") return null;
+  const id = (row as Record<string, unknown>).id;
+  return typeof id === "string" && id.trim() ? id : null;
+}
+
+export function assertBackupReviewReferences(data: Record<string, unknown>) {
+  const productIds = new Set(backupRows(data, "products").map(backupRowId).filter((id): id is string => Boolean(id)));
+  const orderIds = new Set(backupRows(data, "orders").map(backupRowId).filter((id): id is string => Boolean(id)));
+
+  for (const [index, rawReview] of backupRows(data, "product_reviews").entries()) {
+    if (!rawReview || typeof rawReview !== "object") {
+      throw new Error(`Backup review ${index + 1} is malformed.`);
+    }
+
+    const review = rawReview as Record<string, unknown>;
+    const productId = typeof review.product_id === "string" ? review.product_id : null;
+    if (!productId || !productIds.has(productId)) {
+      throw new Error(`Backup review ${index + 1} references a product that is not included in the backup.`);
+    }
+
+    if (review.order_id !== null && review.order_id !== undefined) {
+      const orderId = typeof review.order_id === "string" ? review.order_id : null;
+      if (!orderId || !orderIds.has(orderId)) {
+        throw new Error(`Backup review ${index + 1} references an order that is not included in the backup.`);
+      }
+    }
+  }
+}
+
 export function collectMediaUrlsFromValue(value: unknown, urls = new Set<string>()) {
   if (typeof value === "string") {
     if (/^https?:\/\//i.test(value) || value.startsWith("data:")) {
