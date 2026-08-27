@@ -7,6 +7,24 @@ function readRouteSource(relativePath: string) {
 }
 
 describe("storefront shell route guardrails", () => {
+  it("blocks the legacy platform order-success route from rendering an unscoped storefront", () => {
+    const source = readRouteSource("src/app/order-success/page.tsx");
+
+    expect(source.includes('from "next/navigation"')).toBe(true);
+    expect(source.includes("notFound()")).toBe(true);
+    expect(source.includes("@/views/OrderSuccess")).toBe(false);
+  });
+
+  it.each([
+    "src/views/Checkout.tsx",
+    "src/views/BkashCallback.tsx",
+    "src/views/PaymentCallback.tsx",
+  ])("keeps %s order-success navigation tenant-scoped", (file) => {
+    const source = readRouteSource(file);
+
+    expect(source.includes("storefrontPath(`/order-success?order=")).toBe(true);
+  });
+
   it.each([
     {
       file: "src/app/stores/[storeSlug]/shop/page.tsx",
