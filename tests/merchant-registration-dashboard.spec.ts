@@ -37,7 +37,7 @@ test("merchant registration: Account -> Store -> Design -> Onboarding Wizard -> 
     await page.getByTestId("admin-login-password").fill(password);
     await page.getByTestId("admin-login-submit").click();
 
-    await expect.poll(async () => new URL(page.url()).pathname !== "/admin/login", { timeout: 15000 }).toBe(true);
+    await expect(page.getByText(`Signed in as ${email}`)).toBeVisible({ timeout: 15000 });
 
     await page.goto("/signup?entry=dashboard");
     await expect(page.getByTestId("merchant-signup-store-name")).toBeVisible({ timeout: 15000 });

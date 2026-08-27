@@ -1,0 +1,245 @@
+{
+  "count": 48,
+  "files": [
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-beauty-desktop-1440.png",
+      "bytes": 499615,
+      "sha256": "092f7e167d71231c048c9a88209593320cb9456a2f646068b6107de6248a60e6"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-beauty-mobile-390.png",
+      "bytes": 274047,
+      "sha256": "387cb9cafcff9837d6ecb44eb6f7afd284b45ec0c739d3a6b559566c51f7c675"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-beauty-tablet-768.png",
+      "bytes": 405122,
+      "sha256": "0e33ffdaef126bd2b4706d29868c6ef7a565099d8bceeca3d1865291cca16991"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-blank-desktop-1440.png",
+      "bytes": 358865,
+      "sha256": "1ac550368a5d27e5a2f0bdc56b71bbecbc2cbff15ebe69e8c12f20529365f70d"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-blank-mobile-390.png",
+      "bytes": 169949,
+      "sha256": "ac2f46137c06411853e64d76bf532c2dabc29f72e927bf45998177ba5b18712c"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-blank-tablet-768.png",
+      "bytes": 261322,
+      "sha256": "98a596cb1919441a9dec1d981f07e0c4296ecc8b1d988ed07f732a75042a6987"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-booking-desktop-1440.png",
+      "bytes": 537577,
+      "sha256": "c96bac5d85edfcf30e494c04ab9e9a62c148b3e9b586c5c768a29ee8fe3e575e"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-booking-mobile-390.png",
+      "bytes": 309085,
+      "sha256": "318a7cbdb5155338065e8da2423b128eb62e9327e19599781f7e2cca6b452b90"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-booking-tablet-768.png",
+      "bytes": 434839,
+      "sha256": "755e2903f69ea3d5245aa5442b067913d59b5d00fbfab9f3cee8adc4581a4781"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-crafts-desktop-1440.png",
+      "bytes": 971363,
+      "sha256": "bf150b647c36b5700173e4cd4723d75e5fbda5f3e7b92c1a6e6cb7fc6ebac94b"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-crafts-mobile-390.png",
+      "bytes": 525371,
+      "sha256": "4d3d93681d874a08f248e9468c93ffbfed99cc48f17f8b3afc5e61f2a25660d4"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-crafts-tablet-768.png",
+      "bytes": 747510,
+      "sha256": "f12aacaf03f56b86e25565e2d89629bcd47180153ea38be7cfea33b6e513bee2"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-digital-downloads-desktop-1440.png",
+      "bytes": 603625,
+      "sha256": "41eb7dd788e01042d0748ecbdf95bbf7aaf863793e7001a56fe4413211858b0f"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-digital-downloads-mobile-390.png",
+      "bytes": 345404,
+      "sha256": "46fe303513465a1d28598d4211077650732f506a688a9fd2c97bfa5d90b31eee"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-digital-downloads-tablet-768.png",
+      "bytes": 487041,
+      "sha256": "a567dddaa7cc28359f707f241c5aea56b92b7951679061482f018ed66af0ac77"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-electronics-desktop-1440.png",
+      "bytes": 673684,
+      "sha256": "58fd206e40fec3c7bc8ca43fb5d1d658d28e982819f88bec7ecfc94cac8db995"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-electronics-mobile-390.png",
+      "bytes": 335980,
+      "sha256": "dc7a6152bc10073310bc527148a5e24f213aae561af9d27d58d248c83d264165"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-electronics-tablet-768.png",
+      "bytes": 566984,
+      "sha256": "f76530bf51905b6583c27df001fcb23e5736c12c151a66a125e0f1f555771cb5"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-fashion-desktop-1440.png",
+      "bytes": 849339,
+      "sha256": "8be6d4c232600eb1e59ac06ccadd29ad0299c6fffe436840b749bb505bfdd744"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-fashion-mobile-390.png",
+      "bytes": 473565,
+      "sha256": "5adf7e0603838051ca0b039599a9c9a37fc9101ab6ca26b8b734f0e326864e4c"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-fashion-tablet-768.png",
+      "bytes": 623760,
+      "sha256": "f59f0eab5d248b138458380769ad71e46e3c4db8c7c2c4579afb9020adb182f4"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-food-desktop-1440.png",
+      "bytes": 901483,
+      "sha256": "ac8f0cf58bdfc041411702a2dbd4aca1bd32205080b6ab2dbc6871a63f2dae94"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-food-mobile-390.png",
+      "bytes": 519606,
+      "sha256": "0df8f702c454a6b2161ead3c5f0d07819211f2888cec85c21821a0d5690f262a"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-food-tablet-768.png",
+      "bytes": 666674,
+      "sha256": "86204ffd5d0366c1775dbbe0f2ed1483c8369eaf0ce26f090a9ad6d68e0113a8"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-general-catalog-desktop-1440.png",
+      "bytes": 903126,
+      "sha256": "7e94fd5a0b5245ad2a47530744e1a6eefbb647e7b5beffff41c28170173de7d2"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-general-catalog-mobile-390.png",
+      "bytes": 521118,
+      "sha256": "446960247c22270abfd8284960b33f16651f0c58f005dcfdd773df9386a79ce6"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-general-catalog-tablet-768.png",
+      "bytes": 687013,
+      "sha256": "ecab498cffd96b2dd68a2954749f7d8278cd0386e8b14d6370cbd6481ffb8564"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-hotel-desktop-1440.png",
+      "bytes": 529983,
+      "sha256": "bc07959b1e963dae1a59ee7167abc8910cc883121ff01ee77adac9bf29c597ae"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-hotel-mobile-390.png",
+      "bytes": 296215,
+      "sha256": "341ebd6afa7a1680a30db134facde8c3cd3cff547a210b13a80788ba2aa2deff"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-hotel-tablet-768.png",
+      "bytes": 428605,
+      "sha256": "1065ae0be8b73341eac5fa38faba2220564d13b8c74937a247ab2ab8c12ed5c4"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-inquiry-catalog-desktop-1440.png",
+      "bytes": 948565,
+      "sha256": "4c01f7621230ee67339d4c8e7598a6af8c48b35c8282da3e48bc20ca9c0f06a7"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-inquiry-catalog-mobile-390.png",
+      "bytes": 544315,
+      "sha256": "c6d12332d40459ff810cd7480298f441baa01eb73e38b388a06df75b387c35a2"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-inquiry-catalog-tablet-768.png",
+      "bytes": 739107,
+      "sha256": "930364fae1f918668d817f9948dc3b3b21cc77bfc72c94351534702fe122e15a"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-landing-desktop-1440.png",
+      "bytes": 505514,
+      "sha256": "c14859b7ce439a19e3b4a51b04d1607c70f938709bd7328ff290b707fddc10dc"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-landing-mobile-390.png",
+      "bytes": 258431,
+      "sha256": "7fcbc7c1eb435238c333a5213f7e5046bbc7121b38f9c5cd6e63f278a56d4a87"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-landing-tablet-768.png",
+      "bytes": 415798,
+      "sha256": "a2caa5d74410336ea1fc68fa448e48513a78c47fe341fcc496573eef05f1e6d0"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-real-estate-desktop-1440.png",
+      "bytes": 551433,
+      "sha256": "b2c8ae10c97befd4fb593d16a512152c61ea6a721fe09fb96c0989a8a8f95ac8"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-real-estate-mobile-390.png",
+      "bytes": 335454,
+      "sha256": "c8240c007022c79805a10913a695822990038455efca8839b3f00200fdd2d5d9"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-real-estate-tablet-768.png",
+      "bytes": 459164,
+      "sha256": "476a4a65ad03c8bf2a17348c0e98e198f6c559503bb0f4e7cc67c97968911f0c"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-service-desktop-1440.png",
+      "bytes": 534201,
+      "sha256": "1b13be4e1bea016513e8f421a2dfa06a8a6e45f4472700608fbd8d3b2418aac0"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-service-mobile-390.png",
+      "bytes": 311117,
+      "sha256": "b498ea3aefc2b1a48a6ec80d9b4b607280716459cb4478028e2ba3ac4264ab69"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-service-tablet-768.png",
+      "bytes": 438824,
+      "sha256": "cf9f7c42a13a17cb540664598f6da518dd528384282aad2f58277bb373cda232"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-single-product-desktop-1440.png",
+      "bytes": 910367,
+      "sha256": "20f98d09e4ba7aa196500ec8b24b993fd58522ec99ac5d3507a3c77461b59240"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-single-product-mobile-390.png",
+      "bytes": 515889,
+      "sha256": "4c85f3a847c36019deb5c8a6cbd9a7863e8a90d0f21d095b4f76bcc794f6d753"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-single-product-tablet-768.png",
+      "bytes": 660303,
+      "sha256": "12be508162c2dd24df700454a10b62dcb8e4a6d43f30ed0c3f799d1fcb29c459"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-subscriptions-desktop-1440.png",
+      "bytes": 587202,
+      "sha256": "98d5de88e49fe3e5bb566bc7f20f33f832a5d3700279ff8df39d6e74c9bda56c"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-subscriptions-mobile-390.png",
+      "bytes": 339070,
+      "sha256": "83e571502d2f2128de29f3b8ce115b879eeae14f6252e49e65e424287a095892"
+    },
+    {
+      "path": "tests/storefront-template-viewport.spec.ts-snapshots/storefront-subscriptions-tablet-768.png",
+      "bytes": 479766,
+      "sha256": "e424e256a92241bb585f28ba893c2e722cd4fbcc1a36716a062217d4cf90c62e"
+    }
+  ]
+}

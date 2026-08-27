@@ -73,7 +73,7 @@ async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["pag
   const nextButton = page.getByTestId("merchant-signup-next");
   await expect(nextButton).toBeEnabled({ timeout: 15000 });
   await nextButton.click();
-  await expect(page.getByText("Choose template")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Choose your storefront design")).toBeVisible({ timeout: 15000 });
 }
 
 async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["page"]) {
