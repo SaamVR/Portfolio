@@ -1,6 +1,8 @@
 import { describe, expect, it } from "@/test/test-utils";
 import {
   getEffectiveSubscriptionStatus,
+  getPlanAnnualSavingsPercent,
+  getPlanTrialDays,
   getRemainingTrialDays,
   isSubscriptionLive,
   resolveStorePlanState,
@@ -78,4 +80,13 @@ describe("billing plan helpers", () => {
     expect(resolved.subscriptionStatus).toBe("past_due");
     expect(resolved.live).toBe(false);
   });
+  it("preserves explicit zero trial days", () => {
+    expect(getPlanTrialDays({ trial_days: 0 })).toBe(0);
+  });
+
+  it("derives annual savings from actual catalog prices", () => {
+    expect(getPlanAnnualSavingsPercent({ monthly_price: 499, annual_price: 5988 })).toBe(0);
+    expect(getPlanAnnualSavingsPercent({ monthly_price: 1000, annual_price: 9600 })).toBe(20);
+  });
+
 });

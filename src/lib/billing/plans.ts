@@ -31,7 +31,7 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
   {
     id: "free",
     name: "Free",
-    description: "A lightweight starter package for testing your first storefront before upgrading.",
+    description: "A lightweight starter package for creating your first storefront.",
     monthly_price: 0,
     annual_price: 0,
     annual_discount_percentage: 0,
@@ -42,52 +42,11 @@ export const PLAN_FALLBACKS: PlanCatalogRecord[] = [
     trial_days: 0,
     contact_only: false,
   },
-  {
-    id: "basic",
-    name: "Basic",
-    description: "A simple start for new stores that want to launch fast.",
-    monthly_price: 990,
-    annual_price: 11880,
-    annual_discount_percentage: 0,
-    currency_code: "BDT",
-    store_limit: 1,
-    is_active: true,
-    sort_order: 10,
-    trial_days: 14,
-    contact_only: false,
-  },
-  {
-    id: "advanced",
-    name: "Advanced",
-    description: "Best for growing brands that want stronger campaigns and more control.",
-    monthly_price: 1490,
-    annual_price: 17880,
-    annual_discount_percentage: 0,
-    currency_code: "BDT",
-    store_limit: 3,
-    is_active: true,
-    sort_order: 20,
-    trial_days: 14,
-    contact_only: false,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    description: "For teams that need more stores, deeper support, and a guided launch plan.",
-    monthly_price: 3990,
-    annual_price: 47880,
-    annual_discount_percentage: 0,
-    currency_code: "BDT",
-    store_limit: null,
-    is_active: true,
-    sort_order: 30,
-    trial_days: 14,
-    contact_only: true,
-  },
 ];
 
 export function getPlanTrialDays(plan?: Pick<PlanCatalogRecord, "trial_days"> | null) {
-  return Math.max(0, Number(plan?.trial_days ?? 14) || 14);
+  const days = Number(plan?.trial_days ?? 14);
+  return Number.isFinite(days) ? Math.max(0, days) : 14;
 }
 
 export function isFreePlan(plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "id"> | null) {
@@ -202,6 +161,16 @@ export function getPlanAnnualDiscountPercent(plan?: Pick<PlanCatalogRecord, "ann
   return Math.max(0, Number(plan?.annual_discount_percentage ?? 0) || 0);
 }
 
+export function getPlanAnnualSavingsPercent(
+  plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price"> | null,
+) {
+  const monthly = Math.max(0, Number(plan?.monthly_price ?? 0));
+  const annual = Math.max(0, Number(plan?.annual_price ?? 0));
+  const undiscountedAnnual = monthly * 12;
+  if (undiscountedAnnual <= 0 || annual <= 0 || annual >= undiscountedAnnual) return 0;
+  return Math.max(0, Math.round(((undiscountedAnnual - annual) / undiscountedAnnual) * 100));
+}
+
 export function formatPlanPrice(
   plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "currency_code"> | null,
   interval: BillingInterval = "monthly",
@@ -209,6 +178,15 @@ export function formatPlanPrice(
   const amount = getPlanPrice(plan, interval);
   const currency = plan?.currency_code || "BDT";
   return `${currency} ${Math.round(amount).toLocaleString()}`;
+}
+
+export function formatPlanBillingLabel(
+  plan?: Pick<PlanCatalogRecord, "monthly_price" | "annual_price" | "currency_code" | "id"> | null,
+  interval: BillingInterval = "monthly",
+) {
+  if (isFreePlan(plan)) return "Free";
+  const suffix = interval === "annual" ? "/yr" : "/mo";
+  return `${formatPlanPrice(plan, interval)}${suffix}`;
 }
 
 export async function loadPublicPlanCatalog() {

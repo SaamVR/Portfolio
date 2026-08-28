@@ -3,13 +3,14 @@
 import React, { useState } from "react";
 import { Check, Sparkles } from "lucide-react";
 import { PlanCtaButton } from "@/components/marketing/PlanCtaButton";
-import { formatPlanPrice, getPlanTrialDays, isContactOnlyPlan, PLAN_FALLBACKS, type PlanCatalogRecord, type BillingInterval } from "@/lib/billing/plans";
+import { formatPlanPrice, getPlanAnnualSavingsPercent, getPlanTrialDays, isContactOnlyPlan, type PlanCatalogRecord, type BillingInterval } from "@/lib/billing/plans";
+import { usePublicPlanCatalog } from "@/lib/billing/use-public-plan-catalog";
 
 type PlanCard = {
   id: string;
   name: string;
   price?: string;
-  trial: string;
+  trial?: string;
   eyebrow?: string;
   description: string;
   features: string[];
@@ -22,7 +23,6 @@ const marketingPlans: PlanCard[] = [
   {
     id: "free",
     name: "Free Forever",
-    price: "BDT 0/mo",
     trial: "No credit card required",
     description: "A simple start for new stores testing the waters.",
     features: ["1 storefront", "Limited access", "No custom domains", "Community support"],
@@ -32,8 +32,6 @@ const marketingPlans: PlanCard[] = [
   {
     id: "basic",
     name: "Basic",
-    price: "BDT 990/mo",
-    trial: "14-day free trial",
     description: "A simple start for new stores that want to launch fast.",
     features: ["1 storefront", "Mobile onboarding", "Page builder", "COD and manual payments"],
     cta: "Start Basic",
@@ -42,8 +40,6 @@ const marketingPlans: PlanCard[] = [
   {
     id: "advanced",
     name: "Advanced",
-    price: "BDT 1,490/mo",
-    trial: "14-day free trial",
     description: "Best for growing brands that want stronger campaigns and more control.",
     features: ["3 storefronts", "Launch templates", "Staff roles", "Coupons, reviews, analytics"],
     cta: "Start Advanced",
@@ -52,7 +48,6 @@ const marketingPlans: PlanCard[] = [
   {
     id: "pro",
     name: "Pro",
-    trial: "14-day free trial",
     eyebrow: "Guided rollout",
     description: "For teams that need more stores, deeper support, and a guided launch plan.",
     features: ["Unlimited storefronts", "Custom domains", "Priority support", "Migration help"],
@@ -62,20 +57,31 @@ const marketingPlans: PlanCard[] = [
   },
 ];
 
-export function CmsPricing({ planCatalog = PLAN_FALLBACKS }: { planCatalog?: PlanCatalogRecord[] }) {
+export function CmsPricing({ planCatalog }: { planCatalog?: PlanCatalogRecord[] }) {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
+  const liveCatalog = usePublicPlanCatalog(planCatalog);
 
-  const plans = marketingPlans.map((plan) => {
-    const livePlan = planCatalog.find((item) => item.id === plan.id);
+  const plans = liveCatalog.map((livePlan) => {
+    const presentation = marketingPlans.find((item) => item.id === livePlan.id) ?? {
+      id: livePlan.id,
+      name: livePlan.name,
+      trial: "",
+      description: livePlan.description || "",
+      features: [],
+      cta: "Choose Plan",
+      featured: false,
+    };
     const trialDays = getPlanTrialDays(livePlan);
-    const isContact = isContactOnlyPlan(livePlan ?? { id: plan.id }) || plan.contactOnly;
+    const isContact = isContactOnlyPlan(livePlan);
     return {
-      ...plan,
-      price: isContact ? undefined : formatPlanPrice(livePlan ?? { monthly_price: plan.id === 'basic' ? 990 : plan.id === 'advanced' ? 1490 : 0, currency_code: 'BDT' }, billingInterval),
-      trial: plan.id === "free" ? plan.trial : `${trialDays}-day free trial`,
-      cta: isContact ? "Contact Support" : plan.cta,
-      description: livePlan?.description || plan.description,
+      ...presentation,
+      name: livePlan.name,
+      price: isContact ? undefined : formatPlanPrice(livePlan, billingInterval),
+      trial: livePlan.id === "free" ? presentation.trial : trialDays > 0 ? `${trialDays}-day free trial` : "",
+      cta: isContact ? "Contact Support" : presentation.cta,
+      description: livePlan.description || presentation.description,
       contactOnly: isContact,
+      annualSavingsPercent: getPlanAnnualSavingsPercent(livePlan),
     };
   });
 
@@ -120,14 +126,11 @@ export function CmsPricing({ planCatalog = PLAN_FALLBACKS }: { planCatalog?: Pla
               }`}
             >
               <span>Yearly Billing</span>
-              <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
-                Save 20%
-              </span>
             </button>
           </div>
         </div>
 
-        <div className="mt-16 grid gap-6 lg:grid-cols-4 items-stretch">
+        <div className={`mt-16 grid gap-6 items-stretch ${plans.length <= 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
           {plans.map((plan, index) => (
             <article
               key={plan.name}
@@ -162,6 +165,9 @@ export function CmsPricing({ planCatalog = PLAN_FALLBACKS }: { planCatalog?: Pla
                     <div>
                       <p className="font-heading text-4xl font-extrabold text-foreground">{plan.price === "BDT 0" ? "Free" : plan.price}</p>
                       <p className="text-xs text-muted-foreground mt-1">{billingInterval === "annual" ? "billed annually" : "per month"}</p>
+                      {billingInterval === "annual" && plan.annualSavingsPercent > 0 ? (
+                        <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Save {plan.annualSavingsPercent}% vs monthly</p>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-border bg-muted/50 px-4 py-4 w-full">

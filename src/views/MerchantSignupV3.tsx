@@ -35,7 +35,8 @@ import { toast } from "sonner";
 import { slugify } from "@/lib/slug";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
-import { isContactOnlyPlan, resolveSignupPlanId, type PlanCatalogRecord } from "@/lib/billing/plans";
+import { formatPlanBillingLabel, isContactOnlyPlan, resolveSignupPlanId } from "@/lib/billing/plans";
+import { usePublicPlanCatalog } from "@/lib/billing/use-public-plan-catalog";
 import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
 import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
@@ -70,12 +71,7 @@ const questionnaireSectionIds = new Set([
   "recently-viewed",
 ]);
 
-const defaultPlans: PlanCatalogRecord[] = [
-  { id: "free", name: "Free", description: null, monthly_price: 0, trial_days: 0, contact_only: false },
-  { id: "basic", name: "Basic", description: null, monthly_price: 990, trial_days: 14, contact_only: false },
-  { id: "advanced", name: "Advanced", description: null, monthly_price: 1490, trial_days: 14, contact_only: false },
-  { id: "pro", name: "Pro", description: null, monthly_price: 3990, trial_days: 14, contact_only: true },
-];
+
 
 function normalizeHost(value?: string | null) {
   if (!value) return null;
@@ -103,11 +99,6 @@ function getLaunchSuccessNextAction(templateId: StorefrontTemplateId) {
   if (templateId === "service" || templateId === "booking") return { label: "Add First Service", description: "Create the first service package so customers can book or inquire." };
   if (templateId === "inquiry-catalog") return { label: "Add First Catalog Item", description: "Add the first inquiry-led item so buyers can request pricing or details." };
   return { label: "Add First Product", description: "Add your first product so the storefront is ready for browsing and checkout." };
-}
-
-function formatPlanPrice(plan: PlanCatalogRecord) {
-  if (Number(plan.monthly_price || 0) <= 0) return "Free";
-  return `৳${Number(plan.monthly_price).toLocaleString()}/mo`;
 }
 
 async function saveSiteSettings(storeId: string, entries: SiteSettingEntry[]) {
@@ -241,7 +232,7 @@ export default function MerchantSignupV3() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [setupWarning, setSetupWarning] = useState<string | null>(null);
   const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
-  const [plans, setPlans] = useState<PlanCatalogRecord[]>(defaultPlans);
+  const plans = usePublicPlanCatalog();
   const [accountRestriction, setAccountRestriction] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", storeName: "", storeSlug: "", storefrontTemplateId: requestedTemplateId, planId: searchParams.get("planId") || "free", otpCode: "" });
   const [wizardAnswers, setWizardAnswers] = useState<MerchantRegistrationAnswers>(() => createDefaultRegistrationAnswers(getStorefrontTemplateDefinition(requestedTemplateId)));
@@ -280,13 +271,8 @@ export default function MerchantSignupV3() {
 
   useEffect(() => {
     const requestedPlanId = isAdditionalStoreFlow ? null : new URLSearchParams(searchKey).get("planId");
-    supabase.from("cms_plans").select("id, name, description, monthly_price, trial_days, contact_only, is_active").eq("is_active", true).order("sort_order").then(({ data }) => {
-      if (!data || data.length === 0) return;
-      const nextPlans = data as unknown as PlanCatalogRecord[];
-      setPlans(nextPlans);
-      setForm((current) => ({ ...current, planId: resolveSignupPlanId(nextPlans, requestedPlanId) }));
-    });
-  }, [isAdditionalStoreFlow, searchKey]);
+    setForm((current) => ({ ...current, planId: resolveSignupPlanId(plans, requestedPlanId) }));
+  }, [isAdditionalStoreFlow, plans, searchKey]);
 
   useEffect(() => {
     setForm((current) => ({ ...current, storefrontTemplateId: requestedTemplateId }));
@@ -451,7 +437,7 @@ export default function MerchantSignupV3() {
               {step === "verify" ? <form onSubmit={confirmation ? handleVerifyPhone : handleSendPhoneCode} className="mx-auto max-w-xl space-y-5">{!confirmation ? <div><Label htmlFor="merchant-phone">Phone number</Label><Input id="merchant-phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="01XXXXXXXXX" className="mt-2 h-12" /></div> : <div><Label htmlFor="merchant-phone-code">Verification code</Label><Input id="merchant-phone-code" value={form.otpCode} onChange={(e) => update("otpCode", e.target.value)} className="mt-2 h-12 text-center tracking-[0.25em]" /></div>}<Button type="submit" disabled={phoneLoading} className="h-12 w-full">{phoneLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{confirmation ? "Verify and continue" : "Send verification code"}</Button><Button type="button" variant="ghost" onClick={() => setStep("methods")} className="w-full">Back</Button></form> : null}
 
               {step === "details" ? <form onSubmit={handleContinueToDesign} className="space-y-7"><div className="grid gap-5 md:grid-cols-2">{requiresOwnerName ? <div className="md:col-span-2"><Label htmlFor="owner-name">Your name</Label><div className="relative mt-2"><User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-name" data-testid="merchant-signup-owner-name" value={form.name} onChange={(e) => update("name", e.target.value)} className="h-12 pl-10" /></div></div> : null}<div><Label htmlFor="store-name">Store name</Label><div className="relative mt-2"><Store className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="store-name" data-testid="merchant-signup-store-name" value={form.storeName} onChange={(e) => update("storeName", e.target.value)} placeholder="My Store" className="h-12 pl-10" /></div></div><div><Label htmlFor="store-slug">Store URL</Label><Input id="store-slug" data-testid="merchant-signup-store-slug" value={form.storeSlug} onChange={(e) => update("storeSlug", slugify(e.target.value))} className="mt-2 h-12" /><p className={cn("mt-2 text-xs", slugState === "available" ? "text-emerald-600" : slugState === "taken" || slugState === "invalid" ? "text-destructive" : "text-muted-foreground")}>{slugStatusCopy}</p></div></div>
-                {!isAdditionalStoreFlow ? <div><p className="text-sm font-semibold">Choose a starting package</p><div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => { const contactOnly = isContactOnlyPlan(plan); const active = form.planId === plan.id; return <button key={plan.id} type="button" disabled={contactOnly} onClick={() => update("planId", plan.id)} className={cn("rounded-2xl border p-4 text-left", active ? "border-primary bg-primary/5" : "border-border", contactOnly && "opacity-50")}><p className="font-semibold">{plan.name}</p><p className="mt-1 font-heading text-lg font-bold">{formatPlanPrice(plan)}</p><p className="mt-2 text-xs text-muted-foreground">{contactOnly ? "Contact support" : Number(plan.trial_days || 0) > 0 ? `${plan.trial_days}-day trial` : "Start free"}</p></button>; })}</div></div> : <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm">This store inherits your current package limits.</div>}
+                {!isAdditionalStoreFlow ? <div><p className="text-sm font-semibold">Choose a starting package</p><div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => { const contactOnly = isContactOnlyPlan(plan); const active = form.planId === plan.id; return <button key={plan.id} type="button" disabled={contactOnly} onClick={() => update("planId", plan.id)} className={cn("rounded-2xl border p-4 text-left", active ? "border-primary bg-primary/5" : "border-border", contactOnly && "opacity-50")}><p className="font-semibold">{plan.name}</p><p className="mt-1 font-heading text-lg font-bold">{formatPlanBillingLabel(plan)}</p><p className="mt-2 text-xs text-muted-foreground">{contactOnly ? "Contact support" : Number(plan.trial_days || 0) > 0 ? `${plan.trial_days}-day trial` : "Start free"}</p></button>; })}</div></div> : <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm">This store inherits your current package limits.</div>}
                 {accountRestriction ? <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{accountRestriction}</div> : null}{submitError ? <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{submitError}</div> : null}
                 <div className="flex justify-end"><Button type="submit" data-testid="merchant-signup-next" disabled={!canContinueToDesign} className="h-11">Continue to Design <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
               </form> : null}
