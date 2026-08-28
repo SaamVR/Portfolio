@@ -86,6 +86,7 @@ import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplatePr
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
+import { advanceEditorContext, editorContextMatches, type EditorContextToken } from "@/lib/cms/editor-context";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -439,6 +440,17 @@ export default function CmsPagesManager() {
   );
   const [draggedAdvancedBlockId, setDraggedAdvancedBlockId] = useState<string | null>(null);
   const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
+  const editorContextRef = useRef<EditorContextToken>({ storeId: activeStoreId, generation: 0 });
+  editorContextRef.current = advanceEditorContext(editorContextRef.current, activeStoreId);
+  const loadStoreRequestRef = useRef(0);
+  const revisionsRequestRef = useRef(0);
+  const selectedPageIdRef = useRef(selectedPageId);
+  selectedPageIdRef.current = selectedPageId;
+  const captureEditorContext = useCallback((): EditorContextToken => ({ ...editorContextRef.current }), []);
+  const isEditorContextCurrent = useCallback(
+    (context: EditorContextToken) => editorContextMatches(editorContextRef.current, context),
+    [],
+  );
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
@@ -540,15 +552,26 @@ export default function CmsPagesManager() {
   }, []);
 
   const loadStore = useCallback(async () => {
-    setLoading(true);
-    if (!activeStoreId) {
-      commitStoreChange(null, { trackHistory: false, resetHistory: true });
-      setInstalledThemePackageVersion(null);
-      setSelectedPageId("");
-      setPersistedSnapshot("");
-      setRecoverableDraft(null);
-      setLastDraftSavedAt(null);
-      setLoading(false);
+    const context = captureEditorContext();
+    const requestId = ++loadStoreRequestRef.current;
+    const isCurrentLoad = () =>
+      loadStoreRequestRef.current === requestId && isEditorContextCurrent(context);
+
+    if (isCurrentLoad()) {
+      setLoading(true);
+    }
+
+    const storeId = context.storeId;
+    if (!storeId) {
+      if (isCurrentLoad()) {
+        commitStoreChange(null, { trackHistory: false, resetHistory: true });
+        setInstalledThemePackageVersion(null);
+        setSelectedPageId("");
+        setPersistedSnapshot("");
+        setRecoverableDraft(null);
+        setLastDraftSavedAt(null);
+        setLoading(false);
+      }
       return;
     }
 
@@ -556,8 +579,10 @@ export default function CmsPagesManager() {
       const storeResponse = await supabase
         .from("stores")
         .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
-        .eq("id", activeStoreId as string)
+        .eq("id", storeId)
         .maybeSingle();
+
+      if (!isCurrentLoad()) return;
 
       const storeRecord = storeResponse.data as StoreRecord | null;
 
@@ -579,11 +604,11 @@ export default function CmsPagesManager() {
         siteSettingsResponse,
         loadedThemePackages,
       ] = await Promise.all([
-          supabase
-            .from("store_business_profiles")
-            .select("template_id, business_family, catalog_mode")
-            .eq("store_id", storeRecord.id)
-            .maybeSingle(),
+        supabase
+          .from("store_business_profiles")
+          .select("template_id, business_family, catalog_mode")
+          .eq("store_id", storeRecord.id)
+          .maybeSingle(),
         supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
         supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
         supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css").eq("store_id", storeRecord.id).order("sort_order"),
@@ -591,8 +616,9 @@ export default function CmsPagesManager() {
         loadThemePackages(supabase, storeRecord.id),
       ]);
 
-      const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
+      if (!isCurrentLoad()) return;
 
+      const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
       const parsedStore = mapRecordsToStore(
         storeRecord,
         businessProfile,
@@ -603,6 +629,8 @@ export default function CmsPagesManager() {
         fallbackStorefrontTemplateSeeds,
         loadedThemePackages,
       );
+
+      if (!isCurrentLoad()) return;
 
       setStoreTemplateSeeds(fallbackStorefrontTemplateSeeds);
       setThemePackages(loadedThemePackages);
@@ -627,19 +655,21 @@ export default function CmsPagesManager() {
         if (requestedPageId && parsedStore.pages.some((page) => page.id === requestedPageId)) {
           return requestedPageId;
         }
-
         return current || parsedStore.pages[0]?.id || "";
       });
       setSelectedBlockId(requestedBlockId);
     } catch (error) {
+      if (!isCurrentLoad()) return;
       console.error("Failed to load CMS store workspace:", error);
       toast.error("Failed to refresh the page builder workspace. Please try again.");
       commitStoreChange(null, { trackHistory: false, resetHistory: true });
       setInstalledThemePackageVersion(null);
     } finally {
-      setLoading(false);
+      if (isCurrentLoad()) {
+        setLoading(false);
+      }
     }
-  }, [activeStoreId, commitStoreChange, requestedBlockId, requestedPageId]);
+  }, [captureEditorContext, commitStoreChange, isEditorContextCurrent, requestedBlockId, requestedPageId]);
 
   const currentSnapshot = useMemo(() => (store ? serializeStoreDraft(store) : ""), [store]);
   const hasUnsavedChanges = Boolean(store && persistedSnapshot && currentSnapshot !== persistedSnapshot);
@@ -647,7 +677,7 @@ export default function CmsPagesManager() {
   useEffect(() => {
     if (role !== "admin") return;
     void loadStore();
-  }, [loadStore, role]);
+  }, [activeStoreId, loadStore, role]);
 
   useEffect(() => {
     setSelectedPageId("");
@@ -664,22 +694,26 @@ export default function CmsPagesManager() {
     setDesktopPreviewMode("side");
     setDesktopPreviewSide("right");
     setIsMobilePreviewOpen(false);
+    setBootstrapping(false);
+    setSaving(false);
   }, [activeStoreId]);
 
   useEffect(() => {
     if (role !== "admin") return;
+    const context = captureEditorContext();
 
     const loadSharedLibraries = async () => {
       const [registry, loadedThemePackages] = await Promise.all([
         loadBlockRegistry(supabase),
-        loadThemePackages(supabase, activeStoreId),
+        loadThemePackages(supabase, context.storeId),
       ]);
+      if (!isEditorContextCurrent(context)) return;
       setBlockRegistry(registry);
       setThemePackages(loadedThemePackages);
     };
 
     void loadSharedLibraries();
-  }, [activeStoreId, role]);
+  }, [activeStoreId, captureEditorContext, isEditorContextCurrent, role]);
 
   useEffect(() => {
     if (!availablePageTemplates.some((template) => template.id === newPageTemplate)) {
@@ -786,18 +820,30 @@ export default function CmsPagesManager() {
   useEffect(() => {
     if (!selectedPageId) {
       setRevisions([]);
+      setLoadingRevisions(false);
       return;
     }
 
+    const context = captureEditorContext();
+    const pageId = selectedPageId;
+    const requestId = ++revisionsRequestRef.current;
+    const isCurrentRevisionLoad = () =>
+      revisionsRequestRef.current === requestId
+      && selectedPageIdRef.current === pageId
+      && isEditorContextCurrent(context);
+
     const loadRevisions = async () => {
-      setLoadingRevisions(true);
+      if (isCurrentRevisionLoad()) {
+        setLoadingRevisions(true);
+      }
       const { data } = await supabase
         .from("store_page_revisions")
         .select("id, created_at, revision_label, blocks_snapshot")
-        .eq("page_id", selectedPageId)
+        .eq("page_id", pageId)
         .order("created_at", { ascending: false })
         .limit(8);
 
+      if (!isCurrentRevisionLoad()) return;
       setRevisions(
         (((data as Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: unknown[] }> | null) ?? [])
           .map((revision) => ({
@@ -810,7 +856,7 @@ export default function CmsPagesManager() {
     };
 
     void loadRevisions();
-  }, [selectedPageId]);
+  }, [captureEditorContext, isEditorContextCurrent, selectedPageId]);
 
   const updateSelectedPage = (updater: (page: StorePage) => StorePage) => {
     commitStoreChange((current) => {
@@ -841,11 +887,14 @@ export default function CmsPagesManager() {
       return;
     }
 
-    if (!activeStoreId) {
+    const context = captureEditorContext();
+    const originStoreId = context.storeId;
+    if (!originStoreId) {
       toast.error("Select a store before initializing the storefront workspace.");
       return;
     }
 
+    const originStore = store?.id === originStoreId ? store : null;
     setBootstrapping(true);
 
     const templateProfile = resolveStorefrontTemplateProfile(storeTemplateSeedId, { templateSeedId: storeTemplateSeedId });
@@ -859,10 +908,10 @@ export default function CmsPagesManager() {
 
     const { error: storeError } = await supabase.from("stores").upsert(
       {
-        id: activeStoreId as string,
+        id: originStoreId,
         owner_id: user.id,
-        name: store?.name ?? getTemplateBootstrapStoreName(templateSeed.id),
-        slug: store?.slug ?? `store-${String(activeStoreId).slice(0, 8)}`,
+        name: originStore?.name ?? getTemplateBootstrapStoreName(templateSeed.id),
+        slug: originStore?.slug ?? `store-${originStoreId.slice(0, 8)}`,
         description: templateProfile.seedDefinition.storeDescription,
         currency_code: "BDT",
         locale: "en-BD",
@@ -873,14 +922,16 @@ export default function CmsPagesManager() {
     );
 
     if (storeError) {
-      toast.error("Failed to initialize the storefront workspace.");
-      setBootstrapping(false);
+      if (isEditorContextCurrent(context)) {
+        toast.error("Failed to initialize the storefront workspace.");
+        setBootstrapping(false);
+      }
       return;
     }
 
     await supabase.from("store_themes").upsert(
       {
-        store_id: activeStoreId as string,
+        store_id: originStoreId,
         preset_id: themePackage.presetId,
         mode: templateProfile.seedDefinition.defaultTheme.mode,
         theme_package_id: themePackage.id,
@@ -920,7 +971,7 @@ export default function CmsPagesManager() {
       await supabase.from("store_pages").upsert(
         {
           id: page.id,
-          store_id: activeStoreId as string,
+          store_id: originStoreId,
           slug: page.slug,
           title: page.title,
           seo_title: page.seoTitle ?? null,
@@ -935,7 +986,7 @@ export default function CmsPagesManager() {
           page.blocks.map((block) => ({
             id: block.id,
             page_id: page.id,
-            store_id: activeStoreId as string,
+            store_id: originStoreId,
             block_type: block.type as any,
             props: block.props as any,
             sort_order: block.sortOrder,
@@ -954,7 +1005,7 @@ export default function CmsPagesManager() {
 
     await supabase.from("store_business_profiles").upsert(
       {
-        store_id: activeStoreId as string,
+        store_id: originStoreId,
         template_id: templateProfile.templateSeedId,
         business_family: templateProfile.businessFamily,
         catalog_mode: templateProfile.catalogMode,
@@ -964,7 +1015,7 @@ export default function CmsPagesManager() {
     );
 
     const siteSettingsRows = buildStorefrontTemplateSiteSettingsEntries(templateProfile.seedDefinition).map((entry) => ({
-      store_id: activeStoreId as string,
+      store_id: originStoreId,
       key: entry.key,
       value: entry.value,
     }));
@@ -975,15 +1026,19 @@ export default function CmsPagesManager() {
         .upsert(siteSettingsRows, { onConflict: "store_id,key" });
 
       if (siteSettingsError) {
-        toast.error("Failed to seed template site settings.");
-        setBootstrapping(false);
+        if (isEditorContextCurrent(context)) {
+          toast.error("Failed to seed template site settings.");
+          setBootstrapping(false);
+        }
         return;
       }
     }
 
-    toast.success("Storefront workspace is ready.");
-    setBootstrapping(false);
-    await loadStore();
+    if (isEditorContextCurrent(context)) {
+      toast.success("Storefront workspace is ready.");
+      setBootstrapping(false);
+      await loadStore();
+    }
   };
 
   const addPage = () => {
@@ -1397,7 +1452,8 @@ export default function CmsPagesManager() {
   };
 
   const importStoreLayout = async (raw: string) => {
-    if (!store) return;
+    const context = captureEditorContext();
+    if (!store || !context.storeId || store.id !== context.storeId || !isEditorContextCurrent(context)) return;
 
     try {
       const parsed = JSON.parse(raw) as Partial<StoreLayoutPackage>;
@@ -1516,6 +1572,10 @@ export default function CmsPagesManager() {
   const saveAll = async () => {
     if (!store || !user) return;
 
+    const context = captureEditorContext();
+    if (!context.storeId || store.id !== context.storeId || !isEditorContextCurrent(context)) return;
+    const originDraftStorageKey = getDraftStorageKey(context.storeId);
+
     setSaveError(null);
 
     const validatedStore = validateStoreForPersistence(store);
@@ -1597,22 +1657,30 @@ export default function CmsPagesManager() {
         pageSlugs: selectedPage ? [selectedPage.slug] : undefined,
       });
 
-      toast.success("Page Builder changes saved.");
-      setRevisionLabel("");
-      if (draftStorageKey && typeof window !== "undefined") {
-        window.localStorage.removeItem(draftStorageKey);
+      if (originDraftStorageKey && typeof window !== "undefined") {
+        window.localStorage.removeItem(originDraftStorageKey);
       }
-      setPersistedSnapshot(serializeStoreDraft(safeStore));
-      setRecoverableDraft(null);
-      setLastDraftSavedAt(null);
+      if (isEditorContextCurrent(context)) {
+        toast.success("Page Builder changes saved.");
+        setRevisionLabel("");
+        setPersistedSnapshot(serializeStoreDraft(safeStore));
+        setRecoverableDraft(null);
+        setLastDraftSavedAt(null);
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to save Page Builder changes.";
-      setSaveError(message);
-      toast.error(message);
+      if (isEditorContextCurrent(context)) {
+        const message = error instanceof Error ? error.message : "Failed to save Page Builder changes.";
+        setSaveError(message);
+        toast.error(message);
+      }
     } finally {
-      setSaving(false);
+      if (isEditorContextCurrent(context)) {
+        setSaving(false);
+      }
     }
-    await loadStore();
+    if (isEditorContextCurrent(context)) {
+      await loadStore();
+    }
   };
 
   const restoreRevision = (revisionId: string) => {
