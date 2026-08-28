@@ -8,6 +8,7 @@ import { buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
 import { normalizeMetricDefinitions, normalizeMetricValues } from "@/lib/cms/product-metrics";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { canUseIndexedStorefrontSearch } from "@/lib/storefront/storefront-product-search";
+import { resolveStorefrontCatalogSource } from "@/lib/storefront/storefront-product-truth";
 
 interface DBProduct {
   id: string;
@@ -133,38 +134,32 @@ function buildFallbackProducts(storeId: string | null | undefined, currentStore?
 export function useProducts(explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
-  const shouldUseStorefrontApi = currentStore?.id === storeId && isUuid(storeId ?? "");
+  const catalogSource = resolveStorefrontCatalogSource(storeId, currentStore?.id);
 
   return useQuery({
     queryKey: ["products", storeId],
     queryFn: async () => {
-      try {
-        if (shouldUseStorefrontApi && storeId) {
-          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}`);
-          if (!response.ok) {
-            throw new Error(`Storefront products request failed: ${response.status}`);
-          }
-
-          const data = (await response.json()) as DBProduct[];
-          const mapped = data.map(mapDBProduct);
-          return mapped.length > 0 ? mapped : buildFallbackProducts(storeId, currentStore);
-        }
-
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("store_id", storeId as string)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
-        if (mapped.length === 0) {
-          return buildFallbackProducts(storeId, currentStore);
-        }
-        return mapped;
-      } catch (err) {
-        console.warn("Failed to fetch products from Supabase, using seed fallback products:", err);
+      if (catalogSource === "preview-seed") {
         return buildFallbackProducts(storeId, currentStore);
       }
+
+      if (catalogSource === "storefront-api" && storeId) {
+        const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}`);
+        if (!response.ok) {
+          throw new Error(`Storefront products request failed: ${response.status}`);
+        }
+
+        const data = (await response.json()) as DBProduct[];
+        return data.map(mapDBProduct);
+      }
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("store_id", storeId as string)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as DBProduct[]).map(mapDBProduct);
     },
     staleTime: 1000 * 60 * 2,
     enabled: !!storeId,
@@ -185,7 +180,8 @@ export function useProductSearch(options: ProductSearchOptions, explicitStoreId?
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
   const query = options.query.trim();
-  const shouldUseIndexedSearch = canUseIndexedStorefrontSearch(storeId, query) && isUuid(storeId ?? "");
+  const catalogSource = resolveStorefrontCatalogSource(storeId, currentStore?.id);
+  const shouldUseIndexedSearch = catalogSource !== "preview-seed" && canUseIndexedStorefrontSearch(storeId, query) && isUuid(storeId ?? "");
 
   return useQuery({
     queryKey: [
@@ -230,45 +226,39 @@ export function useProductSearch(options: ProductSearchOptions, explicitStoreId?
 export function useProduct(id: string | undefined, explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
-  const shouldUseStorefrontApi = currentStore?.id === storeId && isUuid(storeId ?? "");
+  const catalogSource = resolveStorefrontCatalogSource(storeId, currentStore?.id);
 
   return useQuery({
     queryKey: ["product", storeId, id],
     queryFn: async () => {
       if (!id) return null;
-      const fallback = null;
+
+      if (catalogSource === "preview-seed") {
+        return buildFallbackProducts(storeId, currentStore).find((product) => product.id === id) ?? null;
+      }
+
       if (!isUuid(id)) {
         return null;
       }
-      try {
-        if (shouldUseStorefrontApi && storeId) {
-          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&id=${encodeURIComponent(id)}`);
-          if (!response.ok) {
-            throw new Error(`Storefront product request failed: ${response.status}`);
-          }
 
-          const data = (await response.json()) as DBProduct[];
-          if (data[0]) {
-            return mapDBProduct(data[0]);
-          }
-          return buildFallbackProducts(storeId, currentStore).find((product) => product.id === id) ?? null;
+      if (catalogSource === "storefront-api" && storeId) {
+        const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&id=${encodeURIComponent(id)}`);
+        if (!response.ok) {
+          throw new Error(`Storefront product request failed: ${response.status}`);
         }
 
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("id", id)
-          .eq("store_id", storeId as string)
-          .maybeSingle();
-        if (error) throw error;
-        if (data) {
-          return mapDBProduct(data as unknown as DBProduct);
-        }
-        return buildFallbackProducts(storeId, currentStore).find((product) => product.id === id) ?? fallback;
-      } catch (err) {
-        console.warn(`Failed to fetch product ${id} from Supabase, using seed fallback:`, err);
-        return buildFallbackProducts(storeId, currentStore).find((product) => product.id === id) ?? fallback;
+        const data = (await response.json()) as DBProduct[];
+        return data[0] ? mapDBProduct(data[0]) : null;
       }
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .eq("store_id", storeId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapDBProduct(data as unknown as DBProduct) : null;
     },
     enabled: !!id && !!storeId,
   });
@@ -277,50 +267,39 @@ export function useProduct(id: string | undefined, explicitStoreId?: string | nu
 export function useProductsByIds(ids: string[], explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
-  const shouldUseStorefrontApi = currentStore?.id === storeId && isUuid(storeId ?? "");
+  const catalogSource = resolveStorefrontCatalogSource(storeId, currentStore?.id);
 
   return useQuery({
     queryKey: ["products", storeId, "by-ids", ids.join(",")],
     queryFn: async () => {
       if (!ids.length) return [];
-      const dbIds = ids.filter(isUuid);
-      const localIds = ids.filter((id) => !isUuid(id));
-      const localProducts: any[] = [];
-      if (!dbIds.length) {
+
+      if (catalogSource === "preview-seed") {
         return buildFallbackProducts(storeId, currentStore).filter((product) => ids.includes(product.id));
       }
-      try {
-        if (shouldUseStorefrontApi && storeId) {
-          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&ids=${encodeURIComponent(dbIds.join(","))}`);
-          if (!response.ok) {
-            throw new Error(`Storefront products-by-ids request failed: ${response.status}`);
-          }
 
-          const data = (await response.json()) as DBProduct[];
-          const mapped = data.map(mapDBProduct);
-          if (mapped.length > 0) {
-            const found = new Set(mapped.map((product) => product.id));
-            const fallbacks = buildFallbackProducts(storeId, currentStore).filter((product) => ids.includes(product.id) && !found.has(product.id));
-            return [...mapped, ...fallbacks];
-          }
-          return buildFallbackProducts(storeId, currentStore).filter((product) => ids.includes(product.id));
+      const dbIds = ids.filter(isUuid);
+      if (!dbIds.length) {
+        return [];
+      }
+
+      if (catalogSource === "storefront-api" && storeId) {
+        const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&ids=${encodeURIComponent(dbIds.join(","))}`);
+        if (!response.ok) {
+          throw new Error(`Storefront products-by-ids request failed: ${response.status}`);
         }
 
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("store_id", storeId as string)
-          .in("id", dbIds);
-        if (error) throw error;
-        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
-        const found = new Set(mapped.map((product) => product.id));
-        const fallbacks = buildFallbackProducts(storeId, currentStore).filter((product) => ids.includes(product.id) && !found.has(product.id));
-        return [...mapped, ...fallbacks];
-      } catch (err) {
-        console.warn("Failed to fetch products by ids from Supabase, using seed fallback products:", err);
-        const fallbacks = buildFallbackProducts(storeId, currentStore).filter((product) => ids.includes(product.id));
-        return [...localProducts, ...fallbacks.filter((fallback) => !localProducts.some((product) => product.id === fallback.id))];
+        const data = (await response.json()) as DBProduct[];
+        return data.map(mapDBProduct);
       }
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("store_id", storeId as string)
+        .in("id", dbIds);
+      if (error) throw error;
+      return (data as unknown as DBProduct[]).map(mapDBProduct);
     },
     enabled: ids.length > 0 && !!storeId,
     staleTime: 1000 * 60 * 2,
@@ -330,45 +309,36 @@ export function useProductsByIds(ids: string[], explicitStoreId?: string | null)
 export function useFeaturedProducts(explicitStoreId?: string | null) {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
-  const shouldUseStorefrontApi = currentStore?.id === storeId && isUuid(storeId ?? "");
+  const catalogSource = resolveStorefrontCatalogSource(storeId, currentStore?.id);
 
   return useQuery({
     queryKey: ["products", storeId, "featured"],
     queryFn: async () => {
-      try {
-        if (shouldUseStorefrontApi && storeId) {
-          const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&featured=1`);
-          if (!response.ok) {
-            throw new Error(`Storefront featured products request failed: ${response.status}`);
-          }
-
-          const data = (await response.json()) as DBProduct[];
-          const mapped = data.map(mapDBProduct);
-          return mapped.length > 0 ? mapped : buildFallbackProducts(storeId, currentStore).filter((product) => product.featured);
-        }
-
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("store_id", storeId as string)
-          .eq("featured", true)
-          .eq("is_available", true)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        const mapped = (data as unknown as DBProduct[]).map(mapDBProduct);
-        if (mapped.length === 0) {
-          return buildFallbackProducts(storeId, currentStore).filter((product) => product.featured);
-        }
-        return mapped;
-      } catch (err) {
-        console.warn("Failed to fetch featured products from Supabase, using seed fallback products:", err);
+      if (catalogSource === "preview-seed") {
         return buildFallbackProducts(storeId, currentStore).filter((product) => product.featured);
       }
+
+      if (catalogSource === "storefront-api" && storeId) {
+        const response = await fetch(`/api/storefront/products?storeId=${encodeURIComponent(storeId)}&featured=1`);
+        if (!response.ok) {
+          throw new Error(`Storefront featured products request failed: ${response.status}`);
+        }
+
+        const data = (await response.json()) as DBProduct[];
+        return data.map(mapDBProduct);
+      }
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("store_id", storeId as string)
+        .eq("featured", true)
+        .eq("is_available", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as DBProduct[]).map(mapDBProduct);
     },
     staleTime: 1000 * 60 * 2,
     enabled: !!storeId,
   });
 }
-
-
-
