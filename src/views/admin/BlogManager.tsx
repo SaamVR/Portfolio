@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import BlogArticleTemplateChooser from "@/components/admin/blog/BlogArticleTemplateChooser";
 import BlogInternalLinkAssistant from "@/components/admin/blog/BlogInternalLinkAssistant";
 import BlogQualityPanel from "@/components/admin/blog/BlogQualityPanel";
@@ -186,6 +187,9 @@ export default function BlogManager() {
   const { activeStoreId } = useAuth();
   const queryClient = useQueryClient();
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  const activeStoreIdRef = useRef(activeStoreId);
+  activeStoreIdRef.current = activeStoreId;
+  const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
   const [activeTab, setActiveTab] = useState("posts");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -436,19 +440,45 @@ export default function BlogManager() {
 
   const deletePost = async () => {
     if (!editingPost.id || !activeStoreId) return;
-    if (typeof window !== "undefined" && !window.confirm("Delete this blog post? This cannot be undone.")) return;
+
+    const originStoreId = activeStoreId;
+    const postId = editingPost.id;
+    const postTitle = editingPost.title.trim() || "Untitled blog post";
+    const originStoreName = store?.id === originStoreId ? store.name : undefined;
+    const confirmed = await confirmMerchantAction({
+      title: `Delete “${postTitle}”?`,
+      description: "This permanently removes the article from this store's blog.",
+      entityLabel: "Blog post",
+      entityValue: postTitle,
+      storeName: originStoreName,
+      impacts: [
+        "The article will no longer be available from this store's blog or its public URL.",
+        "This delete action cannot be undone from the merchant dashboard.",
+      ],
+      recoveryText: "Cancel to keep the article and its current publication state unchanged.",
+      confirmLabel: "Delete blog post",
+      tone: "destructive",
+    });
+    if (!confirmed) return;
+    if (activeStoreIdRef.current !== originStoreId) {
+      toast.warning("The active store changed, so the blog delete was cancelled.");
+      return;
+    }
+
     setDeletingPost(true);
     try {
       const { error } = await (supabase as any)
         .from("blog_posts")
         .delete()
-        .eq("id", editingPost.id)
-        .eq("store_id", activeStoreId);
+        .eq("id", postId)
+        .eq("store_id", originStoreId);
       if (error) throw error;
-      clearCurrentDraft();
-      setEditingPost(emptyPost);
-      await queryClient.invalidateQueries({ queryKey: ["blog-posts", activeStoreId] });
-      toast.success("Blog post deleted.");
+      await queryClient.invalidateQueries({ queryKey: ["blog-posts", originStoreId] });
+      if (activeStoreIdRef.current === originStoreId) {
+        clearCurrentDraft();
+        setEditingPost(emptyPost);
+      }
+      toast.success(`Deleted “${postTitle}” from the blog.`);
     } catch (deleteError) {
       console.error(deleteError);
       toast.error(deleteError instanceof Error ? deleteError.message : "Failed to delete the post.");
@@ -485,8 +515,9 @@ export default function BlogManager() {
     setActiveTab("posts");
   };
 
-  const applyArticleTemplate = (template: BlogArticleTemplate) => {
+  const applyArticleTemplate = async (template: BlogArticleTemplate) => {
     if (editingPost.id) return;
+    const originStoreId = activeStoreId;
     const hasUnsavedDraft = Boolean(
       editingPost.title.trim()
       || editingPost.content.trim()
@@ -498,7 +529,27 @@ export default function BlogManager() {
       || editingPost.seo_description.trim()
       || editingPost.embedded_product_ids.length > 0,
     );
-    if (hasUnsavedDraft && typeof window !== "undefined" && !window.confirm("Replace the current unsaved article draft with this template?")) return;
+    if (hasUnsavedDraft) {
+      const confirmed = await confirmMerchantAction({
+        title: "Replace the current unsaved article draft?",
+        description: `Applying the ${template.title} template will replace the article draft currently in the editor.`,
+        entityLabel: "Template",
+        entityValue: template.title,
+        storeName: store?.id === originStoreId ? store.name : undefined,
+        impacts: [
+          "Unsaved title, content, SEO, category, tag, image, and product-embed edits may be replaced.",
+          "No published article changes until you explicitly save the new draft.",
+        ],
+        recoveryText: "Cancel to keep the current article draft unchanged.",
+        confirmLabel: "Replace draft",
+        tone: "warning",
+      });
+      if (!confirmed) return;
+      if (activeStoreIdRef.current !== originStoreId) {
+        toast.warning("The active store changed, so the template was not applied.");
+        return;
+      }
+    }
 
     setEditingPost({
       ...emptyPost,
@@ -592,6 +643,7 @@ export default function BlogManager() {
 
   return (
     <div className="space-y-6">
+      {confirmationDialog}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">

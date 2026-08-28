@@ -85,6 +85,7 @@ import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTempl
 import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { advanceEditorContext, editorContextMatches, type EditorContextToken } from "@/lib/cms/editor-context";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
@@ -434,6 +435,7 @@ export default function CmsPagesManager() {
   const [storeTemplateSeedId, setStoreTemplateSeedId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const navigate = useNavigate();
+  const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
 
   const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info" | "gallery">(
     isTemplateGalleryRoute ? "gallery" : "pages",
@@ -1099,17 +1101,30 @@ export default function CmsPagesManager() {
     toast.success("Template applied to the current page.");
   };
 
-  const applyRecommendedHomepage = () => {
+  const applyRecommendedHomepage = async () => {
     if (!selectedPage?.isHomepage) {
       toast.error("Select the homepage before applying the recommended homepage layout.");
       return;
     }
 
-    if (
-      selectedPage.blocks.length > 0 &&
-      !window.confirm("Replace the current homepage blocks with the recommended default homepage layout?")
-    ) {
-      return;
+    const context = captureEditorContext();
+    const pageId = selectedPage.id;
+    if (selectedPage.blocks.length > 0) {
+      const confirmed = await confirmMerchantAction({
+        title: "Replace the current homepage layout?",
+        description: "The recommended homepage will replace every section currently in this homepage draft.",
+        entityLabel: "Page",
+        entityValue: selectedPage.title,
+        storeName: store?.name,
+        impacts: [
+          `${selectedPage.blocks.length} current section${selectedPage.blocks.length === 1 ? "" : "s"} will be replaced in the editor.`,
+          "Nothing becomes customer-visible until you explicitly save or publish the resulting draft.",
+        ],
+        recoveryText: "You can cancel now to keep the current homepage unchanged.",
+        confirmLabel: "Replace homepage",
+        tone: "warning",
+      });
+      if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
     }
 
     updateSelectedPage((page) => ({
@@ -1119,7 +1134,7 @@ export default function CmsPagesManager() {
       blocks: cloneHomepageBlocksForTemplateSeed(storeTemplateSeedId),
     }));
     setSelectedBlockId("");
-    toast.success("Recommended homepage layout applied. Save Page Builder changes to publish it.");
+    toast.success("Recommended homepage layout applied. Review the draft before saving.");
   };
 
   const removePage = (pageId: string) => {
@@ -1473,8 +1488,23 @@ export default function CmsPagesManager() {
         throw new Error("This is not a valid storefront layout package.");
       }
 
-      if (hasUnsavedChanges && !window.confirm("Importing a layout will replace your unsaved Page Builder draft. Continue?")) {
-        return;
+      if (hasUnsavedChanges) {
+        const pageId = selectedPageIdRef.current;
+        const confirmed = await confirmMerchantAction({
+          title: "Replace the unsaved Page Builder draft?",
+          description: "Importing this storefront layout will replace the current unsaved editor draft for this store.",
+          entityLabel: "Import",
+          entityValue: "Storefront layout package",
+          storeName: store.name,
+          impacts: [
+            "Current unsaved page and theme edits may be replaced by the imported layout.",
+            "The imported result remains a draft until you explicitly save or publish it.",
+          ],
+          recoveryText: "Cancel to keep the current local draft unchanged.",
+          confirmLabel: "Import and replace draft",
+          tone: "warning",
+        });
+        if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
       }
 
       const importedPages = parsed.layout.pages.flatMap((page, pageIndex) => {
@@ -1521,8 +1551,12 @@ export default function CmsPagesManager() {
     }
   };
 
-  const applyThemeBundle = (bundle: ThemeExportBundle) => {
+  const applyThemeBundle = async (bundle: ThemeExportBundle) => {
     if (!store) return false;
+
+    const context = captureEditorContext();
+    const pageId = selectedPageIdRef.current;
+    if (!context.storeId || store.id !== context.storeId || !isEditorContextCurrent(context)) return false;
 
     const changeSummary = [
       "Theme tokens and typography",
@@ -1530,13 +1564,23 @@ export default function CmsPagesManager() {
       bundle.type === "full-store" ? "full-store structure" : null,
     ].filter(Boolean).join(", ");
 
-    if (!window.confirm(`Apply this ${bundle.type.replace(/-/g, " ")} bundle? It will update: ${changeSummary || "theme settings"}. Review the draft before saving.`)) {
-      return false;
-    }
-
-    if (hasUnsavedChanges && !window.confirm("You already have unsaved Page Builder edits. Continue and merge the imported bundle into this draft?")) {
-      return false;
-    }
+    const confirmed = await confirmMerchantAction({
+      title: `Apply this ${bundle.type.replace(/-/g, " ")} bundle?`,
+      description: "The bundle will update the current storefront editor draft. Review the resulting draft before saving it.",
+      entityLabel: "Bundle changes",
+      entityValue: changeSummary || "Theme settings",
+      storeName: store.name,
+      impacts: [
+        hasUnsavedChanges
+          ? "Existing unsaved editor changes may be merged with or replaced by the imported bundle."
+          : "The current theme or page structure may change in the editor.",
+        "No customer-visible change occurs until the resulting draft is saved or published.",
+      ],
+      recoveryText: "Cancel to keep the current storefront draft unchanged.",
+      confirmLabel: "Apply bundle",
+      tone: "warning",
+    });
+    if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return false;
 
     try {
       const importedPages = (bundle.pages || []).flatMap((page, pageIndex) => {
@@ -1567,13 +1611,13 @@ export default function CmsPagesManager() {
         pages: normalizedPages,
       });
 
+      if (!isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return false;
       commitStoreChange(candidate);
       if (importedPages.length > 0) {
         setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
       }
       setSelectedBlockId("");
-      
-      toast.success("Template applied. Let's customize it!");
+      toast.success("Template applied to the draft. Review it before saving.");
       return true;
     } catch (error: any) {
       toast.error(error.message || "Failed to apply template.");
@@ -1689,38 +1733,48 @@ export default function CmsPagesManager() {
     }
   };
 
-  const restoreRevision = (revisionId: string) => {
+  const restoreRevision = async (revisionId: string) => {
     const revision = revisions.find((item) => item.id === revisionId);
-    if (!revision) return;
+    if (!revision || !selectedPage) return;
 
+    const context = captureEditorContext();
+    const pageId = selectedPage.id;
     const sanitizedSnapshot = sanitizeStoreBlocks(revision.blocks_snapshot).map((block, index) => ({
       ...block,
       sortOrder: index,
     }));
-    const currentBlocks = selectedPage?.blocks ?? [];
+    const currentBlocks = selectedPage.blocks ?? [];
     const currentTypes = currentBlocks.map((block) => block.type);
     const revisionTypes = sanitizedSnapshot.map((block) => block.type);
     const changedTypes = Array.from(new Set(revisionTypes.filter((type, index) => currentTypes[index] !== type)));
-    const summary = [
-      `Restore "${revision.revision_label}"?`,
-      "",
-      `Current sections: ${currentBlocks.length}`,
-      `Revision sections: ${sanitizedSnapshot.length}`,
-      changedTypes.length > 0 ? `Changed block types: ${changedTypes.slice(0, 4).join(", ")}${changedTypes.length > 4 ? ", ..." : ""}` : "Block types match the current page order.",
-      hasUnsavedChanges ? "" : "",
-      hasUnsavedChanges ? "Your current unsaved edits will be replaced." : "This will load the saved snapshot into the editor.",
-    ].filter(Boolean).join("\n");
 
-    if (!window.confirm(summary)) {
-      return;
-    }
+    const confirmed = await confirmMerchantAction({
+      title: `Restore revision “${revision.revision_label}”?`,
+      description: "This saved revision will replace the sections currently loaded in this page editor.",
+      entityLabel: "Page",
+      entityValue: selectedPage.title,
+      storeName: store?.name,
+      impacts: [
+        `Current sections: ${currentBlocks.length}; revision sections: ${sanitizedSnapshot.length}.`,
+        changedTypes.length > 0
+          ? `Changed block types include ${changedTypes.slice(0, 4).join(", ")}${changedTypes.length > 4 ? ", and more" : ""}.`
+          : "The revision keeps the same block-type order as the current page.",
+        hasUnsavedChanges
+          ? "Your current unsaved edits on this page will be replaced."
+          : "The saved snapshot will be loaded into the editor as a new draft.",
+      ],
+      recoveryText: "The live storefront is unchanged until you save or publish the restored draft.",
+      confirmLabel: "Restore revision",
+      tone: "warning",
+    });
+    if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
 
     updateSelectedPage((page) => ({
       ...page,
       blocks: sanitizedSnapshot,
     }));
 
-    toast.success("Revision restored into the editor. Save Page Builder changes to publish it.");
+    toast.success("Revision restored into the editor. Review the draft before saving.");
   };
 
   const restoreLocalDraft = () => {
@@ -2928,10 +2982,13 @@ export default function CmsPagesManager() {
 
   if (workspaceTab === "gallery") {
     return (
-      <TemplateGallery
-        store={store}
-        applyThemeBundle={applyThemeBundle}
-      />
+      <>
+        {confirmationDialog}
+        <TemplateGallery
+          store={store}
+          applyThemeBundle={applyThemeBundle}
+        />
+      </>
     );
   }
 
@@ -2950,6 +3007,7 @@ export default function CmsPagesManager() {
   if (showNewEditor && selectedPage) {
     return (
       <>
+      {confirmationDialog}
       <EditorShell
         store={store}
         pages={store.pages}
@@ -3074,6 +3132,7 @@ export default function CmsPagesManager() {
 
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-background">
+        {confirmationDialog}
         <div className="sticky top-0 z-30 border-b border-border/70 bg-background/95 px-3 py-3 backdrop-blur-xl sm:px-4">
           <div className="mx-auto flex max-w-[1800px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -3290,6 +3349,7 @@ export default function CmsPagesManager() {
 
   return (
     <div className="space-y-6">
+      {confirmationDialog}
       {isAdvancedEditor && selectedPage ? (
         <DomTreeNavigator
           page={selectedPage}

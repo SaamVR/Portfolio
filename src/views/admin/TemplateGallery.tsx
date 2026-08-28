@@ -141,7 +141,7 @@ export function TemplateGallery({
   applyThemeBundle,
 }: {
   store?: Store;
-  applyThemeBundle?: (bundle: ThemeExportBundle) => boolean | void;
+  applyThemeBundle?: (bundle: ThemeExportBundle) => boolean | void | Promise<boolean | void>;
 }) {
   const [activeTab, setActiveTab] = useState<"built-in" | "community">("built-in");
   const [searchQuery, setSearchQuery] = useState("");
@@ -240,7 +240,7 @@ export function TemplateGallery({
     try {
       setApplyingTemplateId(templateId);
       const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);
-      const applied = applyThemeBundle(createBuiltInBundle(templateId, store));
+      const applied = await applyThemeBundle(createBuiltInBundle(templateId, store));
       if (applied === false) return false;
       toast.success(`${selectedTemplate?.name ?? "Template"} loaded into the draft.`);
       return true;
@@ -292,7 +292,7 @@ export function TemplateGallery({
         toast.error(result.error);
         return false;
       }
-      const applied = applyThemeBundle(result.bundle);
+      const applied = await applyThemeBundle(result.bundle);
       if (applied === false) return false;
       const { data: userData } = await supabase.auth.getUser();
       const { error: installError } = await supabase

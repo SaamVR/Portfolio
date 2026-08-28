@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Film, FolderOpen, Image as ImageIcon, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,7 +44,11 @@ export function MediaLibraryBrowser({
   const [typeFilter, setTypeFilter] = useState<"all" | "image" | "video">("all");
   const [folderFilter, setFolderFilter] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
+  const [removingAssetId, setRemovingAssetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const effectiveStoreIdRef = useRef(effectiveStoreId);
+  effectiveStoreIdRef.current = effectiveStoreId;
+  const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
 
   const visibleAssets = useMemo(() => {
     return assets.filter((asset) => {
@@ -68,15 +73,15 @@ export function MediaLibraryBrowser({
     setFolderFilter("all");
   }, [effectiveStoreId, folder, resourceType]);
 
-  const persistAssets = async (nextAssets: MediaLibraryAsset[]) => {
-    if (!effectiveStoreId) {
+  const persistAssets = async (nextAssets: MediaLibraryAsset[], targetStoreId = effectiveStoreId) => {
+    if (!targetStoreId) {
       throw new Error("Select a store before managing media.");
     }
 
     // dynamically import saveMediaLibrary to avoid circular deps if any
     const { saveMediaLibrary } = await import("@/lib/media-library");
-    const saved = await saveMediaLibrary(nextAssets, effectiveStoreId);
-    queryClient.setQueryData(["media_library", effectiveStoreId], saved);
+    const saved = await saveMediaLibrary(nextAssets, targetStoreId);
+    queryClient.setQueryData(["media_library", targetStoreId], saved);
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,19 +131,41 @@ export function MediaLibraryBrowser({
   };
 
   const handleDelete = async (asset: MediaLibraryAsset) => {
-    const assetName = asset.originalFilename || asset.publicId || "this asset";
-    if (
-      typeof window !== "undefined"
-      && !window.confirm(`Remove ${assetName} from this store's media library? The uploaded file will remain available at its current URL.`)
-    ) {
+    const originStoreId = effectiveStoreId;
+    if (!originStoreId) {
+      toast.error("Select a store before managing media.");
       return;
     }
 
+    const assetName = asset.originalFilename || asset.publicId || "this asset";
+    const nextAssets = assets.filter((candidate) => candidate.id !== asset.id);
+    const confirmed = await confirmMerchantAction({
+      title: `Remove “${assetName}” from the media library?`,
+      description: "This removes the asset from this store's reusable media library, but it does not delete the uploaded file itself.",
+      entityLabel: "Media asset",
+      entityValue: assetName,
+      impacts: [
+        "The asset will stop appearing in this store's reusable media library.",
+        "Existing pages that already reference the asset URL will keep using that URL.",
+      ],
+      recoveryText: "The uploaded file remains available at its current URL; you can add it back to the library later if needed.",
+      confirmLabel: "Remove from library",
+      tone: "warning",
+    });
+    if (!confirmed) return;
+    if (effectiveStoreIdRef.current !== originStoreId) {
+      toast.warning("The active store changed, so the media removal was cancelled.");
+      return;
+    }
+
+    setRemovingAssetId(asset.id);
     try {
-      await persistAssets(assets.filter((candidate) => candidate.id !== asset.id));
-      toast.success("Asset removed from library.");
+      await persistAssets(nextAssets, originStoreId);
+      toast.success(`Removed “${assetName}” from the media library.`);
     } catch (error: any) {
       toast.error(error?.message || "Failed to remove asset");
+    } finally {
+      setRemovingAssetId(null);
     }
   };
 
@@ -159,6 +186,7 @@ export function MediaLibraryBrowser({
 
   return (
     <div className="space-y-4">
+      {confirmationDialog}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
@@ -333,12 +361,13 @@ export function MediaLibraryBrowser({
                     className="text-destructive hover:text-destructive"
                     aria-label={`Remove ${assetName} from media library`}
                     title="Remove from media library"
+                    disabled={removingAssetId === asset.id}
                     onClick={(event) => {
                       event.stopPropagation();
                       void handleDelete(asset);
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {removingAssetId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
