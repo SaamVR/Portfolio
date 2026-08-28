@@ -14,6 +14,7 @@ import {
 } from "@/lib/cms/storefront-product-presentation";
 import { normalizePresentationMetricSpecs } from "@/lib/cms/product-metrics";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { shouldUseTransactionalDetailVariant } from "@/lib/storefront/storefront-transactional-truth";
 
 export function useStoreProductPresentation(product: Product | null | undefined) {
   const currentStore = useOptionalStore();
@@ -47,12 +48,22 @@ export function useStoreProductPresentation(product: Product | null | undefined)
     metadata: specs,
   }), [displayVariant, productType, specs, templateId]);
 
-  const resolvedDetailVariant = useMemo<ProductDetailVariant>(() => resolveProductDetailVariant({
+  const candidateDetailVariant = useMemo<ProductDetailVariant>(() => resolveProductDetailVariant({
     templateId,
     productType,
     displayVariant: detailVariant,
     metadata: specs,
   }), [detailVariant, productType, specs, templateId]);
+
+  const resolvedDetailVariant = useMemo<ProductDetailVariant>(() => (
+    shouldUseTransactionalDetailVariant({
+      variant: candidateDetailVariant,
+      product,
+      storeId: currentStore?.id,
+    })
+      ? candidateDetailVariant
+      : "generic"
+  ), [candidateDetailVariant, currentStore?.id, product]);
 
   return {
     templateId,

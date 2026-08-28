@@ -1,15 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { Download, HardDrive, MonitorSmartphone, Star } from "lucide-react";
+import { Download, HardDrive, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Product } from "@/data/products";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import type { TemplateSeedCatalogMetadata } from "@/lib/cms/template-demo-seeds";
 import { encodeDigitalCartVariant } from "@/lib/digital-cart";
 import { productUrl } from "@/lib/slug";
+import { isPreviewCatalogStore } from "@/lib/storefront/storefront-product-truth";
 import { FileFormatBadges } from "@/components/storefront/digital-downloads/FileFormatBadges";
 import { LicenseSelector } from "@/components/storefront/digital-downloads/LicenseSelector";
 import {
@@ -19,6 +20,7 @@ import {
   getDigitalLicenses,
   getIncludedFileCount,
   getInstantDownloadInfo,
+  type DigitalLicenseOption,
 } from "@/components/storefront/digital-downloads/digital-download-utils";
 import {
   ProductCardShell,
@@ -34,6 +36,28 @@ type ReviewStats = {
   average: number;
 };
 
+function configuredLicenses(
+  product: Product,
+  metadata?: TemplateSeedCatalogMetadata["products"][string],
+): DigitalLicenseOption[] {
+  const variant = (metadata?.variants ?? []).find((item) => /license/i.test(item.name));
+  if (!variant?.values?.length) return [];
+
+  return variant.values
+    .map((value) => {
+      const label = value.label?.trim();
+      if (!label) return null;
+      const delta = Number(value.price_delta ?? 0);
+      return {
+        id: label.toLowerCase().replace(/\s+/g, "-"),
+        label,
+        description: "Merchant-configured license option.",
+        price: Math.max(0, product.price + (Number.isFinite(delta) ? Math.round(delta) : 0)),
+      };
+    })
+    .filter((value): value is DigitalLicenseOption => Boolean(value));
+}
+
 export function DigitalProductCard({
   product,
   reviewStats,
@@ -46,39 +70,50 @@ export function DigitalProductCard({
   const currentStore = useOptionalStore();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
+  const { specs } = useStoreProductPresentation(product);
+  const isPreview = isPreviewCatalogStore(currentStore?.id);
+  const trustedMetadata = isPreview ? metadata : undefined;
+  const trustedSpecs = isPreview ? specs : undefined;
   const formats = useMemo(() => {
-    const seededFormats = metadata?.specs?.formats;
+    const seededFormats = trustedMetadata?.specs?.formats;
     if (Array.isArray(seededFormats)) {
       return seededFormats.map((value) => String(value).trim().toUpperCase()).filter(Boolean);
     }
-    return getDigitalFormats(product);
-  }, [metadata?.specs, product]);
-  const licenses = useMemo(() => getDigitalLicenses(product), [product]);
+    return getDigitalFormats(product, trustedSpecs);
+  }, [product, trustedMetadata?.specs, trustedSpecs]);
+  const licenses = useMemo(() => {
+    const configured = configuredLicenses(product, trustedMetadata);
+    return configured.length > 0 ? configured : getDigitalLicenses(product, trustedSpecs);
+  }, [product, trustedMetadata, trustedSpecs]);
   const compatibility = useMemo(() => {
-    const seededCompatibility = metadata?.specs?.software_compatibility;
+    const seededCompatibility = trustedMetadata?.specs?.software_compatibility;
     if (Array.isArray(seededCompatibility)) {
       return seededCompatibility.map((value) => String(value).trim()).filter(Boolean);
     }
-    return getDigitalCompatibility(product);
-  }, [metadata?.specs, product]);
-  const [selectedLicenseId, setSelectedLicenseId] = useState(licenses[0]?.id ?? "personal");
+    return getDigitalCompatibility(product, trustedSpecs);
+  }, [product, trustedMetadata?.specs, trustedSpecs]);
+  const [selectedLicenseId, setSelectedLicenseId] = useState(licenses[0]?.id ?? "");
   const selectedLicense = licenses.find((license) => license.id === selectedLicenseId) ?? licenses[0];
-  const rating = reviewStats?.average ?? 4.9;
+  const rating = reviewStats?.average ?? null;
   const reviewCount = reviewStats?.count ?? 0;
-  const fileSize = typeof metadata?.specs?.file_size === "string" && metadata.specs.file_size.trim()
-    ? metadata.specs.file_size.trim()
-    : getDigitalFileSize(product);
-  const includedFiles = typeof metadata?.specs?.included_files === "number"
-    ? metadata.specs.included_files
-    : getIncludedFileCount(product);
+  const fileSize = typeof trustedMetadata?.specs?.file_size === "string" && trustedMetadata.specs.file_size.trim()
+    ? trustedMetadata.specs.file_size.trim()
+    : getDigitalFileSize(product, trustedSpecs);
+  const includedFiles = typeof trustedMetadata?.specs?.included_files === "number"
+    ? trustedMetadata.specs.included_files
+    : getIncludedFileCount(product, trustedSpecs);
+  const deliveryInfo = typeof trustedMetadata?.specs?.delivery_time === "string" && trustedMetadata.specs.delivery_time.trim()
+    ? trustedMetadata.specs.delivery_time.trim()
+    : getInstantDownloadInfo(product, trustedSpecs);
   const isOnSale = typeof product.originalPrice === "number" && product.originalPrice > product.price;
   const url = productUrl(product.id, product.name, currentStore?.slug);
+  const hasFileFacts = Boolean(fileSize) || includedFiles !== null || Boolean(deliveryInfo);
 
   return (
     <ProductCardShell>
       <ProductCardMedia
         src={product.image}
-        fallbackSrc={metadata?.imageUrl ?? metadata?.imageUrls?.[0] ?? null}
+        fallbackSrc={trustedMetadata?.imageUrl ?? trustedMetadata?.imageUrls?.[0] ?? null}
         alt={product.name}
         href={url}
         aspect="4/3"
@@ -102,38 +137,46 @@ export function DigitalProductCard({
         </ProductCardTitle>
 
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-            <Star className="h-3.5 w-3.5 fill-current text-amber-500 shrink-0" />
-            <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
-            <span>{reviewCount > 0 ? `(${reviewCount})` : ""}</span>
-          </div>
-          <FileFormatBadges formats={formats.slice(0, 2)} />
+          {rating !== null ? (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+              <Star className="h-3.5 w-3.5 fill-current text-amber-500 shrink-0" />
+              <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
+              <span>{reviewCount > 0 ? `(${reviewCount})` : ""}</span>
+            </div>
+          ) : <span />}
+          {formats.length > 0 ? <FileFormatBadges formats={formats.slice(0, 2)} /> : null}
         </div>
 
-        <LicenseSelector
-          licenses={licenses}
-          value={selectedLicenseId}
-          onChange={setSelectedLicenseId}
-        />
+        {licenses.length > 0 ? (
+          <LicenseSelector licenses={licenses} value={selectedLicenseId} onChange={setSelectedLicenseId} />
+        ) : null}
 
-        <div className="grid gap-1 rounded-xl bg-secondary/50 p-2.5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5 truncate">
-            <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <span className="truncate">{fileSize} • {includedFiles} files</span>
+        {compatibility.length > 0 ? (
+          <p className="text-xs text-muted-foreground">Compatible with {compatibility.join(", ")}</p>
+        ) : null}
+
+        {hasFileFacts ? (
+          <div className="grid gap-1 rounded-xl bg-secondary/50 p-2.5 text-xs text-muted-foreground">
+            {fileSize || includedFiles !== null ? (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate">{[fileSize, includedFiles !== null ? `${includedFiles} files` : ""].filter(Boolean).join(" • ")}</span>
+              </div>
+            ) : null}
+            {deliveryInfo ? (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Download className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate">{deliveryInfo}</span>
+              </div>
+            ) : null}
           </div>
-          <div className="flex items-center gap-1.5 truncate">
-            <Download className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <span className="truncate">{typeof metadata?.specs?.delivery_time === "string" ? metadata.specs.delivery_time : getInstantDownloadInfo(product)}</span>
-          </div>
-        </div>
+        ) : null}
 
         <ProductCardActions>
           <div className="flex items-center justify-between gap-2 w-full pt-1">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="text-xl font-bold text-primary truncate min-w-0">BDT {selectedLicense?.price ?? product.price}</span>
-              {isOnSale ? (
-                <span className="text-xs text-muted-foreground line-through truncate min-w-0">BDT {product.originalPrice}</span>
-              ) : null}
+              {isOnSale ? <span className="text-xs text-muted-foreground line-through truncate min-w-0">BDT {product.originalPrice}</span> : null}
             </div>
             <button
               type="button"
@@ -142,10 +185,7 @@ export function DigitalProductCard({
                 name: product.name,
                 price: selectedLicense?.price ?? product.price,
                 image: product.image,
-                size: encodeDigitalCartVariant({
-                  license: selectedLicense?.label || "Personal",
-                  formats,
-                }),
+                size: encodeDigitalCartVariant({ license: selectedLicense?.label ?? "", formats }),
                 storeId: currentStore?.id,
               })}
               className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"

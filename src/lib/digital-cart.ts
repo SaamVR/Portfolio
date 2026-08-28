@@ -17,13 +17,13 @@ function normalizeFormats(formats: string[]) {
 }
 
 export function encodeDigitalCartVariant({
-  license,
+  license = "",
   formats = [],
 }: {
-  license: string;
+  license?: string;
   formats?: string[];
 }) {
-  const normalizedLicense = sanitizePart(license) || "Personal";
+  const normalizedLicense = sanitizePart(license);
   const normalizedFormats = normalizeFormats(formats);
   return `${DIGITAL_CART_VARIANT_PREFIX}${normalizedLicense}::${normalizedFormats.join("|")}`;
 }
@@ -40,7 +40,7 @@ export function parseDigitalCartVariant(value: string | null | undefined): Digit
   const rawValue = (value ?? "").slice(DIGITAL_CART_VARIANT_PREFIX.length);
   const [rawLicense, rawFormats] = rawValue.split("::");
   return {
-    license: sanitizePart(rawLicense || "Personal") || "Personal",
+    license: sanitizePart(rawLicense || ""),
     formats: normalizeFormats((rawFormats || "").split("|")),
   };
 }
@@ -51,9 +51,12 @@ export function getCartVariantDisplayLabel(value: string | null | undefined) {
     return value?.trim() || "Default option";
   }
 
-  return digital.formats.length > 0
-    ? `${digital.license} license - ${digital.formats.join(", ")}`
-    : `${digital.license} license`;
+  if (digital.license && digital.formats.length > 0) {
+    return `${digital.license} - ${digital.formats.join(", ")}`;
+  }
+  if (digital.license) return digital.license;
+  if (digital.formats.length > 0) return digital.formats.join(", ");
+  return "Digital item";
 }
 
 export function isDigitalOnlyCart<TItem extends { size?: string | null }>(items: TItem[]) {
