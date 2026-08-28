@@ -6,15 +6,15 @@ import { getExplicitFactNumber, getExplicitFactText, getExplicitFactValues } fro
 
 const synthetic-lookingProduct: Product = {
   id: "22222222-2222-4222-8222-222222222222",
-  name: "Luxury King Suite For Rent",
+  name: "Luxury King Suite For Rent Bestseller BBQ Express",
   price: 2500,
   image: "room.jpg",
   images: ["room.jpg"],
-  description: "Prime Gulshan location. Three bedrooms. Fast delivery.",
+  description: "Prime Gulshan location. Three bedrooms. Fast delivery. Fresh handmade roast with warranty.",
   sizes: [],
   colors: [],
-  category: "Private suite for eight guests",
-  type: "Booking space",
+  category: "Private suite for eight guests electronics artisan food",
+  type: "Booking space handmade electronics",
   stock: 99,
   featured: true,
 };
@@ -30,9 +30,14 @@ const cases = [
   ["beds", ["beds", "bedrooms"]],
   ["baths", ["baths", "bathrooms"]],
   ["area", ["area_sqft", "sqft", "property_area", "area"]],
+  ["preparation time", ["preparation_time", "prep_time", "fulfillment_time"]],
+  ["origin", ["origin", "made_in", "location", "craft_origin"]],
+  ["warranty", ["warranty", "warranty_status"]],
+  ["delivery", ["delivery_time", "delivery", "fulfillment_time"]],
+  ["technical specs", ["technical_specs", "specifications", "features"]],
 ] as const;
 
-test("service and hospitality facts are never inferred from copy, stock, type, category, or featured", () => {
+test("specialized storefront facts are never inferred from copy, stock, type, category, or featured", () => {
   for (const [label, keys] of cases) {
     assert.equal(getExplicitFactText(synthetic-lookingProduct, [...keys]), "", label);
     assert.deepEqual(getExplicitFactValues(synthetic-lookingProduct, [...keys]), [], label);
@@ -54,6 +59,11 @@ test("merchant metrics remain authoritative", () => {
       bathrooms: ["2"],
       property_area: ["1450 sqft"],
       billing_period: ["per month"],
+      preparation_time: ["20 minutes"],
+      origin: ["Rajshahi"],
+      warranty: ["2 years"],
+      delivery_time: ["2-3 business days"],
+      technical_specs: ["16 GB RAM", "512 GB SSD"],
     },
   };
   assert.equal(getExplicitFactNumber(configured, ["duration_minutes"]), 75);
@@ -63,17 +73,24 @@ test("merchant metrics remain authoritative", () => {
   assert.equal(getExplicitFactText(configured, ["listing_type"]), "For Rent");
   assert.equal(getExplicitFactText(configured, ["address"]), "Gulshan, Dhaka");
   assert.equal(getExplicitFactText(configured, ["billing_period"]), "per month");
+  assert.equal(getExplicitFactText(configured, ["preparation_time"]), "20 minutes");
+  assert.equal(getExplicitFactText(configured, ["origin"]), "Rajshahi");
+  assert.equal(getExplicitFactText(configured, ["warranty"]), "2 years");
+  assert.equal(getExplicitFactText(configured, ["delivery_time"]), "2-3 business days");
+  assert.deepEqual(getExplicitFactValues(configured, ["technical_specs"]), ["16 GB RAM", "512 GB SSD"]);
 });
 
 test("preview source is optional and never consulted implicitly", () => {
-  const preview = { duration_minutes: 45, capacity: "8 guests", listing_type: "For Rent" };
+  const preview = { duration_minutes: 45, capacity: "8 guests", listing_type: "For Rent", preparation_time: "25 min", origin: "Dhaka" };
   assert.equal(getExplicitFactNumber(synthetic-lookingProduct, ["duration_minutes"], preview), 45);
   assert.equal(getExplicitFactText(synthetic-lookingProduct, ["capacity"], preview), "8 guests");
   assert.equal(getExplicitFactText(synthetic-lookingProduct, ["listing_type"], preview), "For Rent");
+  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["preparation_time"], preview), "25 min");
+  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["origin"], preview), "Dhaka");
   assert.equal(getExplicitFactText(synthetic-lookingProduct, ["listing_type"]), "");
 });
 
-test("specialized cards contain no known synthetic-fact fallbacks", () => {
+test("service and hospitality cards contain no known synthetic-fact fallbacks", () => {
   const files = [
     "../../components/storefront/booking/BookingServiceCard.tsx",
     "../../components/storefront/service/ServiceProductCard.tsx",
@@ -85,4 +102,18 @@ test("specialized cards contain no known synthetic-fact fallbacks", () => {
   assert.doesNotMatch(source, /product\.stock[^\n]*(duration|turnaround|room|area|bed|bath)|description\.split\("\."\)|includes\("suite"\)|includes\("space"\)/i);
   assert.doesNotMatch(source, /\$\{?product\.price|\/ night|\/mo/);
   assert.match(source, /isPreviewCatalogStore/);
+});
+
+test("catalog cards contain no fabricated merchandising or operational fallbacks", () => {
+  const files = [
+    "../../components/storefront/electronics/ElectronicsProductCard.tsx",
+    "../../components/storefront/beauty/BeautyProductCard.tsx",
+    "../../components/storefront/food/FoodMenuCard.tsx",
+    "../../components/storefront/crafts/CraftProductCard.tsx",
+  ];
+  const source = files.map((path) => readFileSync(new URL(path, import.meta.url), "utf8")).join("\n");
+  assert.doesNotMatch(source, /4\.7|4\.8|4\.9|Top Rated|Bestseller|Chef Pick|Handmade|Warranty Verified|Express Delivery Available|prepared fresh|Artisan made/);
+  assert.doesNotMatch(source, /15-20 min|25-35 min|30-40 min|product\.stock[^\n]*(spec|delivery|prep)|product\.featured[^\n]*(Top Rated|Bestseller|Handmade)/i);
+  assert.doesNotMatch(source, /description[^\n]*(technicalSpecs|preparation|origin)|category[^\n]*Origin|type[^\n]*Origin/i);
+  assert.match(source, /getExplicitFact(Text|Values)/);
 });
