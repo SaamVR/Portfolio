@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, BookOpen, Eye, Loader2, MousePointerClick, ShoppingBag, ShoppingCart, WalletCards } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAuthoritativeAnalyticsReport } from "@/lib/analytics/report-client";
 import { useAuth } from "@/hooks/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,26 +17,6 @@ type BlogPostSummary = {
   slug: string;
   status: string;
   published_at: string | null;
-};
-
-type AnalyticsEvent = {
-  event_name: string;
-  page_path: string | null;
-  page_type: string | null;
-  traffic_source: string | null;
-  traffic_medium: string | null;
-  traffic_campaign: string | null;
-  value: number | null;
-  event_timestamp: string;
-};
-
-type RevenueEvent = {
-  event_type: string;
-  net_amount: number | null;
-  attribution_source: string | null;
-  attribution_medium: string | null;
-  attribution_campaign: string | null;
-  event_timestamp: string;
 };
 
 type ArticlePerformance = BlogPostSummary & {
@@ -67,24 +48,6 @@ function percent(numerator: number, denominator: number) {
   return `${Math.round((numerator / denominator) * 100)}%`;
 }
 
-function matchesBlogArticlePath(pagePath: string | null, slug: string) {
-  if (!pagePath) return false;
-  const path = pagePath.split("?")[0]?.replace(/\/$/, "") ?? "";
-  return path.endsWith(`/blog/${slug}`);
-}
-
-function isBlogAttributed(event: Pick<AnalyticsEvent, "traffic_source" | "traffic_medium" | "traffic_campaign">, slug: string) {
-  return event.traffic_source === "blog"
-    && event.traffic_medium === "editorial"
-    && event.traffic_campaign === slug;
-}
-
-function isBlogRevenueAttributed(event: RevenueEvent, slug: string) {
-  return event.attribution_source === "blog"
-    && event.attribution_medium === "editorial"
-    && event.attribution_campaign === slug;
-}
-
 export default function BlogPerformance() {
   const { activeStoreId } = useAuth();
   const [rangeDays, setRangeDays] = useState("30");
@@ -100,58 +63,33 @@ export default function BlogPerformance() {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const [postsResult, analyticsResult, revenueResult] = await Promise.all([
+      const endIso = new Date().toISOString();
+      const [postsResult, report] = await Promise.all([
         (supabase as any)
           .from("blog_posts")
           .select("id,title,slug,status,published_at")
           .eq("store_id", activeStoreId as string)
           .order("published_at", { ascending: false, nullsFirst: false }),
-        (supabase as any)
-          .from("store_analytics_events")
-          .select("event_name,page_path,page_type,traffic_source,traffic_medium,traffic_campaign,value,event_timestamp")
-          .eq("store_id", activeStoreId as string)
-          .gte("event_timestamp", sinceIso)
-          .in("event_name", ["page_view", "blog_cta_click", "view_item", "add_to_cart", "begin_checkout", "purchase"])
-          .order("event_timestamp", { ascending: false })
-          .limit(10000),
-        (supabase as any)
-          .from("store_revenue_events")
-          .select("event_type,net_amount,attribution_source,attribution_medium,attribution_campaign,event_timestamp")
-          .eq("store_id", activeStoreId as string)
-          .gte("event_timestamp", sinceIso)
-          .order("event_timestamp", { ascending: false })
-          .limit(5000),
+        fetchAuthoritativeAnalyticsReport([activeStoreId as string], sinceIso, endIso),
       ]);
-
       if (postsResult.error) throw postsResult.error;
-      if (analyticsResult.error) throw analyticsResult.error;
-      if (revenueResult.error) throw revenueResult.error;
-
-      return {
-        posts: (postsResult.data ?? []) as BlogPostSummary[],
-        analytics: (analyticsResult.data ?? []) as AnalyticsEvent[],
-        revenue: (revenueResult.data ?? []) as RevenueEvent[],
-      };
+      return { posts: (postsResult.data ?? []) as BlogPostSummary[], report };
     },
   });
 
   const rows = useMemo<ArticlePerformance[]>(() => {
-    const posts = data?.posts ?? [];
-    const analytics = data?.analytics ?? [];
-    const revenue = data?.revenue ?? [];
-
-    return posts.map((post) => {
-      const attributed = analytics.filter((event) => isBlogAttributed(event, post.slug));
-      const revenueEvents = revenue.filter((event) => isBlogRevenueAttributed(event, post.slug));
+    const metrics = new Map((data?.report.blogArticles ?? []).map((article) => [article.slug, article]));
+    return (data?.posts ?? []).map((post) => {
+      const article = metrics.get(post.slug);
       return {
         ...post,
-        views: analytics.filter((event) => event.event_name === "page_view" && event.page_type === "blog_article" && matchesBlogArticlePath(event.page_path, post.slug)).length,
-        ctaClicks: attributed.filter((event) => event.event_name === "blog_cta_click").length,
-        productViews: attributed.filter((event) => event.event_name === "view_item").length,
-        carts: attributed.filter((event) => event.event_name === "add_to_cart").length,
-        checkouts: attributed.filter((event) => event.event_name === "begin_checkout").length,
-        orders: revenueEvents.filter((event) => event.event_type === "sale").length,
-        revenue: revenueEvents.reduce((sum, event) => sum + Number(event.net_amount || 0), 0),
+        views: article?.views ?? 0,
+        ctaClicks: article?.ctaClicks ?? 0,
+        productViews: article?.productViews ?? 0,
+        carts: article?.carts ?? 0,
+        checkouts: article?.checkouts ?? 0,
+        orders: article?.orders ?? 0,
+        revenue: article?.revenue ?? 0,
       };
     }).sort((a, b) => b.revenue - a.revenue || b.views - a.views);
   }, [data]);

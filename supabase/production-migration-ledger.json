@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-28T01:27:00+06:00",
+  "captured_at": "2026-08-28T19:53:00+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -24,6 +24,7 @@
     "blueprints_and_theme_packages",
     "cart_recovery_delivery_processor",
     "cloudflare_custom_hostnames",
+    "complete_merchant_analytics_reporting",
     "consolidate_registry_variant_policies",
     "courier_credentials_service_role_public_table",
     "create_store_invoices",

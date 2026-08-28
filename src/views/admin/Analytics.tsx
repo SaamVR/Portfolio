@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Loader2 } from "lucide-react";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import StoreAnalyticsReport from "@/components/admin/StoreAnalyticsReport";
-import { buildAnalyticsReport, buildAnalyticsStoreSummaries, type AnalyticsReportEvent, type RevenueReportEvent } from "@/lib/analytics/report";
-import { downloadAnalyticsCsv } from "@/lib/analytics/export";
+import { EMPTY_ANALYTICS_REPORT, fetchAuthoritativeAnalyticsReport, labelAnalyticsStoreSummaries } from "@/lib/analytics/report-client";
+import { downloadAnalyticsSummaryCsv } from "@/lib/analytics/export";
 import { getAnalyticsPresetLabel, resolveAnalyticsDateRangePair, type AnalyticsDatePreset } from "@/lib/analytics/date-range";
 import { analyticsPrivacySettingsKey, normalizeAnalyticsPrivacySettings, type AnalyticsPrivacySettings } from "@/lib/admin/merchant-growth-settings";
 import { Input } from "@/components/ui/input";
@@ -66,71 +66,28 @@ export default function AnalyticsPage() {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const baseQuery = (supabase as any)
-        .from("store_analytics_events")
-        .select("store_id, event_name, visitor_id, session_id, traffic_source, traffic_medium, traffic_campaign, search_query, product_id, value, quantity, metadata, page_type, page_path, event_timestamp")
-        .in("store_id", scopedStoreIds)
-        .order("event_timestamp", { ascending: false });
-
-      const [currentResult, previousResult, currentRevenueResult, previousRevenueResult, privacySettingsRow] = await Promise.all([
-        baseQuery
-          .gte("event_timestamp", dateRangePair.current.startIso)
-          .lte("event_timestamp", dateRangePair.current.endIso)
-          .limit(scope === "all" ? 10000 : 5000),
-        (supabase as any)
-          .from("store_analytics_events")
-          .select("store_id, event_name, visitor_id, session_id, traffic_source, traffic_medium, traffic_campaign, search_query, product_id, value, quantity, metadata, page_type, page_path, event_timestamp")
-          .in("store_id", scopedStoreIds)
-          .gte("event_timestamp", dateRangePair.previous.startIso)
-          .lte("event_timestamp", dateRangePair.previous.endIso)
-          .order("event_timestamp", { ascending: false })
-          .limit(scope === "all" ? 10000 : 5000),
-        (supabase as any)
-          .from("store_revenue_events")
-          .select("store_id, customer_id, event_type, gross_amount, refund_amount, net_amount, attribution_source, attribution_medium, attribution_campaign")
-          .in("store_id", scopedStoreIds)
-          .gte("event_timestamp", dateRangePair.current.startIso)
-          .lte("event_timestamp", dateRangePair.current.endIso)
-          .order("event_timestamp", { ascending: false })
-          .limit(scope === "all" ? 10000 : 5000),
-        (supabase as any)
-          .from("store_revenue_events")
-          .select("store_id, customer_id, event_type, gross_amount, refund_amount, net_amount, attribution_source, attribution_medium, attribution_campaign")
-          .in("store_id", scopedStoreIds)
-          .gte("event_timestamp", dateRangePair.previous.startIso)
-          .lte("event_timestamp", dateRangePair.previous.endIso)
-          .order("event_timestamp", { ascending: false })
-          .limit(scope === "all" ? 10000 : 5000),
+      const [current, previous, privacySettingsRow] = await Promise.all([
+        fetchAuthoritativeAnalyticsReport(scopedStoreIds, dateRangePair.current.startIso, dateRangePair.current.endIso),
+        fetchAuthoritativeAnalyticsReport(scopedStoreIds, dateRangePair.previous.startIso, dateRangePair.previous.endIso),
         activeStoreId
           ? supabase.from("site_settings").select("value").eq("store_id", activeStoreId).eq("key", analyticsPrivacySettingsKey).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
       ]);
 
-      if (currentResult.error) throw currentResult.error;
-      if (previousResult.error) throw previousResult.error;
-      if (currentRevenueResult.error) throw currentRevenueResult.error;
-      if (previousRevenueResult.error) throw previousRevenueResult.error;
       if (privacySettingsRow.error) throw privacySettingsRow.error;
-
       return {
-        current: (currentResult.data ?? []) as AnalyticsReportEvent[],
-        previous: (previousResult.data ?? []) as AnalyticsReportEvent[],
-        currentRevenue: (currentRevenueResult.data ?? []) as RevenueReportEvent[],
-        previousRevenue: (previousRevenueResult.data ?? []) as RevenueReportEvent[],
+        current,
+        previous,
         privacySettings: normalizeAnalyticsPrivacySettings(privacySettingsRow.data?.value),
       };
     },
   });
 
-  const currentEvents = useMemo(() => data?.current ?? [], [data]);
-  const previousEvents = useMemo(() => data?.previous ?? [], [data]);
-  const currentRevenueEvents = useMemo(() => data?.currentRevenue ?? [], [data]);
-  const previousRevenueEvents = useMemo(() => data?.previousRevenue ?? [], [data]);
-  const report = useMemo(() => buildAnalyticsReport(currentEvents, currentRevenueEvents), [currentEvents, currentRevenueEvents]);
-  const previousReport = useMemo(() => buildAnalyticsReport(previousEvents, previousRevenueEvents), [previousEvents, previousRevenueEvents]);
+  const report = data?.current.summary ?? EMPTY_ANALYTICS_REPORT;
+  const previousReport = data?.previous.summary ?? EMPTY_ANALYTICS_REPORT;
   const storeSummaries = useMemo(
-    () => buildAnalyticsStoreSummaries(currentEvents, currentRevenueEvents, storeLabels),
-    [currentEvents, currentRevenueEvents, storeLabels],
+    () => labelAnalyticsStoreSummaries(data?.current.storeSummaries ?? [], storeLabels),
+    [data?.current.storeSummaries, storeLabels],
   );
   const canShowCombined = membershipStoreIds.length > 1;
   const anomalyCards = useMemo(() => {
@@ -313,12 +270,12 @@ export default function AnalyticsPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => downloadAnalyticsCsv(
+            onClick={() => downloadAnalyticsSummaryCsv(
               `analytics-${scope}-${datePreset}-${new Date().toISOString().slice(0, 10)}.csv`,
-              data?.current ?? [],
-              storeLabels,
+              report,
+              scope === "all" ? storeSummaries : [],
             )}
-            disabled={!data?.current || data.current.length === 0}
+            disabled={!data?.current}
           >
             Export CSV
           </Button>
