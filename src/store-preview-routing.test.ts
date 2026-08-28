@@ -13,7 +13,7 @@ test("store preview routing identifies only tenant storefront paths", () => {
   assert.equal(getStorePreviewCookieName("Thread-BD"), "ezcomo_store_preview_thread-bd");
 });
 
-test("an explicit preview token becomes a private store-scoped session", async () => {
+test("an explicit preview token becomes a private per-store preview session", async () => {
   const response = await proxy(new NextRequest(`https://ezcomo.shop/stores/threadbd?preview=${token}`));
 
   assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow, noarchive");
@@ -24,7 +24,7 @@ test("an explicit preview token becomes a private store-scoped session", async (
   assert.match(setCookie, /ezcomo_store_preview_threadbd=/);
   assert.match(setCookie, /HttpOnly/i);
   assert.match(setCookie, /SameSite=lax/i);
-  assert.match(setCookie, /Path=\/stores\/threadbd/i);
+  assert.match(setCookie, /Path=\/(?:;|$)/i);
 });
 
 test("preview navigation is internally rewritten with the stored bearer token", async () => {

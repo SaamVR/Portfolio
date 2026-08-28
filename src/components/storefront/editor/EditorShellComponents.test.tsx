@@ -95,3 +95,20 @@ test("does not render Advanced slots when the store plan blocks them", () => {
   assert.doesNotMatch(markup, /Tree slot:/);
   assert.doesNotMatch(markup, /Inspector slot:/);
 });
+
+
+test("does not alias Publish to Save when no publish transition is provided", () => {
+  const markup = renderToStaticMarkup(<EditorShell {...createShellProps({ saveLabel: "Save" })} />);
+
+  assert.match(markup, />Save</);
+  assert.doesNotMatch(markup, />Publish</);
+});
+
+test("renders a distinct publication action only when explicitly provided", () => {
+  const markup = renderToStaticMarkup(
+    <EditorShell {...createShellProps({ onPublish: () => undefined, publishLabel: "Unpublish", saveLabel: "Save" })} />,
+  );
+
+  assert.match(markup, />Save</);
+  assert.match(markup, />Unpublish</);
+});

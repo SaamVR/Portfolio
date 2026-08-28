@@ -20,6 +20,7 @@ type PersistStorefrontOptions = {
   selectedPage?: StorePage | null;
   revisionLabel?: string;
   changedBy?: string | null;
+  publicationState?: boolean;
 };
 
 export function mapPersistedPageIdsByLocalId(
@@ -81,6 +82,7 @@ export async function persistStorefrontState({
   selectedPage,
   revisionLabel,
   changedBy,
+  publicationState,
 }: PersistStorefrontOptions) {
   if (!templateSeed) {
     return { error: new Error("A template seed is required to persist storefront state.") };
@@ -97,6 +99,8 @@ export async function persistStorefrontState({
       description: store.description,
       currency_code: store.currencyCode,
       locale: store.locale,
+      // Preserve the currently persisted visibility while content writes run.
+      // Publish/Unpublish targets are applied only after every content write succeeds.
       is_published: store.isPublished,
       store_type: activeTemplateSeed.id,
     },
@@ -246,6 +250,15 @@ export async function persistStorefrontState({
     });
     if (revisionError) return { error: revisionError };
   }
+
+  // Publication is deliberately the final write. A failed theme/page/block save
+  // must never expose a partially persisted storefront.
+  const targetPublicationState = publicationState ?? store.isPublished;
+  const { error: publicationError } = await client
+    .from("stores")
+    .update({ is_published: targetPublicationState })
+    .eq("id", store.id);
+  if (publicationError) return { error: publicationError };
 
   return { error: null };
 }

@@ -332,7 +332,7 @@ export function canAccessStorefrontStore(
   });
 
   if (!store.is_published) {
-    return resolvedPlanState.live;
+    return false;
   }
 
   if (!subscription) {
@@ -395,7 +395,7 @@ export async function resolveStoreByHostname(hostname?: string, options?: StoreR
   const { data: storePlanState, error: storePlanStateError } = await loadStorePlanState(supabase as never, matchedStoreId, {
     includePublished: true,
   });
-  if (storePlanStateError || !canAccessStorefrontStore({ is_published: true, plan: storePlanState?.legacyPlanId ?? null }, (storePlanState?.subscription as StoreSubscriptionRow | null) ?? null)) {
+  if (storePlanStateError || !canAccessStorefrontStore({ is_published: storePlanState?.isPublished ?? false, plan: storePlanState?.legacyPlanId ?? null }, (storePlanState?.subscription as StoreSubscriptionRow | null) ?? null)) {
     return null;
   }
 

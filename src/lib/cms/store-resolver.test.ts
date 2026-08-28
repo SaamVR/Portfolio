@@ -3,12 +3,18 @@ import { buildResolvedStoreFromRecords, canAccessStorefrontStore } from "@/lib/c
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 describe("store resolver mapping", () => {
-  it("allows storefront access for trialing stores even before the publish flag is flipped", () => {
+  it("keeps an eligible trial store private until the publish flag is enabled", () => {
     const trialEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     expect(
       canAccessStorefrontStore(
         { is_published: false },
+        { status: "trialing", trial_ends_at: trialEndsAt },
+      ),
+    ).toBe(false);
+    expect(
+      canAccessStorefrontStore(
+        { is_published: true },
         { status: "trialing", trial_ends_at: trialEndsAt },
       ),
     ).toBe(true);

@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
-import { canAccessStorefrontStore } from "@/lib/cms/store-resolver";
+import { canAccessStorefrontStore, validatePreviewToken } from "@/lib/cms/store-resolver";
 import { getStorefrontProducts } from "@/lib/storefront/storefront-products";
 
 const DEFAULT_COLLECTION = "store_products";
@@ -42,6 +42,7 @@ export type StorefrontSearchArgs = {
   maxPrice?: number | null;
   saleOnly?: boolean;
   perPage?: number;
+  previewToken?: string | null;
 };
 
 type ProviderConfig = {
@@ -225,7 +226,7 @@ function buildFilterBy(args: StorefrontSearchArgs) {
   return filters.join(" && ");
 }
 
-async function ensurePublicStorefrontAccess(storeId: string) {
+async function ensureStorefrontAccess(storeId: string, previewToken?: string | null) {
   const supabaseAdmin = getSupabaseAdminClient();
   const [{ data: store, error: storeError }, { data: storePlanState, error: storePlanStateError }] = await Promise.all([
     supabaseAdmin
@@ -239,6 +240,9 @@ async function ensurePublicStorefrontAccess(storeId: string) {
   ]);
 
   if (storeError) throw storeError;
+  if (previewToken && await validatePreviewToken(storeId, previewToken)) {
+    return true;
+  }
   if (storePlanStateError || !canAccessStorefrontStore(store, (storePlanState?.subscription as any) ?? null)) {
     return false;
   }
@@ -247,7 +251,7 @@ async function ensurePublicStorefrontAccess(storeId: string) {
 }
 
 async function searchStorefrontProductsInPostgres(args: StorefrontSearchArgs): Promise<SearchRow[] | null> {
-  const hasAccess = await ensurePublicStorefrontAccess(args.storeId);
+  const hasAccess = await ensureStorefrontAccess(args.storeId, args.previewToken);
   if (!hasAccess) {
     return null;
   }
@@ -286,7 +290,7 @@ async function runTypesenseSearch(args: StorefrontSearchArgs): Promise<SearchDoc
     return null;
   }
 
-  const hasAccess = await ensurePublicStorefrontAccess(args.storeId);
+  const hasAccess = await ensureStorefrontAccess(args.storeId, args.previewToken);
   if (!hasAccess) {
     return null;
   }
@@ -330,10 +334,20 @@ export async function searchStorefrontProducts(args: StorefrontSearchArgs) {
     maxPrice: typeof args.maxPrice === "number" && Number.isFinite(args.maxPrice) ? args.maxPrice : null,
     saleOnly: args.saleOnly === true,
     perPage: args.perPage ?? 48,
+    previewToken: args.previewToken?.trim() || null,
   };
 
   if (!normalizedArgs.query) {
     return [];
+  }
+
+  if (normalizedArgs.previewToken) {
+    const postgresResults = await searchStorefrontProductsInPostgres(normalizedArgs);
+    if (postgresResults && postgresResults.length > 0) {
+      return postgresResults;
+    }
+    const externalResults = await runTypesenseSearch(normalizedArgs);
+    return externalResults ?? [];
   }
 
   const runCachedSearch = unstable_cache(

@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
-import { canAccessStorefrontStore } from "@/lib/cms/store-resolver";
+import { canAccessStorefrontStore, validatePreviewToken } from "@/lib/cms/store-resolver";
 
 function isMissingMetricSchemaColumn(error: unknown) {
   const message = error instanceof Error
@@ -49,6 +49,7 @@ type StorefrontProductsArgs = {
   ids?: string[];
   productId?: string | null;
   storeId: string;
+  previewToken?: string | null;
 };
 
 function buildStorefrontProductTags(args: StorefrontProductsArgs) {
@@ -78,6 +79,7 @@ async function loadStorefrontProductsUncached({
   ids = [],
   productId = null,
   storeId,
+  previewToken = null,
 }: StorefrontProductsArgs) {
   const supabaseAdmin = getSupabaseAdminClient();
   const [{ data: store, error: storeError }, { data: storePlanState, error: storePlanStateError }] = await Promise.all([
@@ -92,7 +94,10 @@ async function loadStorefrontProductsUncached({
   ]);
 
   if (storeError) throw storeError;
-  if (storePlanStateError || !canAccessStorefrontStore(store, (storePlanState?.subscription as any) ?? null)) {
+  const hasPreviewAccess = previewToken
+    ? await validatePreviewToken(storeId, previewToken)
+    : false;
+  if (!hasPreviewAccess && (storePlanStateError || !canAccessStorefrontStore(store, (storePlanState?.subscription as any) ?? null))) {
     return null;
   }
 
@@ -139,7 +144,12 @@ export async function getStorefrontProducts(args: StorefrontProductsArgs) {
     featuredOnly: args.featuredOnly === true,
     productId: args.productId?.trim() ?? "",
     ids,
+    previewToken: args.previewToken?.trim() || null,
   };
+
+  if (normalizedArgs.previewToken) {
+    return loadStorefrontProductsUncached(normalizedArgs);
+  }
 
   const getCachedStorefrontProducts = unstable_cache(
     async () => loadStorefrontProductsUncached(normalizedArgs),

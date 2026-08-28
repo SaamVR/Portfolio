@@ -14,6 +14,7 @@ function createMockSupabaseClient() {
   const createQueryBuilder = (table: string) => {
     let currentFilter: { column?: string; value?: any; inValues?: any[] } = {};
     let isDeleteOp = false;
+    let pendingUpdate: Record<string, any> | null = null;
 
     const getTargetMap = () => {
       if (table === "stores") return stores;
@@ -57,12 +58,27 @@ function createMockSupabaseClient() {
         }
         return Promise.resolve({ data: rowList, error: null });
       },
+      update(values: Record<string, any>) {
+        pendingUpdate = values;
+        return builder;
+      },
       delete() {
         isDeleteOp = true;
         return builder;
       },
       then(onfulfilled?: (value: any) => any) {
         const targetMap = getTargetMap();
+        if (pendingUpdate) {
+          for (const [id, row] of Array.from(targetMap.entries())) {
+            const matches = !currentFilter.column || row[currentFilter.column] === currentFilter.value;
+            if (matches) {
+              targetMap.set(id, { ...row, ...pendingUpdate });
+            }
+          }
+          const res = { data: null, error: null };
+          return Promise.resolve(res).then(onfulfilled);
+        }
+
         if (isDeleteOp) {
           if (currentFilter.column && currentFilter.inValues) {
             const col = currentFilter.column;

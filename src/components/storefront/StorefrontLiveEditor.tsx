@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Save, Settings2, Sparkles, Trash2, Undo2, Link as LinkIcon, Download, Upload, FileJson, Monitor, Smartphone, Tablet, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, Loader2, Paintbrush2, PanelRightClose, PanelRightOpen, Plus, RotateCcw, Redo2, Rocket, Save, Settings2, Sparkles, Trash2, Undo2, Link as LinkIcon, Download, Upload, FileJson, Monitor, Smartphone, Tablet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,7 +237,10 @@ export function StorefrontLiveEditor({
     setHistory([]);
     setRedoHistory([]);
     setLastSavedAt(null);
-  }, [page.id, store]);
+  // Reset the persisted baseline only when the loaded storefront identity changes.
+  // Ordinary local edits must remain dirty until persistence succeeds.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.id, store.id]);
 
   useEffect(() => {
     if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
@@ -581,7 +584,14 @@ export function StorefrontLiveEditor({
     }));
   };
 
-  const saveLiveEdits = async () => {
+  const saveLiveEdits = async (intent: "save" | "publish" | "unpublish" = "save") => {
+    const targetPublicationState = intent === "publish"
+      ? true
+      : intent === "unpublish"
+        ? false
+        : store.isPublished;
+    const persistedStore = { ...store, isPublished: targetPublicationState };
+
     setSaving(true);
     try {
       const [themePackages, businessProfileResult] = await Promise.all([
@@ -598,6 +608,7 @@ export function StorefrontLiveEditor({
         selectedPage: page,
         revisionLabel: `Live ${editorMode} edit`,
         changedBy: userId ?? null,
+        publicationState: targetPublicationState,
       });
 
       if (result.error) {
@@ -609,12 +620,19 @@ export function StorefrontLiveEditor({
         pageSlugs: [page.slug],
       });
 
-      const nextSnapshot = serializeStoreDraft(store);
+      setStore(persistedStore);
+      const nextSnapshot = serializeStoreDraft(persistedStore);
       setPersistedSnapshot(nextSnapshot);
-      lastLoadedStoreRef.current = store;
+      lastLoadedStoreRef.current = persistedStore;
       setHistory([]);
       setLastSavedAt(new Date());
-      toast.success("Live storefront changes saved.");
+      toast.success(
+        intent === "publish"
+          ? "Storefront published."
+          : intent === "unpublish"
+            ? "Storefront unpublished. Draft preview remains available to you."
+            : "Storefront edits saved.",
+      );
     } finally {
       setSaving(false);
     }
@@ -632,14 +650,14 @@ export function StorefrontLiveEditor({
         { id: "live-editor-selected-block", label: "Content" },
       ];
   const saveStatusLabel = saving
-    ? "Saving live changes..."
+    ? "Saving storefront changes..."
     : hasUnsavedChanges
       ? lastSavedAt
-        ? `Local draft active. Last saved ${formatSavedTime(lastSavedAt)}.`
-        : "Local draft active. Save to publish your storefront edits."
+        ? `Unsaved edits. Last saved ${formatSavedTime(lastSavedAt)}.`
+        : "Unsaved edits. Save before changing storefront visibility."
       : lastSavedAt
-        ? `All live changes saved at ${formatSavedTime(lastSavedAt)}.`
-        : "All live changes saved.";
+        ? `Saved at ${formatSavedTime(lastSavedAt)}. Storefront is ${store.isPublished ? "published" : "draft"}.`
+        : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
   const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
   const previewBlocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -1068,9 +1086,20 @@ export function StorefrontLiveEditor({
                     <SelectItem value="advanced">Expert Editing</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button type="button" size="sm" className="col-span-2 justify-start rounded-full" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges}>
+                <Button type="button" size="sm" className="justify-start rounded-full" onClick={() => void saveLiveEdits()} disabled={saving || !hasUnsavedChanges}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {hasUnsavedChanges ? "Save updates" : "Autosaved / Saved"}
+                  {hasUnsavedChanges ? "Save updates" : "Saved"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={store.isPublished ? "outline" : "secondary"}
+                  className="justify-start rounded-full"
+                  onClick={() => void saveLiveEdits(store.isPublished ? "unpublish" : "publish")}
+                  disabled={saving}
+                >
+                  <Rocket className="h-4 w-4" />
+                  {store.isPublished ? "Unpublish" : "Publish"}
                 </Button>
               </div>
               <div className="grid gap-2">
@@ -1102,7 +1131,8 @@ export function StorefrontLiveEditor({
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     {editorMode === "advanced" ? "Expert Live Editor" : "Guided Setup Editor"}
                   </p>
-                <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Local draft" : "Saved"}</Badge>
+                <Badge variant={saveStatusTone}>{saving ? "Saving" : hasUnsavedChanges ? "Unsaved" : "Saved"}</Badge>
+                <Badge variant={store.isPublished ? "default" : "outline"}>{store.isPublished ? "Published" : "Draft"}</Badge>
                 </div>
                 <p className="mt-1 truncate text-sm font-semibold text-foreground">{page.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{saveStatusLabel}</p>
@@ -1147,14 +1177,14 @@ export function StorefrontLiveEditor({
               <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-950 dark:text-amber-100">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>Your edits are only in this local live draft until you press Save.</p>
+                  <p>Your edits are not persisted yet. Save them before leaving or changing storefront visibility.</p>
                 </div>
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-950 dark:text-emerald-100">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>The live storefront is synced with the latest saved changes.</p>
+                  <p>{store.isPublished ? "The published storefront is synced with the latest saved changes." : "Your saved storefront remains private until you publish it."}</p>
                 </div>
               </div>
             )}

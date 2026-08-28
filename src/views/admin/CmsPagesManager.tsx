@@ -744,6 +744,18 @@ export default function CmsPagesManager() {
   }, [draftStorageKey, persistedSnapshot]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !hasUnsavedChanges) return undefined;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
     if (!draftStorageKey || !store || !hasUnsavedChanges) return;
 
     setRecoverableDraft(null);
@@ -1569,7 +1581,7 @@ export default function CmsPagesManager() {
     }
   };
 
-  const saveAll = async () => {
+  const saveAll = async (intent: "save" | "publish" | "unpublish" = "save") => {
     if (!store || !user) return;
 
     const context = captureEditorContext();
@@ -1588,6 +1600,11 @@ export default function CmsPagesManager() {
     }
 
     const safeStore = validatedStore.data;
+    const targetPublicationState = intent === "publish"
+      ? true
+      : intent === "unpublish"
+        ? false
+        : safeStore.isPublished;
 
     const seenSlugs = new Set<string>();
 
@@ -1619,25 +1636,6 @@ export default function CmsPagesManager() {
     setSaving(true);
 
     try {
-      const { error: storeError } = await supabase.from("stores").upsert(
-        {
-          id: safeStore.id,
-          owner_id: user.id,
-          name: safeStore.name,
-          slug: safeStore.slug,
-          description: safeStore.description,
-          currency_code: safeStore.currencyCode,
-          locale: safeStore.locale,
-          is_published: safeStore.isPublished,
-          store_type: storeTemplateSeedId,
-        },
-        { onConflict: "id" },
-      );
-
-      if (storeError) {
-        throw new Error("Failed to save store details.");
-      }
-
       const persistResult = await persistStorefrontState({
         client: supabase,
         store: safeStore,
@@ -1647,6 +1645,7 @@ export default function CmsPagesManager() {
         selectedPage,
         revisionLabel,
         changedBy: user.id,
+        publicationState: targetPublicationState,
       });
 
       if (persistResult.error) {
@@ -1657,13 +1656,20 @@ export default function CmsPagesManager() {
         pageSlugs: selectedPage ? [selectedPage.slug] : undefined,
       });
 
+      const persistedStore = { ...safeStore, isPublished: targetPublicationState };
       if (originDraftStorageKey && typeof window !== "undefined") {
         window.localStorage.removeItem(originDraftStorageKey);
       }
       if (isEditorContextCurrent(context)) {
-        toast.success("Page Builder changes saved.");
+        toast.success(
+          intent === "publish"
+            ? "Storefront published."
+            : intent === "unpublish"
+              ? "Storefront unpublished. Preview remains available to you."
+              : "Page Builder changes saved.",
+        );
         setRevisionLabel("");
-        setPersistedSnapshot(serializeStoreDraft(safeStore));
+        setPersistedSnapshot(serializeStoreDraft(persistedStore));
         setRecoverableDraft(null);
         setLastDraftSavedAt(null);
       }
@@ -2885,7 +2891,8 @@ export default function CmsPagesManager() {
     return (
       <BasicLaunchTab
         store={store}
-        onPublish={() => void saveAll()}
+        onPublish={() => void saveAll("publish")}
+        onUnpublish={() => void saveAll("unpublish")}
         isPublishing={saving}
       />
     );
@@ -2983,6 +2990,15 @@ export default function CmsPagesManager() {
             className: "hidden lg:inline-flex",
           },
           {
+            id: "publish",
+            label: store.isPublished ? "Unpublish" : "Publish",
+            icon: store.isPublished ? EyeOff : Rocket,
+            onClick: () => void saveAll(store.isPublished ? "unpublish" : "publish"),
+            disabled: saving,
+            variant: "secondary",
+            className: "hidden lg:inline-flex",
+          },
+          {
             id: "legacy",
             label: "Legacy",
             href: isAdvancedEditor ? legacyAdvancedEditorHref : legacyBasicEditorHref,
@@ -3001,6 +3017,8 @@ export default function CmsPagesManager() {
         onUndo={undoStoreChange}
         onRedo={redoStoreChange}
         onSave={() => void saveAll()}
+        onPublish={() => void saveAll(store.isPublished ? "unpublish" : "publish")}
+        publishLabel={store.isPublished ? "Unpublish" : "Publish"}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
         saveLabel={saving ? "Saving" : hasUnsavedChanges ? "Save" : "Saved"}
@@ -3088,7 +3106,7 @@ export default function CmsPagesManager() {
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{basicStatusLabel}</p>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Changes are kept locally as you work, then published when you press save.
+                  Changes are kept locally as you work. Save persists your edits; Publish controls whether shoppers can access the storefront.
                 </p>
               </div>
               {guidedEditingActionItems.map((item) => (
@@ -3687,12 +3705,20 @@ export default function CmsPagesManager() {
                   <Label>Store Description</Label>
                   <Textarea rows={4} value={store.description} onChange={(e) => commitStoreChange({ ...store, description: e.target.value })} />
                 </div>
-                <div id="store-publishing" className="flex items-center justify-between rounded-lg border border-border p-3 scroll-mt-36">
+                <div id="store-publishing" className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 scroll-mt-36">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Store Published</p>
-                    <p className="text-xs text-muted-foreground">Turn this off to keep the CMS store in draft mode.</p>
+                    <p className="text-sm font-medium text-foreground">Storefront visibility</p>
+                    <p className="text-xs text-muted-foreground">{store.isPublished ? "Published and available to eligible shoppers." : "Draft only. Use preview while you prepare the storefront."}</p>
                   </div>
-                  <Switch checked={store.isPublished} onCheckedChange={(checked) => commitStoreChange({ ...store, isPublished: checked })} />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={store.isPublished ? "outline" : "default"}
+                    onClick={() => void saveAll(store.isPublished ? "unpublish" : "publish")}
+                    disabled={saving}
+                  >
+                    {store.isPublished ? "Unpublish" : "Publish"}
+                  </Button>
                 </div>
               </TabsContent>
 

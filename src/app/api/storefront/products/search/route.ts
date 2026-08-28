@@ -1,5 +1,7 @@
+import { NextResponse } from "next/server";
 import { jsonPublicStorefrontCache } from "@/lib/http/public-cache";
 import { searchStorefrontProducts } from "@/lib/storefront/storefront-product-search";
+import { getValidatedStorePreviewTokenFromApiRequest } from "@/lib/cms/store-preview-request";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -27,6 +29,7 @@ export async function GET(req: Request) {
   }
 
   try {
+    const previewToken = await getValidatedStorePreviewTokenFromApiRequest(req, storeId);
     const results = await storefrontProductSearchRouteDeps.searchStorefrontProducts({
       storeId,
       query,
@@ -36,9 +39,12 @@ export async function GET(req: Request) {
       maxPrice: readNumber(url.searchParams.get("max")),
       saleOnly: url.searchParams.get("sale") === "1",
       perPage: readNumber(url.searchParams.get("perPage")) ?? 48,
+      ...(previewToken ? { previewToken } : {}),
     });
 
-    return jsonPublicStorefrontCache(results ?? []);
+    return previewToken
+      ? NextResponse.json(results ?? [], { headers: { "Cache-Control": "private, no-store, max-age=0" } })
+      : jsonPublicStorefrontCache(results ?? []);
   } catch (error) {
     console.error("Public storefront product search error:", error);
     return jsonPublicStorefrontCache({ error: "Failed to search storefront products" }, { status: 500 });

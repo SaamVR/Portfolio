@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonPublicStorefrontCache } from "@/lib/http/public-cache";
 import { getStorefrontProducts } from "@/lib/storefront/storefront-products";
+import { getValidatedStorePreviewTokenFromApiRequest } from "@/lib/cms/store-preview-request";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -29,18 +30,22 @@ export async function GET(req: Request) {
   }
 
   try {
+    const previewToken = await getValidatedStorePreviewTokenFromApiRequest(req, storeId);
     const data = await getStorefrontProducts({
       storeId,
       productId: productId || null,
       ids,
       featuredOnly,
+      previewToken,
     });
 
     if (data === null) {
       return jsonPublicStorefrontCache({ error: "Store not found" }, { status: 404 });
     }
 
-    return jsonPublicStorefrontCache(data);
+    return previewToken
+      ? NextResponse.json(data, { headers: { "Cache-Control": "private, no-store, max-age=0" } })
+      : jsonPublicStorefrontCache(data);
   } catch (error) {
     console.error("Public storefront products error:", error);
     return jsonPublicStorefrontCache({ error: "Failed to load storefront products" }, { status: 500 });

@@ -9,10 +9,11 @@ import type { Store } from "@/lib/cms/schema";
 interface BasicLaunchTabProps {
   store: Store;
   onPublish?: () => void;
+  onUnpublish?: () => void;
   isPublishing?: boolean;
 }
 
-export function BasicLaunchTab({ store, onPublish, isPublishing }: BasicLaunchTabProps) {
+export function BasicLaunchTab({ store, onPublish, onUnpublish, isPublishing }: BasicLaunchTabProps) {
   const customDomain = store.customDomain;
   const storefrontUrl = customDomain ? `https://${customDomain}` : `https://${store.slug}.ezcomo.com`;
 
@@ -38,23 +39,27 @@ export function BasicLaunchTab({ store, onPublish, isPublishing }: BasicLaunchTa
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-950 dark:text-emerald-200">Live Storefront URL</span>
+            <span className="text-xs font-semibold text-emerald-950 dark:text-emerald-200">Storefront URL</span>
           </div>
           <Badge variant="outline" className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800">
-            Active
+            {store.isPublished ? "Published" : "Draft"}
           </Badge>
         </div>
 
         <div className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-900 p-2.5">
           <span className="text-xs font-mono text-gray-800 dark:text-gray-200 truncate">{storefrontUrl}</span>
-          <a
-            href={storefrontUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
-          >
-            Visit <ExternalLink className="h-3 w-3" />
-          </a>
+          {store.isPublished ? (
+            <a
+              href={storefrontUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
+            >
+              Visit <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : (
+            <span className="text-[10px] font-medium text-muted-foreground">Public after publish</span>
+          )}
         </div>
       </div>
 
@@ -86,8 +91,23 @@ export function BasicLaunchTab({ store, onPublish, isPublishing }: BasicLaunchTa
         </div>
       </div>
 
-      {/* Publish button */}
-      {onPublish ? (
+      {/* Publication state */}
+      {store.isPublished ? (
+        onUnpublish ? (
+          <div className="pt-2">
+            <Button
+              type="button"
+              onClick={onUnpublish}
+              disabled={isPublishing}
+              variant="outline"
+              className="w-full h-11 text-xs font-semibold gap-2"
+            >
+              {isPublishing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              Unpublish Storefront
+            </Button>
+          </div>
+        ) : null
+      ) : onPublish ? (
         <div className="pt-2">
           <Button
             type="button"
@@ -95,12 +115,8 @@ export function BasicLaunchTab({ store, onPublish, isPublishing }: BasicLaunchTa
             disabled={isPublishing}
             className="w-full h-11 text-xs font-semibold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
           >
-            {isPublishing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4" />
-            )}
-            Publish Storefront Changes
+            {isPublishing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+            Publish Storefront
           </Button>
         </div>
       ) : null}

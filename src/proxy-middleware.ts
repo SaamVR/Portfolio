@@ -195,7 +195,7 @@ function resolveStorefrontPreviewResponse(request: NextRequest) {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      path: `/stores/${encodeURIComponent(storeSlug)}`,
+      path: "/",
       maxAge: STORE_PREVIEW_TTL_SECONDS,
     });
   } else {

@@ -47,9 +47,11 @@ export interface EditorShellProps {
   onUndo: () => void;
   onRedo: () => void;
   onSave: () => void;
+  onPublish?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   saveLabel: string;
+  publishLabel?: string;
 }
 
 export function EditorShell({
@@ -82,9 +84,11 @@ export function EditorShell({
   onUndo,
   onRedo,
   onSave,
+  onPublish,
   canUndo,
   canRedo,
   saveLabel,
+  publishLabel = "Publish",
 }: EditorShellProps) {
   const shell = useEditorShellState({
     initialMode: mode,
@@ -113,11 +117,14 @@ export function EditorShell({
   );
   const selectedPage = pages.find((page) => page.id === activePageId) ?? null;
   const selectedBreakpoint = breakpoint ?? shell.breakpoint;
-  const actions = headerActions ?? [
+  const defaultActions: EditorHeaderAction[] = [
     { id: "preview", label: "Preview", icon: Eye, onClick: onMobilePreview, variant: "outline" },
     { id: "save", label: saveLabel, icon: Save, onClick: onSave },
-    { id: "publish", label: "Publish", icon: Rocket, onClick: onSave, variant: "secondary" },
   ];
+  if (onPublish) {
+    defaultActions.push({ id: "publish", label: publishLabel, icon: Rocket, onClick: onPublish, variant: "secondary" });
+  }
+  const actions = headerActions ?? defaultActions;
 
   const setMode = (nextMode: EditorMode) => {
     if (nextMode === "advanced" && !canUseAdvanced) return;
