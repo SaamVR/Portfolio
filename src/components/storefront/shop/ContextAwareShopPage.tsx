@@ -525,13 +525,13 @@ function SearchInput({ value, onChange, placeholder }: { value: string; onChange
   );
 }
 
-function SortSelector({ value, options, onChange }: { value: ShopSortOption; options: ShopSortOption[]; onChange: (value: ShopSortOption) => void }) {
+function SortSelector({ value, options, onChange, fullWidth = false }: { value: ShopSortOption; options: ShopSortOption[]; onChange: (value: ShopSortOption) => void; fullWidth?: boolean }) {
   return (
-    <div className="relative">
+    <div className={cn("relative", fullWidth && "w-full sm:w-auto")}>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as ShopSortOption)}
-        className="h-11 rounded-xl border border-border bg-background px-4 pr-10 text-sm text-foreground"
+        className={cn("h-11 rounded-xl border border-border bg-background px-4 pr-10 text-sm text-foreground", fullWidth && "w-full sm:w-auto")}
       >
         {options.map((option, index) => <option key={`${option}-${index}`} value={option}>{sortLabels[option]}</option>)}
       </select>
@@ -561,14 +561,14 @@ function ActiveFilterChips({ chips, onClear }: { chips: Array<{ key: string; lab
   );
 }
 
-function CategoryTabs({ items, active, onChange, style = "tabs" }: { items: Array<{ label: string; value: string; count: number }>; active: string; onChange: (value: string) => void; style?: ShopPageSettings["category_navigation_style"] }) {
+function CategoryTabs({ items, active, onChange, style = "tabs", mobileScrollable = false }: { items: Array<{ label: string; value: string; count: number }>; active: string; onChange: (value: string) => void; style?: ShopPageSettings["category_navigation_style"]; mobileScrollable?: boolean }) {
   const chipClass = style === "chips"
     ? "rounded-full"
     : style === "strip"
       ? "rounded-md"
       : "rounded-xl";
   return (
-    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+    <div className={cn("flex gap-2 overflow-x-auto pb-1", mobileScrollable ? "flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap" : "flex-wrap")}>
       {items.map((item, index) => (
         <button
           key={`${item.value}-${index}`}
@@ -576,6 +576,7 @@ function CategoryTabs({ items, active, onChange, style = "tabs" }: { items: Arra
           onClick={() => onChange(item.value)}
           className={cn(
             "whitespace-nowrap border px-4 py-2 text-sm font-medium transition-colors",
+            mobileScrollable && "min-h-11 shrink-0",
             chipClass,
             active === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground",
           )}
@@ -709,9 +710,9 @@ function FilterDrawer({
   );
 }
 
-function MobileFilterButton({ onClick, count }: { onClick: () => void; count?: number }) {
+function MobileFilterButton({ onClick, count, fullWidth = false }: { onClick: () => void; count?: number; fullWidth?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground lg:hidden">
+    <button type="button" onClick={onClick} className={cn("inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground lg:hidden", fullWidth && "w-full justify-center sm:w-auto")}>
       <Filter className="h-4 w-4" />
       Filter
       {count && count > 0 ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{count}</span> : null}
@@ -807,14 +808,14 @@ function ShopHero({
     || `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`;
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-background via-card to-secondary/50 px-5 py-6 md:px-10 md:py-14">
-      <div className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+    <section className={cn("overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-background via-card to-secondary/50 px-5 py-6 md:px-10 md:py-14", variant === "beauty" && "rounded-[1.75rem] py-5 sm:rounded-[2rem] md:py-14")}>
+      <div className={cn("grid gap-5 lg:grid-cols-[1.3fr_0.7fr] lg:items-center", variant === "beauty" && "gap-4 sm:gap-5")}>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary md:text-sm">{badge}</p>
           <h1 className="mt-2 font-heading text-3xl font-bold leading-tight text-foreground md:mt-3 md:text-5xl">{title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:mt-4 md:leading-7">{description}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+        <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-1", variant === "beauty" && "hidden sm:grid")}>
           <div className="col-span-2 rounded-2xl border border-border bg-background/80 p-3 sm:col-span-1 md:p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live results</p>
             <p className="mt-1 text-xl font-bold text-foreground md:mt-2 md:text-2xl">{isLoading ? "Loading" : count}</p>
@@ -848,6 +849,7 @@ function ShopToolbar({
   onOpenFilters,
   showMap,
   activeFilterCount,
+  compactMobile = false,
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -863,16 +865,17 @@ function ShopToolbar({
   onOpenFilters: () => void;
   showMap: boolean;
   activeFilterCount: number;
+  compactMobile?: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-3xl border border-border bg-card/40 p-3 md:space-y-4 md:p-4">
+    <div className={cn("space-y-3 rounded-3xl border border-border bg-card/40 p-3 md:space-y-4 md:p-4", compactMobile && "space-y-2 rounded-2xl md:space-y-4 md:rounded-3xl")}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex-1">
           <SearchInput value={query} onChange={setQuery} placeholder="Search products, services, or listings..." />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <MobileFilterButton onClick={onOpenFilters} count={activeFilterCount} />
-          <SortSelector value={sort} options={sortOptions} onChange={setSort} />
+        <div className={cn("flex flex-wrap items-center gap-3", compactMobile && "grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3")}>
+          <MobileFilterButton onClick={onOpenFilters} count={activeFilterCount} fullWidth={compactMobile} />
+          <SortSelector value={sort} options={sortOptions} onChange={setSort} fullWidth={compactMobile} />
           <div className="hidden items-center gap-2 md:flex">
             <button type="button" onClick={() => setView("grid")} className={cn("rounded-xl border px-3 py-2", view === "grid" ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground")}><Grid2X2 className="h-4 w-4" /></button>
             <button type="button" onClick={() => setView("list")} className={cn("rounded-xl border px-3 py-2", view === "list" ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground")}><LayoutList className="h-4 w-4" /></button>
@@ -1271,6 +1274,8 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
 
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
+  const isBeautyShop = shopVariant === "beauty";
+  const resolvedProductGridClass = isBeautyShop ? productGridClass.replace("grid-cols-1", "grid-cols-2") : productGridClass;
   const sortOptions: ShopSortOption[] = shopPage?.sort_options?.length
     ? shopPage.sort_options
     : (shopVariant === "beauty" || shopVariant === "electronics"
@@ -1287,6 +1292,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       active={shopVariant === "beauty" || shopVariant === "service" || shopVariant === "booking" || shopVariant === "subscription" ? activeType : activeCategory}
       onChange={(value) => setSingleParam(shopVariant === "beauty" || shopVariant === "service" || shopVariant === "booking" || shopVariant === "subscription" ? "type" : "category", value === "All" ? null : value)}
       style={categoryStyle}
+      mobileScrollable={isBeautyShop}
     />
   );
 
@@ -1306,6 +1312,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       onOpenFilters={() => setFilterDrawerOpen(true)}
       showMap={showMap}
       activeFilterCount={activeChips.filter((chip) => chip.key !== "q").length}
+      compactMobile={isBeautyShop}
     />
   );
 
@@ -1325,7 +1332,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     <div className="space-y-8">
       {view === "list" || shopVariant === "food" || shopVariant === "service" || shopVariant === "booking"
         ? <ProductResultsList products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} />
-        : <ProductResultsGrid products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} className={`grid gap-6 ${productGridClass}`} />}
+        : <ProductResultsGrid products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} className={cn("grid gap-6", isBeautyShop && "gap-3 sm:gap-6", resolvedProductGridClass)} />}
       <LoadMore hasMore={displayedProducts.length < filteredProducts.length} onClick={() => setDisplayCount((current) => current + perPage)} />
       {displayedProducts.length >= filteredProducts.length && filteredProducts.length > 0 ? (
         <p className="text-center text-sm text-muted-foreground">{shopPage?.end_message?.trim() || `You have reached the end of the ${storeName} results.`}</p>
@@ -1334,8 +1341,8 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   );
 
   const shell = (
-    <div className="space-y-8">
-      <AnimatedSection animation="blur">
+    <div className={cn("space-y-8", isBeautyShop && "space-y-5 md:space-y-8")}>
+      <AnimatedSection animation="blur" className={cn(isBeautyShop && "hidden sm:block")}>
         <nav className="text-sm text-muted-foreground">
           <span>Home</span> <span className="mx-2">/</span> <span className="text-foreground">Shop</span>
         </nav>
@@ -1349,7 +1356,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   );
 
   const results = (
-    <div className="flex flex-col gap-8 lg:flex-row">
+    <div className={cn("flex flex-col gap-8 lg:flex-row", isBeautyShop && "gap-5 md:gap-8")}>
       {filterSidebar}
       <div className="min-w-0 flex-1 space-y-8">{resultsNode}</div>
     </div>
@@ -1375,7 +1382,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
         />
       ) : null}
       <PageTransition>
-        <section className="py-14 md:py-16">
+        <section className={cn("py-14 md:py-16", isBeautyShop && "py-8 md:py-16")}>
           <div className={`mx-auto px-4 ${containerClass}`}>
             <Renderer
               shell={shell}

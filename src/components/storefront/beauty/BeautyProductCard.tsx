@@ -78,27 +78,27 @@ export function BeautyProductCard({
         />
       </ProductCardMedia>
 
-        <ProductCardContent>
-          <p className="line-clamp-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground truncate min-w-0">
+        <ProductCardContent className="space-y-2 p-3 sm:space-y-2.5 sm:p-4">
+          <p className="line-clamp-1 min-w-0 truncate text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Beauty"}
           </p>
 
-        <ProductCardTitle href={url}>
+        <ProductCardTitle href={url} className="h-10 min-h-10 text-[0.9rem] leading-[1.15rem] sm:h-[2.75rem] sm:min-h-[2.75rem] sm:text-[1.02rem] sm:leading-5">
           {product.name}
         </ProductCardTitle>
 
-        <div className="flex items-center gap-1.5 min-h-[1.25rem]">
+        <div className="flex min-h-[1.25rem] items-center gap-1 sm:gap-1.5">
           <div className="flex items-center gap-0.5 text-[#f5b301]">
             {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} className={cn("h-3.5 w-3.5", index < roundedRating ? "fill-current" : "fill-transparent text-muted-foreground/30")} />
+              <Star key={index} className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", index < roundedRating ? "fill-current" : "fill-transparent text-muted-foreground/30")} />
             ))}
           </div>
-          <span className="min-w-0 truncate text-xs text-muted-foreground">
+          <span className="min-w-0 truncate text-[11px] text-muted-foreground sm:text-xs">
             {reviewCount > 0 ? `(${reviewCount})` : optionSummary}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 min-h-[1.5rem]">
+        <div className="flex min-h-[1.5rem] flex-wrap items-center gap-1 sm:gap-1.5">
           {visibleShades.map((color, index) => (
             <span
               key={`${color}-${index}`}
@@ -124,10 +124,10 @@ export function BeautyProductCard({
           ) : null}
         </div>
 
-        <div className="flex items-baseline gap-2 pt-1 min-w-0">
-          <span className="text-xl font-bold text-primary truncate min-w-0">৳{product.price.toLocaleString()}</span>
+        <div className="flex min-w-0 items-baseline gap-1.5 pt-1 sm:gap-2">
+          <span className="min-w-0 truncate text-base font-bold text-primary sm:text-xl">৳{product.price.toLocaleString()}</span>
           {product.originalPrice && product.originalPrice > product.price ? (
-            <span className="text-xs text-muted-foreground line-through truncate min-w-0">৳{product.originalPrice.toLocaleString()}</span>
+            <span className="min-w-0 truncate text-[11px] text-muted-foreground line-through sm:text-xs">৳{product.originalPrice.toLocaleString()}</span>
           ) : null}
         </div>
 
@@ -142,10 +142,11 @@ export function BeautyProductCard({
               size: primaryOption,
               storeId: currentStore?.id,
             })}
-            className="inline-flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:gap-2 sm:px-3"
           >
             <ShoppingBag className="h-4 w-4 shrink-0" />
-            Add to Cart
+            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Add to Cart</span>
           </button>
         </ProductCardActions>
       </ProductCardContent>
