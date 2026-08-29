@@ -11,13 +11,19 @@ export type PaymentProviderManifest = ProviderManifest & {
   checkoutDescription: string;
 };
 
-export type PaymentConnectionStatus = "draft" | "connected" | "revoked";
+export type PaymentConnectionStatus = "draft" | "configured" | "revoked";
+export type PaymentStoredConnectionStatus = PaymentConnectionStatus | "connected";
+export type ConnectionVerificationStatus = "not_checked" | "verified" | "failed";
 
 export type PaymentConnectionRow = {
   id: string;
   store_id: string;
   provider: string;
-  status: PaymentConnectionStatus;
+  status: PaymentStoredConnectionStatus;
+  verification_status: ConnectionVerificationStatus;
+  last_verification_at: string | null;
+  last_verified_at: string | null;
+  verification_error: RecordValue | null;
   public_metadata: RecordValue | null;
   secret_payload: RecordValue | null;
   created_at: string;
@@ -30,12 +36,30 @@ export type PaymentConnectionSplitResult = {
   secretPayload: RecordValue;
 };
 
+export type ConnectionVerificationResult = {
+  status: "verified" | "failed";
+  checkedAt: string;
+  error?: RecordValue | null;
+};
+
 export type PaymentProviderConnectionAdapter = {
   splitConnectionSettings: (rawSettings: unknown) => PaymentConnectionSplitResult;
   hasCompleteSecrets: (secretPayload: unknown) => boolean;
   buildConnectionResponse: (row: PaymentConnectionRow | null) => Record<string, unknown>;
   incompleteConnectionMessage: string;
+  verifyConnection?: (input: {
+    publicMetadata: RecordValue;
+    secretPayload: RecordValue;
+  }) => Promise<ConnectionVerificationResult>;
 };
+
+export function normalizePaymentConnectionStatus(status: PaymentStoredConnectionStatus): PaymentConnectionStatus {
+  return status === "connected" ? "configured" : status;
+}
+
+export function isPaymentOperationallyConfigured(status: PaymentStoredConnectionStatus) {
+  return status === "configured" || status === "connected";
+}
 
 export type PaymentCheckoutRequest = {
   providerId: string;
@@ -62,12 +86,6 @@ export type PaymentCallbackResult = {
   message: string;
   orderNumber?: string;
   storeId?: string;
-  /**
-   * True only when the provider result proves that another payment attempt is
-   * safe (for example, an explicit cancellation/failed-payment status). Leave
-   * false/undefined for ambiguous verification/settlement errors where a charge
-   * may already have occurred.
-   */
   retryable?: boolean;
 };
 

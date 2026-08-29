@@ -254,7 +254,7 @@ export const CustomDomainTab = () => {
       if (body.warning) {
         toast.success("Custom domain added. Review the DNS details below.");
       } else {
-        toast.success("Custom domain connected. Add the DNS records below to finish setup.");
+        toast.success("Custom domain added. Add the DNS records below and check the connection to finish setup.");
       }
     } catch (error) {
       await fetchDomainState();

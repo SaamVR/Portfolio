@@ -11,7 +11,12 @@ export type PaymentConnectionSummary = {
   id?: string;
   provider: string;
   configured: boolean;
-  status: "draft" | "connected" | "revoked";
+  status: "draft" | "configured" | "revoked";
+  verificationStatus: "not_checked" | "verified" | "failed";
+  verificationAvailable: boolean;
+  verificationError: Record<string, unknown> | null;
+  lastVerificationAt: string | null;
+  lastVerifiedAt: string | null;
   metadata: Record<string, unknown>;
   updatedAt: string | null;
   revokedAt: string | null;
@@ -44,9 +49,7 @@ function defaultFieldValue(field: PaymentProviderManifest["fields"][number]) {
 }
 
 function createProviderDraft(manifest: PaymentProviderManifest): PaymentProviderDraft {
-  return Object.fromEntries(
-    manifest.fields.map((field) => [field.key, defaultFieldValue(field)]),
-  );
+  return Object.fromEntries(manifest.fields.map((field) => [field.key, defaultFieldValue(field)]));
 }
 
 function createInitialProviderDrafts() {
@@ -84,15 +87,12 @@ export function usePaymentGateway({
         if (!activeStoreId || !accessToken) {
           throw new Error(`Please sign in again before loading ${manifest.label} connection status.`);
         }
-
         const response = await fetch(
           `/api/payment-connections/${encodeURIComponent(manifest.id)}?storeId=${encodeURIComponent(activeStoreId)}`,
           { headers: { authorization: `Bearer ${accessToken}` } },
         );
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(data?.error || `Failed to load ${manifest.label} connection status`);
-        }
+        if (!response.ok) throw new Error(data?.error || `Failed to load ${manifest.label} connection status`);
         return data.connection as PaymentConnectionSummary;
       },
       enabled: Boolean(activeStoreId && accessToken && enabled && manifest.runtimeStatus === "active"),
@@ -114,10 +114,7 @@ export function usePaymentGateway({
     if (!getPaymentProviderManifest(provider)) return;
     setProviderDrafts((previous) => ({
       ...previous,
-      [provider]: {
-        ...(previous[provider] ?? {}),
-        [key]: value,
-      },
+      [provider]: { ...(previous[provider] ?? {}), [key]: value },
     }));
   };
 
@@ -134,9 +131,7 @@ export function usePaymentGateway({
         [manifest.id]: Object.fromEntries(
           manifest.fields.map((field) => [
             field.key,
-            field.scope === "secret"
-              ? defaultFieldValue(field)
-              : current[field.key] ?? defaultFieldValue(field),
+            field.scope === "secret" ? defaultFieldValue(field) : current[field.key] ?? defaultFieldValue(field),
           ]),
         ),
       };
@@ -155,24 +150,19 @@ export function usePaymentGateway({
     try {
       const response = await fetch(`/api/payment-connections/${encodeURIComponent(provider)}`, {
         method: rotate ? "PATCH" : "PUT",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
           storeId: activeStoreId,
           settings: providerDrafts[provider] ?? createProviderDraft(manifest),
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || `Failed to save ${manifest.label} connection`);
-      }
+      if (!response.ok) throw new Error(data?.error || `Failed to save ${manifest.label} connection`);
 
       resetSecretDraftFields(manifest);
       await queryClient.invalidateQueries({ queryKey: ["payment-connection", provider, activeStoreId] });
       queryClient.invalidateQueries({ queryKey: ["public_payment_settings", activeStoreId] });
-      toast.success(rotate ? `${manifest.label} credentials rotated` : `${manifest.label} gateway connected`);
+      toast.success(rotate ? `${manifest.label} credentials updated; verification reset` : `${manifest.label} credentials configured`);
     } catch (error: any) {
       toast.error(error?.message || `Failed to save ${manifest.label} connection`);
     } finally {
@@ -189,15 +179,10 @@ export function usePaymentGateway({
     try {
       const response = await fetch(
         `/api/payment-connections/${encodeURIComponent(provider)}?storeId=${encodeURIComponent(activeStoreId)}`,
-        {
-          method: "DELETE",
-          headers: { authorization: `Bearer ${accessToken}` },
-        },
+        { method: "DELETE", headers: { authorization: `Bearer ${accessToken}` } },
       );
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || `Failed to revoke ${manifest.label} connection`);
-      }
+      if (!response.ok) throw new Error(data?.error || `Failed to revoke ${manifest.label} connection`);
       await queryClient.invalidateQueries({ queryKey: ["payment-connection", provider, activeStoreId] });
       queryClient.invalidateQueries({ queryKey: ["public_payment_settings", activeStoreId] });
       toast.success(`${manifest.label} gateway revoked`);
@@ -222,9 +207,6 @@ export function usePaymentGateway({
     revokeProviderConnection,
     savingAction,
     scrubPaymentSettings,
-
-    // Temporary compatibility aliases for any code outside the provider-driven
-    // settings card. They can be removed after all callers migrate.
     bkashConnectionDraft,
     setBkashConnectionDraft: (updater: PaymentProviderDraft | ((draft: PaymentProviderDraft) => PaymentProviderDraft)) => {
       const current = providerDrafts.bkash ?? {};

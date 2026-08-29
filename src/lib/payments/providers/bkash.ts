@@ -1,5 +1,7 @@
 import {
+  isPaymentOperationallyConfigured,
   maskPaymentText,
+  normalizePaymentConnectionStatus,
   pickPaymentSecret,
   readPaymentText,
   safePaymentObject,
@@ -73,7 +75,7 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
     },
   },
   connection: {
-    incompleteConnectionMessage: "Add app key, app secret, username, and password before connecting bKash.",
+    incompleteConnectionMessage: "Add app key, app secret, username, and password before configuring bKash.",
     splitConnectionSettings(rawSettings) {
       const settings = safePaymentObject(rawSettings);
       const isLive = settings.isLive === true || settings.bkash_is_live === true;
@@ -117,6 +119,11 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
           provider: "bkash",
           configured: false,
           status: "draft",
+          verificationStatus: "not_checked",
+          verificationAvailable: false,
+          verificationError: null,
+          lastVerificationAt: null,
+          lastVerifiedAt: null,
           metadata: {
             environment: "sandbox",
             forceTestMode: false,
@@ -132,11 +139,17 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
 
       const metadata = safePaymentObject(row.public_metadata);
       const complete = bkashPaymentPlugin.connection.hasCompleteSecrets(row.secret_payload);
+      const normalizedStatus = normalizePaymentConnectionStatus(row.status);
       return {
         id: row.id,
         provider: row.provider,
-        configured: row.status === "connected" && complete,
-        status: row.status,
+        configured: isPaymentOperationallyConfigured(row.status) && complete,
+        status: normalizedStatus,
+        verificationStatus: row.verification_status ?? "not_checked",
+        verificationAvailable: Boolean(bkashPaymentPlugin.connection.verifyConnection),
+        verificationError: row.verification_error ?? null,
+        lastVerificationAt: row.last_verification_at ?? null,
+        lastVerifiedAt: row.last_verified_at ?? null,
         metadata: {
           environment: metadata.environment === "live" ? "live" : "sandbox",
           forceTestMode: metadata.force_test_mode === true,

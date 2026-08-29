@@ -23,12 +23,23 @@ export type CourierBookingResult = {
   trackingNumber: string | null;
 };
 
+export type CourierVerificationResult = {
+  status: "verified" | "failed";
+  checkedAt: string;
+  error?: Record<string, unknown> | null;
+};
+
 export type CourierProviderAdapter = {
   splitSettings: (rawSettings: unknown) => {
     publicSettings: CourierPublicSettings;
     secretSettings: CourierSecretSettings;
   };
   summarizeSettings: (publicSettings: unknown, secretSettings: unknown) => CourierSettingsSummary;
+  isConfigurationComplete?: (publicSettings: unknown, secretSettings: unknown) => boolean;
+  verifyConnection?: (input: {
+    publicSettings: CourierPublicSettings;
+    secretSettings: CourierSecretSettings;
+  }) => Promise<CourierVerificationResult>;
   book?: (input: {
     deps: { fetch: typeof fetch; now: () => string };
     order: CourierOrderRow;
@@ -84,6 +95,20 @@ export function buildSharedCourierPublicSettings(rawSettings: unknown): CourierP
     note: readCourierText(settings.note, 300),
     sandbox_mode: settings.sandboxMode === true,
   };
+}
+
+export function hasRequiredCourierOperations(publicSettings: unknown) {
+  const settings = safeCourierProviderObject(publicSettings);
+  return Boolean(
+    readCourierText(settings.zone_label, 120)
+    && readCourierText(settings.service_area_name, 120)
+    && readCourierText(settings.pickup_contact_name, 120)
+    && readCourierText(settings.pickup_contact_phone, 40)
+    && readCourierText(settings.pickup_address, 300)
+    && readCourierText(settings.return_contact_name, 120)
+    && readCourierText(settings.return_contact_phone, 40)
+    && readCourierText(settings.return_address, 300),
+  );
 }
 
 export function buildSharedCourierSummary(publicSettings: unknown): CourierSettingsSummary {

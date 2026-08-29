@@ -79,7 +79,7 @@ export default function AdminOrders() {
   }, [activeStoreId]);
 
   const connectedCouriers = useMemo(
-    () => courierConnections.filter((connection) => connection.status === "connected"),
+    () => courierConnections.filter((connection) => connection.status === "configured"),
     [courierConnections],
   );
   const selectedBookingConnection = useMemo(
@@ -498,7 +498,7 @@ export default function AdminOrders() {
                 <Label htmlFor="booking-connection">Courier connection</Label>
                 <Select value={bookingConnectionId} onValueChange={setBookingConnectionId}>
                   <SelectTrigger id="booking-connection">
-                    <SelectValue placeholder="Choose a connected courier" />
+                    <SelectValue placeholder="Choose a configured courier" />
                   </SelectTrigger>
                   <SelectContent>
                     {connectedCouriers.map((connection) => (

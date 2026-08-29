@@ -2,6 +2,7 @@ import { genericCourierApiFields } from "@/lib/couriers/provider-fields";
 import {
   buildSharedCourierPublicSettings,
   buildSharedCourierSummary,
+  hasRequiredCourierOperations,
   pickCourierSecret,
   readCourierText,
   safeCourierProviderObject,
@@ -56,6 +57,9 @@ export function createSetupOnlyCourierPlugin(id: string, label: string, descript
           hasApiKey: Boolean(readCourierText(secrets.api_key, 500)),
           hasSecretKey: Boolean(readCourierText(secrets.secret_key, 500)),
         };
+      },
+      isConfigurationComplete(publicSettings) {
+        return hasRequiredCourierOperations(publicSettings);
       },
     },
   };

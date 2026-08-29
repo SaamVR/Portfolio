@@ -14,6 +14,7 @@ import {
   getCourierProviderServerAdapter,
   safeCourierProviderObject,
 } from "@/lib/couriers/provider-server";
+import { isCourierOperationallyConfigured } from "@/lib/couriers/shared";
 
 export const courierBookingRouteDeps = {
   getAuthenticatedUser,
@@ -32,15 +33,12 @@ const bookableOrderStatuses = new Set(["confirmed", "processing"]);
 export async function POST(req: Request) {
   try {
     const user = await courierBookingRouteDeps.getAuthenticatedUser(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const storeId = typeof body?.storeId === "string" ? body.storeId.trim() : "";
     const orderId = typeof body?.orderId === "string" ? body.orderId.trim() : "";
     const connectionId = typeof body?.connectionId === "string" ? body.connectionId.trim() : "";
-
     if (!storeId || !orderId || !connectionId) {
       return NextResponse.json({ error: "Missing storeId, orderId, or connectionId" }, { status: 400 });
     }
@@ -52,9 +50,7 @@ export async function POST(req: Request) {
       user.id,
       ["owner", "admin", "editor"],
     );
-    if (!authorized) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const [{ data: order, error: orderError }, { data: connection, error: connectionError }, { data: credential, error: credentialError }, { data: existingShipment, error: existingShipmentError }] = await Promise.all([
       (supabaseAdmin as any)
@@ -87,14 +83,13 @@ export async function POST(req: Request) {
     if (credentialError) throw credentialError;
     if (existingShipmentError) throw existingShipmentError;
 
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-    if (!connection) {
-      return NextResponse.json({ error: "Courier connection not found" }, { status: 404 });
-    }
-    if (connection.status === "disabled") {
-      return NextResponse.json({ error: "This courier connection is disabled" }, { status: 400 });
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!connection) return NextResponse.json({ error: "Courier connection not found" }, { status: 404 });
+    if (!isCourierOperationallyConfigured(String(connection.status) as "draft" | "configured" | "disabled" | "connected")) {
+      return NextResponse.json(
+        { error: connection.status === "disabled" ? "This courier connection is disabled" : "Configure this courier connection before booking." },
+        { status: 400 },
+      );
     }
     if (!bookableOrderStatuses.has(String(order.status))) {
       return NextResponse.json(
@@ -131,13 +126,7 @@ export async function POST(req: Request) {
       const providerMessage = providerError instanceof Error ? providerError.message : "Courier booking failed";
       await (supabaseAdmin as any)
         .from("store_courier_connections")
-        .update({
-          last_error: {
-            message: providerMessage,
-            provider: connection.provider,
-            failed_at: now,
-          },
-        })
+        .update({ last_error: { message: providerMessage, provider: connection.provider, failed_at: now } })
         .eq("id", connectionId)
         .eq("store_id", storeId);
       return NextResponse.json({ error: providerMessage }, { status: 400 });
@@ -162,10 +151,7 @@ export async function POST(req: Request) {
           : typeof bookingPayload.amountToCollect === "number"
             ? bookingPayload.amountToCollect
             : /cod/i.test(order.payment_method) ? order.total : 0,
-      shipping_fee:
-        typeof bookingPayload.shippingFee === "number"
-          ? bookingPayload.shippingFee
-          : order.delivery_fee,
+      shipping_fee: typeof bookingPayload.shippingFee === "number" ? bookingPayload.shippingFee : order.delivery_fee,
       booking_payload: bookingPayload,
       latest_provider_payload: bookingResult.responsePayload,
       created_by: user.id,
@@ -197,11 +183,7 @@ export async function POST(req: Request) {
 
     if (String(order.status) === "confirmed") {
       tasks.push(
-        (supabaseAdmin as any)
-          .from("orders")
-          .update({ status: "processing" })
-          .eq("id", orderId)
-          .eq("store_id", storeId),
+        (supabaseAdmin as any).from("orders").update({ status: "processing" }).eq("id", orderId).eq("store_id", storeId),
       );
     }
     await Promise.all(tasks);

@@ -6,8 +6,11 @@ import {
 export const courierProviders = listCourierProviderManifests().map((provider) => provider.id);
 export type CourierProvider = string;
 
-export const courierConnectionStatuses = ["draft", "connected", "disabled"] as const;
+export const courierConnectionStatuses = ["draft", "configured", "disabled"] as const;
 export type CourierConnectionStatus = typeof courierConnectionStatuses[number];
+export type CourierStoredConnectionStatus = CourierConnectionStatus | "connected";
+export const connectionVerificationStatuses = ["not_checked", "verified", "failed"] as const;
+export type ConnectionVerificationStatus = typeof connectionVerificationStatuses[number];
 
 export const shipmentStatuses = [
   "pending",
@@ -55,6 +58,11 @@ export type CourierConnectionRecord = {
   zoneLabel: string | null;
   serviceAreaName: string | null;
   status: CourierConnectionStatus;
+  verificationStatus: ConnectionVerificationStatus;
+  verificationAvailable: boolean;
+  verificationError: Record<string, unknown> | null;
+  lastVerificationAt: string | null;
+  lastVerifiedAt: string | null;
   displayName: string | null;
   supportsCod: boolean;
   supportsCityDelivery: boolean;
@@ -79,6 +87,14 @@ export type ShipmentSummary = {
   created_at: string;
   delivered_at: string | null;
 };
+
+export function normalizeCourierConnectionStatus(status: CourierStoredConnectionStatus): CourierConnectionStatus {
+  return status === "connected" ? "configured" : status;
+}
+
+export function isCourierOperationallyConfigured(status: CourierStoredConnectionStatus) {
+  return status === "configured" || status === "connected";
+}
 
 export function getCourierProviderLabel(provider: CourierProvider) {
   return getCourierProviderManifest(provider)?.label ?? provider;

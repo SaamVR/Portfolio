@@ -9,6 +9,7 @@ import {
   type CourierProviderAdapter,
   type CourierProviderManifest,
 } from "@/lib/couriers/provider-plugin";
+import { normalizeCourierConnectionStatus } from "@/lib/couriers/shared";
 
 export { safeCourierProviderObject } from "@/lib/couriers/provider-plugin";
 export type { CourierBookingResult } from "@/lib/couriers/provider-plugin";
@@ -20,11 +21,7 @@ export type CourierProviderServerAdapter = CourierProviderAdapter & {
 export function getCourierProviderServerAdapter(provider: unknown): CourierProviderServerAdapter | null {
   const plugin = getCourierProviderPlugin(provider);
   if (!plugin) return null;
-
-  return {
-    manifest: plugin.manifest,
-    ...plugin.adapter,
-  };
+  return { manifest: plugin.manifest, ...plugin.adapter };
 }
 
 export function requireCourierProviderServerAdapter(provider: unknown) {
@@ -35,11 +32,27 @@ export function requireCourierProviderServerAdapter(provider: unknown) {
   return adapter;
 }
 
+export function isCourierProviderConfigurationComplete(
+  adapter: CourierProviderServerAdapter,
+  publicSettings: unknown,
+  secretSettings: unknown,
+) {
+  return adapter.isConfigurationComplete
+    ? adapter.isConfigurationComplete(publicSettings, secretSettings)
+    : false;
+}
+
 export function buildCourierProviderConnectionResponse(
   row: CourierConnectionRow,
   credential: CourierCredentialRow | null,
 ) {
   const adapter = requireCourierProviderServerAdapter(row.provider);
+  const verificationRow = row as CourierConnectionRow & {
+    verification_status?: "not_checked" | "verified" | "failed" | null;
+    last_verification_at?: string | null;
+    last_verified_at?: string | null;
+    verification_error?: Record<string, unknown> | null;
+  };
   return {
     id: row.id,
     storeId: row.store_id,
@@ -47,7 +60,12 @@ export function buildCourierProviderConnectionResponse(
     connectionKey: row.connection_key,
     zoneLabel: row.zone_label,
     serviceAreaName: row.service_area_name,
-    status: row.status,
+    status: normalizeCourierConnectionStatus(row.status as "draft" | "configured" | "disabled" | "connected"),
+    verificationStatus: verificationRow.verification_status ?? "not_checked",
+    verificationAvailable: Boolean(adapter.verifyConnection),
+    verificationError: verificationRow.verification_error ?? null,
+    lastVerificationAt: verificationRow.last_verification_at ?? null,
+    lastVerifiedAt: verificationRow.last_verified_at ?? null,
     displayName: row.display_name,
     supportsCod: row.supports_cod,
     supportsCityDelivery: row.supports_city_delivery,
@@ -59,5 +77,4 @@ export function buildCourierProviderConnectionResponse(
   };
 }
 
-// Keep the type available to callers that import the server facade as their plugin boundary.
 export type CourierProviderServerBookingResult = CourierBookingResult;

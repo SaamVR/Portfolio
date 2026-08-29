@@ -16,7 +16,6 @@ import {
   useUpdateCourierConnection,
 } from "@/hooks/useCouriers";
 import {
-  courierConnectionStatuses,
   formatCourierConnectionLabel,
   formatCourierStatusLabel,
   getCourierProviderLabel,
@@ -38,12 +37,10 @@ type ConnectionDraft = {
   displayName: string;
   supportsCod: boolean;
   supportsCityDelivery: boolean;
-  status: string;
   settings: Record<string, FieldValue>;
 };
 
-const providerManifests = listCourierProviderManifests()
-  .filter((provider) => provider.runtimeStatus !== "disabled");
+const providerManifests = listCourierProviderManifests().filter((provider) => provider.runtimeStatus !== "disabled");
 
 function defaultFieldValue(field: ProviderSetupField): FieldValue {
   if (field.defaultValue !== undefined && field.defaultValue !== null) return field.defaultValue;
@@ -57,7 +54,6 @@ function emptyDraft(provider = providerManifests[0]?.id ?? "manual"): Connection
     displayName: "",
     supportsCod: manifest?.defaultSupportsCod ?? true,
     supportsCityDelivery: manifest?.defaultSupportsCityDelivery ?? true,
-    status: "draft",
     settings: Object.fromEntries((manifest?.fields ?? []).map((field) => [field.key, defaultFieldValue(field)])),
   };
 }
@@ -79,12 +75,9 @@ function draftFromConnection(connection: CourierConnectionRecord): ConnectionDra
     displayName: connection.displayName ?? "",
     supportsCod: connection.supportsCod,
     supportsCityDelivery: connection.supportsCityDelivery,
-    status: connection.status,
     settings: Object.fromEntries((manifest?.fields ?? []).map((field) => [
       field.key,
-      field.scope === "secret"
-        ? ""
-        : (settingsSummary[field.key] as FieldValue | undefined) ?? defaultFieldValue(field),
+      field.scope === "secret" ? "" : (settingsSummary[field.key] as FieldValue | undefined) ?? defaultFieldValue(field),
     ])),
   };
 }
@@ -95,11 +88,7 @@ function fieldHasValue(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function missingRequiredFields(
-  draft: ConnectionDraft,
-  manifest: CourierProviderManifest,
-  editingConnection: CourierConnectionRecord | null,
-) {
+function missingRequiredFields(draft: ConnectionDraft, manifest: CourierProviderManifest, editingConnection: CourierConnectionRecord | null) {
   const missing: string[] = [];
   if (!draft.displayName.trim()) missing.push("Operator label");
   for (const field of manifest.fields) {
@@ -111,9 +100,21 @@ function missingRequiredFields(
 }
 
 function toneForConnection(status: string) {
-  if (status === "connected") return "default" as const;
+  if (status === "configured") return "default" as const;
   if (status === "disabled") return "secondary" as const;
   return "outline" as const;
+}
+
+function toneForVerification(status: CourierConnectionRecord["verificationStatus"]) {
+  if (status === "verified") return "default" as const;
+  if (status === "failed") return "destructive" as const;
+  return "outline" as const;
+}
+
+function verificationLabel(connection: CourierConnectionRecord) {
+  if (connection.verificationStatus === "verified") return "Verified";
+  if (connection.verificationStatus === "failed") return "Verification failed";
+  return connection.verificationAvailable ? "Not verified yet" : "Verification unavailable";
 }
 
 function toneForShipment(status: ShipmentStatus) {
@@ -128,12 +129,7 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-function CourierProviderField({
-  field,
-  value,
-  savedSecret,
-  onChange,
-}: {
+function CourierProviderField({ field, value, savedSecret, onChange }: {
   field: ProviderSetupField;
   value: FieldValue | undefined;
   savedSecret: boolean;
@@ -142,10 +138,7 @@ function CourierProviderField({
   if (field.kind === "boolean") {
     return (
       <div className="flex items-start justify-between gap-4 rounded-xl border border-border p-3">
-        <div className="space-y-1">
-          <Label>{field.label}</Label>
-          {field.helpText ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null}
-        </div>
+        <div className="space-y-1"><Label>{field.label}</Label>{field.helpText ? <p className="text-xs text-muted-foreground">{field.helpText}</p> : null}</div>
         <Switch checked={value === true} onCheckedChange={onChange} />
       </div>
     );
@@ -156,19 +149,12 @@ function CourierProviderField({
     return (
       <div className="space-y-2">
         <Label>{field.label}{field.required ? " *" : ""}</Label>
-        <Select
-          value={serialized}
-          onValueChange={(next) => {
-            const option = field.options?.find((candidate) => String(candidate.value) === next);
-            onChange((option?.value ?? next) as FieldValue);
-          }}
-        >
+        <Select value={serialized} onValueChange={(next) => {
+          const option = field.options?.find((candidate) => String(candidate.value) === next);
+          onChange((option?.value ?? next) as FieldValue);
+        }}>
           <SelectTrigger><SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} /></SelectTrigger>
-          <SelectContent>
-            {(field.options ?? []).map((option) => (
-              <SelectItem key={String(option.value)} value={String(option.value)}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
+          <SelectContent>{(field.options ?? []).map((option) => <SelectItem key={String(option.value)} value={String(option.value)}>{option.label}</SelectItem>)}</SelectContent>
         </Select>
       </div>
     );
@@ -176,10 +162,7 @@ function CourierProviderField({
 
   return (
     <div className="space-y-2">
-      <Label>
-        {field.label}{field.required ? " *" : ""}
-        {field.scope === "secret" && savedSecret ? " (saved; leave blank to keep current value)" : ""}
-      </Label>
+      <Label>{field.label}{field.required ? " *" : ""}{field.scope === "secret" && savedSecret ? " (saved; leave blank to keep current value)" : ""}</Label>
       <Input
         type={field.kind === "password" ? "password" : field.kind === "number" ? "number" : field.kind === "url" ? "url" : "text"}
         inputMode={field.kind === "number" ? "decimal" : undefined}
@@ -210,8 +193,8 @@ export default function CouriersPluginManager() {
   const savePending = saveConnection.isPending || updateConnection.isPending;
 
   const summary = useMemo(() => ({
-    connected: connections.filter((connection) => connection.status === "connected").length,
-    activeAdapters: providerManifests.filter((provider) => provider.runtimeStatus === "active").length,
+    configured: connections.filter((connection) => connection.status === "configured").length,
+    verified: connections.filter((connection) => connection.verificationStatus === "verified").length,
     inTransit: shipments.filter((shipment) => ["booked", "picked_up", "in_transit"].includes(shipment.status)).length,
     failed: shipments.filter((shipment) => ["failed", "returned", "cancelled"].includes(shipment.status)).length,
   }), [connections, shipments]);
@@ -231,23 +214,20 @@ export default function CouriersPluginManager() {
       toast.error(`Complete required fields: ${missingFields.join(", ")}`);
       return;
     }
-
     const payload = {
       provider: manifest.id,
       displayName: draft.displayName,
       supportsCod: draft.supportsCod,
       supportsCityDelivery: draft.supportsCityDelivery,
-      status: draft.status,
       settings: draft.settings,
     };
-
     try {
       if (editingConnectionId) {
         await updateConnection.mutateAsync({ connectionId: editingConnectionId, ...payload });
-        toast.success("Courier connection updated.");
+        toast.success("Courier connection updated. Verification status was reset.");
       } else {
         await saveConnection.mutateAsync(payload);
-        toast.success("Courier connection saved.");
+        toast.success("Courier connection configured.");
       }
       resetForm(manifest.id);
     } catch (error) {
@@ -255,26 +235,19 @@ export default function CouriersPluginManager() {
     }
   };
 
-  const setConnectionStatus = async (connection: CourierConnectionRecord, status: string) => {
+  const toggleConnection = async (connection: CourierConnectionRecord) => {
+    const action = connection.status === "disabled" ? "enable" : "disable";
     try {
-      await updateConnection.mutateAsync({ connectionId: connection.id, status });
-      toast.success("Courier status updated.");
+      await updateConnection.mutateAsync({ connectionId: connection.id, action });
+      toast.success(action === "enable" ? "Courier connection enabled." : "Courier connection disabled.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update courier status.");
+      toast.error(error instanceof Error ? error.message : `Could not ${action} courier connection.`);
     }
   };
 
   if (!activeStoreId) {
-    return (
-      <Card className="border-border bg-card/50">
-        <CardHeader>
-          <CardTitle>Courier plugins</CardTitle>
-          <CardDescription>Select a store first to configure courier providers.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <Card className="border-border bg-card/50"><CardHeader><CardTitle>Courier plugins</CardTitle><CardDescription>Select a store first to configure courier providers.</CardDescription></CardHeader></Card>;
   }
-
   if (connectionsQuery.isLoading || shipmentsQuery.isLoading) {
     return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading courier plugins...</div>;
   }
@@ -285,15 +258,13 @@ export default function CouriersPluginManager() {
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-2xl"><Truck className="h-6 w-6 text-primary" /> Courier plugins</CardTitle>
-            <CardDescription className="mt-1 max-w-2xl">
-              Provider-specific credentials and API behavior live in isolated adapters. Add a future courier by installing its manifest and server adapter instead of changing the order workflow.
-            </CardDescription>
+            <CardDescription className="mt-1 max-w-2xl">Configuration and provider verification are tracked separately. Saving complete settings makes a courier operationally configured; only an authoritative provider check can make it verified.</CardDescription>
           </div>
           <Button variant="outline" onClick={() => void connectionsQuery.refetch()}><RefreshCw className="mr-2 h-4 w-4" /> Refresh</Button>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Connected</p><p className="mt-1 text-2xl font-bold">{summary.connected}</p></div>
-          <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Live adapters</p><p className="mt-1 text-2xl font-bold">{summary.activeAdapters}</p></div>
+          <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Configured</p><p className="mt-1 text-2xl font-bold">{summary.configured}</p></div>
+          <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Verified</p><p className="mt-1 text-2xl font-bold">{summary.verified}</p></div>
           <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">In transit</p><p className="mt-1 text-2xl font-bold">{summary.inTransit}</p></div>
           <div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Failed / returned</p><p className="mt-1 text-2xl font-bold">{summary.failed}</p></div>
         </CardContent>
@@ -301,70 +272,29 @@ export default function CouriersPluginManager() {
 
       <div className="grid gap-7 xl:grid-cols-[1fr_1.15fr]">
         <Card className="border-border bg-card/50">
-          <CardHeader>
-            <CardTitle>{editingConnection ? "Edit courier plugin" : "Add courier plugin"}</CardTitle>
-            <CardDescription>Only masked credential-presence information returns to this screen; provider secrets stay server-side.</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle>{editingConnection ? "Edit courier plugin" : "Add courier plugin"}</CardTitle><CardDescription>Operational state is server-derived from complete normalized settings; merchants cannot self-declare a provider connection.</CardDescription></CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Provider</Label>
-                <Select
-                  value={draft.provider}
-                  disabled={Boolean(editingConnectionId)}
-                  onValueChange={(provider) => setDraft(emptyDraft(provider))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Choose provider" /></SelectTrigger>
-                  <SelectContent>
-                    {providerManifests.map((provider) => (
-                      <SelectItem key={provider.id} value={provider.id}>{provider.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Connection status</Label>
-                <Select value={draft.status} onValueChange={(status) => setDraft((current) => ({ ...current, status }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {courierConnectionStatuses.map((status) => <SelectItem key={status} value={status}>{formatCourierStatusLabel(status)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label>Operator label *</Label>
-              <Input value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} placeholder="e.g. Pathao Dhaka Primary" />
+              <Label>Provider</Label>
+              <Select value={draft.provider} disabled={Boolean(editingConnectionId)} onValueChange={(provider) => setDraft(emptyDraft(provider))}>
+                <SelectTrigger><SelectValue placeholder="Choose provider" /></SelectTrigger>
+                <SelectContent>{providerManifests.map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
 
-            {manifest?.guide ? (
-              <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
-                <p className="text-sm font-semibold">{manifest.guide.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{manifest.guide.body}</p>
-                {(manifest.guide.examples ?? []).map((example) => <p key={example} className="mt-1 text-xs text-muted-foreground">{example}</p>)}
-              </div>
-            ) : null}
+            <div className="space-y-2"><Label>Operator label *</Label><Input value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} placeholder="e.g. Pathao Dhaka Primary" /></div>
 
-            {manifest?.runtimeStatus === "setup_only" ? (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-muted-foreground">
-                Configuration storage is available, but automated booking remains disabled until this provider's reviewed runtime adapter is activated.
-              </div>
-            ) : null}
+            {manifest?.guide ? <div className="rounded-xl border border-primary/15 bg-primary/5 p-4"><p className="text-sm font-semibold">{manifest.guide.title}</p><p className="mt-1 text-xs text-muted-foreground">{manifest.guide.body}</p>{(manifest.guide.examples ?? []).map((example) => <p key={example} className="mt-1 text-xs text-muted-foreground">{example}</p>)}</div> : null}
+            {manifest?.runtimeStatus === "setup_only" ? <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-muted-foreground">Configuration storage is available, but automated booking remains disabled until this provider&apos;s reviewed runtime adapter is activated.</div> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              {(manifest?.fields ?? []).map((field) => (
-                <CourierProviderField
-                  key={field.key}
-                  field={field}
-                  value={draft.settings[field.key]}
-                  savedSecret={Boolean(editingConnection && field.scope === "secret" && savedSecretPresence(editingConnection, field.key))}
-                  onChange={(value) => setDraft((current) => ({
-                    ...current,
-                    settings: { ...current.settings, [field.key]: value },
-                  }))}
-                />
-              ))}
+              {(manifest?.fields ?? []).map((field) => <CourierProviderField
+                key={field.key}
+                field={field}
+                value={draft.settings[field.key]}
+                savedSecret={Boolean(editingConnection && field.scope === "secret" && savedSecretPresence(editingConnection, field.key))}
+                onChange={(value) => setDraft((current) => ({ ...current, settings: { ...current.settings, [field.key]: value } }))}
+              />)}
             </div>
 
             <div className="grid gap-3 rounded-xl border border-border p-4">
@@ -372,26 +302,18 @@ export default function CouriersPluginManager() {
               <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Supports city delivery</p><p className="text-xs text-muted-foreground">Use this connection for city-zone dispatch.</p></div><Switch checked={draft.supportsCityDelivery} onCheckedChange={(supportsCityDelivery) => setDraft((current) => ({ ...current, supportsCityDelivery }))} /></div>
             </div>
 
-            {missingFields.length > 0 ? (
-              <p className="text-xs text-amber-700">Required before save: {missingFields.join(", ")}</p>
-            ) : null}
-
+            {missingFields.length > 0 ? <p className="text-xs text-amber-700">Required before save: {missingFields.join(", ")}</p> : null}
             <div className="flex flex-wrap gap-2">
-              <Button disabled={savePending || missingFields.length > 0} onClick={() => void applyDraft()}>
-                {savePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {editingConnection ? "Save changes" : "Save connection"}
-              </Button>
+              <Button disabled={savePending || missingFields.length > 0} onClick={() => void applyDraft()}>{savePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{editingConnection ? "Save changes" : "Save connection"}</Button>
               {editingConnection ? <Button variant="outline" onClick={() => resetForm(draft.provider)}>Cancel</Button> : null}
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card/50">
-          <CardHeader><CardTitle>Configured courier plugins</CardTitle><CardDescription>Only providers with active booking adapters can dispatch automatically.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Configured courier plugins</CardTitle><CardDescription>Configured means required settings are stored. Verified is shown only when a provider adapter can prove connectivity.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
-            {connections.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">No courier connections yet.</div>
-            ) : connections.map((connection) => {
+            {connections.length === 0 ? <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">No courier connections yet.</div> : connections.map((connection) => {
               const connectionManifest = getCourierProviderManifest(connection.provider);
               return (
                 <div key={connection.id} className="rounded-xl border border-border p-4">
@@ -400,17 +322,17 @@ export default function CouriersPluginManager() {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold">{connection.displayName || getCourierProviderLabel(connection.provider)}</p>
                         <Badge variant={toneForConnection(connection.status)}>{formatCourierStatusLabel(connection.status)}</Badge>
+                        <Badge variant={toneForVerification(connection.verificationStatus)}>{verificationLabel(connection)}</Badge>
                         <Badge variant={connectionManifest?.runtimeStatus === "active" ? "default" : "outline"}>{connectionManifest?.runtimeStatus === "active" ? "Live adapter" : "Setup only"}</Badge>
                         {connection.supportsCod ? <Badge variant="outline">COD</Badge> : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{getCourierProviderLabel(connection.provider)} · Updated {formatDate(connection.updatedAt)}</p>
+                      {!connection.verificationAvailable && connection.verificationStatus === "not_checked" ? <p className="text-xs text-muted-foreground">No reviewed side-effect-free verification adapter is available for this provider yet.</p> : null}
                       {connection.settingsSummary.zoneLabel || connection.settingsSummary.serviceAreaName ? <p className="text-xs text-muted-foreground">{formatCourierConnectionLabel({ provider: connection.provider, displayName: null, zoneLabel: connection.settingsSummary.zoneLabel, serviceAreaName: connection.settingsSummary.serviceAreaName })}</p> : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" onClick={() => beginEditing(connection)}><PencilLine className="mr-1 h-3.5 w-3.5" /> Edit</Button>
-                      {courierConnectionStatuses.map((status) => (
-                        <Button key={status} size="sm" variant={connection.status === status ? "default" : "outline"} disabled={updateConnection.isPending} onClick={() => void setConnectionStatus(connection, status)}>Mark {formatCourierStatusLabel(status)}</Button>
-                      ))}
+                      <Button size="sm" variant={connection.status === "disabled" ? "default" : "outline"} disabled={updateConnection.isPending} onClick={() => void toggleConnection(connection)}>{connection.status === "disabled" ? "Enable" : "Disable"}</Button>
                     </div>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { sharedCourierOperationsFields } from "@/lib/couriers/provider-fields";
 import {
   buildSharedCourierPublicSettings,
   buildSharedCourierSummary,
+  hasRequiredCourierOperations,
   pickCourierSecret,
   readCourierPositiveNumber,
   readCourierText,
@@ -68,6 +69,16 @@ export const pathaoCourierPlugin: CourierProviderPlugin = {
         specialInstruction: typeof settings.special_instruction === "string" ? settings.special_instruction : null,
         hasAccessToken: Boolean(readCourierText(secrets.access_token, 500)),
       };
+    },
+    isConfigurationComplete(publicSettings, secretSettings) {
+      const settings = safeCourierProviderObject(publicSettings);
+      const secrets = safeCourierProviderObject(secretSettings);
+      return Boolean(
+        hasRequiredCourierOperations(publicSettings)
+        && readCourierText(settings.base_url, 300)
+        && readCourierPositiveNumber(settings.merchant_store_id, null)
+        && readCourierText(secrets.access_token, 2000),
+      );
     },
     async book({ deps, order, connection, credential, booking }) {
       const result = await createPathaoBooking(

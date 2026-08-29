@@ -3,6 +3,7 @@ import { sharedCourierOperationsFields } from "@/lib/couriers/provider-fields";
 import {
   buildSharedCourierPublicSettings,
   buildSharedCourierSummary,
+  hasRequiredCourierOperations,
   type CourierProviderPlugin,
 } from "@/lib/couriers/provider-plugin";
 
@@ -29,6 +30,9 @@ export const manualCourierPlugin: CourierProviderPlugin = {
     },
     summarizeSettings(publicSettings) {
       return buildSharedCourierSummary(publicSettings);
+    },
+    isConfigurationComplete(publicSettings) {
+      return hasRequiredCourierOperations(publicSettings);
     },
     async book({ deps, order, connection, booking }) {
       const payload = buildManualShipmentPayload(order, connection, booking);

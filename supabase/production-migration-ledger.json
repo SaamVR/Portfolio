@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-28T21:25:00+06:00",
+  "captured_at": "2026-08-29T13:50:00+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -52,6 +52,8 @@
     "harden_public_tenant_rls",
     "harden_security_definer_functions",
     "init",
+    "integration_connection_truth_compat",
+    "integration_connection_truth_compatibility_150",
     "lifecycle_cron_job",
     "lock_direct_order_inserts",
     "lock_subscription_truth_to_server_paths",
