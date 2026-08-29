@@ -9,7 +9,6 @@ import PageTransition from "@/components/PageTransition";
 import { Mail, Phone, MapPin, Loader2, MessageCircle, Clock, ArrowRight, Sparkles } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import {
@@ -43,6 +42,11 @@ const contactSchema = z.object({
     .max(2000, "Message must be under 2000 characters"),
 });
 
+type SubmitStatus =
+  | { tone: "success"; message: string }
+  | { tone: "error"; message: string }
+  | null;
+
 const Contact = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
@@ -56,6 +60,7 @@ const Contact = () => {
   const [form, setForm] = useState(() => ({ name: "", email: "", message: inquiryMessage }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,36 +71,59 @@ const Contact = () => {
         if (err.path[0]) errs[err.path[0] as string] = err.message;
       });
       setErrors(errs);
+      setSubmitStatus({ tone: "error", message: "Please correct the highlighted fields and try again." });
       return;
     }
+    if (!storeId) {
+      setSubmitStatus({ tone: "error", message: "This store is unavailable right now. Please try again later." });
+      return;
+    }
+
+    const originStoreId = storeId;
     setErrors({});
+    setSubmitStatus(null);
     setSubmitting(true);
     try {
-      // Check server-side rate limit (5 messages per hour per email)
-      const { data: allowed, error: rateErr } = await supabase.rpc(
-        "check_contact_rate_limit",
-        { _email: form.email.trim() }
-      );
-      if (rateErr) throw rateErr;
-      if (!allowed) {
-        toast.error("Too many messages sent recently. Please wait an hour before trying again.");
-        setSubmitting(false);
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          storeId: originStoreId,
+          name: result.data.name,
+          email: result.data.email,
+          message: result.data.message,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as {
+        error?: string;
+        retryAfter?: number;
+        resetAt?: number;
+      };
+
+      if (!response.ok) {
+        const message = response.status === 429
+          ? "Too many messages were sent recently. Please wait a while before trying again."
+          : payload.error || "Failed to send message. Please try again.";
+        setSubmitStatus({ tone: "error", message });
+        toast.error(message);
         return;
       }
 
-      const { error } = await supabase
-        .from("contact_messages")
-        .insert({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          message: form.message.trim(),
-          store_id: storeId ?? null,
-        });
-      if (error) throw error;
-      toast.success(inquiryContext ? "Request sent! We'll get back to you soon." : "Message sent! We'll get back to you soon.");
+      if (storeId !== originStoreId) {
+        setSubmitStatus({ tone: "error", message: "The active store changed while sending. Please review before sending again." });
+        return;
+      }
+
+      const successMessage = inquiryContext
+        ? "Request sent! We'll get back to you soon."
+        : "Message sent! We'll get back to you soon.";
+      setSubmitStatus({ tone: "success", message: successMessage });
+      toast.success(successMessage);
       setForm({ name: "", email: "", message: "" });
     } catch {
-      toast.error("Failed to send message. Please try again.");
+      const message = "Failed to send message. Please try again.";
+      setSubmitStatus({ tone: "error", message });
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -104,6 +132,7 @@ const Contact = () => {
   const update = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
+    setSubmitStatus(null);
   };
 
   const address = contact?.address?.trim() || "";
@@ -305,9 +334,11 @@ const Contact = () => {
                             value={form[key as keyof typeof form]}
                             onChange={(e) => update(key, e.target.value)}
                             placeholder={placeholder}
+                            aria-invalid={Boolean(errors[key])}
+                            aria-describedby={errors[key] ? `${key}-error` : undefined}
                             className="w-full rounded-2xl border border-border bg-secondary/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                           />
-                          {errors[key] && <p className="mt-1 text-xs text-destructive">{errors[key]}</p>}
+                          {errors[key] && <p id={`${key}-error`} className="mt-1 text-xs text-destructive">{errors[key]}</p>}
                         </div>
                       ))}
                     </div>
@@ -321,11 +352,13 @@ const Contact = () => {
                         onChange={(e) => update("message", e.target.value)}
                         placeholder="How can we help?"
                         maxLength={2000}
+                        aria-invalid={Boolean(errors.message)}
+                        aria-describedby={errors.message ? "message-error" : undefined}
                         className="w-full rounded-[1.4rem] border border-border bg-secondary/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                       <div className="mt-1 flex justify-between">
                         {errors.message
-                          ? <p className="text-xs text-destructive">{errors.message}</p>
+                          ? <p id="message-error" className="text-xs text-destructive">{errors.message}</p>
                           : <span />
                         }
                         <p className="text-xs text-muted-foreground">{form.message.length}/2000</p>
@@ -341,6 +374,20 @@ const Contact = () => {
                             <p className="mt-1 text-sm text-muted-foreground">{responseTimeText}</p>
                           </div>
                         </div>
+                      </div>
+                    ) : null}
+
+                    {submitStatus ? (
+                      <div
+                        role={submitStatus.tone === "error" ? "alert" : "status"}
+                        aria-live="polite"
+                        className={`rounded-2xl border px-4 py-3 text-sm ${
+                          submitStatus.tone === "error"
+                            ? "border-destructive/30 bg-destructive/5 text-destructive"
+                            : "border-primary/20 bg-primary/5 text-foreground"
+                        }`}
+                      >
+                        {submitStatus.message}
                       </div>
                     ) : null}
 
@@ -363,4 +410,3 @@ const Contact = () => {
 };
 
 export default Contact;
-
