@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-29T13:50:00+06:00",
+  "captured_at": "2026-08-29T14:14:00+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -32,6 +32,7 @@
     "default_store_type_general_catalog",
     "email_events",
     "email_triggers",
+    "enforce_platform_only_merchant_bans_179",
     "enforce_product_review_tenant_consistency",
     "fix_blog_public_visibility",
     "fix_can_manage_store_policy_args",
@@ -52,6 +53,7 @@
     "harden_public_tenant_rls",
     "harden_security_definer_functions",
     "init",
+    "integration_connection_truth_cleanup_150",
     "integration_connection_truth_compat",
     "integration_connection_truth_compatibility_150",
     "lifecycle_cron_job",

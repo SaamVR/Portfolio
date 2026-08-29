@@ -1,9 +1,49 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { runDeleteStoreTransaction } from "./route";
+import { resolveMerchantBanAuthorization, runDeleteStoreTransaction } from "./route";
 
-test("store deletion delegates destructive work to one transactional RPC", async () => {
+test("merchant ban authorization is platform-only", () => {
+  assert.deepEqual(resolveMerchantBanAuthorization(true, false), {
+    forbidden: true,
+    effectiveBanMerchant: false,
+  });
+  assert.deepEqual(resolveMerchantBanAuthorization(false, false), {
+    forbidden: false,
+    effectiveBanMerchant: false,
+  });
+  assert.deepEqual(resolveMerchantBanAuthorization(true, true), {
+    forbidden: false,
+    effectiveBanMerchant: true,
+  });
+});
+
+test("transaction helper refuses a non-platform merchant ban before RPC", async () => {
+  let rpcCalls = 0;
+  const client = {
+    rpc: async () => {
+      rpcCalls += 1;
+      return { data: null, error: null };
+    },
+  } as unknown as SupabaseClient;
+
+  await assert.rejects(
+    () => runDeleteStoreTransaction(client, {
+      storeId: "11111111-1111-4111-8111-111111111111",
+      actorId: "22222222-2222-4222-8222-222222222222",
+      actorRole: "store_owner",
+      adminNote: "",
+      banMerchant: true,
+      isPlatformAdmin: false,
+      createdAt: "2026-08-29T08:13:00.000Z",
+    }),
+    /Merchant bans require platform admin authorization/,
+  );
+
+  assert.equal(rpcCalls, 0);
+});
+
+test("store deletion delegates an authorized platform ban to one transactional RPC", async () => {
   const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
   const client = {
     rpc: async (fn: string, args: Record<string, unknown>) => {

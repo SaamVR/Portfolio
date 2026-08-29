@@ -18,6 +18,13 @@ type TransactionalDeleteResult = {
   deleted_store_id?: string | null;
 };
 
+export function resolveMerchantBanAuthorization(requestedBanMerchant: boolean, isPlatformAdmin: boolean) {
+  return {
+    forbidden: requestedBanMerchant && !isPlatformAdmin,
+    effectiveBanMerchant: requestedBanMerchant && isPlatformAdmin,
+  };
+}
+
 export async function runDeleteStoreTransaction(
   supabaseAdmin: SupabaseClient,
   input: {
@@ -31,6 +38,10 @@ export async function runDeleteStoreTransaction(
     createdAt: string;
   },
 ) {
+  if (input.banMerchant && !input.isPlatformAdmin) {
+    throw new Error("Merchant bans require platform admin authorization");
+  }
+
   const rpc = (supabaseAdmin as SupabaseClient & { rpc?: SupabaseClient["rpc"] }).rpc;
   if (typeof rpc !== "function") {
     return null;
@@ -84,7 +95,7 @@ export async function POST(req: Request) {
     const { storeId, note, banMerchant } = await req.json();
     const normalizedStoreId = typeof storeId === "string" ? storeId.trim() : "";
     const normalizedNote = typeof note === "string" ? note.trim() : "";
-    const shouldBanMerchant = banMerchant === true;
+    const requestedBanMerchant = banMerchant === true;
 
     if (!normalizedStoreId) {
       return NextResponse.json({ error: "Missing storeId" }, { status: 400 });
@@ -127,6 +138,12 @@ export async function POST(req: Request) {
     }
 
     const isPlatformAdmin = platformRole === "admin" || platformRole === "super_admin";
+    const banAuthorization = resolveMerchantBanAuthorization(requestedBanMerchant, isPlatformAdmin);
+    if (banAuthorization.forbidden) {
+      return NextResponse.json({ error: "Only platform admins can ban merchants during store deletion" }, { status: 403 });
+    }
+    const effectiveBanMerchant = banAuthorization.effectiveBanMerchant;
+
     if (isPlatformAdmin && !normalizedNote) {
       return NextResponse.json({ error: "Deletion note is required for platform admins" }, { status: 400 });
     }
@@ -138,7 +155,7 @@ export async function POST(req: Request) {
       actorEmail: user.email,
       actorRole: platformRole || "store_owner",
       adminNote: normalizedNote,
-      banMerchant: shouldBanMerchant,
+      banMerchant: effectiveBanMerchant,
       isPlatformAdmin,
       createdAt: now,
     });
@@ -160,7 +177,7 @@ export async function POST(req: Request) {
       : { data: null, error: null };
 
     const ownerStatus = (ownerStatusLookup.data as MerchantAccountStatusRow | null) ?? null;
-    const ownerCanCreateStore = shouldBanMerchant ? false : ownerStatus?.can_create_store !== false;
+    const ownerCanCreateStore = effectiveBanMerchant ? false : ownerStatus?.can_create_store !== false;
     const merchantVisibleReason = isPlatformAdmin
       ? normalizedNote
       : normalizedNote || "This site was removed from your workspace at your request.";
@@ -182,7 +199,7 @@ export async function POST(req: Request) {
 
     if (deletionRecordError) throw deletionRecordError;
 
-    if (ownerUserId && shouldBanMerchant) {
+    if (ownerUserId && effectiveBanMerchant) {
       const { error: accountStatusError } = await supabaseAdmin
         .from("merchant_account_statuses")
         .upsert(
@@ -216,7 +233,7 @@ export async function POST(req: Request) {
         store_name: store.name,
         store_slug: store.slug,
         owner_id: ownerUserId,
-        banned_merchant: shouldBanMerchant,
+        banned_merchant: effectiveBanMerchant,
         admin_note: normalizedNote || null,
         deletion_source: isPlatformAdmin ? "platform_admin_delete" : "merchant_self_delete",
       },
@@ -234,7 +251,7 @@ export async function POST(req: Request) {
       success: true,
       deletedAllOwnedStores: Boolean(ownerUserId) && (remainingOwnedStores.count ?? 0) === 0,
       ownerUserId,
-      banned: shouldBanMerchant,
+      banned: effectiveBanMerchant,
       deletedStoreId: store.id,
     });
   } catch (error) {
