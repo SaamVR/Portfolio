@@ -15,6 +15,7 @@ import {
   safeCourierProviderObject,
 } from "@/lib/couriers/provider-server";
 import { isCourierOperationallyConfigured } from "@/lib/couriers/shared";
+import { getRequestId, recordPlatformIncident } from "@/lib/platform/incident-logger";
 
 export const courierBookingRouteDeps = {
   getAuthenticatedUser,
@@ -29,6 +30,41 @@ function fromCourierCredentials(client: any) {
 }
 
 const bookableOrderStatuses = new Set(["confirmed", "processing"]);
+
+export type CourierBookingClaim = {
+  shipment_id: string;
+  status: string;
+  claimed: boolean;
+  attempt_token: string | null;
+  tracking_number: string | null;
+  consignment_id: string | null;
+};
+
+export function getCourierBookingClaimResponse(claim: CourierBookingClaim) {
+  if (claim.claimed) return null;
+  if (claim.status === "booked" || claim.status === "picked_up" || claim.status === "in_transit" || claim.status === "delivered") {
+    return {
+      status: 200,
+      body: {
+        success: true,
+        reused: true,
+        shipment: {
+          id: claim.shipment_id,
+          status: claim.status,
+          tracking_number: claim.tracking_number,
+          consignment_id: claim.consignment_id,
+        },
+      },
+    };
+  }
+  if (claim.status === "booking") {
+    return { status: 409, body: { error: "Courier booking is already in progress for this order and connection." } };
+  }
+  if (claim.status === "reconciliation_required") {
+    return { status: 409, body: { error: "This courier booking requires reconciliation before another provider booking can be attempted." } };
+  }
+  return { status: 409, body: { error: "A courier booking already exists for this order and connection. Use an explicit rebook workflow instead." } };
+}
 
 export async function POST(req: Request) {
   try {
@@ -52,7 +88,7 @@ export async function POST(req: Request) {
     );
     if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const [{ data: order, error: orderError }, { data: connection, error: connectionError }, { data: credential, error: credentialError }, { data: existingShipment, error: existingShipmentError }] = await Promise.all([
+    const [{ data: order, error: orderError }, { data: connection, error: connectionError }, { data: credential, error: credentialError }] = await Promise.all([
       (supabaseAdmin as any)
         .from("orders")
         .select("id, store_id, order_number, status, items, customer_name, customer_phone, shipping_address, shipping_city, payment_method, total, delivery_fee, notes")
@@ -68,21 +104,13 @@ export async function POST(req: Request) {
       fromCourierCredentials(supabaseAdmin as any)
         .select("connection_id, store_id, provider, secret_payload")
         .eq("connection_id", connectionId)
-        .maybeSingle(),
-      (supabaseAdmin as any)
-        .from("order_shipments")
-        .select("id, status, provider")
-        .eq("order_id", orderId)
         .eq("store_id", storeId)
-        .eq("courier_connection_id", connectionId)
         .maybeSingle(),
     ]);
 
     if (orderError) throw orderError;
     if (connectionError) throw connectionError;
     if (credentialError) throw credentialError;
-    if (existingShipmentError) throw existingShipmentError;
-
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
     if (!connection) return NextResponse.json({ error: "Courier connection not found" }, { status: 404 });
     if (!isCourierOperationallyConfigured(String(connection.status) as "draft" | "configured" | "disabled" | "connected")) {
@@ -105,15 +133,34 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
     if (credential && credential.provider !== connection.provider) {
       return NextResponse.json({ error: "Courier credential/provider mismatch" }, { status: 409 });
     }
 
     const bookingInput = safeCourierProviderObject(body?.booking) as CourierBookingInput;
     const now = courierBookingRouteDeps.now();
-    let bookingResult;
+    const bookingRequestId = typeof body?.bookingRequestId === "string" && body.bookingRequestId.trim()
+      ? body.bookingRequestId.trim().slice(0, 200)
+      : `order:${orderId}:connection:${connectionId}`;
 
+    const claimResult = await (supabaseAdmin as any).rpc("claim_courier_booking", {
+      p_store_id: storeId,
+      p_order_id: orderId,
+      p_connection_id: connectionId,
+      p_provider: connection.provider,
+      p_booking_request_id: bookingRequestId,
+      p_actor_id: user.id,
+      p_now: now,
+    });
+    if (claimResult.error) throw claimResult.error;
+    const claim = Array.isArray(claimResult.data) ? claimResult.data[0] as CourierBookingClaim | undefined : undefined;
+    if (!claim?.shipment_id) throw new Error("Courier booking claim did not return a shipment");
+
+    const existingResponse = getCourierBookingClaimResponse(claim);
+    if (existingResponse) return NextResponse.json(existingResponse.body, { status: existingResponse.status });
+    if (!claim.attempt_token) throw new Error("Courier booking claim is missing an attempt token");
+
+    let bookingResult;
     try {
       bookingResult = await adapter.book({
         deps: { fetch: courierBookingRouteDeps.fetch, now: courierBookingRouteDeps.now },
@@ -124,73 +171,107 @@ export async function POST(req: Request) {
       });
     } catch (providerError) {
       const providerMessage = providerError instanceof Error ? providerError.message : "Courier booking failed";
+      const failed = await (supabaseAdmin as any).rpc("fail_courier_booking", {
+        p_shipment_id: claim.shipment_id,
+        p_attempt_token: claim.attempt_token,
+        p_error: providerMessage,
+        p_reconciliation_required: true,
+        p_now: now,
+      });
+      if (failed.error) console.error("Failed to persist courier reconciliation state:", failed.error);
       await (supabaseAdmin as any)
         .from("store_courier_connections")
         .update({ last_error: { message: providerMessage, provider: connection.provider, failed_at: now } })
         .eq("id", connectionId)
         .eq("store_id", storeId);
-      return NextResponse.json({ error: providerMessage }, { status: 400 });
+      await recordPlatformIncident(supabaseAdmin as any, {
+        fingerprint: "courier-booking-reconciliation-required",
+        severity: "warning",
+        source: "courier_booking",
+        title: "Courier booking requires reconciliation",
+        message: providerMessage,
+        route: "/api/couriers/book",
+        storeId,
+        requestId: getRequestId(req),
+        metadata: { orderId, connectionId, shipmentId: claim.shipment_id, provider: connection.provider },
+      });
+      return NextResponse.json({ error: providerMessage, reconciliationRequired: true }, { status: 409 });
     }
 
     const bookingPayload = bookingResult.requestPayload;
-    const shipmentPayload = {
-      order_id: order.id,
-      store_id: storeId,
-      courier_connection_id: connectionId,
-      provider: connection.provider,
-      status: "booked",
-      tracking_number: bookingResult.trackingNumber,
-      consignment_id: bookingResult.consignmentId,
-      recipient_name: order.customer_name,
-      recipient_phone: order.customer_phone,
-      destination_city: order.shipping_city,
-      destination_address: order.shipping_address,
-      cash_collection_amount:
-        typeof bookingPayload.amount_to_collect === "number"
-          ? bookingPayload.amount_to_collect
-          : typeof bookingPayload.amountToCollect === "number"
-            ? bookingPayload.amountToCollect
-            : /cod/i.test(order.payment_method) ? order.total : 0,
-      shipping_fee: typeof bookingPayload.shippingFee === "number" ? bookingPayload.shippingFee : order.delivery_fee,
-      booking_payload: bookingPayload,
-      latest_provider_payload: bookingResult.responsePayload,
-      created_by: user.id,
-      booked_at: now,
-    };
+    const cashCollectionAmount =
+      typeof bookingPayload.amount_to_collect === "number"
+        ? bookingPayload.amount_to_collect
+        : typeof bookingPayload.amountToCollect === "number"
+          ? bookingPayload.amountToCollect
+          : /cod/i.test(order.payment_method) ? order.total : 0;
+    const shippingFee = typeof bookingPayload.shippingFee === "number" ? bookingPayload.shippingFee : order.delivery_fee;
 
-    const shipmentWrite = existingShipment?.id
-      ? await (supabaseAdmin as any)
-          .from("order_shipments")
-          .update(shipmentPayload)
-          .eq("id", existingShipment.id)
-          .eq("store_id", storeId)
-          .select("id, status, provider, tracking_number, consignment_id")
-          .single()
-      : await (supabaseAdmin as any)
-          .from("order_shipments")
-          .insert(shipmentPayload)
-          .select("id, status, provider, tracking_number, consignment_id")
-          .single();
-    if (shipmentWrite.error) throw shipmentWrite.error;
+    const finalized = await (supabaseAdmin as any).rpc("finalize_courier_booking", {
+      p_shipment_id: claim.shipment_id,
+      p_attempt_token: claim.attempt_token,
+      p_tracking_number: bookingResult.trackingNumber,
+      p_consignment_id: bookingResult.consignmentId,
+      p_recipient_name: order.customer_name,
+      p_recipient_phone: order.customer_phone,
+      p_destination_city: order.shipping_city,
+      p_destination_address: order.shipping_address,
+      p_cash_collection_amount: cashCollectionAmount,
+      p_shipping_fee: shippingFee,
+      p_booking_payload: bookingPayload,
+      p_provider_payload: bookingResult.responsePayload,
+      p_now: now,
+    });
 
-    const tasks: Promise<unknown>[] = [
-      (supabaseAdmin as any)
-        .from("store_courier_connections")
-        .update({ last_sync_at: now, last_error: null })
-        .eq("id", connectionId)
-        .eq("store_id", storeId),
-    ];
+    if (finalized.error) {
+      const reconcile = await (supabaseAdmin as any).rpc("fail_courier_booking", {
+        p_shipment_id: claim.shipment_id,
+        p_attempt_token: claim.attempt_token,
+        p_error: "Provider booking succeeded but local finalization failed",
+        p_reconciliation_required: true,
+        p_now: now,
+      });
+      if (reconcile.error) console.error("Failed to mark courier booking for reconciliation:", reconcile.error);
+      await recordPlatformIncident(supabaseAdmin as any, {
+        fingerprint: "courier-booking-finalization-failed",
+        severity: "critical",
+        source: "courier_booking",
+        title: "Courier provider booking succeeded but local finalization failed",
+        message: String(finalized.error.message || "Courier booking finalization failed"),
+        route: "/api/couriers/book",
+        storeId,
+        requestId: getRequestId(req),
+        metadata: { orderId, connectionId, shipmentId: claim.shipment_id, provider: connection.provider },
+      });
+      return NextResponse.json({ error: "Courier booking requires reconciliation", reconciliationRequired: true }, { status: 500 });
+    }
+
+    const connectionUpdate = await (supabaseAdmin as any)
+      .from("store_courier_connections")
+      .update({ last_sync_at: now, last_error: null })
+      .eq("id", connectionId)
+      .eq("store_id", storeId);
+    if (connectionUpdate.error) console.error("Courier connection sync metadata update failed:", connectionUpdate.error);
 
     if (String(order.status) === "confirmed") {
-      tasks.push(
-        (supabaseAdmin as any).from("orders").update({ status: "processing" }).eq("id", orderId).eq("store_id", storeId),
-      );
+      const orderUpdate = await (supabaseAdmin as any)
+        .from("orders")
+        .update({ status: "processing" })
+        .eq("id", orderId)
+        .eq("store_id", storeId);
+      if (orderUpdate.error) console.error("Order processing status update failed after courier booking:", orderUpdate.error);
     }
-    await Promise.all(tasks);
 
+    const shipment = finalized.data;
     return NextResponse.json({
       success: true,
-      shipment: shipmentWrite.data,
+      shipment: shipment ? {
+        id: shipment.id,
+        status: shipment.status,
+        provider: shipment.provider,
+        tracking_number: shipment.tracking_number,
+        consignment_id: shipment.consignment_id,
+      } : { id: claim.shipment_id, status: "booked", provider: connection.provider },
       orderStatus: String(order.status) === "confirmed" ? "processing" : order.status,
     });
   } catch (error) {
