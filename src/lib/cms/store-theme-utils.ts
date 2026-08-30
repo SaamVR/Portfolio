@@ -20,6 +20,20 @@ export const GUIDED_THEME_TOKENS = [
 
 export type GuidedThemeTokenKey = (typeof GUIDED_THEME_TOKENS)[number]["key"];
 
+export function resolveStoreThemeForMode(theme: StoreTheme, activeMode: StoreTheme["mode"]): StoreTheme {
+  if (theme.mode === activeMode) {
+    return theme;
+  }
+
+  return {
+    ...theme,
+    mode: activeMode,
+    // Store-level color overrides are currently persisted for the merchant's selected mode.
+    // Reapplying them to the visitor's alternate mode would overwrite that mode's package tokens.
+    customCssVars: {},
+  };
+}
+
 export function resolveStoreThemeVars(
   theme: Pick<StoreTheme, "presetId" | "themePackageId" | "mode" | "customCssVars">,
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,

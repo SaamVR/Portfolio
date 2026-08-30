@@ -6,6 +6,7 @@ import { useId } from "react";
 import type { StoreTheme } from "@/lib/cms/schema";
 import { scopeStoreThemeCss } from "@/lib/cms/theme-css";
 import { getStoreThemeStyle } from "@/lib/cms/store-theme-style";
+import { resolveStoreThemeForMode } from "@/lib/cms/store-theme-utils";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
 function sanitizeHtmlInjection(markup: string) {
@@ -40,7 +41,7 @@ export function StoreThemeScope({
       ? (resolvedTheme === "dark" ? "dark" : "light")
       : fallbackMode;
   const effectiveTheme = useMemo(
-    () => (theme.mode === activeMode ? theme : { ...theme, mode: activeMode }),
+    () => resolveStoreThemeForMode(theme, activeMode),
     [activeMode, theme],
   );
   const scopedCustomCss = scopeStoreThemeCss(effectiveTheme.customCss, scopeSelector);
