@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { Link, Navigate, useSearchParams } from "@/lib/react-router-dom-shim";
@@ -93,6 +93,12 @@ import {
 import { usePaymentGateway, scrubPaymentSettings } from "@/hooks/usePaymentGateway";
 import { useThemeManager } from "@/hooks/useThemeManager";
 import { siteSettingsSchema } from "@/lib/validations/site-settings";
+import {
+  isSettingsSaveCompletionCurrent,
+  resolveSettingsSaveState,
+  settingsSaveStateLabel,
+  type SettingsSaveFeedback,
+} from "@/lib/settings/save-state";
 
 const settingsCategoryTone: Record<string, { title: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
   "Store Identity": {
@@ -268,7 +274,10 @@ export default function SiteSettings() {
   });
 
   const [settings, setSettings] = useState<Record<string, any>>({});
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [persistedSettings, setPersistedSettings] = useState<Record<string, any>>({});
+  const [saveFeedback, setSaveFeedback] = useState<Record<string, SettingsSaveFeedback | undefined>>({});
+  const hydratedStoreIdRef = useRef<string | null>(null);
+  const saveOperationRef = useRef<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<SettingsTabValue>("brand_seo");
   const [tabSearch, setTabSearch] = useState("");
   const [mobileDirectoryOpen, setMobileDirectoryOpen] = useState(false);
@@ -287,10 +296,27 @@ export default function SiteSettings() {
   });
 
   useEffect(() => {
-    if (rawSettingsData) {
+    if (!rawSettingsData || !activeStoreId) return;
+
+    if (hydratedStoreIdRef.current !== activeStoreId) {
+      hydratedStoreIdRef.current = activeStoreId;
+      saveOperationRef.current = {};
       setSettings(rawSettingsData);
+      setPersistedSettings(rawSettingsData);
+      setSaveFeedback({});
+      return;
     }
-  }, [rawSettingsData]);
+
+    setPersistedSettings((previous) => {
+      const next = { ...rawSettingsData };
+      for (const settingKey of Object.keys(saveOperationRef.current)) {
+        if (Object.prototype.hasOwnProperty.call(previous, settingKey)) {
+          next[settingKey] = previous[settingKey];
+        }
+      }
+      return next;
+    });
+  }, [activeStoreId, rawSettingsData]);
 
   const activeStorefrontTemplateId: StorefrontTemplateId =
     (settings.storefront_profile?.template_id as StorefrontTemplateId | undefined) ??
@@ -409,9 +435,39 @@ export default function SiteSettings() {
     });
   };
 
+  const getSaveState = (key: string) =>
+    resolveSettingsSaveState({
+      current: settings[key] ?? {},
+      persisted: persistedSettings[key] ?? {},
+      feedback: saveFeedback[key],
+    });
+
   const saveSettingCategory = async (key: string) => {
-    if (!activeStoreId) return;
-    setSavingKey(key);
+    const originStoreId = activeStoreId;
+    if (!originStoreId) return;
+
+    const operationId = `${originStoreId}:${key}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    const operationSettingKey = key;
+    saveOperationRef.current[key] = operationId;
+    setSaveFeedback((previous) => ({
+      ...previous,
+      [key]: { state: "saving", operationId },
+    }));
+
+    const completionIsCurrent = () => {
+      const currentStoreId =
+        typeof window === "undefined"
+          ? originStoreId
+          : window.localStorage.getItem("ezcomo_active_store_id");
+      return isSettingsSaveCompletionCurrent({
+        originStoreId,
+        currentStoreId,
+        settingKey: key,
+        operationSettingKey,
+        operationId,
+        latestOperationId: saveOperationRef.current[key],
+      });
+    };
 
     try {
       let rawValue = settings[key] ?? {};
@@ -420,23 +476,31 @@ export default function SiteSettings() {
         rawValue = scrubPaymentSettings(rawValue);
       }
 
+      const submittedValue = rawValue;
+
       // Schema validation attempt
       const categorySchema = (siteSettingsSchema.shape as Record<string, any>)[key];
       if (categorySchema) {
-        const validation = categorySchema.safeParse(rawValue);
+        const validation = categorySchema.safeParse(submittedValue);
         if (!validation.success) {
           const firstError = validation.error.errors[0]?.message || "Invalid settings configuration";
+          const persistentMessage = `Review this section and fix the invalid value before saving again: ${firstError}`;
+          if (completionIsCurrent()) {
+            setSaveFeedback((previous) => ({
+              ...previous,
+              [key]: { state: "save_failed", operationId, message: persistentMessage },
+            }));
+          }
           toast.error(`Validation Error: ${firstError}`);
-          setSavingKey(null);
           return;
         }
       }
 
       const { error } = await supabase.from("site_settings").upsert(
         {
-          store_id: activeStoreId,
+          store_id: originStoreId,
           key,
-          value: rawValue,
+          value: submittedValue,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "store_id,key" },
@@ -445,12 +509,12 @@ export default function SiteSettings() {
       if (error) throw error;
 
       if (key === "homepage_section_visibility") {
-        const pages = await loadStorePagesSnapshot(activeStoreId);
+        const pages = await loadStorePagesSnapshot(originStoreId);
         const homepage = pages.find((page) => page.isHomepage);
         const nextPages = applyHomepageSectionVisibilityToPages(
           pages,
           activeStorefrontTemplateId,
-          normalizeHomepageSectionVisibility(activeStorefrontTemplateId, rawValue),
+          normalizeHomepageSectionVisibility(activeStorefrontTemplateId, submittedValue),
         );
         const nextHomepage = nextPages.find((page) => page.id === homepage?.id);
         const changedBlocks = nextHomepage?.blocks.filter((block) => {
@@ -466,41 +530,91 @@ export default function SiteSettings() {
             .update({
               is_visible: block.isVisible ?? block.visible ?? true,
             })
-            .eq("store_id", activeStoreId)
+            .eq("store_id", originStoreId)
             .eq("id", block.id);
 
           if (blockError) throw blockError;
         }
 
-        queryClient.invalidateQueries({ queryKey: ["store_pages_snapshot", activeStoreId] });
+        await queryClient.invalidateQueries({ queryKey: ["store_pages_snapshot", originStoreId] });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId] });
-      await refreshStorefrontContentCache(supabase, activeStoreId);
+      await refreshStorefrontContentCache(supabase, originStoreId);
+
+      const { data: persistedRow, error: persistedError } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("store_id", originStoreId)
+        .eq("key", key)
+        .single();
+      if (persistedError) throw persistedError;
+
+      await queryClient.invalidateQueries({ queryKey: ["site_settings", originStoreId] });
+
+      if (!completionIsCurrent()) return;
+
+      setPersistedSettings((previous) => ({
+        ...previous,
+        [key]: persistedRow?.value ?? submittedValue,
+      }));
+      setSaveFeedback((previous) => ({
+        ...previous,
+        [key]: { state: "saved", operationId },
+      }));
       toast.success("Settings saved successfully");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save settings");
+    } catch {
+      if (completionIsCurrent()) {
+        const message = "Could not save these settings. Your changes are still here; review them and try again.";
+        setSaveFeedback((previous) => ({
+          ...previous,
+          [key]: { state: "save_failed", operationId, message },
+        }));
+        toast.error(message);
+      }
     } finally {
-      setSavingKey(null);
+      if (saveOperationRef.current[key] === operationId) {
+        delete saveOperationRef.current[key];
+      }
     }
   };
 
-  const SaveButton = ({ settingKey }: { settingKey: string }) => (
-    <div className="flex justify-end pt-4 border-t border-border">
-      <Button
-        onClick={() => saveSettingCategory(settingKey)}
-        disabled={savingKey === settingKey}
-        className="gap-2"
-      >
-        {savingKey === settingKey ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Save className="h-4 w-4" />
+  const SaveStateText = ({ settingKey }: { settingKey: string }) => {
+    const state = getSaveState(settingKey);
+    const feedback = saveFeedback[settingKey];
+    return (
+      <div
+        data-settings-save-state={state}
+        role={state === "save_failed" ? "alert" : "status"}
+        aria-live="polite"
+        className={cn(
+          "min-w-0 text-xs leading-5",
+          state === "save_failed" ? "text-destructive" : "text-muted-foreground",
         )}
-        Save Changes
-      </Button>
-    </div>
-  );
+      >
+        <p className="font-medium">{settingsSaveStateLabel(state)}</p>
+        {state === "save_failed" && feedback?.message ? <p>{feedback.message}</p> : null}
+      </div>
+    );
+  };
+
+  const SaveButton = ({ settingKey }: { settingKey: string }) => {
+    const state = getSaveState(settingKey);
+    const isSaving = state === "saving";
+    const canSave = state === "dirty" || state === "save_failed";
+    return (
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <SaveStateText settingKey={settingKey} />
+        <Button
+          onClick={() => saveSettingCategory(settingKey)}
+          disabled={!canSave || isSaving}
+          className="gap-2"
+        >
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" />}
+          {isSaving ? "Saving…" : "Save Changes"}
+        </Button>
+      </div>
+    );
+  };
 
   const MobileSectionShell = ({ title, description, children }: { title: string; description: string; children: ReactNode }) => (
     <Card className="border-border">
@@ -528,18 +642,24 @@ export default function SiteSettings() {
     </div>
   );
 
-  const StickySectionSaveBar = ({ settingKey, title, hint }: { settingKey: string; title: string; hint: string }) => (
-    <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-xl border border-border bg-background/95 p-4 shadow-lg backdrop-blur">
-      <div>
-        <h4 className="text-sm font-semibold">{title}</h4>
-        <p className="text-xs text-muted-foreground">{hint}</p>
+  const StickySectionSaveBar = ({ settingKey, title, hint }: { settingKey: string; title: string; hint: string }) => {
+    const state = getSaveState(settingKey);
+    const isSaving = state === "saving";
+    const canSave = state === "dirty" || state === "save_failed";
+    return (
+      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-xl border border-border bg-background/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h4 className="text-sm font-semibold">{title}</h4>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+          <div className="mt-1"><SaveStateText settingKey={settingKey} /></div>
+        </div>
+        <Button onClick={() => saveSettingCategory(settingKey)} disabled={!canSave || isSaving} className="gap-2">
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" />}
+          {isSaving ? "Saving…" : "Save"}
+        </Button>
       </div>
-      <Button onClick={() => saveSettingCategory(settingKey)} disabled={savingKey === settingKey} className="gap-2">
-        {savingKey === settingKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        Save
-      </Button>
-    </div>
-  );
+    );
+  };
 
   if (storeLoading || settingsLoading) {
     return (
