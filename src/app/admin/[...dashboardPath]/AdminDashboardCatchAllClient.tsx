@@ -1,39 +1,78 @@
 "use client";
 
 import React, { Suspense } from "react";
+import dynamic from "next/dynamic";
 import AdminDashboardLayoutClient from "@/app/admin/(admin-dashboard)/AdminDashboardLayoutClient";
 import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
 import { AdminFeatureGate } from "@/components/admin/AdminFeatureGate";
-import MediaLibraryManager from "@/components/admin/MediaLibraryManager";
-import OnboardingWizard from "@/components/admin/OnboardingWizard";
-import StoreBackupManager from "@/components/admin/StoreBackupManager";
-import Billing from "@/views/admin/Billing";
-import AnalyticsPage from "@/views/admin/Analytics";
-import LaunchReadinessPage from "@/views/admin/LaunchReadiness";
-import NotificationsCenterPage from "@/views/admin/NotificationsCenter";
-import OperationsDiagnosticsPage from "@/views/admin/OperationsDiagnostics";
-import CouriersPluginManager from "@/views/admin/CouriersPluginManager";
-import BlogManager from "@/views/admin/BlogManager";
-import BlogPerformance from "@/views/admin/BlogPerformance";
-import QrCodeGeneratorPage from "@/views/admin/QrCodeGenerator";
-import CartRecoveryPage from "@/views/admin/CartRecovery";
-import Categories from "@/views/admin/Categories";
-import Coupons from "@/views/admin/Coupons";
-import CmsPagesManager from "@/views/admin/CmsPagesManager";
-import InviteCodes from "@/views/admin/InviteCodes";
-import Messages from "@/views/admin/Messages";
-import Orders from "@/views/admin/Orders";
-import PlatformControlPlane from "@/views/admin/PlatformControlPlane";
-import Products from "@/views/admin/Products";
-import ReturnsOperationsPage from "@/views/admin/ReturnsOperations";
-import Reviews from "@/views/admin/Reviews";
-import SiteSettings from "@/views/admin/SiteSettings";
-import Users from "@/views/admin/Users";
-import OnlineStoreHub from "@/views/admin/OnlineStoreHub";
-import SiteGuideView from "@/views/admin/SiteGuideView";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/react-router-dom-shim";
+
+const workspaceLoading = () => <AdminRouteFallback label="Loading workspace" />;
+
+const MediaLibraryManager = dynamic(() => import("@/components/admin/MediaLibraryManager"), { loading: workspaceLoading });
+const OnboardingWizard = dynamic(() => import("@/components/admin/OnboardingWizard"), { loading: workspaceLoading });
+const StoreBackupManager = dynamic(() => import("@/components/admin/StoreBackupManager"), { loading: workspaceLoading });
+const Billing = dynamic(() => import("@/views/admin/Billing"), { loading: workspaceLoading });
+const AnalyticsPage = dynamic(() => import("@/views/admin/Analytics"), { loading: workspaceLoading });
+const LaunchReadinessPage = dynamic(() => import("@/views/admin/LaunchReadiness"), { loading: workspaceLoading });
+const NotificationsCenterPage = dynamic(() => import("@/views/admin/NotificationsCenter"), { loading: workspaceLoading });
+const OperationsDiagnosticsPage = dynamic(() => import("@/views/admin/OperationsDiagnostics"), { loading: workspaceLoading });
+const CouriersPluginManager = dynamic(() => import("@/views/admin/CouriersPluginManager"), { loading: workspaceLoading });
+const BlogManager = dynamic(() => import("@/views/admin/BlogManager"), { loading: workspaceLoading });
+const BlogPerformance = dynamic(() => import("@/views/admin/BlogPerformance"), { loading: workspaceLoading });
+const QrCodeGeneratorPage = dynamic(() => import("@/views/admin/QrCodeGenerator"), { loading: workspaceLoading });
+const CartRecoveryPage = dynamic(() => import("@/views/admin/CartRecovery"), { loading: workspaceLoading });
+const Categories = dynamic(() => import("@/views/admin/Categories"), { loading: workspaceLoading });
+const Coupons = dynamic(() => import("@/views/admin/Coupons"), { loading: workspaceLoading });
+const InviteCodes = dynamic(() => import("@/views/admin/InviteCodes"), { loading: workspaceLoading });
+const Messages = dynamic(() => import("@/views/admin/Messages"), { loading: workspaceLoading });
+const Orders = dynamic(() => import("@/views/admin/Orders"), { loading: workspaceLoading });
+const PlatformControlPlane = dynamic(() => import("@/views/admin/PlatformControlPlane"), { loading: workspaceLoading });
+const Products = dynamic(() => import("@/views/admin/Products"), { loading: workspaceLoading });
+const ReturnsOperationsPage = dynamic(() => import("@/views/admin/ReturnsOperations"), { loading: workspaceLoading });
+const Reviews = dynamic(() => import("@/views/admin/Reviews"), { loading: workspaceLoading });
+const SiteSettings = dynamic(() => import("@/views/admin/SiteSettings"), { loading: workspaceLoading });
+const Users = dynamic(() => import("@/views/admin/Users"), { loading: workspaceLoading });
+const OnlineStoreHub = dynamic(() => import("@/views/admin/OnlineStoreHub"), { loading: workspaceLoading });
+const SiteGuideView = dynamic(() => import("@/views/admin/SiteGuideView"), { loading: workspaceLoading });
+
+class AdminWorkspaceErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <div role="alert" aria-live="assertive">
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle>Workspace failed to load</CardTitle>
+            <CardDescription>
+              The admin workspace could not finish loading. This can happen after a connection interruption or when a cached route chunk is stale.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button type="button" onClick={() => window.location.reload()}>
+              Retry workspace
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/admin">Back to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+}
 
 function AdminDashboardRoute({ route }: { route: string }) {
   switch (route) {
@@ -158,9 +197,11 @@ export default function AdminDashboardCatchAllClient({ dashboardPath }: { dashbo
 
   return (
     <AdminDashboardLayoutClient>
-      <Suspense fallback={<AdminRouteFallback label="Loading workspace" />}>
-        <AdminDashboardRoute route={route} />
-      </Suspense>
+      <AdminWorkspaceErrorBoundary key={route}>
+        <Suspense fallback={<AdminRouteFallback label="Loading workspace" />}>
+          <AdminDashboardRoute route={route} />
+        </Suspense>
+      </AdminWorkspaceErrorBoundary>
     </AdminDashboardLayoutClient>
   );
 }
