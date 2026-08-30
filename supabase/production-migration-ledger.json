@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-30T15:12:37+06:00",
+  "captured_at": "2026-08-31T00:28:31+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -91,7 +91,10 @@
     "recreate_cms_features",
     "reduce_overlapping_commerce_policies",
     "reduce_public_role_privileges",
+    "reject_contact_only_new_store_plans_205",
+    "reject_inactive_new_store_plans_205",
     "relax_product_badge_constraint",
+    "relock_subscription_truth_205",
     "remove_marketing_director_agent_core",
     "repair_editor_persistence_columns",
     "request_rate_limits",
