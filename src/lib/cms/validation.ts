@@ -132,7 +132,9 @@ export function sanitizeStoreBlocks(blocks: unknown[], options?: { allowAdvanced
   return blocks
     .map((block) => storePageBlockSchema.safeParse(normalizeLegacyStoreBlockAliases(block)))
     .filter((result): result is Extract<typeof result, { success: true }> => result.success)
-    .map((result, index) => normalizeBlockOrder(sanitizeBlockContent(result.data, options), index));
+    .map((result) => result.data)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((block, index) => normalizeBlockOrder(sanitizeBlockContent(block, options), index));
 }
 
 export function sanitizeStorePage(page: {
