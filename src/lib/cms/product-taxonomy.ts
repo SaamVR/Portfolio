@@ -77,10 +77,12 @@ export const fetchStoreProductTypes = async (storeId: string) => {
 export const saveStoreProductType = async ({
   storeId,
   editingTypeId,
+  createTypeId,
   payload,
 }: {
   storeId: string;
   editingTypeId?: string | null;
+  createTypeId?: string | null;
   payload: ProductTypePayload;
 }) => {
   const runMutation = async (nextPayload: ProductTypePayload) => {
@@ -91,10 +93,17 @@ export const saveStoreProductType = async ({
         .eq("store_id", storeId);
     }
 
-    return await (supabase.from("product_types") as any).insert({
+    const createPayload = {
       ...nextPayload,
+      ...(createTypeId ? { id: createTypeId } : {}),
       store_id: storeId,
-    });
+    };
+
+    if (createTypeId) {
+      return await (supabase.from("product_types") as any).upsert(createPayload, { onConflict: "id" });
+    }
+
+    return await (supabase.from("product_types") as any).insert(createPayload);
   };
 
   const preferredResult = await runMutation(payload);

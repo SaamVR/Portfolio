@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/auth-context";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, FolderTree, Layers, Image as ImageIcon } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import type { Json } from "@/integrations/supabase/types";
+import { validateCatalogEntityName } from "@/lib/catalog/catalog-dialog-validation";
 import {
   getTemplateDefaultMetricKeys,
   getTemplateDefaultProductMetrics,
@@ -50,6 +52,11 @@ type MetricsCatalogState = {
   customMetrics: ProductMetricDefinition[];
 };
 
+type CatalogDialogError = {
+  name?: string;
+  form?: string;
+};
+
 function describeTypeMetricMode(metricSchema: unknown) {
   if (!Array.isArray(metricSchema)) {
     return {
@@ -74,6 +81,14 @@ function describeTypeMetricMode(metricSchema: unknown) {
 
 const AdminCategories = () => {
   const { activeStoreId } = useAuth();
+  const activeStoreIdRef = useRef(activeStoreId);
+  const catNameRef = useRef<HTMLInputElement>(null);
+  const typeNameRef = useRef<HTMLInputElement>(null);
+  const catOperationRef = useRef(0);
+  const typeOperationRef = useRef(0);
+  const catCreateIdRef = useRef<string | null>(null);
+  const typeCreateIdRef = useRef<string | null>(null);
+  const { confirm, confirmationDialog } = useMerchantConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [types, setTypes] = useState<ProductType[]>([]);
   const [customData, setCustomData] = useState<Record<string, any>>({ categories: {}, types: {} });
@@ -85,6 +100,7 @@ const AdminCategories = () => {
   const [catDialogOpen, setCatDialogOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [catForm, setCatForm] = useState({ name: "", parent_id: "none", sort_order: 0, image_url: "", tagline: "" });
+  const [catError, setCatError] = useState<CatalogDialogError>({});
   const [savingCat, setSavingCat] = useState(false);
 
   // Type dialog
@@ -98,6 +114,7 @@ const AdminCategories = () => {
     selectedMetricKeys: [] as string[],
     customMetricName: "",
   });
+  const [typeError, setTypeError] = useState<CatalogDialogError>({});
   const [savingType, setSavingType] = useState(false);
 
   const availableMetricDefinitions = mergeMetricDefinitions(
@@ -105,6 +122,10 @@ const AdminCategories = () => {
     metricsCatalog.customMetrics,
   );
   const defaultMetricKeys = getTemplateDefaultMetricKeys(storefrontTemplateId);
+
+  useEffect(() => {
+    activeStoreIdRef.current = activeStoreId;
+  }, [activeStoreId]);
 
   const applyFetchedData = useCallback((nextData: {
     categories: Category[];
@@ -165,19 +186,17 @@ const AdminCategories = () => {
     };
   }, [activeStoreId]);
 
-  const saveCustomData = async (updatedData: any) => {
-    if (!activeStoreId) {
-      toast.error("Select a store before saving category settings.");
-      return;
-    }
-
-    setCustomData(updatedData);
-    await supabase.from("site_settings").upsert({
-      store_id: activeStoreId,
+  const saveCustomData = async (updatedData: any, storeId: string) => {
+    const { error } = await supabase.from("site_settings").upsert({
+      store_id: storeId,
       key: "categories_custom_data",
       value: updatedData
     }, { onConflict: "store_id,key" });
-    await refreshStorefrontContentCache(supabase, activeStoreId);
+    if (error) throw error;
+    await refreshStorefrontContentCache(supabase, storeId);
+    if (activeStoreIdRef.current === storeId) {
+      setCustomData(updatedData);
+    }
   };
 
   const saveMetricsCatalog = async (updatedCatalog: MetricsCatalogState) => {
@@ -186,13 +205,17 @@ const AdminCategories = () => {
       return;
     }
 
-    setMetricsCatalog(updatedCatalog);
-    await supabase.from("site_settings").upsert({
-      store_id: activeStoreId,
+    const storeId = activeStoreId;
+    const { error } = await supabase.from("site_settings").upsert({
+      store_id: storeId,
       key: "product_metrics_catalog",
       value: updatedCatalog as unknown as Json,
     }, { onConflict: "store_id,key" });
-    await refreshStorefrontTaxonomyCache(supabase, activeStoreId);
+    if (error) throw error;
+    await refreshStorefrontTaxonomyCache(supabase, storeId);
+    if (activeStoreIdRef.current === storeId) {
+      setMetricsCatalog(updatedCatalog);
+    }
   };
 
   useEffect(() => {
@@ -230,32 +253,43 @@ const AdminCategories = () => {
     };
   }, [activeStoreId, applyFetchedData, fetchData]);
 
-  const reloadData = useCallback(async () => {
+  const reloadData = useCallback(async (expectedStoreId: string) => {
     const nextData = await fetchData();
+    if (activeStoreIdRef.current !== expectedStoreId) return null;
     applyFetchedData(nextData);
     return nextData;
   }, [applyFetchedData, fetchData]);
 
   useEffect(() => {
+    catOperationRef.current += 1;
+    typeOperationRef.current += 1;
+    catCreateIdRef.current = null;
+    typeCreateIdRef.current = null;
     setCatDialogOpen(false);
     setEditingCat(null);
     setCatForm({ name: "", parent_id: "none", sort_order: 0, image_url: "", tagline: "" });
+    setCatError({});
     setSavingCat(false);
     setTypeDialogOpen(false);
     setEditingType(null);
     setTypeForm({ name: "", sort_order: 0, image_url: "", tagline: "", selectedMetricKeys: [], customMetricName: "" });
+    setTypeError({});
     setSavingType(false);
   }, [activeStoreId]);
 
   // --- Category CRUD ---
   const openNewCat = () => {
     setEditingCat(null);
+    catCreateIdRef.current = crypto.randomUUID();
+    setCatError({});
     setCatForm({ name: "", parent_id: "none", sort_order: categories.length + 1, image_url: "", tagline: "" });
     setCatDialogOpen(true);
   };
 
   const openEditCat = (c: Category) => {
     setEditingCat(c);
+    catCreateIdRef.current = null;
+    setCatError({});
     const custom = customData.categories?.[c.name] ?? {};
     setCatForm({ 
       name: c.name, 
@@ -269,85 +303,141 @@ const AdminCategories = () => {
 
   const saveCat = async () => {
     if (!activeStoreId) {
+      setCatError((current) => ({ ...current, form: "Select a store before saving categories." }));
       toast.error("Select a store before saving categories.");
       return;
     }
 
-    if (!catForm.name.trim()) { toast.error("Name is required"); return; }
+    const nameError = validateCatalogEntityName(catForm.name, "category");
+    if (nameError) {
+      setCatError({ name: nameError });
+      catNameRef.current?.focus();
+      return;
+    }
+
+    const storeId = activeStoreId;
+    const operationId = ++catOperationRef.current;
+    const editingAtSubmit = editingCat;
+    const createId = editingAtSubmit ? null : (catCreateIdRef.current ?? crypto.randomUUID());
+    if (!editingAtSubmit) {
+      catCreateIdRef.current = createId;
+    }
+    const formAtSubmit = { ...catForm, name: catForm.name.trim() };
+    setCatError({});
     setSavingCat(true);
+
     const payload = {
-      name: catForm.name.trim(),
-      parent_id: catForm.parent_id === "none" ? null : catForm.parent_id,
-      sort_order: catForm.sort_order,
+      name: formAtSubmit.name,
+      parent_id: formAtSubmit.parent_id === "none" ? null : formAtSubmit.parent_id,
+      sort_order: formAtSubmit.sort_order,
     };
 
-    if (editingCat) {
-      const { error } = await supabase.from("product_categories").update(payload).eq("id", editingCat.id).eq("store_id", activeStoreId as string);
-      if (error) toast.error("Failed to update");
-      else {
-        toast.success("Category updated");
-        const updated = {
-          ...customData,
-          categories: {
-            ...customData.categories,
-            [catForm.name.trim()]: {
-              image_url: catForm.image_url,
-              tagline: catForm.tagline
-            }
-          }
-        };
-        await saveCustomData(updated);
-        await refreshEntireStorefrontCache(supabase, activeStoreId);
+    try {
+      if (editingAtSubmit) {
+        const { error } = await supabase
+          .from("product_categories")
+          .update(payload)
+          .eq("id", editingAtSubmit.id)
+          .eq("store_id", storeId);
+        if (error) throw error;
+      } else {
+        if (!createId) throw new Error("Category create identity was not initialized.");
+        const { error } = await supabase.from("product_categories").upsert({
+          id: createId,
+          ...payload,
+          store_id: storeId,
+        }, { onConflict: "id" });
+        if (error) throw error;
       }
-    } else {
-      const { error } = await supabase.from("product_categories").insert({
-        ...payload,
-        store_id: activeStoreId,
-      });
-      if (error) toast.error("Failed to add");
-      else {
-        toast.success("Category added");
-        const updated = {
-          ...customData,
-          categories: {
-            ...customData.categories,
-            [catForm.name.trim()]: {
-              image_url: catForm.image_url,
-              tagline: catForm.tagline
-            }
+
+      const updated = {
+        ...customData,
+        categories: {
+          ...customData.categories,
+          [formAtSubmit.name]: {
+            image_url: formAtSubmit.image_url,
+            tagline: formAtSubmit.tagline
           }
-        };
-        await saveCustomData(updated);
-        await refreshEntireStorefrontCache(supabase, activeStoreId);
+        }
+      };
+      await saveCustomData(updated, storeId);
+      await refreshEntireStorefrontCache(supabase, storeId);
+      await reloadData(storeId);
+
+      if (activeStoreIdRef.current !== storeId || catOperationRef.current !== operationId) return;
+      notifyProductTaxonomyUpdated();
+      toast.success(editingAtSubmit ? "Category updated" : "Category added");
+      if (!editingAtSubmit) {
+        catCreateIdRef.current = null;
+      }
+      setCatDialogOpen(false);
+      setCatError({});
+    } catch (error) {
+      console.error("Failed to save category:", error);
+      if (activeStoreIdRef.current !== storeId || catOperationRef.current !== operationId) return;
+      const message = editingAtSubmit
+        ? "Category could not be updated. Your changes are still here; review them and try again."
+        : "Category could not be added. Your draft is still here; review it and try again.";
+      setCatError((current) => ({ ...current, form: message }));
+      toast.error(message);
+    } finally {
+      if (activeStoreIdRef.current === storeId && catOperationRef.current === operationId) {
+        setSavingCat(false);
       }
     }
-    setSavingCat(false);
-    setCatDialogOpen(false);
-    await reloadData();
-    notifyProductTaxonomyUpdated();
   };
 
-  const deleteCat = async (id: string) => {
+  const deleteCat = async (category: Category) => {
     if (!activeStoreId) {
       toast.error("Select a store before deleting categories.");
       return;
     }
 
-    if (!confirm("Delete this category?")) return;
-    const { error } = await supabase.from("product_categories").delete().eq("id", id).eq("store_id", activeStoreId as string);
-    if (error) {
-      toast.error("Failed to delete");
-    } else {
-      toast.success("Category deleted");
-      await refreshEntireStorefrontCache(supabase, activeStoreId);
-      await reloadData();
-      notifyProductTaxonomyUpdated();
+    const context = { storeId: activeStoreId, entityId: category.id, entityName: category.name };
+    const confirmed = await confirm({
+      title: `Delete ${context.entityName}?`,
+      description: "This permanently removes the category from this store's product taxonomy.",
+      entityLabel: "Category",
+      entityValue: context.entityName,
+      impacts: ["Products will no longer be organized under this category.", "This action cannot be undone from this screen."],
+      warning: "Confirm that this is the exact category you intend to remove.",
+      confirmLabel: "Delete category",
+      tone: "destructive",
+    });
+    if (!confirmed) return;
+    if (activeStoreIdRef.current !== context.storeId) {
+      toast.error("The active store changed before deletion. Nothing was deleted.");
+      return;
     }
+
+    const { error } = await supabase
+      .from("product_categories")
+      .delete()
+      .eq("id", context.entityId)
+      .eq("store_id", context.storeId);
+    if (error) {
+      toast.error("Failed to delete category");
+      return;
+    }
+
+    try {
+      await refreshEntireStorefrontCache(supabase, context.storeId);
+      await reloadData(context.storeId);
+    } catch (error) {
+      console.error("Failed to reconcile category delete:", error);
+      toast.error("Category was deleted, but the catalog refresh did not complete. Reload before making another taxonomy change.");
+      return;
+    }
+    if (activeStoreIdRef.current !== context.storeId) return;
+    notifyProductTaxonomyUpdated();
+    toast.success("Category deleted");
   };
 
   // --- Type CRUD ---
   const openNewType = () => {
     setEditingType(null);
+    typeCreateIdRef.current = crypto.randomUUID();
+    setTypeError({});
     setTypeForm({
       name: "",
       sort_order: types.length + 1,
@@ -361,6 +451,8 @@ const AdminCategories = () => {
 
   const openEditType = (t: ProductType) => {
     setEditingType(t);
+    typeCreateIdRef.current = null;
+    setTypeError({});
     const custom = customData.types?.[t.name] ?? {};
     const selectedMetrics = Array.isArray(t.metric_schema)
       ? normalizeMetricDefinitions(t.metric_schema).map((metric) => metric.key)
@@ -378,74 +470,129 @@ const AdminCategories = () => {
 
   const saveType = async () => {
     if (!activeStoreId) {
+      setTypeError((current) => ({ ...current, form: "Select a store before saving product types." }));
       toast.error("Select a store before saving product types.");
       return;
     }
 
-    if (!typeForm.name.trim()) { toast.error("Name is required"); return; }
+    const nameError = validateCatalogEntityName(typeForm.name, "product type");
+    if (nameError) {
+      setTypeError({ name: nameError });
+      typeNameRef.current?.focus();
+      return;
+    }
+
+    const storeId = activeStoreId;
+    const operationId = ++typeOperationRef.current;
+    const editingAtSubmit = editingType;
+    const createId = editingAtSubmit ? null : (typeCreateIdRef.current ?? crypto.randomUUID());
+    if (!editingAtSubmit) {
+      typeCreateIdRef.current = createId;
+    }
+    const formAtSubmit = { ...typeForm, name: typeForm.name.trim() };
+    setTypeError({});
     setSavingType(true);
-    const selectedMetricDefinitions = availableMetricDefinitions.filter((metric) => typeForm.selectedMetricKeys.includes(metric.key));
+    const selectedMetricDefinitions = availableMetricDefinitions.filter((metric) => formAtSubmit.selectedMetricKeys.includes(metric.key));
     const payload = {
-      name: typeForm.name.trim(),
-      sort_order: typeForm.sort_order,
+      name: formAtSubmit.name,
+      sort_order: formAtSubmit.sort_order,
       metric_schema: selectedMetricDefinitions.map((metric) => ({
         key: metric.key,
         label: metric.label,
       })),
     };
 
-    const { error, metricSchemaPersisted } = await saveStoreProductType({
-      storeId: activeStoreId as string,
-      editingTypeId: editingType?.id,
-      payload,
-    });
+    try {
+      const { error, metricSchemaPersisted } = await saveStoreProductType({
+        storeId,
+        editingTypeId: editingAtSubmit?.id,
+        createTypeId: createId,
+        payload,
+      });
+      if (error) throw error;
 
-    if (error) {
-      toast.error(`Failed to save type: ${formatTaxonomyError(error)}`);
-    } else {
-      if (editingType) {
-        toast.success("Type updated");
-      } else {
-        toast.success("Type added");
-      }
       const updated = {
         ...customData,
         types: {
           ...customData.types,
-          [typeForm.name.trim()]: {
-            image_url: typeForm.image_url,
-            tagline: typeForm.tagline
+          [formAtSubmit.name]: {
+            image_url: formAtSubmit.image_url,
+            tagline: formAtSubmit.tagline
           }
         }
       };
-      await saveCustomData(updated);
+      await saveCustomData(updated, storeId);
+      await refreshEntireStorefrontCache(supabase, storeId);
+      await reloadData(storeId);
+
+      if (activeStoreIdRef.current !== storeId || typeOperationRef.current !== operationId) return;
       if (!metricSchemaPersisted && selectedMetricDefinitions.length > 0) {
         toast.message("Type saved, but custom metrics will stay unavailable until the latest database migration is applied.");
       }
-      await refreshEntireStorefrontCache(supabase, activeStoreId);
-      await reloadData();
       notifyProductTaxonomyUpdated();
+      toast.success(editingAtSubmit ? "Type updated" : "Type added");
+      if (!editingAtSubmit) {
+        typeCreateIdRef.current = null;
+      }
+      setTypeDialogOpen(false);
+      setTypeError({});
+    } catch (error) {
+      console.error("Failed to save product type:", error);
+      if (activeStoreIdRef.current !== storeId || typeOperationRef.current !== operationId) return;
+      const message = `Product type could not be saved. ${formatTaxonomyError(error)} Your draft is still here.`;
+      setTypeError((current) => ({ ...current, form: message }));
+      toast.error(message);
+    } finally {
+      if (activeStoreIdRef.current === storeId && typeOperationRef.current === operationId) {
+        setSavingType(false);
+      }
     }
-    setSavingType(false);
-    setTypeDialogOpen(false);
   };
 
-  const deleteType = async (id: string) => {
+  const deleteType = async (type: ProductType) => {
     if (!activeStoreId) {
       toast.error("Select a store before deleting product types.");
       return;
     }
 
-    if (!confirm("Delete this type?")) return;
-    const { error } = await supabase.from("product_types").delete().eq("id", id).eq("store_id", activeStoreId as string);
-    if (error) {
-      toast.error("Failed to delete");
-    } else {
-      toast.success("Type deleted");
-      await refreshStorefrontTaxonomyCache(supabase, activeStoreId);
-      await reloadData();
-      notifyProductTaxonomyUpdated();
+    const context = { storeId: activeStoreId, entityId: type.id, entityName: type.name };
+    const confirmed = await confirm({
+      title: `Delete ${context.entityName}?`,
+      description: "This permanently removes the product type and its taxonomy configuration from this store.",
+      entityLabel: "Product type",
+      entityValue: context.entityName,
+      impacts: ["Products can no longer use this type from the taxonomy picker.", "Type-specific metric selectors for this type are removed from the catalog workflow."],
+      warning: "Confirm that this is the exact product type you intend to remove.",
+      confirmLabel: "Delete product type",
+      tone: "destructive",
+    });
+    if (!confirmed) return;
+    if (activeStoreIdRef.current !== context.storeId) {
+      toast.error("The active store changed before deletion. Nothing was deleted.");
+      return;
     }
+
+    const { error } = await supabase
+      .from("product_types")
+      .delete()
+      .eq("id", context.entityId)
+      .eq("store_id", context.storeId);
+    if (error) {
+      toast.error("Failed to delete product type");
+      return;
+    }
+
+    try {
+      await refreshStorefrontTaxonomyCache(supabase, context.storeId);
+      await reloadData(context.storeId);
+    } catch (error) {
+      console.error("Failed to reconcile product type delete:", error);
+      toast.error("Product type was deleted, but the taxonomy refresh did not complete. Reload before making another taxonomy change.");
+      return;
+    }
+    if (activeStoreIdRef.current !== context.storeId) return;
+    notifyProductTaxonomyUpdated();
+    toast.success("Type deleted");
   };
 
   const toggleTypeMetric = (metricKey: string) => {
@@ -487,12 +634,17 @@ const AdminCategories = () => {
       ],
     };
 
-    await saveMetricsCatalog(updatedCatalog);
-    setTypeForm((current) => ({
-      ...current,
-      customMetricName: "",
-      selectedMetricKeys: [...current.selectedMetricKeys, key],
-    }));
+    try {
+      await saveMetricsCatalog(updatedCatalog);
+      setTypeForm((current) => ({
+        ...current,
+        customMetricName: "",
+        selectedMetricKeys: [...current.selectedMetricKeys, key],
+      }));
+    } catch (error) {
+      console.error("Failed to save custom product metric:", error);
+      toast.error("Failed to add the custom metric. Your type draft is still open.");
+    }
   };
 
   // helpers
@@ -575,7 +727,13 @@ const AdminCategories = () => {
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditCat(c)}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteCat(c.id)}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => void deleteCat(c)}
+                                aria-label={`Delete ${c.name}`}
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -682,7 +840,13 @@ const AdminCategories = () => {
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditType(t)}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteType(t.id)}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => void deleteType(t)}
+                                aria-label={`Delete ${t.name}`}
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -699,15 +863,33 @@ const AdminCategories = () => {
       </Tabs>
 
       {/* Category Dialog */}
-      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={catDialogOpen}
+        onOpenChange={(open) => {
+          if (savingCat && !open) return;
+          setCatDialogOpen(open);
+          if (!open) setCatError({});
+        }}
+      >
+        <DialogContent className="sm:max-w-md" aria-busy={savingCat}>
           <DialogHeader>
             <DialogTitle>{editingCat ? "Edit Category" : "Add Category"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-2">
             <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+              <Label htmlFor="catalog-category-name">Name *</Label>
+              <Input
+                ref={catNameRef}
+                id="catalog-category-name"
+                value={catForm.name}
+                aria-invalid={Boolean(catError.name)}
+                aria-describedby={catError.name ? "catalog-category-name-error" : undefined}
+                onChange={(e) => {
+                  setCatForm({ ...catForm, name: e.target.value });
+                  setCatError((current) => ({ ...current, name: undefined, form: undefined }));
+                }}
+              />
+              {catError.name ? <p id="catalog-category-name-error" role="alert" className="text-sm text-destructive">{catError.name}</p> : null}
             </div>
             <div className="grid gap-2">
               <Label>Parent Category</Label>
@@ -745,27 +927,48 @@ const AdminCategories = () => {
                 </div>
               )}
             </div>
+            {catError.form ? (
+              <p id="catalog-category-form-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{catError.form}</p>
+            ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCatDialogOpen(false)}>Cancel</Button>
-            <Button onClick={saveCat} disabled={savingCat}>
+            <Button variant="outline" onClick={() => setCatDialogOpen(false)} disabled={savingCat}>Cancel</Button>
+            <Button onClick={() => void saveCat()} disabled={savingCat} aria-describedby={catError.form ? "catalog-category-form-error" : undefined}>
               {savingCat && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingCat ? "Update" : "Add"}
+              {savingCat ? "Saving…" : (editingCat ? "Update" : "Add")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Type Dialog */}
-      <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={typeDialogOpen}
+        onOpenChange={(open) => {
+          if (savingType && !open) return;
+          setTypeDialogOpen(open);
+          if (!open) setTypeError({});
+        }}
+      >
+        <DialogContent className="sm:max-w-md" aria-busy={savingType}>
           <DialogHeader>
             <DialogTitle>{editingType ? "Edit Type" : "Add Type"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto pr-2">
             <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input value={typeForm.name} onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })} />
+              <Label htmlFor="catalog-type-name">Name *</Label>
+              <Input
+                ref={typeNameRef}
+                id="catalog-type-name"
+                value={typeForm.name}
+                aria-invalid={Boolean(typeError.name)}
+                aria-describedby={typeError.name ? "catalog-type-name-error" : undefined}
+                onChange={(e) => {
+                  setTypeForm({ ...typeForm, name: e.target.value });
+                  setTypeError((current) => ({ ...current, name: undefined, form: undefined }));
+                }}
+              />
+              {typeError.name ? <p id="catalog-type-name-error" role="alert" className="text-sm text-destructive">{typeError.name}</p> : null}
             </div>
             <div className="grid gap-2">
               <Label>Tagline / Description</Label>
@@ -849,20 +1052,23 @@ const AdminCategories = () => {
                 </div>
               )}
             </div>
+            {typeError.form ? (
+              <p id="catalog-type-form-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{typeError.form}</p>
+            ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTypeDialogOpen(false)}>Cancel</Button>
-            <Button onClick={saveType} disabled={savingType}>
+            <Button variant="outline" onClick={() => setTypeDialogOpen(false)} disabled={savingType}>Cancel</Button>
+            <Button onClick={() => void saveType()} disabled={savingType} aria-describedby={typeError.form ? "catalog-type-form-error" : undefined}>
               {savingType && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingType ? "Update" : "Add"}
+              {savingType ? "Saving…" : (editingType ? "Update" : "Add")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {confirmationDialog}
     </div>
   );
 };
 
 export default AdminCategories;
-
 

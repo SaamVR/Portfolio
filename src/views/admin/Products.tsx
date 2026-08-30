@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, FolderTree, X } from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import AdminCategories from "./Categories";
 import {
   parseCsvText,
@@ -41,6 +42,12 @@ import {
   PRODUCT_TAXONOMY_UPDATED_EVENT,
   type ProductTypeTaxonomyRow,
 } from "@/lib/cms/product-taxonomy";
+import {
+  firstProductCatalogErrorField,
+  validateProductCatalogDraft,
+  type ProductCatalogErrors,
+  type ProductCatalogField,
+} from "@/lib/catalog/catalog-dialog-validation";
 import { refreshStorefrontProductCache } from "@/lib/storefront-cache-client";
 import type { Json } from "@/integrations/supabase/types";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -61,6 +68,8 @@ type ShopPageSettings = {
   catalog_note_title?: string;
   catalog_note_description?: string;
 };
+
+type ProductFormFeedback = ProductCatalogErrors & { form?: string };
 
 const emptyProduct = {
   name: "",
@@ -179,9 +188,16 @@ const AdminProducts = () => {
 
   const queryClient = useQueryClient();
   const activeStoreIdRef = useRef(activeStoreId);
+  const productNameRef = useRef<HTMLInputElement>(null);
+  const productPriceRef = useRef<HTMLInputElement>(null);
+  const productStockRef = useRef<HTMLInputElement>(null);
+  const saveOperationRef = useRef(0);
+  const createProductIdRef = useRef<string | null>(null);
+  const { confirm, confirmationDialog } = useMerchantConfirm();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyProduct);
+  const [formErrors, setFormErrors] = useState<ProductFormFeedback>({});
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -207,6 +223,33 @@ const AdminProducts = () => {
   useEffect(() => {
     activeStoreIdRef.current = activeStoreId;
   }, [activeStoreId]);
+
+  useEffect(() => {
+    if (!dialogOpen || typeof document === "undefined") return;
+    const imageInput = document.querySelector<HTMLInputElement>('[data-testid="products-form-image-url"]');
+    if (!imageInput) return;
+    if (formErrors.image_url) {
+      imageInput.setAttribute("aria-invalid", "true");
+      imageInput.setAttribute("aria-describedby", "products-form-image-error");
+    } else {
+      imageInput.removeAttribute("aria-invalid");
+      imageInput.removeAttribute("aria-describedby");
+    }
+  }, [dialogOpen, formErrors.image_url]);
+
+  const clearProductError = (field: ProductCatalogField) => {
+    setFormErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
+  };
+
+  const focusProductError = (field: ProductCatalogField | null) => {
+    if (!field) return;
+    if (field === "name") productNameRef.current?.focus();
+    if (field === "price") productPriceRef.current?.focus();
+    if (field === "stock") productStockRef.current?.focus();
+    if (field === "image_url" && typeof document !== "undefined") {
+      document.querySelector<HTMLInputElement>('[data-testid="products-form-image-url"]')?.focus();
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -398,9 +441,12 @@ const AdminProducts = () => {
   }, [activeStoreId, queryClient, refreshCatalogData]);
 
   useEffect(() => {
+    saveOperationRef.current += 1;
+    createProductIdRef.current = null;
     setDialogOpen(false);
     setEditing(null);
     setForm(emptyProduct);
+    setFormErrors({});
     setSaving(false);
     setSearch("");
     setLoadingProductId(null);
@@ -453,8 +499,10 @@ const AdminProducts = () => {
   }, [activeStoreId, shopPageSettings, shopPageSettingsSnapshot]);
 
   const openNew = () => {
+    createProductIdRef.current = crypto.randomUUID();
     setEditing(null);
     setForm(emptyProduct);
+    setFormErrors({});
     setDialogOpen(true);
   };
 
@@ -465,7 +513,9 @@ const AdminProducts = () => {
     try {
       const p = await fetchAdminProductDetail(storeId, product.id);
       if (activeStoreIdRef.current !== storeId) return;
+      createProductIdRef.current = null;
       setEditing(p);
+      setFormErrors({});
       setForm({
         name: p.name,
         price: p.price,
@@ -512,99 +562,135 @@ const AdminProducts = () => {
 
   const handleSave = async () => {
     if (!activeStoreId) {
+      setFormErrors((current) => ({ ...current, form: "Select a store before saving products." }));
       toast.error("Select a store before saving products.");
       return;
     }
 
-    if (!form.name || !form.image_url || form.price <= 0) {
-      toast.error("Name, image URL, and price are required");
+    const validationErrors = validateProductCatalogDraft(form, { isEditing: Boolean(editing) });
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      focusProductError(firstProductCatalogErrorField(validationErrors));
+      toast.error("Fix the highlighted product fields before saving.");
       return;
     }
-    if (!Number.isFinite(form.stock) || form.stock < 0) {
-      toast.error("Stock must be 0 or more");
-      return;
-    }
-    if (!editing && form.stock <= 0) {
-      toast.error("Set stock to at least 1 before adding a new product. You can mark it sold out later.");
-      return;
-    }
+
+    const storeId = activeStoreId;
+    const editingAtSubmit = editing;
+    const operationId = ++saveOperationRef.current;
+    const createProductId = createProductIdRef.current ?? crypto.randomUUID();
+    if (!editingAtSubmit) createProductIdRef.current = createProductId;
+    setFormErrors({});
     setSaving(true);
+
     const payload = {
       ...form,
+      name: form.name.trim(),
+      image_url: form.image_url.trim(),
       images: (form.images ?? []).filter((url) => url.trim() !== ""),
       badge: form.badge || null,
       original_price: form.original_price || null,
       metric_values: form.metric_values,
       sizes: form.metric_values.size ?? form.sizes,
       colors: form.metric_values.color ?? form.colors,
-      store_id: activeStoreId,
+      store_id: storeId,
     };
 
     try {
-      if (editing) {
-        const { error } = await (supabase.from("products") as any).update(payload).eq("id", editing.id).eq("store_id", activeStoreId as string);
-        if (error) {
-          throw error;
-        }
+      let productId = editingAtSubmit?.id ?? createProductId;
+      let successMessage = "Product added and ready to sell";
 
-        await refreshStorefrontProductCache(supabase, activeStoreId as string, {
-          products: [{ id: editing.id, name: payload.name }],
-        });
-        toast.success(payload.stock === 0 ? "Product updated and marked sold out" : "Product updated");
+      if (editingAtSubmit) {
+        const { error } = await (supabase.from("products") as any)
+          .update(payload)
+          .eq("id", editingAtSubmit.id)
+          .eq("store_id", storeId);
+        if (error) throw error;
+        successMessage = payload.stock === 0 ? "Product updated and marked sold out" : "Product updated";
       } else {
-        const productId = crypto.randomUUID();
-        const { error } = await (supabase.from("products") as any).insert({
-          ...payload,
-          id: productId,
-        });
-        if (error) {
-          throw error;
-        }
-
-        await refreshStorefrontProductCache(supabase, activeStoreId as string, {
-          products: [{ id: productId, name: payload.name }],
-        });
-        toast.success("Product added and ready to sell");
+        const { error } = await (supabase.from("products") as any).upsert(
+          { ...payload, id: createProductId },
+          { onConflict: "id" },
+        );
+        if (error) throw error;
       }
+
+      await refreshStorefrontProductCache(supabase, storeId, {
+        products: [{ id: productId, name: payload.name }],
+      });
+      await invalidateAdminProductCollections(queryClient, storeId);
+
+      if (activeStoreIdRef.current !== storeId || saveOperationRef.current !== operationId) return;
+      toast.success(successMessage);
+      setDialogOpen(false);
+      setFormErrors({});
+      createProductIdRef.current = null;
     } catch (error) {
       console.error("Failed to save product:", error);
-      toast.error(editing ? "Failed to update product" : "Failed to add product");
-      setSaving(false);
-      return;
+      if (activeStoreIdRef.current !== storeId || saveOperationRef.current !== operationId) return;
+      const message = editingAtSubmit
+        ? "Product could not be updated. Your changes are still here; review them and try again."
+        : "Product could not be saved or reconciled. Your draft is still here; review it and try again.";
+      setFormErrors((current) => ({ ...current, form: message }));
+      toast.error(message);
+    } finally {
+      if (activeStoreIdRef.current === storeId && saveOperationRef.current === operationId) {
+        setSaving(false);
+      }
     }
-
-    setSaving(false);
-    setDialogOpen(false);
-    await invalidateAdminProductCollections(queryClient, activeStoreId);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (product: AdminProductListItem) => {
     if (!activeStoreId) {
       toast.error("Select a store before deleting products.");
       return;
     }
 
-    if (!confirm("Delete this product?")) return;
-    const deletedProduct = products.find((product) => product.id === id) ?? null;
-    const { error } = await supabase.from("products").delete().eq("id", id).eq("store_id", activeStoreId as string);
+    const context = {
+      storeId: activeStoreId,
+      entityId: product.id,
+      entityName: product.name,
+    };
+    const confirmed = await confirm({
+      title: `Delete ${context.entityName}?`,
+      description: "This permanently removes the product from this store's catalog.",
+      entityLabel: "Product",
+      entityValue: context.entityName,
+      impacts: ["The product will no longer be available to shoppers.", "This action cannot be undone from the catalog."],
+      warning: "Only continue if this is the exact product you intend to remove.",
+      confirmLabel: "Delete product",
+      tone: "destructive",
+    });
+    if (!confirmed) return;
+    if (activeStoreIdRef.current !== context.storeId) {
+      toast.error("The active store changed before deletion. Nothing was deleted.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", context.entityId)
+      .eq("store_id", context.storeId);
     if (error) {
       toast.error("Failed to delete product");
-    } else {
-      if (deletedProduct?.name) {
-        try {
-          await refreshStorefrontProductCache(supabase, activeStoreId as string, {
-            products: [{ id: deletedProduct.id, name: deletedProduct.name }],
-          });
-        } catch (refreshError) {
-          console.error("Failed to refresh storefront cache after product delete:", refreshError);
-        }
-      }
-      toast.success("Product deleted");
-      await invalidateAdminProductCollections(queryClient, activeStoreId);
+      return;
     }
+
+    try {
+      await refreshStorefrontProductCache(supabase, context.storeId, {
+        products: [{ id: context.entityId, name: context.entityName }],
+      });
+      await invalidateAdminProductCollections(queryClient, context.storeId);
+    } catch (refreshError) {
+      console.error("Failed to reconcile catalog after product delete:", refreshError);
+      toast.error("Product was deleted, but the catalog refresh did not complete. Reload the catalog before making another change.");
+      return;
+    }
+
+    if (activeStoreIdRef.current !== context.storeId) return;
+    toast.success("Product deleted");
   };
-
-
 
   return (
     <div className="space-y-6">
@@ -773,7 +859,8 @@ const AdminProducts = () => {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(p.id)}
+                            onClick={() => void handleDelete(p)}
+                            aria-label={`Delete ${p.name}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -807,20 +894,52 @@ const AdminProducts = () => {
       </Tabs>
 
       {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (saving && !open) return;
+          setDialogOpen(open);
+          if (!open) setFormErrors({});
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" aria-busy={saving}>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input data-testid="products-form-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Label htmlFor="products-form-name">Name *</Label>
+              <Input
+                ref={productNameRef}
+                id="products-form-name"
+                data-testid="products-form-name"
+                value={form.name}
+                aria-invalid={Boolean(formErrors.name)}
+                aria-describedby={formErrors.name ? "products-form-name-error" : undefined}
+                onChange={(e) => {
+                  setForm({ ...form, name: e.target.value });
+                  clearProductError("name");
+                }}
+              />
+              {formErrors.name ? <p id="products-form-name-error" role="alert" className="text-sm text-destructive">{formErrors.name}</p> : null}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Price (BDT) *</Label>
-                <Input data-testid="products-form-price" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
+                <Label htmlFor="products-form-price">Price (BDT) *</Label>
+                <Input
+                  ref={productPriceRef}
+                  id="products-form-price"
+                  data-testid="products-form-price"
+                  type="number"
+                  value={form.price}
+                  aria-invalid={Boolean(formErrors.price)}
+                  aria-describedby={formErrors.price ? "products-form-price-error" : undefined}
+                  onChange={(e) => {
+                    setForm({ ...form, price: Number(e.target.value) });
+                    clearProductError("price");
+                  }}
+                />
+                {formErrors.price ? <p id="products-form-price-error" role="alert" className="text-sm text-destructive">{formErrors.price}</p> : null}
               </div>
               <div className="grid gap-2">
                 <Label>Original Price</Label>
@@ -831,11 +950,15 @@ const AdminProducts = () => {
               <Label>Main Image *</Label>
               <CloudinaryUpload
                 value={form.image_url}
-                onChange={(url) => setForm({ ...form, image_url: url })}
+                onChange={(url) => {
+                  setForm({ ...form, image_url: url });
+                  clearProductError("image_url");
+                }}
                 folder="products"
                 label="Upload main image"
                 inputTestId="products-form-image-url"
               />
+              {formErrors.image_url ? <p id="products-form-image-error" role="alert" className="text-sm text-destructive">{formErrors.image_url}</p> : null}
             </div>
             <CloudinaryMultiUpload
               images={form.images ?? []}
@@ -884,15 +1007,23 @@ const AdminProducts = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Stock *</Label>
+                <Label htmlFor="products-form-stock">Stock *</Label>
                 <Input
+                  ref={productStockRef}
+                  id="products-form-stock"
                   data-testid="products-form-stock"
                   type="number"
                   min={0}
                   step={1}
                   value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+                  aria-invalid={Boolean(formErrors.stock)}
+                  aria-describedby={formErrors.stock ? "products-form-stock-error" : undefined}
+                  onChange={(e) => {
+                    setForm({ ...form, stock: Number(e.target.value) });
+                    clearProductError("stock");
+                  }}
                 />
+                {formErrors.stock ? <p id="products-form-stock-error" role="alert" className="text-sm text-destructive">{formErrors.stock}</p> : null}
                 <p className="text-xs text-muted-foreground">
                   {editing
                     ? "Set stock to 0 to mark this product sold out and unavailable to customers."
@@ -940,12 +1071,17 @@ const AdminProducts = () => {
               <Switch checked={form.featured} onCheckedChange={(v) => setForm({ ...form, featured: v })} />
               <Label>Featured product</Label>
             </div>
+            {formErrors.form ? (
+              <p id="products-form-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {formErrors.form}
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button data-testid="products-save-button" onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
+            <Button data-testid="products-save-button" onClick={() => void handleSave()} disabled={saving} aria-describedby={formErrors.form ? "products-form-error" : undefined}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {editing ? "Update" : "Add"} Product
+              {saving ? "Saving…" : `${editing ? "Update" : "Add"} Product`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1068,6 +1204,7 @@ const AdminProducts = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {confirmationDialog}
     </div>
   );
 };
