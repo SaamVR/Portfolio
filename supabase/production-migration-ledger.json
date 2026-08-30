@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-29T15:30:00+06:00",
+  "captured_at": "2026-08-30T01:55:00+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -27,6 +27,8 @@
     "cloudflare_custom_hostnames",
     "complete_merchant_analytics_reporting",
     "consolidate_registry_variant_policies",
+    "contact_message_abuse_protection_175",
+    "contact_server_boundary_175",
     "courier_booking_idempotency_foundation_181",
     "courier_credentials_service_role_public_table",
     "create_store_invoices",
@@ -105,6 +107,7 @@
     "seed_page_blueprints",
     "site_settings_unique_store_key",
     "squashed_init",
+    "stock_notification_server_boundary_178",
     "store_business_profiles_blueprint_version",
     "store_customer_profiles",
     "store_deletion_and_merchant_status",

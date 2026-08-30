@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import ProductQA from "@/components/ProductQA";
+import { StockNotificationSignup } from "@/components/storefront/product/StockNotificationSignup";
 import { useProduct } from "@/hooks/useProducts";
 import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -79,6 +80,12 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
     },
   };
 
+  const hasKnownOutOfStockCount = typeof product.stock === "number" && product.stock <= 0;
+  const canRequestStockAlert = Boolean(
+    storeId
+    && (product.isAvailable === false || hasKnownOutOfStockCount),
+  );
+
   return (
     <LayoutWrapper>
       <SEOHead
@@ -99,6 +106,9 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         </button>
 
         <ContextAwareProductDetails product={product} />
+        {canRequestStockAlert && storeId ? (
+          <StockNotificationSignup storeId={storeId} productId={product.id} productName={product.name} />
+        ) : null}
         {storeId ? <ProductQA productId={product.id} /> : null}
       </div>
     </LayoutWrapper>
@@ -106,4 +116,3 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
 };
 
 export default ProductDetail;
-
