@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
+import { PublicTrustLinks } from "@/components/platform/PublicTrustLinks";
 import { loadPublicPlanCatalog } from "@/lib/billing/plans";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 
 export const revalidate = 300;
 
 const faqs = [
-  ["Are the prices on this page current?", "The first server-rendered plan catalog is loaded from the same public cms_plans catalog used by the product. If the catalog cannot be read, EZComo fails back to the documented Free fallback instead of inventing paid prices."],
+  ["Are the prices on this page current?", "The first server-rendered plan catalog is loaded from the same public cms_plans catalog used by the product. If the catalog cannot be read, EZComo falls back to the documented Free fallback instead of inventing paid prices."],
   ["Which payment providers are connected?", "A provider is only shown as connected after its configuration reaches the product's verified state. Availability and onboarding can depend on provider configuration, credentials, verification, and external-provider requirements."],
   ["Which courier providers are connected?", "Courier workflows are capability- and configuration-dependent. EZComo distinguishes not configured, configured, verified, and attention-needed states instead of treating a provider name as proof of a working connection."],
   ["Do plans include a custom domain?", "Custom-domain tools are entitlement-gated. An eligible plan does not by itself make a hostname live: DNS and domain verification still have to complete."],
@@ -25,6 +26,8 @@ export default async function PlansPage() {
         <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-muted-foreground">Plan names, amounts, trial duration, store limits, and contact-only state begin on the server from authoritative billing data.</p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Link href="/" className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold">Back to overview</Link>
+          <Link href="/billing-policy" className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold">Billing policy</Link>
+          <Link href="/support" className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold">Platform support</Link>
           <Link href="/signup" className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Create a store</Link>
         </div>
       </section>
@@ -44,6 +47,7 @@ export default async function PlansPage() {
           </div>
         </div>
       </section>
+      <PublicTrustLinks compact />
     </main>
   );
 }

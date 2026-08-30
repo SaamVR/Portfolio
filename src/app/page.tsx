@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { CommercialTruthLandingPage } from "@/components/marketing/CommercialTruthLandingPage";
+import { PublicTrustLinks } from "@/components/platform/PublicTrustLinks";
 import { StorefrontPage } from "@/components/storefront/StorefrontPage";
 import { StoreNotFoundView } from "@/components/storefront/StoreNotFoundView";
 import { loadPublicPlanCatalog } from "@/lib/billing/plans";
@@ -48,5 +49,5 @@ export default async function Page() {
   }
 
   const planCatalog = await loadPublicPlanCatalog();
-  return <CommercialTruthLandingPage planCatalog={planCatalog} />;
+  return <><CommercialTruthLandingPage planCatalog={planCatalog} /><PublicTrustLinks /></>;
 }

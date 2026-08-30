@@ -8,12 +8,12 @@ const SERVER_SUPPORT_URL = normalizeSupportUrl(process.env.SUPPORT_URL);
 
 export function getSupportUrl(env: Record<string, string | undefined> = process.env) {
   if (env === process.env) {
-    return PUBLIC_SUPPORT_URL ?? SERVER_SUPPORT_URL ?? "/contact";
+    return PUBLIC_SUPPORT_URL ?? SERVER_SUPPORT_URL ?? "/support";
   }
 
   return normalizeSupportUrl(env.NEXT_PUBLIC_SUPPORT_URL)
     ?? normalizeSupportUrl(env.SUPPORT_URL)
-    ?? "/contact";
+    ?? "/support";
 }
 
 export function isExternalSupportUrl(url: string) {

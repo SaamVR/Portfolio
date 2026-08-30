@@ -2,8 +2,8 @@ import { describe, expect, it } from "@/test/test-utils";
 import { getSupportUrl, isExternalSupportUrl } from "@/lib/platform/support";
 
 describe("platform support helpers", () => {
-  it("falls back to the local contact page when no support url is configured", () => {
-    expect(getSupportUrl({})).toBe("/contact");
+  it("falls back to the platform support page when no support url is configured", () => {
+    expect(getSupportUrl({})).toBe("/support");
   });
 
   it("prefers NEXT_PUBLIC_SUPPORT_URL over SUPPORT_URL", () => {
@@ -23,6 +23,6 @@ describe("platform support helpers", () => {
     expect(isExternalSupportUrl("https://help.example.com")).toBe(true);
     expect(isExternalSupportUrl("mailto:support@example.com")).toBe(true);
     expect(isExternalSupportUrl("tel:+123456789")).toBe(true);
-    expect(isExternalSupportUrl("/contact")).toBe(false);
+    expect(isExternalSupportUrl("/support")).toBe(false);
   });
 });
