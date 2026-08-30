@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { useSearchParams } from "@/lib/react-router-dom-shim";
@@ -14,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, FolderTree, X } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
 import AdminCategories from "./Categories";
@@ -43,10 +43,18 @@ import {
 } from "@/lib/cms/product-taxonomy";
 import { refreshStorefrontProductCache } from "@/lib/storefront-cache-client";
 import type { Json } from "@/integrations/supabase/types";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  fetchAdminProductDetail,
+  fetchAllAdminProductsForExport,
+  invalidateAdminProductCollections,
+  useAdminProductPages,
+  useAdminProductStats,
+  type AdminProductListItem,
+  type AdminProductRecord,
+} from "@/hooks/useAdminProducts";
 
-type Product = Tables<"products"> & {
-  metric_values?: unknown;
-};
+type Product = AdminProductRecord;
 
 type ShopPageSettings = {
   catalog_note_visible?: boolean;
@@ -169,13 +177,17 @@ const AdminProducts = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "catalog";
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const activeStoreIdRef = useRef(activeStoreId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyProduct);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const productPages = useAdminProductPages(activeStoreId, debouncedSearch);
+  const products = productPages.data?.pages.flatMap((page) => page.items) ?? [];
+  const productStats = useAdminProductStats(activeStoreId);
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [dbTypes, setDbTypes] = useState<string[]>([]);
   const [typeRows, setTypeRows] = useState<ProductTypeTaxonomyRow[]>([]);
@@ -189,6 +201,12 @@ const AdminProducts = () => {
   const [importRows, setImportRows] = useState<ParsedImportRow[]>([]);
   const [importFileName, setImportFileName] = useState("");
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    activeStoreIdRef.current = activeStoreId;
+  }, [activeStoreId]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -232,23 +250,38 @@ const AdminProducts = () => {
     document.body.removeChild(link);
   };
 
-  const handleExportCatalog = () => {
-    if (products.length === 0) {
+  const handleExportCatalog = async () => {
+    if (!activeStoreId) {
+      toast.error("Select a store before exporting products.");
+      return;
+    }
+    if ((productStats.data?.catalogSize ?? 0) === 0) {
       toast.error("There are no products to export yet.");
       return;
     }
 
-    const csv = buildProductsExportCsv(products);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `products-export-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success("Catalog export downloaded.");
+    const storeId = activeStoreId;
+    setExporting(true);
+    try {
+      const exportProducts = await fetchAllAdminProductsForExport(storeId);
+      if (activeStoreIdRef.current !== storeId) return;
+      const csv = buildProductsExportCsv(exportProducts);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `products-export-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Catalog export downloaded.");
+    } catch (error) {
+      console.error("Failed to export catalog:", error);
+      toast.error("Failed to export catalog.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleExecuteImport = async () => {
@@ -275,8 +308,7 @@ const AdminProducts = () => {
       setImportRows([]);
       setImportFileName("");
       await refreshStorefrontProductCache(supabase, activeStoreId as string);
-      const productRows = await fetchProducts();
-      setProducts(productRows);
+      await invalidateAdminProductCollections(queryClient, activeStoreId);
     } catch (err) {
       console.error("Failed to bulk import products:", err);
       toast.error(err instanceof Error ? err.message : "Failed to import products");
@@ -285,24 +317,8 @@ const AdminProducts = () => {
     }
   };
 
-  const fetchProducts = useCallback(async () => {
-    let nextProducts: Product[] = [];
-    if (!activeStoreId) return nextProducts;
-
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("store_id", activeStoreId as string)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    nextProducts = data ?? [];
-    return nextProducts;
-  }, [activeStoreId]);
-
   const refreshCatalogData = useCallback(async (options?: { silent?: boolean }) => {
     if (!activeStoreId) {
-      setProducts([]);
       setDbCategories([]);
       setDbTypes([]);
       setTypeRows([]);
@@ -310,20 +326,15 @@ const AdminProducts = () => {
       setStorefrontTemplateId("general-catalog");
       setShopPageSettings({});
       setShopPageSettingsSnapshot({});
-      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
-      const [productRows, categoriesRes, typesData, settingsRes] = await Promise.all([
-        fetchProducts(),
+      const [categoriesRes, typesData, settingsRes] = await Promise.all([
         supabase.from("product_categories").select("name").eq("store_id", activeStoreId as string).order("sort_order"),
         fetchStoreProductTypes(activeStoreId as string),
         supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["product_metrics_catalog", "storefront_profile", "shop_page"]),
       ]);
-
-      setProducts(productRows);
 
       if (categoriesRes.error || settingsRes.error) {
         throw categoriesRes.error || settingsRes.error;
@@ -353,10 +364,8 @@ const AdminProducts = () => {
       if (!options?.silent) {
         toast.error(`Failed to load product data: ${formatTaxonomyError(error)}`);
       }
-    } finally {
-      setLoading(false);
     }
-  }, [activeStoreId, fetchProducts]);
+  }, [activeStoreId]);
 
   useEffect(() => {
     void refreshCatalogData();
@@ -365,25 +374,28 @@ const AdminProducts = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handleTaxonomyUpdate = () => {
+    const refreshVisibleCatalog = () => {
       void refreshCatalogData({ silent: true });
+      if (activeStoreId) {
+        void invalidateAdminProductCollections(queryClient, activeStoreId);
+      }
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        void refreshCatalogData({ silent: true });
+        refreshVisibleCatalog();
       }
     };
 
-    window.addEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, handleTaxonomyUpdate);
-    window.addEventListener("focus", handleTaxonomyUpdate);
+    window.addEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, refreshVisibleCatalog);
+    window.addEventListener("focus", refreshVisibleCatalog);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.removeEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, handleTaxonomyUpdate);
-      window.removeEventListener("focus", handleTaxonomyUpdate);
+      window.removeEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, refreshVisibleCatalog);
+      window.removeEventListener("focus", refreshVisibleCatalog);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [refreshCatalogData]);
+  }, [activeStoreId, queryClient, refreshCatalogData]);
 
   useEffect(() => {
     setDialogOpen(false);
@@ -391,6 +403,7 @@ const AdminProducts = () => {
     setForm(emptyProduct);
     setSaving(false);
     setSearch("");
+    setLoadingProductId(null);
     setTypeRows([]);
     setMetricsCatalog([]);
     setStorefrontTemplateId("general-catalog");
@@ -445,25 +458,37 @@ const AdminProducts = () => {
     setDialogOpen(true);
   };
 
-  const openEdit = (p: Product) => {
-    setEditing(p);
-    setForm({
-      name: p.name,
-      price: p.price,
-      original_price: p.original_price,
-      image_url: p.image_url,
-      images: p.images || [],
-      description: p.description,
-      sizes: p.sizes,
-      colors: p.colors,
-      category: p.category,
-      type: p.type,
-      featured: p.featured,
-      badge: p.badge,
-      stock: p.stock,
-      metric_values: normalizeMetricValues((p as Product).metric_values),
-    });
-    setDialogOpen(true);
+  const openEdit = async (product: AdminProductListItem) => {
+    if (!activeStoreId) return;
+    const storeId = activeStoreId;
+    setLoadingProductId(product.id);
+    try {
+      const p = await fetchAdminProductDetail(storeId, product.id);
+      if (activeStoreIdRef.current !== storeId) return;
+      setEditing(p);
+      setForm({
+        name: p.name,
+        price: p.price,
+        original_price: p.original_price,
+        image_url: p.image_url,
+        images: p.images || [],
+        description: p.description,
+        sizes: p.sizes,
+        colors: p.colors,
+        category: p.category,
+        type: p.type,
+        featured: p.featured,
+        badge: p.badge,
+        stock: p.stock,
+        metric_values: normalizeMetricValues(p.metric_values),
+      });
+      setDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to load product detail:", error);
+      toast.error("Failed to load product details.");
+    } finally {
+      setLoadingProductId(null);
+    }
   };
 
   const selectedTypeRow = typeRows.find((row) => row.name === form.type) ?? null;
@@ -550,14 +575,7 @@ const AdminProducts = () => {
 
     setSaving(false);
     setDialogOpen(false);
-    void fetchProducts()
-      .then((productRows) => {
-        setProducts(productRows);
-      })
-      .catch((error) => {
-        console.error("Failed to reload products:", error);
-        toast.error("Failed to refresh products. Please try again.");
-      });
+    await invalidateAdminProductCollections(queryClient, activeStoreId);
   };
 
   const handleDelete = async (id: string) => {
@@ -582,22 +600,11 @@ const AdminProducts = () => {
         }
       }
       toast.success("Product deleted");
-      void fetchProducts()
-        .then((productRows) => {
-          setProducts(productRows);
-        })
-        .catch((fetchError) => {
-          console.error("Failed to reload products after delete:", fetchError);
-        });
+      await invalidateAdminProductCollections(queryClient, activeStoreId);
     }
   };
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
-  const featuredCount = products.filter((product) => product.featured).length;
-  const lowOrOutOfStockCount = products.filter((product) => (product.stock ?? 0) <= 0).length;
-  const readyToSellCount = products.filter((product) => (product.stock ?? 0) > 0 && product.is_available !== false).length;
+
 
   return (
     <div className="space-y-6">
@@ -608,8 +615,8 @@ const AdminProducts = () => {
         </div>
         {activeTab === "catalog" && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" data-testid="products-export-button" onClick={handleExportCatalog} className="gap-2 text-xs">
-              <Download className="h-4 w-4" /> Export CSV
+            <Button variant="outline" data-testid="products-export-button" onClick={() => void handleExportCatalog()} disabled={exporting} className="gap-2 text-xs">
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export CSV
             </Button>
             <Button variant="outline" data-testid="products-bulk-import-button" onClick={() => setImportDialogOpen(true)} className="gap-2 text-xs">
               <Upload className="h-4 w-4" /> Bulk Import
@@ -639,20 +646,20 @@ const AdminProducts = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Catalog size</CardTitle>
               </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{products.length}</CardContent>
+              <CardContent className="text-2xl font-semibold text-foreground">{productStats.data?.catalogSize ?? 0}</CardContent>
             </Card>
             <Card className="border-border">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Ready to sell</CardTitle>
               </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{readyToSellCount}</CardContent>
+              <CardContent className="text-2xl font-semibold text-foreground">{productStats.data?.readyToSell ?? 0}</CardContent>
             </Card>
             <Card className="border-border">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Featured / out of stock</CardTitle>
               </CardHeader>
               <CardContent className="text-sm font-medium text-foreground">
-                <span className="text-2xl">{featuredCount}</span> featured · <span className="text-2xl">{lowOrOutOfStockCount}</span> out
+                <span className="text-2xl">{productStats.data?.featured ?? 0}</span> featured · <span className="text-2xl">{productStats.data?.outOfStock ?? 0}</span> out
               </CardContent>
             </Card>
           </div>
@@ -709,26 +716,30 @@ const AdminProducts = () => {
             className="max-w-sm"
           />
 
-          {loading && products.length === 0 ? (
+          {productPages.isLoading && products.length === 0 ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center px-4 rounded-xl border border-dashed border-border bg-card/50 mt-8">
               <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                 <Package className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-heading font-bold text-foreground mb-2">Your store catalog is empty</h3>
+              <h3 className="text-xl font-heading font-bold text-foreground mb-2">{debouncedSearch ? "No products match your search" : "Your store catalog is empty"}</h3>
               <p className="text-muted-foreground max-w-sm mb-8 text-sm">
-                Add your first product to start selling. Upload images, set prices, and manage inventory right from here.
+                {debouncedSearch
+                  ? "Try a different product name."
+                  : "Add your first product to start selling. Upload images, set prices, and manage inventory right from here."}
               </p>
-              <Button onClick={openNew} className="gap-2 px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 rounded-full">
-                <Plus className="h-4 w-4" /> Add Your First Product
-              </Button>
+              {!debouncedSearch ? (
+                <Button onClick={openNew} className="gap-2 px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 rounded-full">
+                  <Plus className="h-4 w-4" /> Add Your First Product
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((p) => (
+              {products.map((p) => (
                 <Card key={p.id} className="border-border overflow-hidden">
                   <div className="relative aspect-square overflow-hidden bg-secondary">
                     <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
@@ -754,8 +765,8 @@ const AdminProducts = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
-                          <Pencil className="h-3.5 w-3.5" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void openEdit(p)} disabled={loadingProductId === p.id}>
+                          {loadingProductId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
                         </Button>
                         {isAdmin && (
                           <Button
@@ -774,6 +785,20 @@ const AdminProducts = () => {
               ))}
             </div>
           )}
+
+          {productPages.hasNextPage ? (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => void productPages.fetchNextPage()}
+                disabled={productPages.isFetchingNextPage}
+                className="gap-2"
+              >
+                {productPages.isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Load more products
+              </Button>
+            </div>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-4">

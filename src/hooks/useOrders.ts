@@ -1,6 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
+import {
+  buildAdminCollectionPage,
+  getAdminCollectionRange,
+  normalizeAdminOrSearch,
+} from "@/lib/admin/admin-collection-pagination";
 
 export interface Order {
   id: string;
@@ -29,6 +34,17 @@ export interface Order {
   user_id: string | null;
 }
 
+export type AdminOrderListItem = Pick<
+  Order,
+  "id" | "order_number" | "status" | "total" | "customer_name" | "customer_phone" | "created_at"
+>;
+
+export const ADMIN_ORDER_LIST_COLUMNS =
+  "id,order_number,status,total,customer_name,customer_phone,created_at" as const;
+
+export const adminOrderPagesKey = (storeId?: string | null) => ["admin-orders-pages", storeId] as const;
+export const adminOrderCountKey = (storeId?: string | null) => ["admin-orders-count", storeId] as const;
+
 export function useMyOrders(explicitStoreId?: string | null) {
   const { user } = useAuth();
   return useQuery({
@@ -40,7 +56,8 @@ export function useMyOrders(explicitStoreId?: string | null) {
         .select("*")
         .eq("user_id", user!.id)
         .eq("store_id", explicitStoreId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Order[];
     },
@@ -48,6 +65,8 @@ export function useMyOrders(explicitStoreId?: string | null) {
   });
 }
 
+// Returns operations still expects a complete in-memory order set. Keep this compatibility
+// hook until that surface gets its own pagination contract; the primary Orders screen no longer uses it.
 export function useAllOrders(explicitStoreId?: string | null) {
   return useQuery({
     queryKey: ["admin-orders", explicitStoreId],
@@ -57,12 +76,97 @@ export function useAllOrders(explicitStoreId?: string | null) {
         .from("orders")
         .select("*")
         .eq("store_id", explicitStoreId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Order[];
     },
     enabled: !!explicitStoreId,
   });
+}
+
+export async function fetchAdminOrderPage(
+  storeId: string,
+  filters: { search?: string; status?: string },
+  page: number,
+) {
+  const search = normalizeAdminOrSearch(filters.search ?? "");
+  const status = filters.status && filters.status !== "all" ? filters.status : null;
+  const range = getAdminCollectionRange(page);
+  let query = supabase
+    .from("orders")
+    .select(ADMIN_ORDER_LIST_COLUMNS)
+    .eq("store_id", storeId);
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+  if (search) {
+    query = query.or(
+      `order_number.ilike.*${search}*,customer_name.ilike.*${search}*,customer_phone.ilike.*${search}*`,
+    );
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(range.from, range.to);
+
+  if (error) throw error;
+  return buildAdminCollectionPage(
+    (data ?? []) as unknown as AdminOrderListItem[],
+    range.page,
+    range.pageSize,
+  );
+}
+
+export function useAdminOrders(
+  explicitStoreId: string | null | undefined,
+  filters: { search?: string; status?: string },
+) {
+  const search = normalizeAdminOrSearch(filters.search ?? "");
+  const status = filters.status && filters.status !== "all" ? filters.status : "all";
+
+  return useInfiniteQuery({
+    queryKey: [...adminOrderPagesKey(explicitStoreId), search, status],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => fetchAdminOrderPage(
+      explicitStoreId as string,
+      { search, status },
+      pageParam,
+    ),
+    getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+    enabled: Boolean(explicitStoreId),
+    staleTime: 15_000,
+  });
+}
+
+export function useAdminOrdersCount(explicitStoreId?: string | null) {
+  return useQuery({
+    queryKey: adminOrderCountKey(explicitStoreId),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("store_id", explicitStoreId as string);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: Boolean(explicitStoreId),
+    staleTime: 15_000,
+  });
+}
+
+export async function fetchAdminOrderDetail(storeId: string, orderId: string): Promise<Order> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("store_id", storeId)
+    .eq("id", orderId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Order not found");
+  return data as unknown as Order;
 }
 
 function createIdempotencyKey() {
@@ -145,6 +249,8 @@ export function useCreateOrder() {
       if (variables.store_id) {
         queryClient.invalidateQueries({ queryKey: ["my-orders"] });
         queryClient.invalidateQueries({ queryKey: ["admin-orders", variables.store_id] });
+        queryClient.invalidateQueries({ queryKey: adminOrderPagesKey(variables.store_id) });
+        queryClient.invalidateQueries({ queryKey: adminOrderCountKey(variables.store_id) });
         queryClient.invalidateQueries({ queryKey: ["products", variables.store_id] });
       }
     },
@@ -182,13 +288,10 @@ export function useUpdateOrderStatus() {
     onSuccess: (_data, variables) => {
       if (variables.storeId) {
         queryClient.invalidateQueries({ queryKey: ["admin-orders", variables.storeId] });
+        queryClient.invalidateQueries({ queryKey: adminOrderPagesKey(variables.storeId) });
         queryClient.invalidateQueries({ queryKey: ["my-orders"] });
         queryClient.invalidateQueries({ queryKey: ["products", variables.storeId] });
       }
     },
   });
 }
-
-
-
-

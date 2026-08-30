@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Package, Printer, Truck, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
 import { useSearchParams, Link } from "@/lib/react-router-dom-shim";
-import { useAllOrders, useUpdateOrderStatus, type Order } from "@/hooks/useOrders";
+import {
+  fetchAdminOrderDetail,
+  useAdminOrders,
+  useAdminOrdersCount,
+  useUpdateOrderStatus,
+  type AdminOrderListItem,
+  type Order,
+} from "@/hooks/useOrders";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useBookCourierShipment, useCourierConnections, useOrderShipments } from "@/hooks/useCouriers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,10 +42,10 @@ const formatCurrency = (amount: number) => `BDT ${amount.toLocaleString("en-BD")
 
 export default function AdminOrders() {
   const { activeStoreId } = useAuth();
+  const activeStoreIdRef = useRef(activeStoreId);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "orders";
 
-  const { data: orders, isLoading } = useAllOrders(activeStoreId);
   const { data: courierConnections = [] } = useCourierConnections(activeStoreId);
   const { data: shipments = [] } = useOrderShipments(activeStoreId);
   const bookCourierShipment = useBookCourierShipment(activeStoreId);
@@ -60,6 +68,11 @@ export default function AdminOrders() {
   const updateStatus = useUpdateOrderStatus();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const orderPages = useAdminOrders(activeStoreId, { search: debouncedSearch, status: filterStatus });
+  const orders = orderPages.data?.pages.flatMap((page) => page.items) ?? [];
+  const orderCountQuery = useAdminOrdersCount(activeStoreId);
+  const orderCount = orderCountQuery.data ?? 0;
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [bookingOrder, setBookingOrder] = useState<Order | null>(null);
   const [bookingConnectionId, setBookingConnectionId] = useState("");
@@ -69,13 +82,16 @@ export default function AdminOrders() {
   const [bookingInstruction, setBookingInstruction] = useState("");
   const [bookingAmountToCollect, setBookingAmountToCollect] = useState("0");
   const [bookingShippingFee, setBookingShippingFee] = useState("0");
+  const [loadingOrderAction, setLoadingOrderAction] = useState<string | null>(null);
 
   useEffect(() => {
+    activeStoreIdRef.current = activeStoreId;
     setSearch("");
     setFilterStatus("all");
     setViewOrder(null);
     setBookingOrder(null);
     setBookingConnectionId("");
+    setLoadingOrderAction(null);
   }, [activeStoreId]);
 
   const connectedCouriers = useMemo(
@@ -97,15 +113,7 @@ export default function AdminOrders() {
     return map;
   }, [shipments]);
 
-  const filtered = (orders || []).filter((o) => {
-    const matchesSearch =
-      o.order_number.toLowerCase().includes(search.toLowerCase()) ||
-      o.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      o.customer_phone.includes(search);
-    const matchesStatus = filterStatus === "all" || o.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-  const orderCount = orders?.length ?? 0;
+
 
   const handleStatusChange = (orderId: string, status: string) => {
     updateStatus.mutate(
@@ -114,17 +122,46 @@ export default function AdminOrders() {
     );
   };
 
-  const openBookingDialog = (order: Order) => {
-    const itemQuantity = order.items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0);
-    const itemDescription = order.items.map((item) => item.name).filter(Boolean).slice(0, 3).join(", ");
-    setBookingOrder(order);
-    setBookingConnectionId(connectedCouriers[0]?.id ?? "");
-    setBookingWeight("0.5");
-    setBookingQuantity(String(itemQuantity || 1));
-    setBookingDescription(itemDescription || `Order ${order.order_number}`);
-    setBookingInstruction("");
-    setBookingAmountToCollect(/cod/i.test(order.payment_method) ? String(order.total) : "0");
-    setBookingShippingFee(String(order.delivery_fee));
+  const openViewOrder = async (order: AdminOrderListItem) => {
+    if (!activeStoreId) return;
+    const storeId = activeStoreId;
+    setLoadingOrderAction(`view:${order.id}`);
+    try {
+      const detail = await fetchAdminOrderDetail(storeId, order.id);
+      if (activeStoreIdRef.current !== storeId) return;
+      setViewOrder(detail);
+    } catch (error) {
+      console.error("Failed to load order detail:", error);
+      toast.error("Could not load this order.");
+    } finally {
+      setLoadingOrderAction(null);
+    }
+  };
+
+  const openBookingDialog = async (orderOrId: AdminOrderListItem | Order) => {
+    if (!activeStoreId) return;
+    const storeId = activeStoreId;
+    const orderId = orderOrId.id;
+    setLoadingOrderAction(`book:${orderId}`);
+    try {
+      const order = "items" in orderOrId ? orderOrId : await fetchAdminOrderDetail(storeId, orderId);
+      if (activeStoreIdRef.current !== storeId) return;
+      const itemQuantity = order.items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0);
+      const itemDescription = order.items.map((item) => item.name).filter(Boolean).slice(0, 3).join(", ");
+      setBookingOrder(order);
+      setBookingConnectionId(connectedCouriers[0]?.id ?? "");
+      setBookingWeight("0.5");
+      setBookingQuantity(String(itemQuantity || 1));
+      setBookingDescription(itemDescription || `Order ${order.order_number}`);
+      setBookingInstruction("");
+      setBookingAmountToCollect(/cod/i.test(order.payment_method) ? String(order.total) : "0");
+      setBookingShippingFee(String(order.delivery_fee));
+    } catch (error) {
+      console.error("Failed to prepare courier booking:", error);
+      toast.error("Could not load this order for courier booking.");
+    } finally {
+      setLoadingOrderAction(null);
+    }
   };
 
   const submitBooking = async () => {
@@ -300,7 +337,7 @@ export default function AdminOrders() {
             </Select>
           </div>
 
-          {isLoading && orderCount === 0 ? (
+          {orderPages.isLoading && orders.length === 0 ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Card key={i} className="border-border">
@@ -324,14 +361,14 @@ export default function AdminOrders() {
                 </Card>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <Package className="mb-4 h-12 w-12" />
               <p>No orders found</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((order) => (
+              {orders.map((order) => (
                 <Card key={order.id} className="border-border">
                   <CardContent className="p-4">
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -351,7 +388,7 @@ export default function AdminOrders() {
                           {order.customer_name} - {order.customer_phone}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString()} - {order.items.length} item(s) - {formatCurrency(order.total)}
+                          {new Date(order.created_at).toLocaleDateString()} - {formatCurrency(order.total)}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -374,14 +411,14 @@ export default function AdminOrders() {
                           variant="outline"
                           size="sm"
                           className="gap-2"
-                          onClick={() => openBookingDialog(order)}
-                          disabled={connectedCouriers.length === 0}
+                          onClick={() => void openBookingDialog(order)}
+                          disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${order.id}`}
                         >
-                          <Truck className="h-4 w-4" />
+                          {loadingOrderAction === `book:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
                           Book courier
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setViewOrder(order)}>
-                          <Eye className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => void openViewOrder(order)} disabled={loadingOrderAction === `view:${order.id}`}>
+                          {loadingOrderAction === `view:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
                     </div>
@@ -390,6 +427,20 @@ export default function AdminOrders() {
               ))}
             </div>
           )}
+
+          {orderPages.hasNextPage ? (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => void orderPages.fetchNextPage()}
+                disabled={orderPages.isFetchingNextPage}
+                className="gap-2"
+              >
+                {orderPages.isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Load more orders
+              </Button>
+            </div>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="returns" className="space-y-4">
@@ -468,7 +519,7 @@ export default function AdminOrders() {
 
               <div className="flex justify-end pt-4">
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => openBookingDialog(viewOrder)} className="gap-2" disabled={connectedCouriers.length === 0}>
+                  <Button variant="outline" onClick={() => void openBookingDialog(viewOrder)} className="gap-2" disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${viewOrder.id}`}>
                     <Truck className="h-4 w-4" /> Book Courier
                   </Button>
                   <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">

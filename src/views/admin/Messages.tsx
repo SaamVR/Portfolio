@@ -1,26 +1,24 @@
 import { useAuth } from "@/hooks/auth-context";
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, MailOpen, Trash2, Loader2, RefreshCw, Star, MessageSquare } from "lucide-react";
+import { Mail, MailOpen, RefreshCw, Star, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import Reviews from "./Reviews";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { useSearchParams } from "@/lib/react-router-dom-shim";
-
-interface ContactMessage {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
+import {
+  adminMessagePagesKey,
+  adminUnreadMessagesKey,
+  useAdminMessageDetail,
+  useAdminMessagePages,
+  useAdminUnreadMessagesCount,
+  type AdminContactMessageListItem,
+} from "@/hooks/useAdminMessages";
 
 const Messages = () => {
   const { activeStoreId } = useAuth();
@@ -29,33 +27,25 @@ const Messages = () => {
   const activeTab = searchParams.get("tab") || "inbox";
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data: messages = [], isLoading, refetch } = useQuery({
-    queryKey: ["admin-messages", activeStoreId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contact_messages")
-        .select("*")
-        .eq("store_id", activeStoreId as string)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as ContactMessage[];
-    },
-    enabled: Boolean(activeStoreId),
-  });
+  const messagePages = useAdminMessagePages(activeStoreId);
+  const messages = messagePages.data?.pages.flatMap((page) => page.items) ?? [];
+  const unreadQuery = useAdminUnreadMessagesCount(activeStoreId);
+  const unreadCount = unreadQuery.data ?? 0;
+  const detailQuery = useAdminMessageDetail(activeStoreId, expanded);
 
   const markRead = useMutation({
-    mutationFn: async ({ id, is_read }: { id: string; is_read: boolean }) => {
+    mutationFn: async ({ id, isRead, storeId }: { id: string; isRead: boolean; storeId: string }) => {
       const { error } = await supabase
         .from("contact_messages")
-        .update({ is_read } as any)
+        .update({ is_read: isRead } as any)
         .eq("id", id)
-        .eq("store_id", activeStoreId as string);
+        .eq("store_id", storeId);
       if (error) throw error;
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["admin-messages", activeStoreId] }),
-        queryClient.invalidateQueries({ queryKey: ["unread-messages-count", activeStoreId] }),
+        queryClient.invalidateQueries({ queryKey: adminMessagePagesKey(variables.storeId) }),
+        queryClient.invalidateQueries({ queryKey: adminUnreadMessagesKey(variables.storeId) }),
       ]);
     },
   });
@@ -64,18 +54,22 @@ const Messages = () => {
     setExpanded(null);
   }, [activeStoreId]);
 
-  const handleExpand = (msg: ContactMessage) => {
+  const handleExpand = (msg: AdminContactMessageListItem) => {
+    if (!activeStoreId) return;
     if (expanded === msg.id) {
       setExpanded(null);
-    } else {
-      setExpanded(msg.id);
-      if (!msg.is_read) {
-        markRead.mutate({ id: msg.id, is_read: true });
-      }
+      return;
+    }
+
+    setExpanded(msg.id);
+    if (!msg.is_read) {
+      markRead.mutate({ id: msg.id, isRead: true, storeId: activeStoreId });
     }
   };
 
-  const unreadCount = messages.filter((m) => !m.is_read).length;
+  const refreshInbox = async () => {
+    await Promise.all([messagePages.refetch(), unreadQuery.refetch()]);
+  };
 
   return (
     <div className="space-y-6">
@@ -92,7 +86,7 @@ const Messages = () => {
           </p>
         </div>
         {activeTab === "inbox" && (
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+          <Button variant="outline" size="sm" onClick={() => void refreshInbox()} className="gap-2">
             <RefreshCw className="h-3.5 w-3.5" />
             Refresh
           </Button>
@@ -112,7 +106,7 @@ const Messages = () => {
         </TabsList>
 
         <TabsContent value="inbox" className="space-y-4">
-          {isLoading && messages.length === 0 ? (
+          {messagePages.isLoading && messages.length === 0 ? (
             <div className="space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm">
@@ -123,7 +117,7 @@ const Messages = () => {
                     </div>
                     <Skeleton className="h-6 w-20" />
                   </div>
-                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
               ))}
             </div>
@@ -166,7 +160,7 @@ const Messages = () => {
                         )}
                       </div>
                       <p className="truncate text-sm text-muted-foreground">{msg.email}</p>
-                      <p className="mt-0.5 truncate text-sm text-foreground/70">{msg.message}</p>
+                      <p className="mt-0.5 truncate text-sm text-foreground/70">Open message to read the full inquiry</p>
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className="text-xs text-muted-foreground">
@@ -180,36 +174,59 @@ const Messages = () => {
 
                   {expanded === msg.id && (
                     <div className="border-t border-border px-4 pb-4 pt-3">
-                      <div className="mb-3 flex items-center justify-between">
+                      <div className="mb-3 flex items-center justify-between gap-3">
                         <a
                           href={`mailto:${msg.email}`}
                           className="text-sm font-medium text-primary hover:underline"
                         >
                           Reply to {msg.email}
                         </a>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            onClick={() => markRead.mutate({ id: msg.id, is_read: !msg.is_read })}
-                            disabled={markRead.isPending}
-                          >
-                            {msg.is_read ? (
-                              <><Mail className="h-3 w-3" /> Mark Unread</>
-                            ) : (
-                              <><MailOpen className="h-3 w-3" /> Mark Read</>
-                            )}
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-xs"
+                          onClick={() => activeStoreId && markRead.mutate({ id: msg.id, isRead: !msg.is_read, storeId: activeStoreId })}
+                          disabled={markRead.isPending || !activeStoreId}
+                        >
+                          {msg.is_read ? (
+                            <><Mail className="h-3 w-3" /> Mark Unread</>
+                          ) : (
+                            <><MailOpen className="h-3 w-3" /> Mark Read</>
+                          )}
+                        </Button>
                       </div>
                       <div className="rounded-md border border-border bg-background p-4">
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{msg.message}</p>
+                        {detailQuery.isLoading ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Loading message…
+                          </div>
+                        ) : detailQuery.isError ? (
+                          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                            <span>Could not load this message.</span>
+                            <Button variant="outline" size="sm" onClick={() => void detailQuery.refetch()}>Retry</Button>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{detailQuery.data?.message ?? ""}</p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
               ))}
+
+              {messagePages.hasNextPage ? (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => void messagePages.fetchNextPage()}
+                    disabled={messagePages.isFetchingNextPage}
+                    className="gap-2"
+                  >
+                    {messagePages.isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Load more messages
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )}
         </TabsContent>
