@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-30T01:55:00+06:00",
+  "captured_at": "2026-08-30T15:12:37+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -19,6 +19,8 @@
     "allow_whatsapp_notification_events",
     "assert_can_manage_store_policy_args",
     "atomic_paid_invoice_entitlements",
+    "atomic_store_restore_169",
+    "atomic_store_restore_recovery_169",
     "batch4_merchant_refinement_ops",
     "billing_webhook_idempotency_monotonic_180",
     "block_registry_library",
@@ -56,6 +58,7 @@
     "harden_public_lead_and_media_policies",
     "harden_public_tenant_rls",
     "harden_security_definer_functions",
+    "harden_store_restore_trigger_acl_169",
     "init",
     "integration_connection_truth_cleanup_150",
     "integration_connection_truth_compat",
