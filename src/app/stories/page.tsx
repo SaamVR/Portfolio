@@ -1,97 +1,39 @@
 import Link from "next/link";
-import { ArrowLeft, Crown, Quote, TrendingUp } from "lucide-react";
+import { Boxes, Paintbrush, ShoppingBag, UtensilsCrossed } from "lucide-react";
 
-const stories = [
-  {
-    merchant: "Luna Skin Lab",
-    category: "Skincare brand",
-    quote: "We went from answering the same support and payment questions in chat to having a storefront that explained the offer clearly before people messaged us.",
-    outcome: "Launched in one evening",
-  },
-  {
-    merchant: "Trendy Closet",
-    category: "Fashion merchant",
-    quote: "The launch flow made it easy to refresh the homepage for drops. We could change the campaign feel quickly without starting over every time.",
-    outcome: "Campaign updates happen in minutes",
-  },
-  {
-    merchant: "Volt Cart",
-    category: "Electronics seller",
-    quote: "The product, payment, and trust messaging finally lived in one place. That made the business feel more legitimate to new buyers.",
-    outcome: "Clearer checkout and fewer repetitive questions",
-  },
+const scenarios = [
+  { icon: Paintbrush, title: "Fashion catalog example", body: "Illustrative setup: a fashion merchant can start from a catalog-oriented template, organize collections, add products, and adjust storefront sections and theme settings." },
+  { icon: ShoppingBag, title: "Beauty storefront example", body: "Illustrative setup: a beauty store can combine product discovery, brand content, trust information, checkout details, and merchant-managed promotions." },
+  { icon: Boxes, title: "Electronics operations example", body: "Illustrative setup: an electronics merchant can structure product information, manage catalog and order workflows, and configure available payment or delivery connections." },
+  { icon: UtensilsCrossed, title: "Food ordering example", body: "Illustrative setup: a food business can use a menu-oriented storefront structure, organize items, publish ordering information, and manage incoming commerce activity." },
 ] as const;
 
 export default function StoriesPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            Back to homepage
-          </Link>
-          <Link href="/signup" className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950">
-            Start building
-          </Link>
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="max-w-3xl space-y-4">
-          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
-            <Quote className="h-3.5 w-3.5" />
-            Merchant stories
-          </p>
-          <h1 className="font-heading text-4xl font-extrabold sm:text-5xl">Social proof that supports the landing-page promise.</h1>
-          <p className="text-base leading-relaxed text-zinc-400">
-            These stories are presented as short merchant outcomes so the sales funnel can point to believable results, not just polished UI.
-          </p>
+    <main className="min-h-screen bg-background px-5 py-16 text-foreground lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="rounded-[2rem] border border-amber-500/25 bg-amber-500/10 p-6">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Illustrative examples — not testimonials</p>
+          <h1 className="mt-4 max-w-4xl font-heading text-4xl font-semibold tracking-tight md:text-6xl">Example merchant workflows and storefront scenarios.</h1>
+          <p className="mt-5 max-w-4xl text-lg leading-8 text-muted-foreground">These scenarios demonstrate ways EZComo can be configured. They do not represent named customers, star ratings, verified reviews, revenue claims, launch-time claims, or measured merchant outcomes.</p>
         </div>
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {stories.map((story, index) => (
-            <article
-              key={story.merchant}
-              className={`rounded-[1.8rem] border p-6 ${
-                index === 1
-                  ? "border-emerald-500/30 bg-white/[0.08] shadow-[0_22px_70px_rgba(0,0,0,0.24)]"
-                  : "border-white/10 bg-slate-900/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${index === 1 ? "bg-emerald-500 text-slate-950" : "bg-white/10 text-white"}`}>
-                  <Crown className="h-4.5 w-4.5" />
-                </div>
-                <span className="rounded-full bg-white/8 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-                  {story.outcome}
-                </span>
-              </div>
-              <p className="mt-5 text-base leading-relaxed text-white">"{story.quote}"</p>
-              <div className="mt-6">
-                <p className="text-sm font-bold text-white">{story.merchant}</p>
-                <p className="text-xs text-zinc-500">{story.category}</p>
-              </div>
+        <section className="mt-10 grid gap-6 md:grid-cols-2">
+          {scenarios.map(({ icon: Icon, title, body }) => (
+            <article key={title} className="rounded-[1.8rem] border border-border bg-card p-7">
+              <Icon className="h-6 w-6 text-primary" />
+              <h2 className="mt-5 font-heading text-2xl font-semibold">{title}</h2>
+              <p className="mt-4 leading-7 text-muted-foreground">{body}</p>
             </article>
           ))}
-        </div>
-      </section>
+        </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-16">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-900/35 p-8">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-heading text-2xl font-bold text-white">Why keep this as a separate page too?</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
-                The homepage should keep the strongest proof visible, but a dedicated stories page gives you a better destination for sales calls, ad traffic, and future case studies once you collect more merchant wins.
-              </p>
-            </div>
-          </div>
+        <div className="mt-12 flex flex-wrap gap-3">
+          <Link href="/templates" className="rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">Browse templates</Link>
+          <Link href="/how-it-works" className="rounded-full border border-border px-6 py-3 font-semibold">See the workflow</Link>
+          <Link href="/" className="rounded-full border border-border px-6 py-3 font-semibold">Back home</Link>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

@@ -1,133 +1,47 @@
-"use client";
-
-import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, HelpCircle, ChevronDown, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
+import { loadPublicPlanCatalog } from "@/lib/billing/plans";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 
-export default function PlansPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+export const revalidate = 300;
 
-  const faqs = [
-    {
-      q: "Can I use custom domains for my store?",
-      a: "Yes! On our Advanced and Pro plans, you can connect your custom domain (e.g., yourbrand.com) with automated free SSL certificates provisioned instantly."
-    },
-    {
-      q: "Do you support local Bangladeshi payment gateways?",
-      a: "Absolutely. We support bKash, Nagad, Rocket, SSLCommerz, Cash on Delivery (COD), and international payments via Stripe out of the box."
-    },
-    {
-      q: "How does local shipping & courier integration work?",
-      a: "EZComo integrates directly with Pathao, Steadfast, and Paperfly. Book pick-ups, generate shipping labels, and send SMS tracking updates automatically from your admin dashboard."
-    },
-    {
-      q: "Do I need coding skills to build or edit pages?",
-      a: "Zero coding required! Our fluid drag-and-drop block builder lets you customize typography, color palettes, product layouts, and banners in real time."
-    },
-    {
-      q: "Can I try EZComo before committing?",
-      a: "Yes, we offer a 14-day free trial on paid plans with no credit card required to start, plus a Free Forever plan for early-stage stores."
-    },
-    {
-      q: "Are there any hidden transaction fees?",
-      a: "No hidden charges. We take 0% transaction fees on all paid plans so you keep 100% of your store's profits."
-    }
-  ];
+const faqs = [
+  ["Are the prices on this page current?", "The first server-rendered plan catalog is loaded from the same public cms_plans catalog used by the product. If the catalog cannot be read, EZComo fails back to the documented Free fallback instead of inventing paid prices."],
+  ["Which payment providers are connected?", "A provider is only shown as connected after its configuration reaches the product's verified state. Availability and onboarding can depend on provider configuration, credentials, verification, and external-provider requirements."],
+  ["Which courier providers are connected?", "Courier workflows are capability- and configuration-dependent. EZComo distinguishes not configured, configured, verified, and attention-needed states instead of treating a provider name as proof of a working connection."],
+  ["Do plans include a custom domain?", "Custom-domain tools are entitlement-gated. An eligible plan does not by itself make a hostname live: DNS and domain verification still have to complete."],
+  ["How long is the trial?", "Any trial duration shown on a plan card is read from the live plan catalog for that specific plan. Plans with no configured trial do not receive a generic trial promise."],
+  ["Are external service charges included?", "The plan cards describe EZComo billing. Payment, courier, messaging, domain, or other external-provider charges and terms are separate when they apply."],
+] as const;
+
+export default async function PlansPage() {
+  const planCatalog = await loadPublicPlanCatalog();
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      {/* Top Header */}
-      <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
-          <Button asChild variant="ghost" className="shrink-0 gap-2 px-2 sm:-ml-2 sm:px-4">
-            <Link href="/" aria-label={`Back to ${PLATFORM_BRAND_NAME}`}>
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to {PLATFORM_BRAND_NAME}</span>
-            </Link>
-          </Button>
-
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
-            <Link href="/admin/login" className="shrink-0 px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3">
-              Log in
-            </Link>
-            <Button asChild className="shrink-0 rounded-full bg-primary px-3 font-semibold text-primary-foreground shadow-lg shadow-emerald-500/20 sm:px-4">
-              <Link href="/signup">
-                <span className="sm:hidden">Start Free</span>
-                <span className="hidden sm:inline">Start Free Trial</span>
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Pricing Table Component */}
-      <CmsPricing />
-
-      {/* Embedded FAQ Accordion Section */}
-      <section id="faq" className="py-16 md:py-24 border-t border-border/60 bg-muted/20">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-4">
-              <HelpCircle className="h-3.5 w-3.5" />
-              Frequently Asked Questions
-            </div>
-            <h2 className="font-heading text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-foreground">
-              Everything you need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300">know</span>
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-              Got questions about pricing, payment setup, or custom domains? We've got answers.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, idx) => {
-              const isOpen = openFaq === idx;
-              return (
-                <div key={idx} className="rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300 shadow-sm hover:border-emerald-500/30">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full px-7 py-6 flex items-center justify-between text-left font-heading font-semibold text-lg text-foreground hover:text-primary transition-colors"
-                  >
-                    <span className="pr-4">{faq.q}</span>
-                    <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : ""}`} />
-                  </button>
-                  {isOpen && (
-                    <div className="px-7 pb-7 text-muted-foreground leading-relaxed text-sm border-t border-border/50 pt-5 animate-fade-in">
-                      {faq.a}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link href="/platform-faq" className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors group">
-              View extended platform documentation &amp; FAQ <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <section className="border-b border-border/70 px-5 py-14 text-center lg:px-8">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{PLATFORM_BRAND_NAME} plans</p>
+        <h1 className="mx-auto mt-4 max-w-4xl font-heading text-4xl font-semibold tracking-tight md:text-6xl">Pricing sourced from the live public plan catalog.</h1>
+        <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-muted-foreground">Plan names, amounts, trial duration, store limits, and contact-only state begin on the server from authoritative billing data.</p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link href="/" className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold">Back to overview</Link>
+          <Link href="/signup" className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Create a store</Link>
         </div>
       </section>
 
-      {/* Bottom CTA Banner */}
-      <section className="py-16 bg-gradient-to-br from-emerald-950/40 via-background to-indigo-950/40 border-t border-border text-center px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold mb-6 border border-emerald-500/20">
-            <Sparkles className="h-3.5 w-3.5" /> Ready to get started?
+      <CmsPricing planCatalog={planCatalog} />
+
+      <section id="faq" className="border-t border-border/70 px-5 py-16 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">Pricing & integration FAQ</h2>
+          <div className="mt-9 divide-y divide-border rounded-[1.7rem] border border-border bg-card px-6 md:px-8">
+            {faqs.map(([question, answer]) => (
+              <article key={question} className="py-6">
+                <h3 className="font-heading text-lg font-semibold">{question}</h3>
+                <p className="mt-2 leading-7 text-muted-foreground">{answer}</p>
+              </article>
+            ))}
           </div>
-          <h3 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-4">
-            Build your high-converting storefront today
-          </h3>
-          <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-            14-day free trial. No credit card required. Cancel anytime.
-          </p>
-          <Button asChild size="lg" className="rounded-full px-10 h-14 text-base font-semibold shadow-xl shadow-emerald-500/20 bg-primary text-primary-foreground">
-            <Link href="/signup">Start Your Free Trial</Link>
-          </Button>
         </div>
       </section>
     </main>

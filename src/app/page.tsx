@@ -1,15 +1,13 @@
 import { headers } from "next/headers";
-import { CmsLandingPage } from "@/components/marketing/CmsLandingPage";
-import { CmsPricing } from "@/components/marketing/CmsPricing";
+import { CommercialTruthLandingPage } from "@/components/marketing/CommercialTruthLandingPage";
 import { StorefrontPage } from "@/components/storefront/StorefrontPage";
 import { StoreNotFoundView } from "@/components/storefront/StoreNotFoundView";
+import { loadPublicPlanCatalog } from "@/lib/billing/plans";
 import { getRequestStore } from "@/lib/cms/request-store";
 import { getHomepage, isLocalStorefrontHostname } from "@/lib/cms/store-resolver";
 import { buildStorePageMetadata } from "@/lib/cms/store-metadata";
 import { getEzcomoRequestHostname, getPreferredRequestHost } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
-
-import { SleekBentoLandingPage } from "@/components/marketing/SleekBentoLandingPage";
 
 function isPlatformHost(hostname?: string | null) {
   const normalized = getPreferredRequestHost({ host: hostname });
@@ -30,19 +28,13 @@ function isPlatformHost(hostname?: string | null) {
 export async function generateMetadata() {
   const requestHeaders = await headers();
   const requestHost = getEzcomoRequestHostname({ headers: requestHeaders });
-  if (isPlatformHost(requestHost)) {
-    return {};
-  }
+  if (isPlatformHost(requestHost)) return {};
 
   const store = await getRequestStore({ requestedPageSlug: "/" });
-  if (!store) {
-    return {};
-  }
-
+  if (!store) return {};
   return buildStorePageMetadata(store, getHomepage(store), "/");
 }
 
-// Enable ISR / CDN Edge Caching with 60-second revalidation strategy
 export const revalidate = 60;
 
 export default async function Page() {
@@ -51,13 +43,10 @@ export default async function Page() {
 
   if (!isPlatformHost(requestHost)) {
     const store = await getRequestStore({ requestedPageSlug: "/" });
-    if (store) {
-      return <StorefrontPage store={store} page={getHomepage(store)} />;
-    }
-
-    // Graceful 404 for nonexistent/unpublished custom domains or store subdomains
+    if (store) return <StorefrontPage store={store} page={getHomepage(store)} />;
     return <StoreNotFoundView hostname={requestHost} reason="not_found" />;
   }
 
-  return <SleekBentoLandingPage />;
+  const planCatalog = await loadPublicPlanCatalog();
+  return <CommercialTruthLandingPage planCatalog={planCatalog} />;
 }

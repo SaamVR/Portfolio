@@ -1,103 +1,40 @@
 import Link from "next/link";
-import { ArrowLeft, MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Reveal } from "@/components/marketing/SleekBentoLandingPage";
 
-const PLATFORM_FAQS = [
-  {
-    q: "Do I need coding skills to build or edit pages?",
-    a: "Zero coding required! Our fluid drag-and-drop block builder lets you customize typography, color palettes, product layouts, and banners in real time without touching a single line of code.",
-  },
-  {
-    q: "Can I try EZComo before committing?",
-    a: "Yes, we offer a 14-day free trial on paid plans with no credit card required to start, plus a Free Forever plan for early-stage stores.",
-  },
-  {
-    q: "Are local payments (bKash/Nagad) supported?",
-    a: "Absolutely. bKash, Nagad, and local Cash on Delivery (COD) are first-class integrations. You do not need complex third-party plugins—just enter your credentials and you are ready to receive payments.",
-  },
-  {
-    q: "Do I get a custom domain?",
-    a: "Yes! All paid plans allow you to map your own custom domain (e.g., yourstore.com). We also automatically provision and manage free SSL certificates for your storefront.",
-  },
-  {
-    q: "Can I integrate with Pathao or Steadfast courier?",
-    a: "Yes. Our dashboard includes built-in courier integrations, allowing you to bulk-send delivery requests to Pathao and Steadfast directly from your order management view.",
-  },
-  {
-    q: "Is hosting included?",
-    a: "Yes, fully managed cloud hosting on our edge network is included in all plans. Your storefront will load lightning-fast worldwide, and we handle all scaling and uptime monitoring.",
-  },
-  {
-    q: "How do I contact support if I get stuck?",
-    a: "We offer 24/7 WhatsApp support and priority email support for Pro and Advanced plans. Our team is based locally and ready to help you launch successfully.",
-  }
-];
+const faqs = [
+  ["What can I build with EZComo?", "EZComo provides merchant storefront, content, catalog, order, customer-facing, and administration workflows. The exact feature set available to a store can depend on plan entitlement and business configuration."],
+  ["Does EZComo guarantee a specific storefront response time?", "No fixed public latency guarantee is currently published. Performance is monitored and improved through the deployment and application stack, but real response time varies by route, region, cache state, data, and external dependencies."],
+  ["Which payment providers are supported?", "Payment connections are capability- and configuration-dependent. Public marketing does not treat a provider as connected until the product's authoritative connection state is verified."],
+  ["Which courier providers are supported?", "Courier availability depends on the provider implementation, merchant configuration, credentials, and the capabilities exposed by that integration. Individual actions are only offered where supported."],
+  ["Can I use a custom domain?", "Custom-domain access is plan/feature gated. Eligible merchants still need the hostname, DNS, and verification workflow to complete before the domain becomes active."],
+  ["Does EZComo charge a transaction percentage?", "Current EZComo subscription prices are shown on the Plans page. This FAQ does not publish a blanket transaction-fee claim; external payment, courier, messaging, domain, or other provider charges can apply separately."],
+  ["How long is a paid-plan trial?", "Trial duration is plan-specific. The Plans page renders the value from the live public plan catalog, so a plan with no configured trial does not inherit a generic marketing promise."],
+  ["Are payment or courier connections automatic?", "No. EZComo can provide configuration and operational workflows, but external services can require credentials, verification, provider approval, account state, or additional setup."],
+  ["Are the example store stories real customer testimonials?", "No. The current Stories page contains illustrative store scenarios only. They are explicitly not presented as customer identities, reviews, ratings, or measured merchant outcomes."],
+] as const;
 
-export default function PlatformFAQPage() {
+export default function PlatformFaqPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans bg-dot-pattern relative">
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
-          <Button asChild variant="ghost" className="gap-2 -ml-4">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4" />
-              Back to {PLATFORM_BRAND_NAME}
-            </Link>
-          </Button>
-          <Button asChild className="rounded-full shadow-md shadow-primary/10">
-            <Link href="/signup">Get Started</Link>
-          </Button>
+    <main className="min-h-screen bg-background px-5 py-16 text-foreground lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Platform FAQ</p>
+        <h1 className="mt-4 max-w-4xl font-heading text-4xl font-semibold tracking-tight md:text-6xl">Product answers without implied provider or performance guarantees.</h1>
+        <p className="mt-5 max-w-3xl text-lg leading-8 text-muted-foreground">Commercial details that can change—such as plan price and trial duration—are delegated to the live plan catalog rather than duplicated here.</p>
+
+        <section className="mt-12 divide-y divide-border rounded-[1.8rem] border border-border bg-card px-6 md:px-9">
+          {faqs.map(([question, answer]) => (
+            <article key={question} className="py-7">
+              <h2 className="font-heading text-xl font-semibold">{question}</h2>
+              <p className="mt-3 leading-7 text-muted-foreground">{answer}</p>
+            </article>
+          ))}
+        </section>
+
+        <div className="mt-12 flex flex-wrap gap-3">
+          <Link href="/plans" className="rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">View live pricing</Link>
+          <Link href="/how-it-works" className="rounded-full border border-border px-6 py-3 font-semibold">How it works</Link>
+          <Link href="/" className="rounded-full border border-border px-6 py-3 font-semibold">Back home</Link>
         </div>
-      </header>
-
-      <section className="py-24">
-        <div className="max-w-3xl mx-auto px-6">
-          <Reveal direction="up" className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-widest mb-6">
-              <MessageCircle className="h-4 w-4" />
-              Help Center
-            </div>
-            <h1 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-6 text-foreground">
-              Frequently Asked Questions
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Everything you need to know about setting up, scaling, and managing your store with {PLATFORM_BRAND_NAME}.
-            </p>
-          </Reveal>
-
-          <Reveal direction="up" delay={100}>
-            <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-xl">
-              <Accordion type="single" collapsible className="w-full">
-                {PLATFORM_FAQS.map((faq, i) => (
-                  <AccordionItem key={i} value={`faq-${i}`} className="border-border">
-                    <AccordionTrigger className="text-left font-heading text-base font-semibold text-foreground hover:text-primary transition-colors">
-                      {faq.q}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-[15px] leading-relaxed text-muted-foreground pb-6">
-                      {faq.a}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          </Reveal>
-
-          <Reveal direction="up" delay={200} className="mt-16 text-center">
-            <p className="text-muted-foreground mb-4">Still have questions?</p>
-            <Button asChild variant="outline" className="rounded-full">
-              <a href="mailto:support@ezcomo.com">Contact Support</a>
-            </Button>
-          </Reveal>
-        </div>
-      </section>
+      </div>
     </main>
   );
 }
