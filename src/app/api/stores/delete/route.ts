@@ -6,6 +6,11 @@ import {
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
 import { logPlatformAuditAction } from "@/lib/platform/audit-logger";
+import {
+  getRequestId,
+  recordCaughtIncident,
+  sanitizeIncidentText,
+} from "@/lib/platform/incident-logger";
 
 type MerchantAccountStatusRow = {
   can_create_store?: boolean | null;
@@ -80,6 +85,8 @@ export const deleteStoreRouteDeps = {
   getSupabaseAdminClient,
   canManageStore,
   runDeleteStoreTransaction,
+  recordCaughtIncident,
+  getRequestId,
   now: () => new Date(),
 };
 
@@ -149,16 +156,35 @@ export async function POST(req: Request) {
     }
 
     const now = deleteStoreRouteDeps.now().toISOString();
-    const transactionResult = await deleteStoreRouteDeps.runDeleteStoreTransaction(supabaseAdmin, {
-      storeId: normalizedStoreId,
-      actorId: user.id,
-      actorEmail: user.email,
-      actorRole: platformRole || "store_owner",
-      adminNote: normalizedNote,
-      banMerchant: effectiveBanMerchant,
-      isPlatformAdmin,
-      createdAt: now,
-    });
+    let transactionResult: Awaited<ReturnType<typeof runDeleteStoreTransaction>>;
+    try {
+      transactionResult = await deleteStoreRouteDeps.runDeleteStoreTransaction(supabaseAdmin, {
+        storeId: normalizedStoreId,
+        actorId: user.id,
+        actorEmail: user.email,
+        actorRole: platformRole || "store_owner",
+        adminNote: normalizedNote,
+        banMerchant: effectiveBanMerchant,
+        isPlatformAdmin,
+        createdAt: now,
+      });
+    } catch (transactionError) {
+      await deleteStoreRouteDeps.recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "store-delete-transaction-failed",
+        severity: "warning",
+        source: "store_delete",
+        title: "Transactional store deletion failed",
+        error: transactionError,
+        route: "/api/stores/delete",
+        storeId: normalizedStoreId,
+        requestId: deleteStoreRouteDeps.getRequestId(req),
+        metadata: {
+          ban_merchant: effectiveBanMerchant,
+          platform_admin: isPlatformAdmin,
+        },
+      });
+      throw transactionError;
+    }
 
     if (transactionResult) {
       return NextResponse.json({ success: true, ...transactionResult });
@@ -255,7 +281,7 @@ export async function POST(req: Request) {
       deletedStoreId: store.id,
     });
   } catch (error) {
-    console.error("Store deletion error:", error);
+    console.error("Store deletion error:", sanitizeIncidentText(error));
     return NextResponse.json({ error: "Failed to delete store" }, { status: 500 });
   }
 }

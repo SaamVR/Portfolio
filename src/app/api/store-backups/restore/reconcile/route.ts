@@ -2,6 +2,12 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canManageStore, getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import {
+  getRequestId,
+  recordCaughtIncident,
+  recordPlatformIncident,
+  sanitizeIncidentText,
+} from "@/lib/platform/incident-logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { resetStorefrontSearchDocumentsForStore } from "@/lib/storefront/storefront-restore-reconciliation";
 
@@ -20,6 +26,7 @@ function normalizePageTagSlug(slug: string) {
 export async function POST(req: Request) {
   const admin = getSupabaseAdminClient();
   let operationId: string | null = null;
+  let committedStoreId: string | null = null;
   try {
     const user = await getAuthenticatedUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,6 +55,7 @@ export async function POST(req: Request) {
     if (!["committed", "reconciliation_required"].includes(String(operation.status))) {
       return NextResponse.json({ error: `Restore is ${operation.status}; database reconciliation is not available yet.` }, { status: 409 });
     }
+    committedStoreId = operation.target_store_id;
 
     const warnings: string[] = [];
     try {
@@ -89,7 +97,7 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
     if (warnings.length > 0) {
-      const summary = warnings.join("; ").slice(0, 500);
+      const summary = sanitizeIncidentText(warnings.join("; "), 500) || "Store restore reconciliation failed";
       const { error: updateError } = await admin.from("store_backup_events").update({
         status: "reconciliation_required",
         error_summary: summary,
@@ -97,6 +105,17 @@ export async function POST(req: Request) {
         completed_at: null,
       }).eq("id", operationId).eq("lifecycle_managed", true);
       if (updateError) throw updateError;
+      await recordPlatformIncident(admin, {
+        fingerprint: "store-restore-reconciliation-required",
+        severity: "warning",
+        source: "store_restore",
+        title: "Committed store restore requires reconciliation",
+        message: summary,
+        route: "/api/store-backups/restore/reconcile",
+        storeId: operation.target_store_id,
+        requestId: getRequestId(req),
+        metadata: { operation_id: operationId, warning_count: warnings.length },
+      });
       return NextResponse.json({
         committed: true,
         status: "reconciliation_required",
@@ -115,15 +134,31 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ committed: true, status: "succeeded" });
   } catch (error) {
-    const message = error instanceof z.ZodError
-      ? error.issues[0]?.message || "Invalid restore reconciliation request"
-      : error instanceof Error ? error.message.slice(0, 500) : "Restore reconciliation failed";
+    const message = sanitizeIncidentText(
+      error instanceof z.ZodError
+        ? error.issues[0]?.message || "Invalid restore reconciliation request"
+        : error instanceof Error ? error.message : "Restore reconciliation failed",
+      500,
+    ) || "Restore reconciliation failed";
     if (operationId) {
       await admin.from("store_backup_events").update({
         status: "reconciliation_required",
         error_summary: message,
         updated_at: new Date().toISOString(),
       }).eq("id", operationId).eq("lifecycle_managed", true).in("status", ["committed", "reconciliation_required"]);
+    }
+    if (operationId && committedStoreId) {
+      await recordCaughtIncident(admin, {
+        fingerprint: "store-restore-reconciliation-required",
+        severity: "warning",
+        source: "store_restore",
+        title: "Committed store restore reconciliation failed",
+        error,
+        route: "/api/store-backups/restore/reconcile",
+        storeId: committedStoreId,
+        requestId: getRequestId(req),
+        metadata: { operation_id: operationId, phase: "reconcile_exception" },
+      });
     }
     console.error("Store restore reconciliation failed:", message);
     return NextResponse.json({ error: message, committed: Boolean(operationId), recoveryRequired: Boolean(operationId) }, { status: 500 });

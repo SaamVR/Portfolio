@@ -2,7 +2,12 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
-import { getRequestId, recordPlatformIncident } from "@/lib/platform/incident-logger";
+import {
+  getRequestId,
+  recordCaughtIncident,
+  recordPlatformIncident,
+  sanitizeIncidentText,
+} from "@/lib/platform/incident-logger";
 
 type BillingWebhookEventResult = {
   outcome?: string | null;
@@ -50,7 +55,9 @@ export const billingWebhookRouteDeps = {
   getSupabaseAdminClient,
   applyBillingWebhookEvent,
   recordPlatformIncident,
+  recordCaughtIncident,
   getRequestId,
+  sanitizeIncidentText,
 };
 
 export function isAuthorizedWebhook(req: Request) {
@@ -98,6 +105,9 @@ export function parseBillingWebhookPayload(body: unknown): BillingWebhookPayload
 }
 
 export async function POST(req: Request) {
+  let incidentClient: SupabaseClient | null = null;
+  let incidentPayload: BillingWebhookPayload | null = null;
+
   try {
     if (!isAuthorizedWebhook(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -115,6 +125,8 @@ export async function POST(req: Request) {
     }
 
     const supabaseAdmin = billingWebhookRouteDeps.getSupabaseAdminClient();
+    incidentClient = supabaseAdmin;
+    incidentPayload = parsed;
     const result = await billingWebhookRouteDeps.applyBillingWebhookEvent(supabaseAdmin, parsed);
 
     if (result.incident_reason) {
@@ -151,7 +163,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, outcome: result.outcome });
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    if (incidentClient && incidentPayload) {
+      await billingWebhookRouteDeps.recordCaughtIncident(incidentClient, {
+        fingerprint: "billing-webhook-processing-failed",
+        severity: "warning",
+        source: "billing-webhook",
+        title: "Billing webhook processing failed unexpectedly",
+        error,
+        route: "/api/billing/webhook",
+        requestId: billingWebhookRouteDeps.getRequestId(req),
+        metadata: {
+          event_type: incidentPayload.eventType,
+          provider: incidentPayload.provider,
+          invoice_id: incidentPayload.invoiceId,
+        },
+      });
+    }
+    console.error("Webhook processing error:", billingWebhookRouteDeps.sanitizeIncidentText(error, 1_000));
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

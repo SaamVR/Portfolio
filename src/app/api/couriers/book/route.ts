@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   canManageStore,
   getAuthenticatedUser,
@@ -15,7 +16,12 @@ import {
   safeCourierProviderObject,
 } from "@/lib/couriers/provider-server";
 import { isCourierOperationallyConfigured } from "@/lib/couriers/shared";
-import { getRequestId, recordPlatformIncident } from "@/lib/platform/incident-logger";
+import {
+  getRequestId,
+  recordCaughtIncident,
+  recordPlatformIncident,
+  sanitizeIncidentText,
+} from "@/lib/platform/incident-logger";
 
 export const courierBookingRouteDeps = {
   getAuthenticatedUser,
@@ -67,6 +73,9 @@ export function getCourierBookingClaimResponse(claim: CourierBookingClaim) {
 }
 
 export async function POST(req: Request) {
+  let incidentAdmin: SupabaseClient | null = null;
+  let incidentContext: { storeId: string; orderId: string; connectionId: string } | null = null;
+
   try {
     const user = await courierBookingRouteDeps.getAuthenticatedUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -87,6 +96,9 @@ export async function POST(req: Request) {
       ["owner", "admin", "editor"],
     );
     if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    incidentAdmin = supabaseAdmin;
+    incidentContext = { storeId, orderId, connectionId };
 
     const [{ data: order, error: orderError }, { data: connection, error: connectionError }, { data: credential, error: credentialError }] = await Promise.all([
       (supabaseAdmin as any)
@@ -170,7 +182,7 @@ export async function POST(req: Request) {
         booking: bookingInput,
       });
     } catch (providerError) {
-      const providerMessage = providerError instanceof Error ? providerError.message : "Courier booking failed";
+      const providerMessage = sanitizeIncidentText(providerError, 500) || "Courier booking failed";
       const failed = await (supabaseAdmin as any).rpc("fail_courier_booking", {
         p_shipment_id: claim.shipment_id,
         p_attempt_token: claim.attempt_token,
@@ -178,7 +190,7 @@ export async function POST(req: Request) {
         p_reconciliation_required: true,
         p_now: now,
       });
-      if (failed.error) console.error("Failed to persist courier reconciliation state:", failed.error);
+      if (failed.error) console.error("Failed to persist courier reconciliation state:", sanitizeIncidentText(failed.error));
       await (supabaseAdmin as any)
         .from("store_courier_connections")
         .update({ last_error: { message: providerMessage, provider: connection.provider, failed_at: now } })
@@ -231,7 +243,7 @@ export async function POST(req: Request) {
         p_reconciliation_required: true,
         p_now: now,
       });
-      if (reconcile.error) console.error("Failed to mark courier booking for reconciliation:", reconcile.error);
+      if (reconcile.error) console.error("Failed to mark courier booking for reconciliation:", sanitizeIncidentText(reconcile.error));
       await recordPlatformIncident(supabaseAdmin as any, {
         fingerprint: "courier-booking-finalization-failed",
         severity: "critical",
@@ -251,7 +263,7 @@ export async function POST(req: Request) {
       .update({ last_sync_at: now, last_error: null })
       .eq("id", connectionId)
       .eq("store_id", storeId);
-    if (connectionUpdate.error) console.error("Courier connection sync metadata update failed:", connectionUpdate.error);
+    if (connectionUpdate.error) console.error("Courier connection sync metadata update failed:", sanitizeIncidentText(connectionUpdate.error));
 
     if (String(order.status) === "confirmed") {
       const orderUpdate = await (supabaseAdmin as any)
@@ -259,7 +271,7 @@ export async function POST(req: Request) {
         .update({ status: "processing" })
         .eq("id", orderId)
         .eq("store_id", storeId);
-      if (orderUpdate.error) console.error("Order processing status update failed after courier booking:", orderUpdate.error);
+      if (orderUpdate.error) console.error("Order processing status update failed after courier booking:", sanitizeIncidentText(orderUpdate.error));
     }
 
     const shipment = finalized.data;
@@ -275,7 +287,23 @@ export async function POST(req: Request) {
       orderStatus: String(order.status) === "confirmed" ? "processing" : order.status,
     });
   } catch (error) {
-    console.error("Courier booking error:", error);
+    if (incidentAdmin && incidentContext) {
+      await recordCaughtIncident(incidentAdmin, {
+        fingerprint: "courier-booking-processing-failed",
+        severity: "warning",
+        source: "courier_booking",
+        title: "Courier booking failed unexpectedly after authorization",
+        error,
+        route: "/api/couriers/book",
+        storeId: incidentContext.storeId,
+        requestId: getRequestId(req),
+        metadata: {
+          order_id: incidentContext.orderId,
+          connection_id: incidentContext.connectionId,
+        },
+      });
+    }
+    console.error("Courier booking error:", sanitizeIncidentText(error));
     return NextResponse.json({ error: "Failed to book courier shipment" }, { status: 500 });
   }
 }

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canManageStore, getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import {
+  getRequestId,
+  recordCaughtIncident,
+  recordPlatformIncident,
+  sanitizeIncidentText,
+} from "@/lib/platform/incident-logger";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   digestRestoreRequest,
@@ -60,7 +66,8 @@ async function cleanupFailedRestore(
   const { error: cleanupError } = await admin.storage.from(MEDIA_BUCKET).remove(staged.map((item) => item.path));
   if (!cleanupError) return { cleanupRequired: false };
 
-  const summary = `${errorSummary || "Restore failed"}; staged-media cleanup needs retry`.slice(0, 500);
+  const safeError = sanitizeIncidentText(errorSummary || "Restore failed", 430);
+  const summary = `${safeError || "Restore failed"}; staged-media cleanup needs retry`.slice(0, 500);
   await admin.from("store_backup_events").update({
     status: "cleanup_required",
     error_summary: summary,
@@ -76,7 +83,7 @@ async function failBeforeClaim(
   staged: RestoreStagedMedia[],
   message: string,
 ) {
-  const summary = message.slice(0, 500);
+  const summary = sanitizeIncidentText(message, 500) || "Restore validation failed";
   await admin.from("store_backup_events").update({
     status: "failed",
     error_summary: summary,
@@ -186,7 +193,10 @@ export async function POST(req: Request) {
       }) as Record<string, unknown>;
       assertNormalizedRestorePlanConstraints(plan);
     } catch (normalizationError) {
-      const message = normalizationError instanceof Error ? normalizationError.message : "Restore normalization failed";
+      const message = sanitizeIncidentText(
+        normalizationError instanceof Error ? normalizationError.message : "Restore normalization failed",
+        500,
+      ) || "Restore normalization failed";
       const cleanup = await failBeforeClaim(admin, operationId, staged, message);
       return NextResponse.json({
         committed: false,
@@ -214,6 +224,19 @@ export async function POST(req: Request) {
     }
     if (claim.operation_status === "failed") {
       const cleanup = await cleanupFailedRestore(admin, operationId, staged, claim.error_summary ?? null);
+      if (cleanup.cleanupRequired) {
+        await recordPlatformIncident(admin, {
+          fingerprint: "store-restore-cleanup-required",
+          severity: "warning",
+          source: "store_restore",
+          title: "Store restore staging cleanup requires retry",
+          message: claim.error_summary || "Restore preflight was invalidated and staged media cleanup needs retry.",
+          route: "/api/store-backups/restore/commit",
+          storeId: operation.target_store_id,
+          requestId: getRequestId(req),
+          metadata: { operation_id: operationId, phase: "pre_transaction_cleanup" },
+        });
+      }
       return NextResponse.json({
         committed: false,
         status: cleanup.cleanupRequired ? "cleanup_required" : "failed",
@@ -234,7 +257,18 @@ export async function POST(req: Request) {
         p_plan: plan,
       });
     } catch (transportError) {
-      console.error("Restore RPC transport failed with ambiguous outcome:", transportError);
+      await recordCaughtIncident(admin, {
+        fingerprint: "store-restore-outcome-ambiguous",
+        severity: "critical",
+        source: "store_restore",
+        title: "Store restore database outcome is ambiguous",
+        error: transportError,
+        route: "/api/store-backups/restore/commit",
+        storeId: operation.target_store_id,
+        requestId: getRequestId(req),
+        metadata: { operation_id: operationId, phase: "transaction_transport" },
+      });
+      console.error("Restore RPC transport failed with ambiguous outcome:", sanitizeIncidentText(transportError));
       return NextResponse.json({
         error: "Restore outcome is being reconciled. Do not start another restore.",
         status: "running",
@@ -243,7 +277,18 @@ export async function POST(req: Request) {
     }
 
     if (transactionResult.error) {
-      console.error("Restore RPC returned an ambiguous transport error:", transactionResult.error);
+      await recordCaughtIncident(admin, {
+        fingerprint: "store-restore-outcome-ambiguous",
+        severity: "critical",
+        source: "store_restore",
+        title: "Store restore database outcome is ambiguous",
+        error: transactionResult.error,
+        route: "/api/store-backups/restore/commit",
+        storeId: operation.target_store_id,
+        requestId: getRequestId(req),
+        metadata: { operation_id: operationId, phase: "transaction_rpc" },
+      });
+      console.error("Restore RPC returned an ambiguous transport error:", sanitizeIncidentText(transactionResult.error));
       return NextResponse.json({
         error: "Restore outcome is being reconciled. Do not start another restore.",
         status: "running",
@@ -253,11 +298,32 @@ export async function POST(req: Request) {
 
     const outcome = Array.isArray(transactionResult.data) ? transactionResult.data[0] : transactionResult.data;
     if (!outcome?.committed) {
-      const cleanup = await cleanupFailedRestore(admin, operationId, staged, outcome?.error_summary ?? null);
+      const failureSummary = sanitizeIncidentText(outcome?.error_summary || "Restore transaction rolled back.", 500)
+        || "Restore transaction rolled back.";
+      const cleanup = await cleanupFailedRestore(admin, operationId, staged, failureSummary);
+      await recordPlatformIncident(admin, {
+        fingerprint: cleanup.cleanupRequired
+          ? "store-restore-cleanup-required"
+          : "store-restore-transaction-rolled-back",
+        severity: "warning",
+        source: "store_restore",
+        title: cleanup.cleanupRequired
+          ? "Store restore rollback needs staged-media cleanup"
+          : "Store restore transaction rolled back safely",
+        message: failureSummary,
+        route: "/api/store-backups/restore/commit",
+        storeId: operation.target_store_id,
+        requestId: getRequestId(req),
+        metadata: {
+          operation_id: operationId,
+          operation_status: outcome?.operation_status || "failed",
+          cleanup_required: cleanup.cleanupRequired,
+        },
+      });
       return NextResponse.json({
         committed: false,
         status: cleanup.cleanupRequired ? "cleanup_required" : outcome?.operation_status || "failed",
-        error: outcome?.error_summary || "Restore transaction rolled back.",
+        error: failureSummary,
       }, { status: 409 });
     }
 
@@ -269,9 +335,12 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const status = error instanceof RestoreHttpError ? error.status : error instanceof z.ZodError ? 400 : 500;
-    const message = error instanceof z.ZodError
-      ? error.issues[0]?.message || "Invalid restore commit request"
-      : error instanceof Error ? error.message.slice(0, 350) : "Restore commit failed";
+    const message = sanitizeIncidentText(
+      error instanceof z.ZodError
+        ? error.issues[0]?.message || "Invalid restore commit request"
+        : error instanceof Error ? error.message : "Restore commit failed",
+      350,
+    ) || "Restore commit failed";
     console.error("Store restore commit failed:", message);
     return NextResponse.json({ error: message }, { status });
   }
