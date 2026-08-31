@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { FolderTree, Grid2x2, Layers3, Package, Sparkles, Store, Tags } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
-import { supabase } from "@/integrations/supabase/client";
+import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
@@ -73,34 +72,13 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const source = overrides?.source ?? "auto";
   const limit = overrides?.limit;
   const { data: dbCategories = [], isLoading: categoriesLoading } = useProductCategories(storeId);
-  const [dbTypes, setDbTypes] = useState<any[]>([]);
-  const [typesLoading, setTypesLoading] = useState(false);
+  const { data: dbTypes = [], isLoading: typesLoading } = useProductTypes(storeId);
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const imageObjectPosition = resolveStorefrontImageObjectPosition({
     position: overrides?.imagePosition,
     focalX: overrides?.focalX,
     focalY: overrides?.focalY,
   });
-
-  useEffect(() => {
-    const loadTypes = async () => {
-      if (!storeId) {
-        setDbTypes([]);
-        return;
-      }
-
-      setTypesLoading(true);
-      try {
-        const { data } = await supabase.from("product_types").select("*").eq("store_id", storeId).order("sort_order");
-        setDbTypes(data ?? []);
-      } catch (err) {
-        console.error("Failed to load product types", err);
-      } finally {
-        setTypesLoading(false);
-      }
-    };
-    loadTypes();
-  }, [storeId]);
 
   if (categoriesLoading || typesLoading) {
     return <StorefrontSectionSkeleton title={overrides?.title ?? legacySettings?.title ?? "Loading categories"} cards={4} />;

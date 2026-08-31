@@ -16,6 +16,7 @@ import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { resolveStorePlanState } from "@/lib/billing/plans";
+import { STOREFRONT_TAXONOMY_SETTING_KEY } from "@/lib/storefront-taxonomy-snapshot";
 
 const STORE_SETTING_KEYS_TO_PRELOAD = [
   "announcement_bar",
@@ -102,6 +103,12 @@ interface StoreBlockRow {
   props: Record<string, unknown> | null;
   sort_order: number | null;
   is_visible: boolean | null;
+}
+
+interface StorefrontTaxonomyRow {
+  id: string;
+  name: string;
+  sort_order: number | null;
 }
 
 type StoreResolverOptions = {
@@ -489,6 +496,8 @@ async function loadStoreResolverCoreRecords(storeId: string) {
     { data: businessProfile },
     { data: theme },
     { data: siteSettings },
+    { data: categories, error: categoriesError },
+    { data: productTypes, error: productTypesError },
     themePackages,
   ] = await Promise.all([
     supabase
@@ -511,6 +520,16 @@ async function loadStoreResolverCoreRecords(storeId: string) {
       .select("key, value")
       .eq("store_id", storeId)
       .in("key", STORE_SETTING_KEYS_TO_PRELOAD),
+    supabase
+      .from("product_categories")
+      .select("id, name, sort_order")
+      .eq("store_id", storeId)
+      .order("sort_order"),
+    supabase
+      .from("product_types")
+      .select("id, name, sort_order")
+      .eq("store_id", storeId)
+      .order("sort_order"),
     loadThemePackages(supabase, storeId),
   ]);
 
@@ -518,11 +537,26 @@ async function loadStoreResolverCoreRecords(storeId: string) {
     return null;
   }
 
+  const mapTaxonomyRows = (rows: StorefrontTaxonomyRow[] | null | undefined) =>
+    (rows ?? []).map((row, index) => ({
+      id: row.id,
+      name: row.name,
+      sort_order: row.sort_order ?? index,
+    }));
+  const resolvedSiteSettings = (siteSettings as SiteSettingRecord[] | null) ?? [];
+  resolvedSiteSettings.push({
+    key: STOREFRONT_TAXONOMY_SETTING_KEY,
+    value: {
+      categories: categoriesError ? [] : mapTaxonomyRows(categories as StorefrontTaxonomyRow[] | null),
+      types: productTypesError ? [] : mapTaxonomyRows(productTypes as StorefrontTaxonomyRow[] | null),
+    },
+  });
+
   return {
     store: store as StoreRow,
     businessProfile: (businessProfile as StoreBusinessProfileRow | null) ?? null,
     theme: (theme as StoreThemeRow | null) ?? null,
-    siteSettings: (siteSettings as SiteSettingRecord[] | null) ?? [],
+    siteSettings: resolvedSiteSettings,
     themePackages,
   };
 }
