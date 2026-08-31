@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type MerchantConfirmTone = "default" | "warning" | "destructive";
+type MerchantConfirmSecondaryVariant = "default" | "outline" | "destructive";
 
 export type MerchantConfirmDialogProps = {
   open: boolean;
@@ -29,9 +30,12 @@ export type MerchantConfirmDialogProps = {
   recoveryText?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  secondaryActionLabel?: string;
+  secondaryActionVariant?: MerchantConfirmSecondaryVariant;
   tone?: MerchantConfirmTone;
   pending?: boolean;
   onConfirm: () => void | Promise<void>;
+  onSecondaryAction?: () => void | Promise<void>;
 };
 
 const toneStyles: Record<MerchantConfirmTone, { icon: string; panel: string; button: "default" | "destructive" }> = {
@@ -65,9 +69,12 @@ export function MerchantConfirmDialog({
   recoveryText,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  secondaryActionLabel,
+  secondaryActionVariant = "outline",
   tone = "default",
   pending = false,
   onConfirm,
+  onSecondaryAction,
 }: MerchantConfirmDialogProps) {
   const styles = toneStyles[tone];
   const Icon = tone === "destructive" ? ShieldAlert : tone === "warning" ? AlertTriangle : Info;
@@ -126,6 +133,16 @@ export function MerchantConfirmDialog({
         <span className="sr-only" aria-live="polite">{pending ? "Action in progress" : ""}</span>
         <AlertDialogFooter className="gap-2 sm:space-x-0">
           <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
+          {secondaryActionLabel && onSecondaryAction ? (
+            <Button
+              type="button"
+              variant={secondaryActionVariant}
+              disabled={pending}
+              onClick={() => void onSecondaryAction()}
+            >
+              {secondaryActionLabel}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant={styles.button}
@@ -140,7 +157,6 @@ export function MerchantConfirmDialog({
     </AlertDialog>
   );
 }
-
 
 export type MerchantConfirmOptions = Omit<
   MerchantConfirmDialogProps,
@@ -179,6 +195,10 @@ export function useMerchantConfirm() {
         if (!open) settle(false);
       }}
       onConfirm={() => settle(true)}
+      onSecondaryAction={request.onSecondaryAction ? async () => {
+        await request.onSecondaryAction?.();
+        settle(false);
+      } : undefined}
     />
   ) : null;
 

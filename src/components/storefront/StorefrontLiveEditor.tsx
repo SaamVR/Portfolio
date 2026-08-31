@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
+import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
@@ -173,6 +174,7 @@ export function StorefrontLiveEditor({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
@@ -180,11 +182,17 @@ export function StorefrontLiveEditor({
   const [importError, setImportError] = useState("");
   const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
   const lastLoadedStoreRef = useRef(store);
+  const storeIdRef = useRef(store.id);
+  const pageIdRef = useRef(page.id);
+  const draftSnapshotRef = useRef(serializeStoreDraft(store));
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
   const basicEditorHref = buildPageBuilderPath("basic", { pageId: page.id, returnTo });
   const advancedEditorHref = buildPageBuilderPath("advanced", { pageId: page.id, returnTo });
   const currentSnapshot = useMemo(() => serializeStoreDraft(store), [store]);
+  storeIdRef.current = store.id;
+  pageIdRef.current = page.id;
+  draftSnapshotRef.current = currentSnapshot;
   const hasUnsavedChanges = currentSnapshot !== persistedSnapshot;
   const selectedBlock = useMemo(
     () => page.blocks.find((block) => block.id === selectedBlockId) ?? null,
@@ -320,22 +328,86 @@ export function StorefrontLiveEditor({
     });
   };
 
-  const resetToLoadedState = () => {
-    if (hasUnsavedChanges && typeof window !== "undefined" && !window.confirm("Discard unsaved live edits and reset this storefront to the last loaded state?")) {
+  const resetToLoadedState = async () => {
+    if (!hasUnsavedChanges) {
+      setStore(lastLoadedStoreRef.current);
+      setHistory([]);
+      onSelectedBlockChange(null);
+      toast.success("Live editor reset to the last loaded storefront state.");
       return;
     }
+
+    const originStoreId = store.id;
+    const originPageId = page.id;
+    const originDraftSnapshot = currentSnapshot;
+    const confirmed = await confirmMerchantAction({
+      title: "Discard unsaved live edits?",
+      description: "Reset this live editor to the last loaded storefront state.",
+      entityLabel: "Page",
+      entityValue: page.title,
+      storeName: store.name,
+      impacts: [
+        "Unsaved local edits in the current live-editor draft will be discarded.",
+        "The editor returns to the last loaded or successfully saved storefront state; this confirmation does not publish anything.",
+      ],
+      recoveryText: "Cancel to keep the current unsaved live-editor draft unchanged.",
+      confirmLabel: "Discard and reset",
+      tone: "destructive",
+    });
+    if (!confirmed) return;
+    if (
+      storeIdRef.current !== originStoreId
+      || pageIdRef.current !== originPageId
+      || draftSnapshotRef.current !== originDraftSnapshot
+    ) {
+      toast.warning("The live-editor target changed, so the reset was cancelled.");
+      return;
+    }
+
     setStore(lastLoadedStoreRef.current);
     setHistory([]);
     onSelectedBlockChange(null);
     toast.success("Live editor reset to the last loaded storefront state.");
   };
 
-  const toggleAdminMode = () => {
-    if (adminMode && hasUnsavedChanges && typeof window !== "undefined" && !window.confirm("Close the live editor with unsaved changes still in your local draft?")) {
+  const toggleAdminMode = async () => {
+    if (!adminMode) {
+      onAdminModeChange(true);
+      return;
+    }
+    if (!hasUnsavedChanges) {
+      onAdminModeChange(false);
       return;
     }
 
-    onAdminModeChange(!adminMode);
+    const originStoreId = store.id;
+    const originPageId = page.id;
+    const originDraftSnapshot = currentSnapshot;
+    const confirmed = await confirmMerchantAction({
+      title: "Close live editor and keep local draft?",
+      description: "Close the live-editor controls without saving or discarding the current local edits.",
+      entityLabel: "Page",
+      entityValue: page.title,
+      storeName: store.name,
+      impacts: [
+        "The current unsaved edits stay in local page memory so reopening the live editor on this page keeps them available.",
+        "The edits are not persisted yet. Browser or tab navigation remains protected by the existing unsaved-change warning.",
+      ],
+      recoveryText: "Cancel to keep the live editor open with the current draft unchanged.",
+      confirmLabel: "Close and keep draft",
+      tone: "warning",
+    });
+    if (!confirmed) return;
+    if (
+      storeIdRef.current !== originStoreId
+      || pageIdRef.current !== originPageId
+      || draftSnapshotRef.current !== originDraftSnapshot
+    ) {
+      toast.warning("The live-editor target changed, so the close action was cancelled.");
+      return;
+    }
+
+    onAdminModeChange(false);
   };
 
   const handleExport = (type: "theme-only" | "theme-and-layout" | "full-store") => {
@@ -1022,11 +1094,12 @@ export function StorefrontLiveEditor({
 
   return (
     <div className="pointer-events-none fixed right-2 top-1/2 z-50 flex -translate-y-1/2 justify-end sm:right-4">
+      {confirmationDialog}
       <div className="flex w-full max-w-[min(440px,100%)] flex-col items-end gap-3">
         <div className="pointer-events-auto flex justify-end">
           {isDockMinimized ? (
             <div className="flex flex-col items-end gap-2">
-              <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} className="h-10 w-10 rounded-full shadow-lg" onClick={toggleAdminMode} title={adminMode ? "Close live editor" : "Open live editor"}>
+              <Button type="button" size="icon" variant={adminMode ? "secondary" : "ghost"} className="h-10 w-10 rounded-full shadow-lg" onClick={() => void toggleAdminMode()} title={adminMode ? "Close live editor" : "Open live editor"}>
                 {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
               <Button type="button" size="icon" variant="outline" className="h-10 w-10 rounded-full shadow-lg" onClick={() => undoLastChange()} disabled={history.length === 0} title="Undo live edit">
@@ -1057,11 +1130,11 @@ export function StorefrontLiveEditor({
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Button type="button" size="sm" variant={adminMode ? "secondary" : "outline"} className="justify-start rounded-full" onClick={toggleAdminMode}>
+                <Button type="button" size="sm" variant={adminMode ? "secondary" : "outline"} className="justify-start rounded-full" onClick={() => void toggleAdminMode()}>
                   {adminMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   {adminMode ? "Close" : "Open"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => resetToLoadedState()}>
+                <Button type="button" size="sm" variant="outline" className="justify-start rounded-full" onClick={() => void resetToLoadedState()}>
                   <RotateCcw className="h-4 w-4" />
                   Reset
                 </Button>

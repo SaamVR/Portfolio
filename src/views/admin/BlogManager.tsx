@@ -268,6 +268,7 @@ export default function BlogManager() {
     editingPost,
     posts,
     setEditingPost,
+    confirmRecoveryDecision: confirmMerchantAction,
   });
 
   const filteredPosts = useMemo(() => {
