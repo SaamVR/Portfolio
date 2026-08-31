@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock3, Download, Loader2, Mail, MessageCircleMore, Save, ShoppingCart, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import {
   normalizeCartRecoverySettings,
   type CartRecoverySettings,
 } from "@/lib/admin/merchant-growth-settings";
+import { merchantNumericSettingBounds, parseBoundedIntegerDraft } from "@/lib/admin/numeric-setting-draft";
 
 type RecoveryLeadRow = {
   id: string;
@@ -71,6 +72,27 @@ type RecoveryLeadView = {
   mailtoUrl: string | null;
 };
 
+type CartNumericField = "abandonmentWindowMinutes" | "cooldownHours" | "maxTouchesPerLead" | "dailyQueueLimit";
+type CartNumericDraft = Record<CartNumericField, string>;
+type CartNumericErrors = Partial<Record<CartNumericField, string>>;
+
+const initialCartSettings = normalizeCartRecoverySettings(null);
+const cartNumericBounds = {
+  abandonmentWindowMinutes: merchantNumericSettingBounds.cartAbandonmentWindowMinutes,
+  cooldownHours: merchantNumericSettingBounds.cartCooldownHours,
+  maxTouchesPerLead: merchantNumericSettingBounds.cartMaxTouchesPerLead,
+  dailyQueueLimit: merchantNumericSettingBounds.cartDailyQueueLimit,
+} as const;
+
+function cartNumericDraftFromSettings(settings: CartRecoverySettings): CartNumericDraft {
+  return {
+    abandonmentWindowMinutes: String(settings.abandonmentWindowMinutes),
+    cooldownHours: String(settings.cooldownHours),
+    maxTouchesPerLead: String(settings.maxTouchesPerLead),
+    dailyQueueLimit: String(settings.dailyQueueLimit),
+  };
+}
+
 function formatTaka(value: number) {
   return `৳${Math.max(0, value || 0).toLocaleString()}`;
 }
@@ -90,7 +112,15 @@ function formatRelativeTime(value: string | null) {
 export default function CartRecoveryPage() {
   const { activeStoreId } = useAuth();
   const queryClient = useQueryClient();
-  const [settings, setSettings] = useState<CartRecoverySettings>(normalizeCartRecoverySettings(null));
+  const [settings, setSettings] = useState<CartRecoverySettings>(initialCartSettings);
+  const [cartNumericDraft, setCartNumericDraft] = useState<CartNumericDraft>(() => cartNumericDraftFromSettings(initialCartSettings));
+  const [cartNumericErrors, setCartNumericErrors] = useState<CartNumericErrors>({});
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
+  const [queueActionError, setQueueActionError] = useState<string | null>(null);
+  const abandonmentWindowRef = useRef<HTMLInputElement>(null);
+  const cooldownHoursRef = useRef<HTMLInputElement>(null);
+  const maxTouchesRef = useRef<HTMLInputElement>(null);
+  const dailyQueueLimitRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["cart-recovery", activeStoreId],
@@ -146,23 +176,73 @@ export default function CartRecoveryPage() {
     },
   });
 
+  function updateCartNumericDraft(field: CartNumericField, value: string) {
+    const result = parseBoundedIntegerDraft(value, cartNumericBounds[field]);
+    setCartNumericDraft((previous) => ({ ...previous, [field]: value }));
+    setCartNumericErrors((previous) => ({
+      ...previous,
+      [field]: result.ok ? undefined : result.error,
+    }));
+  }
+
+  function validateCartSettings() {
+    const abandonmentWindowMinutes = parseBoundedIntegerDraft(cartNumericDraft.abandonmentWindowMinutes, cartNumericBounds.abandonmentWindowMinutes);
+    const cooldownHours = parseBoundedIntegerDraft(cartNumericDraft.cooldownHours, cartNumericBounds.cooldownHours);
+    const maxTouchesPerLead = parseBoundedIntegerDraft(cartNumericDraft.maxTouchesPerLead, cartNumericBounds.maxTouchesPerLead);
+    const dailyQueueLimit = parseBoundedIntegerDraft(cartNumericDraft.dailyQueueLimit, cartNumericBounds.dailyQueueLimit);
+
+    const nextErrors: CartNumericErrors = {
+      abandonmentWindowMinutes: abandonmentWindowMinutes.ok ? undefined : abandonmentWindowMinutes.error,
+      cooldownHours: cooldownHours.ok ? undefined : cooldownHours.error,
+      maxTouchesPerLead: maxTouchesPerLead.ok ? undefined : maxTouchesPerLead.error,
+      dailyQueueLimit: dailyQueueLimit.ok ? undefined : dailyQueueLimit.error,
+    };
+    setCartNumericErrors(nextErrors);
+
+    if (!abandonmentWindowMinutes.ok || !cooldownHours.ok || !maxTouchesPerLead.ok || !dailyQueueLimit.ok) {
+      if (!abandonmentWindowMinutes.ok) abandonmentWindowRef.current?.focus();
+      else if (!cooldownHours.ok) cooldownHoursRef.current?.focus();
+      else if (!maxTouchesPerLead.ok) maxTouchesRef.current?.focus();
+      else dailyQueueLimitRef.current?.focus();
+      return null;
+    }
+
+    return normalizeCartRecoverySettings({
+      ...settings,
+      abandonmentWindowMinutes: abandonmentWindowMinutes.value,
+      cooldownHours: cooldownHours.value,
+      maxTouchesPerLead: maxTouchesPerLead.value,
+      dailyQueueLimit: dailyQueueLimit.value,
+    });
+  }
+
   const saveSettingsMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (nextSettings: CartRecoverySettings) => {
       if (!activeStoreId) return;
-      const normalized = normalizeCartRecoverySettings(settings);
+      const normalized = normalizeCartRecoverySettings(nextSettings);
       const { error: upsertError } = await supabase
         .from("site_settings")
         .upsert({ store_id: activeStoreId, key: cartRecoverySettingsKey, value: normalized as any }, { onConflict: "store_id,key" });
       if (upsertError) throw upsertError;
     },
-    onSuccess: async () => {
+    onMutate: () => {
+      setSettingsSaveError(null);
+    },
+    onSuccess: async (_data, savedSettings) => {
+      const normalized = normalizeCartRecoverySettings(savedSettings);
+      setSettings(normalized);
+      setCartNumericDraft(cartNumericDraftFromSettings(normalized));
+      setCartNumericErrors({});
       toast.success("Recovery automation settings saved.");
       await queryClient.invalidateQueries({ queryKey: ["cart-recovery", activeStoreId] });
+    },
+    onError: () => {
+      setSettingsSaveError("Could not save the recovery settings. Your current values are still here; review them and try again.");
     },
   });
 
   const queueRecoveryMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (nextSettings: CartRecoverySettings) => {
       if (!activeStoreId) {
         throw new Error("Select a store first.");
       }
@@ -179,7 +259,7 @@ export default function CartRecoveryPage() {
         },
         body: JSON.stringify({
           storeId: activeStoreId,
-          settings: normalizeCartRecoverySettings(settings),
+          settings: normalizeCartRecoverySettings(nextSettings),
         }),
       });
 
@@ -189,11 +269,27 @@ export default function CartRecoveryPage() {
       }
       return payload as { queuedCount: number };
     },
+    onMutate: () => {
+      setQueueActionError(null);
+    },
     onSuccess: async (payload) => {
       toast.success(payload.queuedCount > 0 ? `${payload.queuedCount} recovery follow-up${payload.queuedCount === 1 ? "" : "s"} queued.` : "No leads were due for outreach yet.");
       await queryClient.invalidateQueries({ queryKey: ["cart-recovery", activeStoreId] });
     },
+    onError: (mutationError) => {
+      setQueueActionError(mutationError instanceof Error ? mutationError.message : "Could not queue recovery follow-ups. Review the settings and try again.");
+    },
   });
+
+  function handleSaveSettings() {
+    const validated = validateCartSettings();
+    if (validated) saveSettingsMutation.mutate(validated);
+  }
+
+  function handleQueueRecovery() {
+    const validated = validateCartSettings();
+    if (validated) queueRecoveryMutation.mutate(validated);
+  }
 
   const leads = useMemo<RecoveryLeadView[]>(() => {
     const messageMap = new Map<string, RecoveryMessageRow[]>();
@@ -276,8 +372,18 @@ export default function CartRecoveryPage() {
   }, [leads]);
 
   useEffect(() => {
+    setCartNumericErrors({});
+    setSettingsSaveError(null);
+    setQueueActionError(null);
+  }, [activeStoreId]);
+
+  useEffect(() => {
     if (data?.settings) {
       setSettings(data.settings);
+      setCartNumericDraft(cartNumericDraftFromSettings(data.settings));
+      setCartNumericErrors({});
+      setSettingsSaveError(null);
+      setQueueActionError(null);
     }
   }, [data?.settings]);
 
@@ -364,34 +470,78 @@ export default function CartRecoveryPage() {
               <CardDescription>Define the abandonment window, follow-up rhythm, and safe queue size before the team pushes outreach.</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => saveSettingsMutation.mutate()} disabled={saveSettingsMutation.isPending}>
+              <Button type="button" variant="outline" onClick={handleSaveSettings} disabled={saveSettingsMutation.isPending}>
                 {saveSettingsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save settings
               </Button>
-              <Button type="button" onClick={() => queueRecoveryMutation.mutate()} disabled={queueRecoveryMutation.isPending}>
+              <Button type="button" onClick={handleQueueRecovery} disabled={queueRecoveryMutation.isPending}>
                 {queueRecoveryMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Queue due follow-ups
               </Button>
             </div>
           </div>
+          {settingsSaveError ? <p role="alert" className="text-sm text-destructive">{settingsSaveError}</p> : null}
+          {queueActionError ? <p role="alert" className="text-sm text-destructive">{queueActionError}</p> : null}
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
-            <Label>Abandonment window (minutes)</Label>
-            <Input value={settings.abandonmentWindowMinutes} onChange={(event) => setSettings((prev) => ({ ...prev, abandonmentWindowMinutes: Number(event.target.value) || 60 }))} />
+            <Label htmlFor="cart-abandonment-window">Abandonment window (minutes)</Label>
+            <Input
+              ref={abandonmentWindowRef}
+              id="cart-abandonment-window"
+              type="number"
+              inputMode="numeric"
+              min={15}
+              max={1440}
+              step={1}
+              value={cartNumericDraft.abandonmentWindowMinutes}
+              onChange={(event) => updateCartNumericDraft("abandonmentWindowMinutes", event.target.value)}
+              aria-invalid={Boolean(cartNumericErrors.abandonmentWindowMinutes)}
+              aria-describedby={`cart-abandonment-window-help${cartNumericErrors.abandonmentWindowMinutes ? " cart-abandonment-window-error" : ""}`}
+            />
+            <p id="cart-abandonment-window-help" className="text-xs text-muted-foreground">Use a whole number from 15–1440 minutes.</p>
+            {cartNumericErrors.abandonmentWindowMinutes ? <p id="cart-abandonment-window-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.abandonmentWindowMinutes}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label>Cooldown between touches (hours)</Label>
-            <Input value={settings.cooldownHours} onChange={(event) => setSettings((prev) => ({ ...prev, cooldownHours: Number(event.target.value) || 24 }))} />
+            <Label htmlFor="cart-cooldown-hours">Cooldown between touches (hours)</Label>
+            <Input
+              ref={cooldownHoursRef}
+              id="cart-cooldown-hours"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={168}
+              step={1}
+              value={cartNumericDraft.cooldownHours}
+              onChange={(event) => updateCartNumericDraft("cooldownHours", event.target.value)}
+              aria-invalid={Boolean(cartNumericErrors.cooldownHours)}
+              aria-describedby={`cart-cooldown-hours-help${cartNumericErrors.cooldownHours ? " cart-cooldown-hours-error" : ""}`}
+            />
+            <p id="cart-cooldown-hours-help" className="text-xs text-muted-foreground">Use a whole number from 1–168 hours.</p>
+            {cartNumericErrors.cooldownHours ? <p id="cart-cooldown-hours-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.cooldownHours}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label>Maximum touches per lead</Label>
-            <Input value={settings.maxTouchesPerLead} onChange={(event) => setSettings((prev) => ({ ...prev, maxTouchesPerLead: Number(event.target.value) || 3 }))} />
+            <Label htmlFor="cart-max-touches">Maximum touches per lead</Label>
+            <Input
+              ref={maxTouchesRef}
+              id="cart-max-touches"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={6}
+              step={1}
+              value={cartNumericDraft.maxTouchesPerLead}
+              onChange={(event) => updateCartNumericDraft("maxTouchesPerLead", event.target.value)}
+              aria-invalid={Boolean(cartNumericErrors.maxTouchesPerLead)}
+              aria-describedby={`cart-max-touches-help${cartNumericErrors.maxTouchesPerLead ? " cart-max-touches-error" : ""}`}
+            />
+            <p id="cart-max-touches-help" className="text-xs text-muted-foreground">Use a whole number from 1–6 touches.</p>
+            {cartNumericErrors.maxTouchesPerLead ? <p id="cart-max-touches-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.maxTouchesPerLead}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label>Preferred channel</Label>
+            <Label htmlFor="cart-preferred-channel">Preferred channel</Label>
             <Select value={settings.preferredChannel} onValueChange={(value) => setSettings((prev) => ({ ...prev, preferredChannel: value as CartRecoverySettings["preferredChannel"] }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="cart-preferred-channel"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="smart">Smart by available contact</SelectItem>
                 <SelectItem value="email">Email first</SelectItem>
@@ -400,12 +550,26 @@ export default function CartRecoveryPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Daily queue limit</Label>
-            <Input value={settings.dailyQueueLimit} onChange={(event) => setSettings((prev) => ({ ...prev, dailyQueueLimit: Number(event.target.value) || 50 }))} />
+            <Label htmlFor="cart-daily-queue-limit">Daily queue limit</Label>
+            <Input
+              ref={dailyQueueLimitRef}
+              id="cart-daily-queue-limit"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={500}
+              step={1}
+              value={cartNumericDraft.dailyQueueLimit}
+              onChange={(event) => updateCartNumericDraft("dailyQueueLimit", event.target.value)}
+              aria-invalid={Boolean(cartNumericErrors.dailyQueueLimit)}
+              aria-describedby={`cart-daily-queue-limit-help${cartNumericErrors.dailyQueueLimit ? " cart-daily-queue-limit-error" : ""}`}
+            />
+            <p id="cart-daily-queue-limit-help" className="text-xs text-muted-foreground">Use a whole number from 5–500 follow-ups per day.</p>
+            {cartNumericErrors.dailyQueueLimit ? <p id="cart-daily-queue-limit-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.dailyQueueLimit}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label>Recovery coupon prefix</Label>
-            <Input value={settings.couponPrefix} onChange={(event) => setSettings((prev) => ({ ...prev, couponPrefix: event.target.value }))} />
+            <Label htmlFor="cart-coupon-prefix">Recovery coupon prefix</Label>
+            <Input id="cart-coupon-prefix" value={settings.couponPrefix} onChange={(event) => setSettings((prev) => ({ ...prev, couponPrefix: event.target.value }))} />
           </div>
         </CardContent>
       </Card>

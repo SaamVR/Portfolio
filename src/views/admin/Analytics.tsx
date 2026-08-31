@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
@@ -11,11 +11,25 @@ import { EMPTY_ANALYTICS_REPORT, fetchAuthoritativeAnalyticsReport, labelAnalyti
 import { downloadAnalyticsSummaryCsv } from "@/lib/analytics/export";
 import { getAnalyticsPresetLabel, resolveAnalyticsDateRangePair, type AnalyticsDatePreset } from "@/lib/analytics/date-range";
 import { analyticsPrivacySettingsKey, normalizeAnalyticsPrivacySettings, type AnalyticsPrivacySettings } from "@/lib/admin/merchant-growth-settings";
+import { merchantNumericSettingBounds, parseBoundedIntegerDraft } from "@/lib/admin/numeric-setting-draft";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
+type AnalyticsNumericField = "retentionDays" | "anomalySensitivity";
+type AnalyticsNumericDraft = Record<AnalyticsNumericField, string>;
+type AnalyticsNumericErrors = Partial<Record<AnalyticsNumericField, string>>;
+
+const initialPrivacySettings = normalizeAnalyticsPrivacySettings(null);
+
+function privacyNumericDraftFromSettings(settings: AnalyticsPrivacySettings): AnalyticsNumericDraft {
+  return {
+    retentionDays: String(settings.retentionDays),
+    anomalySensitivity: String(settings.anomalySensitivity),
+  };
+}
 
 export default function AnalyticsPage() {
   const { activeStoreId, storeMemberships } = useAuth();
@@ -24,7 +38,12 @@ export default function AnalyticsPage() {
   const [datePreset, setDatePreset] = useState<AnalyticsDatePreset>("last_30_days");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [privacySettings, setPrivacySettings] = useState<AnalyticsPrivacySettings>(normalizeAnalyticsPrivacySettings(null));
+  const [privacySettings, setPrivacySettings] = useState<AnalyticsPrivacySettings>(initialPrivacySettings);
+  const [privacyNumericDraft, setPrivacyNumericDraft] = useState<AnalyticsNumericDraft>(() => privacyNumericDraftFromSettings(initialPrivacySettings));
+  const [privacyNumericErrors, setPrivacyNumericErrors] = useState<AnalyticsNumericErrors>({});
+  const [privacySaveError, setPrivacySaveError] = useState<string | null>(null);
+  const retentionDaysRef = useRef<HTMLInputElement>(null);
+  const anomalySensitivityRef = useRef<HTMLInputElement>(null);
   const membershipStoreIds = useMemo(
     () => Array.from(new Set(storeMemberships.map((membership) => membership.storeId).filter(Boolean))),
     [storeMemberships],
@@ -114,25 +133,89 @@ export default function AnalyticsPage() {
   }, [previousReport.visitors, privacySettings.anomalySensitivity, report.checkoutCompletionRate, report.checkoutStarts, report.visitors, report.zeroResultSearches]);
 
   useEffect(() => {
+    setPrivacyNumericErrors({});
+    setPrivacySaveError(null);
+  }, [activeStoreId]);
+
+  useEffect(() => {
     if (data?.privacySettings) {
       setPrivacySettings(data.privacySettings);
+      setPrivacyNumericDraft(privacyNumericDraftFromSettings(data.privacySettings));
+      setPrivacyNumericErrors({});
+      setPrivacySaveError(null);
     }
   }, [data?.privacySettings]);
 
+  function updatePrivacyNumericDraft(field: AnalyticsNumericField, value: string) {
+    const bounds = field === "retentionDays"
+      ? merchantNumericSettingBounds.analyticsRetentionDays
+      : merchantNumericSettingBounds.analyticsAnomalySensitivity;
+    const result = parseBoundedIntegerDraft(value, bounds);
+    setPrivacyNumericDraft((previous) => ({ ...previous, [field]: value }));
+    setPrivacyNumericErrors((previous) => ({
+      ...previous,
+      [field]: result.ok ? undefined : result.error,
+    }));
+  }
+
+  function validatePrivacySettings() {
+    const retentionDays = parseBoundedIntegerDraft(
+      privacyNumericDraft.retentionDays,
+      merchantNumericSettingBounds.analyticsRetentionDays,
+    );
+    const anomalySensitivity = parseBoundedIntegerDraft(
+      privacyNumericDraft.anomalySensitivity,
+      merchantNumericSettingBounds.analyticsAnomalySensitivity,
+    );
+
+    const nextErrors: AnalyticsNumericErrors = {
+      retentionDays: retentionDays.ok ? undefined : retentionDays.error,
+      anomalySensitivity: anomalySensitivity.ok ? undefined : anomalySensitivity.error,
+    };
+    setPrivacyNumericErrors(nextErrors);
+
+    if (!retentionDays.ok || !anomalySensitivity.ok) {
+      if (!retentionDays.ok) retentionDaysRef.current?.focus();
+      else anomalySensitivityRef.current?.focus();
+      return null;
+    }
+
+    return normalizeAnalyticsPrivacySettings({
+      ...privacySettings,
+      retentionDays: retentionDays.value,
+      anomalySensitivity: anomalySensitivity.value,
+    });
+  }
+
   const savePrivacyMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (nextSettings: AnalyticsPrivacySettings) => {
       if (!activeStoreId) return;
-      const normalized = normalizeAnalyticsPrivacySettings(privacySettings);
+      const normalized = normalizeAnalyticsPrivacySettings(nextSettings);
       const { error: upsertError } = await supabase
         .from("site_settings")
         .upsert({ store_id: activeStoreId, key: analyticsPrivacySettingsKey, value: normalized as any }, { onConflict: "store_id,key" });
       if (upsertError) throw upsertError;
     },
-    onSuccess: async () => {
+    onMutate: () => {
+      setPrivacySaveError(null);
+    },
+    onSuccess: async (_data, savedSettings) => {
+      const normalized = normalizeAnalyticsPrivacySettings(savedSettings);
+      setPrivacySettings(normalized);
+      setPrivacyNumericDraft(privacyNumericDraftFromSettings(normalized));
+      setPrivacyNumericErrors({});
       toast.success("Analytics privacy controls saved.");
       await queryClient.invalidateQueries({ queryKey: ["store-analytics-report"] });
     },
+    onError: () => {
+      setPrivacySaveError("Could not save the privacy controls. Your current values are still here; review them and try again.");
+    },
   });
+
+  function handleSavePrivacy() {
+    const validated = validatePrivacySettings();
+    if (validated) savePrivacyMutation.mutate(validated);
+  }
 
   if (!activeStoreId && membershipStoreIds.length === 0) {
     return (
@@ -175,25 +258,39 @@ export default function AnalyticsPage() {
           </CardHeader>
           <div className="grid gap-4 px-6 pb-6 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Consent banner required</Label>
+              <Label htmlFor="analytics-consent-banner-required">Consent banner required</Label>
               <div className="flex h-10 items-center rounded-md border border-border bg-background px-3">
-                <Switch checked={privacySettings.consentBannerRequired} onCheckedChange={(checked) => setPrivacySettings((prev) => ({ ...prev, consentBannerRequired: checked }))} />
+                <Switch id="analytics-consent-banner-required" checked={privacySettings.consentBannerRequired} onCheckedChange={(checked) => setPrivacySettings((prev) => ({ ...prev, consentBannerRequired: checked }))} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Allow visitor/session identifiers</Label>
+              <Label htmlFor="analytics-visitor-identifiers">Allow visitor/session identifiers</Label>
               <div className="flex h-10 items-center rounded-md border border-border bg-background px-3">
-                <Switch checked={privacySettings.allowVisitorIdentifiers} onCheckedChange={(checked) => setPrivacySettings((prev) => ({ ...prev, allowVisitorIdentifiers: checked }))} />
+                <Switch id="analytics-visitor-identifiers" checked={privacySettings.allowVisitorIdentifiers} onCheckedChange={(checked) => setPrivacySettings((prev) => ({ ...prev, allowVisitorIdentifiers: checked }))} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Retention days</Label>
-              <Input value={privacySettings.retentionDays} onChange={(event) => setPrivacySettings((prev) => ({ ...prev, retentionDays: Number(event.target.value) || 180 }))} />
+              <Label htmlFor="analytics-retention-days">Retention days</Label>
+              <Input
+                ref={retentionDaysRef}
+                id="analytics-retention-days"
+                type="number"
+                inputMode="numeric"
+                min={30}
+                max={730}
+                step={1}
+                value={privacyNumericDraft.retentionDays}
+                onChange={(event) => updatePrivacyNumericDraft("retentionDays", event.target.value)}
+                aria-invalid={Boolean(privacyNumericErrors.retentionDays)}
+                aria-describedby={`analytics-retention-days-help${privacyNumericErrors.retentionDays ? " analytics-retention-days-error" : ""}`}
+              />
+              <p id="analytics-retention-days-help" className="text-xs text-muted-foreground">Keep analytics data for 30–730 days.</p>
+              {privacyNumericErrors.retentionDays ? <p id="analytics-retention-days-error" role="alert" className="text-xs text-destructive">{privacyNumericErrors.retentionDays}</p> : null}
             </div>
             <div className="space-y-2">
-              <Label>Scheduled report cadence</Label>
+              <Label htmlFor="analytics-report-cadence">Scheduled report cadence</Label>
               <Select value={privacySettings.scheduledReportCadence} onValueChange={(value) => setPrivacySettings((prev) => ({ ...prev, scheduledReportCadence: value as AnalyticsPrivacySettings["scheduledReportCadence"] }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="analytics-report-cadence"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="off">Off</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
@@ -202,19 +299,34 @@ export default function AnalyticsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Report recipient</Label>
-              <Input value={privacySettings.reportRecipient} onChange={(event) => setPrivacySettings((prev) => ({ ...prev, reportRecipient: event.target.value }))} placeholder="merchant@example.com" />
+              <Label htmlFor="analytics-report-recipient">Report recipient</Label>
+              <Input id="analytics-report-recipient" value={privacySettings.reportRecipient} onChange={(event) => setPrivacySettings((prev) => ({ ...prev, reportRecipient: event.target.value }))} placeholder="merchant@example.com" />
             </div>
             <div className="space-y-2">
-              <Label>Anomaly sensitivity</Label>
-              <Input value={privacySettings.anomalySensitivity} onChange={(event) => setPrivacySettings((prev) => ({ ...prev, anomalySensitivity: Number(event.target.value) || 20 }))} />
+              <Label htmlFor="analytics-anomaly-sensitivity">Anomaly sensitivity</Label>
+              <Input
+                ref={anomalySensitivityRef}
+                id="analytics-anomaly-sensitivity"
+                type="number"
+                inputMode="numeric"
+                min={5}
+                max={50}
+                step={1}
+                value={privacyNumericDraft.anomalySensitivity}
+                onChange={(event) => updatePrivacyNumericDraft("anomalySensitivity", event.target.value)}
+                aria-invalid={Boolean(privacyNumericErrors.anomalySensitivity)}
+                aria-describedby={`analytics-anomaly-sensitivity-help${privacyNumericErrors.anomalySensitivity ? " analytics-anomaly-sensitivity-error" : ""}`}
+              />
+              <p id="analytics-anomaly-sensitivity-help" className="text-xs text-muted-foreground">Use a whole-number sensitivity from 5–50.</p>
+              {privacyNumericErrors.anomalySensitivity ? <p id="analytics-anomaly-sensitivity-error" role="alert" className="text-xs text-destructive">{privacyNumericErrors.anomalySensitivity}</p> : null}
             </div>
           </div>
-          <div className="px-6 pb-6">
-            <Button type="button" onClick={() => savePrivacyMutation.mutate()} disabled={savePrivacyMutation.isPending}>
+          <div className="space-y-2 px-6 pb-6">
+            <Button type="button" onClick={handleSavePrivacy} disabled={savePrivacyMutation.isPending}>
               {savePrivacyMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save privacy controls
             </Button>
+            {privacySaveError ? <p role="alert" className="text-sm text-destructive">{privacySaveError}</p> : null}
           </div>
         </Card>
 
