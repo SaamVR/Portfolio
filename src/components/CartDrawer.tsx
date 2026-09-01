@@ -3,8 +3,7 @@ import { X, Minus, Plus, ShoppingBag, PlusCircle, Tag } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import GuestCheckoutModal from "@/components/GuestCheckoutModal";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -16,6 +15,7 @@ import { getNormalizedDeliverySettings, type StorefrontDeliverySettings } from "
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
+import type { Product } from "@/data/products";
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
@@ -23,6 +23,7 @@ const CartDrawer = () => {
   const storeSlug = currentStore?.slug;
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, addItem } = useCart();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -37,22 +38,6 @@ const CartDrawer = () => {
       ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
       : undefined;
 
-  const { data: upsellProducts } = useQuery({
-    queryKey: ["upsell-products", cartStoreId],
-    queryFn: async () => {
-      if (!cartStoreId) return [];
-      const { data } = await supabase
-        .from("products")
-        .select("*")
-        .eq("store_id", cartStoreId)
-        .eq("is_available", true)
-        .order("price", { ascending: true })
-        .limit(5);
-      return data || [];
-    },
-    enabled: isCartOpen && !!cartStoreId,
-  });
-
   const { data: paymentSettings } = usePublicPaymentSettings(isCartOpen ? cartStoreId : null);
   const { data: deliverySettingsData } = useSiteSettings<StorefrontDeliverySettings>("delivery_settings", isCartOpen ? cartStoreId : null);
   const { data: storefrontProfileData } = useSiteSettings<Record<string, unknown>>("storefront_profile", isCartOpen ? cartStoreId : null);
@@ -65,10 +50,14 @@ const CartDrawer = () => {
   const checkoutPath = storefrontPath("/checkout", storeSlug);
   const authCheckoutPath = buildCustomerAuthPath(checkoutPath, storeSlug);
 
-  // Filter out products already in the cart
-  const availableUpsells = upsellProducts?.filter(
-    p => !drawerItems.some(item => item.productId === p.id)
-  ).slice(0, 2);
+  // Reuse the already-authorized storefront catalog snapshot instead of querying protected products from the browser.
+  const cachedProducts = cartStoreId
+    ? queryClient.getQueryData<Product[]>(["products", cartStoreId]) ?? []
+    : [];
+  const availableUpsells = cachedProducts
+    .filter((product) => product.isAvailable !== false && !drawerItems.some((item) => item.productId === product.id))
+    .sort((a, b) => a.price - b.price)
+    .slice(0, 2);
 
   return (
     <>
@@ -96,7 +85,8 @@ const CartDrawer = () => {
               </h2>
               <button 
                 onClick={() => setIsCartOpen(false)}
-                className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close cart"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -133,43 +123,55 @@ const CartDrawer = () => {
                       <div className="h-24 w-20 flex-shrink-0 overflow-hidden rounded-md border border-border">
                         <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                       </div>
-                      <div className="flex flex-1 flex-col justify-between">
-                        <div className="flex justify-between">
-                          <div>
+                      <div className="flex min-w-0 flex-1 flex-col justify-between">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <div className="min-w-0">
                             <h3 className="text-sm font-medium text-foreground line-clamp-1">{item.name}</h3>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {digitalOnlyCart ? "License" : "Size"}: {getCartVariantDisplayLabel(item.size)}
                             </p>
                           </div>
-                          <button onClick={() => removeItem(item.productId, item.size, item.storeId)} className="text-muted-foreground hover:text-destructive">
+                          <button
+                            onClick={() => removeItem(item.productId, item.size, item.storeId)}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Remove ${item.name} from cart`}
+                          >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex h-8 items-center rounded-md border border-border">
-                            <button onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)} className="flex h-full w-8 items-center justify-center text-muted-foreground hover:text-foreground">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex h-11 items-center rounded-md border border-border">
+                            <button
+                              onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)}
+                              className="flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Decrease quantity of ${item.name}`}
+                            >
                               <Minus className="h-3 w-3" />
                             </button>
                             <span className="w-8 text-center text-xs font-medium">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)} className="flex h-full w-8 items-center justify-center text-muted-foreground hover:text-foreground">
+                            <button
+                              onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)}
+                              className="flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Increase quantity of ${item.name}`}
+                            >
                               <Plus className="h-3 w-3" />
                             </button>
                           </div>
-                          <p className="font-semibold text-foreground">BDT {item.price * item.quantity}</p>
+                          <p className="ml-auto font-semibold text-foreground">BDT {item.price * item.quantity}</p>
                         </div>
                       </div>
                     </div>
                   ))}
                   
                   {/* In-Cart Upsell Engine */}
-                  {availableUpsells && availableUpsells.length > 0 && (
+                  {availableUpsells.length > 0 && (
                     <div className="mt-8 rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">Frequently Bought Together</h4>
                       <div className="space-y-3">
                         {availableUpsells.map((upsell) => (
                           <div key={upsell.id} className="flex items-center gap-3 rounded-md bg-background p-2 shadow-sm">
-                            <img src={upsell.image_url} alt={upsell.name} className="h-12 w-10 rounded object-cover" />
-                            <div className="flex-1">
+                            <img src={upsell.image} alt={upsell.name} className="h-12 w-10 rounded object-cover" />
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold text-foreground line-clamp-1">{upsell.name}</p>
                               <p className="text-xs font-medium text-muted-foreground">BDT {upsell.price}</p>
                             </div>
@@ -179,13 +181,14 @@ const CartDrawer = () => {
                                   productId: upsell.id,
                                   name: upsell.name,
                                   price: upsell.price,
-                                  image: upsell.image_url,
+                                  image: upsell.image,
                                   size: upsell.sizes?.[0] || 'One Size',
                                   storeId: cartStoreId,
                                 });
                                 toast.success("Added to cart!");
                               }}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Add ${upsell.name} to cart`}
                             >
                               <PlusCircle className="h-4 w-4" />
                             </button>
