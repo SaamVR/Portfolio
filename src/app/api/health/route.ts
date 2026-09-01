@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
+import { resolveReleaseIdentity } from "@/lib/platform/release-identity";
 
 export async function GET() {
-  return NextResponse.json({ status: "ok", timestamp: new Date().toISOString() }, { status: 200 });
+  const release = resolveReleaseIdentity();
+  const response = NextResponse.json(
+    { status: "ok", timestamp: new Date().toISOString(), release },
+    { status: 200 },
+  );
+  if (release) response.headers.set("x-ezcomo-release", release);
+  return response;
 }
