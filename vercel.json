@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "ignoreCommand": "bash scripts/vercel/ignore-legacy-project-build.sh",
   "functions": {
     "src/app/api/queues/order-background/route.ts": {
       "experimentalTriggers": [
