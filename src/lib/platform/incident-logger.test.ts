@@ -27,7 +27,7 @@ test("incident sanitizer recursively redacts secret keys and credential-bearing 
   assert.match(serialized, /\[redacted\]/);
   assert.doesNotMatch(serialized, /header-secret-value|client-secret-value|db-password|query-secret|api-secret-value|nested-error-secret/);
   assert.doesNotMatch(serialized, /eyJhbGciOiJIUzI1NiJ9/);
-  assert.doesNotMatch(serialized, /\"stack\"/);
+  assert.doesNotMatch(serialized, /"stack"/);
   assert.match(serialized, /visible/);
 });
 

@@ -34,8 +34,9 @@ export function sanitizeInternalReturnPath(value?: string | null): string | null
     return null;
   }
 
-  if (/[\u0000-\u001f\u007f]/.test(value)) {
-    return null;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x1f || code === 0x7f) return null;
   }
 
   try {

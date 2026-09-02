@@ -597,7 +597,7 @@ const AdminProducts = () => {
     };
 
     try {
-      let productId = editingAtSubmit?.id ?? createProductId;
+      const productId = editingAtSubmit?.id ?? createProductId;
       let successMessage = "Product added and ready to sell";
 
       if (editingAtSubmit) {

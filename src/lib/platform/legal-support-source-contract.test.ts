@@ -46,7 +46,7 @@ test("public funnel exposes legal and support routes without reusing storefront 
 
   assert.match(root, /PublicTrustLinks/);
   for (const path of ["/terms", "/privacy", "/billing-policy", "/support"]) {
-    assert.equal(links.includes(`href=\"${path}\"`), true, `Missing public trust link ${path}`);
+    assert.equal(links.includes(`href="${path}"`), true, `Missing public trust link ${path}`);
   }
   assert.match(plans, /href="\/billing-policy"/);
   assert.match(plans, /href="\/support"/);
