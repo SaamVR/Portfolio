@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import type { Product } from "@/data/products";
 import { getExplicitFactNumber, getExplicitFactText, getExplicitFactValues } from "@/lib/storefront/storefront-fact-truth";
 
-const synthetic-lookingProduct: Product = {
+const syntheticLookingProduct: Product = {
   id: "22222222-2222-4222-8222-222222222222",
   name: "Luxury King Suite For Rent Bestseller BBQ Express",
   price: 2500,
@@ -39,15 +39,15 @@ const cases = [
 
 test("specialized storefront facts are never inferred from copy, stock, type, category, or featured", () => {
   for (const [label, keys] of cases) {
-    assert.equal(getExplicitFactText(synthetic-lookingProduct, [...keys]), "", label);
-    assert.deepEqual(getExplicitFactValues(synthetic-lookingProduct, [...keys]), [], label);
+    assert.equal(getExplicitFactText(syntheticLookingProduct, [...keys]), "", label);
+    assert.deepEqual(getExplicitFactValues(syntheticLookingProduct, [...keys]), [], label);
   }
-  assert.equal(getExplicitFactNumber(synthetic-lookingProduct, ["duration", "duration_minutes"]), null);
+  assert.equal(getExplicitFactNumber(syntheticLookingProduct, ["duration", "duration_minutes"]), null);
 });
 
 test("merchant metrics remain authoritative", () => {
   const configured: Product = {
-    ...synthetic-lookingProduct,
+    ...syntheticLookingProduct,
     metricValues: {
       duration_minutes: ["75"],
       capacity: ["4 guests"],
@@ -82,12 +82,12 @@ test("merchant metrics remain authoritative", () => {
 
 test("preview source is optional and never consulted implicitly", () => {
   const preview = { duration_minutes: 45, capacity: "8 guests", listing_type: "For Rent", preparation_time: "25 min", origin: "Dhaka" };
-  assert.equal(getExplicitFactNumber(synthetic-lookingProduct, ["duration_minutes"], preview), 45);
-  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["capacity"], preview), "8 guests");
-  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["listing_type"], preview), "For Rent");
-  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["preparation_time"], preview), "25 min");
-  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["origin"], preview), "Dhaka");
-  assert.equal(getExplicitFactText(synthetic-lookingProduct, ["listing_type"]), "");
+  assert.equal(getExplicitFactNumber(syntheticLookingProduct, ["duration_minutes"], preview), 45);
+  assert.equal(getExplicitFactText(syntheticLookingProduct, ["capacity"], preview), "8 guests");
+  assert.equal(getExplicitFactText(syntheticLookingProduct, ["listing_type"], preview), "For Rent");
+  assert.equal(getExplicitFactText(syntheticLookingProduct, ["preparation_time"], preview), "25 min");
+  assert.equal(getExplicitFactText(syntheticLookingProduct, ["origin"], preview), "Dhaka");
+  assert.equal(getExplicitFactText(syntheticLookingProduct, ["listing_type"]), "");
 });
 
 test("service and hospitality cards contain no known synthetic-fact fallbacks", () => {

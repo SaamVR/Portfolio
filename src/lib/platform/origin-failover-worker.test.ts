@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-// @ts-ignore Cloudflare's JavaScript entry is exercised by tsx with its TypeScript policy import.
 import worker from "../../../cloudflare/ezcomo-origin-failover/worker.js";
 
 const EXPECTED = "a".repeat(40);
@@ -31,7 +30,7 @@ class MemoryCache {
   }
 }
 
-function env(expectedRelease: string | undefined = EXPECTED) {
+function env(expectedRelease: string | null = EXPECTED) {
   return {
     LB_PROXY_SECRET: "test-lb-secret",
     PLATFORM_DOMAIN: "ezcomo.shop",
@@ -40,7 +39,7 @@ function env(expectedRelease: string | undefined = EXPECTED) {
     FAILOVER_TTL_SECONDS: "30",
     RELEASE_PROBE_TTL_SECONDS: "15",
     DEBUG_ORIGIN_HEADER: "1",
-    ...(expectedRelease === undefined ? {} : { EXPECTED_RELEASE_SHA: expectedRelease }),
+    ...(expectedRelease === null ? {} : { EXPECTED_RELEASE_SHA: expectedRelease }),
   };
 }
 
@@ -160,7 +159,7 @@ test("origin failover Worker enforces release-aware routing without mutation rep
         return new Response("primary-ok", { status: 200 });
       }, async () => {
         const state = context();
-        const response = await worker.fetch(request("GET"), env(undefined), state.ctx);
+        const response = await worker.fetch(request("GET"), env(null), state.ctx);
         assert.equal(response.status, 200);
         assert.equal(healthProbes, 0);
         assert.deepEqual(shopperHosts, ["primary.test"]);

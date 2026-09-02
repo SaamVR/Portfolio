@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 
 const migration = readFileSync(
   new URL("../../supabase/migrations/20260829102000_contact_message_abuse_protection_175.sql", import.meta.url),

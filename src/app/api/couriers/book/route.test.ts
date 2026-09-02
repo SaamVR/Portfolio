@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 import { getCourierBookingClaimResponse, type CourierBookingClaim } from "./route";
 
 function claim(overrides: Partial<CourierBookingClaim> = {}): CourierBookingClaim {

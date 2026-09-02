@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 import {
   getTrustedAuditIp,
   parseClientAuditPayload,

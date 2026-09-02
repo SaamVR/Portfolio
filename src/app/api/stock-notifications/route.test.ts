@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 import {
   buildStockNotificationRateLimitKeys,
   buildStockNotificationRateLimitResponse,

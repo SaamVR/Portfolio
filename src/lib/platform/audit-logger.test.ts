@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@/test/test-utils";
 import { buildAuditLogPayload, sanitizeAuditDetails } from "./audit-logger";
 
 describe("platform audit sanitization", () => {
