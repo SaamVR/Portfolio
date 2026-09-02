@@ -380,6 +380,7 @@ describe("courier connections route authorization", () => {
       jsonRequest("https://example.com/api/couriers/connections", "POST", {
         storeId: "store_1",
         provider: "pathao",
+        displayName: "Pathao Viewer Test",
       }),
     ))!;
 

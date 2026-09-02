@@ -610,8 +610,10 @@ function createPlatformAccessAdminMock(platformRoles?: string[]) {
 }
 
 function createCourierConnectionsAdminMock() {
+  type MockCourierConnectionRow = Record<string, unknown> & { id: string; store_id: string };
   const publicInserts: Array<Record<string, unknown>> = [];
   const privateUpserts: Array<Record<string, unknown>> = [];
+  const connections = new Map<string, MockCourierConnectionRow>();
   let nextConnectionIndex = 1;
 
   return {
@@ -624,32 +626,57 @@ function createCourierConnectionsAdminMock() {
             insert(payload: Record<string, unknown>) {
               publicInserts.push(payload);
               const connectionId = `connection_${nextConnectionIndex++}`;
+              const row: MockCourierConnectionRow = {
+                id: connectionId,
+                store_id: "store_1",
+                provider: "pathao",
+                connection_key: payload.connection_key,
+                zone_label: payload.zone_label ?? null,
+                service_area_name: payload.service_area_name ?? null,
+                status: payload.status ?? "draft",
+                verification_status: payload.verification_status ?? "not_checked",
+                last_verification_at: payload.last_verification_at ?? null,
+                last_verified_at: payload.last_verified_at ?? null,
+                verification_error: payload.verification_error ?? null,
+                display_name: payload.display_name ?? null,
+                supports_cod: payload.supports_cod ?? true,
+                supports_city_delivery: payload.supports_city_delivery ?? true,
+                settings: payload.settings ?? {},
+                last_sync_at: null,
+                last_error: null,
+                created_at: FIXED_NOW.toISOString(),
+                updated_at: FIXED_NOW.toISOString(),
+              };
+              connections.set(connectionId, row);
               return {
                 select() {
                   return {
-                    single: async () => ({
-                      data: {
-                        id: connectionId,
-                        store_id: "store_1",
-                        provider: "pathao",
-                        connection_key: payload.connection_key,
-                        zone_label: payload.zone_label ?? null,
-                        service_area_name: payload.service_area_name ?? null,
-                        status: payload.status ?? "draft",
-                        display_name: payload.display_name ?? null,
-                        supports_cod: payload.supports_cod ?? true,
-                        supports_city_delivery: payload.supports_city_delivery ?? true,
-                        settings: payload.settings ?? {},
-                        last_sync_at: null,
-                        last_error: null,
-                        created_at: FIXED_NOW.toISOString(),
-                        updated_at: FIXED_NOW.toISOString(),
-                      },
-                      error: null,
-                    }),
+                    single: async () => ({ data: { ...row }, error: null }),
                   };
                 },
               };
+            },
+            update(payload: Record<string, unknown>) {
+              const filters = new Map<string, string>();
+              const chain = {
+                eq(column: string, value: string) {
+                  filters.set(column, value);
+                  return chain;
+                },
+                select() {
+                  return {
+                    single: async () => {
+                      const row = connections.get(filters.get("id") ?? "");
+                      if (!row || row.store_id !== filters.get("store_id")) {
+                        return { data: null, error: new Error("Courier connection not found in mock") };
+                      }
+                      Object.assign(row, payload);
+                      return { data: { ...row }, error: null };
+                    },
+                  };
+                },
+              };
+              return chain;
             },
           };
         }
@@ -950,15 +977,47 @@ function createAnalyticsAdminMock(options?: {
 }
 
 function createCourierBookingAdminMock() {
-  const shipmentInserts: Array<Record<string, unknown>> = [];
+  const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
   const connectionUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const orderUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
 
   return {
-    shipmentInserts,
+    rpcCalls,
     connectionUpdates,
     orderUpdates,
     client: {
+      rpc(fn: string, args: Record<string, unknown>) {
+        rpcCalls.push({ fn, args });
+        if (fn === "claim_courier_booking") {
+          return Promise.resolve({
+            data: [{
+              shipment_id: "shipment_1",
+              status: "booking",
+              claimed: true,
+              attempt_token: "attempt_1",
+              tracking_number: null,
+              consignment_id: null,
+            }],
+            error: null,
+          });
+        }
+        if (fn === "finalize_courier_booking") {
+          return Promise.resolve({
+            data: {
+              id: "shipment_1",
+              status: "booked",
+              provider: "pathao",
+              tracking_number: args.p_tracking_number ?? null,
+              consignment_id: args.p_consignment_id ?? null,
+            },
+            error: null,
+          });
+        }
+        if (fn === "fail_courier_booking") {
+          return Promise.resolve({ data: null, error: null });
+        }
+        throw new Error(`Unexpected rpc ${fn}`);
+      },
       from(table: string) {
         if (table === "orders") {
           return {
@@ -1029,7 +1088,7 @@ function createCourierBookingAdminMock() {
                             connection_key: "dhaka-cod",
                             zone_label: "Dhaka COD",
                             service_area_name: "Dhaka metro",
-                            status: "connected",
+                            status: "configured",
                             display_name: "Pathao Live",
                             supports_cod: true,
                             supports_city_delivery: true,
@@ -1076,67 +1135,23 @@ function createCourierBookingAdminMock() {
         if (table === "store_courier_credentials_secure") {
           return {
             select() {
-              return {
+              const chain = {
                 eq() {
-                  return {
-                    maybeSingle: async () => ({
-                      data: {
-                        connection_id: "connection_1",
-                        store_id: "store_1",
-                        provider: "pathao",
-                        secret_payload: {
-                          access_token: "pathao-token",
-                        },
-                      },
-                      error: null,
-                    }),
-                  };
+                  return chain;
                 },
-              };
-            },
-          };
-        }
-
-        if (table === "order_shipments") {
-          return {
-            select() {
-              return {
-                eq() {
-                  return {
-                    eq() {
-                      return {
-                        eq() {
-                          return {
-                            maybeSingle: async () => ({
-                              data: null,
-                              error: null,
-                            }),
-                          };
-                        },
-                      };
+                maybeSingle: async () => ({
+                  data: {
+                    connection_id: "connection_1",
+                    store_id: "store_1",
+                    provider: "pathao",
+                    secret_payload: {
+                      access_token: "pathao-token",
                     },
-                  };
-                },
+                  },
+                  error: null,
+                }),
               };
-            },
-            insert(payload: Record<string, unknown>) {
-              shipmentInserts.push(payload);
-              return {
-                select() {
-                  return {
-                    single: async () => ({
-                      data: {
-                        id: "shipment_1",
-                        status: payload.status,
-                        provider: payload.provider,
-                        tracking_number: payload.tracking_number ?? null,
-                        consignment_id: payload.consignment_id ?? null,
-                      },
-                      error: null,
-                    }),
-                  };
-                },
-              };
+              return chain;
             },
           };
         }
@@ -2418,8 +2433,15 @@ describe("courier connection side effects", () => {
         displayName: "Pathao Live",
         supportsCod: true,
         supportsCityDelivery: true,
-        status: "connected",
         settings: {
+          zoneLabel: "Dhaka COD",
+          serviceAreaName: "Dhaka metro",
+          pickupContactName: "Warehouse A",
+          pickupContactPhone: "01700000001",
+          pickupAddress: "12 Commerce Road, Dhaka",
+          returnContactName: "Returns Desk",
+          returnContactPhone: "01700000002",
+          returnAddress: "12 Commerce Road, Dhaka",
           baseUrl: "https://merchant.pathao.test/aladdin/api/v1",
           merchantStoreId: 4321,
           merchantOrderPrefix: "ECM",
@@ -2440,21 +2462,25 @@ describe("courier connection side effects", () => {
       store_id: "store_1",
       provider: "pathao",
       connection_key: "generated",
-      zone_label: null,
-      service_area_name: null,
-      status: "connected",
+      zone_label: "Dhaka COD",
+      service_area_name: "Dhaka metro",
+      status: "draft",
+      verification_status: "not_checked",
+      last_verification_at: null,
+      last_verified_at: null,
+      verification_error: null,
       display_name: "Pathao Live",
       supports_cod: true,
       supports_city_delivery: true,
       settings: {
-        zone_label: null,
-        service_area_name: null,
-        pickup_contact_name: null,
-        pickup_contact_phone: null,
-        pickup_address: null,
-        return_contact_name: null,
-        return_contact_phone: null,
-        return_address: null,
+        zone_label: "Dhaka COD",
+        service_area_name: "Dhaka metro",
+        pickup_contact_name: "Warehouse A",
+        pickup_contact_phone: "01700000001",
+        pickup_address: "12 Commerce Road, Dhaka",
+        return_contact_name: "Returns Desk",
+        return_contact_phone: "01700000002",
+        return_address: "12 Commerce Road, Dhaka",
         note: null,
         sandbox_mode: false,
         base_url: "https://merchant.pathao.test/aladdin/api/v1",
@@ -2483,24 +2509,29 @@ describe("courier connection side effects", () => {
       success: true,
       connection: {
         id: "connection_1",
-          storeId: "store_1",
-          provider: "pathao",
-          connectionKey: admin.publicInserts[0]?.connection_key,
-          zoneLabel: null,
-          serviceAreaName: null,
-          status: "connected",
+        storeId: "store_1",
+        provider: "pathao",
+        connectionKey: admin.publicInserts[0]?.connection_key,
+        zoneLabel: "Dhaka COD",
+        serviceAreaName: "Dhaka metro",
+        status: "configured",
+        verificationStatus: "not_checked",
+        verificationAvailable: false,
+        verificationError: null,
+        lastVerificationAt: null,
+        lastVerifiedAt: null,
         displayName: "Pathao Live",
         supportsCod: true,
         supportsCityDelivery: true,
         settingsSummary: {
-          zoneLabel: null,
-          serviceAreaName: null,
-          pickupContactName: null,
-          pickupContactPhone: null,
-          pickupAddress: null,
-          returnContactName: null,
-          returnContactPhone: null,
-          returnAddress: null,
+          zoneLabel: "Dhaka COD",
+          serviceAreaName: "Dhaka metro",
+          pickupContactName: "Warehouse A",
+          pickupContactPhone: "01700000001",
+          pickupAddress: "12 Commerce Road, Dhaka",
+          returnContactName: "Returns Desk",
+          returnContactPhone: "01700000002",
+          returnAddress: "12 Commerce Road, Dhaka",
           baseUrl: "https://merchant.pathao.test/aladdin/api/v1",
           merchantStoreId: 4321,
           merchantOrderPrefix: "ECM",
@@ -2536,6 +2567,12 @@ describe("courier connection side effects", () => {
           settings: {
             zoneLabel: zone,
             serviceAreaName: zone,
+            pickupContactName: "Warehouse A",
+            pickupContactPhone: "01700000001",
+            pickupAddress: "12 Commerce Road, Dhaka",
+            returnContactName: "Returns Desk",
+            returnContactPhone: "01700000002",
+            returnAddress: "12 Commerce Road, Dhaka",
             baseUrl: "https://merchant.pathao.test/aladdin/api/v1",
             merchantStoreId: 4321,
             accessToken: `secret-${zone}`,
@@ -2543,6 +2580,9 @@ describe("courier connection side effects", () => {
         }),
       ))!;
       assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.connection.status, "configured");
+      assert.equal(body.connection.verificationStatus, "not_checked");
     }
 
     assert.equal(admin.publicInserts.length, 2);
@@ -2553,7 +2593,7 @@ describe("courier connection side effects", () => {
 });
 
 describe("courier booking side effects", () => {
-  test("creates a Pathao shipment, updates sync metadata, and moves the order into processing", async () => {
+  test("claims and finalizes one Pathao shipment, updates sync metadata, and moves the order into processing", async () => {
     const admin = createCourierBookingAdminMock();
 
     mock.method(courierBookingRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
@@ -2589,59 +2629,54 @@ describe("courier booking side effects", () => {
 
     assert.equal(response.status, 200);
     assert.equal(fetchMock.mock.callCount(), 1);
-    assert.deepEqual(admin.shipmentInserts, [
-      {
-        order_id: "order_1",
-        store_id: "store_1",
-        courier_connection_id: "connection_1",
-        provider: "pathao",
-        status: "booked",
-        tracking_number: "TRK-5001",
-        consignment_id: "CN-9001",
-        recipient_name: "Demo Customer",
-        recipient_phone: "01700000000",
-        destination_city: "Dhaka",
-        destination_address: "House 1, Road 2",
-        cash_collection_amount: 1200,
-        shipping_fee: 80,
-        booking_payload: {
-          store_id: 4321,
-          merchant_order_id: "ECM-ORD-1001",
-          recipient_name: "Demo Customer",
-          recipient_phone: "01700000000",
-          recipient_address: "House 1, Road 2, Dhaka",
-          delivery_type: 48,
-          item_type: 2,
-          special_instruction: "Handle with care",
-          item_quantity: 2,
-          item_weight: "1",
-          item_description: "Blue Panjabi",
-          amount_to_collect: 1200,
-        },
-        latest_provider_payload: {
-          data: {
-            consignment_id: "CN-9001",
-            tracking_number: "TRK-5001",
-          },
-          echoedRequest: {
-            store_id: 4321,
-            merchant_order_id: "ECM-ORD-1001",
-            recipient_name: "Demo Customer",
-            recipient_phone: "01700000000",
-            recipient_address: "House 1, Road 2, Dhaka",
-            delivery_type: 48,
-            item_type: 2,
-            special_instruction: "Handle with care",
-            item_quantity: 2,
-            item_weight: "1",
-            item_description: "Blue Panjabi",
-            amount_to_collect: 1200,
-          },
-        },
-        created_by: "owner_1",
-        booked_at: FIXED_NOW.toISOString(),
-      },
+    assert.deepEqual(admin.rpcCalls.map((entry) => entry.fn), [
+      "claim_courier_booking",
+      "finalize_courier_booking",
     ]);
+    assert.deepEqual(admin.rpcCalls[0]?.args, {
+      p_store_id: "store_1",
+      p_order_id: "order_1",
+      p_connection_id: "connection_1",
+      p_provider: "pathao",
+      p_booking_request_id: "order:order_1:connection:connection_1",
+      p_actor_id: "owner_1",
+      p_now: FIXED_NOW.toISOString(),
+    });
+    const bookingPayload = {
+      store_id: 4321,
+      merchant_order_id: "ECM-ORD-1001",
+      recipient_name: "Demo Customer",
+      recipient_phone: "01700000000",
+      recipient_address: "House 1, Road 2, Dhaka",
+      delivery_type: 48,
+      item_type: 2,
+      special_instruction: "Handle with care",
+      item_quantity: 2,
+      item_weight: "1",
+      item_description: "Blue Panjabi",
+      amount_to_collect: 1200,
+    };
+    assert.deepEqual(admin.rpcCalls[1]?.args, {
+      p_shipment_id: "shipment_1",
+      p_attempt_token: "attempt_1",
+      p_tracking_number: "TRK-5001",
+      p_consignment_id: "CN-9001",
+      p_recipient_name: "Demo Customer",
+      p_recipient_phone: "01700000000",
+      p_destination_city: "Dhaka",
+      p_destination_address: "House 1, Road 2",
+      p_cash_collection_amount: 1200,
+      p_shipping_fee: 80,
+      p_booking_payload: bookingPayload,
+      p_provider_payload: {
+        data: {
+          consignment_id: "CN-9001",
+          tracking_number: "TRK-5001",
+        },
+        echoedRequest: bookingPayload,
+      },
+      p_now: FIXED_NOW.toISOString(),
+    });
     assert.deepEqual(admin.connectionUpdates, [
       {
         payload: {
