@@ -19,7 +19,13 @@ test("CMS editor async paths reject stale store context before mutating shared U
   const source = readFileSync(path.resolve(root, "src/views/admin/CmsPagesManager.tsx"), "utf8");
   const loadStore = source.slice(source.indexOf("const loadStore = useCallback"), source.indexOf("const currentSnapshot"));
   const sharedLibraries = source.slice(source.indexOf("const loadSharedLibraries"), source.indexOf("void loadSharedLibraries"));
-  const revisions = source.slice(source.indexOf("const loadRevisions"), source.indexOf("void loadRevisions"));
+  const loadRevisionsIndex = source.indexOf("const loadRevisions");
+  const revisionsStart = source.lastIndexOf("const context = captureEditorContext()", loadRevisionsIndex);
+  const revisionsEnd = source.indexOf("void loadRevisions", loadRevisionsIndex);
+  assert.notEqual(loadRevisionsIndex, -1);
+  assert.notEqual(revisionsStart, -1);
+  assert.notEqual(revisionsEnd, -1);
+  const revisions = source.slice(revisionsStart, revisionsEnd);
   const bootstrap = source.slice(source.indexOf("const bootstrapDefaultStore"), source.indexOf("const addPage"));
   const save = source.slice(source.indexOf("const saveAll"), source.indexOf("const restoreRevision"));
 
@@ -27,7 +33,9 @@ test("CMS editor async paths reject stale store context before mutating shared U
   assert.match(loadStore, /loadStoreRequestRef\.current === requestId && isEditorContextCurrent\(context\)/);
   assert.match(loadStore, /\.eq\("id", storeId\)/);
   assert.match(sharedLibraries, /if \(!isEditorContextCurrent\(context\)\) return;/);
+  assert.match(revisions, /revisionsRequestRef\.current === requestId/);
   assert.match(revisions, /selectedPageIdRef\.current === pageId/);
+  assert.match(revisions, /isEditorContextCurrent\(context\)/);
   assert.match(revisions, /if \(!isCurrentRevisionLoad\(\)\) return;/);
 
   assert.match(bootstrap, /const originStoreId = context\.storeId/);

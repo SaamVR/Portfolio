@@ -15,13 +15,44 @@ test("product reviews enforce product/order store consistency in the database", 
   assert.match(migration, /FOREIGN KEY \(order_id, store_id\)[\s\S]*REFERENCES public\.orders\(id, store_id\)/);
 });
 
-test("backup review preflight runs before destructive target clearing and remapping has no source-id fallback", () => {
-  const source = readFileSync(path.resolve(root, "src/components/admin/StoreBackupManager.tsx"), "utf8");
-  const preflight = source.indexOf("assertBackupReviewReferences(parsedPackage.data)");
-  const clearTarget = source.indexOf("await clearTargetStore(targetStore.id)");
+test("restore validation precedes operation claim and the single transactional mutation", () => {
+  const preflightSource = readFileSync(
+    path.resolve(root, "src/app/api/store-backups/restore/preflight/route.ts"),
+    "utf8",
+  );
+  const commitSource = readFileSync(
+    path.resolve(root, "src/app/api/store-backups/restore/commit/route.ts"),
+    "utf8",
+  );
+  const restoreSource = readFileSync(path.resolve(root, "src/lib/store-backup-restore.ts"), "utf8");
 
-  assert.notEqual(preflight, -1);
-  assert.notEqual(clearTarget, -1);
-  assert.ok(preflight < clearTarget);
-  assert.doesNotMatch(source, /productIdMap\.get\(row\.product_id\) \?\? row\.product_id/);
+  const manifestValidation = preflightSource.indexOf("validateRestoreManifest(body.manifest)");
+  const preflightNormalize = preflightSource.indexOf("normalizeStoreRestorePlan(manifest, options, {");
+  const preflightValidate = preflightSource.indexOf("assertNormalizedRestorePlanConstraints(dryPlan as Record<string, unknown>)");
+  const createOperation = preflightSource.indexOf('rpc("create_store_restore_operation"');
+
+  for (const position of [manifestValidation, preflightNormalize, preflightValidate, createOperation]) {
+    assert.notEqual(position, -1);
+  }
+  assert.ok(manifestValidation < preflightNormalize);
+  assert.ok(preflightNormalize < preflightValidate);
+  assert.ok(preflightValidate < createOperation);
+
+  const commitNormalize = commitSource.indexOf("normalizeStoreRestorePlan(manifest, options, {");
+  const commitValidate = commitSource.indexOf("assertNormalizedRestorePlanConstraints(plan);");
+  const claimOperation = commitSource.indexOf('rpc("claim_store_restore_operation"');
+  const transactionalRestore = commitSource.indexOf('rpc("restore_store_backup_transactional"');
+
+  for (const position of [commitNormalize, commitValidate, claimOperation, transactionalRestore]) {
+    assert.notEqual(position, -1);
+  }
+  assert.ok(commitNormalize < commitValidate);
+  assert.ok(commitValidate < claimOperation);
+  assert.ok(claimOperation < transactionalRestore);
+  assert.equal((commitSource.match(/rpc\("restore_store_backup_transactional"/g) ?? []).length, 1);
+
+  assert.match(restoreSource, /validateRequiredReferences\(manifest\.data\)/);
+  assert.match(restoreSource, /rows\(data,"product_reviews"\)[\s\S]*productIds\.has/);
+  assert.match(restoreSource, /function requireMapped\(/);
+  assert.doesNotMatch(restoreSource, /product(?:Id)?Map\.get\(row\.product_id\) \?\? row\.product_id/);
 });
