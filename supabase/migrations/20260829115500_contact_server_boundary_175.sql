@@ -12,7 +12,13 @@ drop function if exists public.enforce_contact_message_rate_limit();
 
 -- Retire the browser-facing legacy COUNT(*) preflight RPC. Service role may retain EXECUTE for
 -- compatibility/inspection, but public browser roles can no longer use it as an authoritative gate.
-revoke execute on function public.check_contact_rate_limit(text) from public, anon, authenticated;
+do $$
+begin
+  if to_regprocedure('public.check_contact_rate_limit(text)') is not null then
+    execute 'revoke execute on function public.check_contact_rate_limit(text) from public, anon, authenticated';
+  end if;
+end
+$$;
 
 do $$
 begin
