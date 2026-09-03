@@ -8,16 +8,43 @@ import {
   useParams as useNextParams,
   useSearchParams as useNextSearchParams,
 } from "next/navigation";
+import { useStorefrontRouting } from "@/components/storefront/StorefrontRoutingProvider";
+import { toCanonicalStorefrontPath, toPublicStorefrontPath } from "@/lib/storefront-routing";
+
+function resolvePublicStorefrontPath(
+  value: string,
+  routing: ReturnType<typeof useStorefrontRouting>,
+) {
+  return routing.storeSlug
+    ? toPublicStorefrontPath(value, routing.storeSlug, routing.mode)
+    : value;
+}
+
+function resolveCanonicalStorefrontPath(
+  value: string,
+  routing: ReturnType<typeof useStorefrontRouting>,
+) {
+  return routing.storeSlug
+    ? toCanonicalStorefrontPath(value, routing.storeSlug)
+    : value;
+}
 
 export const Link = React.forwardRef<HTMLAnchorElement, any>(
   ({ to, href, ...props }, ref) => {
-    return <NextLink ref={ref} href={to || href || "#"} {...props} />;
+    const routing = useStorefrontRouting();
+    const rawHref = to || href || "#";
+    const resolvedHref = typeof rawHref === "string"
+      ? resolvePublicStorefrontPath(rawHref, routing)
+      : rawHref;
+    return <NextLink ref={ref} href={resolvedHref} {...props} />;
   },
 );
 Link.displayName = "Link";
 
 export const useLocation = () => {
-  const pathname = usePathname() || "";
+  const routing = useStorefrontRouting();
+  const rawPathname = usePathname() || "";
+  const pathname = resolveCanonicalStorefrontPath(rawPathname, routing);
   const searchParams = useNextSearchParams();
   const search = searchParams ? `?${searchParams.toString()}` : "";
   return {
@@ -29,17 +56,25 @@ export const useLocation = () => {
 };
 
 export const useNavigate = () => {
+  const routing = useStorefrontRouting();
   const router = useRouter();
+
   return useCallback((to: any, options?: { replace?: boolean; state?: any; scroll?: boolean }) => {
     if (typeof to === "number") {
       if (to === -1) router.back();
       else if (to === 1) router.forward();
-    } else if (options?.replace) {
-      router.replace(to, { scroll: options.scroll ?? true });
-    } else {
-      router.push(to, { scroll: options?.scroll ?? true });
+      return;
     }
-  }, [router]);
+
+    const destination = typeof to === "string"
+      ? resolvePublicStorefrontPath(to, routing)
+      : to;
+    if (options?.replace) {
+      router.replace(destination, { scroll: options.scroll ?? true });
+    } else {
+      router.push(destination, { scroll: options?.scroll ?? true });
+    }
+  }, [router, routing]);
 };
 
 export const useParams = () => {
@@ -47,9 +82,11 @@ export const useParams = () => {
 };
 
 export const useSearchParams = () => {
+  const routing = useStorefrontRouting();
   const searchParams = useNextSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname() || "";
+  const pathname = resolvePublicStorefrontPath(rawPathname, routing);
 
   const setSearchParams = (
     newParams: any,
@@ -77,7 +114,6 @@ export const useSearchParams = () => {
           current.set(key, String(value));
         }
       });
-
       const url = `${pathname}?${current.toString()}`;
       if (options?.replace) {
         router.replace(url, { scroll: shouldScroll });
@@ -91,21 +127,28 @@ export const useSearchParams = () => {
 };
 
 export const Navigate = ({ to, replace }: { to: string; replace?: boolean }) => {
+  const routing = useStorefrontRouting();
   const router = useRouter();
+  const publicTo = resolvePublicStorefrontPath(to, routing);
   useEffect(() => {
     if (replace) {
-      router.replace(to);
+      router.replace(publicTo);
     } else {
-      router.push(to);
+      router.push(publicTo);
     }
-  }, [router, to, replace]);
+  }, [publicTo, router, replace]);
   return null;
 };
 
 export const NavLink = React.forwardRef<HTMLAnchorElement, any>(
   ({ to, className, children, ...props }, ref) => {
-    const pathname = usePathname();
-    const isActive = pathname === to;
+    const routing = useStorefrontRouting();
+    const rawPathname = usePathname() || "";
+    const pathname = resolveCanonicalStorefrontPath(rawPathname, routing);
+    const canonicalTo = typeof to === "string"
+      ? resolveCanonicalStorefrontPath(to.split("?")[0], routing)
+      : "";
+    const isActive = pathname === canonicalTo;
 
     const resolvedClassName = typeof className === "function"
       ? className({ isActive })

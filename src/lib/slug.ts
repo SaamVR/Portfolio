@@ -52,20 +52,14 @@ function isExternalOrSpecialPath(path: string) {
     || path.startsWith("javascript:");
 }
 
-export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
+export function isDedicatedStorefrontHost(storeSlug?: string | null) {
   const encodedStoreSlug = getEncodedStoreSlug(storeSlug);
   if (!encodedStoreSlug || typeof window === "undefined") {
     return false;
   }
 
-  const pathname = window.location.pathname || "/";
   const hostname = normalizeHost(window.location.hostname || window.location.host);
-
-  if (pathname === `/stores/${encodedStoreSlug}` || pathname.startsWith(`/stores/${encodedStoreSlug}/`)) {
-    return false;
-  }
-
-  if (!hostname || isLocalHost(hostname) || isPlatformAppPath(pathname)) {
+  if (!hostname || isLocalHost(hostname)) {
     return false;
   }
 
@@ -82,11 +76,21 @@ export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
     ].filter((value): value is string => Boolean(value)),
   );
 
-  if (platformHosts.has(hostname)) {
+  return !platformHosts.has(hostname);
+}
+
+export function shouldUseDedicatedStorefrontPaths(storeSlug?: string | null) {
+  const encodedStoreSlug = getEncodedStoreSlug(storeSlug);
+  if (!encodedStoreSlug || !isDedicatedStorefrontHost(storeSlug)) {
     return false;
   }
 
-  return true;
+  const pathname = window.location.pathname || "/";
+  if (pathname === `/stores/${encodedStoreSlug}` || pathname.startsWith(`/stores/${encodedStoreSlug}/`)) {
+    return false;
+  }
+
+  return !isPlatformAppPath(pathname);
 }
 
 function buildStorefrontScopedPath(path: string, storeSlug?: string | null) {
@@ -99,12 +103,8 @@ function buildStorefrontScopedPath(path: string, storeSlug?: string | null) {
   const pathname = pathnamePart.startsWith("/") ? pathnamePart : `/${pathnamePart}`;
   const query = queryPart ? `?${queryPart}` : "";
 
-  if (shouldUseDedicatedStorefrontPaths(storeSlug)) {
-    return pathname === "/" ? "/" : `${pathname}${query}`;
-  }
-
   if (pathname === "/") {
-    return `/stores/${encodedStoreSlug}`;
+    return `/stores/${encodedStoreSlug}${query}`;
   }
 
   return `/stores/${encodedStoreSlug}${pathname}${query}`;

@@ -10,6 +10,7 @@ import {
 } from "@/lib/cms/store-preview-constants";
 import { getEzcomoRequestHostname, getEzcomoRequestStoreSlug } from "@/lib/platform/request-host";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
+import { getDedicatedStorefrontRedirectPath } from "@/lib/storefront-routing";
 
 export function normalizeHost(host?: string | null) {
   if (!host) return null;
@@ -241,6 +242,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const { pathname, search } = request.nextUrl;
+  const dedicatedRedirectPath = getDedicatedStorefrontRedirectPath(storeSlug, pathname);
+  if (dedicatedRedirectPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = dedicatedRedirectPath;
+    url.search = search;
+    return NextResponse.redirect(url);
+  }
+
   if (isBypassedPath(pathname, true)) {
     return NextResponse.next();
   }

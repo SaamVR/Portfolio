@@ -29,46 +29,16 @@ describe("storefront customer access helpers", () => {
     } as never)).toBe(false);
   });
 
-  it("builds customer auth paths that preserve the return path on dedicated storefront domains", () => {
-    const originalWindow = globalThis.window;
-    Object.defineProperty(globalThis, "window", {
-      value: {
-        location: {
-          pathname: "/checkout",
-          hostname: "merchant-noir.ezcomo.shop",
-        },
-      },
-      configurable: true,
-    });
-
-    expect(buildCustomerAuthPath("/checkout", "merchant-noir")).toBe("/auth?next=%2Fcheckout");
-
-    Object.defineProperty(globalThis, "window", {
-      value: originalWindow,
-      configurable: true,
-    });
+  it("builds canonical customer auth paths from short return destinations", () => {
+    expect(buildCustomerAuthPath("/checkout", "merchant-noir")).toBe(
+      "/stores/merchant-noir/auth?next=%2Fcheckout",
+    );
   });
 
-  it("builds customer auth paths that preserve the return path on shared storefront routes", () => {
-    const originalWindow = globalThis.window;
-    Object.defineProperty(globalThis, "window", {
-      value: {
-        location: {
-          pathname: "/admin",
-          hostname: "localhost",
-        },
-      },
-      configurable: true,
-    });
-
+  it("builds canonical customer auth paths that preserve scoped return destinations", () => {
     expect(buildCustomerAuthPath("/stores/merchant-noir/checkout", "merchant-noir")).toBe(
       "/stores/merchant-noir/auth?next=%2Fstores%2Fmerchant-noir%2Fcheckout",
     );
-
-    Object.defineProperty(globalThis, "window", {
-      value: originalWindow,
-      configurable: true,
-    });
   });
 
   it("captures the current relative storefront path including search and hash", () => {
