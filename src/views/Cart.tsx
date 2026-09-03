@@ -176,20 +176,21 @@ const Cart = () => {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             {cartItems.map((item) => (
-              <div key={`${item.storeId ?? "default"}-${item.productId}-${item.size}`} className="flex gap-4 rounded-lg border border-border bg-card p-4">
-                <img src={item.image} alt={item.name} className="h-24 w-24 rounded-md object-cover" />
-                <div className="flex flex-1 flex-col justify-between">
-                  <div>
+              <div key={`${item.storeId ?? "default"}-${item.productId}-${item.size}`} className="flex gap-3 rounded-lg border border-border bg-card p-4 sm:gap-4">
+                <img src={item.image} alt={item.name} className="h-20 w-20 shrink-0 rounded-md object-cover sm:h-24 sm:w-24" />
+                <div className="flex min-w-0 flex-1 flex-col justify-between">
+                  <div className="min-w-0">
                     <h3 className="font-heading text-sm font-semibold text-foreground">{item.name}</h3>
                     <p className="text-xs text-muted-foreground">
                       {experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)}
                     </p>
+                    <p className="mt-1 font-heading font-bold text-primary">BDT {item.price * item.quantity}</p>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="mt-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)}
-                        className="flex h-10 w-10 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Decrease quantity of ${item.name}`}
                       >
                         <Minus className="h-3 w-3" />
@@ -197,16 +198,15 @@ const Cart = () => {
                       <span className="w-6 text-center text-sm font-medium text-foreground">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)}
-                        className="flex h-10 w-10 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Increase quantity of ${item.name}`}
                       >
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="font-heading font-bold text-primary">BDT {item.price * item.quantity}</p>
                     <button
                       onClick={() => removeItem(item.productId, item.size, item.storeId)}
-                      className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:text-destructive"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive"
                       aria-label={`Remove ${item.name} from cart`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -258,7 +258,7 @@ const Cart = () => {
                 </div>
               )}
 
-                <div className="border-t border-border pt-3">
+              <div className="border-t border-border pt-3">
                 <div className="flex justify-between font-heading text-lg font-bold text-foreground">
                   <span>{experience.labels.totalLabel}</span>
                   {deliveryLoading ? <Skeleton className="h-5 w-16" /> : <span data-testid="cart-grand-total">BDT {grandTotal}</span>}

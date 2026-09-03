@@ -21,6 +21,19 @@ test("CartDrawer mobile icon controls keep 44px hit areas and accessible names",
   assert.doesNotMatch(source, /className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/);
 });
 
+test("full cart mobile controls keep fixed 44px hit areas without narrow-screen flex squeezing", () => {
+  const source = readFileSync(path.resolve(root, "src/views/Cart.tsx"), "utf8");
+
+  assert.ok((source.match(/h-11 w-11 shrink-0/g) || []).length >= 3);
+  assert.match(source, /h-20 w-20 shrink-0 rounded-md object-cover sm:h-24 sm:w-24/);
+  assert.match(source, /mt-3 flex items-center justify-between gap-2/);
+  assert.match(source, /aria-label={`Decrease quantity of \$\{item\.name\}`}/);
+  assert.match(source, /aria-label={`Increase quantity of \$\{item\.name\}`}/);
+  assert.match(source, /aria-label={`Remove \$\{item\.name\} from cart`}/);
+  assert.doesNotMatch(source, /className="flex h-10 w-10 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"/);
+  assert.doesNotMatch(source, /className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:text-destructive"/);
+});
+
 test("CartDrawer derives optional upsells from the authorized storefront product cache", () => {
   const source = readFileSync(path.resolve(root, "src/components/CartDrawer.tsx"), "utf8");
 
