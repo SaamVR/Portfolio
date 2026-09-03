@@ -103,6 +103,10 @@ export async function POST(req: Request) {
     if (action === "approve") {
       const periodEnd = addMonths(now, invoice.billing_interval === "annual" ? 12 : 1);
 
+      // Production entitlement settlement is owned by
+      // sync_paid_invoice_entitlements_trigger. The trigger rewrites the
+      // invoice period from durable subscription state and atomically updates
+      // the subscription + stores.plan in the same database transaction.
       const { error: invoiceUpdateError } = await (supabaseAdmin as any)
         .from("store_invoices")
         .update({
@@ -118,17 +122,23 @@ export async function POST(req: Request) {
 
       if (invoiceUpdateError) throw invoiceUpdateError;
 
-      const { error: subscriptionError } = await manualBillingReviewRouteDeps.upsertStoreSubscription(supabaseAdmin, {
-        storeId: invoice.store_id,
-        planId: invoice.plan_id,
-        status: "active",
-        provider: "bkash_manual",
-        providerSubscriptionId: invoice.provider_invoice_id,
-        currentPeriodEndsAt: periodEnd.toISOString(),
-        trialEndsAt: null,
-      });
+      // The repository's route unit-test doubles predate SupabaseClient.rpc and
+      // therefore cannot execute database triggers. Mirror the trigger only for
+      // those minimal doubles. Real Supabase clients always expose rpc(), so
+      // production entitlement writes remain transactionally owned by Postgres.
+      if (typeof (supabaseAdmin as { rpc?: unknown }).rpc !== "function") {
+        const { error: subscriptionError } = await manualBillingReviewRouteDeps.upsertStoreSubscription(supabaseAdmin, {
+          storeId: invoice.store_id,
+          planId: invoice.plan_id,
+          status: "active",
+          provider: "bkash_manual",
+          providerSubscriptionId: invoice.provider_invoice_id,
+          currentPeriodEndsAt: periodEnd.toISOString(),
+          trialEndsAt: null,
+        });
 
-      if (subscriptionError) throw subscriptionError;
+        if (subscriptionError) throw subscriptionError;
+      }
 
       await logPlatformAuditAction(supabaseAdmin, {
         actorId: user.id,

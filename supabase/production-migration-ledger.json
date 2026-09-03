@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-08-31T00:28:31+06:00",
+  "captured_at": "2026-09-04T03:22:21+06:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -124,6 +124,8 @@
     "storefront_postgres_search_dedupe",
     "storefront_postgres_search_ranking",
     "storefront_search_sync",
+    "subscription_renewal_contact_privacy_204",
+    "subscription_renewal_contract_204",
     "template_blueprint_upgrade",
     "theme_packages_is_active",
     "transactional_store_deletion",

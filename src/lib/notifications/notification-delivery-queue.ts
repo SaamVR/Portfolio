@@ -46,6 +46,12 @@ function getNotificationServiceConfig() {
   };
 }
 
+export function resolveNotificationFunctionName(payload: NotificationDeliveryPayload) {
+  return payload.templateName === "subscription-expiry-reminder"
+    ? "subscription-renewal-reminder"
+    : "send-email";
+}
+
 function buildIdempotencyKey(payload: NotificationDeliveryPayload) {
   const existingEventId = typeof payload.existingEventId === "string" ? payload.existingEventId : null;
   const templateName = typeof payload.templateName === "string" ? payload.templateName : "notification";
@@ -63,9 +69,10 @@ function buildIdempotencyKey(payload: NotificationDeliveryPayload) {
 
 export async function sendNotificationDeliveryInline(payload: NotificationDeliveryPayload) {
   const { supabaseUrl, serviceRoleKey } = getNotificationServiceConfig();
+  const functionName = resolveNotificationFunctionName(payload);
 
   return notificationDeliveryQueueDeps.fetch(
-    `${supabaseUrl}/functions/v1/send-email`,
+    `${supabaseUrl}/functions/v1/${functionName}`,
     {
       method: "POST",
       headers: {
