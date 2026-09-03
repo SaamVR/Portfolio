@@ -116,7 +116,7 @@ export function ProductCardBadgeLayer({
             onToggleWishlist();
           }}
           className={cn(
-            "absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground dark:bg-card/90",
+            "absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground dark:bg-card/90 sm:h-8 sm:w-8",
             isInWishlist && "border-primary/30 text-primary",
           )}
           aria-label={isInWishlist ? `Remove ${wishlistLabel} from wishlist` : `Add ${wishlistLabel} to wishlist`}
