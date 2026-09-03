@@ -61,6 +61,12 @@ start_epoch="$(date +%s)"
 # durable auth identities second, application data third, and only then FKs.
 run_pg pg_restore --no-owner --section=pre-data \
   -h "$DR_TARGET_PGHOST" -p "$DR_TARGET_PGPORT" -U "$DR_TARGET_PGUSER" -d "$DR_TARGET_PGDATABASE" /work/app.dump
+# Schema-filtered pg_dump archives do not carry extension objects. Production
+# application indexes depend on these extensions living in public, so recreate
+# the isolated target prerequisites after public exists and before post-data.
+psql_target -c "create extension if not exists pg_trgm with schema public; create extension if not exists pg_net with schema public;"
+extension_prereqs="$(psql_target -At -c "select string_agg(e.extname||':'||n.nspname, ',' order by e.extname) from pg_extension e join pg_namespace n on n.oid=e.extnamespace where e.extname in ('pg_net','pg_trgm')")"
+[[ "$extension_prereqs" == "pg_net:public,pg_trgm:public" ]] || { echo "restore prerequisite mismatch: expected pg_net/pg_trgm in public" >&2; exit 70; }
 run_pg pg_restore --data-only --no-owner --no-acl \
   -h "$DR_TARGET_PGHOST" -p "$DR_TARGET_PGPORT" -U "$DR_TARGET_PGUSER" -d "$DR_TARGET_PGDATABASE" /work/auth-durable.dump
 run_pg pg_restore --no-owner --section=data \
