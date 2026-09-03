@@ -73,7 +73,9 @@ async function continueSignupWhenSlugReady(page: Parameters<typeof test>[0]["pag
   const nextButton = page.getByTestId("merchant-signup-next");
   await expect(nextButton).toBeEnabled({ timeout: 15000 });
   await nextButton.click();
-  await expect(page.getByText("Choose your storefront design")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("merchant-design-picker")).toBeVisible({ timeout: 15000 });
+  await page.getByTestId("merchant-signup-design-next").click();
+  await expect(page.getByTestId("merchant-registration-wizard")).toBeVisible({ timeout: 15000 });
 }
 
 async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["page"]) {
@@ -101,6 +103,12 @@ async function submitSignupAndRequireSuccess(page: Parameters<typeof test>[0]["p
   await expect(page.getByRole("heading", { name: "Launch successful" })).toBeVisible({ timeout: 30000 });
 }
 
+async function confirmTemplateBundleApply(page: Parameters<typeof test>[0]["page"]) {
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+  await dialog.getByRole("button", { name: "Apply bundle" }).click();
+}
+
 async function signupPreviewStore(
   page: Parameters<typeof test>[0]["page"],
   storeName: string,
@@ -112,7 +120,7 @@ async function signupPreviewStore(
   await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
   await continueSignupWhenSlugReady(page);
   await submitSignupAndRequireSuccess(page);
-  const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
+  const onboardingHref = await page.getByRole("link", { name: "Open Onboarding" }).getAttribute("href");
   expect(onboardingHref).toBeTruthy();
   const onboardingUrl = new URL(onboardingHref ?? "", "http://127.0.0.1:8080");
   const storeId = onboardingUrl.searchParams.get("storeId");
@@ -207,13 +215,13 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await page.getByTestId("merchant-signup-store-slug").fill(storeSlug);
     await continueSignupWhenSlugReady(page);
     await submitSignupAndRequireSuccess(page);
-    await expect(page.getByText("Open Onboarding Wizard")).toBeVisible();
-    const onboardingHref = await page.getByRole("link", { name: "Open Onboarding Wizard" }).getAttribute("href");
+    await expect(page.getByText("Open Onboarding")).toBeVisible();
+    const onboardingHref = await page.getByRole("link", { name: "Open Onboarding" }).getAttribute("href");
     expect(onboardingHref).toBeTruthy();
     const onboardingUrl = new URL(onboardingHref ?? "", "http://127.0.0.1:8080");
     storeId = onboardingUrl.searchParams.get("storeId");
     expect(storeId).toBeTruthy();
-    await page.getByRole("link", { name: "Open Onboarding Wizard" }).click();
+    await page.getByRole("link", { name: "Open Onboarding" }).click();
     await page.waitForURL(new RegExp(`/admin/onboarding\\?storeId=${storeId}`));
 
     await page.goto("/admin/products");
@@ -590,6 +598,7 @@ test("merchant preview smoke: login, signup, onboarding, product create, publish
     await page.screenshot({ path: testInfo.outputPath("template-gallery-desktop.png"), fullPage: true });
     await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();
     await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();
+    await confirmTemplateBundleApply(page);
 
     await expect.poll(async () => {
       const { count, error } = await supabaseAdmin
@@ -930,11 +939,8 @@ test("merchant marketplace tail smoke: advanced editor, submit, install, moderat
     await page.getByTestId("template-gallery-community-tab").click();
     await expect(page.getByTestId(`template-card-${marketplaceTemplateId}`)).toBeVisible({ timeout: 45000 });
     await page.getByTestId(`template-card-${marketplaceTemplateId}`).hover();
-    page.on("dialog", async (dialog) => {
-      expect(dialog.type()).toBe("confirm");
-      await dialog.accept();
-    });
     await page.getByTestId(`template-apply-${marketplaceTemplateId}`).click();
+    await confirmTemplateBundleApply(page);
 
     await expect.poll(async () => {
       const { count, error } = await supabaseAdmin
