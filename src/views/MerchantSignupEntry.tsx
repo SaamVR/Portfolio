@@ -6,15 +6,18 @@ import { RefreshCw, ShieldAlert } from "lucide-react";
 import { useNavigate, useSearchParams } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
+import PolicyConsentGate from "@/components/platform/PolicyConsentGate";
 import MerchantSignupV3 from "@/views/MerchantSignupV3";
 import { fetchAuthDestination } from "@/lib/auth/auth-redirect-client";
 import { Button } from "@/components/ui/button";
+import { usePlatformIdentity } from "@/components/platform/PlatformIdentityProvider";
 import { Card, CardContent } from "@/components/ui/card";
 
 type AllowedSignupMode = "initial" | "additional" | null;
 
 export default function MerchantSignupEntry() {
   const { user, session, loading, authRecovery, signOut } = useAuth();
+  const { siteName } = usePlatformIdentity();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [checkingAccountType, setCheckingAccountType] = useState(false);
@@ -126,7 +129,7 @@ export default function MerchantSignupEntry() {
               </Button>
             </div>
             <Button asChild variant="ghost" className="mt-3 w-full">
-              <Link href="/">Back to EZComo</Link>
+              <Link href="/">Back to {siteName}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -139,7 +142,11 @@ export default function MerchantSignupEntry() {
   }
 
   if (user && allowedMode) {
-    return <MerchantSignupV3 />;
+    return (
+      <PolicyConsentGate context="merchant_signup">
+        <MerchantSignupV3 />
+      </PolicyConsentGate>
+    );
   }
 
   return <AdminRouteFallback label="Opening the correct account workspace" fullScreen />;

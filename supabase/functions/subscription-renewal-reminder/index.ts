@@ -1,13 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { loadPlatformSiteName, loadPlatformSmsRuntime, sendPlatformSms } from "../_shared/platform-sms.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const PLATFORM_GREENWEB_API_KEY = Deno.env.get("PLATFORM_GREENWEB_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS") ?? "";
-const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "EZComo <noreply@ezcomo.shop>";
+const EMAIL_FROM = Deno.env.get("EMAIL_FROM")?.trim() ?? "";
 const PLATFORM_SITE_URL = (Deno.env.get("PLATFORM_SITE_URL") || "https://ezcomo.shop").replace(/\/$/, "");
 
 type ReminderChannel = "email" | "sms";
@@ -208,21 +208,27 @@ async function loadReminderContext(
   };
 }
 
-async function sendEmail(payload: ReminderPayload, context: ReminderContext) {
+async function sendEmail(
+  supabase: ReturnType<typeof createClient>,
+  payload: ReminderPayload,
+  context: ReminderContext,
+) {
   if (!RESEND_API_KEY) throw new Error("Platform email provider is not configured");
   if (!context.email) throw new Error("Renewal email recipient is unavailable");
   const rawStoreName = context.storeName.replace(/[\r\n]+/g, " ").slice(0, 80);
   const storeName = escapeHtml(rawStoreName);
   const expiry = escapeHtml(formatExpiry(context.currentPeriodEndsAt));
   const url = renewalUrl(payload);
+  const siteName = (await loadPlatformSiteName(supabase)).replace(/[\r\n]+/g, " ").slice(0, 60);
+  const from = EMAIL_FROM || `${siteName} <noreply@ezcomo.shop>`;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
     body: JSON.stringify({
-      from: EMAIL_FROM,
+      from,
       to: [context.email],
       subject: `Renewal reminder for ${rawStoreName}`,
-      html: `<p>Your EZComo subscription for <strong>${storeName}</strong> is scheduled to expire on ${expiry}.</p><p>Renewal is currently turned off. Review billing before expiry to continue paid access.</p><p><a href="${url}">Open EZComo billing</a></p>`,
+      html: `<p>Your ${escapeHtml(siteName)} subscription for <strong>${storeName}</strong> is scheduled to expire on ${expiry}.</p><p>Renewal is currently turned off. Review billing before expiry to continue paid access.</p><p><a href="${url}">Open ${escapeHtml(siteName)} billing</a></p>`,
     }),
   });
   const body = await response.text();
@@ -236,22 +242,19 @@ async function sendEmail(payload: ReminderPayload, context: ReminderContext) {
   return { provider: "resend", providerMessageId };
 }
 
-async function sendSms(payload: ReminderPayload, context: ReminderContext) {
-  if (!PLATFORM_GREENWEB_API_KEY) throw new Error("Platform SMS provider is not configured");
+async function sendSms(
+  supabase: ReturnType<typeof createClient>,
+  payload: ReminderPayload,
+  context: ReminderContext,
+) {
   if (!context.phone) throw new Error("Renewal SMS recipient is unavailable");
+  const runtime = await loadPlatformSmsRuntime(supabase, "transactional");
+  if (!runtime) throw new Error("Platform transactional SMS is not enabled");
+  const siteName = (await loadPlatformSiteName(supabase)).replace(/[\r\n]+/g, " ").slice(0, 60);
   const storeName = context.storeName.replace(/[\r\n]+/g, " ").slice(0, 60);
   const expiry = formatExpiry(context.currentPeriodEndsAt);
-  const message = `EZComo: ${storeName} subscription ${expiry} তারিখে শেষ হবে। Renewal বন্ধ আছে। Renew করতে ${renewalUrl(payload)}`;
-  const response = await fetch("https://api.greenweb.com.bd/api.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ token: PLATFORM_GREENWEB_API_KEY, to: context.phone, message }),
-  });
-  const body = await response.text();
-  if (!response.ok || /error|invalid|failed/i.test(body)) {
-    throw new Error(`SMS provider rejected the reminder (${response.status})`);
-  }
-  return { provider: "greenweb", providerMessageId: null };
+  const message = `${siteName}: ${storeName} subscription ${expiry} তারিখে শেষ হবে। Renewal বন্ধ আছে। Renew করতে ${renewalUrl(payload)}`;
+  return sendPlatformSms({ ...runtime, to: context.phone, message });
 }
 
 serve(async (req) => {
@@ -282,8 +285,8 @@ serve(async (req) => {
     }
 
     const result = loaded.context.channel === "sms"
-      ? await sendSms(payload, loaded.context)
-      : await sendEmail(payload, loaded.context);
+      ? await sendSms(supabase, payload, loaded.context)
+      : await sendEmail(supabase, payload, loaded.context);
     await markSent(supabase, payload.existingEventId, result.provider, result.providerMessageId);
 
     return Response.json({ success: true, channel: loaded.context.channel });

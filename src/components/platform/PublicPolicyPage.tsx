@@ -13,22 +13,39 @@ type PolicySection = {
   body: ReactNode;
 };
 
+type PolicyMeta = {
+  version: string;
+  effectiveDate: string;
+  status: string;
+  notice?: string | null;
+};
+
 export function PublicPolicyPage({
   eyebrow,
   title,
   intro,
   sections,
+  siteName = PLATFORM_BRAND_NAME,
+  policyMeta = {
+    version: PUBLIC_POLICY_VERSION,
+    effectiveDate: PUBLIC_POLICY_EFFECTIVE_DATE,
+    status: PUBLIC_POLICY_REVIEW_STATUS,
+    notice: PUBLIC_POLICY_REVIEW_NOTICE,
+  },
 }: {
   eyebrow: string;
   title: string;
   intro: ReactNode;
   sections: PolicySection[];
+  siteName?: string;
+  policyMeta?: PolicyMeta;
 }) {
+  const isReview = Boolean(policyMeta.notice);
   return (
     <main className="min-h-screen bg-background px-5 py-12 text-foreground lg:px-8">
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/" className="text-sm font-semibold text-primary">← {PLATFORM_BRAND_NAME}</Link>
+          <Link href="/" className="text-sm font-semibold text-primary">← {siteName}</Link>
           <Link href="/support" className="text-sm font-semibold text-primary">Platform support</Link>
         </div>
 
@@ -37,13 +54,15 @@ export function PublicPolicyPage({
           <h1 className="mt-4 font-heading text-4xl font-semibold tracking-tight md:text-6xl">{title}</h1>
           <div className="mt-5 text-base leading-8 text-muted-foreground md:text-lg">{intro}</div>
           <dl className="mt-7 grid gap-3 rounded-2xl border border-border bg-card p-5 text-sm sm:grid-cols-3">
-            <div><dt className="text-muted-foreground">Version</dt><dd className="mt-1 font-semibold">{PUBLIC_POLICY_VERSION}</dd></div>
-            <div><dt className="text-muted-foreground">Effective / review date</dt><dd className="mt-1 font-semibold">{PUBLIC_POLICY_EFFECTIVE_DATE}</dd></div>
-            <div><dt className="text-muted-foreground">Review status</dt><dd className="mt-1 font-semibold text-amber-700 dark:text-amber-300">{PUBLIC_POLICY_REVIEW_STATUS}</dd></div>
+            <div><dt className="text-muted-foreground">Version</dt><dd className="mt-1 font-semibold">{policyMeta.version}</dd></div>
+            <div><dt className="text-muted-foreground">Effective / review date</dt><dd className="mt-1 font-semibold">{policyMeta.effectiveDate}</dd></div>
+            <div><dt className="text-muted-foreground">Policy status</dt><dd className={`mt-1 font-semibold ${isReview ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}`}>{policyMeta.status}</dd></div>
           </dl>
-          <p className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm leading-6 text-amber-900 dark:text-amber-100">
-            {PUBLIC_POLICY_REVIEW_NOTICE}
-          </p>
+          {policyMeta.notice ? (
+            <p className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm leading-6 text-amber-900 dark:text-amber-100">
+              {policyMeta.notice}
+            </p>
+          ) : null}
         </header>
 
         <div className="divide-y divide-border">

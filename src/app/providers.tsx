@@ -9,9 +9,9 @@ import { ThemeProvider } from "next-themes";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AuthProvider } from "@/hooks/useAuth";
+import { PlatformIdentityProvider, type PlatformIdentityValue } from "@/components/platform/PlatformIdentityProvider";
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  // Avoid sharing queryClient across requests in SSR
+export function Providers({ children, platformIdentity }: { children: React.ReactNode; platformIdentity: PlatformIdentityValue }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -27,18 +27,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                {children}
-                <Toaster />
-                <Sonner />
-              </WishlistProvider>
-            </CartProvider>
-          </AuthProvider>
+          <PlatformIdentityProvider identity={platformIdentity}>
+            <AuthProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  {children}
+                  <Toaster />
+                  <Sonner />
+                </WishlistProvider>
+              </CartProvider>
+            </AuthProvider>
+          </PlatformIdentityProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
 }
-

@@ -2,14 +2,12 @@ import React from "react";
 import "@/index.css";
 import { Providers } from "./providers";
 import { appFontVariables } from "@/lib/fonts";
-import { PLATFORM_BRAND_NAME, getPlatformSiteUrl } from "@/lib/platform/site-config";
+import { getPlatformRuntimeIdentity } from "@/lib/platform/runtime-identity";
+import { getPlatformSiteUrl } from "@/lib/platform/site-config";
 
 function getSupabaseOrigin() {
   const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  if (!configuredUrl) {
-    return null;
-  }
-
+  if (!configuredUrl) return null;
   try {
     return new URL(configuredUrl).origin;
   } catch {
@@ -25,38 +23,32 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-export const metadata = {
-  metadataBase: new URL(getPlatformSiteUrl()),
-  title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
-  description: `${PLATFORM_BRAND_NAME} is a mobile-first storefront CMS for launch templates, pages, products, checkout flows, and store operations.`,
-  authors: [{ name: PLATFORM_BRAND_NAME }],
-  openGraph: {
-    title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
-    description: `Launch and manage online stores with ${PLATFORM_BRAND_NAME} templates, CMS pages, products, payments, and admin workflows.`,
-    type: "website",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-      }
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@ezcomo",
-    title: `${PLATFORM_BRAND_NAME} Storefront CMS`,
-    description: `Launch and manage online stores with ${PLATFORM_BRAND_NAME} templates, CMS pages, products, payments, and admin workflows.`,
-    images: ["/og-image.png"],
-  },
-};
+export async function generateMetadata() {
+  const { siteName } = await getPlatformRuntimeIdentity();
+  return {
+    metadataBase: new URL(getPlatformSiteUrl()),
+    title: `${siteName} Storefront CMS`,
+    description: `${siteName} is a mobile-first storefront CMS for launch templates, pages, products, checkout flows, and store operations.`,
+    authors: [{ name: siteName }],
+    openGraph: {
+      title: `${siteName} Storefront CMS`,
+      description: `Launch and manage online stores with ${siteName} templates, CMS pages, products, payments, and admin workflows.`,
+      type: "website",
+      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: "@ezcomo",
+      title: `${siteName} Storefront CMS`,
+      description: `Launch and manage online stores with ${siteName} templates, CMS pages, products, payments, and admin workflows.`,
+      images: ["/og-image.png"],
+    },
+  };
+}
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const supabaseOrigin = getSupabaseOrigin();
+  const platformIdentity = await getPlatformRuntimeIdentity();
 
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
@@ -67,7 +59,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={appFontVariables}>
-        <Providers>{children}</Providers>
+        <Providers platformIdentity={platformIdentity}>{children}</Providers>
       </body>
     </html>
   );

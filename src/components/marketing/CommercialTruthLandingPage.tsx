@@ -16,8 +16,8 @@ import {
   Truck,
 } from "lucide-react";
 import { CmsPricing } from "@/components/marketing/CmsPricing";
+import { usePlatformIdentity } from "@/components/platform/PlatformIdentityProvider";
 import type { PlanCatalogRecord } from "@/lib/billing/plans";
-import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 
 type Language = "en" | "bn";
 
@@ -26,7 +26,7 @@ const copy = {
     nav: { workflow: "How it works", templates: "Templates", pricing: "Pricing", login: "Merchant login", start: "Create a store" },
     badge: "Commerce tools with explicit connection state",
     title: "Build your storefront, manage orders, and keep operations in one place.",
-    subtitle: "EZComo gives merchants a storefront editor, catalog and order tools, and configuration workflows for payments, delivery, domains, and store operations. Provider connections are shown according to their real configuration and verification state.",
+    subtitle: "{siteName} gives merchants a storefront editor, catalog and order tools, and configuration workflows for payments, delivery, domains, and store operations. Provider connections are shown according to their real configuration and verification state.",
     primary: "Create a store",
     secondary: "View live pricing",
     trust: ["Live plan catalog", "Store-scoped administration", "Connection status is explicit"],
@@ -50,7 +50,7 @@ const copy = {
     nav: { workflow: "কীভাবে কাজ করে", templates: "টেমপ্লেট", pricing: "মূল্য", login: "মার্চেন্ট লগইন", start: "স্টোর তৈরি করুন" },
     badge: "স্পষ্ট কানেকশন স্টেটসহ কমার্স টুলস",
     title: "স্টোরফ্রন্ট তৈরি করুন, অর্ডার সামলান এবং অপারেশন এক জায়গায় রাখুন।",
-    subtitle: "EZComo মার্চেন্টদের স্টোরফ্রন্ট এডিটর, ক্যাটালগ ও অর্ডার টুল এবং পেমেন্ট, ডেলিভারি, ডোমেইন ও স্টোর অপারেশন কনফিগার করার ওয়ার্কফ্লো দেয়। কোনো প্রোভাইডার কানেকশন বাস্তব কনফিগারেশন ও ভেরিফিকেশন স্টেট অনুযায়ী দেখানো হয়।",
+    subtitle: "{siteName} মার্চেন্টদের স্টোরফ্রন্ট এডিটর, ক্যাটালগ ও অর্ডার টুল এবং পেমেন্ট, ডেলিভারি, ডোমেইন ও স্টোর অপারেশন কনফিগার করার ওয়ার্কফ্লো দেয়। কোনো প্রোভাইডার কানেকশন বাস্তব কনফিগারেশন ও ভেরিফিকেশন স্টেট অনুযায়ী দেখানো হয়।",
     primary: "স্টোর তৈরি করুন",
     secondary: "লাইভ মূল্য দেখুন",
     trust: ["লাইভ প্ল্যান ক্যাটালগ", "স্টোর-স্কোপড অ্যাডমিন", "কানেকশন স্টেট স্পষ্ট"],
@@ -82,16 +82,19 @@ const capabilityCards = [
 ] as const;
 
 export function CommercialTruthLandingPage({ planCatalog }: { planCatalog: PlanCatalogRecord[] }) {
+  const { siteName } = usePlatformIdentity();
   const [lang, setLang] = useState<Language>("en");
-  const t = copy[lang];
+  const base = copy[lang];
+  const t = { ...base, subtitle: base.subtitle.replace("{siteName}", siteName) };
+  const initials = siteName.trim().slice(0, 2).toUpperCase() || "EC";
 
   return (
     <div lang={lang} className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-3 font-heading text-lg font-extrabold tracking-[0.14em]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-primary-foreground">EZ</span>
-            {PLATFORM_BRAND_NAME.toUpperCase()}
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-primary-foreground">{initials}</span>
+            {siteName.toUpperCase()}
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <Link href="/how-it-works" className="hover:text-foreground">{t.nav.workflow}</Link>
@@ -195,7 +198,7 @@ export function CommercialTruthLandingPage({ planCatalog }: { planCatalog: PlanC
 
       <footer className="border-t border-border/70 px-5 py-10 text-sm text-muted-foreground lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} {PLATFORM_BRAND_NAME}</p>
+          <p>© {new Date().getFullYear()} {siteName}</p>
           <p className="max-w-3xl leading-6 md:text-right">{t.footer}</p>
         </div>
       </footer>

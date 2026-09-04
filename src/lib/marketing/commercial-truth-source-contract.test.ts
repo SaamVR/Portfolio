@@ -26,7 +26,7 @@ test("platform root and plans SSR start from the authoritative public plan catal
   assert.match(root, /CommercialTruthLandingPage planCatalog=\{planCatalog\}/);
   assert.doesNotMatch(root, /SleekBentoLandingPage/);
 
-  assert.match(plans, /await loadPublicPlanCatalog\(\)/);
+  assert.match(plans, /loadPublicPlanCatalog\(\)/);
   assert.match(plans, /CmsPricing planCatalog=\{planCatalog\}/);
   assert.doesNotMatch(plans, /"use client"/);
 });
