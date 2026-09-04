@@ -65,7 +65,7 @@ export function BeautyProductCard({
         <p className="line-clamp-1 min-w-0 truncate text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
           {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Beauty"}
         </p>
-        <ProductCardTitle href={url} className="h-10 min-h-10 text-[0.9rem] leading-[1.15rem] sm:h-[2.75rem] sm:min-h-[2.75rem] sm:text-[1.02rem] sm:leading-5">{product.name}</ProductCardTitle>
+        <ProductCardTitle href={url} className="h-[2.875rem] min-h-[2.875rem] text-[0.9rem] leading-[1.15rem] sm:h-[2.75rem] sm:min-h-[2.75rem] sm:text-[1.02rem] sm:leading-5">{product.name}</ProductCardTitle>
 
         {(roundedRating !== null || optionSummary) ? (
           <div className="flex min-h-[1.25rem] items-center gap-1 sm:gap-1.5">

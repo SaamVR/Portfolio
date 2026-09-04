@@ -128,7 +128,7 @@ const Cart = () => {
             </p>
             <Link
               to={storefrontPath("/shop", currentStoreSlug)}
-              className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               Browse Shop
             </Link>
@@ -148,7 +148,7 @@ const Cart = () => {
             <p className="mb-8 text-muted-foreground">Browse {currentStoreName} and {experience.labels.cartEmptyDescription.toLowerCase()}</p>
             <Link
               to={storefrontPath("/shop", currentStoreSlug)}
-              className="rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               {experience.labels.browseLabel}
             </Link>

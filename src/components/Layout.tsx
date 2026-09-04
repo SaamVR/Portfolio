@@ -95,6 +95,9 @@ const storefrontChromeCss = `
     }
 
     .storefront-layout-shell nav[aria-label="Main navigation"] > div > div:first-child > a {
+      display: flex;
+      min-height: 2.75rem;
+      align-items: center;
       flex: 1 1 auto;
       overflow: hidden;
     }
