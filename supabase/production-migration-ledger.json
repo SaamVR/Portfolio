@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-04T05:58:07+00:00",
+  "captured_at": "2026-09-04T15:36:36+00:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -88,6 +88,7 @@
     "p6_harden_public_schema_grants",
     "p6_manual_billing_review_metadata",
     "p6_private_courier_credentials",
+    "paid_beta_billing_launch_gate_258",
     "paid_beta_trust_controls_204",
     "platform_audit_integrity_171",
     "platform_audit_logs_and_rbac",

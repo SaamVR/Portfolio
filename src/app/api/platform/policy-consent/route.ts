@@ -17,6 +17,8 @@ type PolicyConfig = {
   binding: boolean;
   acceptance_text: string;
   effective_at: string | null;
+  site_name_snapshot: string | null;
+  legal_operator_name_snapshot: string | null;
 };
 
 type EnforcementConfig = {
@@ -41,6 +43,16 @@ function isBindingActive(config: PolicyConfig, now: Date) {
   return Number.isFinite(effectiveAt.getTime()) && effectiveAt.getTime() <= now.getTime();
 }
 
+function isPaidBetaBillingReady(config: PolicyConfig, enforcementEnabled: boolean, now: Date) {
+  return (
+    enforcementEnabled &&
+    config.policy_version === PAID_BETA_POLICY_VERSION &&
+    isBindingActive(config, now) &&
+    Boolean(config.site_name_snapshot?.trim()) &&
+    Boolean(config.legal_operator_name_snapshot?.trim())
+  );
+}
+
 function contextFromRequest(req: Request) {
   const value = new URL(req.url).searchParams.get("context")?.trim() ?? "";
   return ACCEPTANCE_CONTEXTS.has(value) ? value : null;
@@ -61,7 +73,7 @@ function requiresAcceptance(rule: JurisdictionRule | null) {
 async function loadPolicyConfig(supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>) {
   return supabaseAdmin
     .from("platform_policy_config")
-    .select("policy_version, binding, acceptance_text, effective_at")
+    .select("policy_version, binding, acceptance_text, effective_at, site_name_snapshot, legal_operator_name_snapshot")
     .eq("singleton", true)
     .maybeSingle();
 }
@@ -156,6 +168,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Binding policy acceptance text is unavailable" }, { status: 503 });
     }
 
+    const paidBillingReady = isPaidBetaBillingReady(
+      config,
+      enforcementEnabled,
+      policyConsentRouteDeps.now(),
+    );
+    if (context === "billing" && !paidBillingReady) {
+      return NextResponse.json(
+        {
+          error:
+            "Paid billing is not open yet. No paid checkout or manual payment should be started until paid-beta trust controls are activated.",
+        },
+        { status: 503 },
+      );
+    }
+
     let rule: JurisdictionRule | null = null;
     if (enforcementEnabled && profile?.legal_regime) {
       const { data, error } = await loadJurisdictionRule(supabaseAdmin, profile.legal_regime);
@@ -185,6 +212,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       required: enforcementEnabled && (countryRequired || (policyRequired && !accepted)),
       enforcementEnabled,
+      paidBillingReady,
       countryRequired,
       policyRequired,
       accepted,

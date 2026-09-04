@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
@@ -20,6 +21,9 @@ import {
 const { loadEnvConfig } = nextEnv;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 loadEnvConfig(repoRoot);
+
+const PAID_BETA_POLICY_VERSION = "2026-09-04-paid-beta-1";
+const REVIEW_POLICY_VERSION = "2026-08-31-review-1";
 
 function requireSupabaseAdmin() {
   return createClient(
@@ -60,6 +64,108 @@ function jsonRequest(url: string, method: string, body: unknown) {
   });
 }
 
+function resetLocalPaidBetaTrustState() {
+  const databaseUrl = process.env.SUPABASE_DB_URL;
+  if (!databaseUrl) {
+    throw new Error("SUPABASE_DB_URL is required to restore the local billing smoke trust state");
+  }
+
+  const sql = `
+    update public.platform_policy_config
+    set policy_version='${REVIEW_POLICY_VERSION}', binding=false,
+        acceptance_text='', effective_at=null,
+        site_name_snapshot=null, legal_operator_name_snapshot=null,
+        updated_at=now()
+    where singleton=true;
+
+    update public.platform_jurisdiction_enforcement_config
+    set country_enforcement_enabled=false, updated_at=now(), updated_by=null
+    where singleton=true;
+
+    update public.platform_identity_config
+    set site_name='EZComo', legal_operator_name=null, updated_at=now(), updated_by=null
+    where singleton=true;
+
+    delete from public.platform_policy_versions
+    where policy_version='${PAID_BETA_POLICY_VERSION}';
+  `;
+
+  const result = spawnSync(
+    process.platform === "win32" ? "psql.exe" : "psql",
+    ["-v", "ON_ERROR_STOP=1", databaseUrl, "-c", sql],
+    { cwd: repoRoot, encoding: "utf8" },
+  );
+
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || "Failed to restore local billing smoke trust state");
+  }
+}
+
+async function activateLocalPaidBetaTrustState(
+  supabaseAdmin: ReturnType<typeof requireSupabaseAdmin>,
+  userId: string,
+) {
+  const { error: enforcementError } = await supabaseAdmin
+    .from("platform_jurisdiction_enforcement_config")
+    .update({ country_enforcement_enabled: true })
+    .eq("singleton", true);
+  if (enforcementError) throw new Error(`Failed to enable local jurisdiction gate: ${enforcementError.message}`);
+
+  const { error: identityError } = await supabaseAdmin.rpc("set_platform_identity", {
+    p_site_name: "EZComo Billing Smoke",
+    p_legal_operator_name: "EZComo Billing Smoke Operator",
+    p_updated_by: null,
+  });
+  if (identityError) throw new Error(`Failed to set local platform identity: ${identityError.message}`);
+
+  const effectiveAt = new Date(Date.now() - 60_000).toISOString();
+  const { data: activation, error: activationError } = await supabaseAdmin.rpc(
+    "activate_platform_policy_version",
+    {
+      p_policy_version: PAID_BETA_POLICY_VERSION,
+      p_effective_at: effectiveAt,
+      p_approved_by: null,
+    },
+  );
+  if (activationError) throw new Error(`Failed to activate local paid-beta policy: ${activationError.message}`);
+
+  const acceptanceText =
+    activation && typeof activation === "object" && "acceptance_text" in activation
+      ? String(activation.acceptance_text ?? "")
+      : "";
+  if (!acceptanceText) {
+    throw new Error("Local paid-beta policy activation did not return acceptance text");
+  }
+
+  const { data: legalRegime, error: regimeError } = await supabaseAdmin.rpc(
+    "resolve_platform_legal_regime",
+    { p_country_code: "BD" },
+  );
+  if (regimeError) throw new Error(`Failed to resolve local legal regime: ${regimeError.message}`);
+  const regime = typeof legalRegime === "string" && legalRegime.trim() ? legalRegime.trim() : "BD";
+
+  const { error: profileError } = await supabaseAdmin.rpc("set_merchant_legal_profile", {
+    p_user_id: userId,
+    p_business_country_code: "BD",
+    p_geo_hint_country_code: null,
+    p_geo_hint_region_code: null,
+  });
+  if (profileError) throw new Error(`Failed to set local merchant legal profile: ${profileError.message}`);
+
+  const { error: acceptanceError } = await supabaseAdmin
+    .from("platform_policy_acceptances")
+    .insert({
+      user_id: userId,
+      policy_version: PAID_BETA_POLICY_VERSION,
+      acceptance_text: acceptanceText,
+      acceptance_context: "billing",
+      business_country_code: "BD",
+      legal_regime: regime,
+    });
+  if (acceptanceError) throw new Error(`Failed to record local policy acceptance: ${acceptanceError.message}`);
+}
+
 async function main() {
   ensureGatewayEnv();
   const expectedBillingBaseUrl = getExpectedBillingBaseUrl();
@@ -85,6 +191,7 @@ async function main() {
   };
 
   let createdUserId: string | null = null;
+  let localTrustActivated = false;
 
   try {
     const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
@@ -173,6 +280,28 @@ async function main() {
       } as never;
     };
 
+    const blockedCheckoutResponse = await checkoutPost(
+      jsonRequest("https://example.com/api/billing/checkout", "POST", {
+        storeId,
+        planId,
+      }),
+    );
+    assert.equal(
+      blockedCheckoutResponse.status,
+      500,
+      "checkout must stay blocked while paid-beta trust controls are dormant",
+    );
+
+    const { count: blockedInvoiceCount, error: blockedInvoiceError } = await supabaseAdmin
+      .from("store_invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId);
+    if (blockedInvoiceError) throw blockedInvoiceError;
+    assert.equal(blockedInvoiceCount, 0, "blocked checkout must not leave a payable invoice");
+
+    await activateLocalPaidBetaTrustState(supabaseAdmin, createdUserId);
+    localTrustActivated = true;
+
     const checkoutResponse = await checkoutPost(
       jsonRequest("https://example.com/api/billing/checkout", "POST", {
         storeId,
@@ -180,7 +309,7 @@ async function main() {
       }),
     );
 
-    assert.equal(checkoutResponse.status, 200, "checkout should succeed");
+    assert.equal(checkoutResponse.status, 200, "checkout should succeed after local trust activation");
     assert.deepEqual(await checkoutResponse.json(), {
       paymentUrl: `https://sandbox.bkash.com/pay/${paymentId}`,
     });
@@ -258,6 +387,10 @@ async function main() {
 
     if (createdUserId) {
       await supabaseAdmin.auth.admin.deleteUser(createdUserId);
+    }
+
+    if (localTrustActivated) {
+      resetLocalPaidBetaTrustState();
     }
   }
 }
