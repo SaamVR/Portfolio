@@ -21,7 +21,7 @@ export default async function TermsPage() {
         title="Terms of Service"
         siteName={policy.siteName}
         policyMeta={policyMeta}
-        intro={<p>These Terms of Service (“Terms”) govern access to and use of {policy.siteName}, a storefront and commerce-management platform operated by <strong>{policy.legalOperatorName}</strong> (“{policy.siteName}”, “we”, “us”, or “our”). By creating or managing a {policy.siteName} merchant workspace after this version becomes binding, you agree to these Terms. If you do not agree, do not create or continue using a merchant workspace where acceptance is required.</p>}
+        intro={<p>These Terms of Service (“Terms”) govern access to and use of {policy.siteName}, a storefront and commerce-management platform operated by <strong>{policy.legalOperatorName}</strong> (“{policy.siteName}”, “we”, “us”, or “our”). By creating or managing a merchant workspace on {policy.siteName} after this version becomes binding, you agree to these Terms. If you do not agree, do not create or continue using a merchant workspace where acceptance is required.</p>}
         sections={buildBindingTermsSections({ siteName: policy.siteName, legalOperatorName: policy.legalOperatorName })}
       />
     );

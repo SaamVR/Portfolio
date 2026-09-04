@@ -75,11 +75,26 @@ test("platform support intake is abuse-bounded and lands in platform incidents",
   assert.match(storefrontContact, /from\("contact_messages"\)/);
 });
 
-test("owner review remains an explicit release gate", () => {
-  const checklist = source("../../../docs/legal/public-policy-owner-review-2026-08-31.md");
-  assert.match(checklist, /PENDING — blocks paid-beta legal sign-off/);
-  assert.match(checklist, /legal\/operator entity/);
-  assert.match(checklist, /refund eligibility/);
-  assert.match(checklist, /data-retention/);
-  assert.match(checklist, /final binding signup consent mechanism/);
+test("owner-approved policy remains configuration-gated and identity-versioned", () => {
+  const reviewRecord = source("../../../docs/legal/public-policy-owner-review-2026-08-31.md");
+  const configurationRoute = source("../../app/api/platform/configuration/route.ts");
+  const settingsCard = source("../../components/admin/PlatformIdentityMessagingSettingsCard.tsx");
+  const policyRuntime = source("./public-policy-runtime.ts");
+
+  assert.match(reviewRecord, /APPROVED FOR CONFIGURATION-GATED PAID-BETA ACTIVATION/);
+  assert.match(reviewRecord, /2026-09-04-paid-beta-1/);
+  assert.match(reviewRecord, /CMS Admin/);
+  assert.match(reviewRecord, /Policy activation is intentionally refused while the legal operator value is blank/);
+  assert.match(reviewRecord, /does \*\*not\*\* rewrite an accepted policy version/);
+  assert.match(reviewRecord, /new policy version\/effective date/);
+  assert.match(reviewRecord, /platform contact continues through `\/support`/);
+  assert.match(reviewRecord, /SMS\/OTP\/transactional SMS remain disabled unless/);
+  assert.match(reviewRecord, /final #202 production GO checklist/);
+
+  assert.match(settingsCard, /Legal operator name/);
+  assert.match(settingsCard, /Site \/ brand name/);
+  assert.match(configurationRoute, /update_identity/);
+  assert.match(configurationRoute, /activate_policy/);
+  assert.match(policyRuntime, /legal_operator_name_snapshot/);
+  assert.match(policyRuntime, /site_name_snapshot/);
 });
