@@ -52,7 +52,6 @@ export async function POST(req: Request) {
     supabaseAdmin = billingCheckoutRouteDeps.getSupabaseAdminClient();
     const authorized = await billingCheckoutRouteDeps.canManageStore(supabaseAdmin, storeId, user.id, [
       "owner",
-      "admin",
     ]);
     if (!authorized) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
