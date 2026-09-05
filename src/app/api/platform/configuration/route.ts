@@ -29,7 +29,7 @@ function safeProviderConnection(row: any) {
 }
 
 async function loadConfiguration(supabaseAdmin: any) {
-  const [identityRes, policyRes, availabilityRes, messagingRes, connectionRes] = await Promise.all([
+  const [identityRes, policyRes, jurisdictionRes, availabilityRes, messagingRes, connectionRes] = await Promise.all([
     supabaseAdmin
       .from("platform_identity_config")
       .select("site_name, legal_operator_name, updated_at")
@@ -38,6 +38,11 @@ async function loadConfiguration(supabaseAdmin: any) {
     supabaseAdmin
       .from("platform_policy_config")
       .select("policy_version, binding, acceptance_text, effective_at, site_name_snapshot, legal_operator_name_snapshot, updated_at")
+      .eq("singleton", true)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("platform_jurisdiction_enforcement_config")
+      .select("country_enforcement_enabled, updated_at, updated_by")
       .eq("singleton", true)
       .maybeSingle(),
     supabaseAdmin
@@ -57,12 +62,13 @@ async function loadConfiguration(supabaseAdmin: any) {
       .maybeSingle(),
   ]);
 
-  for (const result of [identityRes, policyRes, availabilityRes, messagingRes, connectionRes]) {
+  for (const result of [identityRes, policyRes, jurisdictionRes, availabilityRes, messagingRes, connectionRes]) {
     if (result.error) throw result.error;
   }
 
   const identity = identityRes.data;
   const policy = policyRes.data;
+  const jurisdiction = jurisdictionRes.data;
   const availability = availabilityRes.data;
   const messaging = messagingRes.data;
   const connection = safeProviderConnection(connectionRes.data);
@@ -85,6 +91,10 @@ async function loadConfiguration(supabaseAdmin: any) {
         policy?.binding === true &&
         (policy?.site_name_snapshot !== identity?.site_name ||
           policy?.legal_operator_name_snapshot !== identity?.legal_operator_name),
+    },
+    jurisdiction: {
+      countryEnforcementEnabled: jurisdiction?.country_enforcement_enabled === true,
+      updatedAt: jurisdiction?.updated_at ?? null,
     },
     availability: {
       monitoringStartedAt: availability?.monitoring_started_at ?? null,
@@ -152,6 +162,35 @@ export async function PATCH(req: Request) {
       revalidateTag("platform-runtime-identity", "max");
       revalidateTag("public-policy-runtime", "max");
       revalidatePath("/", "layout");
+    } else if (action === "set_jurisdiction_enforcement") {
+      if (typeof body?.enabled !== "boolean") {
+        return NextResponse.json({ error: "Jurisdiction enforcement state is required" }, { status: 400 });
+      }
+      const enabled = body.enabled;
+      const currentConfiguration = await loadConfiguration(guard.supabaseAdmin);
+      if (enabled && !currentConfiguration.identity.legalOperatorName.trim()) {
+        return NextResponse.json({ error: "Legal operator identity is required before jurisdiction enforcement" }, { status: 409 });
+      }
+      const { error } = await guard.supabaseAdmin
+        .from("platform_jurisdiction_enforcement_config")
+        .update({
+          country_enforcement_enabled: enabled,
+          updated_at: new Date().toISOString(),
+          updated_by: guard.userId,
+        })
+        .eq("singleton", true);
+      if (error) throw error;
+      await writePlatformConfigurationAudit(
+        guard.supabaseAdmin,
+        actor,
+        "platform_jurisdiction_enforcement_updated",
+        "platform_jurisdiction_enforcement",
+        "singleton",
+        {
+          previous_country_enforcement_enabled: currentConfiguration.jurisdiction.countryEnforcementEnabled,
+          country_enforcement_enabled: enabled,
+        },
+      );
     } else if (action === "configure_sms_provider") {
       const provider = typeof body?.provider === "string" ? body.provider.trim().toLowerCase() : "greenweb";
       const credential = typeof body?.credential === "string" ? body.credential.trim() : "";
@@ -210,6 +249,16 @@ export async function PATCH(req: Request) {
         transactional_enabled: transactionalEnabled,
       });
     } else if (action === "activate_policy") {
+      const currentConfiguration = await loadConfiguration(guard.supabaseAdmin);
+      if (!currentConfiguration.identity.legalOperatorName.trim()) {
+        return NextResponse.json({ error: "Legal operator identity is required before policy activation" }, { status: 409 });
+      }
+      if (!currentConfiguration.jurisdiction.countryEnforcementEnabled) {
+        return NextResponse.json({ error: "Jurisdiction enforcement must be enabled before policy activation" }, { status: 409 });
+      }
+      if (!currentConfiguration.availability.monitoringStartedAt) {
+        return NextResponse.json({ error: "Availability monitoring must be started before policy activation" }, { status: 409 });
+      }
       const effectiveAt = typeof body?.effectiveAt === "string" && body.effectiveAt.trim()
         ? new Date(body.effectiveAt).toISOString()
         : new Date().toISOString();
@@ -244,7 +293,7 @@ export async function PATCH(req: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Platform configuration update failed";
     console.error("Platform configuration update error:", message);
-    const safeMessage = /site name|legal operator|policy version|SMS provider|effective_at/i.test(message)
+    const safeMessage = /site name|legal operator|policy version|jurisdiction enforcement|availability monitoring|SMS provider|effective_at/i.test(message)
       ? message
       : "Failed to update platform configuration";
     return NextResponse.json({ error: safeMessage }, { status: 500 });

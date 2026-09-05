@@ -29,6 +29,10 @@ type Configuration = {
     legalOperatorNameSnapshot: string | null;
     reissueRequired: boolean;
   };
+  jurisdiction: {
+    countryEnforcementEnabled: boolean;
+    updatedAt: string | null;
+  };
   availability: {
     monitoringStartedAt: string | null;
     commitmentPercent: number;
@@ -133,6 +137,16 @@ export function PlatformIdentityMessagingSettingsCard() {
   };
 
   const providerReady = config?.messaging.provider.configured && config.messaging.provider.verificationStatus === "verified";
+  const legalOperatorReady = Boolean(config?.identity.legalOperatorName.trim());
+  const jurisdictionReady = config?.jurisdiction.countryEnforcementEnabled === true;
+  const monitoringReady = Boolean(config?.availability.monitoringStartedAt);
+  const policyActivationBlockedReason = !legalOperatorReady
+    ? "Add the real legal operator name before policy activation."
+    : !jurisdictionReady
+      ? "Enable jurisdiction enforcement before policy activation."
+      : !monitoringReady
+        ? "Start 99% Core Service monitoring before policy activation."
+        : null;
   const balance = useMemo(() => {
     const value = config?.messaging.provider.metadata?.balance;
     return value == null ? null : String(value);
@@ -191,6 +205,41 @@ export function PlatformIdentityMessagingSettingsCard() {
           ) : null}
         </section>
 
+        <section className="space-y-3 rounded-xl border border-border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold">Jurisdiction enforcement</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Require the merchant country/regime consent boundary before a binding paid-beta policy can be activated.</p>
+            </div>
+            <Badge variant="outline">{jurisdictionReady ? "Enabled" : "Off"}</Badge>
+          </div>
+          <label className="flex items-center justify-between gap-4 rounded-lg border border-border/70 p-3 text-sm">
+            <span>
+              <span className="block font-medium">Enforce country/regime consent</span>
+              <span className="mt-1 block text-xs text-muted-foreground">Disabling remains available as a fail-closed rollback and immediately blocks paid-billing readiness.</span>
+            </span>
+            <Switch
+              checked={jurisdictionReady}
+              disabled={working !== null || (!legalOperatorReady && !jurisdictionReady)}
+              onCheckedChange={(checked) => void mutate("set_jurisdiction_enforcement", { enabled: checked })}
+            />
+          </label>
+          {!legalOperatorReady && !jurisdictionReady ? (
+            <p className="text-xs text-amber-700 dark:text-amber-300">Save the real legal operator identity before enabling jurisdiction enforcement.</p>
+          ) : null}
+        </section>
+
+        <section className="space-y-3 rounded-xl border border-border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold">99% Core Service monitoring</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Five-minute canonical app + production database probes. Missing completed slots count as downtime.</p>
+            </div>
+            <Badge variant="outline">{config.availability.monitoringStartedAt ? "Active" : "Not started"}</Badge>
+          </div>
+          <Button type="button" variant="outline" disabled={working !== null || Boolean(config.availability.monitoringStartedAt)} onClick={() => void mutate("activate_availability")}>Start 99% monitoring</Button>
+        </section>
+
         <section className="space-y-4 rounded-xl border border-border p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -199,13 +248,13 @@ export function PlatformIdentityMessagingSettingsCard() {
             </div>
             <Badge variant="outline">{config.policy.binding ? `Binding: ${config.policy.policyVersion}` : "Review-only"}</Badge>
           </div>
-          {!config.identity.legalOperatorName.trim() ? (
-            <p className="text-xs text-amber-700 dark:text-amber-300">Add the real legal operator name before activation. The database refuses activation while it is blank.</p>
+          {policyActivationBlockedReason ? (
+            <p className="text-xs text-amber-700 dark:text-amber-300">{policyActivationBlockedReason}</p>
           ) : null}
           <Button
             type="button"
             variant={config.policy.binding && config.policy.policyVersion === POLICY_VERSION ? "outline" : "default"}
-            disabled={working !== null || !config.identity.legalOperatorName.trim() || (config.policy.binding && config.policy.policyVersion === POLICY_VERSION)}
+            disabled={working !== null || Boolean(policyActivationBlockedReason) || (config.policy.binding && config.policy.policyVersion === POLICY_VERSION)}
             onClick={() => void mutate("activate_policy")}
           >
             {working === "activate_policy" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
@@ -251,17 +300,6 @@ export function PlatformIdentityMessagingSettingsCard() {
             <label className="flex items-center justify-between gap-3 text-sm"><span>Platform notifications</span><Switch checked={config.messaging.transactionalEnabled} disabled={!providerReady || !config.messaging.smsEnabled || working !== null} onCheckedChange={(checked) => void mutate("set_messaging", { provider: "greenweb", smsEnabled: true, otpEnabled: config.messaging.otpEnabled, transactionalEnabled: checked })} /></label>
           </div>
           <p className="text-xs text-muted-foreground">Enabling Login / OTP here only marks provider readiness. Firebase phone login remains active until the Supabase Send SMS Auth Hook is separately configured and passes an end-to-end OTP test.</p>
-        </section>
-
-        <section className="space-y-3 rounded-xl border border-border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold">99% Core Service monitoring</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Five-minute canonical app + production database probes. Missing completed slots count as downtime.</p>
-            </div>
-            <Badge variant="outline">{config.availability.monitoringStartedAt ? "Active" : "Not started"}</Badge>
-          </div>
-          <Button type="button" variant="outline" disabled={working !== null || Boolean(config.availability.monitoringStartedAt)} onClick={() => void mutate("activate_availability")}>Start 99% monitoring</Button>
         </section>
       </CardContent>
     </Card>
