@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-04T15:36:36+00:00",
+  "captured_at": "2026-09-05T11:03:09.567694+00:00",
   "source": "Supabase production migration ledger, canonicalized by migration name",
   "project_ref": "sndqmhxqvlpcogcnklss",
   "applied_names": [
@@ -99,6 +99,7 @@
     "provider_plugin_ids",
     "reconcile_jurisdiction_consent_order_204",
     "reconcile_latest_paid_invoice_subscriptions",
+    "reconcile_storefront_routine_acl_261_262",
     "recreate_cms_features",
     "reduce_overlapping_commerce_policies",
     "reduce_public_role_privileges",
