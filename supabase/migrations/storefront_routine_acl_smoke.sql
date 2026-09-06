@@ -27,13 +27,29 @@ SELECT pg_temp.assert_true(
   'store-scoped coupon helper must remain available to storefront callers'
 );
 SELECT pg_temp.assert_true(
-  NOT has_function_privilege('anon', 'public.validate_coupon(text,integer)', 'EXECUTE')
-  AND NOT has_function_privilege('authenticated', 'public.validate_coupon(text,integer)', 'EXECUTE'),
-  'legacy cross-store coupon helper must not be browser executable'
+  to_regprocedure('public.validate_coupon(text,integer)') IS NULL
+  OR (
+    NOT has_function_privilege(
+      'anon',
+      to_regprocedure('public.validate_coupon(text,integer)')::oid,
+      'EXECUTE'
+    )
+    AND NOT has_function_privilege(
+      'authenticated',
+      to_regprocedure('public.validate_coupon(text,integer)')::oid,
+      'EXECUTE'
+    )
+  ),
+  'legacy cross-store coupon helper must be absent or non-browser-executable'
 );
 SELECT pg_temp.assert_true(
-  has_function_privilege('service_role', 'public.validate_coupon(text,integer)', 'EXECUTE'),
-  'trusted service-role legacy compatibility must remain intact'
+  to_regprocedure('public.validate_coupon(text,integer)') IS NULL
+  OR has_function_privilege(
+    'service_role',
+    to_regprocedure('public.validate_coupon(text,integer)')::oid,
+    'EXECUTE'
+  ),
+  'when the legacy cross-store coupon helper exists, trusted service-role compatibility must remain intact'
 );
 
 -- Keep this ACL/RLS smoke independent of eventual paid-beta activation state.

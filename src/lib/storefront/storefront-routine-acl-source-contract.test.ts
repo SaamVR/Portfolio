@@ -23,7 +23,15 @@ test("storefront routine ACL reconciliation preserves only intended public entry
   );
   assert.match(
     migration,
-    /REVOKE EXECUTE ON FUNCTION public\.validate_coupon\(text, integer\) FROM PUBLIC, anon, authenticated;/,
+    /if to_regprocedure\('public\.validate_coupon\(text,integer\)'\) is not null then/,
+  );
+  assert.match(
+    migration,
+    /execute 'revoke execute on function public\.validate_coupon\(text, integer\) from public, anon, authenticated';/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /^\s*revoke execute on function public\.validate_coupon\(text, integer\) from public, anon, authenticated;/im,
   );
   assert.doesNotMatch(
     migration,
