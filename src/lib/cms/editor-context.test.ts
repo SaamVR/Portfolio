@@ -16,27 +16,59 @@ test("editor context generation advances only when the active store changes", ()
 });
 
 test("CMS editor async paths reject stale store context before mutating shared UI", () => {
-  const source = readFileSync(path.resolve(root, "src/views/admin/CmsPagesManager.tsx"), "utf8");
-  const loadStore = source.slice(source.indexOf("const loadStore = useCallback"), source.indexOf("const currentSnapshot"));
-  const sharedLibraries = source.slice(source.indexOf("const loadSharedLibraries"), source.indexOf("void loadSharedLibraries"));
-  const loadRevisionsIndex = source.indexOf("const loadRevisions");
-  const revisionsStart = source.lastIndexOf("const context = captureEditorContext()", loadRevisionsIndex);
-  const revisionsEnd = source.indexOf("void loadRevisions", loadRevisionsIndex);
-  assert.notEqual(loadRevisionsIndex, -1);
-  assert.notEqual(revisionsStart, -1);
-  assert.notEqual(revisionsEnd, -1);
-  const revisions = source.slice(revisionsStart, revisionsEnd);
-  const bootstrap = source.slice(source.indexOf("const bootstrapDefaultStore"), source.indexOf("const addPage"));
-  const save = source.slice(source.indexOf("const saveAll"), source.indexOf("const restoreRevision"));
+  const managerSource = readFileSync(path.resolve(root, "src/views/admin/CmsPagesManager.tsx"), "utf8");
+  const controllerSource = readFileSync(path.resolve(root, "src/lib/cms/editor-data-controller.ts"), "utf8");
 
-  assert.match(source, /editorContextRef\.current = advanceEditorContext/);
-  assert.match(loadStore, /loadStoreRequestRef\.current === requestId && isEditorContextCurrent\(context\)/);
-  assert.match(loadStore, /\.eq\("id", storeId\)/);
-  assert.match(sharedLibraries, /if \(!isEditorContextCurrent\(context\)\) return;/);
-  assert.match(revisions, /revisionsRequestRef\.current === requestId/);
-  assert.match(revisions, /selectedPageIdRef\.current === pageId/);
-  assert.match(revisions, /isEditorContextCurrent\(context\)/);
-  assert.match(revisions, /if \(!isCurrentRevisionLoad\(\)\) return;/);
+  const workspaceRead = controllerSource.slice(
+    controllerSource.indexOf("const reloadWorkspace = useCallback"),
+    controllerSource.indexOf("const reloadSharedLibraries = useCallback"),
+  );
+  const sharedLibraries = controllerSource.slice(
+    controllerSource.indexOf("const reloadSharedLibraries = useCallback"),
+    controllerSource.indexOf("const reloadRevisions = useCallback"),
+  );
+  const revisions = controllerSource.slice(
+    controllerSource.indexOf("const reloadRevisions = useCallback"),
+    controllerSource.indexOf("useEffect(() => {", controllerSource.indexOf("const reloadRevisions = useCallback")),
+  );
+  const bootstrap = managerSource.slice(
+    managerSource.indexOf("const bootstrapDefaultStore"),
+    managerSource.indexOf("const addPage"),
+  );
+  const save = managerSource.slice(
+    managerSource.indexOf("const saveAll"),
+    managerSource.indexOf("const restoreRevision"),
+  );
+
+  assert.notEqual(workspaceRead.length, 0);
+  assert.notEqual(sharedLibraries.length, 0);
+  assert.notEqual(revisions.length, 0);
+  assert.notEqual(bootstrap.length, 0);
+  assert.notEqual(save.length, 0);
+
+  assert.match(controllerSource, /editorContextRef\.current = advanceEditorContext/);
+  assert.match(workspaceRead, /const requestId = \+\+workspaceRequestRef\.current/);
+  assert.match(workspaceRead, /currentContext: editorContextRef\.current/);
+  assert.match(workspaceRead, /capturedContext: context/);
+  assert.match(workspaceRead, /\.eq\("id", storeId\)/);
+  assert.match(workspaceRead, /if \(!isCurrent\(\)\) return;/);
+
+  assert.match(sharedLibraries, /const requestId = \+\+sharedLibraryRequestRef\.current/);
+  assert.match(sharedLibraries, /currentContext: editorContextRef\.current/);
+  assert.match(sharedLibraries, /capturedContext: context/);
+  assert.match(sharedLibraries, /if \(!isCurrent\(\)\) return;/);
+
+  assert.match(revisions, /const requestId = \+\+revisionRequestRef\.current/);
+  assert.match(revisions, /currentPageId: selectedPageIdRef\.current/);
+  assert.match(revisions, /pageId,/);
+  assert.match(revisions, /currentContext: editorContextRef\.current/);
+  assert.match(revisions, /capturedContext: context/);
+  assert.match(revisions, /if \(!isCurrent\(\)\) return;/);
+
+  assert.match(managerSource, /useCmsEditorDataController\(\{/);
+  assert.match(managerSource, /reloadWorkspace: loadStore/);
+  assert.doesNotMatch(managerSource, /const loadStore = useCallback/);
+  assert.doesNotMatch(managerSource, /const loadSharedLibraries/);
 
   assert.match(bootstrap, /const originStoreId = context\.storeId/);
   assert.doesNotMatch(bootstrap, /activeStoreId as string/);

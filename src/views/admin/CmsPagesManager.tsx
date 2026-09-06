@@ -66,7 +66,7 @@ import {
 } from "@/lib/cms/default-store";
 import { defaultStore } from "@/lib/cms/default-store";
 import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
-import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, getCmsBlockRegistryItem, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { createRegistryDefaultBlock, filterBlockRegistryForTemplateSeed, getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyTemplateToPage, cmsPageTemplates, instantiateTemplate } from "@/lib/cms/page-templates";
 import { storeSchema, type Store, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
@@ -83,11 +83,11 @@ import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { fallbackStorefrontTemplateSeeds, resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
-import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
-import { advanceEditorContext, editorContextMatches, type EditorContextToken } from "@/lib/cms/editor-context";
+import { reconcileCmsEditorSelectedPageId, useCmsEditorDataController, type CmsEditorWorkspaceHydrationInput } from "@/lib/cms/editor-data-controller";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -401,22 +401,17 @@ export default function CmsPagesManager() {
   const [store, setStore] = useState<Store | null>(null);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [selectedBlockId, setSelectedBlockId] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
-  const [blockRegistry, setBlockRegistry] = useState<CmsBlockRegistryItem[]>(fallbackBlockRegistry);
-  const [storeTemplateSeeds, setStoreTemplateSeeds] = useState<StorefrontTemplateSeedDefinition[]>(fallbackStorefrontTemplateSeeds);
-  const [themePackages, setThemePackages] = useState<ThemePackageDefinition[]>(fallbackThemePackages);
+  const storeTemplateSeeds = fallbackStorefrontTemplateSeeds;
   const [newPageTemplate, setNewPageTemplate] = useState(cmsPageTemplates[0]?.id ?? "landing");
   const [activeTemplateId, setActiveTemplateId] = useState(cmsPageTemplates[0]?.id ?? "landing");
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
   const [smartPolishSummary, setSmartPolishSummary] = useState<SmartPolishSummary | null>(null);
-  const [revisions, setRevisions] = useState<Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: StorePageBlock[] }>>([]);
-  const [loadingRevisions, setLoadingRevisions] = useState(false);
   const [activeAdvancedCodePanel, setActiveAdvancedCodePanel] = useState<AdvancedCodePanel>("page-json");
   const [advancedPageJsonDraft, setAdvancedPageJsonDraft] = useState("");
   const [advancedSelectedBlockJsonDraft, setAdvancedSelectedBlockJsonDraft] = useState("");
@@ -442,20 +437,42 @@ export default function CmsPagesManager() {
   );
   const [draggedAdvancedBlockId, setDraggedAdvancedBlockId] = useState<string | null>(null);
   const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
-  const editorContextRef = useRef<EditorContextToken>({ storeId: activeStoreId, generation: 0 });
-  editorContextRef.current = advanceEditorContext(editorContextRef.current, activeStoreId);
-  const loadStoreRequestRef = useRef(0);
-  const revisionsRequestRef = useRef(0);
   const selectedPageIdRef = useRef(selectedPageId);
   selectedPageIdRef.current = selectedPageId;
-  const captureEditorContext = useCallback((): EditorContextToken => ({ ...editorContextRef.current }), []);
-  const isEditorContextCurrent = useCallback(
-    (context: EditorContextToken) => editorContextMatches(editorContextRef.current, context),
-    [],
-  );
   const requestedPageId = searchParams.get("page");
   const requestedBlockId = searchParams.get("block") ?? "";
   const returnTo = searchParams.get("returnTo");
+  const hydrateCmsEditorStore = useCallback((input: CmsEditorWorkspaceHydrationInput) => mapRecordsToStore(
+    input.store,
+    input.businessProfile,
+    input.theme,
+    input.pages,
+    input.blocks,
+    input.siteSettings,
+    fallbackStorefrontTemplateSeeds,
+    input.themePackages,
+  ), []);
+  const {
+    workspace: loadedWorkspace,
+    loading,
+    workspaceError,
+    blockRegistry,
+    themePackages,
+    revisions,
+    loadingRevisions,
+    revisionError,
+    reloadWorkspace: loadStore,
+    reloadRevisions,
+    captureEditorContext,
+    isEditorContextCurrent,
+  } = useCmsEditorDataController({
+    client: supabase,
+    activeStoreId,
+    enabled: role === "admin",
+    selectedPageId,
+    requestedPageId,
+    hydrateStore: hydrateCmsEditorStore,
+  });
   const builderMode = location.pathname.includes("/advanced")
     ? "advanced"
     : location.pathname.includes("/basic")
@@ -553,139 +570,37 @@ export default function CmsPagesManager() {
     });
   }, []);
 
-  const loadStore = useCallback(async () => {
-    const context = captureEditorContext();
-    const requestId = ++loadStoreRequestRef.current;
-    const isCurrentLoad = () =>
-      loadStoreRequestRef.current === requestId && isEditorContextCurrent(context);
+  useEffect(() => {
+    if (!loadedWorkspace) return;
 
-    if (isCurrentLoad()) {
-      setLoading(true);
-    }
-
-    const storeId = context.storeId;
-    if (!storeId) {
-      if (isCurrentLoad()) {
-        commitStoreChange(null, { trackHistory: false, resetHistory: true });
-        setInstalledThemePackageVersion(null);
-        setSelectedPageId("");
-        setPersistedSnapshot("");
-        setRecoverableDraft(null);
-        setLastDraftSavedAt(null);
-        setLoading(false);
-      }
+    if (!loadedWorkspace.store) {
+      commitStoreChange(null, { trackHistory: false, resetHistory: true });
+      setInstalledThemePackageVersion(null);
+      setSelectedPageId("");
+      setSelectedBlockId("");
+      setStoreTemplateSeedId("general-catalog");
+      setPersistedSnapshot("");
+      setRecoverableDraft(null);
+      setLastDraftSavedAt(null);
       return;
     }
 
-    try {
-      const storeResponse = await supabase
-        .from("stores")
-        .select("id, name, slug, custom_domain, description, currency_code, locale, is_published, store_type")
-        .eq("id", storeId)
-        .maybeSingle();
-
-      if (!isCurrentLoad()) return;
-
-      const storeRecord = storeResponse.data as StoreRecord | null;
-
-      if (!storeRecord) {
-        commitStoreChange(null, { trackHistory: false, resetHistory: true });
-        setInstalledThemePackageVersion(null);
-        setSelectedPageId("");
-        setPersistedSnapshot("");
-        setRecoverableDraft(null);
-        setLastDraftSavedAt(null);
-        return;
-      }
-
-      const [
-        businessProfileResponse,
-        themeResponse,
-        pagesResponse,
-        blocksResponse,
-        siteSettingsResponse,
-        loadedThemePackages,
-      ] = await Promise.all([
-        supabase
-          .from("store_business_profiles")
-          .select("template_id, business_family, catalog_mode")
-          .eq("store_id", storeRecord.id)
-          .maybeSingle(),
-        supabase.from("store_themes").select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens").eq("store_id", storeRecord.id).maybeSingle(),
-        supabase.from("store_pages").select("id, slug, title, seo_title, seo_description, is_homepage").eq("store_id", storeRecord.id).order("slug"),
-        supabase.from("store_page_blocks").select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css").eq("store_id", storeRecord.id).order("sort_order"),
-        supabase.from("site_settings").select("key, value").eq("store_id", storeRecord.id).in("key", ["hero_section", "promo_banner", "home_featured", "home_categories", "storefront_profile"]),
-        loadThemePackages(supabase, storeRecord.id),
-      ]);
-
-      if (!isCurrentLoad()) return;
-
-      const businessProfile = (businessProfileResponse.data as BusinessProfileRecord | null) ?? null;
-      const parsedStore = mapRecordsToStore(
-        storeRecord,
-        businessProfile,
-        (themeResponse.data as ThemeRecord | null) ?? null,
-        (pagesResponse.data as PageRecord[] | null) ?? [],
-        (blocksResponse.data as BlockRecord[] | null) ?? [],
-        (siteSettingsResponse.data as SiteSettingRecord[] | null) ?? [],
-        fallbackStorefrontTemplateSeeds,
-        loadedThemePackages,
-      );
-
-      if (!isCurrentLoad()) return;
-
-      setStoreTemplateSeeds(fallbackStorefrontTemplateSeeds);
-      setThemePackages(loadedThemePackages);
-      const storefrontProfileSetting = (Array.isArray(siteSettingsResponse.data)
-        ? (siteSettingsResponse.data as SiteSettingRecord[]).find((entry) => entry.key === "storefront_profile")?.value
-        : null) as Record<string, unknown> | null;
-      setStoreTemplateSeedId(
-        resolveStorefrontTemplateProfile(storefrontProfileSetting?.template_id, {
-          templateSeedId: businessProfile?.template_id ?? storeRecord.store_type ?? "general-catalog",
-          productVisibility: typeof storefrontProfileSetting?.product_visibility === "string"
-            ? storefrontProfileSetting.product_visibility
-            : null,
-        }).templateSeedId,
-      );
-      commitStoreChange(parsedStore, { trackHistory: false, resetHistory: true });
-      setInstalledThemePackageVersion(typeof (themeResponse.data as ThemeRecord | null)?.theme_package_version === "number"
-        ? (themeResponse.data as ThemeRecord).theme_package_version ?? null
-        : null);
-      setPersistedSnapshot(serializeStoreDraft(parsedStore));
-      setLastDraftSavedAt(null);
-      setSelectedPageId((current) => {
-        if (requestedPageId && parsedStore.pages.some((page) => page.id === requestedPageId)) {
-          return requestedPageId;
-        }
-        return current || parsedStore.pages[0]?.id || "";
-      });
-      setSelectedBlockId(requestedBlockId);
-    } catch (error) {
-      if (!isCurrentLoad()) return;
-      console.error("Failed to load CMS store workspace:", error);
-      toast.error("Failed to refresh the page builder workspace. Please try again.");
-      commitStoreChange(null, { trackHistory: false, resetHistory: true });
-      setInstalledThemePackageVersion(null);
-    } finally {
-      if (isCurrentLoad()) {
-        setLoading(false);
-      }
-    }
-  }, [captureEditorContext, commitStoreChange, isEditorContextCurrent, requestedBlockId, requestedPageId]);
+    const parsedStore = loadedWorkspace.store;
+    commitStoreChange(parsedStore, { trackHistory: false, resetHistory: true });
+    setStoreTemplateSeedId(loadedWorkspace.storeTemplateSeedId);
+    setInstalledThemePackageVersion(loadedWorkspace.installedThemePackageVersion);
+    setPersistedSnapshot(serializeStoreDraft(parsedStore));
+    setLastDraftSavedAt(null);
+    setSelectedPageId(loadedWorkspace.selectedPageId);
+  }, [commitStoreChange, loadedWorkspace]);
 
   const currentSnapshot = useMemo(() => (store ? serializeStoreDraft(store) : ""), [store]);
   const hasUnsavedChanges = Boolean(store && persistedSnapshot && currentSnapshot !== persistedSnapshot);
 
   useEffect(() => {
-    if (role !== "admin") return;
-    void loadStore();
-  }, [activeStoreId, loadStore, role]);
-
-  useEffect(() => {
+    commitStoreChange(null, { trackHistory: false, resetHistory: true });
     setSelectedPageId("");
     setSelectedBlockId("");
-    setRevisions([]);
-    setLoadingRevisions(false);
     setRevisionLabel("");
     setIsMobileSettingsOpen(false);
     setPreviewViewport("desktop");
@@ -698,24 +613,7 @@ export default function CmsPagesManager() {
     setIsMobilePreviewOpen(false);
     setBootstrapping(false);
     setSaving(false);
-  }, [activeStoreId]);
-
-  useEffect(() => {
-    if (role !== "admin") return;
-    const context = captureEditorContext();
-
-    const loadSharedLibraries = async () => {
-      const [registry, loadedThemePackages] = await Promise.all([
-        loadBlockRegistry(supabase),
-        loadThemePackages(supabase, context.storeId),
-      ]);
-      if (!isEditorContextCurrent(context)) return;
-      setBlockRegistry(registry);
-      setThemePackages(loadedThemePackages);
-    };
-
-    void loadSharedLibraries();
-  }, [activeStoreId, captureEditorContext, isEditorContextCurrent, role]);
+  }, [activeStoreId, commitStoreChange]);
 
   useEffect(() => {
     if (!availablePageTemplates.some((template) => template.id === newPageTemplate)) {
@@ -792,13 +690,10 @@ export default function CmsPagesManager() {
   useEffect(() => {
     if (!store) return;
 
-    if (requestedPageId && store.pages.some((page) => page.id === requestedPageId) && requestedPageId !== selectedPageId) {
-      setSelectedPageId(requestedPageId);
+    const reconciledPageId = reconcileCmsEditorSelectedPageId(store.pages, requestedPageId, selectedPageId);
+    if (reconciledPageId !== selectedPageId) {
+      setSelectedPageId(reconciledPageId);
       return;
-    }
-
-    if (!store.pages.some((page) => page.id === selectedPageId)) {
-      setSelectedPageId(store.pages.find((page) => page.isHomepage)?.id ?? store.pages[0]?.id ?? "");
     }
 
     setSelectedBlockId(requestedBlockId);
@@ -830,47 +725,6 @@ export default function CmsPagesManager() {
       setSelectedBlockId(selectedPage.blocks[0]?.id ?? "");
     }
   }, [selectedBlockId, selectedPage]);
-
-  useEffect(() => {
-    if (!selectedPageId) {
-      setRevisions([]);
-      setLoadingRevisions(false);
-      return;
-    }
-
-    const context = captureEditorContext();
-    const pageId = selectedPageId;
-    const requestId = ++revisionsRequestRef.current;
-    const isCurrentRevisionLoad = () =>
-      revisionsRequestRef.current === requestId
-      && selectedPageIdRef.current === pageId
-      && isEditorContextCurrent(context);
-
-    const loadRevisions = async () => {
-      if (isCurrentRevisionLoad()) {
-        setLoadingRevisions(true);
-      }
-      const { data } = await supabase
-        .from("store_page_revisions")
-        .select("id, created_at, revision_label, blocks_snapshot")
-        .eq("page_id", pageId)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
-      if (!isCurrentRevisionLoad()) return;
-      setRevisions(
-        (((data as Array<{ id: string; created_at: string; revision_label: string; blocks_snapshot: unknown[] }> | null) ?? [])
-          .map((revision) => ({
-            ...revision,
-            blocks_snapshot: sanitizeStoreBlocks(Array.isArray(revision.blocks_snapshot) ? revision.blocks_snapshot : []),
-          }))
-          .filter((revision) => revision.blocks_snapshot.length > 0)),
-      );
-      setLoadingRevisions(false);
-    };
-
-    void loadRevisions();
-  }, [captureEditorContext, isEditorContextCurrent, selectedPageId]);
 
   const updateSelectedPage = (updater: (page: StorePage) => StorePage) => {
     commitStoreChange((current) => {
@@ -1896,12 +1750,12 @@ export default function CmsPagesManager() {
     );
   }
 
-  if (loading && !store) {
+  if ((loading || workspaceError) && !store) {
     return (
       <AdminRecoveryPanel
-        title="Loading Page Builder"
-        description="The storefront workspace is being restored for the active store."
-        loadingLabel="Rebuilding page, block, and theme state."
+        title={workspaceError ? "Page Builder unavailable" : "Loading Page Builder"}
+        description={workspaceError ?? "The storefront workspace is being restored for the active store."}
+        loadingLabel={workspaceError ? "The active store was not replaced with partial or stale data." : "Rebuilding page, block, and theme state."}
         retryLabel="Reload Page Builder"
         onRetry={() => void loadStore()}
       />
@@ -5156,6 +5010,14 @@ export default function CmsPagesManager() {
                     <CardDescription>Recent saved snapshots for this page. Restore loads the snapshot back into the editor.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {revisionError ? (
+                      <div className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">{revisionError}</p>
+                        <Button type="button" variant="outline" size="sm" onClick={() => void reloadRevisions()}>
+                          Retry revision history
+                        </Button>
+                      </div>
+                    ) : null}
                     {loadingRevisions ? (
                       <div className="flex justify-center py-6">
                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
