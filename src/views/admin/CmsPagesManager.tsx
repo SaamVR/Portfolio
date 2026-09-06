@@ -85,6 +85,7 @@ import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTempl
 import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
+import { CmsEditorPreviewSheet } from "@/components/admin/CmsEditorPreviewSheet";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import { reconcileCmsEditorSelectedPageId, useCmsEditorDataController, type CmsEditorWorkspaceHydrationInput } from "@/lib/cms/editor-data-controller";
 import {
@@ -93,6 +94,12 @@ import {
   type RecoverableDraft,
   type StoreLayoutPackage,
 } from "@/lib/cms/editor-command-controller";
+import {
+  resolveCmsEditorRenderBranch,
+  useCmsEditorPresentationController,
+  type CmsEditorAdvancedCodePanel as AdvancedCodePanel,
+  type CmsEditorBasicGuideStep as BasicGuideStep,
+} from "@/lib/cms/editor-presentation-controller";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TemplateGallery } from "./TemplateGallery";
@@ -207,8 +214,6 @@ type BusinessProfileRecord = {
   catalog_mode: string | null;
 };
 
-type BasicGuideStep = "basics" | "homepage" | "product" | "checkout" | "custom" | "launch";
-
 type SmartPolishSummary = {
   before: {
     aesthetic: Store["theme"]["aesthetic"] | "unset";
@@ -223,8 +228,6 @@ type SmartPolishSummary = {
     intensity: NonNullable<Store["theme"]["effects"]>["intensity"];
   };
 };
-
-type AdvancedCodePanel = "page-json" | "block-json" | "theme-css" | "layout";
 
 function serializeStoreDraft(store: Store): string {
   return JSON.stringify(store);
@@ -351,15 +354,12 @@ export default function CmsPagesManager() {
   const [selectedPageId, setSelectedPageId] = useState("");
   const [selectedBlockId, setSelectedBlockId] = useState("");
   const [bootstrapping, setBootstrapping] = useState(false);
-  const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
   const storeTemplateSeeds = fallbackStorefrontTemplateSeeds;
   const [newPageTemplate, setNewPageTemplate] = useState(cmsPageTemplates[0]?.id ?? "landing");
   const [activeTemplateId, setActiveTemplateId] = useState(cmsPageTemplates[0]?.id ?? "landing");
-  const [previewViewport, setPreviewViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [revisionLabel, setRevisionLabel] = useState("");
   const [smartPolishSummary, setSmartPolishSummary] = useState<SmartPolishSummary | null>(null);
-  const [activeAdvancedCodePanel, setActiveAdvancedCodePanel] = useState<AdvancedCodePanel>("page-json");
   const [advancedPageJsonDraft, setAdvancedPageJsonDraft] = useState("");
   const [advancedSelectedBlockJsonDraft, setAdvancedSelectedBlockJsonDraft] = useState("");
   const [advancedThemeCssDraft, setAdvancedThemeCssDraft] = useState("");
@@ -368,21 +368,44 @@ export default function CmsPagesManager() {
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
   const [undoStack, setUndoStack] = useState<Store[]>([]);
   const [redoStack, setRedoStack] = useState<Store[]>([]);
-  const [basicGuideStep, setBasicGuideStep] = useState<BasicGuideStep>("basics");
-  const [isActionDockMinimized, setIsActionDockMinimized] = useState(false);
-  const [desktopPreviewMode, setDesktopPreviewMode] = useState<"side" | "below" | "minimized" | "hidden">("side");
-  const [desktopPreviewSide, setDesktopPreviewSide] = useState<"left" | "right">("right");
-  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
-  const [hasCheckedBasicPreview, setHasCheckedBasicPreview] = useState(false);
   const [storeTemplateSeedId, setStoreTemplateSeedId] = useState("general-catalog");
   const [installedThemePackageVersion, setInstalledThemePackageVersion] = useState<number | null>(null);
   const navigate = useNavigate();
   const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
+  const {
+    workspaceTab,
+    setWorkspaceTab,
+    isMobileSettingsOpen,
+    setIsMobileSettingsOpen,
+    previewViewport,
+    setPreviewViewport,
+    basicGuideStep,
+    setBasicGuideStep,
+    isActionDockMinimized,
+    setIsActionDockMinimized,
+    desktopPreviewMode,
+    setDesktopPreviewMode,
+    desktopPreviewSide,
+    setDesktopPreviewSide,
+    isMobilePreviewOpen,
+    setIsMobilePreviewOpen,
+    hasCheckedBasicPreview,
+    setHasCheckedBasicPreview,
+    activeAdvancedCodePanel,
+    setActiveAdvancedCodePanel,
+    draggedAdvancedBlockId,
+    setDraggedAdvancedBlockId,
+    builderMode,
+    isAdvancedEditor,
+    isBasicEditor,
+    useLegacyEditor,
+  } = useCmsEditorPresentationController({
+    pathname: location.pathname,
+    isTemplateGalleryRoute,
+    activeStoreId,
+    legacyMode: searchParams.get("legacy") === "1",
+  });
 
-  const [workspaceTab, setWorkspaceTab] = useState<"store" | "theme" | "pages" | "info" | "gallery">(
-    isTemplateGalleryRoute ? "gallery" : "pages",
-  );
-  const [draggedAdvancedBlockId, setDraggedAdvancedBlockId] = useState<string | null>(null);
   const layoutImportInputRef = useRef<HTMLInputElement | null>(null);
   const selectedPageIdRef = useRef(selectedPageId);
   selectedPageIdRef.current = selectedPageId;
@@ -420,13 +443,6 @@ export default function CmsPagesManager() {
     requestedPageId,
     hydrateStore: hydrateCmsEditorStore,
   });
-  const builderMode = location.pathname.includes("/advanced")
-    ? "advanced"
-    : location.pathname.includes("/basic")
-      ? "basic"
-      : "manager";
-  const isAdvancedEditor = builderMode === "advanced";
-  const isBasicEditor = builderMode === "basic";
   const basicEditorHref = buildPageBuilderPath("basic", {
     pageId: requestedPageId,
     blockId: requestedBlockId || null,
@@ -571,15 +587,10 @@ export default function CmsPagesManager() {
     setSelectedPageId("");
     setSelectedBlockId("");
     setRevisionLabel("");
-    setIsMobileSettingsOpen(false);
-    setPreviewViewport("desktop");
     setInstalledThemePackageVersion(null);
     setPersistedSnapshot("");
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
-    setDesktopPreviewMode("side");
-    setDesktopPreviewSide("right");
-    setIsMobilePreviewOpen(false);
     setBootstrapping(false);
   }, [activeStoreId, commitStoreChange]);
 
@@ -2399,40 +2410,23 @@ export default function CmsPagesManager() {
     if (!selectedPage) return null;
 
     return (
-      <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
-        <SheetContent side="bottom" className="inset-0 h-[100dvh] max-h-[100dvh] w-screen overflow-y-auto border-0 p-0 duration-0 data-[state=open]:duration-0 data-[state=open]:slide-in-from-bottom-0" data-testid="basic-preview-overlay">
-          <SheetHeader className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-3 text-left backdrop-blur-xl sm:px-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <SheetTitle>Full Screen Preview</SheetTitle>
-                <SheetDescription className="truncate">{selectedPage.title} rendered with current Basic Mode draft.</SheetDescription>
-              </div>
-              <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-full" onClick={() => setIsMobilePreviewOpen(false)}>
-                Close
-              </Button>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "desktop" ? "secondary" : "outline"} onClick={() => setPreviewViewport("desktop")} data-testid="basic-preview-device-desktop" data-active={previewViewport === "desktop"}>
-                <Monitor className="h-4 w-4" />
-                <span className="text-xs">Desktop</span>
-              </Button>
-              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "tablet" ? "secondary" : "outline"} onClick={() => setPreviewViewport("tablet")} data-testid="basic-preview-device-tablet" data-active={previewViewport === "tablet"}>
-                <PanelsTopLeft className="h-4 w-4" />
-                <span className="text-xs">Tablet</span>
-              </Button>
-              <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "mobile" ? "secondary" : "outline"} onClick={() => setPreviewViewport("mobile")} data-testid="basic-preview-device-mobile" data-active={previewViewport === "mobile"}>
-                <Smartphone className="h-4 w-4" />
-                <span className="text-xs">Mobile</span>
-              </Button>
-            </div>
-          </SheetHeader>
-          <div className="p-3 sm:p-4">{cleanPreviewCanvas}</div>
-        </SheetContent>
-      </Sheet>
+      <CmsEditorPreviewSheet
+        open={isMobilePreviewOpen}
+        onOpenChange={setIsMobilePreviewOpen}
+        viewport={previewViewport}
+        onViewportChange={setPreviewViewport}
+        pageTitle={selectedPage.title}
+        previewCanvas={cleanPreviewCanvas}
+      />
     );
   };
-  const useLegacyEditor = searchParams.get("legacy") === "1";
-  const showNewEditor = (isBasicEditor || isAdvancedEditor) && !useLegacyEditor;
+  const presentationBranch = resolveCmsEditorRenderBranch({
+    workspaceTab,
+    isBasicEditor,
+    isAdvancedEditor,
+    useLegacyEditor,
+    hasSelectedPage: Boolean(selectedPage),
+  });
   const storefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings?.storefront_profile
     ? store.siteSettings.storefront_profile as Record<string, unknown>
     : {};
@@ -2650,7 +2644,7 @@ export default function CmsPagesManager() {
     />
   );
 
-  if (workspaceTab === "gallery") {
+  if (presentationBranch === "gallery") {
     return (
       <>
         {confirmationDialog}
@@ -2662,7 +2656,7 @@ export default function CmsPagesManager() {
     );
   }
 
-  if (isBasicEditor && !selectedPage) {
+  if (presentationBranch === "basic-recovery") {
     return (
       <AdminRecoveryPanel
         title="Opening Basic Editor"
@@ -2674,7 +2668,7 @@ export default function CmsPagesManager() {
     );
   }
 
-  if (showNewEditor && selectedPage) {
+  if (presentationBranch === "editor-shell" && selectedPage) {
     return (
       <>
       {confirmationDialog}
@@ -2756,7 +2750,7 @@ export default function CmsPagesManager() {
     );
   }
 
-  if (isBasicEditor && selectedPage) {
+  if (presentationBranch === "guided-editor" && selectedPage) {
     const vibeOptions: Array<{ label: string; aesthetic: NonNullable<Store["theme"]["aesthetic"]>; heading: string; body: string }> = [
       { label: "Minimal", aesthetic: "minimal", heading: "Inter", body: "Inter" },
       { label: "Glass", aesthetic: "glassmorphism", heading: "Poppins", body: "Inter" },
@@ -2983,36 +2977,14 @@ export default function CmsPagesManager() {
           </div>
         </div>
 
-        <Sheet open={isMobilePreviewOpen} onOpenChange={setIsMobilePreviewOpen}>
-          <SheetContent side="bottom" className="inset-0 h-[100dvh] max-h-[100dvh] w-screen overflow-y-auto border-0 p-0 duration-0 data-[state=open]:duration-0 data-[state=open]:slide-in-from-bottom-0" data-testid="basic-preview-overlay">
-            <SheetHeader className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-3 text-left backdrop-blur-xl sm:px-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <SheetTitle>Full Screen Preview</SheetTitle>
-                  <SheetDescription className="truncate">{selectedPage.title} rendered with current Basic Mode draft.</SheetDescription>
-                </div>
-                <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-full" onClick={() => setIsMobilePreviewOpen(false)}>
-                  Close
-                </Button>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "desktop" ? "secondary" : "outline"} onClick={() => setPreviewViewport("desktop")} data-testid="basic-preview-device-desktop" data-active={previewViewport === "desktop"}>
-                  <Monitor className="h-4 w-4" />
-                  <span className="text-xs">Desktop</span>
-                </Button>
-                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "tablet" ? "secondary" : "outline"} onClick={() => setPreviewViewport("tablet")} data-testid="basic-preview-device-tablet" data-active={previewViewport === "tablet"}>
-                  <PanelsTopLeft className="h-4 w-4" />
-                  <span className="text-xs">Tablet</span>
-                </Button>
-                <Button type="button" size="sm" className="gap-1.5 px-2" variant={previewViewport === "mobile" ? "secondary" : "outline"} onClick={() => setPreviewViewport("mobile")} data-testid="basic-preview-device-mobile" data-active={previewViewport === "mobile"}>
-                  <Smartphone className="h-4 w-4" />
-                  <span className="text-xs">Mobile</span>
-                </Button>
-              </div>
-            </SheetHeader>
-            <div className="p-3 sm:p-4">{cleanPreviewCanvas}</div>
-          </SheetContent>
-        </Sheet>
+        <CmsEditorPreviewSheet
+          open={isMobilePreviewOpen}
+          onOpenChange={setIsMobilePreviewOpen}
+          viewport={previewViewport}
+          onViewportChange={setPreviewViewport}
+          pageTitle={selectedPage.title}
+          previewCanvas={cleanPreviewCanvas}
+        />
       </div>
     );
   }
