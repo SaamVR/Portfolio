@@ -65,7 +65,7 @@ import {
   DEFAULT_STORE_LOCALE,
 } from "@/lib/cms/default-store";
 import { defaultStore } from "@/lib/cms/default-store";
-import { createDefaultCmsPage, reservedCmsSlugs } from "@/lib/cms/block-library";
+import { createDefaultCmsPage } from "@/lib/cms/block-library";
 import { createRegistryDefaultBlock, filterBlockRegistryForTemplateSeed, getCmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { applyLegacyHomepageSettingsToPages, type SiteSettingRecord } from "@/lib/cms/homepage-settings-adapter";
 import { applyTemplateToPage, cmsPageTemplates, instantiateTemplate } from "@/lib/cms/page-templates";
@@ -78,7 +78,7 @@ import { StorefrontPreviewFrame } from "@/components/storefront/StorefrontPrevie
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTemplateRenderer";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
-import { sanitizeStoreBlocks, sanitizeStorePage, sanitizeStoreThemeCustomCss, validateStoreForPersistence } from "@/lib/cms/validation";
+import { sanitizeStoreBlocks, sanitizeStorePage, sanitizeStoreThemeCustomCss } from "@/lib/cms/validation";
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { fallbackStorefrontTemplateSeeds, resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
@@ -86,9 +86,13 @@ import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplatePr
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
-import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { reconcileCmsEditorSelectedPageId, useCmsEditorDataController, type CmsEditorWorkspaceHydrationInput } from "@/lib/cms/editor-data-controller";
-import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
+import {
+  STORE_LAYOUT_PACKAGE_SCHEMA,
+  useCmsEditorCommandController,
+  type RecoverableDraft,
+  type StoreLayoutPackage,
+} from "@/lib/cms/editor-command-controller";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TemplateGallery } from "./TemplateGallery";
@@ -173,14 +177,6 @@ type ThemeRecord = {
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
 
-function isManagedStorefrontFlowPage(page: StorePage) {
-  if (page.slug !== "/shop") {
-    return false;
-  }
-
-  return page.blocks.every((block) => block.type === "rich-text" && block.isVisible === false);
-}
-
 type PageRecord = {
   id: string;
   slug: string;
@@ -211,11 +207,6 @@ type BusinessProfileRecord = {
   catalog_mode: string | null;
 };
 
-type RecoverableDraft = {
-  snapshot: string;
-  updatedAt: string;
-};
-
 type BasicGuideStep = "basics" | "homepage" | "product" | "checkout" | "custom" | "launch";
 
 type SmartPolishSummary = {
@@ -233,52 +224,10 @@ type SmartPolishSummary = {
   };
 };
 
-const STORE_LAYOUT_PACKAGE_SCHEMA = "ecomcms.storefront-layout.v1";
-
-type StoreLayoutPackage = {
-  schema: typeof STORE_LAYOUT_PACKAGE_SCHEMA;
-  exportedAt: string;
-  source: {
-    storeName: string;
-    storeSlug: string;
-    templateSeedId: string;
-  };
-  layout: {
-    description: string;
-    theme: Store["theme"];
-    pages: StorePage[];
-  };
-};
-
 type AdvancedCodePanel = "page-json" | "block-json" | "theme-css" | "layout";
 
 function serializeStoreDraft(store: Store): string {
   return JSON.stringify(store);
-}
-
-function getDraftStorageKey(storeId: string | null | undefined): string {
-  return storeId ? `commerce-engine-cms-draft:${storeId}` : "";
-}
-
-function readRecoverableDraft(key: string): RecoverableDraft | null {
-  if (!key || typeof window === "undefined") return null;
-
-  try {
-    const rawDraft = window.localStorage.getItem(key);
-    if (!rawDraft) return null;
-
-    const parsed = JSON.parse(rawDraft) as Partial<RecoverableDraft>;
-    if (typeof parsed.snapshot !== "string" || typeof parsed.updatedAt !== "string") {
-      return null;
-    }
-
-    return {
-      snapshot: parsed.snapshot,
-      updatedAt: parsed.updatedAt,
-    };
-  } catch {
-    return null;
-  }
 }
 
 function cloneHomepageBlocksForTemplateSeed(
@@ -401,8 +350,6 @@ export default function CmsPagesManager() {
   const [store, setStore] = useState<Store | null>(null);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [selectedBlockId, setSelectedBlockId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(false);
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
   const [nextBlockType, setNextBlockType] = useState<StorePageBlock["type"]>("rich-text");
@@ -508,12 +455,34 @@ export default function CmsPagesManager() {
   });
   const pageTemplatesEnabled = getFeatureEnabled(entitlements?.featureMap, "cms_pages", true);
   const themePresetsEnabled = getFeatureEnabled(entitlements?.featureMap, "theme_presets", true);
-  const draftStorageKey = useMemo(() => getDraftStorageKey(activeStoreId), [activeStoreId]);
   const pushHistoryLimit = 20;
   const activeTemplateSeed = useMemo(
     () => resolveStorefrontTemplateSeed(storeTemplateSeedId, storeTemplateSeeds),
     [storeTemplateSeedId, storeTemplateSeeds],
   );
+  const {
+    busy: saving,
+    error: saveError,
+    draftStorageKey,
+    clearError: clearCommandError,
+    reportError: reportCommandError,
+    readRecoverableDraft,
+    writeRecoverableDraft,
+    clearRecoverableDraft,
+    saveStorefront,
+    prepareStoreLayoutImport,
+    prepareThemeBundleApplication,
+    prepareRevisionRestore,
+  } = useCmsEditorCommandController({
+    client: supabase,
+    activeStoreId,
+    ownerId: user?.id ?? null,
+    activeTemplateSeed,
+    themePackages,
+    captureEditorContext,
+    isEditorContextCurrent,
+    reloadWorkspace: loadStore,
+  });
   const availablePageTemplates = useMemo(() => cmsPageTemplates, []);
   const availableBlockRegistry = useMemo(
     () => filterBlockRegistryForTemplateSeed(blockRegistry, activeTemplateSeed),
@@ -540,7 +509,7 @@ export default function CmsPagesManager() {
     updater: Store | null | ((current: Store | null) => Store | null),
     options?: { trackHistory?: boolean; resetHistory?: boolean },
   ) => {
-    setSaveError(null);
+    clearCommandError();
     const trackHistory = options?.trackHistory ?? true;
     const resetHistory = options?.resetHistory ?? false;
 
@@ -568,7 +537,7 @@ export default function CmsPagesManager() {
 
       return next;
     });
-  }, []);
+  }, [clearCommandError]);
 
   useEffect(() => {
     if (!loadedWorkspace) return;
@@ -612,7 +581,6 @@ export default function CmsPagesManager() {
     setDesktopPreviewSide("right");
     setIsMobilePreviewOpen(false);
     setBootstrapping(false);
-    setSaving(false);
   }, [activeStoreId, commitStoreChange]);
 
   useEffect(() => {
@@ -639,9 +607,9 @@ export default function CmsPagesManager() {
       return;
     }
 
-    const draft = readRecoverableDraft(draftStorageKey);
+    const draft = readRecoverableDraft();
     setRecoverableDraft(draft && draft.snapshot !== persistedSnapshot ? draft : null);
-  }, [draftStorageKey, persistedSnapshot]);
+  }, [draftStorageKey, persistedSnapshot, readRecoverableDraft]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hasUnsavedChanges) return undefined;
@@ -660,19 +628,14 @@ export default function CmsPagesManager() {
 
     setRecoverableDraft(null);
     const timeout = window.setTimeout(() => {
-      const updatedAt = new Date().toISOString();
-      window.localStorage.setItem(
-        draftStorageKey,
-        JSON.stringify({
-          snapshot: currentSnapshot,
-          updatedAt,
-        } satisfies RecoverableDraft),
-      );
-      setLastDraftSavedAt(new Date(updatedAt));
+      const updatedAt = writeRecoverableDraft(currentSnapshot);
+      if (updatedAt) {
+        setLastDraftSavedAt(updatedAt);
+      }
     }, 1200);
 
     return () => window.clearTimeout(timeout);
-  }, [currentSnapshot, draftStorageKey, hasUnsavedChanges, store]);
+  }, [currentSnapshot, draftStorageKey, hasUnsavedChanges, store, writeRecoverableDraft]);
 
   const selectedPage = useMemo(() => {
     if (!store) return null;
@@ -1337,11 +1300,8 @@ export default function CmsPagesManager() {
     if (!store || !context.storeId || store.id !== context.storeId || !isEditorContextCurrent(context)) return;
 
     try {
-      const parsed = JSON.parse(raw) as Partial<StoreLayoutPackage>;
-      if (parsed.schema !== STORE_LAYOUT_PACKAGE_SCHEMA || !parsed.layout || !Array.isArray(parsed.layout.pages)) {
-        throw new Error("This is not a valid storefront layout package.");
-      }
-
+      clearCommandError();
+      const prepared = prepareStoreLayoutImport({ raw, store, allowAdvanced: isAdvancedEditor });
       if (hasUnsavedChanges) {
         const pageId = selectedPageIdRef.current;
         const confirmed = await confirmMerchantAction({
@@ -1361,47 +1321,17 @@ export default function CmsPagesManager() {
         if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
       }
 
-      const importedPages = parsed.layout.pages.flatMap((page, pageIndex) => {
-        const pageId = crypto.randomUUID();
-        const sanitizedPage = sanitizeStorePage({
-          ...page,
-          id: pageId,
-          isHomepage: Boolean(page.isHomepage),
-          blocks: sanitizeStoreBlocks(page.blocks ?? [], { allowAdvanced: isAdvancedEditor }).map((block, blockIndex) => ({
-            ...block,
-            id: crypto.randomUUID(),
-            sortOrder: blockIndex,
-          })),
-        }, { allowAdvanced: isAdvancedEditor });
-
-        return sanitizedPage ? [sanitizedPage] : [];
-      });
-
-      if (importedPages.length === 0) {
-        throw new Error("This layout package does not contain any valid pages.");
-      }
-
-      const homepageIndex = Math.max(0, importedPages.findIndex((page) => page.isHomepage));
-      const normalizedPages = importedPages.map((page, index) => ({
-        ...page,
-        isHomepage: index === homepageIndex,
-        slug: index === homepageIndex ? "/" : page.slug === "/" ? `/page-${index + 1}` : page.slug,
-      }));
-
-      const candidate = storeSchema.parse({
-        ...store,
-        description: parsed.layout.description || store.description,
-        theme: parsed.layout.theme || store.theme,
-        pages: normalizedPages,
-      });
-
-      commitStoreChange(candidate);
-      setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
+      if (!isEditorContextCurrent(context)) return;
+      commitStoreChange(prepared.store);
+      setSelectedPageId(prepared.selectedPageId);
       setSelectedBlockId("");
       setWorkspaceTab("pages");
       toast.success("Layout imported. Review it, then save Page Builder changes.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to import storefront layout.");
+    } catch (error) {
+      if (!isEditorContextCurrent(context)) return;
+      const message = error instanceof Error ? error.message : "Failed to import storefront layout.";
+      reportCommandError(message);
+      toast.error(message);
     }
   };
 
@@ -1418,63 +1348,37 @@ export default function CmsPagesManager() {
       bundle.type === "full-store" ? "full-store structure" : null,
     ].filter(Boolean).join(", ");
 
-    const confirmed = await confirmMerchantAction({
-      title: `Apply this ${bundle.type.replace(/-/g, " ")} bundle?`,
-      description: "The bundle will update the current storefront editor draft. Review the resulting draft before saving it.",
-      entityLabel: "Bundle changes",
-      entityValue: changeSummary || "Theme settings",
-      storeName: store.name,
-      impacts: [
-        hasUnsavedChanges
-          ? "Existing unsaved editor changes may be merged with or replaced by the imported bundle."
-          : "The current theme or page structure may change in the editor.",
-        "No customer-visible change occurs until the resulting draft is saved or published.",
-      ],
-      recoveryText: "Cancel to keep the current storefront draft unchanged.",
-      confirmLabel: "Apply bundle",
-      tone: "warning",
-    });
-    if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return false;
-
     try {
-      const importedPages = (bundle.pages || []).flatMap((page, pageIndex) => {
-        const pageId = crypto.randomUUID();
-        const sanitizedPage = sanitizeStorePage({
-          ...page,
-          id: pageId,
-          isHomepage: Boolean(page.isHomepage),
-          blocks: sanitizeStoreBlocks(page.blocks ?? [], { allowAdvanced: isAdvancedEditor }).map((block, blockIndex) => ({
-            ...block,
-            id: crypto.randomUUID(),
-            sortOrder: blockIndex,
-          })),
-        }, { allowAdvanced: isAdvancedEditor });
-
-        return sanitizedPage ? [sanitizedPage] : [];
+      clearCommandError();
+      const prepared = prepareThemeBundleApplication({ bundle, store, allowAdvanced: isAdvancedEditor });
+      const confirmed = await confirmMerchantAction({
+        title: `Apply this ${bundle.type.replace(/-/g, " ")} bundle?`,
+        description: "The bundle will update the current storefront editor draft. Review the resulting draft before saving it.",
+        entityLabel: "Bundle changes",
+        entityValue: changeSummary || "Theme settings",
+        storeName: store.name,
+        impacts: [
+          hasUnsavedChanges
+            ? "Existing unsaved editor changes may be merged with or replaced by the imported bundle."
+            : "The current theme or page structure may change in the editor.",
+          "No customer-visible change occurs until the resulting draft is saved or published.",
+        ],
+        recoveryText: "Cancel to keep the current storefront draft unchanged.",
+        confirmLabel: "Apply bundle",
+        tone: "warning",
       });
+      if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return false;
 
-      const normalizedPages = importedPages.length > 0 ? importedPages.map((page, index) => ({
-        ...page,
-        isHomepage: index === 0,
-        slug: index === 0 ? "/" : page.slug === "/" ? `/page-${index + 1}` : page.slug,
-      })) : store.pages;
-
-      const candidate = storeSchema.parse({
-        ...store,
-        theme: bundle.theme,
-        pages: normalizedPages,
-      });
-
-      if (!isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return false;
-      commitStoreChange(candidate);
-      if (importedPages.length > 0) {
-        setSelectedPageId(candidate.pages.find((page) => page.isHomepage)?.id ?? candidate.pages[0]?.id ?? "");
-      }
+      commitStoreChange(prepared.store);
+      if (prepared.replacedPages) setSelectedPageId(prepared.selectedPageId);
       setSelectedBlockId("");
       toast.success("Template applied to the draft. Review it before saving.");
       return true;
-    } catch (error: any) {
-      toast.error(error.message || "Failed to apply template.");
+    } catch (error) {
+      if (!isEditorContextCurrent(context)) return false;
+      const message = error instanceof Error ? error.message : "Failed to apply template.";
+      reportCommandError(message);
+      toast.error(message);
       return false;
     }
   };
@@ -1482,108 +1386,23 @@ export default function CmsPagesManager() {
   const saveAll = async (intent: "save" | "publish" | "unpublish" = "save") => {
     if (!store || !user) return;
 
-    const context = captureEditorContext();
-    if (!context.storeId || store.id !== context.storeId || !isEditorContextCurrent(context)) return;
-    const originDraftStorageKey = getDraftStorageKey(context.storeId);
-
-    setSaveError(null);
-
-    const validatedStore = validateStoreForPersistence(store);
-    if (!validatedStore.success) {
-      const firstIssue = validatedStore.error.issues[0];
-      const message = `CMS validation failed: ${firstIssue?.message ?? "Please review the page content."}`;
-      setSaveError(message);
-      toast.error(message);
+    const result = await saveStorefront({ store, selectedPage, revisionLabel, intent });
+    if (result.status === "success") {
+      toast.success(
+        intent === "publish"
+          ? "Storefront published."
+          : intent === "unpublish"
+            ? "Storefront unpublished. Preview remains available to you."
+            : "Page Builder changes saved.",
+      );
+      setRevisionLabel("");
+      setPersistedSnapshot(serializeStoreDraft(result.persistedStore));
+      setRecoverableDraft(null);
+      setLastDraftSavedAt(null);
       return;
     }
-
-    const safeStore = validatedStore.data;
-    const targetPublicationState = intent === "publish"
-      ? true
-      : intent === "unpublish"
-        ? false
-        : safeStore.isPublished;
-
-    const seenSlugs = new Set<string>();
-
-    for (const page of safeStore.pages) {
-      if (!page.slug.startsWith("/")) {
-        const message = `Page slug "${page.slug}" must start with "/".`;
-        setSaveError(message);
-        toast.error(message);
-        return;
-      }
-
-      if (page.slug !== "/" && reservedCmsSlugs.has(page.slug) && !isManagedStorefrontFlowPage(page)) {
-        const message = `"${page.slug}" is already handled by the app and cannot be reused here.`;
-        setSaveError(message);
-        toast.error(message);
-        return;
-      }
-
-      if (seenSlugs.has(page.slug)) {
-        const message = `Duplicate page slug found: ${page.slug}`;
-        setSaveError(message);
-        toast.error(message);
-        return;
-      }
-
-      seenSlugs.add(page.slug);
-    }
-
-    setSaving(true);
-
-    try {
-      const persistResult = await persistStorefrontState({
-        client: supabase,
-        store: safeStore,
-        ownerId: user.id,
-        templateSeed: activeTemplateSeed,
-        themePackages,
-        selectedPage,
-        revisionLabel,
-        changedBy: user.id,
-        publicationState: targetPublicationState,
-      });
-
-      if (persistResult.error) {
-        throw new Error(`Failed to save Page Builder changes: ${persistResult.error.message || "Unknown persistence error"}`);
-      }
-
-      await refreshStorefrontContentCache(supabase, safeStore.id, {
-        pageSlugs: selectedPage ? [selectedPage.slug] : undefined,
-      });
-
-      const persistedStore = { ...safeStore, isPublished: targetPublicationState };
-      if (originDraftStorageKey && typeof window !== "undefined") {
-        window.localStorage.removeItem(originDraftStorageKey);
-      }
-      if (isEditorContextCurrent(context)) {
-        toast.success(
-          intent === "publish"
-            ? "Storefront published."
-            : intent === "unpublish"
-              ? "Storefront unpublished. Preview remains available to you."
-              : "Page Builder changes saved.",
-        );
-        setRevisionLabel("");
-        setPersistedSnapshot(serializeStoreDraft(persistedStore));
-        setRecoverableDraft(null);
-        setLastDraftSavedAt(null);
-      }
-    } catch (error) {
-      if (isEditorContextCurrent(context)) {
-        const message = error instanceof Error ? error.message : "Failed to save Page Builder changes.";
-        setSaveError(message);
-        toast.error(message);
-      }
-    } finally {
-      if (isEditorContextCurrent(context)) {
-        setSaving(false);
-      }
-    }
-    if (isEditorContextCurrent(context)) {
-      await loadStore();
+    if (result.status === "error") {
+      toast.error(result.message);
     }
   };
 
@@ -1593,42 +1412,41 @@ export default function CmsPagesManager() {
 
     const context = captureEditorContext();
     const pageId = selectedPage.id;
-    const sanitizedSnapshot = sanitizeStoreBlocks(revision.blocks_snapshot).map((block, index) => ({
-      ...block,
-      sortOrder: index,
-    }));
-    const currentBlocks = selectedPage.blocks ?? [];
-    const currentTypes = currentBlocks.map((block) => block.type);
-    const revisionTypes = sanitizedSnapshot.map((block) => block.type);
-    const changedTypes = Array.from(new Set(revisionTypes.filter((type, index) => currentTypes[index] !== type)));
+    try {
+      clearCommandError();
+      const prepared = prepareRevisionRestore({
+        revisionBlocks: revision.blocks_snapshot,
+        selectedPage,
+      });
+      const confirmed = await confirmMerchantAction({
+        title: `Restore revision “${revision.revision_label}”?`,
+        description: "This saved revision will replace the sections currently loaded in this page editor.",
+        entityLabel: "Page",
+        entityValue: selectedPage.title,
+        storeName: store?.name,
+        impacts: [
+          `Current sections: ${prepared.currentBlockCount}; revision sections: ${prepared.revisionBlockCount}.`,
+          prepared.changedTypes.length > 0
+            ? `Changed block types include ${prepared.changedTypes.slice(0, 4).join(", ")}${prepared.changedTypes.length > 4 ? ", and more" : ""}.`
+            : "The revision keeps the same block-type order as the current page.",
+          hasUnsavedChanges
+            ? "Your current unsaved edits on this page will be replaced."
+            : "The saved snapshot will be loaded into the editor as a new draft.",
+        ],
+        recoveryText: "The live storefront is unchanged until you save or publish the restored draft.",
+        confirmLabel: "Restore revision",
+        tone: "warning",
+      });
+      if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
 
-    const confirmed = await confirmMerchantAction({
-      title: `Restore revision “${revision.revision_label}”?`,
-      description: "This saved revision will replace the sections currently loaded in this page editor.",
-      entityLabel: "Page",
-      entityValue: selectedPage.title,
-      storeName: store?.name,
-      impacts: [
-        `Current sections: ${currentBlocks.length}; revision sections: ${sanitizedSnapshot.length}.`,
-        changedTypes.length > 0
-          ? `Changed block types include ${changedTypes.slice(0, 4).join(", ")}${changedTypes.length > 4 ? ", and more" : ""}.`
-          : "The revision keeps the same block-type order as the current page.",
-        hasUnsavedChanges
-          ? "Your current unsaved edits on this page will be replaced."
-          : "The saved snapshot will be loaded into the editor as a new draft.",
-      ],
-      recoveryText: "The live storefront is unchanged until you save or publish the restored draft.",
-      confirmLabel: "Restore revision",
-      tone: "warning",
-    });
-    if (!confirmed || !isEditorContextCurrent(context) || selectedPageIdRef.current !== pageId) return;
-
-    updateSelectedPage((page) => ({
-      ...page,
-      blocks: sanitizedSnapshot,
-    }));
-
-    toast.success("Revision restored into the editor. Review the draft before saving.");
+      updateSelectedPage((page) => ({ ...page, blocks: prepared.blocks }));
+      toast.success("Revision restored into the editor. Review the draft before saving.");
+    } catch (error) {
+      if (!isEditorContextCurrent(context)) return;
+      const message = error instanceof Error ? error.message : "Failed to restore revision.";
+      reportCommandError(message);
+      toast.error(message);
+    }
   };
 
   const restoreLocalDraft = () => {
@@ -1647,9 +1465,7 @@ export default function CmsPagesManager() {
   };
 
   const discardLocalDraft = () => {
-    if (draftStorageKey && typeof window !== "undefined") {
-      window.localStorage.removeItem(draftStorageKey);
-    }
+    clearRecoverableDraft();
     setRecoverableDraft(null);
     setLastDraftSavedAt(null);
     toast.success("Local draft discarded.");

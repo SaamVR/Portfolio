@@ -20,15 +20,23 @@ test("storefront persistence changes publication only after content writes", () 
   assert.doesNotMatch(initialStoreWrite, /targetPublicationState/);
 });
 
-test("admin builder has explicit save and publication intents", () => {
-  const source = read("src/views/admin/CmsPagesManager.tsx");
-  const save = source.slice(source.indexOf("const saveAll"), source.indexOf("const restoreRevision"));
+test("admin builder delegates explicit save and publication intents to the command controller", () => {
+  const manager = read("src/views/admin/CmsPagesManager.tsx");
+  const commands = read("src/lib/cms/editor-command-controller.ts");
+  const persistCall = commands.indexOf("const persistResult = await persistStorefrontState");
+  const cacheRefresh = commands.indexOf("await refreshStorefrontContentCache", persistCall);
+  const draftClear = commands.indexOf("clearDraftForStore(context.storeId)", cacheRefresh);
 
-  assert.match(save, /intent: "save" \| "publish" \| "unpublish"/);
-  assert.match(save, /publicationState: targetPublicationState/);
-  assert.doesNotMatch(save, /from\("stores"\)\.upsert/);
-  assert.match(source, /saveAll\(store\.isPublished \? "unpublish" : "publish"\)/);
-  assert.match(source, /beforeunload/);
+  assert.match(commands, /export type CmsEditorPersistIntent = "save" \| "publish" \| "unpublish"/);
+  assert.match(commands, /publicationState: prepared\.targetPublicationState/);
+  assert.ok(persistCall >= 0);
+  assert.ok(cacheRefresh > persistCall);
+  assert.ok(draftClear > cacheRefresh);
+  assert.doesNotMatch(manager, /persistStorefrontState/);
+  assert.doesNotMatch(manager, /refreshStorefrontContentCache/);
+  assert.match(manager, /saveStorefront\(\{ store, selectedPage, revisionLabel, intent \}\)/);
+  assert.match(manager, /saveAll\(store\.isPublished \? "unpublish" : "publish"\)/);
+  assert.match(manager, /beforeunload/);
 });
 
 test("live editor keeps dirty baseline stable until persistence succeeds", () => {

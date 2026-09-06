@@ -18,6 +18,7 @@ test("editor context generation advances only when the active store changes", ()
 test("CMS editor async paths reject stale store context before mutating shared UI", () => {
   const managerSource = readFileSync(path.resolve(root, "src/views/admin/CmsPagesManager.tsx"), "utf8");
   const controllerSource = readFileSync(path.resolve(root, "src/lib/cms/editor-data-controller.ts"), "utf8");
+  const commandSource = readFileSync(path.resolve(root, "src/lib/cms/editor-command-controller.ts"), "utf8");
 
   const workspaceRead = controllerSource.slice(
     controllerSource.indexOf("const reloadWorkspace = useCallback"),
@@ -35,16 +36,11 @@ test("CMS editor async paths reject stale store context before mutating shared U
     managerSource.indexOf("const bootstrapDefaultStore"),
     managerSource.indexOf("const addPage"),
   );
-  const save = managerSource.slice(
-    managerSource.indexOf("const saveAll"),
-    managerSource.indexOf("const restoreRevision"),
-  );
 
   assert.notEqual(workspaceRead.length, 0);
   assert.notEqual(sharedLibraries.length, 0);
   assert.notEqual(revisions.length, 0);
   assert.notEqual(bootstrap.length, 0);
-  assert.notEqual(save.length, 0);
 
   assert.match(controllerSource, /editorContextRef\.current = advanceEditorContext/);
   assert.match(workspaceRead, /const requestId = \+\+workspaceRequestRef\.current/);
@@ -66,6 +62,7 @@ test("CMS editor async paths reject stale store context before mutating shared U
   assert.match(revisions, /if \(!isCurrent\(\)\) return;/);
 
   assert.match(managerSource, /useCmsEditorDataController\(\{/);
+  assert.match(managerSource, /useCmsEditorCommandController\(\{/);
   assert.match(managerSource, /reloadWorkspace: loadStore/);
   assert.doesNotMatch(managerSource, /const loadStore = useCallback/);
   assert.doesNotMatch(managerSource, /const loadSharedLibraries/);
@@ -74,8 +71,10 @@ test("CMS editor async paths reject stale store context before mutating shared U
   assert.doesNotMatch(bootstrap, /activeStoreId as string/);
   assert.match(bootstrap, /if \(isEditorContextCurrent\(context\)\) \{[\s\S]*await loadStore\(\)/);
 
-  assert.match(save, /store\.id !== context\.storeId/);
-  assert.match(save, /const originDraftStorageKey = getDraftStorageKey\(context\.storeId\)/);
-  assert.match(save, /removeItem\(originDraftStorageKey\)/);
-  assert.match(save, /if \(isEditorContextCurrent\(context\)\) \{[\s\S]*await loadStore\(\)/);
+  assert.match(commandSource, /const saveStorefront = useCallback/);
+  assert.match(commandSource, /store\.id !== context\.storeId/);
+  assert.match(commandSource, /clearDraftForStore\(context\.storeId\)/);
+  assert.match(commandSource, /if \(!isEditorContextCurrent\(context\)\) return \{ status: "stale" \}/);
+  assert.match(commandSource, /await reloadWorkspace\(\)/);
+  assert.doesNotMatch(managerSource, /persistStorefrontState/);
 });
