@@ -142,7 +142,7 @@ type PlatformData = {
   lifecycleStates: Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>;
   lifecycleEvents: any[];
   orders: OrderRow[];
-  products: Array<{ id: string; store_id: string; images?: any; variants?: any; description?: string | null }>;
+  products: Array<{ id: string; store_id: string; images?: any; description?: string | null }>;
   pages: Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>;
   blocks: Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>;
   siteSettings: Array<{ store_id: string; key: string; value: any }>;
@@ -464,7 +464,7 @@ export default function PlatformControlPlane() {
         (supabase as any).from("store_lifecycle_states").select("*").order("updated_at", { ascending: false }),
         (supabase as any).from("store_lifecycle_events").select("*").order("created_at", { ascending: false }).limit(50),
         (supabase as any).from("orders").select("id, store_id, status, total, created_at"),
-        (supabase as any).from("products").select("id, store_id, images, variants, description"),
+        (supabase as any).from("products").select("id, store_id, images, description"),
         (supabase as any).from("store_pages").select("id, store_id, slug, is_homepage"),
         (supabase as any).from("store_page_blocks").select("id, store_id, page_id, is_visible"),
         (supabase as any).from("site_settings").select("store_id, key, value"),
@@ -494,7 +494,7 @@ export default function PlatformControlPlane() {
         lifecycleStates: (lifecycleStates ?? []) as Array<Partial<StoreLifecycleStateRecord> & { store_id: string; lifecycle_status: string }>,
         lifecycleEvents: (lifecycleEvents ?? []) as any[],
         orders: (orders ?? []) as OrderRow[],
-        products: (products ?? []) as Array<{ id: string; store_id: string; images?: any; variants?: any; description?: string | null }>,
+        products: (products ?? []) as Array<{ id: string; store_id: string; images?: any; description?: string | null }>,
         pages: (pages ?? []) as Array<{ id: string; store_id: string; slug: string; is_homepage: boolean | null }>,
         blocks: (blocks ?? []) as Array<{ id: string; store_id: string; page_id: string; is_visible: boolean | null }>,
         siteSettings: (siteSettings ?? []) as Array<{ store_id: string; key: string; value: any }>,
