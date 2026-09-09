@@ -83,6 +83,13 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
   const mainSections = navSections.filter((section) => section.key !== "help");
   const helpSection = navSections.find((section) => section.key === "help");
 
+  const resetRouteScroll = () => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    const main = document.querySelector<HTMLElement>("main");
+    main?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  };
+
   const renderNavigationLink = (link: AdminNavigationItem) => {
     const active = link.external
       ? false
@@ -94,7 +101,7 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
           href={link.to}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-secondary/80 hover:text-foreground"
         >
           <link.icon className="h-4 w-4 shrink-0" />
           <span>{link.label}</span>
@@ -105,18 +112,20 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
     return (
       <Link
         to={link.to}
+        scroll
+        onClick={resetRouteScroll}
         className={cn(
-          "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+          "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
           active
-            ? "bg-primary/10 font-semibold text-primary"
-            : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            ? "bg-primary/15 font-semibold text-primary shadow-sm ring-1 ring-inset ring-primary/20"
+            : "text-foreground/70 hover:bg-secondary/80 hover:text-foreground",
         )}
         aria-current={active ? "page" : undefined}
       >
-        <link.icon className="h-4 w-4 shrink-0" />
+        <link.icon className={cn("h-4 w-4 shrink-0", active && "drop-shadow-sm")} />
         <span className="truncate">{link.label}</span>
         {link.badge !== undefined && link.badge > 0 ? (
-          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+          <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground shadow-sm">
             {link.badge > 99 ? "99+" : link.badge}
           </span>
         ) : null}
@@ -125,21 +134,21 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
   };
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
-      <div className="flex h-16 items-center border-b border-border px-6">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/80 bg-card/95 shadow-[1px_0_0_hsl(var(--border)/0.35)] backdrop-blur md:flex">
+      <div className="flex h-16 items-center border-b border-border/80 bg-primary/[0.025] px-6">
         <Link to="/" className="font-heading text-lg font-bold text-foreground">
           Store<span className="text-primary">Admin</span>
         </Link>
-        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+        <span className="ml-2 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
           {isOwner ? "Owner" : isAdmin ? "Admin" : "Staff"}
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col justify-between overflow-y-auto p-4">
+      <nav className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto p-4">
         <div className="space-y-5">
           {mainSections.map((section) => (
             <section key={section.key} aria-label={section.title} className="space-y-1.5">
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/45">
                 {section.title}
               </p>
               {section.links.map((link) => (
@@ -151,7 +160,7 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
 
         {helpSection ? (
           <section aria-label={helpSection.title} className="mt-6 space-y-1.5 border-t border-border pt-3">
-            <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/45">
               {helpSection.title}
             </p>
             {helpSection.links.map((link) => (
@@ -161,7 +170,7 @@ const AdminSidebar = ({ compact = false }: { compact?: boolean }) => {
         ) : null}
       </nav>
 
-      <div className="space-y-2 border-t border-border p-4">
+      <div className="space-y-2 border-t border-border bg-background/35 p-4">
         <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
         <ChangePasswordDialog />
         <div className="flex gap-2">
