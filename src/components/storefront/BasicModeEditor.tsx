@@ -536,9 +536,9 @@ function BasicStoreFlowSettingsPanel({ storeId, templateId }: { storeId: string;
   return (
     <div data-testid="basic-flow-settings-panel" className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
       <div>
-        <p className="text-sm font-semibold text-foreground">Shopping Experience Settings</p>
+        <p className="text-sm font-semibold text-foreground">Shopping flow</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Adjust the buying experience here without editing technical page structure: shop, product page, cart, checkout, and support.
+          Set how shoppers browse products, pay, receive orders, and get support.
         </p>
       </div>
 
@@ -935,7 +935,7 @@ export function BasicModeEditor({
         }}
         className={cn(
           "cursor-pointer rounded-xl border p-3 transition-all hover:border-primary/50",
-          isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card"
+          isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card"
         )}
       >
         <div className="flex items-center justify-between mb-2">
@@ -1022,7 +1022,7 @@ export function BasicModeEditor({
 
         return (
           <div className="space-y-4">
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div className="rounded-xl border border-primary/35 bg-primary/10 p-4 shadow-sm ring-1 ring-primary/10">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Wand2 className="h-4 w-4" />
@@ -1031,19 +1031,19 @@ export function BasicModeEditor({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Next best edit</p>
                   <h3 className="mt-1 text-base font-semibold leading-snug text-foreground">{nextAction.label}</h3>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Page: {page.title} · {visibleSections} visible section{visibleSections === 1 ? "" : "s"} · {previewChecked ? "mobile checked" : "mobile preview still unchecked"}
+                    {page.title} · {visibleSections} visible section{visibleSections === 1 ? "" : "s"} · {previewChecked ? "mobile checked" : "mobile preview still unchecked"}
                   </p>
                 </div>
               </div>
-              <Button type="button" className="mt-3 w-full justify-center gap-2" onClick={() => setActiveSection(nextAction.section)}>
+              <Button type="button" className="mt-3 min-h-11 w-full justify-center gap-2" onClick={() => setActiveSection(nextAction.section)}>
                 Continue
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
 
             {recommendedHints.length > 0 ? (
-              <div className="rounded-xl border border-border bg-card p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Recommended next edits</p>
+              <details className="rounded-xl border border-border bg-card p-3">
+                <summary className="cursor-pointer text-sm font-medium text-foreground">More suggestions ({Math.min(recommendedHints.length, 3)})</summary>
                 <div className="mt-3 space-y-2">
                   {recommendedHints.slice(0, 3).map((hint) => (
                     <div key={hint} className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
@@ -1052,44 +1052,7 @@ export function BasicModeEditor({
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : null}
-
-            {starterLayouts.length > 0 ? (
-              <div className="rounded-xl border border-border bg-card p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Recommended page direction</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Start with one of these paths for this {pageType === "homepage" ? "home" : pageType} page, then refine it step by step.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
-                    {templateId}
-                  </span>
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {starterLayouts.slice(0, 2).map((layout) => (
-                    <button
-                      key={layout.id}
-                      type="button"
-                      onClick={() => setActiveSection(layout.sectionFocus)}
-                      className="rounded-xl border border-border bg-muted/20 p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{layout.title}</p>
-                          <p className="mt-1 text-xs leading-5 text-foreground/80">{layout.summary}</p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                          {layout.sectionFocus === "pages" ? "Flow" : layout.sectionFocus === "layout" ? "Layout" : layout.sectionFocus === "theme" ? "Theme" : "Content"}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{layout.bestFor}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              </details>
             ) : null}
 
             <div className="grid gap-2">
@@ -1099,12 +1062,12 @@ export function BasicModeEditor({
                   type="button"
                   onClick={() => setActiveSection(item.id)}
                   className={cn(
-                    "group rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
-                    item.done ? "border-border/80 bg-background/70" : "border-primary/25 bg-card shadow-sm",
+                    "group min-h-12 rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
+                    item.done ? "border-border/70 bg-background/50 text-muted-foreground" : "border-primary/30 bg-card shadow-sm",
                   )}
                 >
                   <div className="flex items-center gap-3 sm:items-start">
-                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", item.done ? "bg-primary/10 text-primary" : "bg-primary text-primary-foreground")}>
+                    <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", item.done ? "bg-primary/10 text-primary" : "bg-primary text-primary-foreground")}>
                       {item.done ? <CheckCircle2 className="h-4 w-4" /> : <item.icon className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -1121,26 +1084,6 @@ export function BasicModeEditor({
                 </button>
               ))}
             </div>
-
-            <div className="hidden rounded-xl border border-border bg-muted/20 p-3 sm:block">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Quick Launch Check</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{completed} of {readiness.length} basics are in place. Use this as a simple confidence check, not a test.</p>
-                </div>
-                <span className="text-sm font-bold text-primary">{Math.round((completed / readiness.length) * 100)}%</span>
-              </div>
-              <Progress value={Math.round((completed / readiness.length) * 100)} className="mt-3 h-2" />
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {readiness.map((item) => (
-                  <div key={item.label} className="flex min-w-0 items-center gap-2 text-xs">
-                    {item.done ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <div className="h-4 w-4 rounded-full border border-muted-foreground/40" />}
-                    <span className={cn("truncate", item.done ? "text-foreground" : "text-muted-foreground")}>{item.label}</span>
-                    {!item.done ? <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{item.action}</span> : null}
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         );
       }
@@ -1148,20 +1091,20 @@ export function BasicModeEditor({
         const pageGroups = [
           {
             id: "content",
-            title: "Content Pages",
-            description: "Editable storefront pages like Home, About, Contact, and campaign pages.",
+            title: "Store pages",
+            description: "Pages you can edit directly, such as Home, About, Contact, and campaign pages.",
             pages: allPages.filter((candidate) => getPageGroup(candidate) === "content"),
           },
           {
             id: "store-flow",
-            title: "Store Flow Pages",
-            description: "Core shopping pages. Use the flow settings below for checkout, delivery, support, and product-page behavior.",
+            title: "Shopping flow",
+            description: "Shop, product, cart, and checkout pages. Use the settings below for payments, delivery, and support.",
             pages: allPages.filter((candidate) => getPageGroup(candidate) === "store-flow"),
           },
           {
             id: "system",
-            title: "System Pages",
-            description: "Platform-controlled pages are shown for clarity and kept out of Basic editing.",
+            title: "Platform pages",
+            description: "These pages are managed by EZComo and are shown here only for context.",
             pages: allPages.filter((candidate) => getPageGroup(candidate) === "system"),
           },
         ].filter((group) => group.pages.length > 0);
@@ -1169,9 +1112,9 @@ export function BasicModeEditor({
         return (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Pages</h3>
+              <h3 className="text-lg font-semibold text-foreground">Pages & shopping</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Pick a normal content page to edit, or review which store-flow pages need dedicated setup next.
+                Pick a page to edit, or adjust how shoppers browse, pay, receive orders, and get support.
               </p>
             </div>
             <div className="space-y-4">
@@ -1190,7 +1133,7 @@ export function BasicModeEditor({
                         <Button
                           key={p.id}
                           variant={p.id === page.id ? "default" : "outline"}
-                          className={cn("w-full justify-start", isSystem && "opacity-70")}
+                          className={cn("min-h-11 w-full justify-start", isSystem && "opacity-70")}
                           disabled={isSystem}
                           onClick={() => {
                             if (isSystem) return;
@@ -1231,7 +1174,7 @@ export function BasicModeEditor({
                 </div>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="shrink-0 gap-2">
+                    <Button variant="outline" size="sm" className="min-h-11 shrink-0 gap-2 sm:min-h-9">
                       <Plus className="h-4 w-4" /> Add Section
                     </Button>
                   </DialogTrigger>
@@ -1265,7 +1208,7 @@ export function BasicModeEditor({
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Recommended composition</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {starterLayouts.slice(0, 2).map((layout, index) => (
-                    <div key={layout.id} className={cn("rounded-xl border p-3", index === 0 ? "border-primary/40 bg-background/90" : "border-border bg-background/70")}>
+                    <div key={layout.id} className={cn("rounded-xl border p-3", index === 0 ? "border-primary/40 bg-background/90 ring-1 ring-primary/20" : "border-border bg-background/70")}>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-foreground">{layout.title}</p>
                         {index === 0 ? (
@@ -1320,7 +1263,7 @@ export function BasicModeEditor({
                     onClick={() => setFocusedLayoutBlockId(block.id)}
                     className={cn(
                       "group rounded-xl border bg-card p-3 text-left transition-colors",
-                      focusedLayoutBlock?.id === block.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/40",
+                      focusedLayoutBlock?.id === block.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border hover:border-primary/40",
                       draggedBlockId === block.id && "border-primary bg-primary/5 opacity-70",
                     )}
                   >
@@ -1342,7 +1285,7 @@ export function BasicModeEditor({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           onClick={(event) => {
                             event.stopPropagation();
                             updateBlockMeta(block.id, { isVisible: !isVisible, visible: !isVisible });
@@ -1354,7 +1297,7 @@ export function BasicModeEditor({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           onClick={(event) => {
                             event.stopPropagation();
                             duplicateBlock(block.id);
@@ -1366,7 +1309,7 @@ export function BasicModeEditor({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           disabled={index === 0}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1379,7 +1322,7 @@ export function BasicModeEditor({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           disabled={index === page.blocks.length - 1}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1392,7 +1335,7 @@ export function BasicModeEditor({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="h-11 w-11 text-destructive hover:text-destructive hover:bg-destructive/10 sm:h-8 sm:w-8"
                           onClick={(event) => {
                             event.stopPropagation();
                             removeBlock(block.id);
@@ -1432,7 +1375,7 @@ export function BasicModeEditor({
                       onClick={() => updateBlockMeta(focusedLayoutBlock.id, { layoutVariant: option.id })}
                       className={cn(
                         "rounded-xl border p-2.5 text-left transition-colors",
-                        focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
+                        focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
                       <div className="relative aspect-video rounded-lg border border-border/70 bg-muted/30">
@@ -1498,8 +1441,8 @@ export function BasicModeEditor({
                         type="button"
                         onClick={() => setFocusedContentBlockId(block.id)}
                         className={cn(
-                          "min-w-[188px] snap-start rounded-xl border p-2.5 text-left transition-colors",
-                          isFocused ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
+                          "min-h-11 min-w-[188px] snap-start rounded-xl border p-2.5 text-left transition-colors",
+                          isFocused ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card hover:border-primary/40",
                         )}
                       >
                         <div className="flex items-start gap-2.5">
@@ -1522,7 +1465,7 @@ export function BasicModeEditor({
                 </div>
 
                 {focusedBlock ? (
-                  <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
+                  <div className="rounded-xl border border-primary/20 bg-card p-3 ring-1 ring-primary/10 sm:p-4">
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Editing Section {focusedIndex + 1}</p>
@@ -1536,7 +1479,7 @@ export function BasicModeEditor({
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           disabled={!previousBlock}
                           onClick={() => previousBlock && setFocusedContentBlockId(previousBlock.id)}
                           title="Previous section"
@@ -1547,7 +1490,7 @@ export function BasicModeEditor({
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
                           disabled={!nextBlock}
                           onClick={() => nextBlock && setFocusedContentBlockId(nextBlock.id)}
                           title="Next section"
@@ -1567,7 +1510,7 @@ export function BasicModeEditor({
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                Add a section from Layout first, then Guided Editing will show friendly controls and guidance here.
+                Add a section from Layout first, then Content will show the editing controls here.
               </p>
             )}
           </div>
@@ -1632,7 +1575,7 @@ export function BasicModeEditor({
                     }}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
-                      store.theme.aesthetic === vibe.id ? "border-primary bg-primary/10" : "border-border bg-card",
+                      store.theme.aesthetic === vibe.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
                     )}
                   >
                     <div className="flex h-10 overflow-hidden rounded-lg border border-border/70">
@@ -1719,7 +1662,7 @@ export function BasicModeEditor({
                       className={cn(
                         "rounded-xl border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5",
                         Math.abs(radiusScale - option.radius) < 0.05 && Math.abs(densityScale - option.density) < 0.05
-                          ? "border-primary bg-primary/10"
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                           : "border-border bg-card",
                       )}
                     >
@@ -1890,7 +1833,7 @@ export function BasicModeEditor({
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-foreground">Readability check</p>
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use this as a quick confidence check before saving.</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Check that buttons and text stay easy to read.</p>
                         </div>
                         <Badge variant={isPrimaryLowContrast || isForegroundLowContrast ? "secondary" : "outline"}>
                           {isPrimaryLowContrast || isForegroundLowContrast ? "Needs review" : "Looks good"}
@@ -1898,7 +1841,7 @@ export function BasicModeEditor({
                       </div>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <div className="rounded-lg border border-border bg-card p-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Primary on background</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Brand buttons</p>
                           <p className="mt-2 text-sm font-semibold text-foreground">{primaryContrast.toFixed(1)}:1</p>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
                             {isPrimaryLowContrast
@@ -1907,7 +1850,7 @@ export function BasicModeEditor({
                           </p>
                         </div>
                         <div className="rounded-lg border border-border bg-card p-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Text on background</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Main text</p>
                           <p className="mt-2 text-sm font-semibold text-foreground">{foregroundContrast.toFixed(1)}:1</p>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
                             {isForegroundLowContrast
@@ -1946,7 +1889,7 @@ export function BasicModeEditor({
                     onClick={() => updateThemeEffect(effect.key, !effect.enabled)}
                     className={cn(
                       "rounded-xl border p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
-                      effect.enabled ? "border-primary bg-primary/10" : "border-border bg-card",
+                      effect.enabled ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -1985,7 +1928,7 @@ export function BasicModeEditor({
                       </div>
                       <p className="mt-3 text-xs font-semibold text-foreground">{effect.label}</p>
                       <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-                        {effect.enabled ? "Currently active on the storefront theme." : "Currently off for a calmer storefront feel."}
+                        {effect.enabled ? "On for your storefront." : "Off for a calmer storefront."}
                       </p>
                     </div>
                   ))}
@@ -2009,8 +1952,8 @@ export function BasicModeEditor({
                     type="button"
                     onClick={() => updateThemeEffect("intensity", level.id as any)}
                     className={cn(
-                      "rounded-xl border p-3 text-center transition-colors",
-                      effectState.intensity === level.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary/40",
+                      "min-h-11 rounded-xl border p-3 text-center transition-colors",
+                      effectState.intensity === level.id ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30" : "border-border bg-card text-foreground hover:border-primary/40",
                     )}
                   >
                     <span className="block text-xs font-semibold">{level.label}</span>
@@ -2023,7 +1966,7 @@ export function BasicModeEditor({
             <div className="rounded-xl border border-border bg-muted/20 p-4">
               <p className="text-sm font-semibold text-foreground">Section-level control</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                If one section should animate differently, open that section in Content and use the `Override Global Effects` toggle there. This keeps motion flexible without making the whole store harder to manage.
+                Need different motion on one section? Open it in Content and turn on `Override Global Effects`. Everything else can keep the store-wide setting.
               </p>
             </div>
           </div>
@@ -2092,8 +2035,8 @@ export function BasicModeEditor({
           { id: "theme", label: "Customize store theme", detail: "Pick a vibe, palette, and fonts.", done: store.theme.presetId !== "default" || Boolean(store.theme.aesthetic), section: "theme" as SectionId },
           { id: "pages", label: "Edit homepage content", detail: "Make the headline, CTA, trust, and products feel ready.", done: allPages.some(p => p.blocks.length > 3), section: "content" as SectionId },
           { id: "mobile", label: "Check mobile preview", detail: "Use the floating Preview action, then return here.", done: previewChecked, section: "start" as SectionId },
-          { id: "logo", label: "Upload brand logo", detail: "Brand assets live in store settings outside this Basic panel.", done: !!store.logoUrl, section: null },
-          { id: "domain", label: "Connect custom domain", detail: "Domain setup is managed from admin settings.", done: !!store.customDomain, section: null },
+          { id: "logo", label: "Upload brand logo", detail: "Add your logo in Store Settings.", done: !!store.logoUrl, section: null },
+          { id: "domain", label: "Connect custom domain", detail: "Connect your domain in Store Settings.", done: !!store.customDomain, section: null },
         ];
         const completed = checklist.filter(c => c.done).length;
         const progress = Math.round((completed / checklist.length) * 100);
@@ -2112,18 +2055,18 @@ export function BasicModeEditor({
             </div>
 
             {nextChecklistItem ? (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 ring-1 ring-primary/10">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Next launch task</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{nextChecklistItem.label}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{nextChecklistItem.detail}</p>
                 {nextChecklistItem.section ? (
-                  <Button type="button" size="sm" className="mt-3 gap-2" onClick={() => setActiveSection(nextChecklistItem.section)}>
+                  <Button type="button" size="sm" className="mt-3 min-h-11 gap-2 sm:min-h-9" onClick={() => setActiveSection(nextChecklistItem.section)}>
                     <Wand2 className="h-4 w-4" />
                     Open Task
                   </Button>
                 ) : (
                   <p className="mt-3 rounded-lg border border-border bg-background/80 p-3 text-xs text-muted-foreground">
-                    This item is outside Guided Editing so merchants do not have to manage technical setup here.
+                    This is managed in Store Settings, so you can finish it there when you are ready.
                   </p>
                 )}
               </div>
@@ -2149,7 +2092,7 @@ export function BasicModeEditor({
                     disabled={!item.section}
                     onClick={() => item.section && setActiveSection(item.section)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors",
+                      "flex min-h-11 w-full items-center gap-3 rounded-lg p-3 text-left transition-colors",
                       item.done ? "bg-primary/5" : "bg-muted/30",
                       item.section && "hover:bg-primary/10",
                     )}
@@ -2222,38 +2165,35 @@ export function BasicModeEditor({
   ];
 
   return (
-    <div className="flex h-full w-full flex-col bg-card text-card-foreground">
-      <div className="sticky top-0 z-10 border-b border-border bg-card/95 p-2 backdrop-blur sm:bg-muted/20 sm:p-3">
-        <div className="mb-3 rounded-3xl border border-border/70 bg-background/85 p-3 shadow-sm">
+    <div data-testid="basic-mode-editor" className="flex h-full w-full flex-col bg-card text-card-foreground">
+      <div className="sticky top-0 z-10 border-b border-primary/10 bg-card/95 p-2 backdrop-blur sm:bg-muted/20 sm:p-3">
+        <div className="mb-2 rounded-2xl border border-primary/15 bg-primary/[0.03] p-3 shadow-sm sm:mb-3 sm:rounded-3xl">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-primary">
                   Guided editor
-                </Badge>
-                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px]">
-                  {templateId}
-                </Badge>
-                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px]">
-                  {pageType}
                 </Badge>
               </div>
               <h2 className="mt-2 text-lg font-semibold text-foreground sm:text-xl">{page.title}</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                This editor follows the shared storefront wiring. Update structure, content, style, and buying flow here without leaving the current merchant workflow.
+                Make this page clearer for shoppers, then preview and launch when it feels ready.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground sm:hidden">
+                {visibleBlockCount} live · {hiddenBlockCount} hidden · {contentPageCount} page{contentPageCount === 1 ? "" : "s"}
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
-              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+            <div className="hidden gap-2 sm:grid sm:grid-cols-3 lg:min-w-[360px]">
+              <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Visible</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">{visibleBlockCount} live sections</p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+              <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Hidden</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">{hiddenBlockCount} tucked away</p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+              <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Pages</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">{contentPageCount} content pages</p>
               </div>
@@ -2261,43 +2201,34 @@ export function BasicModeEditor({
           </div>
         </div>
 
-        <div className="mb-2 flex items-center justify-between gap-3 sm:hidden">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Task {activeNavIndex + 1} of {navItems.length}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{activeNavItem.label}</p>
-            <p className="truncate text-[11px] text-muted-foreground">{activeNavItem.hint}</p>
-          </div>
-          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${((activeNavIndex + 1) / navItems.length) * 100}%` }}
-            />
-          </div>
-        </div>
         <div className="space-y-2 sm:hidden">
-          <div className="rounded-2xl border border-border/70 bg-background/80 p-2.5">
+          <div className="rounded-2xl border border-border/70 bg-background/85 p-2.5">
             <div className="flex items-center justify-between gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-full px-3 text-xs"
+                className="h-11 min-w-20 rounded-full px-3 text-xs"
                 disabled={!previousNavItem}
                 onClick={() => previousNavItem && setActiveSection(previousNavItem.id)}
               >
                 <ArrowUp className="mr-1 h-3.5 w-3.5 rotate-[-90deg]" />
                 Back
               </Button>
-              <div className="min-w-0 text-center">
-                <p className="truncate text-xs font-medium text-muted-foreground">{activeNavItem.group}</p>
+              <div className="min-w-0 flex-1 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Task {activeNavIndex + 1} of {navItems.length}</p>
                 <p className="truncate text-sm font-semibold text-foreground">{activeNavItem.shortLabel}</p>
+                <div className="mx-auto mt-1.5 h-1.5 w-24 max-w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${((activeNavIndex + 1) / navItems.length) * 100}%` }}
+                  />
+                </div>
               </div>
               <Button
                 type="button"
                 size="sm"
-                className="h-9 rounded-full px-3 text-xs"
+                className="h-11 min-w-20 rounded-full px-3 text-xs"
                 disabled={!nextNavItem}
                 onClick={() => nextNavItem && setActiveSection(nextNavItem.id)}
               >
@@ -2314,9 +2245,9 @@ export function BasicModeEditor({
                 data-testid={`basic-mode-tab-${item.id}`}
                 onClick={() => setActiveSection(item.id)}
                 className={cn(
-                  "min-w-[120px] snap-start rounded-2xl border px-3 py-2 text-left transition-colors",
+                  "min-h-11 min-w-[112px] snap-start rounded-2xl border px-3 py-2 text-left transition-colors",
                   activeSection === item.id
-                    ? "border-primary bg-primary/10"
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                     : "border-border bg-background/70",
                 )}
                 title={item.label}
@@ -2347,7 +2278,7 @@ export function BasicModeEditor({
                     size="sm"
                     className={cn(
                       "h-auto min-w-0 shrink-0 items-start gap-2 rounded-2xl px-3 py-2 text-left",
-                      activeSection === item.id ? "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" : "text-muted-foreground",
+                      activeSection === item.id ? "bg-primary/10 text-primary ring-1 ring-primary/25 hover:bg-primary/20 hover:text-primary" : "text-muted-foreground",
                     )}
                     onClick={() => setActiveSection(item.id)}
                     title={item.label}
