@@ -33,6 +33,7 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
   { path: "/admin/onboarding", label: "Online Store", description: "Guided setup and launch flow" },
   { path: "/admin/templates", label: "Online Store", description: "Browse and apply storefront templates" },
   { path: "/admin/cms", label: "Online Store", description: "Storefront pages and content blocks" },
+  { path: "/admin/blog-performance", label: "Analytics", description: "Blog readership, product clicks, carts, and attributed revenue" },
   { path: "/admin/blog", label: "Online Store", description: "Blog posts and content marketing" },
   { path: "/admin/media", label: "Online Store", description: "Images and reusable store assets" },
   { path: "/admin/products", label: "Products", description: "Catalog, stock, and category management" },
@@ -41,13 +42,12 @@ const workspaceLabels: Array<{ path: string; label: string; description: string 
   { path: "/admin/returns", label: "Orders", description: "Returns, refunds, and COD settlement" },
   { path: "/admin/couriers", label: "Orders", description: "Courier connections and shipments" },
   { path: "/admin/analytics", label: "Analytics", description: "Traffic, sales performance, product interest, and conversion funnel" },
-  { path: "/admin/billing", label: "Billing & Plans", description: "Subscription plan, usage limits, and payment method" },
-  { path: "/admin/customers", label: "Customers & Messages", description: "Customer inbox and product reviews" },
-  { path: "/admin/messages", label: "Customers & Messages", description: "Customer contact inbox" },
-  { path: "/admin/reviews", label: "Customers & Messages", description: "Product review moderation" },
+  { path: "/admin/billing", label: "Settings", description: "Subscription plan, usage limits, and payment method" },
+  { path: "/admin/customers", label: "Customers", description: "Customer records, inbox, and product reviews" },
+  { path: "/admin/messages", label: "Customers", description: "Customer contact inbox" },
+  { path: "/admin/reviews", label: "Customers", description: "Product review moderation" },
   { path: "/admin/site-settings", label: "Settings", description: "Brand, payments, domains, and store configuration" },
 ];
-
 
 const lockedWorkspaceCards = [
   {
@@ -363,7 +363,6 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             </Button>
           </div>
         )}
-        {/* Workspace Search Header */}
         <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <span className="md:hidden rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
@@ -418,22 +417,8 @@ const AdminLayout = ({ children }: { children?: React.ReactNode }) => {
             ) : null}
           </div>
         </header>
-        <div className={cn("border-b border-border/60 bg-card/40 px-4 py-2.5 md:hidden", isGuidedSetupWorkspace && "hidden")}>
-          <div className="space-y-3">
-
-            <div className="rounded-2xl border border-border bg-background/90 px-3.5 py-3 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">{currentWorkspace.label}</p>
-                {isCmsWorkspace ? (
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    Wider editing workspace
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{currentWorkspace.description}</p>
-            </div>
-            <StoreSwitcher mobile />
-          </div>
+        <div className={cn("border-b border-border/60 bg-card/40 px-4 py-2 md:hidden", isGuidedSetupWorkspace && "hidden")}>
+          <StoreSwitcher mobile />
         </div>
 
         <div

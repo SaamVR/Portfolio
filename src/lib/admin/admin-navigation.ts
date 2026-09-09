@@ -16,13 +16,13 @@ import {
 } from "lucide-react";
 import { buildPageBuilderPath, withStoreId } from "@/lib/admin-paths";
 
-export type AdminNavigationSection = "primary" | "secondary";
+export type AdminNavigationSection = "operate" | "grow" | "build" | "manage" | "help" | "contextual";
 
 export type AdminNavigationItem = {
   to: string;
   icon: ComponentType<{ className?: string }>;
   label: string;
-  section: AdminNavigationSection | "daily_operations" | "growth" | "storefront" | "platform_settings";
+  section: AdminNavigationSection;
   show: boolean;
   badge?: number;
   external?: boolean;
@@ -47,13 +47,13 @@ export type AdminNavigationContext = {
   supportIsExternal: boolean;
 };
 
-export const adminNavigationSectionLabels: Record<string, string> = {
-  primary: "Main Menu",
-  secondary: "Preferences",
-  daily_operations: "Daily operations",
-  growth: "Growth",
-  storefront: "Storefront",
-  platform_settings: "Platform settings",
+export const adminNavigationSectionLabels: Record<AdminNavigationSection, string> = {
+  operate: "Operate",
+  grow: "Grow",
+  build: "Build",
+  manage: "Manage",
+  help: "Help",
+  contextual: "More tools",
 };
 
 export function getAdminNavigationItems(context: AdminNavigationContext): AdminNavigationItem[] {
@@ -65,7 +65,7 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       to: "/admin",
       icon: LayoutDashboard,
       label: "Dashboard",
-      section: "primary",
+      section: "operate",
       show: true,
       match: ["/admin", "/admin/launch", "/admin/notifications", "/admin/diagnostics"],
       description: "Overview of sales stats, launch readiness, and critical store alerts.",
@@ -75,7 +75,7 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       to: "/admin/orders",
       icon: ShoppingCart,
       label: "Orders",
-      section: "primary",
+      section: "operate",
       show: !compact,
       match: ["/admin/orders", "/admin/returns", "/admin/couriers"],
       description: "Fulfillment, orders list, returns & COD, and shipping couriers.",
@@ -85,7 +85,7 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       to: "/admin/products",
       icon: Package,
       label: "Products",
-      section: "primary",
+      section: "operate",
       show: !compact,
       match: ["/admin/products", "/admin/categories"],
       description: "Product inventory catalog, stock, and category management.",
@@ -94,49 +94,39 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
     {
       to: "/admin/customers",
       icon: Users,
-      label: "Customers & Messages",
-      section: "primary",
+      label: "Customers",
+      section: "operate",
       show: !compact,
       badge: totalInboxBadge,
       match: ["/admin/customers", "/admin/messages", "/admin/reviews"],
-      description: "Central inbox for customer inquiries, reviews, and trust signals.",
+      description: "Customer records, inquiries, reviews, and trust signals.",
       mobileShortLabel: "Inbox",
     },
     {
       to: "/admin/marketing",
       icon: Rocket,
       label: "Marketing",
-      section: "primary",
+      section: "grow",
       show: !compact,
       match: ["/admin/marketing", "/admin/coupons", "/admin/recovery", "/admin/qr"],
       description: "Growth tools: coupons, abandoned cart recovery, and QR codes.",
       mobileShortLabel: "Growth",
     },
     {
-      to: "/admin/blog",
-      icon: BookOpen,
-      label: "Blog",
-      section: "primary",
-      show: context.cmsEnabled && !compact,
-      match: ["/admin/blog", "/admin/blog-performance"],
-      description: "Publish SEO articles, buying guides, product stories, and shoppable content.",
-      mobileShortLabel: "Blog",
-    },
-    {
-      to: "/admin/blog-performance",
+      to: "/admin/analytics",
       icon: BarChart2,
-      label: "Blog Performance",
-      section: "primary",
-      show: context.cmsEnabled && !compact,
-      match: ["/admin/blog-performance"],
-      description: "See article readership, product clicks, carts, attributed orders, and Blog-driven revenue.",
-      mobileShortLabel: "Blog Stats",
+      label: "Analytics",
+      section: "grow",
+      show: !compact,
+      match: ["/admin/analytics", "/admin/blog-performance"],
+      description: "Traffic, sales performance, product interest, and conversion funnel.",
+      mobileShortLabel: "Stats",
     },
     {
       to: "/admin/online-store",
       icon: Store,
       label: "Online Store",
-      section: "primary",
+      section: "build",
       show: context.cmsEnabled,
       match: [
         "/admin/online-store",
@@ -145,46 +135,17 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
         "/admin/page-builder/advanced",
         "/admin/templates",
         "/admin/media",
+        "/admin/blog",
         "/admin/onboarding",
       ],
-      description: "Customize design, pick themes, manage pages, and organize storefront media.",
+      description: "Customize design, pick themes, manage pages, publish articles, and organize storefront media.",
       mobileShortLabel: "Website",
-    },
-    {
-      to: buildPageBuilderPath("basic", { storeId: context.activeStoreId }),
-      icon: PanelsTopLeft,
-      label: "Website editor",
-      section: "storefront",
-      show: context.cmsEnabled && !compact,
-      match: ["/admin/page-builder/basic", "/admin/page-builder"],
-      description: "Jump directly into the guided storefront editor.",
-      mobileShortLabel: "Website",
-    },
-    {
-      to: "/admin/analytics",
-      icon: BarChart2,
-      label: "Analytics",
-      section: "primary",
-      show: !compact,
-      match: ["/admin/analytics"],
-      description: "Traffic, sales performance, product interest, and conversion funnel.",
-      mobileShortLabel: "Stats",
-    },
-    {
-      to: withStoreId("/admin/onboarding", context.activeStoreId),
-      icon: Sparkles,
-      label: "Onboarding",
-      section: "secondary",
-      show: context.cmsEnabled,
-      match: ["/admin/onboarding"],
-      description: "Reopen the guided setup flow for homepage sections, brand content, payments, and launch steps.",
-      mobileShortLabel: "Setup",
     },
     {
       to: withStoreId("/admin/site-settings", context.activeStoreId),
       icon: Settings,
       label: "Settings",
-      section: "secondary",
+      section: "manage",
       show: context.isAdmin,
       match: [
         "/admin/site-settings",
@@ -194,24 +155,14 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
         "/admin/invite-codes",
         "/cms-admin",
       ],
-      description: "Store profile, payments, custom domains, users, and backup.",
+      description: "Store profile, payments, custom domains, billing, users, and backup.",
       mobileShortLabel: "Settings",
-    },
-    {
-      to: "/admin/billing",
-      icon: CreditCard,
-      label: "Billing & Plans",
-      section: "secondary",
-      show: context.isOwner,
-      match: ["/admin/billing"],
-      description: "Subscription plan, usage limits, and payment method.",
-      mobileShortLabel: "Billing",
     },
     {
       to: "/admin/guide",
       icon: HelpCircle,
       label: "How-To Guide",
-      section: "secondary",
+      section: "help",
       show: true,
       match: ["/admin/guide", "/admin/help", "/admin/how-to"],
       description: "Step-by-step guidance on creating and managing your storefront.",
@@ -221,28 +172,74 @@ export function getAdminNavigationItems(context: AdminNavigationContext): AdminN
       to: context.supportUrl,
       icon: HelpCircle,
       label: "Help & Support",
-      section: "secondary",
+      section: "help",
       show: true,
       external: context.supportIsExternal,
       description: "Platform documentation and support helpline.",
       mobileShortLabel: "Help",
+    },
+    {
+      to: "/admin/blog",
+      icon: BookOpen,
+      label: "Blog",
+      section: "contextual",
+      show: context.cmsEnabled && !compact,
+      match: ["/admin/blog"],
+      description: "Publish SEO articles, buying guides, product stories, and shoppable content.",
+      mobileShortLabel: "Blog",
+    },
+    {
+      to: "/admin/blog-performance",
+      icon: BarChart2,
+      label: "Blog Performance",
+      section: "contextual",
+      show: context.cmsEnabled && !compact,
+      match: ["/admin/blog-performance"],
+      description: "See article readership, product clicks, carts, attributed orders, and blog-driven revenue.",
+      mobileShortLabel: "Blog Stats",
+    },
+    {
+      to: buildPageBuilderPath("basic", { storeId: context.activeStoreId }),
+      icon: PanelsTopLeft,
+      label: "Website editor",
+      section: "contextual",
+      show: context.cmsEnabled && !compact,
+      match: ["/admin/page-builder/basic", "/admin/page-builder"],
+      description: "Jump directly into the guided storefront editor.",
+      mobileShortLabel: "Website",
+    },
+    {
+      to: withStoreId("/admin/onboarding", context.activeStoreId),
+      icon: Sparkles,
+      label: "Onboarding",
+      section: "contextual",
+      show: context.cmsEnabled,
+      match: ["/admin/onboarding"],
+      description: "Reopen the guided setup flow for homepage sections, brand content, payments, and launch steps.",
+      mobileShortLabel: "Setup",
+    },
+    {
+      to: "/admin/billing",
+      icon: CreditCard,
+      label: "Billing & Plans",
+      section: "contextual",
+      show: context.isOwner,
+      match: ["/admin/billing"],
+      description: "Subscription plan, usage limits, and payment method.",
+      mobileShortLabel: "Billing",
     },
   ];
 }
 
 export function getAdminNavigationSections(context: AdminNavigationContext) {
   const items = getAdminNavigationItems(context);
+  const sectionOrder: Exclude<AdminNavigationSection, "contextual">[] = ["operate", "grow", "build", "manage", "help"];
 
-  return [
-    {
-      key: "primary" as const,
-      title: "Main Menu",
-      links: items.filter((item) => item.section === "primary" && item.show),
-    },
-    {
-      key: "secondary" as const,
-      title: "Preferences",
-      links: items.filter((item) => item.section === "secondary" && item.show),
-    },
-  ];
+  return sectionOrder
+    .map((key) => ({
+      key,
+      title: adminNavigationSectionLabels[key],
+      links: items.filter((item) => item.section === key && item.show),
+    }))
+    .filter((section) => section.links.length > 0);
 }
