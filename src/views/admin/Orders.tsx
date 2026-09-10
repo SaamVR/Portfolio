@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, Package, Printer, Truck, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
-import { useSearchParams, Link } from "@/lib/react-router-dom-shim";
+import { useSearchParams } from "@/lib/react-router-dom-shim";
 import {
   fetchAdminOrderDetail,
   useAdminOrders,
@@ -113,7 +113,17 @@ export default function AdminOrders() {
     return map;
   }, [shipments]);
 
+  const hasOrderFilters = search.trim().length > 0 || filterStatus !== "all";
+  const workspaceDescription = activeTab === "returns"
+    ? "Handle return requests and COD follow-up."
+    : activeTab === "couriers"
+      ? "Manage courier connections, bookings and shipment progress."
+      : "Review incoming orders and move fulfillment forward.";
 
+  const clearOrderFilters = () => {
+    setSearch("");
+    setFilterStatus("all");
+  };
 
   const handleStatusChange = (orderId: string, status: string) => {
     updateStatus.mutate(
@@ -293,68 +303,107 @@ export default function AdminOrders() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-1">
         <h1 className="font-heading text-3xl font-bold text-foreground">Orders & Fulfillment</h1>
-        <p className="text-sm text-muted-foreground">{orderCount} total orders, returns processing, and courier integrations.</p>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Review {orderCount} {orderCount === 1 ? "order" : "orders"}, update fulfillment, and hand deliveries to your courier.
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
-        <TabsList className="bg-secondary/40 p-1 border border-border">
-          <TabsTrigger value="orders" className="gap-2">
+        <div className="space-y-2 sm:hidden">
+          <Label htmlFor="orders-workspace" className="text-sm font-semibold text-foreground">
+            Orders workspace
+          </Label>
+          <Select value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })}>
+            <SelectTrigger id="orders-workspace" className="min-h-14 w-full rounded-xl border-border bg-card px-4 text-left font-medium shadow-sm">
+              <SelectValue placeholder="Choose a workspace" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="orders">All Orders</SelectItem>
+              <SelectItem value="returns">Returns & COD</SelectItem>
+              <SelectItem value="couriers">Couriers & Shipping</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs leading-5 text-muted-foreground">{workspaceDescription}</p>
+        </div>
+
+        <TabsList className="hidden h-auto w-auto grid-cols-3 gap-1 border border-border bg-secondary/40 p-1 sm:grid">
+          <TabsTrigger value="orders" className="min-h-11 gap-2 px-4">
             <ShoppingBag className="h-4 w-4" />
             All Orders
           </TabsTrigger>
-          <TabsTrigger value="returns" className="gap-2">
+          <TabsTrigger value="returns" className="min-h-11 gap-2 px-4">
             <RefreshCw className="h-4 w-4" />
             Returns & COD
           </TabsTrigger>
-          <TabsTrigger value="couriers" className="gap-2">
+          <TabsTrigger value="couriers" className="min-h-11 gap-2 px-4">
             <Truck className="h-4 w-4" />
             Couriers & Shipping
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orders" className="space-y-6">
-          <div className="flex flex-wrap gap-3">
-            <Input
-              placeholder="Search by order #, name, phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <TabsContent value="orders" className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+            <div>
+              <Label htmlFor="order-search" className="sr-only">Search orders</Label>
+              <Input
+                id="order-search"
+                placeholder="Search order #, customer, phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="min-h-11 w-full"
+              />
+            </div>
+            <div>
+              <Label htmlFor="order-status-filter" className="sr-only">Filter by status</Label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger id="order-status-filter" className="min-h-11 w-full">
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {!orderPages.isLoading && orders.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                Showing {orders.length} {orders.length === 1 ? "order" : "orders"}{filterStatus !== "all" ? ` with ${filterStatus} status` : ""}
+              </span>
+              {hasOrderFilters ? (
+                <Button type="button" variant="ghost" size="sm" className="min-h-11 px-3" onClick={clearOrderFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
 
           {orderPages.isLoading && orders.length === 0 ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Card key={i} className="border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-24" />
                           <Skeleton className="h-5 w-16" />
                         </div>
-                        <Skeleton className="h-3 w-40" />
-                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-3 w-44" />
+                        <Skeleton className="h-3 w-36" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-9 w-[140px]" />
-                        <Skeleton className="h-9 w-24" />
-                        <Skeleton className="h-9 w-9" />
+                      <div className="grid gap-2 sm:grid-cols-3 lg:flex">
+                        <Skeleton className="h-11 w-full sm:w-[150px]" />
+                        <Skeleton className="h-11 w-full sm:w-32" />
+                        <Skeleton className="h-11 w-full sm:w-32" />
                       </div>
                     </div>
                   </CardContent>
@@ -362,69 +411,100 @@ export default function AdminOrders() {
               ))}
             </div>
           ) : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <Package className="mb-4 h-12 w-12" />
-              <p>No orders found</p>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-4 py-16 text-center">
+              <Package className="mb-4 h-12 w-12 text-muted-foreground" />
+              <p className="font-heading text-base font-semibold text-foreground">
+                {hasOrderFilters ? "No matching orders" : "No orders yet"}
+              </p>
+              <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
+                {hasOrderFilters
+                  ? "Try another order number, customer, phone number, or status."
+                  : "New storefront orders will appear here as soon as customers place them."}
+              </p>
+              {hasOrderFilters ? (
+                <Button type="button" variant="outline" className="mt-4 min-h-11" onClick={clearOrderFilters}>
+                  Clear search and filters
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-3">
-              {orders.map((order) => (
-                <Card key={order.id} className="border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-heading text-sm font-bold text-foreground">{order.order_number}</p>
-                          <Badge className={statusColors[order.status] || "bg-secondary"}>
-                            {order.status}
-                          </Badge>
-                          {(shipmentsByOrder.get(order.id) ?? []).slice(0, 1).map((shipment) => (
-                            <Badge key={shipment.id} variant="outline">
-                              {(shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider))} {shipment.status}
+              {orders.map((order) => {
+                const firstShipment = (shipmentsByOrder.get(order.id) ?? [])[0];
+                return (
+                  <Card key={order.id} className="border-border transition-colors hover:border-primary/30">
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-heading text-sm font-bold text-foreground">{order.order_number}</p>
+                            <Badge className={statusColors[order.status] || "bg-secondary"}>
+                              {order.status}
                             </Badge>
-                          ))}
+                            {firstShipment ? (
+                              <Badge variant="outline" className="font-normal text-muted-foreground">
+                                {firstShipment.courier_connection_label?.trim() || getCourierProviderLabel(firstShipment.provider as CourierProvider)} · {firstShipment.status}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <span className="font-medium text-foreground">{order.customer_name}</span>
+                            <span className="text-muted-foreground">{order.customer_phone}</span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                            <span className="font-semibold text-foreground">{formatCurrency(order.total)}</span>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {order.customer_name} - {order.customer_phone}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString()} - {formatCurrency(order.total)}
-                        </p>
+
+                        <div className="grid gap-2 sm:grid-cols-[150px_minmax(0,auto)_minmax(0,auto)] lg:flex lg:items-center">
+                          <div>
+                            <Label htmlFor={`order-status-${order.id}`} className="mb-1 block text-xs font-medium text-muted-foreground sm:sr-only">
+                              Order status
+                            </Label>
+                            <Select value={order.status} onValueChange={(v) => handleStatusChange(order.id, v)}>
+                              <SelectTrigger id={`order-status-${order.id}`} className="min-h-11 w-full text-xs sm:w-[150px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {STATUSES.map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-11 gap-2"
+                            onClick={() => void openBookingDialog(order)}
+                            disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${order.id}`}
+                          >
+                            {loadingOrderAction === `book:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                            Book courier
+                          </Button>
+
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="min-h-11 gap-2"
+                            onClick={() => void openViewOrder(order)}
+                            disabled={loadingOrderAction === `view:${order.id}`}
+                          >
+                            {loadingOrderAction === `view:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                            Review order
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Select
-                          value={order.status}
-                          onValueChange={(v) => handleStatusChange(order.id, v)}
-                        >
-                          <SelectTrigger className="h-9 w-[140px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUSES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => void openBookingDialog(order)}
-                          disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${order.id}`}
-                        >
-                          {loadingOrderAction === `book:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
-                          Book courier
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => void openViewOrder(order)} disabled={loadingOrderAction === `view:${order.id}`}>
-                          {loadingOrderAction === `view:${order.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
@@ -434,7 +514,7 @@ export default function AdminOrders() {
                 variant="outline"
                 onClick={() => void orderPages.fetchNextPage()}
                 disabled={orderPages.isFetchingNextPage}
-                className="gap-2"
+                className="min-h-11 gap-2"
               >
                 {orderPages.isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Load more orders
@@ -453,48 +533,55 @@ export default function AdminOrders() {
       </Tabs>
 
       <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{viewOrder?.order_number}</DialogTitle>
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              <span>{viewOrder?.order_number}</span>
+              {viewOrder ? <Badge className={statusColors[viewOrder.status] || "bg-secondary"}>{viewOrder.status}</Badge> : null}
+            </DialogTitle>
           </DialogHeader>
           {viewOrder && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Customer</p>
-                  <p className="font-medium text-foreground">{viewOrder.customer_name}</p>
-                  <p className="text-xs text-muted-foreground">{viewOrder.customer_phone}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</p>
+                  <p className="mt-2 font-medium text-foreground">{viewOrder.customer_name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{viewOrder.customer_phone}</p>
                   {viewOrder.customer_email && (
-                    <p className="text-xs text-muted-foreground">{viewOrder.customer_email}</p>
+                    <p className="mt-0.5 break-all text-xs text-muted-foreground">{viewOrder.customer_email}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Shipping</p>
-                  <p className="font-medium text-foreground">{viewOrder.shipping_address}</p>
-                  <p className="text-xs text-muted-foreground">{viewOrder.shipping_city}</p>
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shipping</p>
+                  <p className="mt-2 font-medium text-foreground">{viewOrder.shipping_address}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{viewOrder.shipping_city}</p>
                 </div>
               </div>
 
-              <div className="space-y-2 border-t border-border pt-3">
-                <p className="text-sm font-medium text-foreground">Items</p>
-                {viewOrder.items.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{item.name} x {item.quantity} ({item.size})</span>
-                    <span>{formatCurrency(item.price * item.quantity)}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between border-t border-border pt-2 font-bold text-foreground">
+              <div className="rounded-lg border border-border p-3">
+                <p className="mb-3 text-sm font-medium text-foreground">Items</p>
+                <div className="space-y-2">
+                  {viewOrder.items.map((item, i) => (
+                    <div key={i} className="flex items-start justify-between gap-3 text-sm">
+                      <span className="min-w-0">{item.name} x {item.quantity} ({item.size})</span>
+                      <span className="shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex justify-between border-t border-border pt-3 font-bold text-foreground">
                   <span>Total</span>
                   <span>{formatCurrency(viewOrder.total)}</span>
                 </div>
               </div>
 
-              <div className="text-xs text-muted-foreground">
-                Payment: {viewOrder.payment_method.toUpperCase()} - Placed: {new Date(viewOrder.created_at).toLocaleString()}
+              <div className="rounded-lg bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
+                Payment: <span className="font-semibold text-foreground">{viewOrder.payment_method.toUpperCase()}</span>
+                <span className="mx-2">·</span>
+                Placed: <span className="font-semibold text-foreground">{new Date(viewOrder.created_at).toLocaleString()}</span>
               </div>
 
               {(shipmentsByOrder.get(viewOrder.id) ?? []).length > 0 ? (
-                <div className="rounded-md border border-border bg-background/60 p-3">
+                <div className="rounded-lg border border-border bg-background/60 p-3">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Courier bookings</p>
                   <div className="space-y-2">
                     {(shipmentsByOrder.get(viewOrder.id) ?? []).map((shipment) => (
@@ -503,7 +590,7 @@ export default function AdminOrders() {
                           {shipment.courier_connection_label?.trim() || getCourierProviderLabel(shipment.provider as CourierProvider)}
                         </Badge>
                         <Badge variant="secondary">{shipment.status}</Badge>
-                        <span className="text-muted-foreground">{shipment.tracking_number || shipment.consignment_id || "Tracking pending"}</span>
+                        <span className="break-all text-muted-foreground">{shipment.tracking_number || shipment.consignment_id || "Tracking pending"}</span>
                       </div>
                     ))}
                   </div>
@@ -511,21 +598,25 @@ export default function AdminOrders() {
               ) : null}
 
               {viewOrder.notes && (
-                <div className="mt-4 rounded-md border border-border bg-secondary/50 p-3">
+                <div className="rounded-lg border border-border bg-secondary/50 p-3">
                   <p className="mb-1 text-xs font-semibold text-foreground">Customer Notes / TrxID:</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{viewOrder.notes}</p>
                 </div>
               )}
 
-              <div className="flex justify-end pt-4">
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => void openBookingDialog(viewOrder)} className="gap-2" disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${viewOrder.id}`}>
-                    <Truck className="h-4 w-4" /> Book Courier
-                  </Button>
-                  <Button onClick={() => handlePrintInvoice(viewOrder)} className="gap-2">
-                    <Printer className="h-4 w-4" /> Print Invoice
-                  </Button>
-                </div>
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => void openBookingDialog(viewOrder)}
+                  className="min-h-11 gap-2"
+                  disabled={connectedCouriers.length === 0 || loadingOrderAction === `book:${viewOrder.id}`}
+                >
+                  {loadingOrderAction === `book:${viewOrder.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                  Book Courier
+                </Button>
+                <Button onClick={() => handlePrintInvoice(viewOrder)} className="min-h-11 gap-2">
+                  <Printer className="h-4 w-4" /> Print Invoice
+                </Button>
               </div>
             </div>
           )}
@@ -533,7 +624,7 @@ export default function AdminOrders() {
       </Dialog>
 
       <Dialog open={!!bookingOrder} onOpenChange={(open) => !open && setBookingOrder(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-h-[88vh] max-w-xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Book courier for {bookingOrder?.order_number}</DialogTitle>
           </DialogHeader>
@@ -548,7 +639,7 @@ export default function AdminOrders() {
               <div className="space-y-2">
                 <Label htmlFor="booking-connection">Courier connection</Label>
                 <Select value={bookingConnectionId} onValueChange={setBookingConnectionId}>
-                  <SelectTrigger id="booking-connection">
+                  <SelectTrigger id="booking-connection" className="min-h-11">
                     <SelectValue placeholder="Choose a configured courier" />
                   </SelectTrigger>
                   <SelectContent>
@@ -579,37 +670,37 @@ export default function AdminOrders() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="booking-weight">Item weight (kg)</Label>
-                  <Input id="booking-weight" value={bookingWeight} onChange={(event) => setBookingWeight(event.target.value)} />
+                  <Input id="booking-weight" inputMode="decimal" className="min-h-11" value={bookingWeight} onChange={(event) => setBookingWeight(event.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="booking-quantity">Item quantity</Label>
-                  <Input id="booking-quantity" value={bookingQuantity} onChange={(event) => setBookingQuantity(event.target.value)} />
+                  <Input id="booking-quantity" inputMode="numeric" className="min-h-11" value={bookingQuantity} onChange={(event) => setBookingQuantity(event.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="booking-collect">Amount to collect</Label>
-                  <Input id="booking-collect" value={bookingAmountToCollect} onChange={(event) => setBookingAmountToCollect(event.target.value)} />
+                  <Input id="booking-collect" inputMode="decimal" className="min-h-11" value={bookingAmountToCollect} onChange={(event) => setBookingAmountToCollect(event.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="booking-fee">Shipping fee</Label>
-                  <Input id="booking-fee" value={bookingShippingFee} onChange={(event) => setBookingShippingFee(event.target.value)} />
+                  <Input id="booking-fee" inputMode="decimal" className="min-h-11" value={bookingShippingFee} onChange={(event) => setBookingShippingFee(event.target.value)} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="booking-description">Item description</Label>
-                <Input id="booking-description" value={bookingDescription} onChange={(event) => setBookingDescription(event.target.value)} />
+                <Input id="booking-description" className="min-h-11" value={bookingDescription} onChange={(event) => setBookingDescription(event.target.value)} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="booking-instruction">Special instruction</Label>
-                <Input id="booking-instruction" value={bookingInstruction} onChange={(event) => setBookingInstruction(event.target.value)} placeholder="Optional delivery note" />
+                <Input id="booking-instruction" className="min-h-11" value={bookingInstruction} onChange={(event) => setBookingInstruction(event.target.value)} placeholder="Optional delivery note" />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setBookingOrder(null)}>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setBookingOrder(null)}>
                   Cancel
                 </Button>
-                <Button type="button" onClick={() => void submitBooking()} disabled={bookCourierShipment.isPending || connectedCouriers.length === 0}>
+                <Button type="button" className="min-h-11" onClick={() => void submitBooking()} disabled={bookCourierShipment.isPending || connectedCouriers.length === 0}>
                   {bookCourierShipment.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
