@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense } from "react";
-import PageComponent from "@/views/admin/SiteSettings";
+import PageComponent from "@/views/admin/SiteSettingsExperience";
 import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
 
 export default function Page() {
