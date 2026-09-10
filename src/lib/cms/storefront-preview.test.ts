@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildTemplatePreviewStore } from "@/lib/cms/storefront-preview";
 import { storefrontTemplateIds } from "@/lib/cms/storefront-templates";
+import { resolveExplicitTemplatePreviewStore } from "@/lib/cms/store-resolver";
 
 test("buildTemplatePreviewStore creates a published preview seeded from template data", () => {
   const store = buildTemplatePreviewStore("fashion");
@@ -29,4 +30,15 @@ test("every non-blank built-in preview exposes canonical category demo hero medi
   assert.notEqual(mediaByTemplate.get("fashion"), mediaByTemplate.get("electronics"));
   assert.notEqual(mediaByTemplate.get("food"), mediaByTemplate.get("hotel"));
   assert.notEqual(mediaByTemplate.get("beauty"), mediaByTemplate.get("real-estate"));
+});
+
+
+test("explicit template storefront routing is gated and limited to built-in template ids", () => {
+  assert.equal(resolveExplicitTemplatePreviewStore("fashion", false), null);
+  assert.equal(resolveExplicitTemplatePreviewStore("merchant-store", true), null);
+
+  const preview = resolveExplicitTemplatePreviewStore("fashion", true);
+  assert.equal(preview?.id, "preview-fashion");
+  assert.equal(preview?.slug, "fashion");
+  assert.equal(preview?.isPublished, true);
 });

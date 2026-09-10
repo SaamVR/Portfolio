@@ -10,10 +10,11 @@ import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-r
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { unstable_cache } from "next/cache";
-import { resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
+import { isStorefrontTemplateId, resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
+import { buildTemplatePreviewStore } from "@/lib/cms/storefront-preview";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { resolveStorePlanState } from "@/lib/billing/plans";
 import { STOREFRONT_TAXONOMY_SETTING_KEY } from "@/lib/storefront-taxonomy-snapshot";
@@ -143,6 +144,17 @@ function buildStorefrontContentTags(storeId: string, requestedPageSlug?: string 
 
 export async function getDefaultStore(): Promise<Store> {
   return createDefaultStore();
+}
+
+export function resolveExplicitTemplatePreviewStore(
+  slug: string,
+  enabled = process.env.STOREFRONT_TEMPLATE_PREVIEW_MODE === "1",
+): Store | null {
+  if (!enabled || !isStorefrontTemplateId(slug)) {
+    return null;
+  }
+
+  return buildTemplatePreviewStore(slug);
 }
 
 export function isLocalStorefrontHostname(hostname?: string | null) {
@@ -440,6 +452,11 @@ export async function validatePreviewToken(storeId: string, previewToken?: strin
 }
 
 export async function getStoreBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const explicitTemplatePreview = resolveExplicitTemplatePreviewStore(slug);
+  if (explicitTemplatePreview) {
+    return explicitTemplatePreview;
+  }
+
   const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
   if (!previewToken) {
     return getStoreBySlugCached(slug, requestedPageSlug);
@@ -642,6 +659,11 @@ async function getStoreShellByIdUncached(storeId: string): Promise<Store | null>
 }
 
 export async function getStoreShellBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const explicitTemplatePreview = resolveExplicitTemplatePreviewStore(slug);
+  if (explicitTemplatePreview) {
+    return explicitTemplatePreview;
+  }
+
   const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
   if (!previewToken) {
     return getStoreShellBySlugCached(slug, requestedPageSlug);
