@@ -86,4 +86,39 @@ describe("product slugs", () => {
       configurable: true,
     });
   });
+
+  it("keeps Vercel deployment hosts scoped while preserving real custom domains", () => {
+    const originalWindow = globalThis.window;
+    const setWindowLocation = (hostname: string, pathname = "/shop") => {
+      Object.defineProperty(globalThis, "window", {
+        value: {
+          location: {
+            pathname,
+            hostname,
+            host: hostname,
+          },
+        },
+        configurable: true,
+      });
+    };
+
+    try {
+      setWindowLocation("ezcomo-844dvvw2v-samvrc.vercel.app");
+      expect(isDedicatedStorefrontHost("sam")).toBe(false);
+      expect(shouldUseDedicatedStorefrontPaths("sam")).toBe(false);
+
+      setWindowLocation("ezcomo.vercel.app");
+      expect(isDedicatedStorefrontHost("sam")).toBe(false);
+      expect(shouldUseDedicatedStorefrontPaths("sam")).toBe(false);
+
+      setWindowLocation("shop.example.com");
+      expect(isDedicatedStorefrontHost("sam")).toBe(true);
+      expect(shouldUseDedicatedStorefrontPaths("sam")).toBe(true);
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        value: originalWindow,
+        configurable: true,
+      });
+    }
+  });
 });

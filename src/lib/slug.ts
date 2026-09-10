@@ -36,6 +36,10 @@ function isLocalHost(hostname?: string | null) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
+function isVercelDeploymentHost(hostname?: string | null) {
+  return Boolean(hostname && (hostname === "vercel.app" || hostname.endsWith(".vercel.app")));
+}
+
 function isPlatformAppPath(pathname: string) {
   return pathname === "/"
     || pathname.startsWith("/admin")
@@ -59,7 +63,7 @@ export function isDedicatedStorefrontHost(storeSlug?: string | null) {
   }
 
   const hostname = normalizeHost(window.location.hostname || window.location.host);
-  if (!hostname || isLocalHost(hostname)) {
+  if (!hostname || isLocalHost(hostname) || isVercelDeploymentHost(hostname)) {
     return false;
   }
 
