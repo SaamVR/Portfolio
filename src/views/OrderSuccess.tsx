@@ -26,6 +26,9 @@ const OrderSuccess = ({ explicitStoreId, explicitStoreSlug }: OrderSuccessProps 
   const trackedPurchaseRef = useRef<string | null>(null);
 
   const LayoutWrapper = (explicitStoreId ?? currentStore?.id) ? StorefrontLayout : Layout;
+  const trackOrderPath = orderNumber
+    ? storefrontPath(`/track-order?order=${encodeURIComponent(orderNumber)}`, storeSlug)
+    : storefrontPath("/track-order", storeSlug);
 
   useEffect(() => {
     if (!currentStore?.id || !orderNumber || trackedPurchaseRef.current === orderNumber) return;
@@ -68,38 +71,74 @@ const OrderSuccess = ({ explicitStoreId, explicitStoreSlug }: OrderSuccessProps 
     <LayoutWrapper>
       <SEOHead title={experience.labels.orderPlacedTitle} description={`Your order with ${storeName} has been placed successfully.`} noindex />
       <PageTransition>
-        <div className="flex min-h-[70vh] items-center justify-center">
-          <div className="container mx-auto max-w-md px-4 text-center">
-            <CheckCircle className="mx-auto mb-6 h-16 w-16 text-primary animate-bounce-in" />
-            <h1 className="mb-4 font-heading text-3xl font-bold text-foreground">{experience.labels.orderPlacedTitle}!</h1>
-            {orderNumber && (
-              <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2">
-                <Package className="h-4 w-4 text-primary" />
-                <span className="font-heading text-sm font-bold text-foreground">{orderNumber}</span>
-              </div>
-            )}
-            <p className="mb-2 text-muted-foreground">
+        <div className="flex min-h-[70vh] items-center justify-center px-4 py-10 sm:py-14">
+          <div className="w-full max-w-lg rounded-2xl border border-primary/20 bg-card px-5 py-8 text-center shadow-sm sm:px-8 sm:py-10">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle className="h-14 w-14 text-primary animate-bounce-in" />
+            </div>
+
+            <h1 className="font-heading text-3xl font-bold text-foreground">{experience.labels.orderPlacedTitle}!</h1>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground sm:text-base">
               Thank you for choosing {storeName}. {experience.labels.orderPlacedDescription}
             </p>
-            <p className="mb-8 text-sm text-muted-foreground">
-              {experience.labels.postOrderStatusLabel}: <span className="font-semibold text-foreground">{experience.labels.deliveryEstimateLabel}</span>
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Link
-                to={storefrontPath("/shop", storeSlug)}
-                className="inline-block rounded-md bg-primary px-8 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 glow-shadow"
-              >
-                {experience.labels.continueActionLabel}
-              </Link>
-              <Link
-                to={orderNumber ? storefrontPath(`/track-order?order=${encodeURIComponent(orderNumber)}`, storeSlug) : storefrontPath("/track-order", storeSlug)}
-                className="inline-block rounded-md border border-primary/50 bg-primary/5 px-8 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary hover:bg-primary/10"
-              >
-                {experience.labels.trackActionLabel}
-              </Link>
+
+            <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4 text-left sm:p-5">
+              {orderNumber && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Order reference</p>
+                    <p className="mt-1 break-all font-heading text-lg font-bold text-foreground">{orderNumber}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className={orderNumber ? "mt-4 border-t border-border pt-4" : ""}>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {experience.labels.postOrderStatusLabel}
+                </p>
+                <p className="mt-1 font-semibold text-foreground">{experience.labels.deliveryEstimateLabel}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {orderNumber ? (
+                <>
+                  <Link
+                    to={trackOrderPath}
+                    className="flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-6 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90 glow-shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {experience.labels.trackActionLabel}
+                  </Link>
+                  <Link
+                    to={storefrontPath("/shop", storeSlug)}
+                    className="flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-6 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {experience.labels.continueActionLabel}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to={storefrontPath("/shop", storeSlug)}
+                    className="flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-6 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90 glow-shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {experience.labels.continueActionLabel}
+                  </Link>
+                  <Link
+                    to={trackOrderPath}
+                    className="flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-6 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {experience.labels.trackActionLabel}
+                  </Link>
+                </>
+              )}
+
               <Link
                 to={storefrontPath("/account", storeSlug)}
-                className="inline-block rounded-md border border-border px-8 py-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary"
+                className="mx-auto flex min-h-11 w-fit items-center justify-center rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 {experience.labels.accountActionLabel}
               </Link>
