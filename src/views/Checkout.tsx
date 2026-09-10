@@ -56,6 +56,15 @@ function createCheckoutRequestKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function focusCheckoutField(field: string) {
+  if (typeof window === "undefined") return;
+
+  window.requestAnimationFrame(() => {
+    const target = document.getElementById(`checkout-${field}`) as HTMLInputElement | null;
+    target?.focus();
+  });
+}
+
 const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) => {
   const currentStore = useOptionalStore();
   const storeId = explicitStoreId ?? currentStore?.id;
@@ -220,7 +229,6 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     visitorId,
   ]);
 
-  // Auto-apply pre-filled coupon code at checkout using server-side RPC validation
   useEffect(() => {
     if (!couponCode || appliedCoupon || couponLoading || hasMixedStoreItems || !checkoutStoreId || checkoutSubtotal <= 0) {
       return;
@@ -365,7 +373,6 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     }
   };
 
-  // Stores the coupon snapshot at validation time; usage is claimed after order creation.
   const applyCoupon = async () => {
     if (!couponInput.trim()) return;
     if (hasMixedStoreItems) {
@@ -418,6 +425,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       return;
     }
 
+    if (isManualMobilePayment && !merchantNumber) {
+      toast.error(`${manualPaymentLabel} payment is currently unavailable. Please choose another method.`);
+      return;
+    }
+
     const result = checkoutSchema.safeParse({
       ...form,
       address: digitalOnlyCheckout ? (form.address.trim() || "Digital delivery") : form.address,
@@ -429,11 +441,14 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
       });
       setErrors(fieldErrors);
+      const firstInvalidField = result.error.errors[0]?.path[0];
+      if (typeof firstInvalidField === "string") focusCheckoutField(firstInvalidField);
       return;
     }
 
     if (isManualMobilePayment && !form.trxId.trim()) {
       setErrors((prev) => ({ ...prev, trxId: "Transaction ID is required" }));
+      focusCheckoutField("trxId");
       return;
     }
 
@@ -565,81 +580,104 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
+  const isSubmitting = createOrder.isPending || isRedirecting;
+  const isManualPaymentUnavailable = isManualMobilePayment && !merchantNumber;
+  const submitLabel = isSubmitting
+    ? (isRedirecting ? `Redirecting to ${selectedGateway?.label ?? "payment provider"}...` : "Placing Order...")
+    : form.paymentMethod === "cod" || isManualMobilePayment
+      ? `${experience.labels.placeOrderLabel} - BDT ${grandTotal}`
+      : selectedGateway
+        ? `Pay BDT ${grandTotal} with ${selectedGateway.label}`
+        : experience.labels.placeOrderLabel;
+
+  const detailFields = [
+    { key: "name", label: experience.labels.customerNameLabel, placeholder: "e.g. Hasan Mahmud", type: "text", autoComplete: "name", inputMode: undefined },
+    { key: "phone", label: experience.labels.phoneLabel, placeholder: "01XXXXXXXXX", type: "tel", autoComplete: "tel", inputMode: "tel" as const },
+    ...(
+      digitalOnlyCheckout
+        ? []
+        : [
+            { key: "address", label: experience.labels.addressLabel, placeholder: "House, Road, Area", type: "text", autoComplete: "street-address", inputMode: undefined },
+            { key: "city", label: experience.labels.cityLabel, placeholder: "City or delivery area", type: "text", autoComplete: "address-level2", inputMode: undefined },
+          ]
+    ),
+  ];
+
   return (
     <LayoutWrapper>
       <SEOHead title="Checkout" description={`Complete your order with ${storeName}.`} noindex />
-      <div className="container mx-auto max-w-2xl px-4 py-12">
+      <div className="container mx-auto max-w-2xl px-4 py-8 sm:py-12">
         <button
+          type="button"
           onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-5 flex min-h-11 items-center gap-2 rounded-md px-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <ArrowLeft className="h-4 w-4" /> {experience.labels.checkoutBackLabel}
         </button>
 
-        <h1 className="mb-8 font-heading text-3xl font-bold text-foreground">{experience.labels.checkoutTitle}</h1>
+        <div className="mb-7">
+          <h1 className="font-heading text-3xl font-bold text-foreground">{experience.labels.checkoutTitle}</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Add your details, choose how to pay, then review the total before placing the order.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Delivery Details */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.detailsTitle}</h2>
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <section className="rounded-xl border border-border bg-card p-5 sm:p-6" aria-labelledby="checkout-details-title">
+            <div className="mb-5 flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
+              <div>
+                <h2 id="checkout-details-title" className="font-heading text-lg font-semibold text-foreground">{experience.labels.detailsTitle}</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {digitalOnlyCheckout ? "Tell us who should receive access to this order." : "Tell us who is ordering and where it should be delivered."}
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              {[
-                { key: "name", label: experience.labels.customerNameLabel, placeholder: "e.g. Hasan Mahmud" },
-                { key: "phone", label: experience.labels.phoneLabel, placeholder: "01XXXXXXXXX" },
-                ...(
-                  digitalOnlyCheckout
-                    ? []
-                    : [
-                        { key: "address", label: experience.labels.addressLabel, placeholder: "House, Road, Area" },
-                        { key: "city", label: experience.labels.cityLabel, placeholder: "City or delivery area" },
-                      ]
-                ),
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <label className="mb-1 block text-sm font-medium text-foreground">{label}</label>
-                  <input
-                    type="text"
-                    value={form[key as keyof typeof form]}
-                    onChange={(e) => update(key, e.target.value)}
-                    placeholder={placeholder}
-                    className="w-full rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  {errors[key] && <p className="mt-1 text-xs text-destructive">{errors[key]}</p>}
-                </div>
-              ))}
+              {detailFields.map(({ key, label, placeholder, type, autoComplete, inputMode }) => {
+                const errorId = `checkout-${key}-error`;
+                return (
+                  <div key={key}>
+                    <label htmlFor={`checkout-${key}`} className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
+                    <input
+                      id={`checkout-${key}`}
+                      type={type}
+                      inputMode={inputMode}
+                      autoComplete={autoComplete}
+                      value={form[key as keyof typeof form]}
+                      onChange={(e) => update(key, e.target.value)}
+                      placeholder={placeholder}
+                      aria-invalid={Boolean(errors[key])}
+                      aria-describedby={errors[key] ? errorId : undefined}
+                      className="min-h-11 w-full rounded-md border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {errors[key] && <p id={errorId} role="alert" className="mt-1.5 text-xs text-destructive">{errors[key]}</p>}
+                  </div>
+                );
+              })}
 
-              {digitalOnlyCheckout ? (
-                <DownloadAccessPanel compact />
-              ) : null}
+              {digitalOnlyCheckout ? <DownloadAccessPanel compact /> : null}
             </div>
-          </div>
+          </section>
 
-          {/* Order summary */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.summaryTitle}</h2>
-            <div className="space-y-2">
-              {checkoutItems.map((item) => (
-                <div key={`${item.productId}-${item.size}`} className="flex justify-between text-sm">
-                  <span className="text-foreground">
-                    {item.name} x {item.quantity} <span className="text-muted-foreground">({experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)})</span>
-                  </span>
-                  <span className="text-muted-foreground">BDT {item.price * item.quantity}</span>
-                </div>
-              ))}
+          <section className="rounded-xl border border-border bg-card p-5 sm:p-6" aria-labelledby="checkout-payment-title">
+            <div className="mb-5 flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</span>
+              <div>
+                <h2 id="checkout-payment-title" className="font-heading text-lg font-semibold text-foreground">{experience.labels.paymentTitle}</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose one available payment method for this order.</p>
+              </div>
             </div>
-          </div>
 
-          {/* Payment Method */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.paymentTitle}</h2>
             <div className="space-y-3">
               {paymentOptions.map(({ value, label, desc }) => (
                 <label
                   key={value}
-                  className={`flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-all ${
+                  className={`flex min-h-[64px] cursor-pointer items-center gap-4 rounded-lg border p-4 transition-all ${
                     form.paymentMethod === value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/20"
+                      : "border-border hover:border-primary/40 hover:bg-muted/20"
                   }`}
                 >
                   <input
@@ -648,11 +686,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                     value={value}
                     checked={form.paymentMethod === value}
                     onChange={(e) => update("paymentMethod", e.target.value)}
-                    className="accent-primary"
+                    className="h-4 w-4 shrink-0 accent-primary"
                   />
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{desc}</p>
                   </div>
                 </label>
               ))}
@@ -664,146 +702,184 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               </p>
             )}
 
+            {isManualPaymentUnavailable && (
+              <p className="mt-3 text-xs text-destructive">
+                {manualPaymentLabel} payment is currently unavailable because the merchant payment number is missing. Please choose another method.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-primary/25 bg-card p-5 shadow-sm sm:p-6" aria-labelledby="checkout-review-title">
+            <div className="mb-5 flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">3</span>
+              <div>
+                <h2 id="checkout-review-title" className="font-heading text-lg font-semibold text-foreground">{experience.labels.summaryTitle}</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {isManualMobilePayment
+                    ? `Review your items and final amount, then complete ${manualPaymentLabel} payment before placing the order.`
+                    : "Review your items, discounts, delivery and final amount."}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {checkoutItems.map((item) => (
+                <div key={`${item.productId}-${item.size}`} className="flex items-start justify-between gap-4 text-sm">
+                  <span className="min-w-0 text-foreground">
+                    {item.name} x {item.quantity}
+                    <span className="ml-1 text-muted-foreground">({experience.labels.optionLabel}: {getCartVariantDisplayLabel(item.size)})</span>
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">BDT {item.price * item.quantity}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="my-5 border-t border-border" />
+
+            <div>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Tag className="h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">{experience.labels.couponTitle}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-semibold text-foreground">{appliedCoupon.code}</span>
+                        <span className="text-sm text-primary">
+                          -{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : `BDT ${appliedCoupon.discount_value}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" onClick={removeCoupon} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground" aria-label="Remove coupon">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <details className="rounded-lg border border-border bg-muted/15 p-3" open={Boolean(couponError || couponInput)}>
+                  <summary className="cursor-pointer text-sm font-medium text-foreground">Have a coupon?</summary>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                      placeholder="Enter coupon code"
+                      className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-4 py-3 font-mono text-sm uppercase text-foreground placeholder:text-muted-foreground placeholder:normal-case focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), applyCoupon())}
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="flex min-h-11 items-center gap-2 rounded-md bg-secondary px-4 text-sm font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
+                    >
+                      {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </button>
+                  </div>
+                  {couponError && <p role="alert" className="mt-2 text-xs text-destructive">{couponError}</p>}
+                </details>
+              )}
+            </div>
+
+            <div className="my-5 border-t border-border" />
+
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{experience.labels.subtotalLabel}</span>
+                <span>BDT {checkoutSubtotal}</span>
+              </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-sm text-primary">
+                  <span>Coupon discount</span>
+                  <span>-BDT {couponDiscount}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{experience.labels.deliveryLabel}</span>
+                <span className={deliveryFee === 0 ? "text-primary" : ""}>
+                  {digitalOnlyCheckout ? experience.labels.includedFulfillmentLabel : deliveryFee === 0 ? experience.labels.freeDeliveryLabel : `BDT ${deliveryFee}`}
+                </span>
+              </div>
+              {pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel && (
+                <div className="flex justify-between text-sm text-primary">
+                  <span>{pricing.paymentDiscountLabel}</span>
+                  <span>-BDT {pricing.paymentDiscount}</span>
+                </div>
+              )}
+              {!digitalOnlyCheckout && deliveryFee > 0 && deliverySettings.enabled && pricing.amountToFreeDelivery > 0 && (
+                <p className="text-xs text-muted-foreground">Add BDT {pricing.amountToFreeDelivery} more for free delivery</p>
+              )}
+              {!digitalOnlyCheckout && pricing.qualifiesForThresholdFreeDelivery && (
+                <p className="text-xs text-primary">You qualify for free delivery.</p>
+              )}
+              {!digitalOnlyCheckout && pricing.qualifiesForPrepaidFreeDelivery && (
+                <p className="text-xs text-primary">Prepaid checkout unlocked free delivery for this order.</p>
+              )}
+              <div className="border-t border-border pt-4">
+                <div className="flex items-end justify-between gap-4 font-heading text-lg font-bold text-foreground">
+                  <span>{experience.labels.totalLabel}</span>
+                  <span className="text-xl">BDT {grandTotal}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{checkoutItems.length} item(s) x {checkoutItems.reduce((a, i) => a + i.quantity, 0)} unit(s)</p>
+              </div>
+            </div>
+
             {isManualMobilePayment && merchantNumber && (
-              <div className="mt-4 space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+              <div className="mt-5 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Complete {manualPaymentLabel} payment</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">The amount below already includes any coupon, delivery and payment discount shown above.</p>
+                </div>
                 <p className="text-sm font-medium text-foreground">
                   Send <span className="font-bold text-primary">BDT {grandTotal}</span> to this {manualPaymentLabel} number:
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Phone className="h-4 w-4 text-primary" />
                   <span className="font-mono text-lg font-bold text-foreground">{merchantNumber}</span>
                   <button
                     type="button"
                     onClick={copyNumber}
-                    className="ml-auto flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="ml-auto flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    {copied ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                    {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
-                <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+                <ol className="list-inside list-decimal space-y-1.5 text-xs leading-5 text-muted-foreground">
                   <li>Open your {manualPaymentLabel} app</li>
                   <li>Select &quot;Send Money&quot;</li>
                   <li>Enter the number above and send BDT {grandTotal}</li>
                   <li>Enter the Transaction ID (TrxID) below</li>
                 </ol>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">Transaction ID (TrxID)</label>
+                  <label htmlFor="checkout-trxId" className="mb-1.5 block text-sm font-medium text-foreground">Transaction ID (TrxID)</label>
                   <input
+                    id="checkout-trxId"
                     type="text"
+                    autoComplete="off"
                     value={form.trxId}
                     onChange={(e) => update("trxId", e.target.value)}
                     placeholder="e.g. ABC1234XYZ"
-                    className="w-full rounded-md border border-border bg-background px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                    aria-invalid={Boolean(errors.trxId)}
+                    aria-describedby={errors.trxId ? "checkout-trxId-error" : undefined}
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                   />
-                  {errors.trxId && <p className="mt-1 text-xs text-destructive">{errors.trxId}</p>}
+                  {errors.trxId && <p id="checkout-trxId-error" role="alert" className="mt-1.5 text-xs text-destructive">{errors.trxId}</p>}
                 </div>
               </div>
             )}
 
-            {isManualMobilePayment && !merchantNumber && (
-              <p className="mt-3 text-xs text-destructive">
-                {manualPaymentLabel} payment is currently unavailable. Please choose another method.
-              </p>
-            )}
-          </div>
-
-          {/* Coupon Code */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">{experience.labels.couponTitle}</h2>
-            {appliedCoupon ? (
-              <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" />
-                  <span className="font-mono font-semibold text-foreground">{appliedCoupon.code}</span>
-                  <span className="text-sm text-primary">
-                    -{appliedCoupon.discount_type === "percentage" ? `${appliedCoupon.discount_value}%` : `BDT ${appliedCoupon.discount_value}`}
-                  </span>
-                </div>
-                <button type="button" onClick={removeCoupon} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponInput}
-                  onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
-                  placeholder="Enter coupon code"
-                  className="flex-1 rounded-md border border-border bg-background px-4 py-3 font-mono text-sm uppercase text-foreground placeholder:text-muted-foreground placeholder:normal-case focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), applyCoupon())}
-                />
-                <button
-                  type="button"
-                  onClick={applyCoupon}
-                  disabled={couponLoading || !couponInput.trim()}
-                  className="flex items-center gap-2 rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
-                >
-                  {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
-                </button>
-              </div>
-            )}
-            {couponError && <p className="mt-2 text-xs text-destructive">{couponError}</p>}
-          </div>
-
-          {/* Order Total */}
-          <div className="rounded-lg border border-border bg-card p-6 space-y-3">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{experience.labels.subtotalLabel}</span>
-              <span>BDT {checkoutSubtotal}</span>
-            </div>
-            {couponDiscount > 0 && (
-              <div className="flex justify-between text-sm text-primary">
-                <span>Coupon discount</span>
-                <span>-BDT {couponDiscount}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{experience.labels.deliveryLabel}</span>
-              <span className={deliveryFee === 0 ? "text-primary" : ""}>
-                {digitalOnlyCheckout ? experience.labels.includedFulfillmentLabel : deliveryFee === 0 ? experience.labels.freeDeliveryLabel : `BDT ${deliveryFee}`}
-              </span>
-            </div>
-            {pricing.paymentDiscount > 0 && pricing.paymentDiscountLabel && (
-              <div className="flex justify-between text-sm text-primary">
-                <span>{pricing.paymentDiscountLabel}</span>
-                <span>-BDT {pricing.paymentDiscount}</span>
-              </div>
-            )}
-            {!digitalOnlyCheckout && deliveryFee > 0 && deliverySettings.enabled && pricing.amountToFreeDelivery > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Add BDT {pricing.amountToFreeDelivery} more for free delivery
-              </p>
-            )}
-            {!digitalOnlyCheckout && pricing.qualifiesForThresholdFreeDelivery && (
-              <p className="text-xs text-primary">You qualify for free delivery.</p>
-            )}
-            {!digitalOnlyCheckout && pricing.qualifiesForPrepaidFreeDelivery && (
-              <p className="text-xs text-primary">Prepaid checkout unlocked free delivery for this order.</p>
-            )}
-            <div className="border-t border-border pt-3">
-              <div className="flex justify-between font-heading text-lg font-bold text-foreground">
-                <span>{experience.labels.totalLabel}</span>
-                <span>BDT {grandTotal}</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">{checkoutItems.length} item(s) x {checkoutItems.reduce((a, i) => a + i.quantity, 0)} unit(s)</p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={createOrder.isPending || isRedirecting || paymentOptions.length === 0}
-            className="w-full rounded-md bg-primary py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow disabled:opacity-50"
-          >
-            {createOrder.isPending || isRedirecting
-              ? (isRedirecting ? `Redirecting to ${selectedGateway?.label ?? "payment provider"}...` : "Placing Order...")
-              : form.paymentMethod === "cod"
-                ? `${experience.labels.placeOrderLabel} - BDT ${grandTotal}`
-                : selectedGateway
-                  ? `Pay BDT ${grandTotal} with ${selectedGateway.label}`
-                  : `Pay BDT ${grandTotal} with ${manualPaymentLabel}`}
-          </button>
+            <button
+              type="submit"
+              data-testid="checkout-submit"
+              disabled={isSubmitting || paymentOptions.length === 0 || isManualPaymentUnavailable}
+              aria-busy={isSubmitting}
+              className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-4 font-heading text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:opacity-90 glow-shadow disabled:opacity-50"
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {submitLabel}
+            </button>
+          </section>
         </form>
       </div>
     </LayoutWrapper>
