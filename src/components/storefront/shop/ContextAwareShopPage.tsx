@@ -552,7 +552,7 @@ function ActiveFilterChips({ chips, onClear }: { chips: Array<{ key: string; lab
   return (
     <div className="flex flex-wrap gap-2">
       {chips.map((chip) => (
-        <button key={`${chip.key}-${chip.label}`} type="button" onClick={() => onClear(chip.key)} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground">
+        <button key={`${chip.key}-${chip.label}`} type="button" onClick={() => onClear(chip.key)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-medium text-foreground">
           {chip.label}
           <X className="h-3 w-3" />
         </button>
@@ -575,8 +575,8 @@ function CategoryTabs({ items, active, onChange, style = "tabs", mobileScrollabl
           type="button"
           onClick={() => onChange(item.value)}
           className={cn(
-            "whitespace-nowrap border px-4 py-2 text-sm font-medium transition-colors",
-            mobileScrollable && "min-h-11 shrink-0",
+            "min-h-11 whitespace-nowrap border px-4 py-2 text-sm font-medium transition-colors",
+            mobileScrollable && "shrink-0",
             chipClass,
             active === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground",
           )}
@@ -606,7 +606,7 @@ function FilterField({
     return (
       <label className="space-y-2">
         <span className="text-sm font-semibold text-foreground">{filter.label}</span>
-        <select value={value} onChange={(event) => onChange(filter.key, event.target.value || null)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground">
+        <select value={value} onChange={(event) => onChange(filter.key, event.target.value || null)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground">
           <option value="">All</option>
           {Array.from(new Set(filter.values)).map((option, index) => <option key={`${filter.key}-${option}-${index}`} value={option}>{option}</option>)}
         </select>
@@ -634,7 +634,7 @@ function FilterField({
               onClick={() => toggleMultiValue(option)}
               aria-pressed={active}
               className={cn(
-                "min-h-10 rounded-full border px-3 py-2 text-left text-sm font-medium transition-colors",
+                "min-h-11 rounded-full border px-3 py-2 text-left text-sm font-medium transition-colors",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-muted-foreground hover:text-foreground",
@@ -685,13 +685,70 @@ function FilterDrawer({
   params: URLSearchParams;
   onChange: (key: string, value: string | null) => void;
 }) {
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onOpenChange(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawerRef.current) return;
+
+      const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        drawerRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.current)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [onOpenChange, open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 lg:hidden">
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col overflow-hidden bg-background shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={() => onOpenChange(false)}>
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shop-filter-drawer-title"
+        tabIndex={-1}
+        className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col overflow-hidden bg-background shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="text-lg font-semibold text-foreground">Filters</h3>
-          <button type="button" onClick={() => onOpenChange(false)} className="rounded-full border border-border p-2">
+          <h3 id="shop-filter-drawer-title" className="text-lg font-semibold text-foreground">Filters</h3>
+          <button ref={closeButtonRef} type="button" onClick={() => onOpenChange(false)} aria-label="Close filters" className="flex h-11 w-11 items-center justify-center rounded-full border border-border">
             <X className="h-4 w-4" />
           </button>
         </div>

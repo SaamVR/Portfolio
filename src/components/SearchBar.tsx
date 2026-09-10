@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useId, useRef } from "react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
 import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   const { data: products = [] } = useProducts(storeId);
   const { data: searchResults = null } = useProductSearch({
@@ -240,7 +241,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     <>
       {showDropdown && (
         <div
-          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity motion-reduce:transition-none"
           onClick={() => setOpen(false)}
         />
       )}
@@ -268,17 +269,20 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search products..."
-          className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-11 w-full rounded-md border border-border bg-secondary pl-9 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+          role="combobox"
           aria-label="Search products"
+          aria-autocomplete="list"
           aria-expanded={showDropdown}
-          aria-haspopup="listbox"
+          aria-controls={showDropdown ? listboxId : undefined}
+          aria-activedescendant={selectedIndex >= 0 && filtered[selectedIndex] ? `${listboxId}-option-${filtered[selectedIndex].id}` : undefined}
           autoComplete="off"
         />
         {query && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 text-muted-foreground hover:text-foreground"
+            className="absolute right-0 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label="Clear search"
           >
             <X className="h-3.5 w-3.5" />
@@ -287,7 +291,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
       </form>
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none">
           {!isEmptyState && filtered.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <SearchX className="h-8 w-8 opacity-40" />
@@ -297,16 +301,17 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
           )}
 
           {filtered.length > 0 && (
-            <div className="p-1" role="listbox">
+            <div id={listboxId} className="p-1" role="listbox" aria-label="Search suggestions">
               {filtered.map((product, index) => (
                 <button
                   key={product.id}
+                  id={`${listboxId}-option-${product.id}`}
                   role="option"
                   aria-selected={index === selectedIndex}
                   onClick={() => handleSelect(product)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors cursor-pointer",
+                    "flex min-h-11 w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors cursor-pointer",
                     index === selectedIndex
                       ? "bg-accent text-accent-foreground"
                       : "hover:bg-accent hover:text-accent-foreground"
@@ -342,23 +347,24 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
                 <div className="p-1">
                   <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Searches</p>
                   {history.map((term) => (
-                    <button
-                      key={term}
-                      onClick={() => handleHistoryClick(term)}
-                      className="flex w-full items-center gap-2 rounded-sm px-3 py-1.5 text-left hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-                    >
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="flex-1 text-sm truncate">{term}</span>
-                      <span
-                        role="button"
-                        tabIndex={0}
+                    <div key={term} className="flex min-h-11 items-center gap-1 rounded-sm hover:bg-accent hover:text-accent-foreground">
+                      <button
+                        type="button"
+                        onClick={() => handleHistoryClick(term)}
+                        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors"
+                      >
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="flex-1 truncate text-sm">{term}</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={(e) => handleRemoveHistory(e, term)}
-                        className="text-muted-foreground hover:text-foreground p-0.5"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
                         aria-label={`Remove ${term} from history`}
                       >
-                        <X className="h-3 w-3" />
-                      </span>
-                    </button>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -370,7 +376,7 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
                     <button
                       key={cat.value}
                       onClick={() => handleCategoryClick(cat.value)}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full border border-border bg-secondary px-3 py-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <Tag className="h-3 w-3" />
                       {cat.label}

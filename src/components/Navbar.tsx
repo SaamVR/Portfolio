@@ -54,7 +54,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { theme, resolvedTheme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
   const currentStore = useOptionalStore();
   const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
   const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
@@ -89,6 +89,10 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [themeCustomization?.nav_style]);
+
+  useEffect(() => {
+    setOpenDropdownKey(null);
+  }, [location.pathname]);
 
   const fallbackBrandName = currentStore?.name?.trim() || "Store";
   const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore?.siteSettings?.storefront_profile
@@ -216,8 +220,14 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
               <div
                 key={link.to}
                 className="relative group"
-                onMouseEnter={() => link.hasDropdown && setShopDropdownOpen(true)}
-                onMouseLeave={() => link.hasDropdown && setShopDropdownOpen(false)}
+                onMouseEnter={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                onMouseLeave={() => link.hasDropdown && setOpenDropdownKey(null)}
+                onFocusCapture={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                onBlurCapture={(event) => {
+                  if (link.hasDropdown && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setOpenDropdownKey(null);
+                  }
+                }}
               >
                 <Link
                   to={link.to}
@@ -226,14 +236,15 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
+                  aria-expanded={link.hasDropdown ? openDropdownKey === link.to : undefined}
                 >
                   {link.to.endsWith("/shop") ? shopLabel : link.label}
-                  {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
+                  {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none" />}
                 </Link>
 
-                {link.hasDropdown && link.to.endsWith("/shop") && shopDropdownOpen && (
+                {link.hasDropdown && link.to.endsWith("/shop") && openDropdownKey === link.to && (
                   <div className="absolute left-0 top-full mt-1 w-[640px] pt-1">
-                    <div className="grid grid-cols-3 gap-6 rounded-2xl border border-white/15 bg-background/90 backdrop-blur-2xl p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in slide-in-from-top-2 duration-200 ring-1 ring-black/5 dark:ring-white/10">
+                    <div className="grid grid-cols-3 gap-6 rounded-2xl border border-white/15 bg-background/90 backdrop-blur-2xl p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in slide-in-from-top-2 duration-200 ring-1 ring-black/5 motion-reduce:animate-none dark:ring-white/10">
                       <div>
                         <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Types</h4>
                         <div className="flex flex-col gap-1.5">
@@ -306,7 +317,12 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                   </div>
                 )}
                 {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length ? (
-                  <div className="absolute left-0 top-full mt-1 w-64 pt-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+                  <div className={cn(
+                    "absolute left-0 top-full mt-1 w-64 pt-1 transition-opacity duration-150 motion-reduce:transition-none",
+                    openDropdownKey === link.to
+                      ? "visible opacity-100 pointer-events-auto"
+                      : "invisible opacity-0 pointer-events-none",
+                  )}>
                     <div className="rounded-2xl border border-white/15 bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
                       <div className="flex flex-col gap-1">
                         {link.children.map((child) => (
