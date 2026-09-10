@@ -86,22 +86,6 @@ export default function SiteSettingsExperience() {
   const [search, setSearch] = useState("");
   const [directoryOpen, setDirectoryOpen] = useState(false);
 
-  const { data: store } = useQuery({
-    queryKey: ["site-settings-experience-store", activeStoreId],
-    queryFn: async () => {
-      if (!activeStoreId) return null;
-      const { data, error } = await supabase
-        .from("stores")
-        .select("storefront_template_id")
-        .eq("id", activeStoreId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: Boolean(activeStoreId),
-    staleTime: 300_000,
-  });
-
   const { data: settings = {} } = useQuery({
     queryKey: ["site-settings-experience-settings", activeStoreId],
     queryFn: async () => {
@@ -120,7 +104,6 @@ export default function SiteSettingsExperience() {
   const templateId = (
     settings.storefront_profile?.template_id
     ?? settings.storefront_template?.template_id
-    ?? store?.storefront_template_id
     ?? "fashion"
   ) as StorefrontTemplateId;
   const templateSeed = useMemo(() => resolveStorefrontTemplateSeed(templateId), [templateId]);
@@ -135,7 +118,7 @@ export default function SiteSettingsExperience() {
   );
 
   const requestedTab = searchParams.get("tab") as SettingsTabValue | null;
-  const activeTab = availableTabs.some((tab) => tab.value === requestedTab)
+  const activeTab: SettingsTabValue = requestedTab && availableTabs.some((tab) => tab.value === requestedTab)
     ? requestedTab
     : (availableTabs[0]?.value ?? "brand_seo");
   const activeDefinition = availableTabs.find((tab) => tab.value === activeTab);
