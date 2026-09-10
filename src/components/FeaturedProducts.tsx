@@ -4,7 +4,7 @@ import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
 import { Button } from "@/components/ui/button";
 import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
@@ -52,7 +52,8 @@ const FeaturedProducts = ({
       case "all":
         return availableProducts;
       case "newest":
-        return [...availableProducts].reverse();
+        // useProducts() preserves the storefront source order; the canonical DB path is newest-first.
+        return availableProducts;
       case "category":
         return category ? availableProducts.filter((product) => product.category === category) : availableProducts;
       case "type":
@@ -65,85 +66,104 @@ const FeaturedProducts = ({
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const variantGridClass =
     layoutVariant === "2-col"
-      ? "grid-cols-2"
+      ? "grid-cols-1 min-[360px]:grid-cols-2"
       : layoutVariant === "3-col" || layoutVariant === "grid" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
-        ? "grid-cols-2 lg:grid-cols-3"
+        ? "grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-3"
         : layoutVariant === "4-col"
-          ? "grid-cols-2 lg:grid-cols-4"
-          : getStorefrontProductGridClass(themeCustomization?.product_grid).replace("grid-cols-1", "grid-cols-2");
+          ? "grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4"
+          : getStorefrontProductGridClass(themeCustomization?.product_grid).replace("grid-cols-1", "grid-cols-1 min-[360px]:grid-cols-2");
   const hasSidebar = layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right";
   const objectPosition = resolveStorefrontImageObjectPosition({ position: imagePosition, focalX, focalY });
   const sectionStyle = {
     ["--storefront-product-image-position" as string]: objectPosition,
   } as CSSProperties;
-  const sidebar = (
-    <aside className="rounded-lg border border-border bg-card p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Shop guide</p>
-      <div className="mt-4 space-y-3">
-        {["Featured picks", "New arrivals", "Best value", "Ready to ship"].map((item) => (
-          <div key={item} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2">
-            <span className="text-sm font-medium text-foreground">{item}</span>
-            <span className="h-2 w-2 rounded-full bg-primary" />
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-xs leading-5 text-muted-foreground">
-        Use this layout when shoppers need a little more browsing guidance before choosing a product.
+  const sectionTagline = tagline ?? legacySettings?.tagline ?? "Featured";
+  const sectionTitle = title ?? legacySettings?.title ?? "Explore what’s available";
+  const browseAllHref = storefrontPath("/shop", currentStore?.slug);
+
+  const sectionIntro = (
+    <div className="max-w-3xl text-left md:mx-auto md:text-center">
+      <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">{sectionTagline}</p>
+      <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{sectionTitle}</h2>
+      <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
+        Browse this selection, then open any item for its full details and available options.
       </p>
+    </div>
+  );
+
+  const sidebar = (
+    <aside className="rounded-[var(--sf-card-radius)] border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24 lg:p-6">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">{sectionTagline}</p>
+      <h2 className="mt-2 font-heading text-2xl font-bold tracking-tight text-foreground">{sectionTitle}</h2>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+        Compare the visible options and open a product when you need the complete description, variants, or purchase details.
+      </p>
+      <Button asChild variant="outline" className="mt-5 min-h-11 w-full justify-between rounded-xl">
+        <Link href={browseAllHref}>
+          View full catalog
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </Button>
     </aside>
   );
 
   if (featuredLoading || productsLoading) {
-    return <StorefrontSectionSkeleton title={title ?? "Loading products"} cards={4} />;
+    return <StorefrontSectionSkeleton title={sectionTitle || "Loading products"} cards={4} />;
   }
 
   if (productsToRender.length === 0) {
     return (
       <StorefrontSectionEmpty
-        eyebrow="Catalog coming together"
-        title={title ?? legacySettings?.title ?? "Products will appear here soon"}
-        description="Add the first real items to turn this space into a browsable catalog, menu, booking list, or offer gallery."
+        eyebrow="Catalog"
+        title={sectionTitle || "Products will appear here soon"}
+        description="There are no published items in this selection yet. Browse the full catalog or contact the store for help."
         primaryLabel="Browse store"
-        primaryHref={storefrontPath("/shop", currentStore?.slug)}
+        primaryHref={browseAllHref}
         secondaryLabel="Contact the store"
         secondaryHref={storefrontPath("/contact", currentStore?.slug)}
       />
     );
   }
 
+  const visibleProducts = productsToRender.slice(0, limit);
+
   return (
     <section className="py-14 md:py-20" style={sectionStyle}>
       <div className={`mx-auto px-4 ${containerClass}`}>
-        <AnimatedSection animation="blur">
-          <div className="mb-8 text-left md:mb-12 md:text-center">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary md:text-sm">
-              {tagline ?? legacySettings?.tagline ?? "Featured"}
-            </p>
-            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              {title ?? legacySettings?.title ?? "Explore What’s Available"}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:mx-auto md:text-base">
-              Start with the strongest items first so shoppers immediately understand what this storefront is actually selling.
-            </p>
-          </div>
-        </AnimatedSection>
+        {!hasSidebar ? (
+          <AnimatedSection animation="blur">
+            <div className="mb-8 md:mb-12">{sectionIntro}</div>
+          </AnimatedSection>
+        ) : null}
+
         <div
           className={
             hasSidebar
-              ? `grid gap-6 ${layoutVariant === "3-col-sidebar-right" ? "lg:grid-cols-[minmax(0,1fr)_260px]" : "lg:grid-cols-[260px_minmax(0,1fr)]"}`
+              ? `grid gap-6 lg:items-start ${layoutVariant === "3-col-sidebar-right" ? "lg:grid-cols-[minmax(0,1fr)_280px]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`
               : ""
           }
         >
           {hasSidebar && layoutVariant !== "3-col-sidebar-right" ? sidebar : null}
-          <div className={`grid gap-3 sm:gap-4 md:gap-6 ${variantGridClass}`}>
-            {productsToRender.slice(0, limit).map((product, i) => (
-              <AnimatedSection key={product.id} delay={Math.min(i, 4) * 80} animation="blur">
+          <div className={`grid gap-4 md:gap-6 ${variantGridClass}`}>
+            {visibleProducts.map((product, index) => (
+              <AnimatedSection key={product.id} delay={Math.min(index, 4) * 80} animation="blur">
                 <ProductCard product={product} />
               </AnimatedSection>
             ))}
           </div>
           {hasSidebar && layoutVariant === "3-col-sidebar-right" ? sidebar : null}
         </div>
+
+        {!hasSidebar && productsToRender.length > visibleProducts.length ? (
+          <div className="mt-8 flex justify-center md:mt-10">
+            <Button asChild variant="outline" size="lg" className="min-h-11 rounded-full px-6">
+              <Link href={browseAllHref}>
+                View all products
+                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { RealEstatePropertySearchSection } from "@/components/storefront/real-estate/RealEstatePropertySearchSection";
 import { storefrontPath } from "@/lib/slug";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
-import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
+import { BadgeCheck, CreditCard, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
+import { cn } from "@/lib/utils";
 
 interface HeroSettings {
   tagline?: string;
@@ -60,14 +61,17 @@ interface HeroSectionProps {
 }
 
 const HeroSection = ({ overrides }: HeroSectionProps) => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [scrollY, setScrollY] = useState(0);
   const currentStore = useOptionalStore();
-  const { data: hero } = useSiteSettings<HeroSettings>("hero_section", currentStore?.id);
+  const preloadedHero = currentStore?.siteSettings?.hero_section as HeroSettings | undefined;
+  const preloadedDelivery = currentStore?.siteSettings?.delivery_settings as DeliverySettings | undefined;
+  const { data: fetchedHero } = useSiteSettings<HeroSettings>("hero_section", currentStore?.id);
   const { data: paymentSettings } = usePublicPaymentSettings(currentStore?.id);
-  const { data: deliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
+  const { data: fetchedDeliverySettings } = useSiteSettings<DeliverySettings>("delivery_settings", currentStore?.id);
+  const hero = fetchedHero ?? preloadedHero;
+  const deliverySettings = fetchedDeliverySettings ?? preloadedDelivery;
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const legacyHero = overrides?.disableLegacyFallback ? null : hero;
-  const storeName = currentStore?.name?.trim() || "your storefront";
+  const storeName = currentStore?.name?.trim() || "Store";
   const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
     ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
     : null;
@@ -76,19 +80,22 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
 
-  const tagline = overrides?.tagline ?? legacyHero?.tagline ?? "Now available";
-  const title = overrides?.title ?? legacyHero?.title ?? "Built for";
-  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? storeName;
+  const tagline = (overrides?.tagline ?? legacyHero?.tagline ?? "").trim();
+  const title = overrides?.title ?? legacyHero?.title ?? storeName;
+  const highlight = overrides?.highlight ?? legacyHero?.highlight ?? "";
   const subtitle =
-    overrides?.subtitle ??
-    legacyHero?.subtitle ??
-    (currentStore?.description?.trim() || "Share products, services, bookings, or offers with a storefront that feels clear, modern, and ready to buy from.");
-  const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Start exploring";
-  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/", currentStore?.slug);
-  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "Learn more";
+    overrides?.subtitle
+    ?? legacyHero?.subtitle
+    ?? currentStore?.description?.trim()
+    ?? "Explore what this store has to offer and open any item for the full details.";
+  const ctaText = overrides?.ctaText ?? legacyHero?.cta_text ?? "Browse store";
+  const ctaLink = storefrontPath(overrides?.ctaLink ?? legacyHero?.cta_link ?? "/shop", currentStore?.slug);
+  const secondaryCtaText = overrides?.secondaryCtaText ?? legacyHero?.secondary_cta_text ?? "Contact us";
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
-  const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
-  const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
+  const explicitMediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
+  const legacyImageUrl = legacyHero?.image_url ?? "";
+  const mediaUrl = explicitMediaUrl || legacyImageUrl;
+  const mediaType = explicitMediaUrl ? (overrides?.mediaType ?? legacyHero?.media_type ?? "image") : "image";
   const mediaFit = overrides?.mediaFit ?? "cover";
   const imageObjectPosition = resolveStorefrontImageObjectPosition({
     position: overrides?.imagePosition ?? legacyHero?.image_position,
@@ -96,54 +103,62 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     focalY: overrides?.focalY ?? legacyHero?.focal_y,
   });
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
-  const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
+  const overlayOpacity = Math.min(90, Math.max(20, overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 48));
   const layoutVariant = overrides?.layoutVariant ?? "full-bleed";
   const isSplit = layoutVariant === "split";
   const isCentered = layoutVariant === "centered";
   const isEditorial = layoutVariant === "editorial";
-  const useContainedMedia = mediaFit === "contain";
+  const isContained = mediaFit === "contain";
+  const hasSideMedia = isSplit || isEditorial;
+  const isVideo = mediaType === "video" && Boolean(mediaUrl);
+
   const trustHighlights = [
-    paymentSettings?.cod_enabled !== false
-      ? { icon: Truck, label: "Flexible checkout options available" }
+    paymentSettings?.cod_enabled === true
+      ? { icon: Truck, label: "Cash on delivery available" }
       : null,
-    paymentSettings?.bkash_enabled || paymentSettings?.nagad_enabled
-      ? { icon: CreditCard, label: "Digital and manual payment methods supported" }
+    paymentSettings?.bkash_enabled === true || paymentSettings?.nagad_enabled === true
+      ? {
+          icon: CreditCard,
+          label: paymentSettings?.bkash_enabled === true && paymentSettings?.nagad_enabled === true
+            ? "bKash and Nagad available"
+            : paymentSettings?.bkash_enabled === true
+              ? "bKash available"
+              : "Nagad available",
+        }
       : null,
-    deliverySettings?.enabled !== false
-      ? { icon: BadgeCheck, label: deliverySettings?.free_threshold ? `Delivery incentives from BDT ${deliverySettings.free_threshold}` : "Delivery and fulfillment options available" }
+    deliverySettings?.enabled === true
+      ? {
+          icon: BadgeCheck,
+          label: typeof deliverySettings.free_threshold === "number" && deliverySettings.free_threshold > 0
+            ? `Free delivery from BDT ${deliverySettings.free_threshold.toLocaleString()}`
+            : "Delivery options available",
+        }
       : null,
-    { icon: ShieldCheck, label: "Trusted support after purchase" },
   ].filter(Boolean) as Array<{ icon: typeof Truck; label: string }>;
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (sectionRef.current) {
-        const rect = sectionRef.current.getBoundingClientRect();
-        if (rect.bottom > 0) {
-          setScrollY(window.scrollY * 0.3);
-        }
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    syncPreference();
+    mediaQuery.addEventListener?.("change", syncPreference);
+    return () => mediaQuery.removeEventListener?.("change", syncPreference);
   }, []);
 
-  const isVideo = mediaType === "video" && mediaUrl;
   const renderMedia = (className: string) => {
-    const transform = useContainedMedia ? undefined : `translateY(${scrollY}px) scale(1.08)`;
-
     if (isVideo) {
       return (
         <div className={className}>
           <video
             src={mediaUrl}
-            autoPlay
+            autoPlay={!prefersReducedMotion}
+            loop={!prefersReducedMotion}
             muted
-            loop
             playsInline
-            className={`h-full w-full ${useContainedMedia ? "object-contain" : "object-cover"}`}
-            style={{ transform, objectPosition: imageObjectPosition }}
+            controls={prefersReducedMotion}
+            preload="metadata"
+            aria-label={`${storeName} hero video`}
+            className={cn("h-full w-full", isContained ? "object-contain" : "object-cover")}
+            style={{ objectPosition: imageObjectPosition }}
           />
         </div>
       );
@@ -157,151 +172,171 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
             fallbackSrc={legacyHero?.image_url ?? null}
             fill
             priority
-            alt="Storefront hero media"
-            className={`${useContainedMedia ? "object-contain" : "object-cover"} transition-transform duration-100`}
-            style={{ transform, objectPosition: imageObjectPosition }}
+            alt={`${storeName} hero`}
+            className={cn("h-full w-full", isContained ? "object-contain" : "object-cover")}
+            style={{ objectPosition: imageObjectPosition }}
           />
         </div>
       );
     }
 
-    return <div className={`${className} bg-gradient-to-br from-primary/20 via-accent/10 to-background`} />;
+    return (
+      <div
+        className={cn(
+          className,
+          hasSideMedia
+            ? "bg-gradient-to-br from-primary/15 via-muted to-background"
+            : "bg-slate-950",
+        )}
+        aria-hidden="true"
+      />
+    );
   };
 
   return (
     <>
-    <section
-      id={overrides?.anchorId}
-      ref={sectionRef}
-      className={[
-        "relative flex min-h-[74svh] items-center justify-center overflow-hidden md:min-h-[88vh]",
-        isSplit || isEditorial ? "bg-background text-foreground" : "",
-        isCentered ? "min-h-[68svh] md:min-h-[76vh]" : "",
-      ].filter(Boolean).join(" ")}
-    >
-      {!isSplit && !isEditorial ? (
-        <div className="absolute inset-0">
-          {renderMedia(`h-full w-full ${useContainedMedia ? "bg-background/90 p-4 md:p-8" : ""}`)}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundColor: overlayColor || "hsl(var(--background))",
-              opacity: overlayOpacity / 100,
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10 md:from-black/55 md:via-transparent md:to-transparent" />
-          <div className="absolute inset-0 grain-texture opacity-[0.03]" />
-          {!mediaUrl ? (
-            <div className="absolute inset-x-4 bottom-4 hidden rounded-lg border border-white/12 bg-black/25 p-4 text-white/90 backdrop-blur-md md:left-auto md:right-8 md:block md:max-w-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Ready to launch</p>
-              <p className="mt-2 text-sm font-medium">Clear message, direct action, and room for product proof.</p>
-              <p className="mt-2 text-sm leading-6 text-white/75">
-                Add real imagery later without losing the structure shoppers need on day one.
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div
-        className={[
-          "relative z-10 container mx-auto px-4 py-14 sm:py-18 md:py-24",
-          isSplit ? "grid gap-8 text-left lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:gap-12" : "",
-          isEditorial ? "grid gap-8 text-left lg:grid-cols-[minmax(360px,0.72fr)_minmax(0,1fr)] lg:items-center lg:gap-12" : "",
-          !isSplit && !isEditorial ? "text-center" : "",
-        ].filter(Boolean).join(" ")}
+      <section
+        id={overrides?.anchorId}
+        className={cn(
+          "relative flex min-h-[70svh] items-center overflow-hidden md:min-h-[78vh]",
+          hasSideMedia ? "bg-background text-foreground" : "bg-slate-950 text-white",
+          isCentered && "min-h-[64svh] md:min-h-[70vh]",
+        )}
       >
-        <div className={isEditorial ? "order-2 lg:order-1" : ""}>
-          <div className={`${isSplit || isEditorial ? "mb-4" : "mx-auto mb-4"} h-px w-12 bg-primary opacity-0 animate-blur-in sm:mb-6`} />
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-primary drop-shadow-md opacity-0 animate-blur-in sm:mb-4 sm:text-sm sm:tracking-[0.3em]">
-            {tagline}
-          </p>
-          <h1
-            className={[
-              "mb-4 max-w-[12ch] font-heading text-[2.35rem] font-black leading-[0.98] opacity-0 animate-blur-in sm:mb-6 sm:max-w-[11ch] sm:text-6xl",
-              isEditorial ? "text-foreground md:text-7xl lg:text-8xl" : "",
-              isSplit ? "text-foreground md:max-w-[10ch] md:text-7xl" : "",
-              !isSplit && !isEditorial ? "mx-auto text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] md:max-w-none md:text-8xl" : "",
-              isCentered ? "md:max-w-[12ch] md:text-7xl" : "",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.15s" }}
-          >
-            {title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-emerald-400 to-accent">{highlight}</span>
-          </h1>
-          <p
-            className={[
-              "mb-7 max-w-[34ch] text-sm leading-6 opacity-0 animate-blur-in sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl",
-              isSplit || isEditorial ? "text-muted-foreground" : "mx-auto text-gray-100 drop-shadow-md",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.3s" }}
-          >
-            {subtitle}
-          </p>
-          <div
-            className={[
-              "flex flex-col gap-3 opacity-0 animate-blur-in sm:flex-row sm:gap-4",
-              isSplit || isEditorial ? "items-start justify-start" : "items-center justify-center",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.45s" }}
-          >
-            <Link
-              href={ctaLink}
-              className="button-premium w-full sm:w-auto rounded-full bg-primary px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-bold tracking-wide text-primary-foreground text-center shadow-lg"
-            >
-              {ctaText}
-            </Link>
-            <Link
-              href={secondaryCtaLink}
-              className={[
-                "w-full sm:w-auto rounded-full border px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-semibold text-center transition-all duration-500",
-                isSplit || isEditorial
-                  ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-primary/5"
-                  : "border-white/20 glass-panel text-white hover:bg-white/10 hover:border-white/40",
-              ].filter(Boolean).join(" ")}
-            >
-              {secondaryCtaText}
-            </Link>
-          </div>
-          {!isCentered ? (
-            <div
-              className={[
-                "mt-7 flex max-w-4xl flex-wrap items-center gap-2 opacity-0 animate-blur-in sm:mt-10",
-                isSplit || isEditorial ? "justify-start" : "mx-auto justify-center",
-              ].filter(Boolean).join(" ")}
-              style={{ animationDelay: "0.6s" }}
-            >
-              {trustHighlights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.label}
-                    className={[
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium leading-5 backdrop-blur-md sm:px-4",
-                      isSplit || isEditorial ? "border-border bg-card text-foreground" : "border-white/15 bg-black/25 text-white/95",
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <Icon className="h-3.5 w-3.5 text-primary" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-        {isSplit || isEditorial ? (
-          <div
-            className={[
-              "relative overflow-hidden border border-border bg-card shadow-2xl",
-              isSplit ? "min-h-[420px] rounded-lg lg:min-h-[620px]" : "order-1 aspect-[4/5] rounded-lg lg:order-2",
-            ].filter(Boolean).join(" ")}
-          >
-            {renderMedia(`absolute inset-0 h-full w-full ${useContainedMedia ? "bg-muted/20 p-4 md:p-6" : ""}`)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+        {!hasSideMedia ? (
+          <div className="absolute inset-0" aria-hidden={!mediaUrl}>
+            {renderMedia(cn("h-full w-full", isContained && "bg-slate-950 p-4 md:p-8"))}
+            {mediaUrl ? (
+              <>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundColor: overlayColor || "#020617",
+                    opacity: overlayOpacity / 100,
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/30 md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-black/25" />
+              </>
+            ) : null}
           </div>
         ) : null}
-      </div>
-    </section>
-    {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
+
+        <div
+          className={cn(
+            "relative z-10 container mx-auto px-4 py-14 sm:py-16 md:py-20 lg:py-24",
+            hasSideMedia && "grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(380px,1.1fr)] lg:items-center lg:gap-14",
+            !hasSideMedia && "text-center",
+          )}
+        >
+          <div className={cn(isEditorial && "order-2 lg:order-1")}>
+            {tagline ? (
+              <p
+                className={cn(
+                  "mb-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] sm:mb-5",
+                  hasSideMedia
+                    ? "border-border bg-card text-foreground"
+                    : "border-white/30 bg-black/45 text-white backdrop-blur-md",
+                  !hasSideMedia && "mx-auto",
+                )}
+              >
+                {tagline}
+              </p>
+            ) : null}
+
+            <h1
+              className={cn(
+                "max-w-[14ch] font-heading text-4xl font-black leading-[0.98] tracking-[-0.035em] sm:text-5xl md:text-6xl lg:text-7xl",
+                hasSideMedia ? "text-foreground" : "mx-auto text-white drop-shadow-[0_3px_24px_rgba(0,0,0,0.55)]",
+                isCentered && "max-w-[16ch]",
+              )}
+            >
+              {title}
+              {highlight ? (
+                <>
+                  {" "}
+                  <span className="mt-2 inline-block rounded-[0.35em] bg-primary px-[0.18em] py-[0.05em] text-primary-foreground">
+                    {highlight}
+                  </span>
+                </>
+              ) : null}
+            </h1>
+
+            <p
+              className={cn(
+                "mt-5 max-w-[42rem] text-base leading-7 sm:mt-6 sm:text-lg sm:leading-8",
+                hasSideMedia ? "text-muted-foreground" : "mx-auto text-white/90 drop-shadow-md",
+              )}
+            >
+              {subtitle}
+            </p>
+
+            <div
+              className={cn(
+                "mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap",
+                hasSideMedia ? "items-stretch justify-start sm:items-center" : "items-center justify-center",
+              )}
+            >
+              <Link
+                href={ctaLink}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-7 py-3 font-heading text-[15px] font-bold tracking-wide text-primary-foreground shadow-[0_12px_30px_-14px_rgba(0,0,0,0.55)] transition-[transform,box-shadow] duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none sm:w-auto sm:px-9"
+              >
+                {ctaText}
+              </Link>
+              <Link
+                href={secondaryCtaLink}
+                className={cn(
+                  "inline-flex min-h-12 w-full items-center justify-center rounded-full border px-7 py-3 font-heading text-[15px] font-semibold transition-[background-color,border-color,color] duration-200 motion-reduce:transition-none sm:w-auto sm:px-9",
+                  hasSideMedia
+                    ? "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
+                    : "border-white/45 bg-black/35 text-white backdrop-blur-md hover:border-white/70 hover:bg-black/50",
+                )}
+              >
+                {secondaryCtaText}
+              </Link>
+            </div>
+
+            {trustHighlights.length > 0 && !isCentered ? (
+              <div
+                className={cn(
+                  "mt-7 flex max-w-4xl flex-wrap items-center gap-2 sm:mt-9",
+                  hasSideMedia ? "justify-start" : "mx-auto justify-center",
+                )}
+              >
+                {trustHighlights.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.label}
+                      className={cn(
+                        "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold leading-5 sm:px-4",
+                        hasSideMedia
+                          ? "border-border bg-card text-foreground"
+                          : "border-white/30 bg-black/45 text-white backdrop-blur-md",
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4", hasSideMedia ? "text-primary" : "text-white")} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          {hasSideMedia ? (
+            <div
+              className={cn(
+                "relative overflow-hidden rounded-[var(--sf-card-radius)] border border-border bg-muted shadow-[0_24px_70px_-36px_rgba(15,23,42,0.55)]",
+                isEditorial ? "order-1 aspect-[4/5] lg:order-2" : "aspect-[4/5] lg:aspect-[5/6]",
+              )}
+            >
+              {renderMedia(cn("absolute inset-0 h-full width-full", isContained && "bg-muted p-4 md:p-6"))}
+            {mediaUrl ? <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" /> : null}
+          </div>
+        ) : null}
+        </div>
+      </section>
+      {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
     </>
   );
 };

@@ -18,7 +18,7 @@ export function ProductCardShell({ children, className }: ProductCardShellProps)
   return (
     <article
       className={cn(
-        "group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[24px] border border-border/80 bg-card shadow-[0_14px_34px_-26px_rgba(15,23,42,0.18)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-white/10",
+        "group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[var(--sf-card-radius,var(--storefront-template-radius,1.5rem))] border border-border bg-card shadow-[var(--sf-card-shadow)] transition-[transform,box-shadow,border-color] duration-300 motion-safe:hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[var(--sf-card-shadow-hover)] focus-within:border-primary/45 focus-within:shadow-[var(--sf-card-shadow-hover)] motion-reduce:transition-none dark:border-white/15",
         className,
       )}
     >
@@ -57,9 +57,9 @@ export function ProductCardMedia({
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <div className={cn("relative w-full shrink-0 overflow-hidden bg-muted/30 dark:bg-secondary/40", aspectClasses[aspect], className)}>
-      <Link href={href} className="relative block h-full w-full" aria-label={`View ${alt}`}>
-        {!loaded ? <div className="absolute inset-0 animate-pulse bg-muted/50" /> : null}
+    <div className={cn("relative w-full shrink-0 overflow-hidden bg-muted", aspectClasses[aspect], className)}>
+      <Link href={href} className="relative block h-full w-full focus-visible:z-30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`View ${alt}`}>
+        {!loaded ? <div className="absolute inset-0 bg-muted/80 motion-safe:animate-pulse" aria-hidden="true" /> : null}
         <SafeStorefrontImage
           src={src}
           fallbackSrc={fallbackSrc}
@@ -68,7 +68,7 @@ export function ProductCardMedia({
           alt={alt}
           onLoad={() => setLoaded(true)}
           className={cn(
-            "h-full w-full transition-transform duration-500 group-hover:scale-[1.03]",
+            "h-full w-full transition-[transform,opacity] duration-500 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
             fit === "contain" ? "object-contain p-4" : "object-cover",
             loaded ? "opacity-100" : "opacity-0",
           )}
@@ -100,8 +100,8 @@ export function ProductCardBadgeLayer({
       {badge ? (
         <span
           className={cn(
-            "absolute left-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-sm backdrop-blur",
-            badgeClassName || "bg-background/90 text-foreground dark:bg-card/90",
+            "absolute left-3 top-3 z-10 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground shadow-sm backdrop-blur",
+            badgeClassName,
           )}
         >
           {badge}
@@ -110,18 +110,19 @@ export function ProductCardBadgeLayer({
       {onToggleWishlist ? (
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
             onToggleWishlist();
           }}
           className={cn(
-            "absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground dark:bg-card/90 sm:h-8 sm:w-8",
-            isInWishlist && "border-primary/30 text-primary",
+            "absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-sm backdrop-blur transition-[background-color,border-color,color,transform] duration-200 motion-safe:hover:scale-105 hover:border-primary/40 hover:bg-background motion-reduce:transition-none dark:bg-card/95",
+            isInWishlist && "border-primary/40 bg-primary/10 text-primary",
           )}
+          aria-pressed={Boolean(isInWishlist)}
           aria-label={isInWishlist ? `Remove ${wishlistLabel} from wishlist` : `Add ${wishlistLabel} to wishlist`}
         >
-          <Heart className={cn("h-4 w-4", isInWishlist && "fill-current")} />
+          <Heart className={cn("h-4 w-4", isInWishlist && "fill-current")} aria-hidden="true" />
         </button>
       ) : null}
     </>
@@ -135,7 +136,7 @@ interface ProductCardContentProps {
 
 export function ProductCardContent({ children, className }: ProductCardContentProps) {
   return (
-    <div className={cn("flex flex-1 flex-col min-w-0 p-4 space-y-2.5", className)}>
+    <div className={cn("flex min-w-0 flex-1 flex-col space-y-2.5 p-4 sm:p-5", className)}>
       {children}
     </div>
   );
@@ -151,7 +152,7 @@ export function ProductCardTitle({ children, href, className }: ProductCardTitle
   const content = (
     <h3
       className={cn(
-        "line-clamp-2 h-[2.75rem] min-h-[2.75rem] text-[1.02rem] font-semibold leading-5 text-foreground break-words [overflow-wrap:anywhere]",
+        "line-clamp-2 min-h-11 break-words text-[1.02rem] font-semibold leading-[1.35rem] text-foreground [overflow-wrap:anywhere]",
         className,
       )}
     >
@@ -161,7 +162,10 @@ export function ProductCardTitle({ children, href, className }: ProductCardTitle
 
   if (href) {
     return (
-      <Link href={href} className="block group-hover:text-primary transition-colors">
+      <Link
+        href={href}
+        className="block min-h-11 rounded-md transition-colors duration-200 hover:text-primary motion-reduce:transition-none"
+      >
         {content}
       </Link>
     );
@@ -177,7 +181,7 @@ interface ProductCardActionsProps {
 
 export function ProductCardActions({ children, className }: ProductCardActionsProps) {
   return (
-    <div className={cn("mt-auto w-full shrink-0 pt-2", className)}>
+    <div className={cn("mt-auto w-full shrink-0 border-t border-border pt-3", className)}>
       {children}
     </div>
   );

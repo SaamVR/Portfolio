@@ -10,16 +10,7 @@ import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCusto
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
-import { StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
-
-const fallbackCategories = [
-  { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
-  { label: "New Arrivals", type: "new-arrivals", tagline: "Recently added products or listings", icon: Package, filterKey: "category" as const },
-  { label: "Collections", type: "collections", tagline: "Curated groups for faster browsing", icon: Layers3, filterKey: "category" as const },
-  { label: "Best Sellers", type: "best-sellers", tagline: "Popular picks customers revisit most", icon: Tags, filterKey: "category" as const },
-  { label: "Browse All", type: "browse-all", tagline: "Explore the full storefront catalog", icon: Grid2x2, filterKey: "category" as const },
-  { label: "Store Highlights", type: "store-highlights", tagline: "What this business wants customers to notice first", icon: Store, filterKey: "category" as const },
-];
+import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 
 interface CategoryShowcaseProps {
   overrides?: {
@@ -48,18 +39,7 @@ const getIconForType = (typeName: string) => {
   return FolderTree;
 };
 
-const getTaglineForType = (typeName: string) => {
-  const normalized = typeName.toLowerCase();
-
-  if (/(new|latest|recent)/.test(normalized)) return "Freshly added options";
-  if (/(bundle|set|kit|pack|collection)/.test(normalized)) return "Grouped offers and curated sets";
-  if (/(feature|highlight|signature|hero)/.test(normalized)) return "What this storefront wants to spotlight";
-  if (/(sale|deal|offer|promo|discount|best)/.test(normalized)) return "Popular and conversion-focused picks";
-  if (/(catalog|browse|all)/.test(normalized)) return "Open up the wider catalog";
-  if (/(product|item|menu|service|listing)/.test(normalized)) return "Explore this part of the storefront";
-
-  return "Explore this category";
-};
+const getTaglineForType = (typeName: string) => `Browse ${typeName}`;
 
 const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const currentStore = useOptionalStore();
@@ -89,53 +69,59 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     return {
       label: category.name,
       type: category.name,
-      tagline: custom.tagline || "Explore this category",
+      tagline: custom.tagline || `Browse ${category.name}`,
       image_url: custom.image_url ?? null,
       icon: FolderTree,
       filterKey: "category" as const,
     };
   });
-  const typeItems = dbTypes.map((t) => {
-    const custom = customData?.types?.[t.name] ?? {};
+  const typeItems = dbTypes.map((type) => {
+    const custom = customData?.types?.[type.name] ?? {};
     return {
-      label: t.name,
-      type: t.name,
-      tagline: custom.tagline || getTaglineForType(t.name),
+      label: type.name,
+      type: type.name,
+      tagline: custom.tagline || getTaglineForType(type.name),
       image_url: custom.image_url ?? null,
-      icon: getIconForType(t.name),
+      icon: getIconForType(type.name),
       filterKey: "type" as const,
-    };
-  });
-  const fallbackItems = fallbackCategories.map((cat) => {
-    const custom = customData?.types?.[cat.type] ?? {};
-    return {
-      label: cat.label,
-      type: cat.type,
-      tagline: custom.tagline || cat.tagline,
-      image_url: custom.image_url ?? null,
-      icon: cat.icon,
-      filterKey: cat.filterKey,
     };
   });
   const categoriesToRender = (
     source === "categories"
-      ? categoryItems.length > 0 ? categoryItems : fallbackItems
-      : source === "types"
-      ? typeItems.length > 0 ? typeItems : fallbackItems
-      : categoryItems.length > 0
       ? categoryItems
-      : typeItems.length > 0
-      ? typeItems
-      : fallbackItems
+      : source === "types"
+        ? typeItems
+        : categoryItems.length > 0
+          ? categoryItems
+          : typeItems
   ).slice(0, limit || undefined);
+
+  if (categoriesToRender.length === 0) {
+    return (
+      <StorefrontSectionEmpty
+        eyebrow="Browse"
+        title={overrides?.title ?? legacySettings?.title ?? "Explore the catalog"}
+        description="Categories have not been published for this storefront yet. You can still browse the complete catalog."
+        primaryLabel="View all"
+        primaryHref={storefrontPath("/shop", currentStore?.slug)}
+      />
+    );
+  }
 
   return (
     <section className="py-14 md:py-20">
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
-          <div className="mb-8 text-center md:mb-12">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
+          <div className="mb-8 max-w-3xl text-left sm:mx-auto sm:text-center md:mb-12">
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground sm:text-sm">
+              {overrides?.tagline ?? legacySettings?.tagline ?? "Browse"}
+            </p>
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              {overrides?.title ?? legacySettings?.title ?? "Shop by category"}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
+              Choose a section to narrow the catalog without adding unnecessary steps.
+            </p>
           </div>
         </AnimatedSection>
 
@@ -144,54 +130,65 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
             layoutVariant === "carousel"
               ? "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               : layoutVariant === "masonry"
-                ? "columns-2 gap-4 sm:columns-3 lg:columns-4"
+                ? "columns-1 gap-4 min-[360px]:columns-2 sm:columns-3 lg:columns-4"
                 : layoutVariant === "compact-list"
                   ? "mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
-                  : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
+                  : "grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
           }
         >
-          {categoriesToRender.map((cat, i) => {
-            const Icon = cat.icon;
+          {categoriesToRender.map((category, index) => {
+            const Icon = category.icon;
             return (
-              <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
+              <AnimatedSection
+                key={`${category.filterKey}-${category.type}`}
+                delay={Math.min(index, 6) * 60}
+                animation="blur"
+                className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}
+              >
                 <Link
-                  to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
+                  to={storefrontPath(`/shop?${category.filterKey}=${encodeURIComponent(category.type)}`, currentStore?.slug)}
                   className={[
-                    "group border border-border bg-card smooth-hover hover:border-primary/40 hover:premium-shadow",
+                    "group border border-border bg-card shadow-[var(--sf-card-shadow)] transition-[transform,border-color,box-shadow] duration-200 hover:border-primary/45 hover:shadow-md motion-reduce:transition-none",
                     layoutVariant === "compact-list"
-                      ? "flex items-center gap-4 rounded-lg p-4 text-left hover:-translate-y-0"
+                      ? "flex min-h-20 items-center gap-4 rounded-[var(--sf-card-radius)] p-4 text-left"
                       : layoutVariant === "carousel"
-                        ? "flex min-w-[72vw] snap-center flex-col items-center gap-3 rounded-xl p-6 text-center hover:-translate-y-1 sm:min-w-[240px]"
+                        ? "flex min-h-[190px] min-w-[76vw] snap-center flex-col items-start justify-end gap-4 rounded-[var(--sf-card-radius)] p-5 text-left sm:min-w-[250px]"
                         : layoutVariant === "masonry"
-                          ? "flex min-h-[190px] flex-col items-start justify-end gap-3 rounded-lg p-5 text-left hover:-translate-y-1"
-                          : "flex flex-col items-center gap-3 rounded-xl p-4 text-center hover:-translate-y-1 sm:p-6",
+                          ? "flex min-h-[210px] flex-col items-start justify-end gap-4 rounded-[var(--sf-card-radius)] p-5 text-left"
+                          : "flex min-h-[150px] flex-col items-start gap-4 rounded-[var(--sf-card-radius)] p-4 text-left sm:p-5",
+                    layoutVariant !== "compact-list" && "motion-safe:hover:-translate-y-0.5",
                   ].filter(Boolean).join(" ")}
                 >
-                  {cat.image_url ? (
-                    <div className={[
-                      "relative overflow-hidden border-2 border-border group-hover:border-primary smooth-hover group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-28 w-full rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
+                  {category.image_url ? (
+                    <div
+                      className={[
+                        "relative overflow-hidden border border-border bg-muted transition-[border-color,box-shadow] duration-200 group-hover:border-primary/50 group-hover:shadow-md motion-reduce:transition-none",
+                        layoutVariant === "masonry" || layoutVariant === "carousel" ? "h-28 w-full rounded-xl" : "h-16 w-16 rounded-2xl",
+                      ].filter(Boolean).join(" ")}
+                    >
                       <SafeStorefrontImage
-                        src={cat.image_url}
+                        src={category.image_url}
                         fallbackSrc={settings?.fallback_image_url ?? null}
                         fill
-                        alt={cat.label}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        alt={category.label}
+                        className="h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03] motion-reduce:transition-none"
                         style={{ objectPosition: imageObjectPosition }}
                       />
                     </div>
                   ) : (
-                    <div className={[
-                      "flex shrink-0 items-center justify-center bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-12 w-12 rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
+                    <div
+                      className={[
+                        "flex shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary",
+                        layoutVariant === "masonry" || layoutVariant === "carousel" ? "h-12 w-12 rounded-xl" : "h-14 w-14 rounded-2xl",
+                      ].filter(Boolean).join(" ")}
+                      aria-hidden="true"
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
                   )}
-                  <div>
-                    <p className="font-heading text-sm font-semibold text-foreground">{cat.label}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{cat.tagline}</p>
+                  <div className="min-w-0">
+                    <p className="font-heading text-base font-bold leading-6 text-foreground">{category.label}</p>
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{category.tagline}</p>
                   </div>
                 </Link>
               </AnimatedSection>
