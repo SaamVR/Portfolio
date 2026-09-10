@@ -34,7 +34,7 @@ type TimeLeft = {
 
 const EMPTY_TIME: TimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
 
-function calculateRemaining(endDate: string): TimeLeft  | null {
+function calculateRemaining(endDate: string): TimeLeft | null {
   const endTime = Date.parse(endDate);
   if (!Number.isFinite(endTime)) return null;
 
@@ -45,7 +45,7 @@ function calculateRemaining(endDate: string): TimeLeft  | null {
     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((difference / (1000 * 60)) % 60),
-    seconds: Math.floor(difference / 1000) % 60),
+    seconds: Math.floor((difference / 1000) % 60),
   };
 }
 
