@@ -14,7 +14,21 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Package, Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, FolderTree, X } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Package,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  FolderTree,
+  X,
+  SlidersHorizontal,
+} from "lucide-react";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import CloudinaryMultiUpload from "@/components/admin/CloudinaryMultiUpload";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
@@ -135,7 +149,7 @@ function MetricValueChipInput({
               <button
                 type="button"
                 onClick={() => removeValue(value)}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
                 aria-label={`Remove ${value}`}
               >
                 <X className="h-3 w-3" />
@@ -171,7 +185,7 @@ function MetricValueChipInput({
             }}
             onBlur={commitDraft}
             placeholder={values.length === 0 ? placeholder : "Add another value"}
-            className="h-8 min-w-[140px] flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="h-9 min-w-[140px] flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
       </div>
@@ -212,7 +226,6 @@ const AdminProducts = () => {
   const [shopPageSettings, setShopPageSettings] = useState<ShopPageSettings>({});
   const [shopPageSettingsSnapshot, setShopPageSettingsSnapshot] = useState<Record<string, unknown>>({});
   const [savingCatalogNoteSettings, setSavingCatalogNoteSettings] = useState(false);
-
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importRows, setImportRows] = useState<ParsedImportRow[]>([]);
   const [importFileName, setImportFileName] = useState("");
@@ -251,30 +264,24 @@ const AdminProducts = () => {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setImportFileName(file.name);
     setImporting(true);
-
     try {
       let rawRecords: Record<string, string>[] = [];
       if (file.name.endsWith(".xlsx")) {
-        const buffer = await file.arrayBuffer();
-        rawRecords = await parseXlsxBuffer(buffer);
+        rawRecords = await parseXlsxBuffer(await file.arrayBuffer());
       } else {
-        const text = await file.text();
-        rawRecords = parseCsvText(text);
+        rawRecords = parseCsvText(await file.text());
       }
-
-      const validated = rawRecords.map((raw, idx) => validateImportRow(raw, idx + 1));
+      const validated = rawRecords.map((raw, index) => validateImportRow(raw, index + 1));
       setImportRows(validated);
-      if (validated.length === 0) {
-        toast.error("No data rows found in file");
-      }
-    } catch (err) {
-      console.error("Failed to parse import file:", err);
+      if (validated.length === 0) toast.error("No data rows found in file");
+    } catch (error) {
+      console.error("Failed to parse import file:", error);
       toast.error("Failed to read file. Please ensure it is a valid .csv or .xlsx file.");
       setImportRows([]);
     } finally {
@@ -332,8 +339,7 @@ const AdminProducts = () => {
       toast.error("No active store selected for import");
       return;
     }
-
-    const validRows = importRows.filter((r) => r.isValid);
+    const validRows = importRows.filter((row) => row.isValid);
     if (validRows.length === 0) {
       toast.error("No valid rows to import");
       return;
@@ -343,18 +349,16 @@ const AdminProducts = () => {
     try {
       const payload = buildStoreBatchInsertPayload(validRows, activeStoreId as string);
       const { error } = await supabase.from("products").insert(payload);
-
       if (error) throw error;
-
       toast.success(`Successfully imported ${payload.length} products`);
       setImportDialogOpen(false);
       setImportRows([]);
       setImportFileName("");
       await refreshStorefrontProductCache(supabase, activeStoreId as string);
       await invalidateAdminProductCollections(queryClient, activeStoreId);
-    } catch (err) {
-      console.error("Failed to bulk import products:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to import products");
+    } catch (error) {
+      console.error("Failed to bulk import products:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to import products");
     } finally {
       setImporting(false);
     }
@@ -378,12 +382,9 @@ const AdminProducts = () => {
         fetchStoreProductTypes(activeStoreId as string),
         supabase.from("site_settings").select("key, value").eq("store_id", activeStoreId as string).in("key", ["product_metrics_catalog", "storefront_profile", "shop_page"]),
       ]);
+      if (categoriesRes.error || settingsRes.error) throw categoriesRes.error || settingsRes.error;
 
-      if (categoriesRes.error || settingsRes.error) {
-        throw categoriesRes.error || settingsRes.error;
-      }
-
-      setDbCategories((categoriesRes.data ?? []).map((r: any) => r.name));
+      setDbCategories((categoriesRes.data ?? []).map((row: any) => row.name));
       setDbTypes(typesData.map((row) => row.name));
       setTypeRows(typesData as ProductTypeTaxonomyRow[]);
       const settingsRows = settingsRes.data ?? [];
@@ -404,9 +405,7 @@ const AdminProducts = () => {
       setShopPageSettingsSnapshot(shopPage ?? {});
     } catch (error) {
       console.error("Failed to load product taxonomy:", error);
-      if (!options?.silent) {
-        toast.error(`Failed to load product data: ${formatTaxonomyError(error)}`);
-      }
+      if (!options?.silent) toast.error(`Failed to load product data: ${formatTaxonomyError(error)}`);
     }
   }, [activeStoreId]);
 
@@ -419,20 +418,15 @@ const AdminProducts = () => {
 
     const refreshVisibleCatalog = () => {
       void refreshCatalogData({ silent: true });
-      if (activeStoreId) {
-        void invalidateAdminProductCollections(queryClient, activeStoreId);
-      }
+      if (activeStoreId) void invalidateAdminProductCollections(queryClient, activeStoreId);
     };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshVisibleCatalog();
-      }
+      if (document.visibilityState === "visible") refreshVisibleCatalog();
     };
 
     window.addEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, refreshVisibleCatalog);
     window.addEventListener("focus", refreshVisibleCatalog);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       window.removeEventListener(PRODUCT_TAXONOMY_UPDATED_EVENT, refreshVisibleCatalog);
       window.removeEventListener("focus", refreshVisibleCatalog);
@@ -458,10 +452,7 @@ const AdminProducts = () => {
   }, [activeStoreId]);
 
   const updateCatalogNoteSetting = useCallback((field: keyof ShopPageSettings, value: string | boolean) => {
-    setShopPageSettings((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setShopPageSettings((current) => ({ ...current, [field]: value }));
   }, []);
 
   const saveCatalogNoteSettings = useCallback(async () => {
@@ -478,15 +469,9 @@ const AdminProducts = () => {
         catalog_note_title: shopPageSettings.catalog_note_title?.trim() || null,
         catalog_note_description: shopPageSettings.catalog_note_description?.trim() || null,
       };
-
       const { error } = await supabase
         .from("site_settings")
-        .upsert({
-          store_id: activeStoreId,
-          key: "shop_page",
-          value: payload as unknown as Json,
-        }, { onConflict: "store_id,key" });
-
+        .upsert({ store_id: activeStoreId, key: "shop_page", value: payload as unknown as Json }, { onConflict: "store_id,key" });
       if (error) throw error;
       setShopPageSettingsSnapshot(payload);
       toast.success("Catalog note settings saved.");
@@ -511,26 +496,26 @@ const AdminProducts = () => {
     const storeId = activeStoreId;
     setLoadingProductId(product.id);
     try {
-      const p = await fetchAdminProductDetail(storeId, product.id);
+      const productDetail = await fetchAdminProductDetail(storeId, product.id);
       if (activeStoreIdRef.current !== storeId) return;
       createProductIdRef.current = null;
-      setEditing(p);
+      setEditing(productDetail);
       setFormErrors({});
       setForm({
-        name: p.name,
-        price: p.price,
-        original_price: p.original_price,
-        image_url: p.image_url,
-        images: p.images || [],
-        description: p.description,
-        sizes: p.sizes,
-        colors: p.colors,
-        category: p.category,
-        type: p.type,
-        featured: p.featured,
-        badge: p.badge,
-        stock: p.stock,
-        metric_values: normalizeMetricValues(p.metric_values),
+        name: productDetail.name,
+        price: productDetail.price,
+        original_price: productDetail.original_price,
+        image_url: productDetail.image_url,
+        images: productDetail.images || [],
+        description: productDetail.description,
+        sizes: productDetail.sizes,
+        colors: productDetail.colors,
+        category: productDetail.category,
+        type: productDetail.type,
+        featured: productDetail.featured,
+        badge: productDetail.badge,
+        stock: productDetail.stock,
+        metric_values: normalizeMetricValues(productDetail.metric_values),
       });
       setDialogOpen(true);
     } catch (error) {
@@ -553,10 +538,7 @@ const AdminProducts = () => {
       ...current,
       sizes: metricKey === "size" ? nextValues : current.sizes,
       colors: metricKey === "color" ? nextValues : current.colors,
-      metric_values: {
-        ...current.metric_values,
-        [metricKey]: nextValues,
-      },
+      metric_values: { ...current.metric_values, [metricKey]: nextValues },
     }));
   };
 
@@ -599,7 +581,6 @@ const AdminProducts = () => {
     try {
       const productId = editingAtSubmit?.id ?? createProductId;
       let successMessage = "Product added and ready to sell";
-
       if (editingAtSubmit) {
         const { error } = await (supabase.from("products") as any)
           .update(payload)
@@ -615,11 +596,8 @@ const AdminProducts = () => {
         if (error) throw error;
       }
 
-      await refreshStorefrontProductCache(supabase, storeId, {
-        products: [{ id: productId, name: payload.name }],
-      });
+      await refreshStorefrontProductCache(supabase, storeId, { products: [{ id: productId, name: payload.name }] });
       await invalidateAdminProductCollections(queryClient, storeId);
-
       if (activeStoreIdRef.current !== storeId || saveOperationRef.current !== operationId) return;
       toast.success(successMessage);
       setDialogOpen(false);
@@ -634,9 +612,7 @@ const AdminProducts = () => {
       setFormErrors((current) => ({ ...current, form: message }));
       toast.error(message);
     } finally {
-      if (activeStoreIdRef.current === storeId && saveOperationRef.current === operationId) {
-        setSaving(false);
-      }
+      if (activeStoreIdRef.current === storeId && saveOperationRef.current === operationId) setSaving(false);
     }
   };
 
@@ -646,11 +622,7 @@ const AdminProducts = () => {
       return;
     }
 
-    const context = {
-      storeId: activeStoreId,
-      entityId: product.id,
-      entityName: product.name,
-    };
+    const context = { storeId: activeStoreId, entityId: product.id, entityName: product.name };
     const confirmed = await confirm({
       title: `Delete ${context.entityName}?`,
       description: "This permanently removes the product from this store's catalog.",
@@ -667,11 +639,7 @@ const AdminProducts = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", context.entityId)
-      .eq("store_id", context.storeId);
+    const { error } = await supabase.from("products").delete().eq("id", context.entityId).eq("store_id", context.storeId);
     if (error) {
       toast.error("Failed to delete product");
       return;
@@ -687,185 +655,184 @@ const AdminProducts = () => {
       toast.error("Product was deleted, but the catalog refresh did not complete. Reload the catalog before making another change.");
       return;
     }
-
     if (activeStoreIdRef.current !== context.storeId) return;
     toast.success("Product deleted");
   };
 
+  const catalogSize = productStats.data?.catalogSize ?? 0;
+  const readyToSell = productStats.data?.readyToSell ?? 0;
+  const featured = productStats.data?.featured ?? 0;
+  const outOfStock = productStats.data?.outOfStock ?? 0;
+  const customMetricCount = metricsCatalog.length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Products & Catalog</h1>
-          <p className="text-sm text-muted-foreground">Manage your store products, taxonomy categories, bulk import, and CSV exports.</p>
-        </div>
-        {activeTab === "catalog" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" data-testid="products-export-button" onClick={() => void handleExportCatalog()} disabled={exporting} className="gap-2 text-xs">
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export CSV
-            </Button>
-            <Button variant="outline" data-testid="products-bulk-import-button" onClick={() => setImportDialogOpen(true)} className="gap-2 text-xs">
-              <Upload className="h-4 w-4" /> Bulk Import
-            </Button>
-            <Button data-testid="products-add-button" onClick={openNew} className="gap-2 text-xs">
+    <div className="space-y-5">
+      <header className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 sm:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Catalog workspace</p>
+            <h1 className="mt-1 font-heading text-2xl font-bold text-foreground sm:text-3xl">Products</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Add what you sell, keep stock accurate, and organize how shoppers browse your catalog.
+            </p>
+          </div>
+          {activeTab === "catalog" ? (
+            <Button data-testid="products-add-button" onClick={openNew} className="min-h-12 w-full gap-2 px-5 text-sm font-semibold shadow-sm md:w-auto">
               <Plus className="h-4 w-4" /> Add Product
             </Button>
-          </div>
-        )}
-      </div>
+          ) : null}
+        </div>
+      </header>
 
-      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
-        <TabsList className="bg-secondary/40 p-1 border border-border">
-          <TabsTrigger value="catalog" className="gap-2">
+      <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value }, { replace: true })} className="space-y-5">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-border bg-secondary/35 p-1 sm:w-fit">
+          <TabsTrigger value="catalog" className="min-h-11 gap-2 rounded-lg px-3 sm:min-w-40">
             <Package className="h-4 w-4" />
-            All Products
+            <span>Products</span>
           </TabsTrigger>
-          <TabsTrigger value="categories" className="gap-2">
+          <TabsTrigger value="categories" className="min-h-11 gap-2 rounded-lg px-3 sm:min-w-40">
             <FolderTree className="h-4 w-4" />
-            Categories & Types
+            <span>Categories & Types</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="catalog" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Catalog size</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{productStats.data?.catalogSize ?? 0}</CardContent>
-            </Card>
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Ready to sell</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{productStats.data?.readyToSell ?? 0}</CardContent>
-            </Card>
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Featured / out of stock</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm font-medium text-foreground">
-                <span className="text-2xl">{productStats.data?.featured ?? 0}</span> featured · <span className="text-2xl">{productStats.data?.outOfStock ?? 0}</span> out
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-border">
-            <CardHeader className="space-y-2">
-              <CardTitle className="text-base">Catalog note on Shop page</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                This optional section appears below the main shop results. Use it only when you want to explain the catalog, buying flow, or what shoppers should know.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/20 p-4">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Show catalog note section</p>
-                  <p className="text-xs text-muted-foreground">Turn this off if the extra catalog context feels unnecessary.</p>
-                </div>
-                <Switch
-                  checked={shopPageSettings.catalog_note_visible !== false}
-                  onCheckedChange={(checked) => updateCatalogNoteSetting("catalog_note_visible", checked)}
-                />
+        <TabsContent value="catalog" className="space-y-5">
+          <Card className="border-border bg-card/70">
+            <CardContent className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 sm:grid-cols-4 sm:divide-x sm:gap-0 sm:p-0">
+              <div className="sm:px-5 sm:py-4">
+                <p className="text-xs text-muted-foreground">All products</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{catalogSize}</p>
               </div>
-              <div className="grid gap-2">
-                <Label>Section title</Label>
-                <Input
-                  value={shopPageSettings.catalog_note_title ?? ""}
-                  placeholder="A quick note before shoppers keep browsing"
-                  onChange={(event) => updateCatalogNoteSetting("catalog_note_title", event.target.value)}
-                />
+              <div className="sm:px-5 sm:py-4">
+                <p className="text-xs text-muted-foreground">Ready to sell</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{readyToSell}</p>
               </div>
-              <div className="grid gap-2">
-                <Label>Section description</Label>
-                <Textarea
-                  value={shopPageSettings.catalog_note_description ?? ""}
-                  placeholder="Explain what this catalog includes, how pricing works, or what visitors should know before they continue shopping."
-                  rows={3}
-                  onChange={(event) => updateCatalogNoteSetting("catalog_note_description", event.target.value)}
-                />
+              <div className="sm:px-5 sm:py-4">
+                <p className="text-xs text-muted-foreground">Featured</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{featured}</p>
               </div>
-              <div className="flex justify-end">
-                <Button onClick={() => void saveCatalogNoteSettings()} disabled={savingCatalogNoteSettings} className="gap-2">
-                  {savingCatalogNoteSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Save Shop Note
-                </Button>
+              <div className="sm:px-5 sm:py-4">
+                <p className="text-xs text-muted-foreground">Out of stock</p>
+                <p className={`mt-1 text-xl font-semibold ${outOfStock > 0 ? "text-destructive" : "text-foreground"}`}>{outOfStock}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Input
-            data-testid="products-search"
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
+          <Card className="border-border">
+            <CardContent className="space-y-4 p-4 sm:p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="products-search" className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Find a product</Label>
+                  <Input
+                    id="products-search"
+                    data-testid="products-search"
+                    placeholder="Search by product name..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="mt-2 min-h-11 w-full lg:max-w-xl"
+                  />
+                </div>
+                <details className="group rounded-xl border border-border bg-secondary/15 lg:min-w-64">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium text-foreground">
+                    <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" /> Bulk tools</span>
+                    <span className="text-xs text-muted-foreground group-open:hidden">Import / export</span>
+                    <span className="hidden text-xs text-muted-foreground group-open:inline">Close</span>
+                  </summary>
+                  <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <Button variant="outline" data-testid="products-bulk-import-button" onClick={() => setImportDialogOpen(true)} className="min-h-11 justify-start gap-2">
+                      <Upload className="h-4 w-4" /> Bulk Import
+                    </Button>
+                    <Button variant="outline" data-testid="products-export-button" onClick={() => void handleExportCatalog()} disabled={exporting} className="min-h-11 justify-start gap-2">
+                      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export CSV
+                    </Button>
+                  </div>
+                </details>
+              </div>
+
+              {debouncedSearch ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/25 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Showing matches for <strong className="font-semibold text-foreground">{debouncedSearch}</strong></span>
+                  <Button variant="ghost" size="sm" onClick={() => setSearch("")} className="min-h-9">Clear search</Button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
 
           {productPages.isLoading && products.length === 0 ? (
-            <div className="flex justify-center py-20">
+            <div className="flex justify-center py-20" aria-label="Loading products">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center px-4 rounded-xl border border-dashed border-border bg-card/50 mt-8">
-              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                <Package className="h-10 w-10 text-primary" />
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 px-4 py-16 text-center sm:py-20">
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Package className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-heading font-bold text-foreground mb-2">{debouncedSearch ? "No products match your search" : "Your store catalog is empty"}</h3>
-              <p className="text-muted-foreground max-w-sm mb-8 text-sm">
+              <h3 className="font-heading text-xl font-bold text-foreground">
+                {debouncedSearch ? "No products match this search" : "Add your first product"}
+              </h3>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
                 {debouncedSearch
-                  ? "Try a different product name."
-                  : "Add your first product to start selling. Upload images, set prices, and manage inventory right from here."}
+                  ? "Try another product name or clear the search to return to your full catalog."
+                  : "A product with a name, price, image, and stock of at least 1 can be ready for shoppers immediately."}
               </p>
-              {!debouncedSearch ? (
-                <Button onClick={openNew} className="gap-2 px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 rounded-full">
-                  <Plus className="h-4 w-4" /> Add Your First Product
-                </Button>
-              ) : null}
+              <div className="mt-6 flex w-full max-w-sm flex-col gap-2 sm:flex-row sm:justify-center">
+                {debouncedSearch ? (
+                  <Button variant="outline" onClick={() => setSearch("")} className="min-h-11">Clear search</Button>
+                ) : (
+                  <Button onClick={openNew} className="min-h-11 gap-2 px-6"><Plus className="h-4 w-4" /> Add Your First Product</Button>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((p) => (
-                <Card key={p.id} className="border-border overflow-hidden">
-                  <div className="relative aspect-square overflow-hidden bg-secondary">
-                    <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
-                    {!p.is_available && (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {products.map((product) => (
+                <Card key={product.id} className="overflow-hidden border-border">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-secondary sm:aspect-square">
+                    <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                    {!product.is_available ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-background/70">
                         <Badge variant="destructive">Out of Stock</Badge>
                       </div>
-                    )}
-                    {p.badge && (
-                      <Badge className="absolute left-2 top-2" variant={p.badge === "Sale" ? "destructive" : "default"}>
-                        {p.badge}
-                      </Badge>
-                    )}
+                    ) : null}
+                    {product.badge ? (
+                      <Badge className="absolute left-2 top-2" variant={product.badge === "Sale" ? "destructive" : "default"}>{product.badge}</Badge>
+                    ) : null}
                   </div>
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-heading text-sm font-semibold text-foreground">{p.name}</h3>
-                        <p className="text-xs text-muted-foreground">{p.type} - {p.category}</p>
+                  <CardContent className="space-y-4 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-heading text-base font-semibold text-foreground">{product.name}</h3>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{product.type} · {product.category}</p>
                       </div>
-                      <p className="font-heading text-sm font-bold text-primary">BDT {p.price}</p>
+                      <p className="shrink-0 font-heading text-sm font-bold text-primary">BDT {product.price}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void openEdit(p)} disabled={loadingProductId === p.id}>
-                          {loadingProductId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                    <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/20 px-3 py-2">
+                      <span className="text-xs text-muted-foreground">Inventory</span>
+                      <span className="text-sm font-semibold text-foreground">{product.stock} in stock</span>
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-border pt-3">
+                      <Button
+                        variant="outline"
+                        className="min-h-11 flex-1 gap-2"
+                        onClick={() => void openEdit(product)}
+                        disabled={loadingProductId === product.id}
+                        aria-label={`Edit ${product.name}`}
+                      >
+                        {loadingProductId === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                        Edit product
+                      </Button>
+                      {isAdmin ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-11 w-11 shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => void handleDelete(product)}
+                          aria-label={`Delete ${product.name}`}
+                          title={`Delete ${product.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                        {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => void handleDelete(p)}
-                            aria-label={`Delete ${p.name}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -874,18 +841,47 @@ const AdminProducts = () => {
           )}
 
           {productPages.hasNextPage ? (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                onClick={() => void productPages.fetchNextPage()}
-                disabled={productPages.isFetchingNextPage}
-                className="gap-2"
-              >
+            <div className="flex justify-center pt-1">
+              <Button variant="outline" onClick={() => void productPages.fetchNextPage()} disabled={productPages.isFetchingNextPage} className="min-h-11 gap-2 px-6">
                 {productPages.isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Load more products
               </Button>
             </div>
           ) : null}
+
+          <details className="group rounded-2xl border border-border bg-card/60">
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 sm:px-5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Shop catalog note</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Optional message shown below the main shop results.</p>
+              </div>
+              <span className="shrink-0 text-xs font-medium text-primary group-open:hidden">Edit note</span>
+              <span className="hidden shrink-0 text-xs text-muted-foreground group-open:inline">Close</span>
+            </summary>
+            <div className="space-y-4 border-t border-border p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/20 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Show catalog note section</p>
+                  <p className="text-xs text-muted-foreground">Turn it off when shoppers do not need extra context.</p>
+                </div>
+                <Switch checked={shopPageSettings.catalog_note_visible !== false} onCheckedChange={(checked) => updateCatalogNoteSetting("catalog_note_visible", checked)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Section title</Label>
+                <Input value={shopPageSettings.catalog_note_title ?? ""} placeholder="A quick note before shoppers keep browsing" onChange={(event) => updateCatalogNoteSetting("catalog_note_title", event.target.value)} className="min-h-11" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Section description</Label>
+                <Textarea value={shopPageSettings.catalog_note_description ?? ""} placeholder="Explain what this catalog includes, how pricing works, or what visitors should know before they continue shopping." rows={3} onChange={(event) => updateCatalogNoteSetting("catalog_note_description", event.target.value)} />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={() => void saveCatalogNoteSettings()} disabled={savingCatalogNoteSettings} className="min-h-11 w-full gap-2 sm:w-auto">
+                  {savingCatalogNoteSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Shop Note
+                </Button>
+              </div>
+            </div>
+          </details>
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-4">
@@ -893,7 +889,6 @@ const AdminProducts = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Add / Edit Dialog */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
@@ -902,286 +897,170 @@ const AdminProducts = () => {
           if (!open) setFormErrors({});
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" aria-busy={saving}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl" aria-busy={saving}>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Product" : "Add Product"}</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {editing ? "Update the details shoppers rely on." : "Start with the essentials. You can refine merchandising details later."}
+            </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="products-form-name">Name *</Label>
-              <Input
-                ref={productNameRef}
-                id="products-form-name"
-                data-testid="products-form-name"
-                value={form.name}
-                aria-invalid={Boolean(formErrors.name)}
-                aria-describedby={formErrors.name ? "products-form-name-error" : undefined}
-                onChange={(e) => {
-                  setForm({ ...form, name: e.target.value });
-                  clearProductError("name");
-                }}
-              />
-              {formErrors.name ? <p id="products-form-name-error" role="alert" className="text-sm text-destructive">{formErrors.name}</p> : null}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="products-form-price">Price (BDT) *</Label>
-                <Input
-                  ref={productPriceRef}
-                  id="products-form-price"
-                  data-testid="products-form-price"
-                  type="number"
-                  value={form.price}
-                  aria-invalid={Boolean(formErrors.price)}
-                  aria-describedby={formErrors.price ? "products-form-price-error" : undefined}
-                  onChange={(e) => {
-                    setForm({ ...form, price: Number(e.target.value) });
-                    clearProductError("price");
-                  }}
-                />
-                {formErrors.price ? <p id="products-form-price-error" role="alert" className="text-sm text-destructive">{formErrors.price}</p> : null}
+
+          <div className="space-y-5 py-3">
+            <section className="space-y-4 rounded-xl border border-border p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">1. Selling essentials</p>
+                <p className="mt-1 text-xs text-muted-foreground">Name, price, image, and stock determine whether this product is ready to sell.</p>
               </div>
               <div className="grid gap-2">
-                <Label>Original Price</Label>
-                <Input type="number" value={form.original_price ?? ""} onChange={(e) => setForm({ ...form, original_price: e.target.value ? Number(e.target.value) : null })} />
+                <Label htmlFor="products-form-name">Name *</Label>
+                <Input ref={productNameRef} id="products-form-name" data-testid="products-form-name" value={form.name} aria-invalid={Boolean(formErrors.name)} aria-describedby={formErrors.name ? "products-form-name-error" : undefined} onChange={(event) => { setForm({ ...form, name: event.target.value }); clearProductError("name"); }} className="min-h-11" />
+                {formErrors.name ? <p id="products-form-name-error" role="alert" className="text-sm text-destructive">{formErrors.name}</p> : null}
               </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Main Image *</Label>
-              <CloudinaryUpload
-                value={form.image_url}
-                onChange={(url) => {
-                  setForm({ ...form, image_url: url });
-                  clearProductError("image_url");
-                }}
-                folder="products"
-                label="Upload main image"
-                inputTestId="products-form-image-url"
-              />
-              {formErrors.image_url ? <p id="products-form-image-error" role="alert" className="text-sm text-destructive">{formErrors.image_url}</p> : null}
-            </div>
-            <CloudinaryMultiUpload
-              images={form.images ?? []}
-              onChange={(images) => setForm({ ...form, images })}
-              folder="products"
-            />
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Textarea data-testid="products-form-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {dbTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {selectedTypeRow ? (
-                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
-                      {selectedTypeHasExplicitSchema ? "Type-specific options" : "Template fallback options"}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {resolvedMetricDefinitions.length > 0 ? resolvedMetricDefinitions.map((metric) => (
-                        <span key={metric.key} className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {metric.label}
-                        </span>
-                      )) : (
-                        <span className="text-xs text-muted-foreground">No option selectors configured for this type.</span>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="products-form-price">Price (BDT) *</Label>
+                  <Input ref={productPriceRef} id="products-form-price" data-testid="products-form-price" type="number" value={form.price} aria-invalid={Boolean(formErrors.price)} aria-describedby={formErrors.price ? "products-form-price-error" : undefined} onChange={(event) => { setForm({ ...form, price: Number(event.target.value) }); clearProductError("price"); }} className="min-h-11" />
+                  {formErrors.price ? <p id="products-form-price-error" role="alert" className="text-sm text-destructive">{formErrors.price}</p> : null}
+                </div>
+                <div className="grid gap-2">
+                  <Label>Original Price</Label>
+                  <Input type="number" value={form.original_price ?? ""} onChange={(event) => setForm({ ...form, original_price: event.target.value ? Number(event.target.value) : null })} className="min-h-11" />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label>Category</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {dbCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Main Image *</Label>
+                <CloudinaryUpload value={form.image_url} onChange={(url) => { setForm({ ...form, image_url: url }); clearProductError("image_url"); }} folder="products" label="Upload main image" inputTestId="products-form-image-url" />
+                {formErrors.image_url ? <p id="products-form-image-error" role="alert" className="text-sm text-destructive">{formErrors.image_url}</p> : null}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="products-form-stock">Stock *</Label>
-                <Input
-                  ref={productStockRef}
-                  id="products-form-stock"
-                  data-testid="products-form-stock"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={form.stock}
-                  aria-invalid={Boolean(formErrors.stock)}
-                  aria-describedby={formErrors.stock ? "products-form-stock-error" : undefined}
-                  onChange={(e) => {
-                    setForm({ ...form, stock: Number(e.target.value) });
-                    clearProductError("stock");
-                  }}
-                />
+                <Input ref={productStockRef} id="products-form-stock" data-testid="products-form-stock" type="number" min={0} step={1} value={form.stock} aria-invalid={Boolean(formErrors.stock)} aria-describedby={formErrors.stock ? "products-form-stock-error" : undefined} onChange={(event) => { setForm({ ...form, stock: Number(event.target.value) }); clearProductError("stock"); }} className="min-h-11" />
                 {formErrors.stock ? <p id="products-form-stock-error" role="alert" className="text-sm text-destructive">{formErrors.stock}</p> : null}
-                <p className="text-xs text-muted-foreground">
-                  {editing
-                    ? "Set stock to 0 to mark this product sold out and unavailable to customers."
-                    : "New products need at least 1 in stock so they are available to customers after saving."}
-                </p>
+                <p className="text-xs text-muted-foreground">{editing ? "Set stock to 0 to mark this product sold out and unavailable to customers." : "New products need at least 1 in stock so they are available to customers after saving."}</p>
               </div>
-              <div className="grid gap-2">
-                <Label>Badge</Label>
-                <Select value={form.badge ?? "none"} onValueChange={(v) => setForm({ ...form, badge: v === "none" ? null : v })}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent>
-                    {BADGES.map((b) => <SelectItem key={b} value={b}>{b === "none" ? "None" : b}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-3 rounded-lg border border-border p-4">
+            </section>
+
+            <section className="space-y-4 rounded-xl border border-border p-4">
               <div>
-                <Label>Type-based metrics</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  These fields follow the selected type. Template defaults only appear when the selected type does not define its own metric choices yet.
-                </p>
+                <p className="text-sm font-semibold text-foreground">2. Product details</p>
+                <p className="mt-1 text-xs text-muted-foreground">Organize the product and add the information shoppers need to choose it.</p>
+              </div>
+              <CloudinaryMultiUpload images={form.images ?? []} onChange={(images) => setForm({ ...form, images })} folder="products" />
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Textarea data-testid="products-form-description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={3} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Type</Label>
+                  <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
+                    <SelectTrigger className="min-h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{dbTypes.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {selectedTypeRow ? (
+                    <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">{selectedTypeHasExplicitSchema ? "Type-specific options" : "Template fallback options"}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {resolvedMetricDefinitions.length > 0 ? resolvedMetricDefinitions.map((metric) => (
+                          <span key={metric.key} className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{metric.label}</span>
+                        )) : <span className="text-xs text-muted-foreground">No option selectors configured for this type.</span>}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="grid gap-2 content-start">
+                  <Label>Category</Label>
+                  <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value })}>
+                    <SelectTrigger className="min-h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{dbCategories.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Badge</Label>
+                  <Select value={form.badge ?? "none"} onValueChange={(value) => setForm({ ...form, badge: value === "none" ? null : value })}>
+                    <SelectTrigger className="min-h-11"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>{BADGES.map((badge) => <SelectItem key={badge} value={badge}>{badge === "none" ? "None" : badge}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="flex min-h-11 items-center gap-3 self-end rounded-lg border border-border px-3">
+                  <Switch checked={form.featured} onCheckedChange={(value) => setForm({ ...form, featured: value })} />
+                  <Label>Featured product</Label>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3 rounded-xl border border-border p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">3. Options</p>
+                <p className="mt-1 text-xs text-muted-foreground">These fields follow the selected product type. {customMetricCount > 0 ? `${customMetricCount} custom metric definition${customMetricCount === 1 ? " is" : "s are"} available for this store.` : "Template defaults appear when the type has no custom option schema."}</p>
               </div>
               {resolvedMetricDefinitions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No metrics configured for this type yet.</p>
-              ) : (
-                resolvedMetricDefinitions.map((metric) => (
-                  <MetricValueChipInput
-                    key={metric.key}
-                    label={metric.label}
-                    values={form.metric_values[metric.key] ?? (metric.key === "size" ? form.sizes : metric.key === "color" ? form.colors : [])}
-                    onChange={(nextValues) => updateMetricValue(metric.key, nextValues)}
-                    placeholder={
-                      metric.key === "size"
-                        ? "Add values like Small, 256GB, 15-inch"
-                        : metric.key === "color"
-                          ? "Add values like Black, Silver, Navy"
-                          : "Add metric values"
-                    }
-                  />
-                ))
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={form.featured} onCheckedChange={(v) => setForm({ ...form, featured: v })} />
-              <Label>Featured product</Label>
-            </div>
-            {formErrors.form ? (
-              <p id="products-form-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {formErrors.form}
-              </p>
-            ) : null}
+              ) : resolvedMetricDefinitions.map((metric) => (
+                <MetricValueChipInput key={metric.key} label={metric.label} values={form.metric_values[metric.key] ?? (metric.key === "size" ? form.sizes : metric.key === "color" ? form.colors : [])} onChange={(nextValues) => updateMetricValue(metric.key, nextValues)} placeholder={metric.key === "size" ? "Add values like Small, 256GB, 15-inch" : metric.key === "color" ? "Add values like Black, Silver, Navy" : "Add metric values"} />
+              ))}
+            </section>
+
+            {formErrors.form ? <p id="products-form-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{formErrors.form}</p> : null}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-            <Button data-testid="products-save-button" onClick={() => void handleSave()} disabled={saving} aria-describedby={formErrors.form ? "products-form-error" : undefined}>
+
+          <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 gap-2 border-t border-border bg-background px-6 py-4 sm:gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving} className="min-h-11">Cancel</Button>
+            <Button data-testid="products-save-button" onClick={() => void handleSave()} disabled={saving} aria-describedby={formErrors.form ? "products-form-error" : undefined} className="min-h-11">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {saving ? "Saving…" : `${editing ? "Update" : "Add"} Product`}
+              {saving ? "Saving…" : editing ? "Update Product" : "Add Product"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" /> Bulk Product Import
-            </DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" /> Bulk Product Import</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-4 bg-card/50">
+            <div className="flex flex-col gap-4 rounded-lg border border-border bg-card/50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Upload File (.csv or .xlsx)</p>
                 <p className="text-xs text-muted-foreground">Select a structured spreadsheet file to preview and import.</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate} className="gap-2">
-                  <Download className="h-4 w-4" /> Download Template
-                </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" variant="outline" onClick={handleDownloadTemplate} className="min-h-11 gap-2"><Download className="h-4 w-4" /> Download Template</Button>
                 <Label htmlFor="bulk-file-upload" className="cursor-pointer">
-                  <span className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow hover:bg-primary/90 gap-2">
-                    <Upload className="h-3.5 w-3.5" /> Select File
-                  </span>
-                  <Input
-                    id="bulk-file-upload"
-                    data-testid="bulk-file-input"
-                    type="file"
-                    accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
+                  <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"><Upload className="h-4 w-4" /> Select File</span>
+                  <Input id="bulk-file-upload" data-testid="bulk-file-input" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={handleFileChange} />
                 </Label>
               </div>
             </div>
 
-            {importFileName ? (
-              <p className="text-xs text-muted-foreground">File: <span className="font-semibold text-foreground">{importFileName}</span></p>
-            ) : null}
-
-            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-              Use the template if the merchant is starting fresh. Export CSV first if they want to edit the current live catalog and re-import in the same shape.
-            </div>
+            {importFileName ? <p className="text-xs text-muted-foreground">File: <span className="font-semibold text-foreground">{importFileName}</span></p> : null}
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">Use the template if you are starting fresh. Export CSV first if you want to edit the current live catalog and re-import in the same shape.</div>
 
             {importRows.length > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-md border border-border">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs text-muted-foreground">
                   <span>Total Rows: <strong className="text-foreground">{importRows.length}</strong></span>
-                  <span className="text-emerald-600 font-semibold">Valid: {importRows.filter((r) => r.isValid).length}</span>
-                  <span className="text-destructive font-semibold">Invalid: {importRows.filter((r) => !r.isValid).length}</span>
+                  <span className="font-semibold text-emerald-600">Valid: {importRows.filter((row) => row.isValid).length}</span>
+                  <span className="font-semibold text-destructive">Invalid: {importRows.filter((row) => !row.isValid).length}</span>
                 </div>
-
-                <div className="max-h-[350px] overflow-auto border border-border rounded-lg">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-muted text-muted-foreground font-medium border-b border-border">
-                      <tr>
-                        <th className="p-2.5 w-10">#</th>
-                        <th className="p-2.5 w-24">Status</th>
-                        <th className="p-2.5">Name</th>
-                        <th className="p-2.5">Price</th>
-                        <th className="p-2.5">Category</th>
-                        <th className="p-2.5">Stock</th>
-                        <th className="p-2.5">Validation Errors</th>
-                      </tr>
+                <div className="max-h-[350px] overflow-auto rounded-lg border border-border">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead className="sticky top-0 border-b border-border bg-muted font-medium text-muted-foreground">
+                      <tr><th className="w-10 p-2.5">#</th><th className="w-24 p-2.5">Status</th><th className="p-2.5">Name</th><th className="p-2.5">Price</th><th className="p-2.5">Category</th><th className="p-2.5">Stock</th><th className="p-2.5">Validation Errors</th></tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
                       {importRows.map((row) => (
                         <tr key={row.rowIndex} className={row.isValid ? "hover:bg-muted/20" : "bg-destructive/5 hover:bg-destructive/10"}>
                           <td className="p-2.5 text-muted-foreground">{row.rowIndex}</td>
-                          <td className="p-2.5">
-                            {row.isValid ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20 gap-1 text-[10px]">
-                                <CheckCircle2 className="h-3 w-3" /> Valid
-                              </Badge>
-                            ) : (
-                              <Badge variant="destructive" className="gap-1 text-[10px]">
-                                <XCircle className="h-3 w-3" /> Invalid
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-2.5 font-medium text-foreground max-w-[150px] truncate">{row.name || <span className="text-muted-foreground italic">Empty</span>}</td>
-                          <td className="p-2.5 text-foreground">{row.price > 0 ? `BDT ${row.price}` : <span className="text-destructive font-mono">0</span>}</td>
+                          <td className="p-2.5">{row.isValid ? <Badge className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600 hover:bg-emerald-500/20"><CheckCircle2 className="h-3 w-3" /> Valid</Badge> : <Badge variant="destructive" className="gap-1 text-[10px]"><XCircle className="h-3 w-3" /> Invalid</Badge>}</td>
+                          <td className="max-w-[150px] truncate p-2.5 font-medium text-foreground">{row.name || <span className="italic text-muted-foreground">Empty</span>}</td>
+                          <td className="p-2.5 text-foreground">{row.price > 0 ? `BDT ${row.price}` : <span className="font-mono text-destructive">0</span>}</td>
                           <td className="p-2.5 text-muted-foreground">{row.category}</td>
                           <td className="p-2.5 text-muted-foreground">{row.stock}</td>
-                          <td className="p-2.5">
-                            {row.errors.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {row.errors.map((err, i) => (
-                                  <Badge key={i} variant="outline" className="text-[10px] border-destructive/40 text-destructive bg-destructive/5">
-                                    {err}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-emerald-600 text-[11px]">Ready</span>
-                            )}
-                          </td>
+                          <td className="p-2.5">{row.errors.length > 0 ? <div className="flex flex-wrap gap-1">{row.errors.map((error, index) => <Badge key={index} variant="outline" className="border-destructive/40 bg-destructive/5 text-[10px] text-destructive">{error}</Badge>)}</div> : <span className="text-[11px] text-emerald-600">Ready</span>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1190,16 +1069,11 @@ const AdminProducts = () => {
               </div>
             ) : null}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-            <Button
-              data-testid="products-execute-import-button"
-              onClick={handleExecuteImport}
-              disabled={importing || importRows.filter((r) => r.isValid).length === 0}
-              className="gap-2"
-            >
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)} className="min-h-11">Cancel</Button>
+            <Button data-testid="products-execute-import-button" onClick={handleExecuteImport} disabled={importing || importRows.filter((row) => row.isValid).length === 0} className="min-h-11 gap-2">
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Import {importRows.filter((r) => r.isValid).length} Valid Products
+              Import {importRows.filter((row) => row.isValid).length} Valid Products
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -79,11 +79,19 @@ const couponPresets = [
   },
 ];
 
+type MarketingTab = "coupons" | "recovery" | "qr";
+
+const marketingTools: Array<{ id: MarketingTab; label: string; helper: string; icon: typeof Tag }> = [
+  { id: "coupons", label: "Discount coupons", helper: "Create offers shoppers can enter at checkout.", icon: Tag },
+  { id: "recovery", label: "Cart recovery", helper: "Follow up with shoppers who left before ordering.", icon: ShoppingCart },
+  { id: "qr", label: "QR promo codes", helper: "Create scannable links for print and offline campaigns.", icon: QrCode },
+];
+
 const Coupons = () => {
   const { activeStoreId } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "coupons";
+  const activeTab = (searchParams.get("tab") || "coupons") as MarketingTab;
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -98,7 +106,7 @@ const Coupons = () => {
         .eq("store_id", activeStoreId as string)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data as unknown) as CouponCode[];
+      return data as unknown as CouponCode[];
     },
     enabled: Boolean(activeStoreId),
   });
@@ -132,9 +140,7 @@ const Coupons = () => {
 
   const createCoupon = useMutation({
     mutationFn: async () => {
-      if (!activeStoreId) {
-        throw new Error("Select a store before saving coupons.");
-      }
+      if (!activeStoreId) throw new Error("Select a store before saving coupons.");
 
       const payload: any = {
         code: form.code.trim().toUpperCase(),
@@ -167,10 +173,7 @@ const Coupons = () => {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      if (!activeStoreId) {
-        throw new Error("Select a store before updating coupons.");
-      }
-
+      if (!activeStoreId) throw new Error("Select a store before updating coupons.");
       const { error } = await supabase.from("coupon_codes" as any).update({ is_active }).eq("id", id).eq("store_id", activeStoreId as string);
       if (error) throw error;
     },
@@ -179,10 +182,7 @@ const Coupons = () => {
 
   const deleteCoupon = useMutation({
     mutationFn: async (id: string) => {
-      if (!activeStoreId) {
-        throw new Error("Select a store before deleting coupons.");
-      }
-
+      if (!activeStoreId) throw new Error("Select a store before deleting coupons.");
       const { error } = await supabase.from("coupon_codes" as any).delete().eq("id", id).eq("store_id", activeStoreId as string);
       if (error) throw error;
     },
@@ -192,15 +192,15 @@ const Coupons = () => {
     },
   });
 
-  const startEdit = (c: CouponCode) => {
-    setEditId(c.id);
+  const startEdit = (coupon: CouponCode) => {
+    setEditId(coupon.id);
     setForm({
-      code: c.code,
-      discount_type: c.discount_type,
-      discount_value: c.discount_value,
-      min_order: c.min_order,
-      max_uses: c.max_uses ? String(c.max_uses) : "",
-      expires_at: c.expires_at ? c.expires_at.slice(0, 10) : "",
+      code: coupon.code,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      min_order: coupon.min_order,
+      max_uses: coupon.max_uses ? String(coupon.max_uses) : "",
+      expires_at: coupon.expires_at ? coupon.expires_at.slice(0, 10) : "",
     });
     setShowForm(true);
   };
@@ -211,78 +211,85 @@ const Coupons = () => {
     setForm(emptyCoupon);
   };
 
+  const changeTab = (tab: MarketingTab) => {
+    setSearchParams({ tab }, { replace: true });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Marketing & Discounts</h1>
-          <p className="text-sm text-muted-foreground">Create discount campaigns, recover abandoned carts, and generate QR promo codes.</p>
+          <h1 className="font-heading text-3xl font-bold text-foreground">Marketing</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Choose one growth tool at a time: create an offer, recover a cart, or share a scannable campaign link.
+          </p>
         </div>
-        {activeTab === "coupons" && !showForm && (
-          <Button onClick={() => setShowForm(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> New Coupon
+        {activeTab === "coupons" && !showForm ? (
+          <Button onClick={() => setShowForm(true)} className="min-h-11 w-full gap-2 sm:w-auto">
+            <Plus className="h-4 w-4" /> Create coupon
           </Button>
-        )}
+        ) : null}
       </div>
 
-      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val }, { replace: true })} className="space-y-6">
-        <TabsList className="bg-secondary/40 p-1 border border-border">
-          <TabsTrigger value="coupons" className="gap-2">
-            <Tag className="h-4 w-4" />
-            Discount Coupons
-          </TabsTrigger>
-          <TabsTrigger value="recovery" className="gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Abandoned Cart Recovery
-          </TabsTrigger>
-          <TabsTrigger value="qr" className="gap-2">
-            <QrCode className="h-4 w-4" />
-            QR Code Generator
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={(value) => changeTab(value as MarketingTab)} className="space-y-6">
+        <div className="space-y-2 sm:hidden">
+          <p className="text-sm font-semibold text-foreground">Marketing tools</p>
+          <div className="grid gap-2">
+            {marketingTools.map((tool) => {
+              const Icon = tool.icon;
+              const selected = activeTab === tool.id;
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => changeTab(tool.id)}
+                  className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border bg-card hover:border-primary/30"}`}
+                >
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">{tool.label}</span>
+                    <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{tool.helper}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <TabsList className="hidden h-auto grid-cols-3 gap-1 border border-border bg-secondary/40 p-1 sm:grid">
+          <TabsTrigger value="coupons" className="min-h-11 gap-2"><Tag className="h-4 w-4" />Coupons</TabsTrigger>
+          <TabsTrigger value="recovery" className="min-h-11 gap-2"><ShoppingCart className="h-4 w-4" />Cart recovery</TabsTrigger>
+          <TabsTrigger value="qr" className="min-h-11 gap-2"><QrCode className="h-4 w-4" />QR codes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="coupons" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Tag className="h-4 w-4 text-primary" />
-                  Active campaigns
-                </CardTitle>
-                <CardDescription>Coupons customers can use right now.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{activeCoupons.length}</CardContent>
-            </Card>
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CalendarClock className="h-4 w-4 text-primary" />
-                  Ending soon
-                </CardTitle>
-                <CardDescription>Active coupons expiring within the next 7 days.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{endingSoonCount}</CardContent>
-            </Card>
-            <Card className="border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <TicketPercent className="h-4 w-4 text-primary" />
-                  Total redemptions
-                </CardTitle>
-                <CardDescription>How many times customers have already used your coupons.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold text-foreground">{totalRedemptions}</CardContent>
-            </Card>
-          </div>
+        <TabsContent value="coupons" className="space-y-5">
+          <Card className="border-border">
+            <CardContent className="grid grid-cols-3 divide-x divide-border p-0">
+              <div className="p-4 text-center sm:p-5">
+                <Tag className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-xl font-semibold text-foreground">{activeCoupons.length}</p>
+                <p className="text-xs text-muted-foreground">Active</p>
+              </div>
+              <div className="p-4 text-center sm:p-5">
+                <CalendarClock className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-xl font-semibold text-foreground">{endingSoonCount}</p>
+                <p className="text-xs text-muted-foreground">Ending soon</p>
+              </div>
+              <div className="p-4 text-center sm:p-5">
+                <TicketPercent className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-xl font-semibold text-foreground">{totalRedemptions}</p>
+                <p className="text-xs text-muted-foreground">Uses</p>
+              </div>
+            </CardContent>
+          </Card>
 
           {!showForm ? (
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  Quick growth presets
-                </CardTitle>
-                <CardDescription>Start from a proven campaign shape, then fine-tune the values for this merchant.</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />Quick start</CardTitle>
+                <CardDescription>Pick a campaign shape, then adjust the values for your store.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-3">
                 {couponPresets.map((preset) => (
@@ -290,275 +297,175 @@ const Coupons = () => {
                     key={preset.id}
                     type="button"
                     onClick={() => applyPreset(preset)}
-                    className="rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    className="min-h-20 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                   >
                     <p className="font-medium text-foreground">{preset.label}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{preset.helper}</p>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">{preset.helper}</p>
                   </button>
                 ))}
               </CardContent>
             </Card>
           ) : null}
 
-          {showForm && (
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 font-heading text-lg font-semibold text-foreground">
-                {editId ? "Edit Coupon" : "New Coupon"}
-              </h2>
-              {!editId ? (
-                <div className="mb-4 grid gap-3 md:grid-cols-3">
-                  {couponPresets.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset)}
-                      className="rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <p className="text-sm font-medium text-foreground">{preset.label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{preset.helper}</p>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label>Coupon Code *</Label>
-                  <Input
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. SUMMER20"
-                    className="font-mono uppercase"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Discount Type</Label>
-                  <div className="flex gap-2">
-                    {(["percentage", "fixed"] as const).map((type) => (
+          {showForm ? (
+            <Card className="border-primary/25">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{editId ? "Edit coupon" : "Create coupon"}</CardTitle>
+                <CardDescription>Set the customer-facing code and the commercial limits in one place.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {!editId ? (
+                  <div className="grid gap-2 md:grid-cols-3">
+                    {couponPresets.map((preset) => (
                       <button
-                        key={type}
+                        key={preset.id}
                         type="button"
-                        onClick={() => setForm({ ...form, discount_type: type })}
-                        className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                          form.discount_type === type
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/50"
-                        }`}
+                        onClick={() => applyPreset(preset)}
+                        className="min-h-16 rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                       >
-                        {type === "percentage" ? "% Off" : "BDT Fixed"}
+                        <p className="text-sm font-medium text-foreground">{preset.label}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{preset.helper}</p>
                       </button>
                     ))}
                   </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Discount Value *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      {form.discount_type === "percentage" ? "%" : "BDT"}
-                    </span>
-                    <Input
-                      type="number"
-                      value={form.discount_value}
-                      onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
-                      className="pl-7"
-                      min={0}
-                      max={form.discount_type === "percentage" ? 100 : undefined}
-                    />
+                ) : null}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="coupon-code">Coupon code *</Label>
+                    <Input id="coupon-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="e.g. SUMMER20" className="min-h-11 font-mono uppercase" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Discount type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["percentage", "fixed"] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setForm({ ...form, discount_type: type })}
+                          className={`min-h-11 rounded-md border px-3 text-sm font-medium transition-colors ${form.discount_type === type ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
+                        >
+                          {type === "percentage" ? "% off" : "BDT fixed"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="coupon-value">Discount value *</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{form.discount_type === "percentage" ? "%" : "BDT"}</span>
+                      <Input id="coupon-value" type="number" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })} className="min-h-11 pl-9" min={0} max={form.discount_type === "percentage" ? 100 : undefined} />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="coupon-minimum">Minimum order (BDT)</Label>
+                    <Input id="coupon-minimum" type="number" value={form.min_order} onChange={(e) => setForm({ ...form, min_order: Number(e.target.value) })} placeholder="0 = no minimum" min={0} className="min-h-11" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="coupon-max-uses">Maximum uses</Label>
+                    <Input id="coupon-max-uses" type="number" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} placeholder="Blank = unlimited" min={1} className="min-h-11" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="coupon-expiry">Expiry date</Label>
+                    <Input id="coupon-expiry" type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} className="min-h-11" />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Minimum Order (BDT)</Label>
-                  <Input
-                    type="number"
-                    value={form.min_order}
-                    onChange={(e) => setForm({ ...form, min_order: Number(e.target.value) })}
-                    placeholder="0 = no minimum"
-                    min={0}
-                  />
+
+                <div className="grid gap-2 sm:flex">
+                  <Button onClick={() => createCoupon.mutate()} disabled={!form.code || createCoupon.isPending} className="min-h-11 gap-2">
+                    {createCoupon.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {editId ? "Save coupon" : "Create coupon"}
+                  </Button>
+                  <Button variant="outline" onClick={cancelForm} className="min-h-11 gap-2"><X className="h-4 w-4" />Cancel</Button>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Max Uses (optional)</Label>
-                  <Input
-                    type="number"
-                    value={form.max_uses}
-                    onChange={(e) => setForm({ ...form, max_uses: e.target.value })}
-                    placeholder="Leave blank = unlimited"
-                    min={1}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Expiry Date (optional)</Label>
-                  <Input
-                    type="date"
-                    value={form.expires_at}
-                    onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="mt-4 flex gap-3">
-                <Button onClick={() => createCoupon.mutate()} disabled={!form.code || createCoupon.isPending} className="gap-2">
-                  {createCoupon.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  {editId ? "Update" : "Create"} Coupon
-                </Button>
-                <Button variant="outline" onClick={cancelForm} className="gap-2">
-                  <X className="h-4 w-4" /> Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           {isLoading && coupons.length === 0 ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex min-h-56 items-center justify-center rounded-xl border border-border bg-card/40">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />Loading coupons…</div>
             </div>
           ) : coupons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-20 text-center">
-              <Tag className="mb-4 h-12 w-12 text-muted-foreground/40" />
-              <p className="font-heading text-lg font-semibold text-foreground">No coupons yet</p>
-              <p className="text-sm text-muted-foreground">Create your first discount code above.</p>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-5 py-14 text-center">
+              <Tag className="h-10 w-10 text-muted-foreground/50" />
+              <h2 className="mt-3 font-heading text-lg font-semibold text-foreground">Create your first offer</h2>
+              <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">A simple welcome or campaign coupon gives you a concrete promotion to share with shoppers.</p>
+              {!showForm ? <Button onClick={() => setShowForm(true)} className="mt-4 min-h-11 gap-2"><Plus className="h-4 w-4" />Create coupon</Button> : null}
             </div>
           ) : (
             <>
-              <div className="space-y-4 md:hidden">
-                {coupons.map((c) => (
-                  <div key={c.id} className="rounded-xl border border-border bg-card p-4 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold text-sm text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg border border-border/80">
-                          {c.code}
-                        </span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      <span className="text-primary font-bold text-sm">
-                        {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs border-y border-border/50 py-3">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Min. Order</p>
-                        <p className="font-medium text-foreground mt-0.5">{c.min_order > 0 ? `BDT ${c.min_order}` : "None"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Uses</p>
-                        <p className="font-medium text-foreground mt-0.5">{c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Expires</p>
-                        <p className="font-medium text-foreground mt-0.5">{c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</p>
-                        <div className="mt-0.5">
-                          <button
-                            onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
-                            className="flex items-center gap-1.5"
-                          >
-                            {c.is_active ? (
-                              <>
-                                <ToggleRight className="h-5 w-5 text-primary" />
-                                <Badge variant="default" className="text-[9px] px-1 py-0">Active</Badge>
-                              </>
-                            ) : (
-                              <>
-                                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                                <Badge variant="secondary" className="text-[9px] px-1 py-0">Inactive</Badge>
-                              </>
-                            )}
-                          </button>
+              <div className="space-y-3 md:hidden">
+                {coupons.map((coupon) => (
+                  <Card key={coupon.id} className="border-border">
+                    <CardContent className="space-y-4 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-base font-semibold text-foreground">{coupon.code}</p>
+                          <p className="mt-1 text-sm font-semibold text-primary">{coupon.discount_type === "percentage" ? `${coupon.discount_value}% off` : `BDT ${coupon.discount_value} off`}</p>
                         </div>
+                        <Button variant="outline" size="sm" className="min-h-11 gap-2" onClick={() => copyCouponCode(coupon.code)}><Copy className="h-4 w-4" />Copy</Button>
                       </div>
-                    </div>
 
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button variant="outline" size="sm" className="gap-1.5 h-8 rounded-lg text-xs" onClick={() => startEdit(c)}>
-                        <Pencil className="h-3 w-3" /> Edit
-                      </Button>
+                      <div className="grid grid-cols-2 gap-3 border-y border-border/60 py-3 text-xs">
+                        <div><p className="text-muted-foreground">Minimum order</p><p className="mt-1 font-medium text-foreground">{coupon.min_order > 0 ? `BDT ${coupon.min_order}` : "None"}</p></div>
+                        <div><p className="text-muted-foreground">Uses</p><p className="mt-1 font-medium text-foreground">{coupon.uses_count}{coupon.max_uses ? ` / ${coupon.max_uses}` : ""}</p></div>
+                        <div><p className="text-muted-foreground">Expires</p><p className="mt-1 font-medium text-foreground">{coupon.expires_at ? format(new Date(coupon.expires_at), "MMM d, yyyy") : "Never"}</p></div>
+                        <div><p className="text-muted-foreground">Status</p><p className="mt-1 font-medium text-foreground">{coupon.is_active ? "Active" : "Inactive"}</p></div>
+                      </div>
+
                       <Button
-                        variant="destructive"
-                        size="sm"
-                        className="gap-1.5 h-8 rounded-lg text-xs"
-                        onClick={() => {
-                          if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
-                        }}
-                        disabled={deleteCoupon.isPending}
+                        variant="outline"
+                        className="min-h-11 w-full justify-between"
+                        onClick={() => toggleActive.mutate({ id: coupon.id, is_active: !coupon.is_active })}
+                        disabled={toggleActive.isPending}
                       >
-                        <Trash2 className="h-3 w-3" /> Delete
+                        <span>{coupon.is_active ? "Pause coupon" : "Activate coupon"}</span>
+                        {coupon.is_active ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
                       </Button>
-                    </div>
-                  </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button variant="secondary" className="min-h-11 gap-2" onClick={() => startEdit(coupon)}><Pencil className="h-4 w-4" />Edit</Button>
+                        <Button
+                          variant="ghost"
+                          className="min-h-11 gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => { if (confirm(`Delete coupon "${coupon.code}"?`)) deleteCoupon.mutate(coupon.id); }}
+                          disabled={deleteCoupon.isPending}
+                        ><Trash2 className="h-4 w-4" />Delete</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
 
-              <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
+              <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-secondary/50">
                       <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Discount</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Min. Order</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Uses</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">Expires</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Offer</th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Limits</th>
                       <th className="px-4 py-3 text-left font-semibold text-foreground">Status</th>
                       <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {coupons.map((c) => (
-                      <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className="font-mono font-semibold text-foreground">{c.code}</span>
+                    {coupons.map((coupon) => (
+                      <tr key={coupon.id} className="border-b border-border last:border-0 hover:bg-secondary/20">
+                        <td className="px-4 py-4"><span className="font-mono font-semibold text-foreground">{coupon.code}</span></td>
+                        <td className="px-4 py-4"><p className="font-semibold text-primary">{coupon.discount_type === "percentage" ? `${coupon.discount_value}% off` : `BDT ${coupon.discount_value} off`}</p><p className="mt-1 text-xs text-muted-foreground">Min {coupon.min_order > 0 ? `BDT ${coupon.min_order}` : "none"}</p></td>
+                        <td className="px-4 py-4 text-muted-foreground"><p>{coupon.uses_count}{coupon.max_uses ? ` / ${coupon.max_uses}` : ""} uses</p><p className="mt-1 text-xs">{coupon.expires_at ? `Ends ${format(new Date(coupon.expires_at), "MMM d, yyyy")}` : "No expiry"}</p></td>
+                        <td className="px-4 py-4">
+                          <Button variant="outline" size="sm" className="min-h-11 gap-2" onClick={() => toggleActive.mutate({ id: coupon.id, is_active: !coupon.is_active })} disabled={toggleActive.isPending}>
+                            {coupon.is_active ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
+                            {coupon.is_active ? "Active" : "Inactive"}
+                          </Button>
                         </td>
-                        <td className="px-4 py-3 text-primary font-semibold">
-                          {c.discount_type === "percentage" ? `${c.discount_value}% off` : `BDT ${c.discount_value} off`}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {c.min_order > 0 ? `BDT ${c.min_order}` : "None"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {c.uses_count}{c.max_uses ? ` / ${c.max_uses}` : ""}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {c.expires_at ? format(new Date(c.expires_at), "MMM d, yyyy") : "Never"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => toggleActive.mutate({ id: c.id, is_active: !c.is_active })}
-                            className="flex items-center gap-1.5"
-                          >
-                            {c.is_active ? (
-                              <>
-                                <ToggleRight className="h-5 w-5 text-primary" />
-                                <Badge variant="default" className="text-[10px]">Active</Badge>
-                              </>
-                            ) : (
-                              <>
-                                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                                <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
-                              </>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyCouponCode(c.code)}>
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(c)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => {
-                                if (confirm(`Delete coupon "${c.code}"?`)) deleteCoupon.mutate(c.id);
-                              }}
-                              disabled={deleteCoupon.isPending}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" className="min-h-11 gap-2" onClick={() => copyCouponCode(coupon.code)}><Copy className="h-4 w-4" />Copy</Button>
+                            <Button variant="secondary" size="sm" className="min-h-11 gap-2" onClick={() => startEdit(coupon)}><Pencil className="h-4 w-4" />Edit</Button>
+                            <Button variant="ghost" size="sm" className="min-h-11 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { if (confirm(`Delete coupon "${coupon.code}"?`)) deleteCoupon.mutate(coupon.id); }} disabled={deleteCoupon.isPending}>Delete</Button>
                           </div>
                         </td>
                       </tr>
@@ -570,13 +477,8 @@ const Coupons = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="recovery" className="space-y-4">
-          <CartRecoveryPage />
-        </TabsContent>
-
-        <TabsContent value="qr" className="space-y-4">
-          <QrCodeGeneratorPage />
-        </TabsContent>
+        <TabsContent value="recovery" className="space-y-4"><CartRecoveryPage /></TabsContent>
+        <TabsContent value="qr" className="space-y-4"><QrCodeGeneratorPage /></TabsContent>
       </Tabs>
     </div>
   );
