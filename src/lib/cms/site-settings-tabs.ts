@@ -15,9 +15,9 @@ export const mobilePinnedSettingTabs = [
   "themes",
   "payment",
   "delivery",
+  "couriers",
   "support",
   "contact",
-  "page_builder",
 ] as const;
 
 const mobilePinnedTabPriority = [...mobilePinnedSettingTabs] as readonly SettingsTabValue[];
@@ -34,6 +34,7 @@ export type SettingsTabValue =
   | "upsells"
   | "payment"
   | "delivery"
+  | "couriers"
   | "loyalty"
   | "support"
   | "about"
@@ -43,8 +44,7 @@ export type SettingsTabValue =
   | "footer"
   | "domain"
   | "notifications"
-  | "template_features"
-  | "page_builder";
+  | "template_features";
 
 export type SettingsTabOption = {
   value: SettingsTabValue;
@@ -87,6 +87,7 @@ export const validSettingTabs = new Set<SettingsTabValue>([
   "upsells",
   "payment",
   "delivery",
+  "couriers",
   "loyalty",
   "support",
   "about",
@@ -97,7 +98,6 @@ export const validSettingTabs = new Set<SettingsTabValue>([
   "domain",
   "notifications",
   "template_features",
-  "page_builder",
 ]);
 
 export function resolveStorefrontSettingsContext(
@@ -294,6 +294,16 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
       && supportsTransactionalCheckout(businessFamily, catalogMode),
   },
   {
+    value: "couriers",
+    category: "Checkout & Log",
+    keywords: "courier shipping provider connection pathao steadfast redx paperfly e-courier tracking cod dispatch",
+    resolveLabel: () => "Courier Connections",
+    isVisible: (businessFamily, catalogMode, templateId) =>
+      templateId !== "digital-downloads"
+      && templateId !== "subscriptions"
+      && supportsTransactionalCheckout(businessFamily, catalogMode),
+  },
+  {
     value: "loyalty",
     category: "Checkout & Log",
     keywords: "loyalty rewards point balance rate cashback checkout signup bonus points reward rewards",
@@ -356,12 +366,6 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
     keywords: "template feature custom block comparison special sections template blocks merchandising homepage modules",
     resolveLabel: () => "Homepage Sections",
     isVisible: (_businessFamily, _catalogMode, templateId) => getOptionalTemplateHomepageSectionChoices(templateId).length > 0,
-  },
-  {
-    value: "page_builder",
-    category: "Storefront",
-    keywords: "page builder pages blocks homepage custom page revisions seo slug layout rich text storefront sections",
-    resolveLabel: () => "Page Builder",
   },
 ];
 

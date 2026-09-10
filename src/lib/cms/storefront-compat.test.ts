@@ -27,7 +27,9 @@ describe("storefront compatibility helpers", () => {
     expect(supportsTransactionalCheckout("commerce", "inquiry_only")).toBe(false);
     expect(isSettingsTabCompatible("payment", "commerce", "landing_only")).toBe(false);
     expect(isSettingsTabCompatible("delivery", "commerce", "inquiry_only")).toBe(false);
+    expect(isSettingsTabCompatible("couriers", "commerce", "inquiry_only")).toBe(false);
     expect(isSettingsTabCompatible("payment", "commerce", "multi_product")).toBe(true);
+    expect(isSettingsTabCompatible("couriers", "commerce", "multi_product")).toBe(true);
   });
 
   it("only exposes a dedicated shop page for catalog-style commerce modes", () => {

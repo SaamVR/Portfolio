@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   Menu,
   MessageCircle,
+  PackageCheck,
   Palette,
   PanelsTopLeft,
   Search,
@@ -45,6 +46,7 @@ const essentialTabs: SettingsTabValue[] = [
   "themes",
   "payment",
   "delivery",
+  "couriers",
   "support",
   "contact",
 ];
@@ -55,12 +57,12 @@ const tabPresentation: Partial<Record<SettingsTabValue, { description: string; i
   themes: { description: "Colors, typography and visual style", icon: Palette },
   payment: { description: "Payment methods and checkout setup", icon: CreditCard },
   delivery: { description: "Shipping fees and delivery rules", icon: Truck },
+  couriers: { description: "Courier providers, credentials and connections", icon: PackageCheck },
   support: { description: "WhatsApp and shopper help", icon: LifeBuoy },
   contact: { description: "Contact details and inquiry flow", icon: MessageCircle },
   notifications: { description: "Order alerts and customer updates", icon: Bell },
   analytics: { description: "Pixels and measurement connections", icon: Compass },
   domain: { description: "Connect the store to your web address", icon: Store },
-  page_builder: { description: "Pages, blocks and storefront structure", icon: PanelsTopLeft },
 };
 
 const categoryCopy: Record<string, { title: string; description: string }> = {

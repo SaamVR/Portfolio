@@ -17,6 +17,8 @@ import { AnnouncementTab } from "./settings/AnnouncementTab";
 import { ThemesTab } from "./settings/ThemesTab";
 import { CustomDomainTab } from "./settings/CustomDomainTab";
 import { PaymentSettingsTab } from "./settings/PaymentSettingsTab";
+import { DeliverySettingsTab } from "./settings/DeliverySettingsTab";
+import { CourierSettingsTab } from "./settings/CourierSettingsTab";
 import { WhatsAppSupportTab } from "./settings/WhatsAppSupportTab";
 import { AboutPageTab } from "./settings/AboutPageTab";
 import { ContactPageTab } from "./settings/ContactPageTab";
@@ -910,14 +912,6 @@ export default function SiteSettings() {
                       : `Update ${activeTabDefinition?.label?.toLowerCase() ?? "this area"} and keep the live storefront aligned across mobile and desktop.`}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={pageBuilderPath}>
-                    <Button variant="outline" className="gap-2">
-                      <PanelsTopLeft className="h-4 w-4" />
-                      Page Builder
-                    </Button>
-                  </Link>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -943,7 +937,9 @@ export default function SiteSettings() {
           SaveButton={SaveButton}
         />
 
-        <CustomDomainTab />
+        <TabsContent value="domain" className="mt-0">
+          <CustomDomainTab />
+        </TabsContent>
 
         <PaymentSettingsTab
           paymentGateway={paymentGateway}
@@ -951,6 +947,14 @@ export default function SiteSettings() {
           update={updateSettingField}
           SaveButton={SaveButton}
         />
+
+        <DeliverySettingsTab
+          settings={settings}
+          update={updateSettingField}
+          SaveButton={SaveButton}
+        />
+
+        <CourierSettingsTab />
 
         <WhatsAppSupportTab
           settings={settings}

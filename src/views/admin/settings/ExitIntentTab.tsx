@@ -16,7 +16,7 @@ export function ExitIntentTab({
   SaveButton: React.ComponentType<{ settingKey: string }>;
 }) {
   return (
-    <TabsContent value="exit_intent">
+    <TabsContent value="upsells">
       <div className="space-y-4">
         <Card className="border-border">
           <CardHeader>

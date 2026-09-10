@@ -3854,7 +3854,7 @@ export default function CmsPagesManager() {
                           Review homepage blocks
                         </Button>
                         <Button type="button" variant="ghost" size="sm" asChild>
-                          <Link to="/admin/site-settings?tab=page_builder">Open global store settings</Link>
+                          <Link to="/admin/site-settings?tab=template_features">Open global store settings</Link>
                         </Button>
                       </div>
                     </div>
