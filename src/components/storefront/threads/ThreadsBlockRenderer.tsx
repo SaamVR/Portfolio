@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, CreditCard, Home, Leaf, PackageCheck, RotateCcw, Shirt, ShoppingBag, Sparkles, Tag } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontTemplateDefinition } from "@/lib/cms/storefront-templates";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -12,11 +12,18 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProductCard";
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 
 const s = (v: unknown) => typeof v === "string" ? v.trim() : "";
 type DecorationLevel = "none" | "subtle" | "full";
 const deco = (block: StorePageBlock): DecorationLevel => block.decoration ?? "subtle";
 const isReferenceStore = (id?: string | null) => id === "preview-threads";
+
+function repeatForLoop<T>(items: T[], minimumSlides = 10): T[] {
+  if (items.length <= 1 || items.length >= minimumSlides) return items;
+  const copies = Math.ceil(minimumSlides / items.length);
+  return Array.from({ length: copies }, () => items).flat();
+}
 
 function Botanical({ side = "left", level = "subtle", inverse = false }: { side?: "left" | "right"; level?: DecorationLevel; inverse?: boolean }) {
   if (level === "none") return null;
@@ -25,29 +32,57 @@ function Botanical({ side = "left", level = "subtle", inverse = false }: { side?
   </div>;
 }
 
-function useAutoRail(ref: RefObject<HTMLDivElement | null>, interval: number, enabled: boolean) {
+function useThreadsAutoplay(api: CarouselApi | undefined, interval: number, enabled: boolean) {
+  const pausedRef = useRef(false);
+
   useEffect(() => {
-    const node = ref.current;
-    if (!node || !enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let paused = false;
-    const stop = () => { paused = true; };
-    const start = () => { paused = false; };
-    ["mouseenter", "focusin", "pointerdown"].forEach(e => node.addEventListener(e, stop));
-    ["mouseleave", "focusout", "pointerup"].forEach(e => node.addEventListener(e, start));
+    if (!api || !enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const root = api.rootNode();
+    const pause = () => { pausedRef.current = true; };
+    const resume = () => { pausedRef.current = false; };
     const timer = window.setInterval(() => {
-      if (paused || node.scrollWidth <= node.clientWidth + 8) return;
-      const step = Math.max(250, node.clientWidth * .72);
-      const end = node.scrollLeft + node.clientWidth >= node.scrollWidth - 12;
-      node.scrollTo({ left: end ? 0 : node.scrollLeft + step, behavior: "smooth" });
+      if (!pausedRef.current) api.scrollNext();
     }, interval);
-    return () => { window.clearInterval(timer); ["mouseenter", "focusin", "pointerdown"].forEach(e => node.removeEventListener(e, stop)); ["mouseleave", "focusout", "pointerup"].forEach(e => node.removeEventListener(e, start)); };
-  }, [enabled, interval, ref]);
+
+    root.addEventListener("mouseenter", pause);
+    root.addEventListener("mouseleave", resume);
+    root.addEventListener("focusin", pause);
+    root.addEventListener("focusout", resume);
+    root.addEventListener("pointerdown", pause);
+    root.addEventListener("pointerup", resume);
+    root.addEventListener("pointercancel", resume);
+
+    return () => {
+      window.clearInterval(timer);
+      root.removeEventListener("mouseenter", pause);
+      root.removeEventListener("mouseleave", resume);
+      root.removeEventListener("focusin", pause);
+      root.removeEventListener("focusout", resume);
+      root.removeEventListener("pointerdown", pause);
+      root.removeEventListener("pointerup", resume);
+      root.removeEventListener("pointercancel", resume);
+    };
+  }, [api, enabled, interval]);
 }
 
-function RailButtons({ rail, inverse = false }: { rail: RefObject<HTMLDivElement | null>; inverse?: boolean }) {
-  const move = (n: number) => rail.current?.scrollBy({ left: n * Math.max(260, (rail.current?.clientWidth ?? 360) * .74), behavior: "smooth" });
+function ThreadsRailButtons({ api, inverse = false }: { api: CarouselApi | undefined; inverse?: boolean }) {
   const cls = inverse ? "border-primary-foreground/45 text-primary-foreground hover:bg-primary-foreground hover:text-primary" : "border-border bg-background text-foreground hover:border-primary";
-  return <div className="flex gap-2"><button type="button" onClick={() => move(-1)} className={`grid h-9 w-9 place-items-center rounded-full border ${cls}`} aria-label="Previous"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => move(1)} className={`grid h-9 w-9 place-items-center rounded-full border ${cls}`} aria-label="Next"><ArrowRight className="h-4 w-4" /></button></div>;
+  return <div className="flex gap-2"><button type="button" onClick={() => api?.scrollPrev()} className={`grid h-9 w-9 place-items-center rounded-full border transition ${cls}`} aria-label="Previous slide"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => api?.scrollNext()} className={`grid h-9 w-9 place-items-center rounded-full border transition ${cls}`} aria-label="Next slide"><ArrowRight className="h-4 w-4" /></button></div>;
+}
+
+function ThreadsCarouselTicks({ api, count }: { api: CarouselApi | undefined; count: number }) {
+  const [selected, setSelected] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    const sync = () => setSelected(count > 0 ? api.selectedScrollSnap() % count : 0);
+    sync();
+    api.on("select", sync);
+    api.on("reInit", sync);
+    return () => { api.off("select", sync); api.off("reInit", sync); };
+  }, [api, count]);
+
+  return <div className="mt-4 flex items-center gap-1.5" aria-label="Carousel position">{Array.from({ length: count }, (_, index) => <button key={index} type="button" onClick={() => api?.scrollTo(index)} aria-label={`Go to slide ${index + 1}`} aria-current={selected === index ? "true" : undefined} className={`h-[2px] transition-all ${selected === index ? "w-7 bg-primary-foreground" : "w-3 bg-primary-foreground/30"}`} />)}</div>;
 }
 
 function ThreadsHero({ block }: { block: StorePageBlock }) {
@@ -99,10 +134,31 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const baseItems = explicit.length ? explicit.map(x => ({ name: s(x.label)||s(x.name), image: s(x.imageUrl)||s(x.image_url), value: s(x.value)||s(x.label)||s(x.name) })) : categories.map(x => ({ name: x.name, image: (x as {image_url?: string}).image_url || "", value: x.name }));
   const referenceNames = ["Women", "Men", "T-Shirts", "Accessories", "Home & Living", "Sale"];
   const items = isReferenceStore(store?.id) ? referenceNames.map((name, i) => ({ name, image: baseItems[i]?.image || "", value: name })) : baseItems.slice(0, typeof p.limit === "number" ? p.limit : 8);
-  const rail = useRef<HTMLDivElement>(null); useAutoRail(rail, typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 3800, p.autoplay !== false);
+  const carouselItems = repeatForLoop(items);
+  const [api, setApi] = useState<CarouselApi>();
+  const autoplay = p.autoplay !== false;
+  const interval = typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 3800;
+  useThreadsAutoplay(api, interval, autoplay && items.length > 1);
   if (!items.length) return null;
   const shop = storefrontPath("/shop", store?.slug);
-  return <section className="relative overflow-hidden bg-background py-7 md:py-8"><Botanical side="right" level={deco(block)} /><div className="mx-auto max-w-[1280px] px-5 md:px-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-[20px] font-semibold tracking-[-.02em] md:text-[24px]">Shop by Category</h2><Link href={shop} className="text-[10px] font-semibold">View All →</Link></div><div className="relative">{p.showArrows !== false ? <button onClick={() => rail.current?.scrollBy({left:-300,behavior:"smooth"})} className="absolute -left-4 top-[42%] z-10 hidden h-8 w-8 place-items-center rounded-full bg-background shadow md:grid" aria-label="Previous"><ArrowLeft className="h-4 w-4"/></button> : null}<div ref={rail} className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{items.map((item,i) => <Link key={`${item.name}-${i}`} href={`${shop}?category=${encodeURIComponent(item.value)}`} className="w-[69vw] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-md border border-border bg-card shadow-sm sm:w-[32vw] md:w-[185px] lg:w-[190px]"><div className="relative aspect-[.83] bg-secondary">{item.image ? <SafeStorefrontImage src={item.image} alt={item.name} fill className="object-cover"/> : <div className="grid h-full place-items-center text-primary">{categoryFallbackIcon(item.name)}</div>}</div><div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold"><span>{item.name}</span><ArrowRight className="h-3.5 w-3.5"/></div></Link>)}</div>{p.showArrows !== false ? <button onClick={() => rail.current?.scrollBy({left:300,behavior:"smooth"})} className="absolute -right-4 top-[42%] z-10 hidden h-8 w-8 place-items-center rounded-full bg-background shadow md:grid" aria-label="Next"><ArrowRight className="h-4 w-4"/></button> : null}</div></div></section>;
+  const title = isReferenceStore(store?.id) ? "Shop by Category" : (s(p.title) || "Shop by Category");
+  return <section className="relative overflow-hidden bg-background py-8 md:py-11">
+    <Botanical side="right" level={deco(block)} />
+    <div className="mx-auto max-w-[1280px] px-5 md:px-8">
+      <div className="mb-5 flex items-end justify-between gap-5"><h2 className="font-serif text-[28px] leading-none tracking-[-.025em] md:text-[32px]">{title}</h2><Link href={shop} className="text-[10px] font-semibold uppercase tracking-[.12em]">View All →</Link></div>
+      <Carousel setApi={setApi} opts={{ align: "start", loop: items.length > 1, skipSnaps: false }} className="relative">
+        <CarouselContent className="-ml-3 pb-1">
+          {carouselItems.map((item,i) => <CarouselItem key={`${item.name}-${i}`} className="basis-[72%] pl-3 sm:basis-[36%] md:basis-[24%] lg:basis-[16.9%]">
+            <Link href={`${shop}?category=${encodeURIComponent(item.value)}`} className="group block overflow-hidden rounded-[5px] border border-border bg-card shadow-[0_8px_24px_rgba(20,40,28,.06)]">
+              <div className="relative aspect-[.80] bg-secondary">{item.image ? <SafeStorefrontImage src={item.image} alt={item.name} fill className="object-cover transition duration-500 group-hover:scale-[1.02]"/> : <div className="grid h-full place-items-center text-primary">{categoryFallbackIcon(item.name)}</div>}</div>
+              <div className="flex h-11 items-center justify-between bg-card px-3.5 text-[11px] font-semibold"><span>{item.name}</span><ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5"/></div>
+            </Link>
+          </CarouselItem>)}
+        </CarouselContent>
+        {p.showArrows !== false ? <><CarouselPrevious className="-left-4 top-[44%] z-20 hidden border-border bg-background shadow-md hover:bg-background md:inline-flex"/><CarouselNext className="-right-4 top-[44%] z-20 hidden border-border bg-background shadow-md hover:bg-background md:inline-flex"/></> : null}
+      </Carousel>
+    </div>
+  </section>;
 }
 
 function ThreadsPromo({ block }: { block: StorePageBlock }) {
@@ -112,9 +168,38 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
 }
 
 function ThreadsProducts({ block }: { block: StorePageBlock }) {
-  const store = useOptionalStore(); const { data: products = [] } = useProducts(store?.id); const p = block.props as Record<string, unknown>;
-  const source = s(p.source); const visible = (source === "featured" ? products.filter(x=>x.featured) : products).slice(0, typeof p.limit === "number" ? p.limit : 8); const rail=useRef<HTMLDivElement>(null); useAutoRail(rail, typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4300, p.autoplay !== false); if(!visible.length)return null;
-  return <section className="relative overflow-hidden bg-primary py-7 text-primary-foreground md:py-8"><Botanical side="left" level={deco(block)} inverse/><Botanical side="right" level={deco(block)} inverse/><div className="mx-auto grid max-w-[1280px] gap-5 px-5 md:grid-cols-[190px_1fr] md:px-8"><div className="relative z-10 flex flex-col justify-center"><h2 className="font-serif text-[28px] leading-none md:text-[30px]">Featured Products</h2><p className="mt-1 text-[12px] text-primary-foreground/75">{isReferenceStore(store?.id)?"Stories you can wear.":(s(p.subtitle)||"Stories you can wear.")}</p><Link href={storefrontPath("/shop",store?.slug)} className="mt-4 inline-flex w-fit items-center gap-4 rounded border border-primary-foreground/55 px-4 py-2 text-[9px]">View All Products<ArrowRight className="h-3.5 w-3.5"/></Link>{p.showArrows !== false ? <div className="mt-4 hidden md:block"><RailButtons rail={rail} inverse/></div> : null}</div><div ref={rail} className="flex snap-x gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{visible.map(product => <div key={product.id} className="w-[62vw] max-w-[170px] shrink-0 snap-start sm:w-[34vw] md:w-[160px]"><ThreadsProductCard product={product} framed/></div>)}</div></div></section>;
+  const store = useOptionalStore();
+  const { data: products = [] } = useProducts(store?.id);
+  const p = block.props as Record<string, unknown>;
+  const source = s(p.source);
+  const featured = products.filter(product => product.featured);
+  const sourceProducts = source === "featured" ? featured : source === "featured-or-all" && featured.length >= 6 ? featured : products;
+  const visible = sourceProducts.slice(0, typeof p.limit === "number" ? p.limit : 10);
+  const carouselProducts = repeatForLoop(visible);
+  const [api, setApi] = useState<CarouselApi>();
+  const autoplay = p.autoplay !== false;
+  const interval = typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4300;
+  useThreadsAutoplay(api, interval, autoplay && visible.length > 1);
+  if (!visible.length) return null;
+  return <section className="relative overflow-hidden bg-primary py-9 text-primary-foreground md:py-11">
+    <Botanical side="left" level={deco(block)} inverse/><Botanical side="right" level={deco(block)} inverse/>
+    <div className="mx-auto grid max-w-[1280px] gap-6 px-5 md:grid-cols-[205px_minmax(0,1fr)] md:px-8">
+      <div className="relative z-10 flex flex-col justify-center">
+        <h2 className="font-serif text-[31px] leading-[.92] md:text-[35px]">Featured<br className="hidden md:block"/> Products</h2>
+        <p className="mt-2 text-[12px] text-primary-foreground/72">{isReferenceStore(store?.id)?"Stories you can wear.":(s(p.subtitle)||"Stories you can wear.")}</p>
+        <Link href={storefrontPath("/shop",store?.slug)} className="mt-5 inline-flex w-fit items-center gap-4 rounded-sm border border-primary-foreground/45 px-4 py-2.5 text-[9px] uppercase tracking-[.1em]">View All Products<ArrowRight className="h-3.5 w-3.5"/></Link>
+        {p.showArrows !== false ? <div className="mt-5 hidden md:block"><ThreadsRailButtons api={api} inverse/></div> : null}
+      </div>
+      <Carousel setApi={setApi} opts={{ align: "start", loop: visible.length > 1, skipSnaps: false }} className="min-w-0">
+        <CarouselContent className="-ml-3">
+          {carouselProducts.map((product, index) => <CarouselItem key={`${product.id}-${index}`} className="basis-[66%] pl-3 sm:basis-[38%] md:basis-[27%] lg:basis-[18.2%]">
+            <ThreadsProductCard product={product} framed/>
+          </CarouselItem>)}
+        </CarouselContent>
+        <ThreadsCarouselTicks api={api} count={visible.length}/>
+      </Carousel>
+    </div>
+  </section>;
 }
 
 function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
