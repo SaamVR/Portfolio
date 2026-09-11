@@ -21,6 +21,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
 
   const home = storefrontPath("/", store?.slug);
   const shop = storefrontPath("/shop", store?.slug);
+  const brandName = store?.id === "preview-threads" ? "EZCOMO" : (store?.name || "EZCOMO");
   const nav = [
     ["Women", `${shop}?category=Women`],
     ["Men", `${shop}?category=Men`],
@@ -41,14 +42,14 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
           <Link to={home} className="hidden sm:block">
-            <div className="font-serif text-[25px] font-semibold uppercase leading-none tracking-[-.04em]">{store?.name || "EZCOMO"}</div>
+            <div className="font-serif text-[25px] font-semibold uppercase leading-none tracking-[-.04em]">{brandName}</div>
             <div className="mt-1 text-[6px] uppercase tracking-[.17em] text-muted-foreground">People · Places · A Brighter Tomorrow</div>
           </Link>
         </div>
         <nav className="hidden items-center gap-6 text-[11px] font-semibold lg:flex" aria-label="Threads navigation">
           {nav.map(([label, href]) => <Link key={label} to={href} className="whitespace-nowrap transition hover:text-primary">{label}</Link>)}
         </nav>
-        <Link to={home} className="truncate text-center font-serif text-[21px] font-semibold uppercase tracking-[-.035em] sm:hidden">{store?.name || "EZCOMO"}</Link>
+        <Link to={home} className="truncate text-center font-serif text-[21px] font-semibold uppercase tracking-[-.035em] sm:hidden">{brandName}</Link>
         <div className="flex items-center justify-end gap-0.5">
           <button type="button" onClick={() => setSearchOpen(v => !v)} className="grid h-10 w-10 place-items-center" aria-label="Search"><Search className="h-[18px] w-[18px]" /></button>
           <Link to={user ? storefrontPath("/account", store?.slug) : storefrontPath(`/auth?next=${encodeURIComponent(storefrontPath("/account", store?.slug))}`, store?.slug)} className="hidden h-10 w-10 place-items-center sm:grid" aria-label="Account"><User className="h-[18px] w-[18px]" /></Link>
@@ -58,6 +59,6 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
       </div>
       {searchOpen ? <div className="border-t border-border bg-background px-4 py-3"><form action={shop} className="mx-auto flex max-w-2xl items-center border-b border-foreground/25"><Search className="mr-2 h-4 w-4 text-muted-foreground" /><input name="q" autoFocus placeholder="Search products" className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none" /></form></div> : null}
     </header>
-    {menuOpen ? <div className="fixed inset-0 z-[90] lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setMenuOpen(false)} aria-label="Close menu overlay" /><aside className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-background p-6 shadow-2xl"><div className="mb-7 flex items-center justify-between"><span className="font-serif text-2xl uppercase">{store?.name || "EZCOMO"}</span><button onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center" aria-label="Close menu"><X className="h-5 w-5" /></button></div><nav>{nav.map(([label, href]) => <Link key={label} to={href} onClick={() => setMenuOpen(false)} className="block border-b border-border py-4 text-lg">{label}</Link>)}</nav></aside></div> : null}
+    {menuOpen ? <div className="fixed inset-0 z-[90] lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setMenuOpen(false)} aria-label="Close menu overlay" /><aside className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-background p-6 shadow-2xl"><div className="mb-7 flex items-center justify-between"><span className="font-serif text-2xl uppercase">{brandName}</span><button onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center" aria-label="Close menu"><X className="h-5 w-5" /></button></div><nav>{nav.map(([label, href]) => <Link key={label} to={href} onClick={() => setMenuOpen(false)} className="block border-b border-border py-4 text-lg">{label}</Link>)}</nav></aside></div> : null}
   </>;
 }
