@@ -1,16 +1,16 @@
-import { useState, useEffect, useCallback, useId, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "@/lib/react-router-dom-shim";
-import { ArrowRight, Clock, Search, SearchX, Tag, X } from "lucide-react";
+import { Search, X, SearchX, Clock, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProducts } from "@/hooks/useProducts";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { useProductTypes } from "@/hooks/useProductTypes";
-import { useProductCategories } from "@/hooks/useProductCategories";
 import { Badge } from "@/components/ui/badge";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
-import { productUrl, storefrontPath } from "@/lib/slug";
+import { productUrl } from "@/lib/slug";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
+import { storefrontPath } from "@/lib/slug";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 interface SearchBarProps {
@@ -19,14 +19,7 @@ interface SearchBarProps {
   expanded?: boolean;
 }
 
-type BrowseChip = {
-  label: string;
-  value: string;
-  kind: "type" | "category";
-};
-
 const MAX_HISTORY = 5;
-const MAX_BROWSE_CHIPS = 6;
 
 function getSearchHistory(storageKey: string): string[] {
   try {
@@ -61,8 +54,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const listboxId = useId();
-  const statusId = useId();
 
   const { data: products = [] } = useProducts(storeId);
   const { data: searchResults = null } = useProductSearch({
@@ -70,22 +61,16 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     perPage: 6,
   }, storeId);
   const { data: dynamicProductTypes = [] } = useProductTypes(storeId);
-  const { data: dynamicProductCategories = [] } = useProductCategories(storeId);
-
-  const browseChips: BrowseChip[] = [
-    ...dynamicProductCategories.slice(0, 3).map((category: any) => ({
-      label: category.name,
-      value: category.name,
-      kind: "category" as const,
-    })),
-    ...dynamicProductTypes.slice(0, 3).map((type: any) => ({
-      label: type.name,
-      value: type.name,
-      kind: "type" as const,
-    })),
-  ]
-    .filter((chip, index, chips) => chip.label && chips.findIndex((candidate) => candidate.label.toLowerCase() === chip.label.toLowerCase()) === index)
-    .slice(0, MAX_BROWSE_CHIPS);
+  const categoryChips = dynamicProductTypes.length > 0
+    ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
+        label: type.name,
+        value: type.name,
+      }))
+    : [
+        { label: "Collections", value: "collections" },
+        { label: "Popular", value: "popular" },
+        { label: "New Arrivals", value: "new" },
+      ];
 
   useEffect(() => {
     setHistory(getSearchHistory(historyKey));
@@ -132,45 +117,32 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     : [];
 
   const isEmptyState = query.trim() === "";
-  const hasContent = !isEmptyState ? true : history.length > 0 || browseChips.length > 0;
-  const showDropdown = open && hasContent;
-  const suggestionListOpen = showDropdown && !isEmptyState && filtered.length > 0;
-  const resultStatus = debouncedQuery.trim()
-    ? filtered.length > 0
-      ? `${filtered.length} search suggestion${filtered.length === 1 ? "" : "s"} available.`
-      : `No search suggestions found for ${debouncedQuery.trim()}.`
-    : "";
+  const hasContent = !isEmptyState ? true : history.length > 0 || categoryChips.length > 0;
 
-  const closeSearch = useCallback(() => {
-    setOpen(false);
-    setSelectedIndex(-1);
-    onClose?.();
-  }, [onClose]);
-
-  const goToSearchResults = useCallback((searchTerm: string, source: string) => {
-    const cleanQuery = searchTerm.trim();
-    if (!cleanQuery) return;
-    saveSearchHistory(historyKey, cleanQuery);
-    setHistory(getSearchHistory(historyKey));
-    trackEvent({
-      eventName: "search",
-      eventCategory: "discovery",
-      searchQuery: cleanQuery,
-      metadata: {
-        resultsCount: filtered.length,
-        source,
-      },
-    });
-    navigate(storefrontPath(`/shop?q=${encodeURIComponent(cleanQuery)}`, currentStore?.slug));
-    setQuery("");
-    setDebouncedQuery("");
-    closeSearch();
-  }, [closeSearch, currentStore?.slug, filtered.length, historyKey, navigate, trackEvent]);
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    goToSearchResults(query, "search_bar_submit");
-  }, [goToSearchResults, query]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        saveSearchHistory(historyKey, query.trim());
+        setHistory(getSearchHistory(historyKey));
+        trackEvent({
+          eventName: "search",
+          eventCategory: "discovery",
+          searchQuery: cleanQuery,
+          metadata: {
+            resultsCount: filtered.length,
+            source: "search_bar_submit",
+          },
+        });
+        navigate(storefrontPath(`/shop?q=${encodeURIComponent(cleanQuery)}`, currentStore?.slug));
+        setQuery("");
+        setOpen(false);
+        onClose?.();
+      }
+    },
+    [currentStore?.slug, filtered.length, historyKey, navigate, onClose, query, trackEvent]
+  );
 
   const handleSelect = (product: { id: string; name: string }) => {
     if (query.trim()) {
@@ -189,36 +161,48 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
     }
     navigate(productUrl(product.id, product.name, currentStore?.slug));
     setQuery("");
-    setDebouncedQuery("");
-    closeSearch();
+    setOpen(false);
+    onClose?.();
   };
 
-  const handleBrowseChipClick = (chip: BrowseChip) => {
+  const handleCategoryClick = (typeValue: string) => {
+    const isDynamicProductType = dynamicProductTypes.some((type: any) => type.name === typeValue);
     trackEvent({
       eventName: "tag_click",
       eventCategory: "discovery",
       searchQuery: query.trim() || undefined,
       metadata: {
-        tag: chip.value,
-        tagType: chip.kind === "type" ? "product_type" : "category",
+        tag: typeValue,
+        tagType: isDynamicProductType ? "product_type" : "category",
         source: "search_bar_chip",
       },
     });
     navigate(
       storefrontPath(
-        chip.kind === "type"
-          ? `/shop?type=${encodeURIComponent(chip.value)}`
-          : `/shop?category=${encodeURIComponent(chip.value)}`,
+        isDynamicProductType
+          ? `/shop?type=${encodeURIComponent(typeValue)}`
+          : `/shop?category=${encodeURIComponent(typeValue)}`,
         currentStore?.slug,
       ),
     );
     setQuery("");
-    setDebouncedQuery("");
-    closeSearch();
+    setOpen(false);
+    onClose?.();
   };
 
   const handleHistoryClick = (term: string) => {
-    goToSearchResults(term, "search_history");
+    trackEvent({
+      eventName: "search",
+      eventCategory: "discovery",
+      searchQuery: term,
+      metadata: {
+        source: "search_history",
+      },
+    });
+    navigate(storefrontPath(`/shop?q=${encodeURIComponent(term)}`, currentStore?.slug));
+    setQuery("");
+    setOpen(false);
+    onClose?.();
   };
 
   const handleRemoveHistory = (e: React.MouseEvent, term: string) => {
@@ -231,7 +215,6 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
   const handleClear = () => {
     setQuery("");
     setDebouncedQuery("");
-    setSelectedIndex(-1);
     inputRef.current?.focus();
   };
 
@@ -251,192 +234,155 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 
   if (!expanded) return null;
 
+  const showDropdown = open && hasContent;
+
   return (
     <>
       {showDropdown && (
         <div
-          className="fixed inset-0 z-[40] bg-background/75 backdrop-blur-sm transition-opacity motion-reduce:transition-none"
+          className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm transition-opacity"
           onClick={() => setOpen(false)}
-          aria-hidden="true"
         />
       )}
       <div ref={containerRef} className={cn("relative z-[50]", className)}>
-        <form
-          onSubmit={handleSubmit}
-          role="search"
+      <form
+        onSubmit={handleSubmit}
+        role="search"
+        aria-label="Search products"
+        className="relative flex items-center"
+      >
+        <Search className="absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          suppressHydrationWarning
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedIndex(-1);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setHistory(getSearchHistory(historyKey));
+            setOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Search products..."
+          className="h-9 w-full rounded-md border border-border bg-secondary pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
           aria-label="Search products"
-          className="relative flex items-center"
-        >
-          <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            type="search"
-            suppressHydrationWarning
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(-1);
-              setOpen(true);
-            }}
-            onFocus={() => {
-              setHistory(getSearchHistory(historyKey));
-              setOpen(true);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Search products, categories, or types"
-            className="h-12 w-full rounded-xl border border-border bg-background pl-10 pr-12 text-sm font-medium text-foreground shadow-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-ring/20"
-            role="combobox"
-            aria-label="Search products"
-            aria-autocomplete="list"
-            aria-expanded={suggestionListOpen}
-            aria-controls={suggestionListOpen ? listboxId : undefined}
-            aria-describedby={statusId}
-            aria-activedescendant={selectedIndex >= 0 && filtered[selectedIndex] ? `${listboxId}-option-${filtered[selectedIndex].id}` : undefined}
-            autoComplete="off"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute right-0 flex h-12 w-12 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
+          aria-expanded={showDropdown}
+          aria-haspopup="listbox"
+          autoComplete="off"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </form>
+
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+          {!isEmptyState && filtered.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+              <SearchX className="h-8 w-8 opacity-40" />
+              <p className="text-sm">No items found</p>
+              <p className="text-xs">Try a product name, category, or type.</p>
+            </div>
           )}
-        </form>
-        <div id={statusId} className="sr-only" aria-live="polite" aria-atomic="true">
-          {resultStatus}
-        </div>
 
-        {showDropdown && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[min(70vh,34rem)] overflow-y-auto rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-[0_24px_80px_-36px_rgba(15,23,42,0.75)] animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none">
-            {!isEmptyState && filtered.length === 0 && (
-              <div className="flex flex-col items-start gap-2 rounded-xl px-4 py-5 text-muted-foreground">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                  <SearchX className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <p className="font-semibold text-foreground">No direct matches</p>
-                <p className="text-sm leading-6">Try a product name, category, type, or a shorter search phrase.</p>
+          {filtered.length > 0 && (
+            <div className="p-1" role="listbox">
+              {filtered.map((product, index) => (
                 <button
-                  type="button"
-                  onClick={() => goToSearchResults(query, "search_bar_no_suggestion")}
-                  className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/45 hover:bg-primary/5"
+                  key={product.id}
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  onClick={() => handleSelect(product)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors cursor-pointer",
+                    index === selectedIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  )}
                 >
-                  Search the full catalog
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  <SafeStorefrontImage
+                    src={product.image}
+                    alt={product.name}
+                    width={40}
+                    height={40}
+                    sizes="40px"
+                    className="h-10 w-10 rounded-md object-cover border border-border"
+                  />
+                  <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-medium truncate">{product.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {product.type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        BDT {product.price.toLocaleString("en-BD")}
+                      </span>
+                    </div>
+                  </div>
                 </button>
-              </div>
-            )}
+              ))}
+            </div>
+          )}
 
-            {filtered.length > 0 && (
-              <>
-                <div className="flex items-center justify-between gap-3 px-3 pb-2 pt-1">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Suggested products</p>
-                  <span className="text-xs text-muted-foreground">{filtered.length} shown</span>
-                </div>
-                <div id={listboxId} className="space-y-1" role="listbox" aria-label="Search suggestions">
-                  {filtered.map((product, index) => (
+          {isEmptyState && (
+            <>
+              {history.length > 0 && (
+                <div className="p-1">
+                  <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Searches</p>
+                  {history.map((term) => (
                     <button
-                      key={product.id}
-                      id={`${listboxId}-option-${product.id}`}
-                      role="option"
-                      aria-selected={index === selectedIndex}
-                      onClick={() => handleSelect(product)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                      className={cn(
-                        "flex min-h-14 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
-                        index === selectedIndex
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent hover:text-accent-foreground"
-                      )}
+                      key={term}
+                      onClick={() => handleHistoryClick(term)}
+                      className="flex w-full items-center gap-2 rounded-sm px-3 py-1.5 text-left hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
                     >
-                      <SafeStorefrontImage
-                        src={product.image}
-                        alt=""
-                        width={48}
-                        height={48}
-                        sizes="48px"
-                        className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover"
-                      />
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="truncate text-sm font-semibold">{product.name}</span>
-                        <div className="flex min-w-0 items-center gap-2">
-                          {product.type ? (
-                            <Badge variant="secondary" className="max-w-[9rem] truncate px-1.5 py-0 text-[10px]">
-                              {product.type}
-                            </Badge>
-                          ) : null}
-                          <span className="shrink-0 text-xs font-semibold text-foreground">
-                            BDT {product.price.toLocaleString("en-BD")}
-                          </span>
-                        </div>
-                      </div>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="flex-1 text-sm truncate">{term}</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => handleRemoveHistory(e, term)}
+                        className="text-muted-foreground hover:text-foreground p-0.5"
+                        aria-label={`Remove ${term} from history`}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => goToSearchResults(query, "search_bar_view_all")}
-                  className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/45 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-                >
-                  <span className="truncate">View all results for “{query.trim()}”</span>
-                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-                </button>
-              </>
-            )}
-
-            {isEmptyState && (
-              <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                {history.length > 0 && (
-                  <div className="rounded-xl border border-border/70 bg-background/60 p-1">
-                    <p className="px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Recent searches</p>
-                    {history.map((term) => (
-                      <div key={term} className="flex min-h-11 items-center gap-1 rounded-lg hover:bg-accent hover:text-accent-foreground">
-                        <button
-                          type="button"
-                          onClick={() => handleHistoryClick(term)}
-                          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-                        >
-                          <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                          <span className="flex-1 truncate text-sm">{term}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleRemoveHistory(e, term)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-                          aria-label={`Remove ${term} from history`}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {browseChips.length > 0 && (
-                  <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Browse the catalog</p>
-                    <div className="flex flex-wrap gap-2">
-                      {browseChips.map((chip) => (
-                        <button
-                          key={`${chip.kind}-${chip.value}`}
-                          type="button"
-                          onClick={() => handleBrowseChipClick(chip)}
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-secondary/65 px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/45 hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-                        >
-                          <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-                          {chip.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              )}
+              {history.length > 0 && <div className="mx-1 h-px bg-border" />}
+              <div className="p-1">
+                <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Browse Categories</p>
+                <div className="flex flex-wrap gap-1.5 px-2 py-2">
+                  {categoryChips.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => handleCategoryClick(cat.value)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <Tag className="h-3 w-3" />
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
     </>
   );
 };

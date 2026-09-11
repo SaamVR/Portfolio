@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Layout from "@/components/Layout";
 import type { StorefrontTemplateDefinition, StorefrontTemplateId } from "@/lib/cms/storefront-templates";
-import { cn } from "@/lib/utils";
-import styles from "./StorefrontShell.module.css";
 
 function buildTemplateShellStyle(template: StorefrontTemplateDefinition): CSSProperties {
   return {
@@ -28,72 +26,15 @@ export function StorefrontShell({
   template: StorefrontTemplateDefinition;
   embedded?: boolean;
 }) {
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const root = contentRef.current;
-    if (!root || typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const applyReducedMotion = () => {
-      if (!reducedMotion.matches) return;
-
-      root.querySelectorAll<HTMLVideoElement>("video[autoplay]").forEach((video) => {
-        video.pause();
-        video.autoplay = false;
-        video.loop = false;
-        video.controls = true;
-        video.removeAttribute("autoplay");
-        video.removeAttribute("loop");
-        video.dataset.reducedMotionPaused = "true";
-      });
-
-      root.querySelectorAll<HTMLIFrameElement>('iframe[src*="youtube.com/embed"], iframe[src*="player.vimeo.com"]').forEach((frame) => {
-        const rawSrc = frame.getAttribute("src");
-        if (!rawSrc || frame.dataset.reducedMotionAutoplayDisabled === "true") return;
-        try {
-          const url = new URL(rawSrc, window.location.origin);
-          url.searchParams.set("autoplay", "0");
-          frame.src = url.toString();
-          const allow = frame.getAttribute("allow");
-          if (allow) {
-            frame.setAttribute(
-              "allow",
-              allow
-                .split(";")
-                .map((value) => value.trim())
-                .filter((value) => value && value !== "autoplay")
-                .join("; "),
-            );
-          }
-          frame.dataset.reducedMotionAutoplayDisabled = "true";
-        } catch {
-          // Leave malformed merchant embed URLs untouched rather than breaking the frame.
-        }
-      });
-    };
-
-    applyReducedMotion();
-    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(applyReducedMotion);
-    observer?.observe(root, { childList: true, subtree: true });
-    reducedMotion.addEventListener?.("change", applyReducedMotion);
-
-    return () => {
-      observer?.disconnect();
-      reducedMotion.removeEventListener?.("change", applyReducedMotion);
-    };
-  }, []);
-
   const content = (
     <div
-      ref={contentRef}
       data-storefront-template={templateId}
       data-storefront-card-style={template.presentation.cardStyle}
       data-storefront-density={template.presentation.spacingDensity}
       data-storefront-image-ratio={template.presentation.imageRatio}
       data-storefront-typography-scale={template.presentation.typographyScale}
       data-storefront-embedded-preview={embedded ? "true" : "false"}
-      className={cn(styles.root, embedded && "isolate overflow-hidden bg-background")}
+      className={embedded ? "isolate overflow-hidden bg-background" : undefined}
       style={buildTemplateShellStyle(template)}
     >
       {children}
@@ -104,5 +45,9 @@ export function StorefrontShell({
     return content;
   }
 
-  return <Layout className={styles.root}>{content}</Layout>;
+  return (
+    <Layout>
+      {content}
+    </Layout>
+  );
 }

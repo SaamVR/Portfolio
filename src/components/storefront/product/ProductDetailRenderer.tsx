@@ -321,15 +321,14 @@ function StickyMobileAction({
         <button
           type="button"
           onClick={onToggleWishlist}
-          className={cn("flex h-11 w-11 items-center justify-center rounded-full border", wishlisted ? "border-primary/20 bg-primary/10 text-primary" : "border-border text-muted-foreground")}
-          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          className={cn("flex h-10 w-10 items-center justify-center rounded-full border", wishlisted ? "border-primary/20 bg-primary/10 text-primary" : "border-border text-muted-foreground")}
         >
           <Heart className={cn("h-4 w-4", wishlisted && "fill-current")} />
         </button>
         <button
           type="button"
           onClick={onClick}
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
         >
           {label}
         </button>
@@ -1028,13 +1027,11 @@ function GenericProductDetailsContent({
         <div className="flex items-center gap-4">
           <p className="text-sm font-semibold uppercase tracking-wider text-foreground">Qty</p>
           <div className="flex items-center rounded-md border border-border">
-            <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-11 w-11 items-center justify-center text-muted-foreground"
-              aria-label="Decrease quantity">
+            <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-muted-foreground">
               <Minus className="h-4 w-4" />
             </button>
             <span className="w-10 text-center text-sm font-semibold text-foreground">{quantity}</span>
-            <button type="button" onClick={() => setQuantity((current) => Math.min(10, current + 1))} className="flex h-11 w-11 items-center justify-center text-muted-foreground"
-              aria-label="Increase quantity">
+            <button type="button" onClick={() => setQuantity((current) => Math.min(10, current + 1))} className="flex h-10 w-10 items-center justify-center text-muted-foreground">
               <Plus className="h-4 w-4" />
             </button>
           </div>

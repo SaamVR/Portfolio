@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { X, Minus, Plus, ShoppingBag, PlusCircle, Tag } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
@@ -27,62 +27,6 @@ const CartDrawer = () => {
 
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeItem, addItem } = useCart();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const restoreFocusOnCloseRef = useRef(true);
-
-  const closeCart = (restoreFocus = true) => {
-    restoreFocusOnCloseRef.current = restoreFocus;
-    setIsCartOpen(false);
-  };
-
-  useEffect(() => {
-    if (!isCartOpen) return;
-
-    restoreFocusOnCloseRef.current = true;
-    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        restoreFocusOnCloseRef.current = true;
-        setIsCartOpen(false);
-        return;
-      }
-      if (event.key !== "Tab" || !drawerRef.current) return;
-
-      const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )).filter((element) => element.offsetParent !== null);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        drawerRef.current.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.current)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      if (restoreFocusOnCloseRef.current) previouslyFocusedRef.current?.focus();
-    };
-  }, [isCartOpen, setIsCartOpen]);
   const cartStoreIds = Array.from(new Set(items.map((item) => item.storeId).filter(Boolean)));
   const cartStoreId = cartStoreIds.length === 1 ? cartStoreIds[0] as string : currentStore?.id;
   const hasMixedStoreItems = cartStoreIds.length > 1;
@@ -123,32 +67,24 @@ const CartDrawer = () => {
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm transition-opacity motion-reduce:transition-none"
-            aria-hidden="true"
-            onClick={() => closeCart()}
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsCartOpen(false)}
           />
 
           {/* Drawer */}
-          <div
-            ref={drawerRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cart-drawer-title"
-            tabIndex={-1}
-            className={cn(
-            "fixed inset-y-0 right-0 z-[101] w-full max-w-sm border-l border-border bg-card p-6 shadow-2xl transition-transform duration-300 ease-in-out motion-reduce:transition-none sm:max-w-md flex flex-col",
+          <div className={cn(
+            "fixed inset-y-0 right-0 z-[101] w-full max-w-sm border-l border-border bg-card p-6 shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-md flex flex-col",
             isCartOpen ? "translate-x-0" : "translate-x-full"
           )}>
             
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border pb-4">
-              <h2 id="cart-drawer-title" className="flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+              <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-foreground">
                 <ShoppingBag className="h-5 w-5" />
                 Your Cart
               </h2>
               <button 
-                ref={closeButtonRef}
-                onClick={() => closeCart()}
+                onClick={() => setIsCartOpen(false)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Close cart"
               >
@@ -174,7 +110,7 @@ const CartDrawer = () => {
                   <p className="text-lg font-medium text-foreground">Your cart is empty</p>
                   <p className="text-sm text-muted-foreground">Looks like you haven't added anything yet.</p>
                   <button
-                    onClick={() => closeCart()}
+                    onClick={() => setIsCartOpen(false)}
                     className="mt-6 rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
                   >
                     Start Shopping
@@ -230,7 +166,7 @@ const CartDrawer = () => {
                   {/* In-Cart Upsell Engine */}
                   {availableUpsells.length > 0 && (
                     <div className="mt-8 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                      <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">You may also like</h4>
+                      <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">Frequently Bought Together</h4>
                       <div className="space-y-3">
                         {availableUpsells.map((upsell) => (
                           <div key={upsell.id} className="flex items-center gap-3 rounded-md bg-background p-2 shadow-sm">
@@ -286,7 +222,7 @@ const CartDrawer = () => {
                   {!digitalOnlyCart && deliverySettings.enabled ? (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-background border border-border/50">
                       <div 
-                        className={cn("h-full transition-all duration-500 ease-out motion-reduce:transition-none", drawerTotal >= freeThreshold ? "bg-green-500" : "bg-primary")}
+                        className={cn("h-full transition-all duration-500 ease-out", drawerTotal >= freeThreshold ? "bg-green-500" : "bg-primary")}
                         style={{ width: `${Math.min((drawerTotal / freeThreshold) * 100, 100)}%` }}
                       />
                     </div>
@@ -313,7 +249,7 @@ const CartDrawer = () => {
                 <div className="flex flex-col gap-2">
                   <Link
                     to={storefrontPath("/cart", storeSlug)}
-                    onClick={() => closeCart(false)}
+                    onClick={() => setIsCartOpen(false)}
                     className="flex w-full items-center justify-center rounded-md border border-border py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                   >
                     View Full Cart
@@ -324,7 +260,7 @@ const CartDrawer = () => {
                         toast.error("Please checkout one store at a time.");
                         return;
                       }
-                      closeCart(false);
+                      setIsCartOpen(false);
                       if (!allowGuestCheckout && !user) {
                         navigate(authCheckoutPath);
                         return;

@@ -1,13 +1,18 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Send, CheckCircle } from "lucide-react";
+import { z } from "zod";
+import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 import { buildAutoFooterLinks } from "@/lib/cms/page-listing-preferences";
+
+const emailSchema = z.string().trim().email("Please enter a valid email");
 
 interface FooterLink {
   label: string;
@@ -25,6 +30,7 @@ interface FooterSettings {
   about_text?: string;
   newsletter_heading?: string;
   newsletter_description?: string;
+  newsletter_subscribed?: string;
   company_links?: FooterLink[];
   extra_links?: FooterLink[];
   extra_links_title?: string;
@@ -39,145 +45,230 @@ const defaultCompanyLinks: FooterLink[] = [
   { label: "About", url: "/about" },
   { label: "Contact", url: "/contact" },
   { label: "FAQ", url: "/faq" },
-  { label: "Track order", url: "/track-order" },
+  { label: "Track Order", url: "/track-order" },
 ];
 
 const defaultSectionOrder: FooterSection[] = [
-  { id: "brand", label: "Brand" },
-  { id: "shop", label: "Shop" },
-  { id: "company", label: "Company" },
-  { id: "newsletter", label: "Updates" },
+  { id: "brand", label: "Brand & Tagline" },
+  { id: "shop", label: "Shop Links" },
+  { id: "company", label: "Company Links" },
+  { id: "newsletter", label: "Newsletter" },
 ];
-
-function FooterLinkList({ links, storeSlug }: { links: FooterLink[]; storeSlug?: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {links.map((link, index) => (
-        <Link
-          key={`${link.url}-${link.label}-${index}`}
-          href={storefrontPath(link.url, storeSlug)}
-          className="inline-flex min-h-11 items-center rounded-lg px-2 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-        >
-          {link.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-function ResponsiveFooterSection({
-  title,
-  value,
-  children,
-}: {
-  title: string;
-  value: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <div className="hidden md:block">
-        <h3 className="mb-3 font-heading text-sm font-bold uppercase tracking-[0.14em] text-foreground">{title}</h3>
-        {children}
-      </div>
-      <div className="border-b border-border/60 md:hidden">
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value={value} className="border-0">
-            <AccordionTrigger className="min-h-14 py-3 font-heading text-sm font-bold uppercase tracking-[0.14em] text-foreground hover:no-underline">
-              {title}
-            </AccordionTrigger>
-            <AccordionContent className="pb-3">{children}</AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
-    </div>
-  );
-}
 
 const Footer = () => {
   const currentStore = useOptionalStore();
-  const preloadedFooter = currentStore?.siteSettings?.footer as FooterSettings | undefined;
-  const { data: fetchedFooter } = useSiteSettings<FooterSettings>("footer", currentStore?.id);
-  const footer = fetchedFooter ?? preloadedFooter;
+  const subscribedStorageKey = getScopedStorefrontStorageKey("newsletter-subscribed", currentStore?.id);
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [error, setError] = useState("");
+  const { data: footer } = useSiteSettings<FooterSettings>("footer", currentStore?.id);
   const { data: dynamicProductTypes = [] } = useProductTypes(currentStore?.id);
   const { data: dynamicProductCategories = [] } = useProductCategories(currentStore?.id);
 
-  const brandName = footer?.brand_name?.trim() || currentStore?.name?.trim() || "Store";
-  const brandHighlight = footer?.brand_highlight?.trim() || "";
-  const aboutText = footer?.about_text?.trim() || currentStore?.description?.trim() || "";
-  const updatesHeading = footer?.newsletter_heading?.trim() || "Store updates";
-  const updatesDescription = footer?.newsletter_description?.trim()
-    || "Contact the store for current releases, availability, announcements, or other updates.";
+  useEffect(() => {
+    try {
+      setSubscribed(localStorage.getItem(subscribedStorageKey) === "true");
+    } catch {
+      setSubscribed(false);
+    }
+  }, [subscribedStorageKey]);
+
+  const brandName = footer?.brand_name || currentStore?.name || "Store";
+  const brandHighlight = footer?.brand_highlight || "";
+  const aboutText = footer?.about_text || currentStore?.description || "";
+  const newsletterHeading = footer?.newsletter_heading || "Stay Updated";
+  const newsletterDesc = footer?.newsletter_description || "Share updates, launches, offers, or announcements with interested customers.";
+  const subscribedMsg = footer?.newsletter_subscribed || "You're subscribed!";
   const autoFooterLinks = buildAutoFooterLinks(currentStore);
   const companyLinks = [...(footer?.company_links?.length ? footer.company_links : defaultCompanyLinks), ...autoFooterLinks.company];
   const extraLinks = [...(footer?.extra_links ?? []), ...autoFooterLinks.extra];
-  const extraLinksTitle = footer?.extra_links_title?.trim() || "Quick links";
+  const extraLinksTitle = footer?.extra_links_title || "Quick Links";
   const sectionOrder = footer?.section_order?.length ? footer.section_order : defaultSectionOrder;
-  const paymentText = footer?.payment_text?.trim()
-    || "Payment methods, delivery terms, and checkout options are shown during the order flow.";
-  const copyrightText = footer?.copyright?.trim() || `Copyright ${new Date().getFullYear()}. All rights reserved.`;
+  const paymentText = footer?.payment_text || "Accepted payment methods, delivery terms, and checkout options are shown during the order flow.";
+  const copyrightText = footer?.copyright || `Copyright ${new Date().getFullYear()}. All rights reserved.`;
   const showShopLinks = footer?.show_shop_links ?? true;
-  const showUpdates = footer?.show_newsletter ?? true;
-  const storeSlug = currentStore?.slug;
-
-  const shopLinks: FooterLink[] = dynamicProductCategories.length > 0
+  const showNewsletter = footer?.show_newsletter ?? true;
+  const shopLinks = dynamicProductCategories.length > 0
     ? dynamicProductCategories.slice(0, 6).map((category: any) => ({
-        label: String(category.name),
-        url: `/shop?category=${encodeURIComponent(String(category.name))}`,
+        label: category.name,
+        href: storefrontPath(`/shop?category=${encodeURIComponent(category.name)}`, currentStore?.slug),
       }))
     : dynamicProductTypes.length > 0
       ? dynamicProductTypes.slice(0, 6).map((type: any) => ({
-          label: String(type.name),
-          url: `/shop?type=${encodeURIComponent(String(type.name))}`,
+          label: type.name,
+          href: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
         }))
-      : [{ label: "Browse catalog", url: "/shop" }];
+      : [
+          { label: "Browse Catalog", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Latest Additions", href: storefrontPath("/shop", currentStore?.slug) },
+          { label: "Explore More", href: storefrontPath("/shop", currentStore?.slug) },
+        ];
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = emailSchema.safeParse(email);
+    if (!result.success) {
+      setError(result.error.errors[0].message);
+      return;
+    }
+    setError("");
+    localStorage.setItem(subscribedStorageKey, "true");
+    setSubscribed(true);
+    setEmail("");
+    toast.success("You're subscribed!", { description: "Thanks for joining the list." });
+  };
 
   const renderSection = (sectionId: string) => {
     switch (sectionId) {
       case "brand":
         return (
-          <div key="brand" className="max-w-sm md:pr-4">
-            <Link href={storefrontPath("/", storeSlug)} className="inline-flex min-h-11 items-center rounded-lg font-heading text-xl font-bold tracking-tight text-foreground">
+          <div key="brand">
+            <h3 className="font-heading text-lg font-bold text-foreground">
               {brandName}{brandHighlight ? <span className="text-primary">{brandHighlight}</span> : null}
-            </Link>
-            {aboutText ? <p className="mt-3 max-w-[38ch] text-sm leading-6 text-muted-foreground">{aboutText}</p> : null}
+            </h3>
+            {aboutText ? <p className="mt-3 text-sm text-muted-foreground">{aboutText}</p> : null}
           </div>
         );
       case "shop":
         if (!showShopLinks) return null;
         return (
-          <ResponsiveFooterSection key="shop" title="Shop" value="footer-shop">
-            <FooterLinkList links={shopLinks} storeSlug={storeSlug} />
-          </ResponsiveFooterSection>
+          <div key="shop">
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">Shop</h4>
+              <div className="flex flex-col gap-3">
+                {shopLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="shop" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">Shop</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {shopLinks.map((link) => (
+                        <Link
+                          key={link.label}
+                          href={link.href}
+                          className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </div>
         );
       case "company":
         return (
-          <ResponsiveFooterSection key="company" title="Company" value="footer-company">
-            <FooterLinkList links={companyLinks} storeSlug={storeSlug} />
-          </ResponsiveFooterSection>
+          <div key="company">
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">Company</h4>
+              <div className="flex flex-col gap-3">
+                {companyLinks.map((link, i) => (
+                  <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="company" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">Company</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {companyLinks.map((link, i) => (
+                        <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </div>
         );
       case "newsletter":
-        if (!showUpdates) return null;
+        if (!showNewsletter) return null;
         return (
-          <div key="newsletter" className="rounded-[var(--sf-card-radius)] border border-border bg-background/55 p-5 md:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Updates</p>
-            <h3 className="mt-2 font-heading text-lg font-bold text-foreground">{updatesHeading}</h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{updatesDescription}</p>
-            <Link
-              href={storefrontPath("/contact", storeSlug)}
-              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-primary/5"
-            >
-              Contact store
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+          <div key="newsletter">
+            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-foreground">{newsletterHeading}</h4>
+            {subscribed ? (
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <CheckCircle className="h-4 w-4" />
+                <span className="font-medium">{subscribedMsg}</span>
+              </div>
+            ) : (
+              <>
+                <p className="mb-3 text-xs text-muted-foreground">{newsletterDesc}</p>
+                <form onSubmit={handleSubscribe} className="relative z-10 flex gap-2">
+                  <input
+                    type="email"
+                    suppressHydrationWarning
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
+                    placeholder="you@email.com"
+                    className="flex-1 rounded-md border border-white/10 bg-background/50 px-4 py-2.5 text-sm text-foreground shadow-inner outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/50 backdrop-blur-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="button-premium flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-primary-foreground shadow-lg"
+                    aria-label="Subscribe to newsletter"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </form>
+                {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+              </>
+            )}
           </div>
         );
       case "extra":
-        if (extraLinks.length === 0) return null;
+        if (!extraLinks.length) return null;
         return (
-          <ResponsiveFooterSection key="extra" title={extraLinksTitle} value="footer-extra">
-            <FooterLinkList links={extraLinks} storeSlug={storeSlug} />
-          </ResponsiveFooterSection>
+          <div key="extra">
+            <div className="hidden md:block">
+              <h4 className="mb-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground">{extraLinksTitle}</h4>
+              <div className="flex flex-col gap-3">
+                {extraLinks.map((link, i) => (
+                  <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="md:hidden border-b border-white/5 last:border-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="extra" className="border-0">
+                  <AccordionTrigger className="py-4 font-heading text-sm font-bold uppercase tracking-wider text-foreground hover:no-underline">{extraLinksTitle}</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-col gap-4 pb-2">
+                      {extraLinks.map((link, i) => (
+                        <Link key={i} href={storefrontPath(link.url, currentStore?.slug)} className="text-[15px] text-muted-foreground hover:text-foreground smooth-hover transition-colors">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </div>
         );
       default:
         return null;
@@ -185,21 +276,21 @@ const Footer = () => {
   };
 
   const sections = [...sectionOrder];
-  if (extraLinks.length > 0 && !sections.some((section) => section.id === "extra")) {
-    sections.push({ id: "extra", label: extraLinksTitle });
+  if (extraLinks.length && !sections.find((s) => s.id === "extra")) {
+    sections.push({ id: "extra", label: "Extra Links" });
   }
-  const renderedSections = sections.map((section) => renderSection(section.id)).filter(Boolean);
+
+  const renderedSections = sections.map((s) => renderSection(s.id)).filter(Boolean);
 
   return (
-    <footer className="relative overflow-hidden border-t border-border bg-secondary/75" aria-label="Store footer">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" aria-hidden="true" />
-      <div className="container mx-auto px-4 pb-24 pt-12 md:pb-16 md:pt-16 lg:py-20">
-        <div className="grid grid-cols-1 gap-x-10 gap-y-4 md:grid-cols-2 md:gap-y-10 lg:grid-cols-4">
-          {renderedSections}
-        </div>
-        <div className="mt-12 flex flex-col items-center justify-center gap-3 border-t border-border/70 pt-8 text-center text-xs leading-5 text-muted-foreground md:mt-16">
-          <p className="max-w-3xl">{paymentText}</p>
-          <p>{copyrightText}</p>
+    <footer className="relative overflow-hidden border-t border-white/5 bg-secondary">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+
+      <div className="container mx-auto px-4 pt-12 pb-24 md:pt-16 md:pb-16 lg:py-20">
+        <div className="grid grid-cols-1 gap-y-2 gap-x-10 md:grid-cols-2 lg:grid-cols-4 md:gap-y-10">{renderedSections}</div>
+        <div className="mt-12 md:mt-16 flex flex-col items-center justify-center gap-3 border-t border-white/5 pt-8 text-[13px] text-muted-foreground/60 text-center">
+          <p className="tracking-wide">{paymentText}</p>
+          <p className="tracking-wider">{copyrightText}</p>
         </div>
       </div>
     </footer>

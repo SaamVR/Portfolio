@@ -565,19 +565,3 @@
 [data-store-theme-scope] [data-storefront-template] .shadow-sm {
   box-shadow: var(--store-card-shadow);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  [data-storefront-template],
-  [data-storefront-template] *,
-  [data-storefront-template] *::before,
-  [data-storefront-template] *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}

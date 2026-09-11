@@ -13,7 +13,6 @@ import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCusto
 import { getStorefrontBaseTextSize } from "@/lib/storefront-theme-customization";
 import { resolveStorefrontChromeLayout } from "@/lib/storefront-chrome-layout";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { cn } from "@/lib/utils";
 
 const storefrontChromeCss = `
   .storefront-layout-shell .skip-link {
@@ -133,7 +132,7 @@ function getRenderedHeight(element: HTMLElement | null) {
   return element ? Math.ceil(element.getBoundingClientRect().height) : 0;
 }
 
-const Layout = ({ children, className }: { children: React.ReactNode; className?: string }) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   const [announcementVisible, setAnnouncementVisible] = useState(true);
   const [chromeMetrics, setChromeMetrics] = useState<ChromeMetrics>(EMPTY_CHROME_METRICS);
   const layoutRef = useRef<HTMLDivElement | null>(null);
@@ -202,13 +201,13 @@ const Layout = ({ children, className }: { children: React.ReactNode; className?
   } as CSSProperties;
 
   return (
-    <div ref={layoutRef} className={cn("storefront-layout-shell min-h-screen bg-background", className)} style={layoutStyle}>
+    <div ref={layoutRef} className="storefront-layout-shell min-h-screen bg-background" style={layoutStyle}>
       <style>{storefrontChromeCss}</style>
       <CouponBanner />
       <AnnouncementBar onVisibilityChange={handleVisibilityChange} />
       <Navbar announcementVisible={announcementVisible} />
       <CartDrawer />
-      <main style={{ paddingTop: `${chromeLayout.mainPaddingTop}px` }} id="main-content" tabIndex={-1}>
+      <main style={{ paddingTop: `${chromeLayout.mainPaddingTop}px` }} id="main-content">
         {children}
       </main>
       <Footer />
