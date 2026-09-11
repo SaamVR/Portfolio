@@ -9,11 +9,13 @@ interface ProductImageGalleryProps {
   images: string[];
   alt: string;
   aspectRatio?: "square" | "portrait" | "landscape";
+  presentation?: "default" | "fashion";
 }
 
 const ProductImageGallery = ({
   images,
   alt,
+  presentation = "default",
 }: ProductImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -29,16 +31,23 @@ const ProductImageGallery = ({
   };
 
   const activeImage = safeImages[activeIndex];
+  const isFashion = presentation === "fashion";
 
   return (
     <div className="space-y-4">
       {/* Main Image Container */}
-      <div className="group relative w-full overflow-hidden rounded-3xl border border-border/80 bg-slate-50 dark:bg-card/40 p-4 sm:p-6 flex items-center justify-center min-h-[320px] max-h-[460px] sm:max-h-[500px] aspect-square shadow-sm">
+      <div className={cn(
+        "group relative flex w-full items-center justify-center overflow-hidden border border-border/80",
+        isFashion
+          ? "aspect-[4/5] rounded-none bg-muted p-0 shadow-none"
+          : "aspect-square min-h-[320px] max-h-[460px] rounded-3xl bg-slate-50 p-4 shadow-sm dark:bg-card/40 sm:max-h-[500px] sm:p-6",
+      )}>
         {safeImages.map((src, i) => (
           <div
             key={`${src}-${i}`}
             className={cn(
-              "absolute inset-0 flex items-center justify-center p-4 sm:p-6 transition-opacity duration-300",
+              "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+              isFashion ? "p-0" : "p-4 sm:p-6",
               i === activeIndex ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
             )}
           >
@@ -48,7 +57,10 @@ const ProductImageGallery = ({
               sizes="(max-width: 768px) 100vw, 50vw"
               alt={`${alt} - image ${i + 1}`}
               loading={i === 0 ? "eager" : "lazy"}
-              className="max-h-full max-w-full h-auto w-auto object-contain rounded-2xl drop-shadow-sm transition-transform duration-300 group-hover:scale-[1.02]"
+              className={cn(
+                "transition-transform duration-300 group-hover:scale-[1.02]",
+                isFashion ? "h-full w-full object-cover" : "max-h-full max-w-full h-auto w-auto rounded-2xl object-contain drop-shadow-sm",
+              )}
             />
           </div>
         ))}
@@ -98,7 +110,8 @@ const ProductImageGallery = ({
               type="button"
               onClick={() => setActiveIndex(i)}
               className={cn(
-                "relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-2xl border-2 p-1 transition-all bg-secondary/20",
+                "relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden border-2 transition-all bg-secondary/20",
+                isFashion ? "rounded-none p-0" : "rounded-2xl p-1",
                 i === activeIndex
                   ? "border-primary ring-2 ring-primary/20 scale-105 shadow-sm"
                   : "border-border/60 opacity-70 hover:opacity-100 hover:border-primary/50"
@@ -110,7 +123,7 @@ const ProductImageGallery = ({
                 sizes="80px"
                 alt={`${alt} thumbnail ${i + 1}`}
                 loading="lazy"
-                className="h-full w-full object-contain rounded-xl"
+                className={cn("h-full w-full", isFashion ? "object-cover" : "rounded-xl object-contain")}
               />
             </button>
           ))}
