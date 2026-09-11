@@ -1607,6 +1607,7 @@ export default function OnboardingWizard() {
 
   const filteredTemplateOptions = useMemo(() => {
     return storefrontTemplateOptions.filter((option) => {
+      if (option.adminOnly) return false;
       const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
       if (templateCategoryFilter !== "all") {
         if (templateCategoryFilter === "commerce" && seedDefinition.businessFamily !== "commerce") return false;
@@ -1667,7 +1668,7 @@ export default function OnboardingWizard() {
 
   const templateOptionGroups = useMemo(() => {
     const grouped = new Map<string, typeof storefrontTemplateOptions>();
-    for (const option of storefrontTemplateOptions) {
+    for (const option of storefrontTemplateOptions.filter((item) => !item.adminOnly)) {
       const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
       const existing = grouped.get(seedDefinition.group) ?? [];
       existing.push(option);
@@ -3007,7 +3008,7 @@ export default function OnboardingWizard() {
                       <LayoutTemplate className="h-5 w-5 text-primary" /> Store Templates
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Browse {storefrontTemplateOptions.length} specialized store templates designed for high merchant conversion.
+                      Browse {storefrontTemplateOptions.filter((option) => !option.adminOnly).length} specialized store templates designed for high merchant conversion.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">

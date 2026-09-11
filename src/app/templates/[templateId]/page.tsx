@@ -29,6 +29,9 @@ export default async function TemplatePreviewPage({
   }
 
   const template = getStorefrontTemplateDefinition(templateId);
+  if (template.adminOnly) {
+    notFound();
+  }
   const seed = getStorefrontTemplateSeedDefinition(templateId);
   const previewStore = buildTemplatePreviewStore(templateId);
   const homepage = previewStore.pages.find((page) => page.isHomepage) ?? previewStore.pages[0];

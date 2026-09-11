@@ -6,6 +6,8 @@ import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlock
 import { StorefrontShell } from "@/components/storefront/StorefrontShell";
 import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
 import { FashionV3BlockRenderer } from "@/components/storefront/fashion-v3/FashionV3BlockRenderer";
+import { ThreadsShell } from "@/components/storefront/threads/ThreadsShell";
+import { ThreadsBlockRenderer } from "@/components/storefront/threads/ThreadsBlockRenderer";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import {
   getStorefrontTemplateDefinition,
@@ -76,7 +78,7 @@ export function StorefrontTemplateRenderer({
 
   const pageContent = (
     <>
-      <div data-template-renderer={templateId === "fashion" ? "fashion-v3" : "composable-blocks"} data-template-homepage={page.isHomepage ? "true" : "false"}>
+      <div data-template-renderer={templateId === "fashion" ? "fashion-v3" : templateId === "threads" ? "threads-earthy" : "composable-blocks"} data-template-homepage={page.isHomepage ? "true" : "false"}>
         {blocksToRender.map((block, index) => (
           <div
             key={block.id}
@@ -95,16 +97,20 @@ export function StorefrontTemplateRenderer({
             )}
           >
             {canManageStorefront && adminMode ? <StorefrontAdminMode pageId={page.id} block={block} index={index} /> : null}
-            {templateId === "fashion" ? <FashionV3BlockRenderer block={block} template={template} /> : <StorefrontBlockRenderer block={block} template={template} />}
+            {templateId === "fashion" ? <FashionV3BlockRenderer block={block} template={template} /> : templateId === "threads" ? <ThreadsBlockRenderer block={block} template={template} /> : <StorefrontBlockRenderer block={block} template={template} />}
           </div>
         ))}
       </div>
-      {templateId !== "fashion" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
+      {templateId !== "fashion" && templateId !== "threads" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
     </>
   );
 
   if (templateId === "fashion") {
     return <FashionV3Shell embedded={embedded}>{pageContent}</FashionV3Shell>;
+  }
+
+  if (templateId === "threads") {
+    return <ThreadsShell embedded={embedded}>{pageContent}</ThreadsShell>;
   }
 
   return <StorefrontShell templateId={templateId} template={template} embedded={embedded}>{pageContent}</StorefrontShell>;

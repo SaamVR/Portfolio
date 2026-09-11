@@ -13,6 +13,7 @@ describe("storefront template registry", () => {
       "landing",
       "beauty",
       "fashion",
+      "threads",
       "electronics",
       "food",
       "crafts",
@@ -37,6 +38,16 @@ describe("storefront template registry", () => {
     expect(template.defaultBlockSet).toEqual(["hero", "featured-products"]);
     expect(seed.compatibleBlockSet.includes("hero")).toBe(true);
     expect(seed.compatibleBlockSet.includes("category-showcase")).toBe(true);
+  });
+
+
+  it("keeps Threads as an admin-only specialized renderer", () => {
+    const template = getStorefrontTemplateDefinition("threads");
+    const seed = getStorefrontTemplateSeedDefinition("threads");
+
+    expect(template.rendererKind).toBe("threads");
+    expect(template.adminOnly).toBe(true);
+    expect(seed.defaultSiteSettings.storefront_profile).toMatchObject({ template_id: "threads" });
   });
 
   it("maps legacy template aliases onto the shared storefront ids", () => {

@@ -32,6 +32,8 @@ import { StoreThemeScope } from "./StoreThemeScope";
 import { StorefrontBlockRenderer } from "./StorefrontBlockRenderer";
 import { FashionV3BlockRenderer } from "./fashion-v3/FashionV3BlockRenderer";
 import { FashionV3Shell } from "./fashion-v3/FashionV3Shell";
+import { ThreadsBlockRenderer } from "./threads/ThreadsBlockRenderer";
+import { ThreadsShell } from "./threads/ThreadsShell";
 import { VisualCssInspector } from "./VisualCssInspector";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
@@ -45,6 +47,8 @@ const BASIC_TEXT_FIELDS = [
   "body",
   "ctaText",
   "ctaLink",
+  "secondaryTitle",
+  "secondarySubtitle",
   "secondaryCtaText",
   "secondaryCtaLink",
   "badgeText",
@@ -894,6 +898,32 @@ export function StorefrontLiveEditor({
                 </div>
               ) : null}
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Primary promo image</Label>
+                <CloudinaryUpload
+                  value={(selectedBlock.props.imageUrl as string | undefined) ?? ""}
+                  onChange={(url) => updateSelectedBlockProps({ imageUrl: url })}
+                  folder="promo-banner"
+                  accept="image/*"
+                  label="Upload primary promo image"
+                  resourceType="image"
+                  storeId={store.id}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Secondary promo image</Label>
+                <CloudinaryUpload
+                  value={(selectedBlock.props.secondaryImageUrl as string | undefined) ?? ""}
+                  onChange={(url) => updateSelectedBlockProps({ secondaryImageUrl: url })}
+                  folder="promo-banner"
+                  accept="image/*"
+                  label="Upload secondary promo image"
+                  resourceType="image"
+                  storeId={store.id}
+                />
+              </div>
+            </div>
             {usesCustomPromoTheme ? (
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
@@ -917,17 +947,79 @@ export function StorefrontLiveEditor({
           </div>
         );
       }
+      case "category-showcase":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Autoplay carousel</Label>
+                <Switch checked={(selectedBlock.props.autoplay as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ autoplay: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Show arrows</Label>
+                <Switch checked={(selectedBlock.props.showArrows as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ showArrows: checked })} />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Category limit</Label>
+                <Input type="number" min="1" max="24" value={selectedBlock.props.limit?.toString() ?? "10"} onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Autoplay interval (ms)</Label>
+                <Input type="number" min="2500" max="15000" step="500" value={selectedBlock.props.autoplayIntervalMs?.toString() ?? "3400"} onChange={(event) => updateSelectedBlockNumber("autoplayIntervalMs", event.target.value)} />
+              </div>
+            </div>
+          </div>
+        );
       case "featured-products":
         return (
-          <div className="grid gap-2">
-            <Label>Product Limit</Label>
-            <Input
-              type="number"
-              min="1"
-              max="24"
-              value={selectedBlock.props.limit?.toString() ?? "6"}
-              onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)}
-            />
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Product Limit</Label>
+              <Input
+                type="number"
+                min="1"
+                max="24"
+                value={selectedBlock.props.limit?.toString() ?? "6"}
+                onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Autoplay carousel</Label>
+                <Switch checked={(selectedBlock.props.autoplay as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ autoplay: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Show arrows</Label>
+                <Switch checked={(selectedBlock.props.showArrows as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ showArrows: checked })} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Autoplay interval (ms)</Label>
+              <Input type="number" min="2500" max="15000" step="500" value={selectedBlock.props.autoplayIntervalMs?.toString() ?? "4300"} onChange={(event) => updateSelectedBlockNumber("autoplayIntervalMs", event.target.value)} />
+            </div>
+          </div>
+        );
+      case "recommended-products":
+        return (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Product source</Label>
+              <Select value={(selectedBlock.props.source as string | undefined) ?? "newest"} onValueChange={(value) => updateSelectedBlockProps({ source: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="featured-or-all">Featured or all</SelectItem>
+                  <SelectItem value="featured">Featured</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Product limit</Label>
+              <Input type="number" min="1" max="24" value={selectedBlock.props.limit?.toString() ?? "8"} onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)} />
+            </div>
           </div>
         );
       case "countdown":
@@ -945,7 +1037,20 @@ export function StorefrontLiveEditor({
         );
       case "rich-text":
         return (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Story image</Label>
+              <CloudinaryUpload
+                value={(selectedBlock.props.imageUrl as string | undefined) ?? ""}
+                onChange={(url) => updateSelectedBlockProps({ imageUrl: url })}
+                folder="rich-text"
+                accept="image/*"
+                label="Upload story image"
+                resourceType="image"
+                storeId={store.id}
+              />
+            </div>
+            <div className="grid gap-2">
             <Label>Alignment</Label>
             <Select value={(selectedBlock.props.align as "left" | "center" | undefined) ?? "center"} onValueChange={(value) => updateSelectedBlockProps({ align: value })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -954,6 +1059,7 @@ export function StorefrontLiveEditor({
                 <SelectItem value="center">center</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
         );
       case "social-feed":
@@ -1448,6 +1554,19 @@ export function StorefrontLiveEditor({
                           </div>
                         ))}
                         {renderAdvancedControls()}
+                        {previewTemplateId === "threads" && ["hero", "category-showcase", "featured-products", "promo-banner", "rich-text", "testimonials", "faq-accordion"].includes(selectedBlock.type) ? (
+                          <div className="grid gap-2 rounded-xl border border-border p-3">
+                            <Label>Threads botanical decoration</Label>
+                            <Select value={selectedBlock.decoration ?? "subtle"} onValueChange={(value) => updateSelectedBlock({ decoration: value as StorePageBlock["decoration"] })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Off</SelectItem>
+                                <SelectItem value="subtle">Subtle</SelectItem>
+                                <SelectItem value="full">Full</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : null}
                         <div className="mt-4 pt-4 border-t border-border">
                           <div className="mb-3 flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-primary" />
@@ -1561,6 +1680,12 @@ export function StorefrontLiveEditor({
                                 <FashionV3BlockRenderer key={block.id} block={block} template={previewTemplate} />
                               ))}
                             </FashionV3Shell>
+                          ) : previewTemplateId === "threads" ? (
+                            <ThreadsShell embedded>
+                              {previewBlocks.map((block) => (
+                                <ThreadsBlockRenderer key={block.id} block={block} template={previewTemplate} />
+                              ))}
+                            </ThreadsShell>
                           ) : (
                             previewBlocks.map((block) => (
                               <StorefrontBlockRenderer key={block.id} block={block} template={previewTemplate} />

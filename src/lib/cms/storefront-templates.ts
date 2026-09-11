@@ -7,6 +7,7 @@ export const storefrontTemplateIds = [
   "landing",
   "beauty",
   "fashion",
+  "threads",
   "electronics",
   "food",
   "crafts",
@@ -87,7 +88,8 @@ export interface StorefrontTemplateDefinition {
   id: StorefrontTemplateId;
   label: string;
   description: string;
-  rendererKind: "fashion" | "generic";
+  rendererKind: "fashion" | "threads" | "generic";
+  adminOnly?: boolean;
   onboardingMode: StorefrontOnboardingMode;
   compatibleBlockSet: readonly StorefrontBlockType[];
   recommendedBlockSet: readonly StorefrontBlockType[];
@@ -137,6 +139,7 @@ type StorefrontTemplateDefinitionOverride = {
   label?: string;
   description?: string;
   rendererKind?: StorefrontTemplateDefinition["rendererKind"];
+  adminOnly?: boolean;
   onboardingMode?: StorefrontOnboardingMode;
   compatibleBlockSet?: readonly StorefrontBlockType[];
   recommendedBlockSet?: readonly StorefrontBlockType[];
@@ -229,6 +232,7 @@ function createTemplateDefinition(
     label: overrides.label ?? id,
     description: overrides.description ?? "",
     rendererKind: overrides.rendererKind ?? "generic",
+    adminOnly: overrides.adminOnly ?? false,
     onboardingMode: overrides.onboardingMode ?? "template",
     compatibleBlockSet,
     recommendedBlockSet,
@@ -395,6 +399,25 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       typographyScale: "display",
       colorTokens: {},
       blockLayoutVariants: {},
+    },
+  }),
+  threads: createTemplateDefinition("threads", {
+    label: "Threads",
+    description: "Admin-only earthy editorial fashion template with circular collection rails and product carousels.",
+    rendererKind: "threads",
+    adminOnly: true,
+    presentation: {
+      cardStyle: "fashion-editorial",
+      imageRatio: "4:5",
+      borderRadius: "1.75rem",
+      spacingDensity: "airy",
+      typographyScale: "display",
+      colorTokens: {},
+      blockLayoutVariants: {
+        hero: "split",
+        "category-showcase": "carousel",
+        "featured-products": "carousel",
+      },
     },
   }),
   electronics: createTemplateDefinition("electronics", {
@@ -684,6 +707,57 @@ export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, Storef
       product_visibility: "catalog",
       checkout_mode: "standard",
     },
+  }),
+  threads: createTemplateSeedDefinition("threads", {
+    legacyBlueprintIds: ["threads-admin"],
+    legacyTemplateId: "clothing",
+    name: "Threads Editorial",
+    shortName: "Threads",
+    description: "Admin-only earthy fashion storefront built on the shared commerce and block contracts.",
+    businessFamily: "commerce",
+    catalogMode: "multi_product",
+    group: "Clothing",
+    recommendedPageSet: ["home", "policy"],
+    recommendedBlockSet: ["hero", "trust-badges", "category-showcase", "promo-banner", "featured-products", "recommended-products", "social-feed", "faq-accordion", "rich-text", "testimonials"],
+    defaultBlockSet: ["hero", "trust-badges", "category-showcase", "promo-banner", "featured-products", "recommended-products", "social-feed", "faq-accordion", "rich-text"],
+    defaultTheme: {
+      ...themeFromLaunchTemplate("clothing"),
+      mode: "light",
+      aesthetic: "editorial",
+      borderRadius: "1.75rem",
+      customCssVars: {
+        "--background": "45 32% 95%",
+        "--foreground": "155 12% 15%",
+        "--card": "43 30% 97%",
+        "--card-foreground": "155 12% 15%",
+        "--popover": "43 30% 97%",
+        "--popover-foreground": "155 12% 15%",
+        "--primary": "158 68% 24%",
+        "--primary-foreground": "45 32% 96%",
+        "--secondary": "39 29% 88%",
+        "--secondary-foreground": "155 12% 15%",
+        "--muted": "39 24% 90%",
+        "--muted-foreground": "150 7% 42%",
+        "--accent": "155 12% 15%",
+        "--accent-foreground": "45 32% 96%",
+        "--border": "39 20% 80%",
+        "--input": "39 20% 80%",
+        "--ring": "158 68% 24%"
+      }
+    },
+    storeDescription: "An earthy editorial apparel storefront with image-led collections, swipeable product discovery, and soft botanical detailing.",
+    hero: {
+      tagline: "New Season",
+      title: "Wear what feels",
+      highlight: "like you",
+      subtitle: "Everyday silhouettes, graphic staples, and easy layers with a grounded point of view."
+    },
+    capabilities: ["catalog", "cart", "checkout", "promotions"],
+    onboarding: { steps: defaultOnboardingSteps },
+    storefrontProfile: {
+      product_visibility: "catalog",
+      checkout_mode: "standard"
+    }
   }),
   beauty: createTemplateSeedDefinition("beauty", {
     legacyBlueprintIds: ["beauty"],
@@ -1183,6 +1257,7 @@ export const storefrontTemplateOptions = storefrontTemplateIds.map((id) => ({
   label: storefrontTemplateRegistry[id].label,
   description: storefrontTemplateRegistry[id].description,
   onboardingMode: storefrontTemplateRegistry[id].onboardingMode,
+  adminOnly: storefrontTemplateRegistry[id].adminOnly === true,
 }));
 
 export function isStorefrontTemplateId(value: unknown): value is StorefrontTemplateId {

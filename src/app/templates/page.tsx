@@ -35,7 +35,7 @@ function buildTemplateHighlights(blocks: string[]) {
 }
 
 export default function TemplatesPage() {
-  const templateCards = storefrontTemplateOptions.map((template) => {
+  const templateCards = storefrontTemplateOptions.filter((template) => !template.adminOnly).map((template) => {
     const seed = getStorefrontTemplateSeedDefinition(template.value);
     const themePackage = resolveThemePackageById(seed.defaultTheme.themePackageId, undefined, seed.defaultTheme.presetId);
     const highlights = buildTemplateHighlights(seed.recommendedBlockSet);

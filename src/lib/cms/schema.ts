@@ -37,6 +37,7 @@ const baseBlockFields = {
   layoutVariant: z.string().optional(),
   customHtml: z.string().optional(),
   customCss: z.string().optional(),
+  decoration: z.enum(["none", "subtle", "full"]).optional(),
 };
 
 const focalCoordinateSchema = z.union([z.number(), z.string()]).optional();
@@ -105,6 +106,14 @@ const promoBannerBlockSchema = z.object({
     enableParticles: z.boolean().optional(),
     enableOrbs: z.boolean().optional(),
     cardOpacity: z.number().int().min(0).max(100).optional(),
+    imageUrl: z.string().optional(),
+    imageAlt: z.string().optional(),
+    secondaryImageUrl: z.string().optional(),
+    secondaryImageAlt: z.string().optional(),
+    secondaryTitle: z.string().optional(),
+    secondarySubtitle: z.string().optional(),
+    secondaryCtaText: z.string().optional(),
+    secondaryCtaLink: z.string().optional(),
   }).default({}),
 });
 
@@ -126,6 +135,9 @@ const categoryShowcaseBlockSchema = z.object({
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
+    autoplay: z.boolean().optional(),
+    autoplayIntervalMs: z.number().int().min(2500).max(15000).optional(),
+    showArrows: z.boolean().optional(),
   }).default({}),
 });
 
@@ -142,6 +154,9 @@ const featuredProductsBlockSchema = z.object({
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
+    autoplay: z.boolean().optional(),
+    autoplayIntervalMs: z.number().int().min(2500).max(15000).optional(),
+    showArrows: z.boolean().optional(),
   }).default({}),
 });
 
