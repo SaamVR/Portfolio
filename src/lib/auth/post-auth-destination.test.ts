@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  canStartAdditionalStoreFlow,
   resolvePostAuthDestination,
   sanitizeInternalReturnPath,
 } from "./post-auth-destination";
@@ -10,6 +11,13 @@ test("rejects external and scheme-relative return paths", () => {
   assert.equal(sanitizeInternalReturnPath("//evil.example/path"), null);
   assert.equal(sanitizeInternalReturnPath("/\\evil.example"), null);
   assert.equal(sanitizeInternalReturnPath("/admin/orders?status=pending"), "/admin/orders?status=pending");
+});
+
+test("explicit additional-store signup is allowed for merchant and platform identities only", () => {
+  assert.equal(canStartAdditionalStoreFlow("merchant"), true);
+  assert.equal(canStartAdditionalStoreFlow("platform"), true);
+  assert.equal(canStartAdditionalStoreFlow("customer"), false);
+  assert.equal(canStartAdditionalStoreFlow("unassigned"), false);
 });
 
 test("platform users always return to the control plane", () => {

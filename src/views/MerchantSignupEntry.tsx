@@ -9,6 +9,7 @@ import AdminRouteFallback from "@/components/admin/AdminRouteFallback";
 import PolicyConsentGate from "@/components/platform/PolicyConsentGate";
 import MerchantSignupV3 from "@/views/MerchantSignupV3";
 import { fetchAuthDestination } from "@/lib/auth/auth-redirect-client";
+import { canStartAdditionalStoreFlow } from "@/lib/auth/post-auth-destination";
 import { Button } from "@/components/ui/button";
 import { usePlatformIdentity } from "@/components/platform/PlatformIdentityProvider";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,7 +54,7 @@ export default function MerchantSignupEntry() {
         setResolvedUserId(user.id);
 
         if (isAdditionalStoreRequest) {
-          if (destination.kind === "merchant") {
+          if (canStartAdditionalStoreFlow(destination.kind)) {
             setAllowedMode("additional");
             return;
           }

@@ -23,6 +23,10 @@ export type AuthDestination = {
 
 const CONTROL_PLANE_ROLES = new Set(["super_admin", "admin", "billing_admin", "support_agent"]);
 
+export function canStartAdditionalStoreFlow(kind: AuthDestinationKind) {
+  return kind === "merchant" || kind === "platform";
+}
+
 export function parseAuthEntryIntent(value?: string | null): AuthEntryIntent {
   return value === "dashboard" || value === "merchant-signup" || value === "customer"
     ? value
