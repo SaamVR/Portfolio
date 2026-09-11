@@ -89,7 +89,7 @@ type ProductContext = {
   product: Product;
   specs: ProductPresentationSpecs;
   cardVariant: ReturnType<typeof resolveProductCardVariant>;
-  rating: number;
+  rating: number | null;
   brand: string;
 };
 
@@ -138,7 +138,8 @@ function buildProductContexts(products: Product[], metadata: TemplateSeedCatalog
   return products.map((product) => {
     const productMeta = metadata?.products?.[product.id] ?? null;
     const specs = getProductPresentationSpecs(product, productMeta);
-    const rating = getNumber(specs, "rating") ?? 4.6;
+    const rawRating = getNumber(specs, "rating");
+    const rating = rawRating !== null && rawRating > 0 && rawRating <= 5 ? rawRating : null;
     const brand = getString(specs, "brand", "creator", "vendor");
     return {
       product,
@@ -275,7 +276,7 @@ function getContextValue(context: ProductContext, key: string) {
     case "discount":
       return [product.originalPrice && product.originalPrice > product.price ? "discounted" : "full-price"];
     case "rating":
-      return [String(Math.floor(rating))];
+      return rating === null ? [] : [String(Math.floor(rating))];
     default:
       if (product.metricValues?.[key]?.length) {
         return product.metricValues[key];
@@ -480,7 +481,12 @@ function matchesContextFilters(context: ProductContext, params: URLSearchParams,
 
 function sortContexts(contexts: ProductContext[], sort: ShopSortOption) {
   if (sort === "rating") {
-    return [...contexts].sort((left, right) => right.rating - left.rating);
+    return [...contexts].sort((left, right) => {
+      if (left.rating === null && right.rating === null) return 0;
+      if (left.rating === null) return 1;
+      if (right.rating === null) return -1;
+      return right.rating - left.rating;
+    });
   }
   return filterAndSortProducts(
     contexts.map((context) => context.product),
@@ -1081,6 +1087,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
 
   const availableProducts = useMemo(() => products.filter((product) => product.isAvailable !== false), [products]);
   const contexts = useMemo(() => buildProductContexts(availableProducts, catalogSeedMetadata ?? undefined, templateId), [availableProducts, catalogSeedMetadata, templateId]);
+  const hasAuthoritativeRatings = useMemo(() => contexts.some((context) => context.rating !== null), [contexts]);
   const typeOptions = useMemo(() => buildShopOptions(availableProducts, "type", (productTypeRows as CatalogRow[]).map((row) => row.name).filter((value): value is string => Boolean(value))), [availableProducts, productTypeRows]);
   const categoryOptions = useMemo(() => buildShopOptions(availableProducts, "category", (productCategoryRows as CatalogRow[]).map((row) => row.name).filter((value): value is string => Boolean(value))), [availableProducts, productCategoryRows]);
   const filterDefinitions = useMemo(
@@ -1091,7 +1098,8 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const query = searchParams.get("q") ?? "";
   const activeType = searchParams.get("type") ?? "All";
   const activeCategory = searchParams.get("category") ?? "All";
-  const activeSort = ((searchParams.get("sort") as ShopSortOption) || "newest");
+  const requestedSort = ((searchParams.get("sort") as ShopSortOption) || "newest");
+  const activeSort = requestedSort === "rating" && !hasAuthoritativeRatings ? "newest" : requestedSort;
   const saleOnly = searchParams.get("sale") === "1";
   const minPrice = searchParams.get("min") ?? "";
   const maxPrice = searchParams.get("max") ?? "";
@@ -1276,11 +1284,12 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
   const isBeautyShop = shopVariant === "beauty";
   const resolvedProductGridClass = isBeautyShop ? productGridClass.replace("grid-cols-1", "grid-cols-2") : productGridClass;
-  const sortOptions: ShopSortOption[] = shopPage?.sort_options?.length
+  const configuredSortOptions: ShopSortOption[] = shopPage?.sort_options?.length
     ? shopPage.sort_options
     : (shopVariant === "beauty" || shopVariant === "electronics"
       ? ["rating", "newest", "price-asc", "price-desc"]
       : ["newest", "price-asc", "price-desc"]);
+  const sortOptions = configuredSortOptions.filter((option) => option !== "rating" || hasAuthoritativeRatings);
   const categoryStyle = shopPage?.category_navigation_style ?? (shopVariant === "food" ? "strip" : "tabs");
   const filterVisibility = shopPage?.filter_visibility ?? (shopVariant === "food" || shopVariant === "booking" ? "toolbar" : "sidebar");
   const showMap = shopVariant === "real_estate" || shopVariant === "electronics";

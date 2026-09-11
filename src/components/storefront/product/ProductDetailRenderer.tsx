@@ -126,10 +126,14 @@ function ProductPrice({
 }
 
 function ProductRating({ value, label }: { value?: number | null; label?: string }) {
-  const rating = value ?? 4.8;
+  const rating = typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.min(5, value)
+    : null;
+  if (rating === null) return null;
+
   return (
-    <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-      <div className="flex items-center gap-0.5 text-[#f2b21d]">
+    <div className="inline-flex items-center gap-2 text-sm text-muted-foreground" aria-label={`${rating.toFixed(1)} out of 5`}>
+      <div className="flex items-center gap-0.5 text-[#f2b21d]" aria-hidden="true">
         {Array.from({ length: 5 }).map((_, index) => (
           <Star key={index} className={cn("h-4 w-4", index < Math.round(rating) ? "fill-current" : "fill-transparent text-border")} />
         ))}

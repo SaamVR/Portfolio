@@ -17,6 +17,15 @@ import { useAuth } from "@/hooks/auth-context";
 import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 import type { Product } from "@/data/products";
 
+function getConfiguredEarnRate(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return null;
+}
+
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
@@ -44,6 +53,10 @@ const CartDrawer = () => {
   const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
   const allowGuestCheckout = resolveAllowGuestCheckout(storefrontProfileData ?? preloadedStorefrontProfile);
   const { data: loyaltySettings } = useSiteSettings<any>("loyalty_settings", isCartOpen ? cartStoreId : null);
+  const loyaltyEarnRate = getConfiguredEarnRate(loyaltySettings?.earn_rate);
+  const loyaltyProgramName = typeof loyaltySettings?.name === "string" && loyaltySettings.name.trim()
+    ? loyaltySettings.name.trim()
+    : "points";
   const prepaymentDiscountType = paymentSettings?.prepayment_discount_type;
   const prepaymentDiscountValue = paymentSettings?.prepayment_discount_value;
   const freeThreshold = deliverySettings.free_threshold;
@@ -127,9 +140,11 @@ const CartDrawer = () => {
                         <div className="flex min-w-0 items-start justify-between gap-2">
                           <div className="min-w-0">
                             <h3 className="text-sm font-medium text-foreground line-clamp-1">{item.name}</h3>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {digitalOnlyCart ? "License" : "Size"}: {getCartVariantDisplayLabel(item.size)}
-                            </p>
+                            {item.size ? (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {digitalOnlyCart ? "License" : "Option"}: {getCartVariantDisplayLabel(item.size)}
+                              </p>
+                            ) : null}
                           </div>
                           <button
                             onClick={() => removeItem(item.productId, item.size, item.storeId)}
@@ -163,10 +178,9 @@ const CartDrawer = () => {
                     </div>
                   ))}
                   
-                  {/* In-Cart Upsell Engine */}
                   {availableUpsells.length > 0 && (
                     <div className="mt-8 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                      <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">Frequently Bought Together</h4>
+                      <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-primary">You may also like</h4>
                       <div className="space-y-3">
                         {availableUpsells.map((upsell) => (
                           <div key={upsell.id} className="flex items-center gap-3 rounded-md bg-background p-2 shadow-sm">
@@ -182,7 +196,7 @@ const CartDrawer = () => {
                                   name: upsell.name,
                                   price: upsell.price,
                                   image: upsell.image,
-                                  size: upsell.sizes?.[0] || 'One Size',
+                                  size: upsell.sizes?.[0] || "",
                                   storeId: cartStoreId,
                                 });
                                 toast.success("Added to cart!");
@@ -234,14 +248,14 @@ const CartDrawer = () => {
                   <span className="font-heading text-lg font-bold text-foreground">BDT {drawerTotal}</span>
                 </div>
 
-                {loyaltySettings?.enabled && (
+                {loyaltySettings?.enabled && loyaltyEarnRate !== null ? (
                   <div className="mb-4 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2 border border-primary/20">
                     <span className="text-xs font-medium text-primary flex items-center gap-1.5">
-                      Earn {Math.floor(drawerTotal * (loyaltySettings.earn_rate || 0.05))} {loyaltySettings.name || "Reward Points"}
+                      Earn {Math.floor(drawerTotal * loyaltyEarnRate)} {loyaltyProgramName}
                     </span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">With this order</span>
                   </div>
-                )}
+                ) : null}
 
                 <p className="mb-4 text-xs text-muted-foreground">
                   {digitalOnlyCart ? "Digital delivery details will be confirmed at checkout." : "Shipping and taxes calculated at checkout."}
