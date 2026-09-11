@@ -33,7 +33,7 @@ const catalogBlockTypes = new Set<StorePageBlock["type"]>([
   "recently-viewed",
 ]);
 const blockVariantMap: Partial<Record<StorePageBlock["type"], string[]>> = {
-  hero: ["full-bleed", "split", "centered", "editorial"],
+  hero: ["full-bleed", "split", "centered", "editorial", "poster", "collection-spotlight"],
   "featured-products": ["2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right"],
   "recommended-products": ["2-col", "3-col", "4-col"],
   "category-showcase": ["cards", "carousel", "masonry", "compact-list"],

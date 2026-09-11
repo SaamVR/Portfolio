@@ -10,6 +10,8 @@ export type LayoutVariantOption = {
   guidance: string;
   previewSummary?: string;
   recommended?: boolean;
+  /** Restrict a specialized layout to the templates it was designed for. */
+  templateIds?: StorefrontTemplateId[];
 };
 
 export type BasicFlowSectionId = "catalog" | "delivery" | "checkout" | "support";
@@ -80,6 +82,8 @@ const baseLayoutVariantOptions: Partial<Record<StorePageBlock["type"], LayoutVar
     { id: "split", label: "Split", guidance: "Best when copy and product media need equal attention.", previewSummary: "Balanced copy and media side by side." },
     { id: "centered", label: "Centered", guidance: "Best for a simple premium message and one focused CTA.", previewSummary: "Quiet centered message with a clear action." },
     { id: "editorial", label: "Editorial", guidance: "Best for story-led and visual brands.", previewSummary: "Magazine-like framing with image drama." },
+    { id: "poster", label: "Poster", guidance: "Best for bold fashion campaigns, cultural graphics, drops, and statement typography.", previewSummary: "Full-image campaign with oversized copy anchored like a poster.", templateIds: ["fashion"] },
+    { id: "collection-spotlight", label: "Collection Spotlight", guidance: "Best when one collection deserves a dominant image and a quieter editorial story beside it.", previewSummary: "Large collection image paired with focused copy and actions.", templateIds: ["fashion"] },
   ],
   "featured-products": [
     { id: "2-col", label: "2 Columns", guidance: "Bigger cards for premium products or services.", previewSummary: "Large cards and slower scanning." },
@@ -120,7 +124,7 @@ const baseLayoutVariantOptions: Partial<Record<StorePageBlock["type"], LayoutVar
 };
 
 const templateLayoutVariantOrder: Partial<Record<StorefrontTemplateId, Partial<Record<StorePageBlock["type"], string[]>>>> = {
-  fashion: { hero: ["editorial", "full-bleed", "split", "centered"], "featured-products": ["2-col", "3-col", "4-col"], "category-showcase": ["cards", "masonry", "carousel"] },
+  fashion: { hero: ["editorial", "poster", "collection-spotlight", "full-bleed", "split", "centered"], "featured-products": ["2-col", "3-col", "4-col"], "category-showcase": ["cards", "masonry", "carousel"] },
   beauty: { hero: ["split", "centered", "full-bleed"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "carousel"] },
   electronics: { hero: ["split", "full-bleed", "centered"], "featured-products": ["4-col", "3-col", "3-col-sidebar-left", "3-col-sidebar-right"], "category-showcase": ["cards", "compact-list"] },
   food: { hero: ["split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["compact-list", "carousel", "cards"], "promo-banner": ["contact-cta", "standard"] },
@@ -230,7 +234,9 @@ export function getBasicLayoutVariantOptions(
   templateId: StorefrontTemplateId,
   blockType: StorePageBlock["type"],
 ): LayoutVariantOption[] {
-  const base = baseLayoutVariantOptions[blockType] ?? [];
+  const base = (baseLayoutVariantOptions[blockType] ?? []).filter(
+    (option) => !option.templateIds?.length || option.templateIds.includes(templateId),
+  );
   const preferredOrder = templateLayoutVariantOrder[templateId]?.[blockType];
   if (!preferredOrder?.length) {
     return base.map((option, index) => ({ ...option, recommended: index === 0 }));

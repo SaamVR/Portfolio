@@ -249,6 +249,36 @@ function BlockPreview({
       );
     }
 
+    if (variantId === "poster") {
+      return (
+        <PreviewShell tone="primary">
+          <div className="relative min-h-24 overflow-hidden rounded-md bg-primary/15 p-3">
+            <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 via-transparent to-transparent" />
+            <div className="relative flex min-h-20 flex-col justify-end">
+              <div className="line-clamp-2 max-w-[80%] text-[12px] font-black leading-4 text-foreground">{title}</div>
+              <div className="mt-1 line-clamp-1 max-w-[70%] text-[9px] text-muted-foreground">{subtitle || "Campaign-first poster treatment."}</div>
+              <div className="mt-2 inline-flex h-5 w-fit items-center bg-foreground px-2 text-[9px] font-medium text-background">{ctaText || "Shop the drop"}</div>
+            </div>
+          </div>
+        </PreviewShell>
+      );
+    }
+
+    if (variantId === "collection-spotlight") {
+      return (
+        <PreviewShell tone="primary">
+          <div className="grid grid-cols-[1.25fr_0.75fr] gap-2">
+            <div className="min-h-24 rounded-md bg-primary/15 p-2 text-[9px] text-primary/70">{mediaUrl ? "Collection media" : "Add collection media"}</div>
+            <div className="flex flex-col justify-center rounded-md bg-background p-2">
+              <div className="line-clamp-2 text-[11px] font-semibold leading-4 text-foreground">{title}</div>
+              <div className="mt-1 line-clamp-2 text-[9px] leading-3 text-muted-foreground">{subtitle || "Focused collection story."}</div>
+              <div className="mt-2 inline-flex h-5 w-fit items-center border border-border px-2 text-[9px] font-medium text-foreground">{ctaText || "View collection"}</div>
+            </div>
+          </div>
+        </PreviewShell>
+      );
+    }
+
     return (
       <PreviewShell tone="primary">
         <div className="rounded-md bg-background p-3">

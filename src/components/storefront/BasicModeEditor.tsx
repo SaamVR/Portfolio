@@ -135,6 +135,33 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
         </div>
       );
     }
+
+    if (variant === "poster") {
+      return (
+        <div className="relative h-full w-full overflow-hidden rounded-sm bg-muted-foreground/25 p-2">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          <div className="absolute inset-x-2 bottom-2 flex flex-col items-start gap-1">
+            <div className="h-2.5 w-4/5 rounded-sm bg-background/85" />
+            <div className="h-2.5 w-3/5 rounded-sm bg-background/70" />
+            <div className="mt-1 h-2 w-1/4 rounded-sm bg-primary/50" />
+          </div>
+        </div>
+      );
+    }
+
+    if (variant === "collection-spotlight") {
+      return (
+        <div className="grid h-full w-full grid-cols-[1.25fr_0.75fr] gap-1 p-2">
+          <div className="rounded-sm bg-muted-foreground/25" />
+          <div className="flex flex-col justify-center gap-1 rounded-sm bg-background/70 p-1.5">
+            <div className="h-1 w-2/5 rounded-sm bg-primary/35" />
+            <div className="h-2 w-full rounded-sm bg-muted-foreground/30" />
+            <div className="h-1.5 w-4/5 rounded-sm bg-muted-foreground/20" />
+            <div className="mt-1 h-2 w-1/2 rounded-sm bg-primary/30" />
+          </div>
+        </div>
+      );
+    }
   }
 
   if (type === "featured-products" && variant) {
