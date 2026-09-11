@@ -21,6 +21,7 @@ import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
+import { getStorefrontTemplateDefinition, resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { loadThemePackages } from "@/lib/theme-packages";
 import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
@@ -29,6 +30,8 @@ import { DomTreeNavigator } from "./DomTreeNavigator";
 import { StoreProvider } from "./StoreProvider";
 import { StoreThemeScope } from "./StoreThemeScope";
 import { StorefrontBlockRenderer } from "./StorefrontBlockRenderer";
+import { FashionV3BlockRenderer } from "./fashion-v3/FashionV3BlockRenderer";
+import { FashionV3Shell } from "./fashion-v3/FashionV3Shell";
 import { VisualCssInspector } from "./VisualCssInspector";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
@@ -732,6 +735,14 @@ export function StorefrontLiveEditor({
         : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
   const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
   const previewBlocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const previewStorefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings.storefront_profile
+    ? store.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const previewTemplateId = resolveStorefrontTemplateId(previewStorefrontProfile?.template_id, {
+    templateSeedId: typeof previewStorefrontProfile?.template_id === "string" ? previewStorefrontProfile.template_id : null,
+    productVisibility: typeof previewStorefrontProfile?.product_visibility === "string" ? previewStorefrontProfile.product_visibility : null,
+  });
+  const previewTemplate = getStorefrontTemplateDefinition(previewTemplateId);
 
   const renderAdvancedControls = () => {
     if (!selectedBlock || editorMode !== "advanced") {
@@ -1544,9 +1555,17 @@ export function StorefrontLiveEditor({
                       </div>
                       <div className="overflow-y-auto">
                         {previewBlocks.length > 0 ? (
-                          previewBlocks.map((block) => (
-                            <StorefrontBlockRenderer key={block.id} block={block} />
-                          ))
+                          previewTemplateId === "fashion" ? (
+                            <FashionV3Shell embedded>
+                              {previewBlocks.map((block) => (
+                                <FashionV3BlockRenderer key={block.id} block={block} template={previewTemplate} />
+                              ))}
+                            </FashionV3Shell>
+                          ) : (
+                            previewBlocks.map((block) => (
+                              <StorefrontBlockRenderer key={block.id} block={block} template={previewTemplate} />
+                            ))
+                          )
                         ) : (
                           <div className="p-8 text-sm text-muted-foreground">This page has no visible sections yet.</div>
                         )}
