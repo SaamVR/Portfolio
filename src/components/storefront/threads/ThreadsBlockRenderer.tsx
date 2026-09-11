@@ -38,11 +38,16 @@ function useThreadsAutoplay(api: CarouselApi | undefined, interval: number, enab
   useEffect(() => {
     if (!api || !enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const root = api.rootNode();
-    const pause = () => { pausedRef.current = true; };
-    const resume = () => { pausedRef.current = false; };
-    const timer = window.setInterval(() => {
-      if (!pausedRef.current) api.scrollNext();
-    }, interval);
+    let timer: number | undefined;
+    const clear = () => { if (timer !== undefined) window.clearTimeout(timer); };
+    const schedule = () => {
+      clear();
+      if (pausedRef.current) return;
+      timer = window.setTimeout(() => api.scrollNext(), interval);
+    };
+    const pause = () => { pausedRef.current = true; clear(); };
+    const resume = () => { pausedRef.current = false; schedule(); };
+    const restart = () => { if (!pausedRef.current) schedule(); };
 
     root.addEventListener("mouseenter", pause);
     root.addEventListener("mouseleave", resume);
@@ -51,9 +56,12 @@ function useThreadsAutoplay(api: CarouselApi | undefined, interval: number, enab
     root.addEventListener("pointerdown", pause);
     root.addEventListener("pointerup", resume);
     root.addEventListener("pointercancel", resume);
+    api.on("select", restart);
+    schedule();
 
     return () => {
-      window.clearInterval(timer);
+      clear();
+      api.off("select", restart);
       root.removeEventListener("mouseenter", pause);
       root.removeEventListener("mouseleave", resume);
       root.removeEventListener("focusin", pause);
