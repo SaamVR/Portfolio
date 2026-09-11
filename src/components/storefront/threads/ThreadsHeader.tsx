@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Heart, HelpCircle, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { useProductCategories } from "@/hooks/useProductCategories";
 import { storefrontPath } from "@/lib/slug";
 
 export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
@@ -15,7 +14,6 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
   const { totalItems, setIsCartOpen } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
-  const { data: categories = [] } = useProductCategories(store?.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -23,40 +21,43 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
 
   const home = storefrontPath("/", store?.slug);
   const shop = storefrontPath("/shop", store?.slug);
-  const announcement = store?.siteSettings?.announcement_bar as { enabled?: boolean; text?: string } | undefined;
-  const showAnnouncement = announcement?.enabled !== false && Boolean(announcement?.text?.trim());
   const nav = [
-    { label: "New In", href: `${shop}?sort=newest` },
-    { label: "Shop", href: shop },
-    ...categories.slice(0, 3).map((category) => ({ label: category.name, href: `${shop}?category=${encodeURIComponent(category.name)}` })),
-    { label: "Our Story", href: storefrontPath("/about", store?.slug) },
-  ];
+    ["Women", `${shop}?category=Women`],
+    ["Men", `${shop}?category=Men`],
+    ["Accessories", `${shop}?category=Accessories`],
+    ["Home & Living", `${shop}?category=Home%20%26%20Living`],
+    ["Sale", `${shop}?sale=1`],
+    ["New", `${shop}?sort=newest`],
+    ["Stories", storefrontPath("/about", store?.slug)],
+  ] as const;
 
-  return (
-    <>
-      {showAnnouncement ? <div className="bg-foreground px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[.18em] text-background">{announcement!.text}</div> : null}
-      <header className={`${embedded ? "relative" : "sticky top-0"} z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl`}>
-        <div className="mx-auto grid h-[70px] max-w-[1500px] grid-cols-[1fr_auto_1fr] items-center px-4 md:h-[78px] md:px-8 lg:px-12">
-          <div className="flex items-center gap-1">
-            <button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center lg:hidden" aria-label="Open menu"><Menu className="h-[19px] w-[19px]" /></button>
-            <nav className="hidden items-center gap-6 text-[11px] font-semibold uppercase tracking-[.14em] lg:flex" aria-label="Threads navigation">
-              {nav.slice(0, 4).map((item) => <Link key={`${item.label}-${item.href}`} to={item.href} className="transition hover:text-primary">{item.label}</Link>)}
-            </nav>
-          </div>
-
-          <Link to={home} className="max-w-[42vw] truncate text-center text-[22px] font-black uppercase tracking-[-.045em] text-foreground md:text-[26px]">{store?.name || "Threads"}</Link>
-
-          <div className="flex items-center justify-end gap-0.5">
-            <button type="button" onClick={() => setSearchOpen((value) => !value)} className="grid h-11 w-11 place-items-center" aria-label="Search"><Search className="h-[18px] w-[18px]" /></button>
-            <Link to={storefrontPath("/wishlist", store?.slug)} className="relative hidden h-11 w-11 place-items-center sm:grid" aria-label="Wishlist"><Heart className="h-[18px] w-[18px]" />{mounted && wishlistCount > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] leading-4 text-primary-foreground">{wishlistCount}</span> : null}</Link>
-            <Link to={user ? storefrontPath("/account", store?.slug) : storefrontPath(`/auth?next=${encodeURIComponent(storefrontPath("/account", store?.slug))}`, store?.slug)} className="hidden h-11 w-11 place-items-center sm:grid" aria-label="Account"><User className="h-[18px] w-[18px]" /></Link>
-            <button type="button" onClick={() => setIsCartOpen(true)} className="relative grid h-11 w-11 place-items-center" aria-label="Open bag"><ShoppingBag className="h-[18px] w-[18px]" />{mounted && totalItems > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] leading-4 text-primary-foreground">{totalItems}</span> : null}</button>
-          </div>
+  return <>
+    <div className="hidden h-8 items-center justify-between bg-primary px-8 text-[10px] text-primary-foreground md:flex lg:px-14">
+      <div className="flex items-center gap-7"><span>♧ &nbsp; Free shipping on orders over ৳2000</span><span>♡ &nbsp; Easy returns within 14 days</span></div>
+      <div className="flex items-center gap-4"><Link to={storefrontPath("/track-order", store?.slug)}>Track Order</Link><span className="opacity-35">|</span><Link to={storefrontPath("/faq", store?.slug)} className="flex items-center gap-1"><HelpCircle className="h-3 w-3" /> Help</Link><span className="opacity-35">|</span><span>EN⌄</span></div>
+    </div>
+    <header className={`${embedded ? "relative" : "sticky top-0"} z-50 border-b border-border bg-background/95 backdrop-blur`}>
+      <div className="mx-auto grid h-[58px] max-w-[1480px] grid-cols-[1fr_auto_1fr] items-center px-4 md:h-[64px] md:px-8 lg:px-12">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+          <Link to={home} className="hidden sm:block">
+            <div className="font-serif text-[25px] font-semibold uppercase leading-none tracking-[-.04em]">{store?.name || "EZCOMO"}</div>
+            <div className="mt-1 text-[6px] uppercase tracking-[.17em] text-muted-foreground">People · Places · A Brighter Tomorrow</div>
+          </Link>
         </div>
-        {searchOpen ? <div className="border-t border-border/70 px-4 py-4 md:px-8"><form action={shop} method="get" className="mx-auto flex max-w-3xl items-center rounded-full border border-border bg-card px-4"><Search className="mr-3 h-4 w-4 text-muted-foreground" /><input name="q" autoFocus placeholder="Search the collection" className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /><button type="button" onClick={() => setSearchOpen(false)} className="grid h-10 w-10 place-items-center" aria-label="Close search"><X className="h-4 w-4" /></button></form></div> : null}
-      </header>
-
-      {menuOpen ? <div className="fixed inset-0 z-[90] lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setMenuOpen(false)} aria-label="Close menu overlay" /><aside className="absolute inset-y-0 left-0 w-[88%] max-w-sm overflow-y-auto bg-background p-6 shadow-2xl"><div className="mb-10 flex items-center justify-between"><span className="text-xl font-black uppercase tracking-[-.04em]">{store?.name || "Threads"}</span><button onClick={() => setMenuOpen(false)} className="grid h-11 w-11 place-items-center" aria-label="Close menu"><X className="h-5 w-5" /></button></div><nav className="space-y-1">{nav.map((item) => <Link key={`${item.label}-${item.href}`} to={item.href} onClick={() => setMenuOpen(false)} className="block border-b border-border/70 py-4 text-xl font-semibold tracking-[-.03em]">{item.label}</Link>)}</nav></aside></div> : null}
-    </>
-  );
+        <nav className="hidden items-center gap-6 text-[11px] font-semibold lg:flex" aria-label="Threads navigation">
+          {nav.map(([label, href]) => <Link key={label} to={href} className="whitespace-nowrap transition hover:text-primary">{label}</Link>)}
+        </nav>
+        <Link to={home} className="truncate text-center font-serif text-[21px] font-semibold uppercase tracking-[-.035em] sm:hidden">{store?.name || "EZCOMO"}</Link>
+        <div className="flex items-center justify-end gap-0.5">
+          <button type="button" onClick={() => setSearchOpen(v => !v)} className="grid h-10 w-10 place-items-center" aria-label="Search"><Search className="h-[18px] w-[18px]" /></button>
+          <Link to={user ? storefrontPath("/account", store?.slug) : storefrontPath(`/auth?next=${encodeURIComponent(storefrontPath("/account", store?.slug))}`, store?.slug)} className="hidden h-10 w-10 place-items-center sm:grid" aria-label="Account"><User className="h-[18px] w-[18px]" /></Link>
+          <Link to={storefrontPath("/wishlist", store?.slug)} className="relative hidden h-10 w-10 place-items-center sm:grid" aria-label="Wishlist"><Heart className="h-[18px] w-[18px]" />{mounted && wishlistCount > 0 ? <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] leading-4 text-primary-foreground">{wishlistCount}</span> : null}</Link>
+          <button type="button" onClick={() => setIsCartOpen(true)} className="relative grid h-10 w-10 place-items-center" aria-label="Open bag"><ShoppingBag className="h-[18px] w-[18px]" />{mounted && totalItems > 0 ? <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] leading-4 text-primary-foreground">{totalItems}</span> : null}</button>
+        </div>
+      </div>
+      {searchOpen ? <div className="border-t border-border bg-background px-4 py-3"><form action={shop} className="mx-auto flex max-w-2xl items-center border-b border-foreground/25"><Search className="mr-2 h-4 w-4 text-muted-foreground" /><input name="q" autoFocus placeholder="Search products" className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none" /></form></div> : null}
+    </header>
+    {menuOpen ? <div className="fixed inset-0 z-[90] lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setMenuOpen(false)} aria-label="Close menu overlay" /><aside className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-background p-6 shadow-2xl"><div className="mb-7 flex items-center justify-between"><span className="font-serif text-2xl uppercase">{store?.name || "EZCOMO"}</span><button onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center" aria-label="Close menu"><X className="h-5 w-5" /></button></div><nav>{nav.map(([label, href]) => <Link key={label} to={href} onClick={() => setMenuOpen(false)} className="block border-b border-border py-4 text-lg">{label}</Link>)}</nav></aside></div> : null}
+  </>;
 }
