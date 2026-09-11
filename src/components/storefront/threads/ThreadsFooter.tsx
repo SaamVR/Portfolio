@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Leaf } from "lucide-react";
+import { ArrowRight, Facebook, Instagram, Leaf, Youtube } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -11,70 +11,28 @@ import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 type FooterLink = { label?: string; url?: string };
 type FooterSettings = {
-  brand_name?: string;
-  brand_highlight?: string;
-  about_text?: string;
-  newsletter_heading?: string;
-  newsletter_description?: string;
-  newsletter_subscribed?: string;
-  company_links?: FooterLink[];
-  extra_links?: FooterLink[];
-  extra_links_title?: string;
-  copyright?: string;
-  show_shop_links?: boolean;
-  show_newsletter?: boolean;
+  brand_name?: string; brand_highlight?: string; about_text?: string; newsletter_heading?: string; newsletter_description?: string; newsletter_subscribed?: string;
+  company_links?: FooterLink[]; extra_links?: FooterLink[]; extra_links_title?: string; copyright?: string; show_shop_links?: boolean; show_newsletter?: boolean;
 };
 
 export function ThreadsFooter() {
-  const store = useOptionalStore();
-  const { data: footer } = useSiteSettings<FooterSettings>("footer", store?.id);
-  const { data: categories = [] } = useProductCategories(store?.id);
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-  const storageKey = getScopedStorefrontStorageKey("newsletter-subscribed", store?.id);
-
-  useEffect(() => {
-    try { setSubscribed(localStorage.getItem(storageKey) === "true"); } catch { setSubscribed(false); }
-  }, [storageKey]);
-
-  const shop = storefrontPath("/shop", store?.slug);
-  const brandName = footer?.brand_name || store?.name || "Threads";
-  const about = footer?.about_text || store?.description || "Everyday clothing with a grounded point of view.";
-  const companyLinks = footer?.company_links?.length ? footer.company_links : [
-    { label: "Our story", url: "/about" },
-    { label: "Contact", url: "/contact" },
-    { label: "FAQ", url: "/faq" },
-    { label: "Shipping & returns", url: "/policy" },
-  ];
-  const shopLinks = useMemo(() => categories.slice(0, 5).map((category) => ({ label: category.name, url: `${shop}?category=${encodeURIComponent(category.name)}` })), [categories, shop]);
-
-  const submitNewsletter = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!email.trim() || !email.includes("@")) return;
-    try { localStorage.setItem(storageKey, "true"); } catch { /* no-op */ }
-    setSubscribed(true);
-    setEmail("");
-  };
-
-  return (
-    <footer className="relative overflow-hidden bg-foreground text-background">
-      <div aria-hidden className="pointer-events-none absolute -right-14 top-2 text-primary-foreground/10"><Leaf className="h-56 w-56 rotate-12 stroke-[.8]" /><Leaf className="-mt-20 -ml-24 h-44 w-44 -rotate-12 stroke-[.8]" /></div>
-      {footer?.show_newsletter !== false ? (
-        <div className="border-b border-background/12">
-          <div className="mx-auto grid max-w-[1450px] gap-8 px-5 py-12 md:grid-cols-[1fr_.9fr] md:items-center md:px-8 md:py-16 lg:px-12">
-            <div><p className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-background/45">Stay close</p><h2 className="max-w-[15ch] text-3xl font-black leading-[.98] tracking-[-.045em] md:text-5xl">{footer?.newsletter_heading || "Join the Threads community"}</h2><p className="mt-4 max-w-xl text-sm leading-6 text-background/55">{footer?.newsletter_description || "New drops, useful offers, and styling notes—sent occasionally."}</p></div>
-            {subscribed ? <p className="text-sm font-semibold text-background">{footer?.newsletter_subscribed || "You're subscribed!"}</p> : <form onSubmit={submitNewsletter} className="flex min-w-0 items-center rounded-full border border-background/20 bg-background/5 p-1.5"><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" aria-label="Email address" className="h-11 min-w-0 flex-1 bg-transparent px-4 text-sm text-background outline-none placeholder:text-background/40" /><button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Subscribe"><ArrowRight className="h-4 w-4" /></button></form>}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="relative mx-auto grid max-w-[1450px] gap-10 px-5 py-12 md:grid-cols-[1.4fr_.8fr_.8fr_.8fr] md:px-8 md:py-16 lg:px-12">
-        <div><p className="text-3xl font-black uppercase tracking-[-.05em]">{brandName}{footer?.brand_highlight ? <span className="text-primary">{footer.brand_highlight}</span> : null}</p><p className="mt-4 max-w-md text-sm leading-6 text-background/55">{about}</p></div>
-        {footer?.show_shop_links !== false ? <div><p className="mb-4 text-[10px] font-bold uppercase tracking-[.18em] text-background/40">Shop</p><div className="space-y-3 text-sm">{(shopLinks.length ? shopLinks : [{ label: "Shop all", url: shop }, { label: "New in", url: `${shop}?sort=newest` }]).map((item) => <Link key={`${item.label}-${item.url}`} to={item.url} className="block text-background/75 transition hover:text-background">{item.label}</Link>)}</div></div> : null}
-        <div><p className="mb-4 text-[10px] font-bold uppercase tracking-[.18em] text-background/40">Company</p><div className="space-y-3 text-sm">{companyLinks.map((item, index) => item.label && item.url ? <Link key={`${item.label}-${index}`} to={storefrontPath(item.url, store?.slug)} className="block text-background/75 transition hover:text-background">{item.label}</Link> : null)}</div></div>
-        {footer?.extra_links?.length ? <div><p className="mb-4 text-[10px] font-bold uppercase tracking-[.18em] text-background/40">{footer.extra_links_title || "More"}</p><div className="space-y-3 text-sm">{footer.extra_links.map((item, index) => item.label && item.url ? <Link key={`${item.label}-${index}`} to={storefrontPath(item.url, store?.slug)} className="block text-background/75 transition hover:text-background">{item.label}</Link> : null)}</div></div> : null}
-      </div>
-      <div className="border-t border-background/10 px-5 py-5 text-center text-[10px] uppercase tracking-[.16em] text-background/35">{footer?.copyright || `Copyright ${new Date().getFullYear()}. All rights reserved.`} · Powered by EZComo</div>
-    </footer>
-  );
+  const store=useOptionalStore(); const {data:footer}=useSiteSettings<FooterSettings>("footer",store?.id); const {data:categories=[]}=useProductCategories(store?.id);
+  const [email,setEmail]=useState(""); const [subscribed,setSubscribed]=useState(false); const storageKey=getScopedStorefrontStorageKey("newsletter-subscribed",store?.id);
+  useEffect(()=>{try{setSubscribed(localStorage.getItem(storageKey)==="true")}catch{setSubscribed(false)}},[storageKey]);
+  const shop=storefrontPath("/shop",store?.slug); const brand=footer?.brand_name||store?.name||"EZCOMO"; const about=footer?.about_text||store?.description||"Modern clothing inspired by places, people and a more meaningful way of living.";
+  const shopLinks=useMemo(()=>categories.slice(0,5).map(c=>({label:c.name,url:`${shop}?category=${encodeURIComponent(c.name)}`})),[categories,shop]);
+  const support=[{label:"Track Your Order",url:"/track-order"},{label:"Returns & Exchanges",url:"/returns"},{label:"Shipping Info",url:"/faq"},{label:"Size Guide",url:"/faq"},{label:"FAQs",url:"/faq"},{label:"Contact Us",url:"/contact"}];
+  const aboutLinks=footer?.company_links?.length?footer.company_links:[{label:"Our Story",url:"/about"},{label:"Sustainability",url:"/about"},{label:"Journal",url:"/blog"},{label:"Careers",url:"/contact"},{label:"Wholesale",url:"/contact"}];
+  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!email.includes("@"))return;try{localStorage.setItem(storageKey,"true")}catch{}setSubscribed(true);setEmail("")};
+  return <footer className="relative overflow-hidden bg-primary text-primary-foreground">
+    <div aria-hidden className="pointer-events-none absolute bottom-8 right-0 hidden opacity-20 md:block"><Leaf className="h-64 w-64 -rotate-12 stroke-[.7]"/><Leaf className="-mt-24 ml-36 h-44 w-44 rotate-12 stroke-[.7]"/></div>
+    <div className="relative mx-auto grid max-w-[1280px] gap-9 px-5 py-10 md:grid-cols-[1.2fr_.55fr_.65fr_.65fr_1.15fr] md:px-8 md:py-12">
+      <div><div className="font-serif text-[28px] uppercase leading-none">{brand}</div><div className="mt-1 text-[6px] uppercase tracking-[.18em] text-primary-foreground/60">People · Places · A Brighter Tomorrow</div><p className="mt-5 max-w-[230px] text-[11px] leading-5 text-primary-foreground/70">{about}</p><div className="mt-5 flex gap-4"><Instagram className="h-4 w-4"/><Facebook className="h-4 w-4"/><Youtube className="h-4 w-4"/></div></div>
+      <div><h3 className="mb-3 text-[11px] font-semibold">Shop</h3><div className="space-y-2 text-[10px] text-primary-foreground/75">{(shopLinks.length?shopLinks:[{label:"Women",url:shop},{label:"Men",url:shop},{label:"Accessories",url:shop},{label:"Sale",url:`${shop}?sale=1`},{label:"New Arrivals",url:`${shop}?sort=newest`}]).map(x=><Link key={x.label} to={x.url} className="block">{x.label}</Link>)}</div></div>
+      <div><h3 className="mb-3 text-[11px] font-semibold">Support</h3><div className="space-y-2 text-[10px] text-primary-foreground/75">{support.map(x=><Link key={x.label} to={storefrontPath(x.url,store?.slug)} className="block">{x.label}</Link>)}</div></div>
+      <div><h3 className="mb-3 text-[11px] font-semibold">About</h3><div className="space-y-2 text-[10px] text-primary-foreground/75">{aboutLinks.map((x,i)=>x.label&&x.url?<Link key={`${x.label}-${i}`} to={storefrontPath(x.url,store?.slug)} className="block">{x.label}</Link>:null)}</div></div>
+      <div>{footer?.show_newsletter!==false?<><h3 className="text-[11px] font-semibold">{footer?.newsletter_heading||"Be the First to Know"}</h3><p className="mt-2 text-[10px] leading-4 text-primary-foreground/65">{footer?.newsletter_description||"Join for new drops, stories and exclusive offers."}</p>{subscribed?<p className="mt-4 text-[11px]">{footer?.newsletter_subscribed||"You're subscribed!"}</p>:<form onSubmit={submit} className="mt-4 flex h-9 overflow-hidden rounded-sm bg-background"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Your email address" className="min-w-0 flex-1 bg-transparent px-3 text-[10px] text-foreground outline-none"/><button className="grid w-10 place-items-center bg-secondary text-foreground" aria-label="Subscribe"><ArrowRight className="h-4 w-4"/></button></form>}</>:null}<div className="mt-7 font-serif text-[24px] italic leading-[.95] text-primary-foreground/70">A Brighter<br/>Tomorrow</div></div>
+    </div>
+    <div className="border-t border-primary-foreground/15"><div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-5 py-5 text-[9px] text-primary-foreground/55 md:flex-row md:items-center md:justify-between md:px-8"><span>{footer?.copyright||`© ${new Date().getFullYear()} ${brand}. All rights reserved.`}</span><span>Privacy Policy &nbsp; | &nbsp; Terms of Service &nbsp; | &nbsp; Cookie Settings</span></div></div>
+  </footer>;
 }
