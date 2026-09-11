@@ -11,6 +11,7 @@ import { getStorefrontContainerClass } from "@/lib/storefront-theme-customizatio
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const fallbackCategories = [
   { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
@@ -79,6 +80,14 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     focalX: overrides?.focalX,
     focalY: overrides?.focalY,
   });
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
 
   if (categoriesLoading || typesLoading) {
     return <StorefrontSectionSkeleton title={overrides?.title ?? legacySettings?.title ?? "Loading categories"} cards={4} />;
@@ -130,12 +139,12 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   ).slice(0, limit || undefined);
 
   return (
-    <section className="py-14 md:py-20">
+    <section className={isFashion ? "py-16 md:py-28" : "py-14 md:py-20"}>
       <div className={`mx-auto px-4 ${containerClass}`}>
         <AnimatedSection animation="blur">
-          <div className="mb-8 text-center md:mb-12">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
+          <div className={isFashion ? "mb-8 max-w-3xl text-left md:mb-14" : "mb-8 text-center md:mb-12"}>
+            <p className={isFashion ? "mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-primary md:text-sm" : "mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary"}>{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
+            <h2 className={isFashion ? "font-heading text-4xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl" : "font-heading text-3xl font-bold text-foreground md:text-4xl"}>{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
           </div>
         </AnimatedSection>
 
@@ -147,11 +156,49 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
                 ? "columns-2 gap-4 sm:columns-3 lg:columns-4"
                 : layoutVariant === "compact-list"
                   ? "mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
-                  : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
+                  : isFashion
+                    ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
+                    : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
           }
         >
           {categoriesToRender.map((cat, i) => {
             const Icon = cat.icon;
+            if (isFashion && layoutVariant !== "compact-list") {
+              const mediaAspect = layoutVariant === "masonry" && i % 3 === 1 ? "aspect-square" : "aspect-[4/5]";
+              return (
+                <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
+                  <Link
+                    to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
+                    className={[
+                      "group relative block overflow-hidden bg-muted",
+                      layoutVariant === "carousel" ? "min-w-[72vw] snap-center sm:min-w-[300px]" : "",
+                    ].filter(Boolean).join(" ")}
+                  >
+                    <div className={`relative ${mediaAspect} overflow-hidden`}>
+                      {cat.image_url ? (
+                        <SafeStorefrontImage
+                          src={cat.image_url}
+                          fallbackSrc={settings?.fallback_image_url ?? null}
+                          fill
+                          alt={cat.label}
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]"
+                          style={{ objectPosition: imageObjectPosition }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-background">
+                          <Icon className="h-8 w-8 text-primary/70" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 p-4 text-left sm:p-5">
+                        <p className="font-heading text-xl font-semibold leading-tight text-white sm:text-2xl">{cat.label}</p>
+                        <p className="mt-1 line-clamp-1 text-xs text-white/75 sm:text-sm">{cat.tagline}</p>
+                      </div>
+                    </div>
+                  </Link>
+                </AnimatedSection>
+              );
+            }
             return (
               <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
                 <Link
