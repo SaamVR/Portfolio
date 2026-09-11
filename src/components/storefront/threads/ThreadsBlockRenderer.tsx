@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Leaf, PackageOpen, Shirt, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CreditCard, Leaf, PackageCheck, RotateCcw, ShieldCheck, Shirt, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontTemplateDefinition } from "@/lib/cms/storefront-templates";
@@ -13,284 +13,130 @@ import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProdu
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 
-const asString = (value: unknown) => typeof value === "string" ? value.trim() : "";
-
+const s = (v: unknown) => typeof v === "string" ? v.trim() : "";
 type DecorationLevel = "none" | "subtle" | "full";
+const deco = (block: StorePageBlock): DecorationLevel => block.decoration ?? "subtle";
 
-function getDecoration(block: StorePageBlock): DecorationLevel {
-  return block.decoration ?? "subtle";
-}
-
-function SectionLeaves({ side = "right", level = "subtle" }: { side?: "left" | "right"; level?: DecorationLevel }) {
+function Botanical({ side = "left", level = "subtle", inverse = false }: { side?: "left" | "right"; level?: DecorationLevel; inverse?: boolean }) {
   if (level === "none") return null;
-  const scale = level === "full" ? "scale-125 opacity-100" : "opacity-70";
-  return <div aria-hidden className={`pointer-events-none absolute top-3 hidden text-primary/15 md:block ${scale} ${side === "right" ? "right-0" : "left-0 -scale-x-100"}`}><Leaf className="h-28 w-28 rotate-[22deg] stroke-[1.1]" /><Leaf className="-mt-12 ml-10 h-20 w-20 -rotate-[8deg] stroke-[1.1]" /></div>;
+  return <div aria-hidden className={`pointer-events-none absolute z-[1] hidden md:block ${side === "left" ? "-left-5" : "-right-5 -scale-x-100"} ${level === "full" ? "scale-110 opacity-100" : "opacity-70"} ${inverse ? "text-primary-foreground/13" : "text-primary/20"}`}>
+    <Leaf className="h-28 w-28 -rotate-[24deg] stroke-[1]" /><Leaf className="-mt-12 ml-12 h-20 w-20 rotate-[10deg] stroke-[1]" /><Leaf className="-mt-9 ml-2 h-16 w-16 -rotate-[55deg] stroke-[1]" />
+  </div>;
 }
 
-function useAutoRail(ref: RefObject<HTMLDivElement | null>, intervalMs: number, enabled: boolean) {
+function useAutoRail(ref: RefObject<HTMLDivElement | null>, interval: number, enabled: boolean) {
   useEffect(() => {
     const node = ref.current;
     if (!node || !enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let paused = false;
-    const pause = () => { paused = true; };
-    const resume = () => { paused = false; };
-    node.addEventListener("mouseenter", pause);
-    node.addEventListener("mouseleave", resume);
-    node.addEventListener("focusin", pause);
-    node.addEventListener("focusout", resume);
-    node.addEventListener("pointerdown", pause);
-    node.addEventListener("pointerup", resume);
+    const stop = () => { paused = true; };
+    const start = () => { paused = false; };
+    ["mouseenter", "focusin", "pointerdown"].forEach(e => node.addEventListener(e, stop));
+    ["mouseleave", "focusout", "pointerup"].forEach(e => node.addEventListener(e, start));
     const timer = window.setInterval(() => {
       if (paused || node.scrollWidth <= node.clientWidth + 8) return;
-      const step = Math.max(220, Math.round(node.clientWidth * 0.72));
-      const atEnd = node.scrollLeft + node.clientWidth >= node.scrollWidth - 16;
-      node.scrollTo({ left: atEnd ? 0 : node.scrollLeft + step, behavior: "smooth" });
-    }, intervalMs);
-    return () => {
-      window.clearInterval(timer);
-      node.removeEventListener("mouseenter", pause);
-      node.removeEventListener("mouseleave", resume);
-      node.removeEventListener("focusin", pause);
-      node.removeEventListener("focusout", resume);
-      node.removeEventListener("pointerdown", pause);
-      node.removeEventListener("pointerup", resume);
-    };
-  }, [enabled, intervalMs, ref]);
+      const step = Math.max(250, node.clientWidth * .72);
+      const end = node.scrollLeft + node.clientWidth >= node.scrollWidth - 12;
+      node.scrollTo({ left: end ? 0 : node.scrollLeft + step, behavior: "smooth" });
+    }, interval);
+    return () => { window.clearInterval(timer); ["mouseenter", "focusin", "pointerdown"].forEach(e => node.removeEventListener(e, stop)); ["mouseleave", "focusout", "pointerup"].forEach(e => node.removeEventListener(e, start)); };
+  }, [enabled, interval, ref]);
 }
 
-function RailControls({ rail, inverse = false }: { rail: RefObject<HTMLDivElement | null>; inverse?: boolean }) {
-  const move = (direction: number) => rail.current?.scrollBy({ left: direction * Math.max(240, Math.round((rail.current?.clientWidth ?? 320) * 0.7)), behavior: "smooth" });
-  const buttonClass = inverse
-    ? "grid h-10 w-10 place-items-center rounded-full border border-primary-foreground/35 bg-primary-foreground/10 text-primary-foreground transition hover:bg-primary-foreground hover:text-primary"
-    : "grid h-10 w-10 place-items-center rounded-full border border-border bg-background transition hover:border-primary hover:text-primary";
-  return <div className="flex items-center gap-2"><button type="button" onClick={() => move(-1)} className={buttonClass} aria-label="Previous"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => move(1)} className={buttonClass} aria-label="Next"><ArrowRight className="h-4 w-4" /></button></div>;
+function RailButtons({ rail, inverse = false }: { rail: RefObject<HTMLDivElement | null>; inverse?: boolean }) {
+  const move = (n: number) => rail.current?.scrollBy({ left: n * Math.max(260, (rail.current?.clientWidth ?? 360) * .74), behavior: "smooth" });
+  const cls = inverse ? "border-primary-foreground/45 text-primary-foreground hover:bg-primary-foreground hover:text-primary" : "border-border bg-background text-foreground hover:border-primary";
+  return <div className="flex gap-2"><button type="button" onClick={() => move(-1)} className={`grid h-9 w-9 place-items-center rounded-full border ${cls}`} aria-label="Previous"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => move(1)} className={`grid h-9 w-9 place-items-center rounded-full border ${cls}`} aria-label="Next"><ArrowRight className="h-4 w-4" /></button></div>;
 }
 
 function ThreadsHero({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
-  const props = block.props as Record<string, unknown>;
-  const image = asString(props.imageUrl) || asString(props.mediaUrl);
-  const mobileImage = asString(props.mobileImageUrl);
-  const title = asString(props.title) || "Everyday pieces, made to feel like you.";
-  const highlight = asString(props.highlight);
-  const subtitle = asString(props.subtitle);
-  const cta = asString(props.ctaText) || "Shop the collection";
-  const secondary = asString(props.secondaryCtaText);
-  return (
-    <section className="relative overflow-hidden px-4 pb-10 pt-7 md:px-8 md:pb-16 md:pt-10 lg:px-12">
-      <SectionLeaves side="left" level={getDecoration(block)} />
-      <div className="relative mx-auto grid min-h-[650px] max-w-[1450px] overflow-hidden rounded-[2.2rem] bg-secondary/55 md:min-h-[680px] md:grid-cols-[.93fr_1.07fr] md:rounded-[3rem]">
-        <div className="relative z-10 flex items-center px-7 py-14 md:px-12 lg:px-16">
-          <div className="max-w-xl">
-            <p className="mb-4 text-[10px] font-bold uppercase tracking-[.24em] text-primary">{asString(props.tagline) || "New season / natural rhythm"}</p>
-            <h1 className="text-[clamp(3.2rem,6.4vw,6.9rem)] font-black leading-[.88] tracking-[-.065em] text-foreground">{title}{highlight ? <><br /><span className="font-medium italic text-primary">{highlight}</span></> : null}</h1>
-            {subtitle ? <p className="mt-6 max-w-lg text-sm leading-7 text-muted-foreground md:text-[15px]">{subtitle}</p> : null}
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={storefrontPath(asString(props.ctaLink) || "/shop", store?.slug)} className="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-[11px] font-bold uppercase tracking-[.14em] text-primary-foreground transition hover:-translate-y-0.5">{cta}</Link>
-              {secondary ? <Link href={storefrontPath(asString(props.secondaryCtaLink) || "/shop", store?.slug)} className="inline-flex min-h-12 items-center justify-center rounded-full border border-foreground/20 bg-background/55 px-7 text-[11px] font-bold uppercase tracking-[.14em] text-foreground backdrop-blur">{secondary}</Link> : null}
-            </div>
-          </div>
-        </div>
-        <div className="relative min-h-[390px] overflow-hidden md:min-h-0">
-          {image ? <><div className="absolute inset-0 hidden sm:block"><SafeStorefrontImage src={image} alt={asString(props.imageAlt) || title} fill priority className="object-cover" /></div><div className="absolute inset-0 sm:hidden"><SafeStorefrontImage src={mobileImage || image} alt={asString(props.imageAlt) || title} fill priority className="object-cover" /></div></> : <div className="absolute inset-0 bg-primary/10" />}
-          <div className="absolute inset-y-0 left-0 hidden w-24 bg-gradient-to-r from-secondary/70 to-transparent md:block" />
-          <div className="absolute bottom-5 right-5 rounded-full border border-white/45 bg-black/15 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.16em] text-white backdrop-blur">Made for repeat wear</div>
-        </div>
+  const p = block.props as Record<string, unknown>;
+  const image = s(p.imageUrl) || s(p.mediaUrl);
+  const mobile = s(p.mobileImageUrl) || image;
+  const title = s(p.title) || "Wear Your Story";
+  const subtitle = s(p.subtitle) || "Thoughtfully designed. Made for your everyday.";
+  return <section className="relative overflow-hidden border-b border-border bg-secondary/35">
+    <Botanical side="left" level={deco(block)} />
+    <div className="grid min-h-[320px] md:grid-cols-[46%_54%] lg:min-h-[365px]">
+      <div className="relative z-10 flex items-center bg-background/94 px-7 py-10 md:px-[8vw] md:py-12">
+        <div className="max-w-[430px]"><p className="mb-2 text-[9px] font-semibold uppercase tracking-[.32em]">{s(p.tagline) || "New Collection"}</p><h1 className="font-serif text-[48px] font-medium leading-[.84] tracking-[-.055em] sm:text-[58px] lg:text-[68px]">{title}</h1><p className="mt-3 text-[15px] leading-5 text-foreground/80">{subtitle}</p><Link href={storefrontPath(s(p.ctaLink) || "/shop", store?.slug)} className="mt-4 inline-flex h-10 items-center gap-5 rounded bg-primary px-5 text-[11px] font-medium text-primary-foreground">{s(p.ctaText) || "Shop New Arrivals"}<ArrowRight className="h-4 w-4" /></Link></div>
       </div>
-    </section>
-  );
+      <div className="relative min-h-[300px] bg-secondary sm:min-h-[360px]">{image ? <><div className="absolute inset-0 hidden sm:block"><SafeStorefrontImage src={image} alt={s(p.imageAlt) || title} fill priority className="object-cover" /></div><div className="absolute inset-0 sm:hidden"><SafeStorefrontImage src={mobile} alt={s(p.imageAlt) || title} fill priority className="object-cover" /></div></> : null}<div className="absolute inset-y-0 right-5 flex w-[155px] items-center bg-background/75 px-5 backdrop-blur-[2px] md:right-10"><div className="font-serif text-[24px] leading-[.92]">People<br/>Places<br/>A Brighter<br/>Tomorrow<div className="mt-4 h-px w-12 bg-foreground" /></div></div></div>
+    </div>
+  </section>;
 }
 
-const categoryIcons: ReactNode[] = [<Shirt key="shirt" className="h-8 w-8" />, <Sparkles key="sparkles" className="h-8 w-8" />, <PackageOpen key="pack" className="h-8 w-8" />, <Leaf key="leaf" className="h-8 w-8" />];
+const trustIcons = [PackageCheck, RotateCcw, CreditCard, Leaf];
+function ThreadsTrust({ block }: { block: StorePageBlock }) {
+  const p = block.props as Record<string, unknown>;
+  const raw = Array.isArray(p.badges) ? p.badges.filter((x): x is Record<string, unknown> => !!x && typeof x === "object") : [];
+  const defaults = [
+    { label: "Free Shipping", description: "On orders over ৳2000" }, { label: "Easy Returns", description: "Within 14 days" }, { label: "Secure Payments", description: "100% protected" }, { label: "Sustainable Choices", description: "For a brighter tomorrow" },
+  ];
+  const badges = raw.length ? raw : defaults;
+  return <section className="border-b border-border bg-background"><div className="mx-auto grid max-w-[1280px] grid-cols-2 px-4 md:grid-cols-4">{badges.slice(0,4).map((b,i) => { const Icon = trustIcons[i] ?? Check; return <div key={i} className="flex items-center gap-3 border-border px-3 py-4 md:border-r md:px-7 last:border-r-0"><Icon className="h-7 w-7 shrink-0 stroke-[1.5]" /><div><div className="text-[11px] font-semibold">{s(b.label)}</div><div className="mt-0.5 text-[9px] text-muted-foreground">{s(b.description)}</div></div></div>; })}</div></section>;
+}
 
+const fallbackIcons: ReactNode[] = [<Shirt key="a" className="h-8 w-8"/>, <Sparkles key="b" className="h-8 w-8"/>, <Leaf key="c" className="h-8 w-8"/>];
 function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const { data: categories = [] } = useProductCategories(store?.id);
-  const props = block.props as Record<string, unknown>;
-  const explicit = Array.isArray(props.items) ? props.items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : [];
-  const allItems = explicit.length ? explicit.map((item) => ({ name: asString(item.label) || asString(item.name), image: asString(item.imageUrl) || asString(item.image_url), value: asString(item.value) || asString(item.label) })) : categories.map((item) => ({ name: item.name, image: (item as { image_url?: string }).image_url || "", value: item.name }));
-  const limit = typeof props.limit === "number" ? props.limit : 10;
-  const items = allItems.slice(0, limit);
-  const rail = useRef<HTMLDivElement>(null);
-  const autoplay = props.autoplay !== false;
-  const intervalMs = typeof props.autoplayIntervalMs === "number" ? props.autoplayIntervalMs : 3400;
-  const showArrows = props.showArrows !== false;
-  useAutoRail(rail, intervalMs, autoplay);
+  const p = block.props as Record<string, unknown>;
+  const explicit = Array.isArray(p.items) ? p.items.filter((x): x is Record<string, unknown> => !!x && typeof x === "object") : [];
+  const items = (explicit.length ? explicit.map(x => ({ name: s(x.label)||s(x.name), image: s(x.imageUrl)||s(x.image_url), value: s(x.value)||s(x.label)||s(x.name) })) : categories.map(x => ({ name: x.name, image: (x as {image_url?: string}).image_url || "", value: x.name }))).slice(0, typeof p.limit === "number" ? p.limit : 8);
+  const rail = useRef<HTMLDivElement>(null); useAutoRail(rail, typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 3800, p.autoplay !== false);
   if (!items.length) return null;
   const shop = storefrontPath("/shop", store?.slug);
-  return (
-    <section className="relative py-16 md:py-24">
-      <SectionLeaves level={getDecoration(block)} />
-      <div className="mx-auto max-w-[1450px] px-5 md:px-8 lg:px-12">
-        <div className="mb-9 flex items-end justify-between gap-6"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary">{asString(props.tagline) || "Browse your mood"}</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "Shop by collection"}</h2></div>{showArrows ? <RailControls rail={rail} /> : null}</div>
-        <div ref={rail} className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-7">
-          {items.map((item, index) => <Link key={`${item.name}-${index}`} href={`${shop}?category=${encodeURIComponent(item.value || item.name)}`} className="group w-[138px] shrink-0 snap-start text-center sm:w-[160px] md:w-[184px]"><div className="relative mx-auto aspect-square overflow-hidden rounded-full border border-border bg-secondary/55 p-2 transition group-hover:-translate-y-1 group-hover:border-primary"><div className="relative h-full w-full overflow-hidden rounded-full bg-background">{item.image ? <SafeStorefrontImage src={item.image} alt={item.name} fill className="object-cover transition duration-700 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-primary">{categoryIcons[index % categoryIcons.length]}</div>}</div></div><h3 className="mt-4 text-sm font-bold tracking-[-.015em]">{item.name}</h3><p className="mt-1 text-[10px] uppercase tracking-[.14em] text-muted-foreground">Explore</p></Link>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ThreadsProducts({ block }: { block: StorePageBlock }) {
-  const store = useOptionalStore();
-  const { data: products = [] } = useProducts(store?.id);
-  const props = block.props as Record<string, unknown>;
-  const source = asString(props.source);
-  const filtered = source === "featured" ? products.filter((product) => product.featured) : products;
-  const limit = typeof props.limit === "number" ? props.limit : 10;
-  const visible = filtered.slice(0, limit);
-  const rail = useRef<HTMLDivElement>(null);
-  const autoplay = props.autoplay !== false;
-  const intervalMs = typeof props.autoplayIntervalMs === "number" ? props.autoplayIntervalMs : 4300;
-  const showArrows = props.showArrows !== false;
-  useAutoRail(rail, intervalMs, autoplay);
-  if (!visible.length) return null;
-  return (
-    <section className="relative overflow-hidden bg-primary py-16 text-primary-foreground md:py-24">
-      <SectionLeaves side="left" level={getDecoration(block)} />
-      <div className="mx-auto max-w-[1450px] px-5 md:px-8 lg:px-12">
-        <div className="mb-9 flex items-end justify-between gap-6"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary-foreground/65">{asString(props.tagline) || "Current favourites"}</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "Featured pieces"}</h2></div><div className="flex items-center gap-4"><Link href={storefrontPath("/shop", store?.slug)} className="hidden text-[11px] font-bold uppercase tracking-[.14em] text-primary-foreground sm:block">View all</Link>{showArrows ? <RailControls rail={rail} inverse /> : null}</div></div>
-        <div ref={rail} className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-5">
-          {visible.map((product) => <div key={product.id} className="w-[76vw] max-w-[285px] shrink-0 snap-start sm:w-[42vw] md:w-[29vw] lg:w-[22vw] lg:max-w-[320px]"><ThreadsProductCard product={product} framed /></div>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function extractText(value: unknown): string[] {
-  if (typeof value === "string") return value.trim() ? [value.trim()] : [];
-  if (!value || typeof value !== "object") return [];
-  const node = value as Record<string, unknown>;
-  return [...(typeof node.text === "string" && node.text.trim() ? [node.text.trim()] : []), ...(Array.isArray(node.content) ? node.content.flatMap(extractText) : [])];
-}
-
-function ThreadsStory({ block }: { block: StorePageBlock }) {
-  const props = block.props as Record<string, unknown>;
-  const image = asString(props.imageUrl);
-  const paragraphs = extractText(props.body);
-  if (!asString(props.title) && !paragraphs.length && !image) return null;
-  return <section className="relative overflow-hidden py-16 md:py-28"><SectionLeaves level={getDecoration(block)} /><div className="mx-auto grid max-w-[1320px] items-center gap-10 px-5 md:grid-cols-2 md:px-8 lg:gap-16"><div className="relative aspect-[4/5] overflow-hidden rounded-[2.4rem] bg-secondary/55">{image ? <SafeStorefrontImage src={image} alt={asString(props.imageAlt) || asString(props.title) || "Our story"} fill className="object-cover" /> : <div className="grid h-full place-items-center text-primary/25"><Leaf className="h-28 w-28" /></div>}</div><div><p className="mb-3 text-[10px] font-bold uppercase tracking-[.22em] text-primary">{asString(props.eyebrow) || "Why Threads"}</p><h2 className="max-w-[12ch] text-4xl font-black leading-[.96] tracking-[-.055em] md:text-6xl">{asString(props.title) || "Clothes with a little more soul."}</h2>{paragraphs.length ? <div className="mt-6 max-w-xl space-y-4 text-sm leading-7 text-muted-foreground md:text-[15px]">{paragraphs.slice(0, 5).map((text, index) => <p key={`${text.slice(0, 20)}-${index}`}>{text}</p>)}</div> : null}</div></div></section>;
+  return <section className="relative overflow-hidden bg-background py-7 md:py-8"><Botanical side="right" level={deco(block)} /><div className="mx-auto max-w-[1280px] px-5 md:px-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-[20px] font-semibold tracking-[-.02em] md:text-[24px]">{s(p.title)||"Shop by Category"}</h2><Link href={shop} className="text-[10px] font-semibold">View All →</Link></div><div className="relative"><button onClick={() => rail.current?.scrollBy({left:-300,behavior:"smooth"})} className="absolute -left-4 top-[42%] z-10 hidden h-8 w-8 place-items-center rounded-full bg-background shadow md:grid" aria-label="Previous"><ArrowLeft className="h-4 w-4"/></button><div ref={rail} className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{items.map((item,i) => <Link key={`${item.name}-${i}`} href={`${shop}?category=${encodeURIComponent(item.value)}`} className="w-[69vw] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-md border border-border bg-card shadow-sm sm:w-[32vw] md:w-[185px] lg:w-[190px]"><div className="relative aspect-[.83] bg-secondary">{item.image ? <SafeStorefrontImage src={item.image} alt={item.name} fill className="object-cover"/> : <div className="grid h-full place-items-center text-primary">{fallbackIcons[i%fallbackIcons.length]}</div>}</div><div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold"><span>{item.name}</span><ArrowRight className="h-3.5 w-3.5"/></div></Link>)}</div><button onClick={() => rail.current?.scrollBy({left:300,behavior:"smooth"})} className="absolute -right-4 top-[42%] z-10 hidden h-8 w-8 place-items-center rounded-full bg-background shadow md:grid" aria-label="Next"><ArrowRight className="h-4 w-4"/></button></div></div></section>;
 }
 
 function ThreadsPromo({ block }: { block: StorePageBlock }) {
-  const store = useOptionalStore();
-  const props = block.props as Record<string, unknown>;
-  const cards = [
-    {
-      image: asString(props.imageUrl),
-      alt: asString(props.imageAlt),
-      badge: asString(props.badgeText) || "Everyday essentials",
-      title: asString(props.title) || "Made for the everyday.",
-      subtitle: asString(props.subtitle),
-      cta: asString(props.ctaText) || "Shop essentials",
-      href: asString(props.ctaLink) || "/shop",
-    },
-    {
-      image: asString(props.secondaryImageUrl),
-      alt: asString(props.secondaryImageAlt),
-      badge: "Considered choices",
-      title: asString(props.secondaryTitle) || "Wear more. Waste less.",
-      subtitle: asString(props.secondarySubtitle),
-      cta: asString(props.secondaryCtaText) || "Explore the edit",
-      href: asString(props.secondaryCtaLink) || "/shop",
-    },
-  ];
+  const store = useOptionalStore(); const p = block.props as Record<string, unknown>;
+  const cards = [{ image:s(p.imageUrl), title:s(p.title)||"Everyday Essentials", subtitle:s(p.subtitle)||"Comfort meets purpose.", cta:s(p.ctaText)||"Explore the Collection", href:s(p.ctaLink)||"/shop", reverse:false }, { image:s(p.secondaryImageUrl), title:s(p.secondaryTitle)||"Sustainable Choices", subtitle:s(p.secondarySubtitle)||"Better materials. A brighter tomorrow.", cta:s(p.secondaryCtaText)||"Learn More", href:s(p.secondaryCtaLink)||"/shop", reverse:true }];
+  return <section className="bg-background px-5 pb-3 pt-1 md:px-8"><div className="mx-auto grid max-w-[1280px] gap-3 md:grid-cols-2">{cards.map((c,i) => <article key={i} className="grid min-h-[175px] overflow-hidden rounded-md bg-secondary md:grid-cols-[58%_42%]"><div className={`relative min-h-[175px] ${c.reverse ? "md:order-2" : ""}`}>{c.image ? <SafeStorefrontImage src={c.image} alt={c.title} fill className="object-cover"/> : null}</div><div className="flex items-center p-5"><div><h2 className="font-serif text-[28px] leading-[.9] md:text-[34px]">{c.title}</h2><p className="mt-2 text-[13px]">{c.subtitle}</p><Link href={storefrontPath(c.href, store?.slug)} className="mt-3 inline-flex h-9 items-center gap-4 rounded bg-primary px-4 text-[9px] text-primary-foreground">{c.cta}<ArrowRight className="h-3.5 w-3.5"/></Link></div></div></article>)}</div></section>;
+}
 
-  return (
-    <section className="relative px-5 py-8 md:px-8 md:py-12 lg:px-12">
-      <SectionLeaves level={getDecoration(block)} />
-      <div className="mx-auto grid max-w-[1450px] gap-5 md:grid-cols-2">
-        {cards.map((card, index) => (
-          <article key={`${card.title}-${index}`} className="group relative min-h-[420px] overflow-hidden rounded-[2.2rem] bg-secondary md:min-h-[560px]">
-            {card.image ? <SafeStorefrontImage src={card.image} alt={card.alt || card.title} fill className="object-cover transition duration-700 group-hover:scale-[1.025]" /> : <div className="absolute inset-0 bg-primary/12" />}
-            <div className="absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-7 text-background md:p-10">
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-[.2em] text-background/70">{card.badge}</p>
-              <h2 className="max-w-[13ch] text-3xl font-black leading-[.95] tracking-[-.045em] md:text-5xl">{card.title}</h2>
-              {card.subtitle ? <p className="mt-4 max-w-lg text-sm leading-6 text-background/75">{card.subtitle}</p> : null}
-              <Link href={storefrontPath(card.href, store?.slug)} className="mt-6 inline-flex min-h-11 items-center rounded-full bg-background px-5 text-[10px] font-bold uppercase tracking-[.14em] text-foreground">{card.cta}<ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
+function ThreadsProducts({ block }: { block: StorePageBlock }) {
+  const store = useOptionalStore(); const { data: products = [] } = useProducts(store?.id); const p = block.props as Record<string, unknown>;
+  const source = s(p.source); const visible = (source === "featured" ? products.filter(x=>x.featured) : products).slice(0, typeof p.limit === "number" ? p.limit : 8); const rail=useRef<HTMLDivElement>(null); useAutoRail(rail, typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4300, p.autoplay !== false); if(!visible.length)return null;
+  return <section className="relative overflow-hidden bg-primary py-7 text-primary-foreground md:py-8"><Botanical side="left" level={deco(block)} inverse/><Botanical side="right" level={deco(block)} inverse/><div className="mx-auto grid max-w-[1280px] gap-5 px-5 md:grid-cols-[190px_1fr] md:px-8"><div className="relative z-10 flex flex-col justify-center"><h2 className="font-serif text-[28px] leading-none md:text-[30px]">{s(p.title)||"Featured Products"}</h2><p className="mt-1 text-[12px] text-primary-foreground/75">{s(p.subtitle)||"Stories you can wear."}</p><Link href={storefrontPath("/shop",store?.slug)} className="mt-4 inline-flex w-fit items-center gap-4 rounded border border-primary-foreground/55 px-4 py-2 text-[9px]">View All Products<ArrowRight className="h-3.5 w-3.5"/></Link><div className="mt-4 hidden md:block"><RailButtons rail={rail} inverse/></div></div><div ref={rail} className="flex snap-x gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{visible.map(product => <div key={product.id} className="w-[62vw] max-w-[170px] shrink-0 snap-start sm:w-[34vw] md:w-[160px]"><ThreadsProductCard product={product} framed/></div>)}</div></div></section>;
 }
 
 function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
-  const store = useOptionalStore();
-  const { data: products = [] } = useProducts(store?.id);
-  const props = block.props as Record<string, unknown>;
-  const source = asString(props.source);
-  const filtered = source === "featured" ? products.filter((product) => product.featured) : products;
-  const limit = typeof props.limit === "number" ? props.limit : 8;
-  const visible = filtered.slice(0, limit);
-  if (!visible.length) return null;
-  return (
-    <section className="relative py-16 md:py-24">
-      <SectionLeaves side="right" level={getDecoration(block)} />
-      <div className="mx-auto max-w-[1450px] px-5 md:px-8 lg:px-12">
-        <div className="mb-9 flex items-end justify-between gap-4">
-          <div><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary">{asString(props.tagline) || "Fresh from the studio"}</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "New at Threads"}</h2></div>
-          <Link href={storefrontPath("/shop?sort=newest", store?.slug)} className="text-[10px] font-bold uppercase tracking-[.14em] text-foreground underline decoration-border underline-offset-8">View all</Link>
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
-          {visible.map((product) => <ThreadsProductCard key={product.id} product={product} />)}
-        </div>
-      </div>
-    </section>
-  );
+  const store=useOptionalStore(); const {data:products=[]}=useProducts(store?.id); const p=block.props as Record<string,unknown>; const visible=products.slice(0, typeof p.limit === "number"?p.limit:6); if(!visible.length)return null;
+  return <section className="relative overflow-hidden bg-background py-7 md:py-8"><Botanical side="left" level={deco(block)}/><Botanical side="right" level={deco(block)}/><div className="mx-auto max-w-[1280px] px-5 md:px-8"><h2 className="mb-5 text-center font-serif text-[25px]">{s(p.title)||"New at EZCOMO"}</h2><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{visible.map(product=><ThreadsProductCard key={product.id} product={product}/>)}</div></div></section>;
 }
 
 function ThreadsCommunity({ block }: { block: StorePageBlock }) {
-  const props = block.props as Record<string, unknown>;
-  const images = Array.isArray(props.images) ? props.images.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).slice(0, 4) : [];
-  return (
-    <section className="relative overflow-hidden bg-secondary/55 py-16 md:py-24">
-      <SectionLeaves side="left" level={getDecoration(block)} />
-      <div className="mx-auto max-w-[1450px] px-5 md:px-8 lg:px-12">
-        <div className="mx-auto mb-10 max-w-2xl text-center"><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary">Wear it your way</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "Join our community"}</h2>{asString(props.subtitle) ? <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{asString(props.subtitle)}</p> : null}</div>
-        {images.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5">{images.map((image, index) => <div key={`${image}-${index}`} className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-card"><SafeStorefrontImage src={image} alt={`Community look ${index + 1}`} fill className="object-cover" /></div>)}</div> : null}
-      </div>
-    </section>
-  );
-}
-
-function ThreadsTrust({ block }: { block: StorePageBlock }) {
-  const props = block.props as Record<string, unknown>;
-  const badges = Array.isArray(props.badges) ? props.badges.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : [];
-  if (!badges.length) return null;
-  return <section className="border-y border-border/70 bg-secondary/35"><div className="mx-auto grid max-w-[1450px] divide-y divide-border/70 px-5 md:grid-cols-3 md:divide-x md:divide-y-0 md:px-8 lg:px-12">{badges.slice(0, 3).map((badge, index) => <div key={`${asString(badge.label)}-${index}`} className="py-8 md:px-8 md:py-10 first:md:pl-0"><div className="mb-4 grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><Check className="h-4 w-4" /></div><h3 className="text-sm font-bold">{asString(badge.label)}</h3>{asString(badge.description) ? <p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">{asString(badge.description)}</p> : null}</div>)}</div></section>;
-}
-
-function ThreadsTestimonials({ block }: { block: StorePageBlock }) {
-  const props = block.props as Record<string, unknown>;
-  const reviews = Array.isArray(props.reviews) ? props.reviews.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : [];
-  if (!reviews.length) return null;
-  return <section className="relative py-16 md:py-24"><SectionLeaves side="left" level={getDecoration(block)} /><div className="mx-auto max-w-[1280px] px-5 md:px-8"><div className="mx-auto mb-10 max-w-2xl text-center"><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary">Community notes</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "Loved in real life"}</h2></div><div className="grid gap-4 md:grid-cols-3">{reviews.slice(0, 3).map((review, index) => <article key={`${asString(review.name)}-${index}`} className="rounded-[1.75rem] border border-border bg-card p-6 md:p-7"><p className="text-primary">★★★★★</p><p className="mt-4 text-sm leading-7 text-foreground/80">“{asString(review.comment) || asString(review.text)}”</p><p className="mt-5 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">{asString(review.name) || asString(review.author) || "Customer"}</p></article>)}</div></div></section>;
+  const p=block.props as Record<string,unknown>; const [email,setEmail]=useState(""); const [done,setDone]=useState(false);
+  return <section className="relative overflow-hidden border-y border-border bg-secondary/45 py-7"><Botanical side="left" level={deco(block)}/><Botanical side="right" level={deco(block)}/><div className="mx-auto grid max-w-[1100px] items-center gap-5 px-5 md:grid-cols-[1fr_1.1fr] md:px-8"><div><h2 className="font-serif text-[27px] leading-none">{s(p.title)||"Join Our Community"}</h2><p className="mt-1 text-[11px] text-muted-foreground">{s(p.subtitle)||"Get updates on new collections, offers and more."}</p></div>{done?<p className="text-sm font-medium">Thank you for subscribing.</p>:<form onSubmit={e=>{e.preventDefault();if(email.includes("@"))setDone(true)}} className="flex h-10 overflow-hidden rounded border border-border bg-background"><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="Your email address" className="min-w-0 flex-1 bg-transparent px-4 text-[11px] outline-none"/><button className="w-32 bg-primary text-[10px] text-primary-foreground">Subscribe</button></form>}</div></section>;
 }
 
 function ThreadsFaq({ block }: { block: StorePageBlock }) {
-  const props = block.props as Record<string, unknown>;
-  const entries = Array.isArray(props.faqs) ? props.faqs.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : [];
-  const [open, setOpen] = useState<number | null>(0);
-  if (!entries.length) return null;
-  return <section className="bg-card/55 py-16 md:py-24"><div className="mx-auto grid max-w-[1180px] gap-10 px-5 md:grid-cols-[.75fr_1.25fr] md:px-8"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-[.22em] text-primary">Need to know</p><h2 className="text-3xl font-black tracking-[-.045em] md:text-5xl">{asString(props.title) || "Before you order"}</h2></div><div className="border-t border-border">{entries.map((entry, index) => { const question = asString(entry.question) || asString(entry.q); const answer = asString(entry.answer) || asString(entry.a); return <div key={`${question}-${index}`} className="border-b border-border"><button type="button" onClick={() => setOpen(open === index ? null : index)} className="flex w-full items-center justify-between gap-4 py-5 text-left text-sm font-bold"><span>{question}</span><ChevronDown className={`h-4 w-4 transition ${open === index ? "rotate-180" : ""}`} /></button>{open === index ? <p className="pb-5 pr-8 text-sm leading-6 text-muted-foreground">{answer}</p> : null}</div>; })}</div></div></section>;
+  const p=block.props as Record<string,unknown>; const entries=Array.isArray(p.faqs)?p.faqs.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object"):[]; const [open,setOpen]=useState<number|null>(null); if(!entries.length)return null;
+  return <section className="bg-background py-8 md:py-10"><div className="mx-auto grid max-w-[1100px] gap-8 px-5 md:grid-cols-[.75fr_1.25fr] md:px-8"><div><h2 className="font-serif text-[34px] leading-[.92] md:text-[42px]">Frequently<br/>Asked Questions</h2><p className="mt-3 text-[12px]">Everything you need to know, right here.</p></div><div>{entries.slice(0,6).map((e,i)=>{const q=s(e.question)||s(e.q),a=s(e.answer)||s(e.a);return <div key={i} className="border-b border-border"><button onClick={()=>setOpen(open===i?null:i)} className="flex w-full items-center justify-between py-3 text-left text-[11px]"><span>{q}</span><span className="text-base">{open===i?"−":"+"}</span></button>{open===i?<p className="pb-3 pr-8 text-[11px] leading-5 text-muted-foreground">{a}</p>:null}</div>})}</div></div></section>;
 }
 
+function extractText(v:unknown):string[]{if(typeof v==="string")return v.trim()?[v.trim()]:[];if(!v||typeof v!=="object")return[];const n=v as Record<string,unknown>;return[...(typeof n.text==="string"&&n.text.trim()?[n.text.trim()]:[]),...(Array.isArray(n.content)?n.content.flatMap(extractText):[])]}
+function ThreadsStory({ block }: { block: StorePageBlock }) {
+  const p=block.props as Record<string,unknown>; const image=s(p.imageUrl); const para=extractText(p.body); return <section className="relative min-h-[310px] overflow-hidden bg-secondary md:min-h-[390px]">{image?<SafeStorefrontImage src={image} alt={s(p.imageAlt)||s(p.title)||"Style travels further"} fill className="object-cover"/>:null}<div className="absolute inset-y-0 left-0 flex w-full items-center bg-gradient-to-r from-background via-background/92 to-transparent px-6 md:w-[46%] md:px-[8vw]"><div className="max-w-[300px]"><h2 className="font-serif text-[35px] leading-[.9] md:text-[42px]">{s(p.title)||"Style Travels Further"}</h2><p className="mt-3 text-[11px] leading-5">{para[0]||"Clothing for a more curious tomorrow. Inspired by places, people and a slower way of living."}</p><div className="mt-4 h-px w-12 bg-foreground"/></div></div></section>;
+}
+
+function ThreadsTestimonials({ block }: { block: StorePageBlock }) { const p=block.props as Record<string,unknown>; const reviews=Array.isArray(p.reviews)?p.reviews.filter((x):x is Record<string,unknown>=>!!x&&typeof x==="object"):[]; if(!reviews.length)return null; return <section className="bg-secondary/35 py-8"><div className="mx-auto grid max-w-[1100px] gap-3 px-5 md:grid-cols-3">{reviews.slice(0,3).map((r,i)=><article key={i} className="bg-background p-5"><p className="text-xs text-primary">★★★★★</p><p className="mt-3 text-[12px] leading-5">“{s(r.comment)||s(r.text)}”</p><p className="mt-3 text-[9px] uppercase tracking-[.12em] text-muted-foreground">{s(r.name)||s(r.author)||"Customer"}</p></article>)}</div></section> }
+
 export function ThreadsBlockRenderer({ block, template }: { block: StorePageBlock; template: StorefrontTemplateDefinition }) {
-  switch (block.type) {
-    case "hero": return <ThreadsHero block={block} />;
-    case "category-showcase": return <ThreadsCategories block={block} />;
-    case "featured-products": return <ThreadsProducts block={block} />;
-    case "recommended-products": return <ThreadsNewArrivals block={block} />;
-    case "promo-banner": return <ThreadsPromo block={block} />;
-    case "social-feed": return <ThreadsCommunity block={block} />;
-    case "rich-text": return <ThreadsStory block={block} />;
-    case "trust-badges": return <ThreadsTrust block={block} />;
-    case "testimonials": return <ThreadsTestimonials block={block} />;
-    case "faq-accordion": return <ThreadsFaq block={block} />;
-    default: return <StorefrontBlockRenderer block={block} template={template} />;
+  switch(block.type){
+    case "hero":return <ThreadsHero block={block}/>;
+    case "trust-badges":return <ThreadsTrust block={block}/>;
+    case "category-showcase":return <ThreadsCategories block={block}/>;
+    case "promo-banner":return <ThreadsPromo block={block}/>;
+    case "featured-products":return <ThreadsProducts block={block}/>;
+    case "recommended-products":return <ThreadsNewArrivals block={block}/>;
+    case "social-feed":return <ThreadsCommunity block={block}/>;
+    case "faq-accordion":return <ThreadsFaq block={block}/>;
+    case "rich-text":return <ThreadsStory block={block}/>;
+    case "testimonials":return <ThreadsTestimonials block={block}/>;
+    default:return <StorefrontBlockRenderer block={block} template={template}/>;
   }
 }
