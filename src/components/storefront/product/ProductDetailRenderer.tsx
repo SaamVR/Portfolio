@@ -405,17 +405,39 @@ function ProductDetailsShell({
         ? "space-y-8"
         : "space-y-8 rounded-3xl border border-border/80 bg-card/40 p-6 md:p-8";
 
+  if (isFashion) {
+    return (
+      <div className="space-y-12">
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="lg:col-span-7">
+            <ProductImageGallery images={product.images} alt={product.name} presentation="fashion" />
+          </div>
+          <div className="lg:col-span-5 lg:row-span-2">
+            <div className="space-y-6 border-t border-border pt-6 lg:sticky lg:top-24 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+              {side}
+            </div>
+          </div>
+          <div className="lg:col-span-7">
+            <div className={detailCardClass}>
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-12">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12 items-start">
         <div className={cn("space-y-10", leadSpan)}>
-          <ProductImageGallery images={product.images} alt={product.name} presentation={isFashion ? "fashion" : "default"} />
+          <ProductImageGallery images={product.images} alt={product.name} presentation="default" />
           <div className={detailCardClass}>
             {children}
           </div>
         </div>
         <div className={sideSpan}>
-          <div className={cn("sticky top-24 space-y-6", isFashion ? "border-t border-border pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0" : "rounded-3xl border border-border bg-card/80 p-6 shadow-sm backdrop-blur-sm md:p-8")}>
+          <div className="sticky top-24 space-y-6 rounded-3xl border border-border bg-card/80 p-6 shadow-sm backdrop-blur-sm md:p-8">
             {side}
           </div>
         </div>

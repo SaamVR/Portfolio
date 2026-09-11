@@ -636,6 +636,7 @@ export function applyTemplateDemoContentToPages<
     blocks: Array<{
       type: string;
       props: Record<string, unknown>;
+      layoutVariant?: string;
     }>;
   },
 >(pages: TPage[], templateId: string): TPage[] {
@@ -648,6 +649,7 @@ export function applyTemplateDemoContentToPages<
   const featuredSeed = homepageBlocks.find((block) => block.type === "featured_products")?.data ?? null;
   const faqSeed = homepageBlocks.find((block) => ["faq", "faq_accordion"].includes(block.type ?? ""))?.data ?? null;
   const promoSeed = homepageBlocks.find((block) => ["promo_banner", "offer_banner", "deal_banner", "countdown", "cta"].includes(block.type ?? ""))?.data ?? null;
+  const isFashionPreview = normalizeTemplateId(templateId) === "fashion";
 
   return pages.map((page) => {
     if (!page.isHomepage && page.slug !== "/") {
@@ -663,15 +665,19 @@ export function applyTemplateDemoContentToPages<
 
           return {
             ...block,
+            ...(isFashionPreview ? { layoutVariant: "poster" } : {}),
             props: {
               ...block.props,
-              tagline: getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
-              title: getString(heroSeed.heading, block.props.title as string | undefined),
-              subtitle: getString(heroSeed.subheading, block.props.subtitle as string | undefined),
-              ctaText: getString(primaryCta?.label, block.props.ctaText as string | undefined),
+              tagline: isFashionPreview ? "New Drop / 2026" : getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
+              title: isFashionPreview ? "Built for the" : getString(heroSeed.heading, block.props.title as string | undefined),
+              highlight: isFashionPreview ? "City" : block.props.highlight,
+              subtitle: isFashionPreview
+                ? "Relaxed silhouettes, graphic staples, and easy layers made for everyday wear."
+                : getString(heroSeed.subheading, block.props.subtitle as string | undefined),
+              ctaText: isFashionPreview ? "Shop New Drop" : getString(primaryCta?.label, block.props.ctaText as string | undefined),
               ctaLink: getString(primaryCta?.url, block.props.ctaLink as string | undefined),
-              secondaryCtaText: getString(secondaryCta?.label, block.props.secondaryCtaText as string | undefined),
-              secondaryCtaLink: getString(secondaryCta?.url, block.props.secondaryCtaLink as string | undefined),
+              secondaryCtaText: isFashionPreview ? "View Collections" : getString(secondaryCta?.label, block.props.secondaryCtaText as string | undefined),
+              secondaryCtaLink: isFashionPreview ? "/shop" : getString(secondaryCta?.url, block.props.secondaryCtaLink as string | undefined),
               imageUrl: getString(heroSeed.image_url, assets.hero_image_url ?? (block.props.imageUrl as string | undefined)),
               mobileImageUrl: getString(heroSeed.mobile_image_url, assets.hero_mobile_image_url ?? (block.props.mobileImageUrl as string | undefined)),
               imageAlt: getString(heroSeed.image_alt, `${seedStore?.name ?? "Store"} hero`),
@@ -682,10 +688,21 @@ export function applyTemplateDemoContentToPages<
         if (block.type === "category-showcase" && categorySeed) {
           return {
             ...block,
+            ...(isFashionPreview ? { layoutVariant: "cards" } : {}),
             props: {
               ...block.props,
-              title: getString(categorySeed.title, block.props.title as string | undefined),
-              tagline: getString(categorySeed.subtitle ?? categorySeed.eyebrow, block.props.tagline as string | undefined),
+              title: isFashionPreview ? "Shop by Collection" : getString(categorySeed.title, block.props.title as string | undefined),
+              tagline: isFashionPreview ? "Collections" : getString(categorySeed.subtitle ?? categorySeed.eyebrow, block.props.tagline as string | undefined),
+              ...(isFashionPreview ? {
+                limit: 5,
+                items: (seedStore?.categories ?? []).filter((category) => category.is_active !== false).map((category) => ({
+                  label: category.name,
+                  value: category.name,
+                  tagline: category.description ?? "",
+                  imageUrl: category.image_url ?? "",
+                  filterKey: "category" as const,
+                })),
+              } : {}),
               fallbackImageUrl: getString(categorySeed.fallback_image_url, assets.fallback_category_image_url ?? (block.props.fallbackImageUrl as string | undefined)),
             },
           };
@@ -718,11 +735,29 @@ export function applyTemplateDemoContentToPages<
             ...block,
             props: {
               ...block.props,
-              title: getString(promoSeed.title ?? promoSeed.heading, block.props.title as string | undefined),
+              title: isFashionPreview ? "The Mid-Season Edit" : getString(promoSeed.title ?? promoSeed.heading, block.props.title as string | undefined),
+              ...(isFashionPreview ? {
+                subtitle: "Selected staples and easy layers, brought together for the season ahead.",
+                ctaText: "Shop the edit",
+                ctaLink: "/shop",
+              } : {}),
               imageUrl: getString(promoSeed.image_url, assets.promo_image_url ?? (block.props.imageUrl as string | undefined)),
               backgroundImageUrl: getString(promoSeed.background_image_url, assets.promo_image_url ?? (block.props.backgroundImageUrl as string | undefined)),
             },
           };
+        }
+
+        if (isFashionPreview && block.type === "testimonials") {
+          return { ...block, props: { ...block.props, title: "Worn. Washed. Repeated.", subtitle: "What customers say after receiving their order." } };
+        }
+        if (isFashionPreview && block.type === "social-feed") {
+          return { ...block, props: { ...block.props, title: "Styled beyond the studio", subtitle: "Outfits, details, and everyday styling from the lookbook." } };
+        }
+        if (isFashionPreview && block.type === "trust-badges") {
+          return { ...block, props: { ...block.props, title: "The essentials, handled" } };
+        }
+        if (isFashionPreview && block.type === "faq-accordion") {
+          return { ...block, props: { ...block.props, title: "Before you order" } };
         }
 
         return block;

@@ -30,6 +30,13 @@ interface CategoryShowcaseProps {
     layoutVariant?: "cards" | "carousel" | "masonry" | "compact-list" | string;
     source?: "auto" | "categories" | "types" | string;
     limit?: number;
+    items?: Array<{
+      label: string;
+      value: string;
+      tagline?: string;
+      imageUrl?: string;
+      filterKey?: "category" | "type";
+    }>;
     imagePosition?: string;
     focalX?: number;
     focalY?: number;
@@ -68,6 +75,8 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string; fallback_image_url?: string }>("home_categories", storeId);
   const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
+  const preloadedCustomData = currentStore?.siteSettings?.categories_custom_data;
+  const resolvedCustomData = customData ?? preloadedCustomData;
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const layoutVariant = overrides?.layoutVariant ?? "cards";
   const source = overrides?.source ?? "auto";
@@ -88,13 +97,22 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const isFashion = templateId === "fashion";
+  const customCategoryRows = Array.isArray(resolvedCustomData)
+    ? resolvedCustomData.filter((entry): entry is Record<string, any> => Boolean(entry) && typeof entry === "object")
+    : [];
+  const customTypeData = !Array.isArray(resolvedCustomData) && resolvedCustomData?.types && typeof resolvedCustomData.types === "object"
+    ? resolvedCustomData.types as Record<string, Record<string, any>>
+    : {};
+  const getCustomData = (key: string) => customTypeData[key]
+    ?? customCategoryRows.find((entry) => entry.name === key || entry.slug === key)
+    ?? {};
 
   if (categoriesLoading || typesLoading) {
     return <StorefrontSectionSkeleton title={overrides?.title ?? legacySettings?.title ?? "Loading categories"} cards={4} />;
   }
 
   const categoryItems = dbCategories.map((category) => {
-    const custom = customData?.types?.[category.name] ?? {};
+    const custom = getCustomData(category.name);
     return {
       label: category.name,
       type: category.name,
@@ -105,7 +123,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     };
   });
   const typeItems = dbTypes.map((t) => {
-    const custom = customData?.types?.[t.name] ?? {};
+    const custom = getCustomData(t.name);
     return {
       label: t.name,
       type: t.name,
@@ -115,8 +133,27 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
       filterKey: "type" as const,
     };
   });
+  const seededCategoryItems = customCategoryRows
+    .filter((category) => category.is_active !== false && typeof category.name === "string" && category.name.trim())
+    .sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0))
+    .map((category) => ({
+      label: String(category.name),
+      type: String(category.name),
+      tagline: typeof category.description === "string" && category.description.trim() ? category.description.trim() : "Explore this collection",
+      image_url: typeof category.image_url === "string" && category.image_url.trim() ? category.image_url : null,
+      icon: FolderTree,
+      filterKey: "category" as const,
+    }));
+  const explicitItems = (overrides?.items ?? []).map((item) => ({
+    label: item.label,
+    type: item.value,
+    tagline: item.tagline?.trim() || "Explore this collection",
+    image_url: item.imageUrl?.trim() || null,
+    icon: FolderTree,
+    filterKey: item.filterKey ?? "category" as const,
+  }));
   const fallbackItems = fallbackCategories.map((cat) => {
-    const custom = customData?.types?.[cat.type] ?? {};
+    const custom = getCustomData(cat.type);
     return {
       label: cat.label,
       type: cat.type,
@@ -127,16 +164,22 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     };
   });
   const categoriesToRender = (
-    source === "categories"
-      ? categoryItems.length > 0 ? categoryItems : fallbackItems
+    explicitItems.length > 0
+      ? explicitItems
+      : source === "categories"
+      ? categoryItems.length > 0 ? categoryItems : isFashion ? seededCategoryItems : fallbackItems
       : source === "types"
-      ? typeItems.length > 0 ? typeItems : fallbackItems
+      ? typeItems.length > 0 ? typeItems : isFashion ? seededCategoryItems : fallbackItems
       : categoryItems.length > 0
       ? categoryItems
       : typeItems.length > 0
       ? typeItems
+      : isFashion
+      ? seededCategoryItems
       : fallbackItems
   ).slice(0, limit || undefined);
+
+  if (isFashion && categoriesToRender.length === 0) return null;
 
   return (
     <section className={isFashion ? "py-16 md:py-28" : "py-14 md:py-20"}>

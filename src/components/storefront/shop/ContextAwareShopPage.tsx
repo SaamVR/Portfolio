@@ -811,13 +811,15 @@ function ShopHero({
   isLoading?: boolean;
 }) {
   const badge = settings.hero_badge?.trim()
-    || (variant === "food" ? "Menu" : variant === "real_estate" ? "Listings" : variant === "subscription" ? "Plans" : "Catalog");
+    || (variant === "fashion" ? "Collection" : variant === "food" ? "Menu" : variant === "real_estate" ? "Listings" : variant === "subscription" ? "Plans" : "Catalog");
   const title = settings.hero_title?.trim()
     || settings.title?.trim()
-    || (variant === "fashion" ? `Browse ${storeName} collections` : variant === "beauty" ? `Find your ${storeName} routine` : variant === "electronics" ? `Compare ${storeName} devices` : variant === "food" ? `Order from ${storeName}` : variant === "service" ? `Book ${storeName} services` : variant === "hotel" ? `Explore ${storeName} rooms` : variant === "real_estate" ? `Find property with ${storeName}` : `Browse ${storeName}`);
+    || (variant === "fashion" ? `The ${storeName} collection` : variant === "beauty" ? `Find your ${storeName} routine` : variant === "electronics" ? `Compare ${storeName} devices` : variant === "food" ? `Order from ${storeName}` : variant === "service" ? `Book ${storeName} services` : variant === "hotel" ? `Explore ${storeName} rooms` : variant === "real_estate" ? `Find property with ${storeName}` : `Browse ${storeName}`);
   const description = settings.hero_description?.trim()
     || settings.description?.trim()
-    || `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`;
+    || (variant === "fashion"
+      ? `Everyday essentials, relaxed silhouettes, and current drops from ${storeName}.`
+      : `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`);
 
   if (variant === "fashion") {
     return (
@@ -936,6 +938,15 @@ function CatalogNoteSection({
   count: number;
 }) {
   if (settings.catalog_note_visible === false) {
+    return null;
+  }
+  const hasMerchantCatalogNote = Boolean(
+    settings.catalog_note_title?.trim()
+      || settings.catalog_note_description?.trim()
+      || settings.promo_title?.trim()
+      || settings.promo_description?.trim(),
+  );
+  if (variant === "fashion" && !hasMerchantCatalogNote) {
     return null;
   }
 
@@ -1403,8 +1414,14 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     </div>
   );
 
-  const newsletter = (shopPage?.newsletter_visible ?? true)
-    ? <NewsletterSection title={`Stay in touch with ${storeName}`} description="Use this section for launches, offers, or merchant updates without changing the core commerce flow." />
+  const newsletterVisible = shopVariant === "fashion"
+    ? shopPage?.newsletter_visible === true
+    : (shopPage?.newsletter_visible ?? true);
+  const newsletter = newsletterVisible
+    ? <NewsletterSection
+        title={shopVariant === "fashion" ? "Get first access" : `Stay in touch with ${storeName}`}
+        description={shopVariant === "fashion" ? `New drops, restocks, and occasional offers from ${storeName}.` : "Use this section for launches, offers, or merchant updates without changing the core commerce flow."}
+      />
     : null;
   const support = <CatalogNoteSection variant={shopVariant} settings={shopPage ?? {}} count={filteredProducts.length || availableProducts.length} />;
   const recent = <RecentlyViewed title={shopVariant === "real_estate" ? "Recently Viewed Properties" : "Recently Viewed"} />;

@@ -116,6 +116,13 @@ const categoryShowcaseBlockSchema = z.object({
     title: z.string().optional(),
     source: z.enum(["auto", "categories", "types"]).optional(),
     limit: z.number().int().positive().max(24).optional(),
+    items: z.array(z.object({
+      label: z.string().min(1),
+      value: z.string().min(1),
+      tagline: z.string().optional(),
+      imageUrl: z.string().optional(),
+      filterKey: z.enum(["category", "type"]).optional(),
+    })).max(24).optional(),
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
