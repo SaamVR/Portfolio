@@ -24,6 +24,8 @@ import type { CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections, type BasicFlowSectionId } from "@/lib/cms/storefront-editor-registry";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
+import { getStorefrontLayoutPresets } from "@/lib/cms/storefront-layout-presets";
+import { applyStorefrontLayoutPreset } from "@/lib/cms/storefront-layout-preset-apply";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -32,6 +34,7 @@ interface BasicModeEditorProps {
   updateBlockProps: (blockId: string, patch: Record<string, unknown>) => void;
   updateBlockMeta: (blockId: string, patch: Partial<StorePageBlock>) => void;
   reorderBlocks: (startIndex: number, endIndex: number) => void;
+  replacePageBlocks: (blocks: StorePageBlock[]) => void;
   updateThemeVar: (cssKey: string, hexValue: string) => void;
   updateThemeVars: (hexVars: Record<string, string>) => void;
   updateThemePackage: (packageId: string) => void;
@@ -812,6 +815,7 @@ export function BasicModeEditor({
   updateBlockProps,
   updateBlockMeta,
   reorderBlocks,
+  replacePageBlocks,
   updateThemeVar,
   updateThemeVars,
   updateThemePackage,
@@ -848,6 +852,7 @@ export function BasicModeEditor({
   );
   const pageType = resolveBasicEditorPageType(page.slug);
   const starterLayouts = getBasicStarterLayouts(templateId, pageType);
+  const layoutPresets = pageType === "homepage" ? getStorefrontLayoutPresets(templateId) : [];
 
   const generateAITheme = async () => {
     if (!aiPrompt.trim()) return;
@@ -1230,6 +1235,41 @@ export function BasicModeEditor({
                 </Dialog>
               </div>
             </div>
+            {layoutPresets.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Fashion layout presets</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Reorder the homepage and switch section layouts without replacing your existing copy, media, or product sources.</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Content-safe</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {layoutPresets.map((preset) => (
+                    <div key={preset.id} className="rounded-xl border border-border bg-background/80 p-3">
+                      <p className="text-sm font-semibold text-foreground">{preset.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{preset.description}</p>
+                      <p className="mt-2 text-[11px] leading-5 text-foreground/75">Best for: {preset.bestFor}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 min-h-11 w-full justify-center"
+                        onClick={() => {
+                          const result = applyStorefrontLayoutPreset(page.blocks, preset);
+                          replacePageBlocks(result.blocks);
+                          setFocusedLayoutBlockId(result.blocks[0]?.id ?? null);
+                          const added = result.addedSlotIds.length;
+                          toast.success(`${preset.label} layout applied${added ? ` · ${added} required section${added === 1 ? "" : "s"} added` : ""}. Your existing section content was preserved.`);
+                        }}
+                      >
+                        Apply {preset.label}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {starterLayouts.length > 0 ? (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Recommended composition</p>

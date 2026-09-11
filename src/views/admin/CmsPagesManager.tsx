@@ -1133,6 +1133,14 @@ export default function CmsPagesManager() {
     } as StorePageBlock));
   };
 
+  const replaceSelectedPageBlocks = (blocks: StorePageBlock[]) => {
+    updateSelectedPage((page) => ({
+      ...page,
+      blocks,
+    }));
+    setSelectedBlockId(blocks[0]?.id ?? "");
+  };
+
   const reorderBlocks = (startIndex: number, endIndex: number) => {
     updateSelectedPage((page) => {
       if (startIndex < 0 || endIndex < 0 || startIndex >= page.blocks.length || endIndex >= page.blocks.length) {
@@ -2887,6 +2895,7 @@ export default function CmsPagesManager() {
                 updateBlockProps={updateAnyBlockProps}
                 updateBlockMeta={updateBlockMeta}
                 reorderBlocks={reorderBlocks}
+                replacePageBlocks={replaceSelectedPageBlocks}
                 updateThemeVar={updateThemeVar}
                 updateThemeVars={updateThemeVars}
                 updateThemePackage={updateThemePackage}
