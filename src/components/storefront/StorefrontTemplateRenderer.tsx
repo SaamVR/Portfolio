@@ -4,6 +4,8 @@ import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWid
 import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
 import { StorefrontShell } from "@/components/storefront/StorefrontShell";
+import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
+import { FashionV3BlockRenderer } from "@/components/storefront/fashion-v3/FashionV3BlockRenderer";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import {
   getStorefrontTemplateDefinition,
@@ -72,18 +74,16 @@ export function StorefrontTemplateRenderer({
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
   );
 
-  return (
-    <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
-      <div data-template-renderer="composable-blocks" data-template-homepage={page.isHomepage ? "true" : "false"}>
+  const pageContent = (
+    <>
+      <div data-template-renderer={templateId === "fashion" ? "fashion-v3" : "composable-blocks"} data-template-homepage={page.isHomepage ? "true" : "false"}>
         {blocksToRender.map((block, index) => (
           <div
             key={block.id}
             data-ezcomo-block-id={block.id}
             data-ezcomo-block-type={block.type}
             onClick={() => {
-              if (canManageStorefront && adminMode) {
-                onSelectBlock(block.id);
-              }
+              if (canManageStorefront && adminMode) onSelectBlock(block.id);
             }}
             className={cn(
               "relative transition-shadow",
@@ -94,14 +94,18 @@ export function StorefrontTemplateRenderer({
               selectedBlockId === block.id && "ring-2 ring-primary/50",
             )}
           >
-            {canManageStorefront && adminMode ? (
-              <StorefrontAdminMode pageId={page.id} block={block} index={index} />
-            ) : null}
-            <StorefrontBlockRenderer block={block} template={template} />
+            {canManageStorefront && adminMode ? <StorefrontAdminMode pageId={page.id} block={block} index={index} /> : null}
+            {templateId === "fashion" ? <FashionV3BlockRenderer block={block} template={template} /> : <StorefrontBlockRenderer block={block} template={template} />}
           </div>
         ))}
       </div>
-      {page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
-    </StorefrontShell>
+      {templateId !== "fashion" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
+    </>
   );
+
+  if (templateId === "fashion") {
+    return <FashionV3Shell embedded={embedded}>{pageContent}</FashionV3Shell>;
+  }
+
+  return <StorefrontShell templateId={templateId} template={template} embedded={embedded}>{pageContent}</StorefrontShell>;
 }

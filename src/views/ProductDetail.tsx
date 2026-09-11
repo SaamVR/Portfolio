@@ -12,6 +12,10 @@ import { useOptionalStore } from "@/components/storefront/store-context";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 import { ContextAwareProductDetails } from "@/components/storefront/product/ProductDetailRenderer";
+import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
+import { FashionV3ProductDetail } from "@/components/storefront/fashion-v3/FashionV3ProductDetail";
+import { FashionV3ProductQA } from "@/components/storefront/fashion-v3/FashionV3ProductQA";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const MAX_RECENT = 8;
 
@@ -25,6 +29,14 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   const recentlyViewedKey = getScopedStorefrontStorageKey("recently-viewed", storeId);
   const { data: product, isLoading } = useProduct(id, storeId);
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
 
   // Record recently viewed
   useEffect(() => {
@@ -79,6 +91,26 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         : "https://schema.org/InStock",
     },
   };
+
+  if (isFashion) {
+    return (
+      <FashionV3Shell>
+        <SEOHead
+          title={product.name}
+          description={product.description}
+          canonical={absoluteStoreUrl(currentStore ?? (storeSlug ? { slug: storeSlug } : undefined), productUrl(product.id, product.name))}
+          ogType="product"
+          ogImage={product.images?.[0] || product.image}
+          jsonLd={productJsonLd}
+        />
+        <div className="mx-auto max-w-[1500px] px-4 pt-6 md:px-8 lg:px-12">
+          <button onClick={() => navigate(-1)} className="mb-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-black/55"><ArrowLeft className="h-4 w-4" /> Back</button>
+        </div>
+        <FashionV3ProductDetail product={product} />
+        {storeId ? <FashionV3ProductQA productId={product.id} /> : null}
+      </FashionV3Shell>
+    );
+  }
 
   const hasKnownOutOfStockCount = typeof product.stock === "number" && product.stock <= 0;
   const canRequestStockAlert = Boolean(
