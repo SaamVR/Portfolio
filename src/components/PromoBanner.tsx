@@ -3,6 +3,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 interface PromoBannerSettings {
   enabled: boolean;
@@ -160,6 +161,14 @@ const SparkleSVG = ({ className }: { className: string }) => (
 
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const currentStore = useOptionalStore();
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
   const preloadedWhatsApp = currentStore?.siteSettings?.whatsapp_support as WhatsAppSettings | undefined;
   const { data: fetchedWhatsApp } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
@@ -235,6 +244,35 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
       ? "bg-accent text-accent-foreground hover:bg-accent/90 border-accent/20"
       : "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20"
   }`;
+
+  if (isFashion && !isContactVariant && !usesCustomBannerTheme) {
+    return (
+      <section className="border-y border-foreground/10 bg-foreground py-12 text-background md:py-16" aria-label="Promotional banner">
+        <div className="container mx-auto px-4">
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-10">
+            <div className="max-w-4xl">
+              {badgeText ? (
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-background/65 md:text-xs">{badgeText}</p>
+              ) : null}
+              <h2 className="max-w-[14ch] font-heading text-3xl font-bold leading-[0.98] tracking-tight text-background sm:text-4xl md:text-5xl">
+                {title}
+              </h2>
+              {subtitle ? <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 md:text-base">{subtitle}</p> : null}
+            </div>
+            {ctaLink && ctaText ? (
+              <Link
+                href={ctaLink}
+                className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-background pb-1 text-sm font-semibold text-background transition-opacity hover:opacity-70"
+              >
+                {ctaText}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
