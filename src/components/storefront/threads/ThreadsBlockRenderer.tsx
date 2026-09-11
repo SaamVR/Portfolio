@@ -65,11 +65,6 @@ function useThreadsAutoplay(api: CarouselApi | undefined, interval: number, enab
   }, [api, enabled, interval]);
 }
 
-function ThreadsRailButtons({ api, inverse = false }: { api: CarouselApi | undefined; inverse?: boolean }) {
-  const cls = inverse ? "border-primary-foreground/45 text-primary-foreground hover:bg-primary-foreground hover:text-primary" : "border-border bg-background text-foreground hover:border-primary";
-  return <div className="flex gap-2"><button type="button" onClick={() => api?.scrollPrev()} className={`grid h-9 w-9 place-items-center rounded-full border transition ${cls}`} aria-label="Previous slide"><ArrowLeft className="h-4 w-4" /></button><button type="button" onClick={() => api?.scrollNext()} className={`grid h-9 w-9 place-items-center rounded-full border transition ${cls}`} aria-label="Next slide"><ArrowRight className="h-4 w-4" /></button></div>;
-}
-
 function ThreadsCarouselTicks({ api, count }: { api: CarouselApi | undefined; count: number }) {
   const [selected, setSelected] = useState(0);
 
@@ -164,7 +159,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
 function ThreadsPromo({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore(); const p = block.props as Record<string, unknown>; const reference = isReferenceStore(store?.id);
   const cards = [{ image:s(p.imageUrl), title:reference?"Everyday Essentials":(s(p.title)||"Everyday Essentials"), subtitle:reference?"Comfort meets purpose.":(s(p.subtitle)||"Comfort meets purpose."), cta:reference?"Explore the Collection":(s(p.ctaText)||"Explore the Collection"), href:s(p.ctaLink)||"/shop", reverse:false }, { image:s(p.secondaryImageUrl), title:reference?"Sustainable Choices":(s(p.secondaryTitle)||"Sustainable Choices"), subtitle:reference?"Better materials. A brighter tomorrow.":(s(p.secondarySubtitle)||"Better materials. A brighter tomorrow."), cta:reference?"Learn More":(s(p.secondaryCtaText)||"Learn More"), href:s(p.secondaryCtaLink)||"/shop", reverse:true }];
-  return <section className="bg-background px-5 pb-3 pt-1 md:px-8"><div className="mx-auto grid max-w-[1280px] gap-3 md:grid-cols-2">{cards.map((c,i) => <article key={i} className="grid min-h-[175px] overflow-hidden rounded-md bg-secondary md:grid-cols-[58%_42%]"><div className={`relative min-h-[175px] ${c.reverse ? "md:order-2" : ""}`}>{c.image ? <SafeStorefrontImage src={c.image} alt={c.title} fill className="object-cover"/> : null}</div><div className="flex items-center p-5"><div><h2 className="font-serif text-[28px] leading-[.9] md:text-[34px]">{c.title}</h2><p className="mt-2 text-[13px]">{c.subtitle}</p><Link href={storefrontPath(c.href, store?.slug)} className="mt-3 inline-flex h-9 items-center gap-4 rounded bg-primary px-4 text-[9px] text-primary-foreground">{c.cta}<ArrowRight className="h-3.5 w-3.5"/></Link></div></div></article>)}</div></section>;
+  return <section className="bg-background px-5 pb-6 pt-1 md:px-8 md:pb-8"><div className="mx-auto grid max-w-[1280px] gap-3.5 md:grid-cols-2">{cards.map((c,i) => <article key={i} className="grid min-h-[210px] overflow-hidden rounded-[6px] border border-border/70 bg-secondary md:min-h-[235px] md:grid-cols-[64%_36%]"><div className={`relative min-h-[190px] overflow-hidden ${c.reverse ? "md:order-2" : ""}`}>{c.image ? <SafeStorefrontImage src={c.image} alt={c.title} fill className="object-cover transition duration-700 hover:scale-[1.015]"/> : null}</div><div className="flex items-center bg-secondary/92 p-5 md:p-6"><div><h2 className="font-serif text-[29px] leading-[.9] tracking-[-.025em] md:text-[36px]">{c.title}</h2><p className="mt-2 text-[12px] leading-5 text-foreground/78">{c.subtitle}</p><Link href={storefrontPath(c.href, store?.slug)} className="mt-4 inline-flex h-9 items-center gap-4 rounded-sm bg-primary px-4 text-[9px] uppercase tracking-[.08em] text-primary-foreground">{c.cta}<ArrowRight className="h-3.5 w-3.5"/></Link></div></div></article>)}</div></section>;
 }
 
 function ThreadsProducts({ block }: { block: StorePageBlock }) {
@@ -188,14 +183,15 @@ function ThreadsProducts({ block }: { block: StorePageBlock }) {
         <h2 className="font-serif text-[31px] leading-[.92] md:text-[35px]">Featured<br className="hidden md:block"/> Products</h2>
         <p className="mt-2 text-[12px] text-primary-foreground/72">{isReferenceStore(store?.id)?"Stories you can wear.":(s(p.subtitle)||"Stories you can wear.")}</p>
         <Link href={storefrontPath("/shop",store?.slug)} className="mt-5 inline-flex w-fit items-center gap-4 rounded-sm border border-primary-foreground/45 px-4 py-2.5 text-[9px] uppercase tracking-[.1em]">View All Products<ArrowRight className="h-3.5 w-3.5"/></Link>
-        {p.showArrows !== false ? <div className="mt-5 hidden md:block"><ThreadsRailButtons api={api} inverse/></div> : null}
+        {p.showArrows !== false ? <button type="button" onClick={() => api?.scrollPrev()} className="mt-5 hidden h-9 w-9 place-items-center rounded-full border border-primary-foreground/45 text-primary-foreground transition hover:bg-primary-foreground hover:text-primary md:grid" aria-label="Previous slide"><ArrowLeft className="h-4 w-4" /></button> : null}
       </div>
-      <Carousel setApi={setApi} opts={{ align: "start", loop: visible.length > 1, skipSnaps: false }} className="min-w-0">
+      <Carousel setApi={setApi} opts={{ align: "start", loop: visible.length > 1, skipSnaps: false }} className="min-w-0 pr-1">
         <CarouselContent className="-ml-3">
           {carouselProducts.map((product, index) => <CarouselItem key={`${product.id}-${index}`} className="basis-[66%] pl-3 sm:basis-[38%] md:basis-[27%] lg:basis-[18.2%]">
             <ThreadsProductCard product={product} framed/>
           </CarouselItem>)}
         </CarouselContent>
+        {p.showArrows !== false ? <button type="button" onClick={() => api?.scrollNext()} className="absolute -right-3 top-[44%] z-20 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/45 bg-background text-primary shadow-md transition hover:scale-105 md:grid" aria-label="Next slide"><ArrowRight className="h-4 w-4" /></button> : null}
         <ThreadsCarouselTicks api={api} count={visible.length}/>
       </Carousel>
     </div>

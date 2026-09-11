@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Facebook, Instagram, Leaf, Youtube } from "lucide-react";
+import { ArrowRight, Facebook, Instagram, Youtube } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -29,7 +29,14 @@ export function ThreadsFooter() {
   const resolvedShopLinks=isReferencePreview?referenceShopLinks:(shopLinks.length?shopLinks:[{label:"Shop all",url:shop},{label:"New Arrivals",url:`${shop}?sort=newest`}]);
   const submit=(e:React.FormEvent)=>{e.preventDefault();if(!email.includes("@"))return;try{localStorage.setItem(storageKey,"true")}catch{}setSubscribed(true);setEmail("")};
   return <footer className="relative overflow-hidden bg-primary text-primary-foreground">
-    <div aria-hidden className="pointer-events-none absolute bottom-8 right-0 hidden opacity-20 md:block"><Leaf className="h-64 w-64 -rotate-12 stroke-[.7]"/><Leaf className="-mt-24 ml-36 h-44 w-44 rotate-12 stroke-[.7]"/></div>
+    <div aria-hidden className="pointer-events-none absolute bottom-7 right-0 hidden w-[42%] max-w-[620px] text-primary-foreground/18 md:block">
+      <svg viewBox="0 0 640 250" fill="none" className="h-auto w-full" stroke="currentColor" strokeWidth="1.4">
+        <path d="M8 226h624M42 226v-58h38v58m0-34h34v34m12 0v-92h46v92m0-64h38v64m16 0v-122h58v122m0-86h42v86m14 0v-72h52v72m0-46h34v46m18 0v-104h54v104m0-62h38v62m18 0v-82h50v82"/>
+        <path d="M133 134l16-22 16 22M242 104l29-28 29 28M449 122l27-31 27 31M536 144l22-24 22 24"/>
+        <path d="M18 210c70-21 117-22 174-3 47 16 86 16 135 0 54-18 109-18 173 1 39 12 83 13 128 3" opacity=".7"/>
+        <circle cx="552" cy="52" r="34" opacity=".45"/><path d="M526 52h52M552 26v52" opacity=".45"/>
+      </svg>
+    </div>
     <div className="relative mx-auto grid max-w-[1280px] gap-9 px-5 py-10 md:grid-cols-[1.2fr_.55fr_.65fr_.65fr_1.15fr] md:px-8 md:py-12">
       <div><div className="font-serif text-[28px] uppercase leading-none">{brand}</div><div className="mt-1 text-[6px] uppercase tracking-[.18em] text-primary-foreground/60">People · Places · A Brighter Tomorrow</div><p className="mt-5 max-w-[230px] text-[11px] leading-5 text-primary-foreground/70">{about}</p><div className="mt-5 flex gap-4"><Instagram className="h-4 w-4"/><Facebook className="h-4 w-4"/><Youtube className="h-4 w-4"/></div></div>
       <div><h3 className="mb-3 text-[11px] font-semibold">Shop</h3><div className="space-y-2 text-[10px] text-primary-foreground/75">{resolvedShopLinks.map(x=><Link key={x.label} to={x.url} className="block">{x.label}</Link>)}</div></div>
