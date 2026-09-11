@@ -11,7 +11,7 @@ import {
   type StorefrontTemplateDefinition,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
-import { getStorefrontExperienceProfile } from "@/lib/storefront-template-experience";
+import { getStorefrontExperienceProfile, type StorefrontExperienceProfile } from "@/lib/storefront-template-experience";
 import { cn } from "@/lib/utils";
 import experienceStyles from "./StorefrontTemplateExperience.module.css";
 
@@ -19,9 +19,28 @@ function sortBlocksForTemplate(
   blocks: StorePageBlock[],
   _template: StorefrontTemplateDefinition,
 ): StorePageBlock[] {
-  // Persisted page-builder order stays authoritative. Template DNA controls presentation,
-  // not merchant-authored runtime ordering.
+  // Persisted page-builder order stays authoritative for real merchant storefronts.
   return [...blocks].sort((left, right) => left.sortOrder - right.sortOrder);
+}
+
+function sortPreviewBlocksForExperience(
+  blocks: StorePageBlock[],
+  experience: StorefrontExperienceProfile,
+): StorePageBlock[] {
+  const sourceOrder = new Map(blocks.map((block, index) => [block.id, index]));
+  const priority = new Map(experience.decisionPriority.map((type, index) => [type, index]));
+
+  return [...blocks].sort((left, right) => {
+    const leftRank = priority.get(left.type);
+    const rightRank = priority.get(right.type);
+    if (leftRank !== undefined || rightRank !== undefined) {
+      if (leftRank === undefined) return 1;
+      if (rightRank === undefined) return -1;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+    }
+    if (left.sortOrder !== right.sortOrder) return left.sortOrder - right.sortOrder;
+    return (sourceOrder.get(left.id) ?? 0) - (sourceOrder.get(right.id) ?? 0);
+  });
 }
 
 function resolveTemplateForStore(store: Store): {
@@ -85,7 +104,11 @@ export function StorefrontTemplateRenderer({
   const { template, templateId } = resolveTemplateForStore(store);
   const experience = getStorefrontExperienceProfile(templateId);
   const revealEditableEmptyBlocks = canManageStorefront && adminMode;
-  const blocksToRender = sortBlocksForTemplate(blocks, template).filter((block) => isBlockRenderable(block, revealEditableEmptyBlocks));
+  const isTemplatePreview = store.id.startsWith("preview-");
+  const orderedBlocks = isTemplatePreview && page.isHomepage
+    ? sortPreviewBlocksForExperience(blocks, experience)
+    : sortBlocksForTemplate(blocks, template);
+  const blocksToRender = orderedBlocks.filter((block) => isBlockRenderable(block, revealEditableEmptyBlocks));
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
   );
@@ -97,6 +120,7 @@ export function StorefrontTemplateRenderer({
         data-template-renderer="composable-blocks"
         data-template-homepage={page.isHomepage ? "true" : "false"}
         data-template-experience={experience.hero}
+        data-template-preview-order={isTemplatePreview && page.isHomepage ? "experience" : "merchant"}
       >
         {blocksToRender.map((block, index) => {
           const decisionRank = experience.decisionPriority.indexOf(block.type);
