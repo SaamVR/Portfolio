@@ -10,6 +10,34 @@ describe("cms schema", () => {
     expect(defaultStore.pages[0]?.blocks.length).toBeGreaterThan(0);
   });
 
+  it("preserves Threads carousel behavior props for category and featured blocks", () => {
+    const category = storePageBlockSchema.parse({
+      id: "threads-category-showcase",
+      type: "category-showcase",
+      sortOrder: 0,
+      isVisible: true,
+      props: { autoplay: false, autoplayIntervalMs: 6500, showArrows: false },
+    });
+    const featured = storePageBlockSchema.parse({
+      id: "threads-featured-products",
+      type: "featured-products",
+      sortOrder: 1,
+      isVisible: true,
+      props: { autoplay: false, autoplayIntervalMs: 6500, showArrows: false },
+    });
+
+    if (category.type !== "category-showcase" || featured.type !== "featured-products") {
+      throw new Error("Expected carousel block schemas");
+    }
+
+    expect(category.props.autoplay).toBe(false);
+    expect(category.props.autoplayIntervalMs).toBe(6500);
+    expect(category.props.showArrows).toBe(false);
+    expect(featured.props.autoplay).toBe(false);
+    expect(featured.props.autoplayIntervalMs).toBe(6500);
+    expect(featured.props.showArrows).toBe(false);
+  });
+
   it("rejects invalid featured product limits", () => {
     const result = storePageBlockSchema.safeParse({
       id: "bad-featured",

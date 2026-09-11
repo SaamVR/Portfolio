@@ -86,6 +86,7 @@ const baseLayoutVariantOptions: Partial<Record<StorePageBlock["type"], LayoutVar
     { id: "collection-spotlight", label: "Collection Spotlight", guidance: "Best when one collection deserves a dominant image and a quieter editorial story beside it.", previewSummary: "Large collection image paired with focused copy and actions.", templateIds: ["fashion"] },
   ],
   "featured-products": [
+    { id: "carousel", label: "Editorial Carousel", guidance: "Horizontal product rail with swipe, arrows, and autoplay controls.", previewSummary: "Scrollable editorial product rail.", templateIds: ["threads"] },
     { id: "2-col", label: "2 Columns", guidance: "Bigger cards for premium products or services.", previewSummary: "Large cards and slower scanning." },
     { id: "3-col", label: "3 Columns", guidance: "Balanced density for most stores.", previewSummary: "Balanced browsing density." },
     { id: "4-col", label: "4 Columns", guidance: "Fast scanning for larger catalogs.", previewSummary: "Dense catalog browsing." },
@@ -124,6 +125,7 @@ const baseLayoutVariantOptions: Partial<Record<StorePageBlock["type"], LayoutVar
 };
 
 const templateLayoutVariantOrder: Partial<Record<StorefrontTemplateId, Partial<Record<StorePageBlock["type"], string[]>>>> = {
+  threads: { hero: ["editorial", "split", "full-bleed", "centered"], "featured-products": ["carousel"], "category-showcase": ["carousel", "cards"], "promo-banner": ["standard"], "rich-text": ["brand-story", "standard", "blog-posts"] },
   fashion: { hero: ["editorial", "poster", "collection-spotlight", "full-bleed", "split", "centered"], "featured-products": ["2-col", "3-col", "4-col"], "category-showcase": ["cards", "masonry", "carousel"] },
   beauty: { hero: ["split", "centered", "full-bleed"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "carousel"] },
   electronics: { hero: ["split", "full-bleed", "centered"], "featured-products": ["4-col", "3-col", "3-col-sidebar-left", "3-col-sidebar-right"], "category-showcase": ["cards", "compact-list"] },

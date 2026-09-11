@@ -22,10 +22,24 @@ describe("storefront editor layout variants", () => {
     expect(electronics).not.toContain("collection-spotlight");
   });
 
+
+  it("keeps Threads carousel-first without exposing the product carousel to Fashion", () => {
+    const threadsCategories = getBasicLayoutVariantOptions("threads", "category-showcase").map((option) => option.id);
+    const threadsProducts = getBasicLayoutVariantOptions("threads", "featured-products").map((option) => option.id);
+    const fashionProducts = getBasicLayoutVariantOptions("fashion", "featured-products").map((option) => option.id);
+
+    expect(threadsCategories[0]).toBe("carousel");
+    expect(threadsProducts[0]).toBe("carousel");
+    expect(fashionProducts).not.toContain("carousel");
+  });
+
   it("registers the specialized heroes in the shared block capability registry", () => {
     const hero = fallbackBlockRegistry.find((block) => block.value === "hero");
 
     expect(hero?.variantIds).toContain("poster");
     expect(hero?.variantIds).toContain("collection-spotlight");
+
+    const featuredProducts = fallbackBlockRegistry.find((block) => block.value === "featured-products");
+    expect(featuredProducts?.variantIds).toContain("carousel");
   });
 });

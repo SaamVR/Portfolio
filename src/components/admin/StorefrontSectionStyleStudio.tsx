@@ -1357,6 +1357,8 @@ export function StorefrontSectionStyleStudio() {
           const blockIndex = homepageBlocks.findIndex((entry) => entry.id === block.id);
           const arrayFields = priorityFields.filter((field) => ["faqs", "badges", "reviews", "images", "specLabels"].includes(field));
           const editableFields = priorityFields.filter((field) => !arrayFields.includes(field));
+          const showCarouselBehavior = (block.type === "category-showcase" || block.type === "featured-products")
+            && (data.templateId === "threads" || draft.layoutVariant === "carousel");
 
             return (
               <Card key={block.id} className="border-border">
@@ -1434,6 +1436,64 @@ export function StorefrontSectionStyleStudio() {
                         );
                       })}
                     </div>
+                  </div>
+                ) : null}
+
+                {showCarouselBehavior ? (
+                  <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Slider behavior</p>
+                      <p className="text-xs leading-5 text-muted-foreground">Threads keeps looping and touch / drag enabled. Adjust automatic movement and desktop controls here.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Autoplay</Label>
+                        <Button
+                          type="button"
+                          variant={draft.props.autoplay === false ? "outline" : "secondary"}
+                          className="w-full justify-center"
+                          onClick={() => updateBlockProps(block.id, block.props, (currentProps) => ({
+                            ...currentProps,
+                            autoplay: currentProps.autoplay === false,
+                          }))}
+                        >
+                          {draft.props.autoplay === false ? "Off" : "On"}
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`${block.id}-autoplay-interval`}>Slide interval (seconds)</Label>
+                        <Input
+                          id={`${block.id}-autoplay-interval`}
+                          type="number"
+                          min={2.5}
+                          max={15}
+                          step={0.5}
+                          disabled={draft.props.autoplay === false}
+                          value={((typeof draft.props.autoplayIntervalMs === "number" ? draft.props.autoplayIntervalMs : block.type === "category-showcase" ? 3800 : 4300) / 1000)}
+                          onChange={(event) => updateBlockProps(block.id, block.props, (currentProps) => ({
+                            ...currentProps,
+                            autoplayIntervalMs: Math.min(15000, Math.max(2500, Math.round(Number(event.target.value || 0) * 1000))),
+                          }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Desktop arrows</Label>
+                        <Button
+                          type="button"
+                          variant={draft.props.showArrows === false ? "outline" : "secondary"}
+                          className="w-full justify-center"
+                          onClick={() => updateBlockProps(block.id, block.props, (currentProps) => ({
+                            ...currentProps,
+                            showArrows: currentProps.showArrows === false,
+                          }))}
+                        >
+                          {draft.props.showArrows === false ? "Hidden" : "Shown"}
+                        </Button>
+                      </div>
+                    </div>
+                    {block.type === "category-showcase" ? (
+                      <p className="text-xs leading-5 text-muted-foreground">Category photography comes from the Categories manager. When a category has no image, Threads automatically uses its matching fallback icon.</p>
+                    ) : null}
                   </div>
                 ) : null}
 
