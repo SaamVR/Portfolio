@@ -11,14 +11,16 @@ import {
   type StorefrontTemplateDefinition,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
+import { getStorefrontExperienceProfile } from "@/lib/storefront-template-experience";
 import { cn } from "@/lib/utils";
+import experienceStyles from "./StorefrontTemplateExperience.module.css";
 
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
   _template: StorefrontTemplateDefinition,
 ): StorePageBlock[] {
-  // Persisted page-builder order is authoritative on every template. Template sectionOrder
-  // is used when a template seeds the page, not as a competing runtime ordering system.
+  // Persisted page-builder order stays authoritative. Template DNA controls presentation,
+  // not merchant-authored runtime ordering.
   return [...blocks].sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
@@ -67,6 +69,7 @@ export function StorefrontTemplateRenderer({
   embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
+  const experience = getStorefrontExperienceProfile(templateId);
   const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
@@ -74,32 +77,42 @@ export function StorefrontTemplateRenderer({
 
   return (
     <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
-      <div data-template-renderer="composable-blocks" data-template-homepage={page.isHomepage ? "true" : "false"}>
-        {blocksToRender.map((block, index) => (
-          <div
-            key={block.id}
-            data-ezcomo-block-id={block.id}
-            data-ezcomo-block-type={block.type}
-            onClick={() => {
-              if (canManageStorefront && adminMode) {
-                onSelectBlock(block.id);
-              }
-            }}
-            className={cn(
-              "relative transition-shadow",
-              (block.props as Record<string, unknown> | undefined)?.hideOnMobile === true && "max-sm:hidden",
-              (block.props as Record<string, unknown> | undefined)?.hideOnTablet === true && "sm:max-lg:hidden",
-              (block.props as Record<string, unknown> | undefined)?.hideOnDesktop === true && "lg:hidden",
-              canManageStorefront && adminMode && "cursor-pointer ring-1 ring-inset ring-primary/20 hover:ring-primary/40",
-              selectedBlockId === block.id && "ring-2 ring-primary/50",
-            )}
-          >
-            {canManageStorefront && adminMode ? (
-              <StorefrontAdminMode pageId={page.id} block={block} index={index} />
-            ) : null}
-            <StorefrontBlockRenderer block={block} template={template} />
-          </div>
-        ))}
+      <div
+        className={experienceStyles.experience}
+        data-template-renderer="composable-blocks"
+        data-template-homepage={page.isHomepage ? "true" : "false"}
+        data-template-experience={experience.hero}
+      >
+        {blocksToRender.map((block, index) => {
+          const decisionRank = experience.decisionPriority.indexOf(block.type);
+          return (
+            <div
+              key={block.id}
+              data-ezcomo-block-id={block.id}
+              data-ezcomo-block-type={block.type}
+              data-template-block-index={index}
+              data-template-decision-rank={decisionRank >= 0 ? decisionRank + 1 : undefined}
+              onClick={() => {
+                if (canManageStorefront && adminMode) {
+                  onSelectBlock(block.id);
+                }
+              }}
+              className={cn(
+                "relative transition-shadow",
+                (block.props as Record<string, unknown> | undefined)?.hideOnMobile === true && "max-sm:hidden",
+                (block.props as Record<string, unknown> | undefined)?.hideOnTablet === true && "sm:max-lg:hidden",
+                (block.props as Record<string, unknown> | undefined)?.hideOnDesktop === true && "lg:hidden",
+                canManageStorefront && adminMode && "cursor-pointer ring-1 ring-inset ring-primary/20 hover:ring-primary/40",
+                selectedBlockId === block.id && "ring-2 ring-primary/50",
+              )}
+            >
+              {canManageStorefront && adminMode ? (
+                <StorefrontAdminMode pageId={page.id} block={block} index={index} />
+              ) : null}
+              <StorefrontBlockRenderer block={block} template={template} />
+            </div>
+          );
+        })}
       </div>
       {page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
     </StorefrontShell>
