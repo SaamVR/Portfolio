@@ -29,7 +29,7 @@ export default async function TemplatePreviewPage({
   }
 
   const template = getStorefrontTemplateDefinition(templateId);
-  if (template.adminOnly) {
+  if (template.adminOnly && process.env.NODE_ENV !== "development") {
     notFound();
   }
   const seed = getStorefrontTemplateSeedDefinition(templateId);
