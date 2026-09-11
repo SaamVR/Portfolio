@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Clock3, Laptop2, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Product } from "@/data/products";
@@ -61,14 +62,13 @@ function buildDurationOptions(
   return (durationGroup?.values ?? [])
     .map((value) => {
       const label = value.label?.trim();
-      if (!label) return null;
+      if (!label || typeof value.price_delta !== "number" || !Number.isFinite(value.price_delta)) return null;
       const normalized = label.toLowerCase();
       if (!normalized.includes("month") && !normalized.includes("year")) return null;
-      const delta = Number(value.price_delta ?? 0);
       return {
         id: normalized.includes("year") ? "yearly" as const : "monthly" as const,
         label,
-        price: Math.max(0, product.price + (Number.isFinite(delta) ? Math.round(delta) : 0)),
+        price: Math.max(0, product.price + Math.round(value.price_delta)),
         hint: "Merchant-configured duration option",
       };
     })
@@ -109,15 +109,18 @@ export function SubscriptionProductCard({
   const planOptions = useMemo(() => buildPlanOptions(trustedSpecs, trustedMetadata), [trustedMetadata, trustedSpecs]);
   const durationOptions = useMemo(() => buildDurationOptions(product, trustedSpecs, trustedMetadata), [product, trustedMetadata, trustedSpecs]);
   const [selectedPlanId, setSelectedPlanId] = useState(planOptions[0]?.id ?? "");
-  const [selectedDurationId, setSelectedDurationId] = useState<"monthly" | "yearly">(durationOptions[0]?.id ?? "monthly");
+  const [selectedDurationId, setSelectedDurationId] = useState<"monthly" | "yearly" | "">(durationOptions[0]?.id ?? "");
   const selectedPlan = planOptions.find((plan) => plan.id === selectedPlanId) ?? planOptions[0];
   const selectedDuration = durationOptions.find((duration) => duration.id === selectedDurationId) ?? durationOptions[0];
-  const rating = reviewStats?.average ?? null;
-  const reviewCount = reviewStats?.count ?? 0;
+  const rating = reviewStats && reviewStats.count > 0 && Number.isFinite(reviewStats.average) && reviewStats.average > 0
+    ? reviewStats.average
+    : null;
+  const reviewCount = rating !== null ? reviewStats!.count : 0;
   const url = productUrl(product.id, product.name, currentStore?.slug);
   const supportedDevices = explicitText(product, trustedSpecs, trustedMetadata, "supported_devices");
   const activationTime = explicitText(product, trustedSpecs, trustedMetadata, "activation_time");
   const variantLabel = [selectedPlan?.label, selectedDuration?.label].filter(Boolean).join(" • ");
+  const canSubscribe = Boolean(selectedPlan && selectedDuration && variantLabel);
 
   return (
     <ProductCardShell>
@@ -145,15 +148,15 @@ export function SubscriptionProductCard({
         <ProductCardTitle href={url}>{product.name}</ProductCardTitle>
 
         {rating !== null ? (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
-            <Star className="h-3.5 w-3.5 fill-current text-amber-500 shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0" aria-label={`${rating.toFixed(1)} out of 5 from ${reviewCount} review${reviewCount === 1 ? "" : "s"}`}>
+            <Star className="h-3.5 w-3.5 fill-current text-amber-500 shrink-0" aria-hidden="true" />
             <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
-            <span>{reviewCount > 0 ? `(${reviewCount})` : ""}</span>
+            <span>({reviewCount})</span>
           </div>
         ) : null}
 
         {planOptions.length > 0 ? <SubscriptionPlanSelector plans={planOptions} value={selectedPlanId} onChange={setSelectedPlanId} /> : null}
-        {durationOptions.length > 0 ? <SubscriptionDurationSelector durations={durationOptions} value={selectedDurationId} onChange={setSelectedDurationId} /> : null}
+        {durationOptions.length > 0 ? <SubscriptionDurationSelector durations={durationOptions} value={selectedDurationId || "monthly"} onChange={setSelectedDurationId} /> : null}
 
         {supportedDevices || activationTime ? (
           <div className="grid gap-1 rounded-xl bg-secondary/50 p-2.5 text-xs text-muted-foreground">
@@ -172,26 +175,39 @@ export function SubscriptionProductCard({
           </div>
         ) : null}
 
-        <div className="flex items-baseline gap-1.5 pt-1 min-w-0">
-          <span className="text-xl font-bold text-primary truncate min-w-0">৳{(selectedDuration?.price ?? product.price).toLocaleString()}</span>
-          {selectedDuration?.label ? <span className="text-xs text-muted-foreground">/{selectedDuration.label.toLowerCase()}</span> : null}
-        </div>
+        {selectedDuration ? (
+          <div className="flex items-baseline gap-1.5 pt-1 min-w-0">
+            <span className="text-xl font-bold text-primary truncate min-w-0">৳{selectedDuration.price.toLocaleString()}</span>
+            <span className="text-xs text-muted-foreground">/{selectedDuration.label.toLowerCase()}</span>
+          </div>
+        ) : (
+          <p className="pt-1 text-xs leading-5 text-muted-foreground">Subscription pricing is not configured for this item yet.</p>
+        )}
 
         <ProductCardActions>
-          <button
-            type="button"
-            onClick={() => addItem({
-              productId: product.id,
-              name: product.name,
-              price: selectedDuration?.price ?? product.price,
-              image: product.image,
-              size: variantLabel || "Subscription",
-              storeId: currentStore?.id,
-            })}
-            className="inline-flex h-10 w-full min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
-          >
-            Subscribe Now
-          </button>
+          {canSubscribe ? (
+            <button
+              type="button"
+              onClick={() => addItem({
+                productId: product.id,
+                name: product.name,
+                price: selectedDuration!.price,
+                image: product.image,
+                size: variantLabel,
+                storeId: currentStore?.id,
+              })}
+              className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              Subscribe Now
+            </button>
+          ) : (
+            <Link
+              href={url}
+              className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              View subscription details
+            </Link>
+          )}
         </ProductCardActions>
       </ProductCardContent>
     </ProductCardShell>

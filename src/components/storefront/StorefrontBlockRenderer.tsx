@@ -237,11 +237,9 @@ function VideoReelBlock({ title, videoUrl, ctaText, ctaLink }: { title?: string;
 type TrustBadge = { label: string; description?: string; icon?: "truck" | "payment" | "returns" | "support" | "shield" };
 
 function TrustBadgesBlock({ title, badges, layoutVariant }: { title?: string; badges?: TrustBadge[]; layoutVariant?: string }) {
-  const displayBadges = badges?.length ? badges : [
-    { icon: "truck" as const, label: "Flexible fulfillment", description: "Delivery, shipping, pickup, or merchant-defined fulfillment." },
-    { icon: "payment" as const, label: "Clear checkout", description: "Payment options are shown before customers commit." },
-    { icon: "returns" as const, label: "Support terms", description: "Return, exchange, and support expectations stay easy to find." },
-  ];
+  const displayBadges = (badges ?? []).filter((badge) => typeof badge?.label === "string" && badge.label.trim());
+  if (displayBadges.length === 0) return null;
+
   const iconMap = { truck: Truck, payment: CreditCard, returns: Undo2, support: Headset, shield: ShieldCheck };
 
   if (layoutVariant === "stats") {
@@ -282,7 +280,7 @@ function TrustBadgesBlock({ title, badges, layoutVariant }: { title?: string; ba
   );
 }
 
-type Testimonial = { name: string; rating?: number; comment: string };
+type Testimonial = { name?: string; rating?: number; comment: string };
 
 function TestimonialsBlock({
   title,
@@ -311,11 +309,16 @@ function TestimonialsBlock({
         .order("created_at", { ascending: false })
         .limit(Math.min(Math.max(limit, 1), 12));
       if (error) throw error;
-      return (data ?? []).map((review: any) => ({
-        name: review.author_name || "Verified customer",
-        rating: Number(review.rating) || 5,
-        comment: review.review_text || "",
-      })).filter((review: Testimonial) => review.comment.trim());
+      return (data ?? []).map((review: any) => {
+        const name = typeof review.author_name === "string" && review.author_name.trim() ? review.author_name.trim() : undefined;
+        const rawRating = Number(review.rating);
+        const rating = Number.isFinite(rawRating) && rawRating >= 1 && rawRating <= 5 ? rawRating : undefined;
+        return {
+          name,
+          rating,
+          comment: typeof review.review_text === "string" ? review.review_text : "",
+        } satisfies Testimonial;
+      }).filter((review: Testimonial) => review.comment.trim());
     },
     staleTime: 120_000,
   });
@@ -346,12 +349,16 @@ function TestimonialsBlock({
         </div>
         <div className="mx-auto flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 md:grid md:max-w-6xl md:grid-cols-3 md:overflow-visible md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {displayReviews.slice(0, limit).map((review, index) => (
-            <article key={`${review.name}-${index}`} className="flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm sm:min-w-[340px] md:min-w-0">
+            <article key={`${review.name ?? "review"}-${index}`} className="flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm sm:min-w-[340px] md:min-w-0">
               <div>
-                <div className="mb-5 flex items-center gap-1 text-accent">{Array.from({ length: Math.max(1, Math.min(5, review.rating ?? 5)) }).map((_, starIndex) => <Star key={starIndex} className="h-4 w-4 fill-current" />)}</div>
+                {typeof review.rating === "number" && Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5 ? (
+                  <div className="mb-5 flex items-center gap-1 text-accent" aria-label={`${review.rating.toFixed(1)} out of 5`}>
+                    {Array.from({ length: Math.round(review.rating) }).map((_, starIndex) => <Star key={starIndex} className="h-4 w-4 fill-current" aria-hidden="true" />)}
+                  </div>
+                ) : null}
                 <p className="text-base leading-7 text-foreground">“{review.comment}”</p>
               </div>
-              <p className="mt-6 text-sm font-semibold text-muted-foreground">{review.name}</p>
+              {review.name ? <p className="mt-6 text-sm font-semibold text-muted-foreground">{review.name}</p> : null}
             </article>
           ))}
         </div>

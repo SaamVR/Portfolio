@@ -27,16 +27,16 @@ type ReviewStats = {
 function resolveBadge(product: Product, reviewStats?: ReviewStats) {
   if (product.badge) return product.badge;
   if (product.originalPrice && product.originalPrice > product.price) return "Sale";
-  if ((reviewStats?.average ?? 0) >= 4.8) return "Top Rated";
-  if (product.featured) return "Bestseller";
-  return "New";
+  if ((reviewStats?.count ?? 0) > 0 && Number.isFinite(reviewStats?.average) && (reviewStats?.average ?? 0) >= 4.8) return "Top Rated";
+  if (product.featured) return "Featured";
+  return null;
 }
 
 function getBadgeClass(badge: string) {
   const normalized = badge.toLowerCase();
   if (normalized.includes("sale")) return "bg-[#ffe7e2] text-[#de4b2b] dark:bg-red-950 dark:text-red-300";
   if (normalized.includes("top")) return "bg-[#def5ea] text-[#1f9d63] dark:bg-emerald-950 dark:text-emerald-300";
-  if (normalized.includes("best")) return "bg-[#e4f0ff] text-[#3174c7] dark:bg-blue-950 dark:text-blue-300";
+  if (normalized.includes("feature")) return "bg-[#e4f0ff] text-[#3174c7] dark:bg-blue-950 dark:text-blue-300";
   return "bg-[#eef8ef] text-[#2b9b55] dark:bg-emerald-950 dark:text-emerald-300";
 }
 
@@ -50,9 +50,15 @@ export function GeneralCatalogProductCard({
   const currentStore = useOptionalStore();
   const { isInWishlist, toggleItem } = useWishlist();
   const { addItem } = useCart();
-  const averageRating = reviewStats?.average ?? 4.8;
-  const reviewCount = reviewStats?.count ?? 0;
-  const roundedRating = Math.max(1, Math.min(5, Math.round(averageRating)));
+  const hasReviewRating = Boolean(
+    reviewStats
+      && reviewStats.count > 0
+      && Number.isFinite(reviewStats.average)
+      && reviewStats.average > 0,
+  );
+  const averageRating = hasReviewRating ? reviewStats!.average : null;
+  const reviewCount = hasReviewRating ? reviewStats!.count : 0;
+  const roundedRating = averageRating === null ? null : Math.max(1, Math.min(5, Math.round(averageRating)));
   const badge = resolveBadge(product, reviewStats);
   const url = productUrl(product.id, product.name, currentStore?.slug);
   const { specs } = useStoreProductPresentation(product);
@@ -63,7 +69,7 @@ export function GeneralCatalogProductCard({
       <ProductCardMedia src={product.image} alt={product.name} href={url} aspect="1/1" fit="cover">
         <ProductCardBadgeLayer
           badge={badge}
-          badgeClassName={getBadgeClass(badge)}
+          badgeClassName={badge ? getBadgeClass(badge) : undefined}
           isInWishlist={isInWishlist(product.id)}
           onToggleWishlist={() => toggleItem(product.id)}
           wishlistLabel={product.name}
@@ -79,16 +85,16 @@ export function GeneralCatalogProductCard({
           {product.name}
         </ProductCardTitle>
 
-        <div className="flex items-center gap-1.5 min-h-[1.25rem]">
-          <div className="flex items-center gap-0.5 text-amber-500">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} className={cn("h-3.5 w-3.5", index < roundedRating ? "fill-current" : "fill-transparent text-muted-foreground/30")} />
-            ))}
+        {roundedRating !== null ? (
+          <div className="flex min-h-[1.25rem] items-center gap-1.5" aria-label={`${averageRating!.toFixed(1)} out of 5 from ${reviewCount} review${reviewCount === 1 ? "" : "s"}`}>
+            <div className="flex items-center gap-0.5 text-amber-500" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star key={index} className={cn("h-3.5 w-3.5", index < roundedRating ? "fill-current" : "fill-transparent text-muted-foreground/30")} />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">({reviewCount})</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {reviewCount > 0 ? `(${reviewCount})` : ""}
-          </span>
-        </div>
+        ) : null}
 
         <div className="flex items-baseline gap-2 pt-1 min-w-0">
           <span className="text-xl font-bold text-primary truncate min-w-0">BDT {product.price.toLocaleString()}</span>
