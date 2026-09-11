@@ -45,8 +45,22 @@ function resolveTemplateForStore(store: Store): {
   };
 }
 
-function isBlockVisible(block: StorePageBlock): boolean {
-  return block.isVisible ?? block.visible ?? true;
+function hasConfiguredTrustBadges(block: StorePageBlock) {
+  if (block.type !== "trust-badges") return true;
+  const props = block.props as Record<string, unknown> | undefined;
+  const badges = Array.isArray(props?.badges) ? props?.badges : [];
+  return badges.some((badge) => {
+    if (!badge || typeof badge !== "object") return false;
+    const candidate = badge as Record<string, unknown>;
+    return typeof candidate.label === "string" && candidate.label.trim().length > 0;
+  });
+}
+
+function isBlockRenderable(block: StorePageBlock, revealEditableEmptyBlocks: boolean): boolean {
+  const visible = block.isVisible ?? block.visible ?? true;
+  if (!visible) return false;
+  if (revealEditableEmptyBlocks) return true;
+  return hasConfiguredTrustBadges(block);
 }
 
 export function StorefrontTemplateRenderer({
@@ -70,7 +84,8 @@ export function StorefrontTemplateRenderer({
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
   const experience = getStorefrontExperienceProfile(templateId);
-  const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
+  const revealEditableEmptyBlocks = canManageStorefront && adminMode;
+  const blocksToRender = sortBlocksForTemplate(blocks, template).filter((block) => isBlockRenderable(block, revealEditableEmptyBlocks));
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
   );
