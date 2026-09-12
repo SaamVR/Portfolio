@@ -1,0 +1,147 @@
+{
+  "program": "EZComo / EcomCMS Storefront Platform v1 foundation",
+  "repository": "SaamVR/EcomCMS",
+  "coordination_only": true,
+  "frozen_base_sha": "b1ba310bae98ed3145990ff1fd9af4077cf557fe",
+  "base_source_branch": "design/threads-admin-template",
+  "observed_live_main_sha_before_write": "4caa14c351cf0f7071e5b4ea14fb069a79403215",
+  "older_threads_checkpoint": {
+    "branch": "checkpoint/threads-reference-v1-2026-09-12",
+    "sha": "b9602dc1c33ef1396634babea9219cfd9fef5780",
+    "status_relative_to_base": "behind by 5 commits"
+  },
+  "integration_branch": "architecture/storefront-platform-v1",
+  "lane_branches": {
+    "A": "arch/v1-composition",
+    "B": "arch/v1-render-theme",
+    "C": "arch/v1-mobile-performance",
+    "D": "arch/v1-editor"
+  },
+  "lane_scopes": {
+    "A": "CMS block/variant contracts, canonical variant registry, composition schema/primitives/recipes, compatibility metadata, required schema contract changes",
+    "B": "renderer-family/shell registries, render selection, specialized lazy loading, semantic theme tokens, aesthetic engine, StoreThemeScope",
+    "C": "storefront mobile performance/data access/cache/media/font/load-test foundations excluding editor files",
+    "D": "StorefrontLiveEditor, editor-only UI, metadata-driven controls, mobile editor shell, autosave/draft UX, editor viewport interaction"
+  },
+  "exclusive_ownership": {
+    "A": [
+      "src/lib/cms/schema.ts",
+      "src/lib/cms/schema.test.ts",
+      "src/lib/cms/block-registry.ts",
+      "src/lib/cms/storefront-platform/composition/**",
+      "src/lib/cms/storefront-platform/variants/**"
+    ],
+    "B": [
+      "src/components/storefront/StorefrontTemplateRenderer.tsx",
+      "src/components/storefront/StoreThemeScope.tsx",
+      "src/components/storefront/StorefrontBlockRenderer.tsx",
+      "src/components/storefront/StorefrontShell.tsx",
+      "src/components/storefront/threads/**",
+      "src/components/storefront/fashion-v3/**",
+      "src/components/storefront/platform/**",
+      "src/lib/cms/storefront-platform/rendering/**"
+    ],
+    "C": [
+      "src/lib/cms/store-resolver.ts",
+      "src/lib/storefront-platform/**",
+      "src/components/storefront/performance/**",
+      "dedicated storefront performance/load-test files"
+    ],
+    "D": [
+      "src/components/storefront/StorefrontLiveEditor.tsx",
+      "src/components/storefront/BasicModeEditor.tsx",
+      "src/components/admin/StorefrontSectionStyleStudio.tsx",
+      "src/lib/cms/storefront-editor-registry.ts",
+      "src/components/storefront/editor/**",
+      "src/lib/cms/storefront-platform/editor/**"
+    ]
+  },
+  "integration_owned": [
+    "package.json",
+    "package lockfile(s)",
+    ".github/workflows/**",
+    "production/deployment configuration",
+    "src/lib/cms/storefront-templates.ts",
+    "central storefront-template registry tests",
+    "src/lib/cms/storefront-template-seeds.ts",
+    "central template seed/demo registration files",
+    "src/index.css",
+    "src/views/admin/CmsPagesManager.tsx",
+    "src/components/storefront/StorefrontPage.tsx"
+  ],
+  "protected_shared_files": {
+    "package.json": "Integration",
+    "package lockfile(s)": "Integration",
+    ".github/workflows/**": "Integration",
+    "production/deployment configuration": "Integration",
+    "src/lib/cms/storefront-templates.ts": "Integration",
+    "src/lib/cms/storefront-template-seeds.ts": "Integration",
+    "src/lib/cms/schema.ts": "A",
+    "src/lib/cms/block-registry.ts": "A",
+    "src/components/storefront/StorefrontTemplateRenderer.tsx": "B",
+    "src/components/storefront/StoreThemeScope.tsx": "B",
+    "src/components/storefront/StorefrontBlockRenderer.tsx": "B",
+    "src/components/storefront/StorefrontLiveEditor.tsx": "D",
+    "src/index.css": "Integration",
+    "src/views/admin/CmsPagesManager.tsx": "Integration",
+    "src/components/storefront/StorefrontPage.tsx": "Integration"
+  },
+  "dependency_request_template": {
+    "heading": "DEPENDENCY REQUEST",
+    "required_fields": [
+      "owning lane",
+      "file/contract",
+      "required change",
+      "reason",
+      "blocking or non-blocking"
+    ],
+    "rule": "A requesting lane must not edit the owning lane's or Integration's file."
+  },
+  "checkpoint_protocol": {
+    "active_runtime_max_minutes_approx": 25,
+    "must_record": [
+      "current lane head SHA",
+      "changed files",
+      "tests/validation",
+      "dependency requests",
+      "unresolved blockers",
+      "P1/P2 architecture discoveries"
+    ],
+    "forbidden": [
+      "unbounded runtime loop",
+      "merge to main",
+      "production deploy",
+      "rebase onto moving main during active foundation work"
+    ]
+  },
+  "p0_interruptions_only": [
+    "security issue",
+    "data-loss/corruption risk",
+    "architecture flaw invalidating current implementation",
+    "major performance regression making current design unacceptable",
+    "unavoidable dependency preventing lane completion"
+  ],
+  "post_foundation_backlog_priorities": [
+    "P1",
+    "P2"
+  ],
+  "merge_order_into_integration": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "final integration audit"
+  ],
+  "global_forbidden_actions": [
+    "write to main",
+    "merge to main",
+    "production deploy",
+    "template redesign",
+    "unrelated cleanup",
+    "massive dependency upgrade",
+    "speculative architecture expansion",
+    "cross-lane edits of protected files"
+  ],
+  "coordination_document": "docs/handoffs/storefront-platform-v1-coordination.md",
+  "coordination_document_commit": "ef5db18f0eb714354f622d9ade4e78bcc42d9f7f"
+}
