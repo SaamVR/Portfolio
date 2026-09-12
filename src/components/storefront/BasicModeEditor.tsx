@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections, type BasicFlowSectionId } from "@/lib/cms/storefront-editor-registry";
+import { getPlatformAestheticOptions } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { getStorefrontLayoutPresets } from "@/lib/cms/storefront-layout-presets";
@@ -55,24 +56,6 @@ type SectionId = "start" | "pages" | "layout" | "content" | "theme" | "effects" 
 
 const HEADING_FONTS = ["Inter", "Poppins", "Playfair Display", "Raleway", "Oswald", "Montserrat"];
 const BODY_FONTS = ["Inter", "Open Sans", "Lato", "Nunito", "Source Sans 3"];
-
-const vibeCards: Array<{
-  id: NonNullable<Store["theme"]["aesthetic"]>;
-  label: string;
-  detail: string;
-  heading: string;
-  body: string;
-  swatches: string[];
-}> = [
-  { id: "minimal", label: "Minimal", detail: "Clean, quiet, fast to scan.", heading: "Inter", body: "Inter", swatches: ["#111827", "#F9FAFB", "#E5E7EB"] },
-  { id: "glassmorphism", label: "Glass", detail: "Soft blur, airy surfaces.", heading: "Poppins", body: "Inter", swatches: ["#7C3AED", "#DBEAFE", "#FFFFFF"] },
-  { id: "fluid", label: "Fluid", detail: "Organic, modern, softer flow.", heading: "Raleway", body: "Nunito", swatches: ["#0F766E", "#A7F3D0", "#F0FDFA"] },
-  { id: "brutalist", label: "Cubic", detail: "Bold blocks, strong contrast.", heading: "Oswald", body: "Lato", swatches: ["#111111", "#FACC15", "#FFFFFF"] },
-  { id: "editorial", label: "Editorial", detail: "Magazine-like and story-led.", heading: "Playfair Display", body: "Source Sans 3", swatches: ["#1F2937", "#F5F5F4", "#A16207"] },
-  { id: "artisan", label: "Artisan", detail: "Warm, handmade, trustworthy.", heading: "Poppins", body: "Nunito", swatches: ["#92400E", "#FEF3C7", "#FFFFFF"] },
-  { id: "dark-luxury", label: "Luxury", detail: "Premium, dark, polished.", heading: "Playfair Display", body: "Inter", swatches: ["#111111", "#B88A44", "#F8F3EA"] },
-  { id: "playful-pop", label: "Pop", detail: "Bright, cheerful, energetic.", heading: "Montserrat", body: "Nunito", swatches: ["#EC4899", "#38BDF8", "#FFF7FB"] },
-];
 
 const storeFlowSlugs = new Set(["/shop", "/product", "/cart", "/checkout", "/account", "/wishlist", "/order-success", "/track-order"]);
 const systemSlugs = new Set(["/admin", "/auth", "/bkash", "/cms-admin"]);
@@ -917,7 +900,9 @@ export function BasicModeEditor({
   const fgHex = hslChannelsToHex(fgHsl) ?? "#000000";
   const radiusScale = store.theme.radiusScale ?? 0.55;
   const densityScale = store.theme.densityScale ?? 0.5;
-  const activeVibe = vibeCards.find((vibe) => vibe.id === store.theme.aesthetic);
+  const platformAestheticOptions = useMemo(() => getPlatformAestheticOptions(store.theme), [store.theme]);
+  const activeVibe = platformAestheticOptions.find((vibe) => vibe.storedValue === store.theme.aesthetic)
+    ?? platformAestheticOptions.find((vibe) => vibe.engineId === "flat");
   const effectState = {
     scrollReveals: store.theme.effects?.scrollReveals ?? false,
     hoverEffects: store.theme.effects?.hoverEffects ?? true,
@@ -1192,7 +1177,7 @@ export function BasicModeEditor({
       case "layout": {
         const focusedLayoutBlock = page.blocks.find((block) => block.id === focusedLayoutBlockId) ?? page.blocks[0] ?? null;
         const focusedLayoutIndex = focusedLayoutBlock ? page.blocks.findIndex((block) => block.id === focusedLayoutBlock.id) : -1;
-        const focusedLayoutOptions = focusedLayoutBlock ? getBasicLayoutVariantOptions(templateId, focusedLayoutBlock.type) : [];
+        const focusedLayoutOptions = focusedLayoutBlock ? getBasicLayoutVariantOptions(templateId, focusedLayoutBlock.type, focusedLayoutBlock) : [];
 
         return (
           <div className="space-y-4">
@@ -1611,9 +1596,9 @@ export function BasicModeEditor({
           <div className="space-y-10">
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Choose the brand feel</h3>
+                <h3 className="text-lg font-semibold text-foreground">Choose the storefront aesthetic</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pick a vibe first. The editor will pair fonts with it, then you can tune colors only if needed.
+                  Choose Flat / Minimal, Editorial, Glass, or Artisan. This changes presentation only; your colors, logo, content, products, navigation, and fonts stay unchanged.
                 </p>
               </div>
 
@@ -1621,9 +1606,9 @@ export function BasicModeEditor({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Current style</p>
                 <div className="mt-3 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{activeVibe?.label ?? "Not chosen yet"}</p>
+                    <p className="text-sm font-semibold text-foreground">{activeVibe?.label ?? "Flat / Minimal"}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {activeVibe?.detail ?? "Choose a look below to give the storefront a stronger direction."}
+                      {activeVibe?.detail ?? "Clean surfaces, restrained motion, and minimal decoration."}
                     </p>
                   </div>
                   {activeVibe ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <Palette className="h-5 w-5 shrink-0 text-primary" />}
@@ -1631,32 +1616,37 @@ export function BasicModeEditor({
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {vibeCards.map((vibe) => (
-                  <button
-                    key={vibe.id}
-                    type="button"
-                    onClick={() => {
-                      updateThemeAesthetic(vibe.id);
-                      updateFont("heading", vibe.heading);
-                      updateFont("body", vibe.body);
-                    }}
-                    className={cn(
-                      "rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
-                      store.theme.aesthetic === vibe.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
-                    )}
-                  >
-                    <div className="flex h-10 overflow-hidden rounded-lg border border-border/70">
-                      {vibe.swatches.map((swatch, index) => (
-                        <span key={`${vibe.id}-${swatch}-${index}`} className="flex-1" style={{ backgroundColor: swatch }} />
-                      ))}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground">{vibe.label}</p>
-                      {store.theme.aesthetic === vibe.id ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{vibe.detail}</p>
-                  </button>
-                ))}
+                {platformAestheticOptions.map((vibe) => {
+                  const selected = store.theme.aesthetic === vibe.storedValue || (!store.theme.aesthetic && vibe.engineId === "flat");
+                  return (
+                    <button
+                      key={vibe.storedValue}
+                      type="button"
+                      onClick={() => updateThemeAesthetic(vibe.storedValue)}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
+                        selected ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
+                      )}
+                    >
+                      <div
+                        className="h-10 border border-border/70 bg-background/80 p-2"
+                        style={{
+                          borderRadius: `calc(0.75rem * ${vibe.profile.tokens["--store-radius-card-scale"] ?? "1"})`,
+                          boxShadow: vibe.profile.tokens["--store-elevation-card"],
+                          backdropFilter: `blur(${vibe.profile.tokens["--store-backdrop-blur"] ?? "0px"})`,
+                        }}
+                      >
+                        <div className="h-2 w-3/5 rounded bg-foreground/65" />
+                        <div className="mt-2 h-1.5 w-4/5 rounded bg-foreground/20" />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">{vibe.label}</p>
+                        {selected ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{vibe.detail}</p>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
