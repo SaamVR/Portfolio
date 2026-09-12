@@ -7,8 +7,9 @@
 - Frozen `BASE_SHA`: `b1ba310bae98ed3145990ff1fd9af4077cf557fe`
 - Base source: `design/threads-admin-template`
 - Integration branch: `architecture/storefront-platform-v1`
-- Latest implementation SHA before this handoff-only commit: `679f431469433943d5e2d4c4a41ee61679604c70`
-- Base ancestry check: PASS — compare reports merge-base exactly equal to frozen `BASE_SHA`, branch ahead by 16 implementation commits and behind by 0.
+- Final Runtime 2 implementation SHA before this handoff-only commit: `2585cbb62ff0bfeb09c65a95e5f37f970ec1d58e`
+- Runtime 1 checkpoint SHA: `3a9517a97ef73dfc733cd01a85b7e5ae2691de0a`
+- Base ancestry check: PASS — merge-base remains exactly the frozen `BASE_SHA`; Runtime 2 implementation head is 18 commits ahead and 0 behind.
 - Ownership check: PASS — implementation diff touches only Lane B-owned storefront renderer/theme files and new Lane B rendering/platform paths. This handoff file is the only documentation addition.
 - Merge/deploy status: no merge; no production deployment.
 
@@ -102,7 +103,7 @@ Mobile reductions are encoded in scoped CSS:
 - Glass: lower blur, lighter elevation, lower decoration, restrained motion, parallax disabled.
 - Editorial: reduced display scale and overlap disabled.
 - Artisan: reduced decoration density.
-- `prefers-reduced-motion: reduce`: motion duration and parallax are forced down within the storefront scope.
+- `prefers-reduced-motion: reduce`: motion/parallax tokens are forced down and all descendants/pseudo-elements inside the storefront scope receive near-zero animation/transition duration plus `scroll-behavior: auto`, so legacy template transitions also respect the visitor preference.
 
 `StoreThemeScope` resolves the existing merchant theme first, then semantic/aesthetic presentation variables. Merchant scoped custom CSS remains later in source order so merchant overrides remain authoritative.
 
@@ -142,11 +143,11 @@ No Lane A schema/registry files, Lane C data/cache hooks, Lane D editor files, I
 
 ## Validation
 
-### Targeted Lane B tests
+### Runtime 2 targeted Lane B tests
 
-PASS — 10/10 tests.
+PASS — **14/14 tests**.
 
-Executed with `tsx --test` against:
+Executed with Node 24 / `tsx --test` against:
 
 - `StoreThemeScope.test.tsx`
 - `StorefrontAestheticIntegration.test.tsx`
@@ -155,42 +156,81 @@ Executed with `tsx --test` against:
 - `registries.test.ts`
 - `theme-tokens.test.ts`
 
-Result: 10 passed, 0 failed.
+Runtime 2 adds explicit guards for:
+
+- all current template IDs preserving the pre-foundation Generic/Fashion/Threads renderer+shell split;
+- all four approved aesthetics preserving merchant `--background`, `--primary`, and `--accent` variables end to end;
+- semantic brand/accent tokens remaining aliases of merchant palette variables;
+- merchant scoped custom CSS staying after the aesthetic engine stylesheet;
+- public renderer/shell boundaries containing no live-editor/editor imports;
+- specialized public renderers/shells remaining dynamic and SSR-capable;
+- admin-only overlay staying dynamically isolated;
+- merchant-disabled hover effects remaining motionless;
+- `prefers-reduced-motion` applying to legacy descendants and pseudo-elements, not just new semantic-surface nodes.
+
+Result: 14 passed, 0 failed.
+
+### Runtime 2 ESLint
+
+PASS.
+
+Focused ESLint completed with exit code 0 for every Runtime 2-touched source/test file.
 
 ### Repository typecheck
 
 PASS.
 
-`npm run typecheck` completed with exit code 0 on the isolated Lane B validation worktree.
+`npm run typecheck` completed with exit code 0 on the isolated Lane B validation worktree after Runtime 2 changes.
 
 ### Production build
 
-PARTIAL PASS / ENVIRONMENT BLOCKED AFTER COMPILE.
+PASS under the repository runtime.
 
-The first attempt used the machine default Node 18 and correctly stopped because the repository requires Node 24.x. Retried with NVM Node `v24.19.0` / npm `11.17.0`.
-
-Under Node 24:
-
+- Node: `v24.19.0`
+- npm: `11.17.0`
+- `npm run build`: exit code 0
 - optimized production compilation: PASS (`Compiled successfully`)
-- build TypeScript phase: PASS (`Finished TypeScript`)
-- static-page generation: BLOCKED by missing validation-environment `NEXT_PUBLIC_SUPABASE_URL`; Next failed prerendering `/_not-found` with `supabaseUrl is required`.
+- build TypeScript phase: PASS
+- static generation: PASS (`70/70`)
+- final optimization/build traces: PASS
 
-No production/environment secrets were injected and no deployment configuration was changed merely to make the isolated validation build finish.
+The isolated validation build supplied non-secret placeholder public Supabase/app URLs/keys only so client initialization could compile and prerender. Server-side platform identity/policy fallbacks logged the expected missing `SUPABASE_SERVICE_ROLE_KEY` warning, but the build completed successfully. No secret was injected, no deployment configuration was modified, and no network-dependent production action was performed.
 
-A pre-existing Tailwind warning about ambiguous `ease-[cubic-bezier(...)]` also appeared; no Lane B changed file contains that class.
+A pre-existing Tailwind warning about ambiguous `ease-[cubic-bezier(...)]` remains; no Lane B Runtime 2 changed file contains that class.
+
+### Existing-template appearance preservation
+
+PASS at the source/infrastructure regression level.
+
+`git diff` from the frozen base confirms **no source change at all** under:
+
+- `src/components/storefront/fashion-v3/**`
+- `src/components/storefront/threads/**`
+
+The registry parity test also confirms Fashion still resolves to Fashion V3, Threads still resolves to Threads Earthy, and every other currently registered template still resolves to the generic renderer/classic shell. Runtime 2 therefore does not deliberately redesign or remap an existing legitimate template.
 
 ## Bundle / code-splitting evidence
 
-Source and guard-test evidence:
+PASS.
 
-- `StorefrontTemplateRenderer.tsx` no longer statically imports `fashion-v3/**` or `threads/**` renderer/shell modules.
-- `StorefrontRendererBoundary.tsx` contains dynamic imports for `FashionV3BlockRenderer` and `ThreadsBlockRenderer`.
-- `StorefrontShellBoundary.tsx` contains dynamic imports for `FashionV3Shell` and `ThreadsShell`.
-- Public specialized boundaries contain no `ssr:false`.
-- Admin-only `StorefrontAdminMode` is the intentionally client-only dynamic boundary.
-- `code-splitting.test.ts` passed.
+Source guards confirm:
 
-The partially completed production build emitted separate static chunks containing specialized Fashion/Threads presentation code before static-page generation encountered the missing Supabase environment variable, which is consistent with the intended dynamic boundaries.
+- `StorefrontTemplateRenderer.tsx` has no static Fashion/Threads renderer/shell import.
+- `StorefrontRendererBoundary.tsx` dynamically imports Fashion V3 and Threads block renderers.
+- `StorefrontShellBoundary.tsx` dynamically imports Fashion V3 and Threads shells.
+- public specialized boundaries do not opt out of SSR.
+- `StorefrontAdminMode` is dynamically isolated and is the only owned browser-only `ssr:false` boundary.
+- public rendering boundaries import neither `StorefrontLiveEditor` nor `components/storefront/editor/**`.
+
+The successful production build's `react-loadable-manifest.json` records separate loadable entries/chunks:
+
+- admin overlay → `static/chunks/479.d12fbc20141f5eea.js`
+- Fashion V3 block renderer → `static/chunks/9849-9d75f99cbbae36a1.js`
+- Threads block renderer → `static/chunks/2569-d4268897f687110f.js` + `static/chunks/6644.a1d7af4380cd37ba.js`
+- Fashion V3 shell → `static/chunks/8691-c991317068da12f1.js` + `static/chunks/4989.29d93a87c2f52ec9.js`
+- Threads shell → `static/chunks/4795.ba2ac904f4ffe5b2.js`
+
+This is direct build evidence that specialized presentation and admin overlay code are loadable chunks rather than eager imports from the storefront orchestration module.
 
 ## Dependency requests
 
@@ -201,7 +241,14 @@ DEPENDENCY REQUEST
 - reason: Lane B discovery found hard-coded shared surface treatment outside its exclusive ownership. The lock protocol requires newly discovered shared files to receive one owner before modification, and Lane B must not rewrite Lane C/mobile navigation behavior.
 - blocking or non-blocking: non-blocking
 
-No Lane A schema dependency is blocking this checkpoint. Lane B deliberately consumes the existing `rendererKind` contract rather than changing it.
+DEPENDENCY REQUEST
+- owning lane: Integration
+- file/contract: Lane A `composition` block contract under `src/lib/cms/storefront-platform/composition/**` plus Lane B-owned storefront renderer boundary
+- required change: After Lane A is merged first, reconcile a composition renderer into the Lane B-owned rendering boundary using `compositionDocumentSchema` and only Lane A registered primitive IDs. Do not duplicate the composition schema/primitive registry in Lane B. Keep `composition` unavailable in Integration-owned template/guided availability until this consumer exists.
+- reason: Lane A Runtime 1/2 has now committed the canonical Universal Composition contract and explicitly requested Lane B rendering support. The frozen Lane B branch cannot safely import sibling-branch modules before Lane A lands, and coordination forbids merging/cherry-picking Lane A-owned files into this lane.
+- blocking or non-blocking: blocking
+
+This blocker applies to **enabling the new `composition` block end to end**, not to merging the completed Lane B renderer/theme foundation after Lane A in the prescribed order.
 
 ## Post-foundation architecture backlog
 
@@ -235,7 +282,7 @@ POST-FOUNDATION ARCHITECTURE BACKLOG
 
 ## Integration concerns
 
-- Merge Lane A first as specified by coordination, then reconcile Lane B against Lane A's public contracts without importing Lane A private implementation files.
+- Merge Lane A first as specified by coordination. Before `composition` is exposed, fulfill the blocking composition-renderer dependency against Lane A's canonical schema/primitives; do not create a duplicate B-side contract.
 - Lane B currently relies only on the existing `StorefrontTemplateDefinition.rendererKind` shape from the Integration-owned central template registry.
 - Lane D can continue storing the existing aesthetic enum values. Lane B maps those values into the four proof engine profiles without requiring an editor/schema change.
 - Lane C should validate the combined public bundle and mobile runtime after integration; Lane B's code-splitting guard provides the intended import boundary but is not a substitute for Lane C's performance measurements.
@@ -245,6 +292,18 @@ POST-FOUNDATION ARCHITECTURE BACKLOG
 ## Remaining work
 
 - Integration branch merge/reconciliation in prescribed order; no merge performed by Lane B.
+- After Lane A lands, fulfill the blocking Universal Composition renderer consumer before Integration exposes `composition` in template/guided availability. This is integration-sequenced because the canonical modules do not exist on Lane B's frozen base.
 - Resolve the non-blocking shared-chrome ownership dependency before broader semantic-surface migration.
 - Lane C bundle/mobile measurement after Lane A + Lane B integration.
 - Final integration audit should run a fully environment-configured production build and representative visual-regression checks for Fashion Classic/V3 and Threads before release.
+
+## Runtime 2 final checkpoint
+
+- Final automatic Lane B runtime: **2 of 2 complete**.
+- B2 implementation commit: `2585cbb62ff0bfeb09c65a95e5f37f970ec1d58e` (`B2 harden rendering and aesthetic boundaries`).
+- No B3 runtime is planned.
+- No new aesthetic family was added.
+- No template redesign occurred.
+- No Lane A/C/D or Integration-owned application file was modified.
+- No merge or deployment was performed.
+- Final handoff commit is the branch HEAD immediately after this documentation update; record its exact SHA from Git after commit.
