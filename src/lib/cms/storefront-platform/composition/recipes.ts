@@ -30,6 +30,12 @@ export interface CompositionRecipeDefinition {
 
 const ALL_BUSINESS_FAMILIES: readonly StoreBusinessFamily[] = ["commerce", "booking", "listing", "service", "donation"];
 
+const BASIC_RESPONSIVE: StorefrontResponsiveContract = {
+  mobile: { layout: "single-column", columns: 1, order: "content-first", overflow: "wrap" },
+  tablet: { layout: "stack", columns: 1, order: "content-first", overflow: "wrap" },
+  desktop: { layout: "preserve", order: "content-first", overflow: "wrap" },
+};
+
 const EDITORIAL_RESPONSIVE: StorefrontResponsiveContract = {
   mobile: { layout: "single-column", columns: 1, order: "media-first", overflow: "wrap" },
   tablet: { layout: "two-column", columns: 2, order: "media-first", overflow: "wrap" },
@@ -40,6 +46,38 @@ const PROMOTIONAL_RESPONSIVE: StorefrontResponsiveContract = {
   mobile: { layout: "single-column", columns: 1, order: "content-first", overflow: "wrap" },
   tablet: { layout: "two-column", columns: 2, order: "content-first", overflow: "wrap" },
   desktop: { layout: "two-column", columns: 2, order: "content-first", overflow: "clip" },
+};
+
+const basicContentDocument: CompositionDocument = {
+  schemaVersion: COMPOSITION_SCHEMA_VERSION,
+  recipeId: "basic-content",
+  tree: {
+    id: "basic-content-section",
+    primitive: "section",
+    props: { width: "contained", padding: "comfortable", tone: "default" },
+    children: [{
+      id: "basic-content-container",
+      primitive: "container",
+      props: { width: "content", align: "center" },
+      children: [{
+        id: "basic-content-stack",
+        primitive: "stack",
+        props: { gap: "md", align: "stretch" },
+        children: [
+          {
+            id: "basic-content-heading",
+            primitive: "heading",
+            props: { text: "Tell customers what matters", level: "h2", align: "left", emphasis: "normal" },
+          },
+          {
+            id: "basic-content-copy",
+            primitive: "text",
+            props: { text: "A lightweight content composition is the safe fallback when a media-dependent recipe cannot satisfy its requirements.", style: "body", align: "left" },
+          },
+        ],
+      }],
+    }],
+  },
 };
 
 const editorialStoryDocument: CompositionDocument = {
@@ -209,6 +247,22 @@ const modernPromotionDocument: CompositionDocument = {
 
 export const compositionRecipeRegistry: readonly CompositionRecipeDefinition[] = [
   {
+    id: "basic-content",
+    label: "Basic content",
+    description: "Lightweight heading-and-copy composition used as the universal safe fallback.",
+    guidance: "Use when a richer recipe cannot satisfy media or capability requirements.",
+    compatibleBusinessFamilies: ALL_BUSINESS_FAMILIES,
+    requiredCapabilities: [],
+    recommendedTemplateIds: [],
+    requirements: {},
+    safeFallbackRecipeId: "basic-content",
+    responsive: BASIC_RESPONSIVE,
+    interactionRequirement: "none",
+    performanceClass: "light",
+    document: basicContentDocument,
+    version: 1,
+  },
+  {
     id: "editorial-story",
     label: "Editorial story",
     description: "Large media paired with a story panel, badge, CTA, and restrained decoration.",
@@ -217,7 +271,7 @@ export const compositionRecipeRegistry: readonly CompositionRecipeDefinition[] =
     requiredCapabilities: [],
     recommendedTemplateIds: ["fashion", "threads", "crafts", "beauty"],
     requirements: { requiresPrimaryMedia: true, minMediaItems: 1 },
-    safeFallbackRecipeId: "editorial-story",
+    safeFallbackRecipeId: "basic-content",
     responsive: EDITORIAL_RESPONSIVE,
     interactionRequirement: "none",
     performanceClass: "media-heavy",
@@ -233,7 +287,7 @@ export const compositionRecipeRegistry: readonly CompositionRecipeDefinition[] =
     requiredCapabilities: [],
     recommendedTemplateIds: ["electronics", "fashion", "beauty", "general-catalog"],
     requirements: { requiresPrimaryMedia: true, minMediaItems: 1 },
-    safeFallbackRecipeId: "modern-promotion",
+    safeFallbackRecipeId: "basic-content",
     responsive: PROMOTIONAL_RESPONSIVE,
     interactionRequirement: "none",
     performanceClass: "media-heavy",
