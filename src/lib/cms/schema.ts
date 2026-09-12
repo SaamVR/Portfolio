@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseLegacyStringToDoc } from "./rich-text-adapter";
+import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composition/schema";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
@@ -199,6 +200,24 @@ const recentlyViewedBlockSchema = z.object({
   }).default({}),
 });
 
+const compositionBlockPropsSchema = z.record(z.string(), z.unknown()).superRefine((props, ctx) => {
+  const result = compositionDocumentSchema.safeParse(props);
+  if (result.success) return;
+
+  for (const issue of result.error.issues) {
+    ctx.addIssue({
+      ...issue,
+      path: issue.path,
+    });
+  }
+});
+
+const compositionBlockSchema = z.object({
+  ...baseBlockFields,
+  type: z.literal("composition"),
+  props: compositionBlockPropsSchema,
+});
+
 export const richTextNodeSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     type: z.string(),
@@ -317,6 +336,7 @@ export const storePageBlockSchema = z.discriminatedUnion("type", [
   comparisonBlockSchema,
   recommendedProductsBlockSchema,
   recentlyViewedBlockSchema,
+  compositionBlockSchema,
   richTextBlockSchema,
   socialFeedBlockSchema,
   videoReelBlockSchema,
