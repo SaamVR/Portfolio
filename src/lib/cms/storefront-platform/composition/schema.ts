@@ -3,9 +3,15 @@ import {
   COMPOSITION_LIMITS,
   COMPOSITION_SCHEMA_VERSION,
   compositionPrimitiveIds,
+  type CompositionBindingField,
+  type CompositionDataSlotId,
   type CompositionDocument,
   type CompositionNode,
 } from "@/lib/cms/storefront-platform/composition/contracts";
+import {
+  getCompositionDataSlotContract,
+  validateCompositionDataSlotSelection,
+} from "@/lib/cms/storefront-platform/composition/data-slot-contracts";
 import {
   compositionBindingSchema,
   getCompositionPrimitiveDefinition,
@@ -40,6 +46,21 @@ export const compositionNodeSchema: z.ZodType<CompositionNode> = z.lazy(() =>
       addNestedIssues(ctx, propsResult.error.issues, ["props"]);
     }
 
+    if (node.primitive === "data-slot") {
+      const slotValidation = validateCompositionDataSlotSelection(
+        node.props.slot,
+        node.props.source ?? "default",
+        node.props.limit ?? 6,
+      );
+      if (!slotValidation.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["props"],
+          message: slotValidation.message,
+        });
+      }
+    }
+
     const childCount = node.children?.length ?? 0;
     if (!definition.allowsChildren && childCount > 0) {
       ctx.addIssue({
@@ -65,13 +86,14 @@ export const compositionNodeSchema: z.ZodType<CompositionNode> = z.lazy(() =>
 
 type PendingBinding = {
   slotId: string;
+  field: CompositionBindingField;
   path: Array<string | number>;
 };
 
 function collectBindings(value: unknown, path: Array<string | number>, bindings: PendingBinding[]) {
   const parsed = compositionBindingSchema.safeParse(value);
   if (parsed.success) {
-    bindings.push({ slotId: parsed.data.slotId, path });
+    bindings.push({ slotId: parsed.data.slotId, field: parsed.data.field, path });
     return;
   }
 
@@ -99,7 +121,7 @@ export const compositionTreeSchema = compositionNodeSchema.superRefine((tree, ct
   let nodeCount = 0;
   let nodeLimitReported = false;
   const nodeIds = new Set<string>();
-  const dataSlotIds = new Set<string>();
+  const dataSlots = new Map<string, CompositionDataSlotId>();
   const bindings: PendingBinding[] = [];
 
   const visit = (node: CompositionNode, depth: number, path: Array<string | number>) => {
@@ -133,7 +155,14 @@ export const compositionTreeSchema = compositionNodeSchema.superRefine((tree, ct
     }
 
     if (node.primitive === "data-slot") {
-      dataSlotIds.add(node.id);
+      const selection = validateCompositionDataSlotSelection(
+        node.props.slot,
+        node.props.source ?? "default",
+        node.props.limit ?? 6,
+      );
+      if (selection.success) {
+        dataSlots.set(node.id, selection.slot);
+      }
     }
 
     collectBindings(node.props, [...path, "props"], bindings);
@@ -146,11 +175,22 @@ export const compositionTreeSchema = compositionNodeSchema.superRefine((tree, ct
   visit(tree, 1, []);
 
   for (const binding of bindings) {
-    if (!dataSlotIds.has(binding.slotId)) {
+    const slot = dataSlots.get(binding.slotId);
+    if (!slot) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: binding.path,
         message: `Binding references unknown data slot node: ${binding.slotId}`,
+      });
+      continue;
+    }
+
+    const contract = getCompositionDataSlotContract(slot);
+    if (!contract.fields.includes(binding.field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: binding.path,
+        message: `Binding field ${binding.field} is not available from ${slot}`,
       });
     }
   }

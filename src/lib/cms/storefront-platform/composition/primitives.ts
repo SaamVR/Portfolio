@@ -3,6 +3,7 @@ import {
   COMPOSITION_LIMITS,
   compositionBindingFields,
   compositionDataSlotIds,
+  compositionDataSourceModes,
   type CompositionPrimitiveId,
 } from "@/lib/cms/storefront-platform/composition/contracts";
 
@@ -143,7 +144,7 @@ const decorativeLayerPropsSchema = z.object({
 const dataSlotPropsSchema = z.object({
   slot: z.enum(compositionDataSlotIds),
   limit: z.number().int().min(1).max(COMPOSITION_LIMITS.maxDataSlotItems).default(6),
-  source: z.enum(["default", "featured", "all", "newest", "category", "type", "manual"]).default("default"),
+  source: z.enum(compositionDataSourceModes).default("default"),
   category: z.string().max(120).optional(),
   productType: z.string().max(120).optional(),
 }).strict();

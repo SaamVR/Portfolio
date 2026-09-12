@@ -45,6 +45,19 @@ export const compositionDataSlotIds = [
   "faq",
 ] as const;
 
+export const compositionDataSourceModes = [
+  "default",
+  "featured-or-all",
+  "featured",
+  "all",
+  "newest",
+  "category",
+  "type",
+  "manual",
+  "auto",
+  "live",
+] as const;
+
 export const compositionBindingFields = [
   "title",
   "subtitle",
@@ -62,6 +75,7 @@ export const compositionBindingFields = [
 
 export type CompositionPrimitiveId = (typeof compositionPrimitiveIds)[number];
 export type CompositionDataSlotId = (typeof compositionDataSlotIds)[number];
+export type CompositionDataSourceMode = (typeof compositionDataSourceModes)[number];
 export type CompositionBindingField = (typeof compositionBindingFields)[number];
 
 export interface CompositionBinding {
