@@ -161,12 +161,18 @@ export function buildCompositionDataSlotRequest(input: CompositionDataSlotReques
   const validation = validateCompositionDataSlotSelection(input.slot, input.source, input.limit);
   if (!validation.success) throw new Error(validation.message);
 
+  const filters = input.filters
+    ? Object.fromEntries(
+        Object.entries(input.filters).filter(([, value]) => typeof value === "string" && value.length > 0),
+      ) as NonNullable<CompositionDataSlotRequest["filters"]>
+    : undefined;
+
   return {
     nodeId: input.nodeId,
     slot: validation.slot,
     source: validation.source,
     limit: validation.limit,
-    ...(input.filters && Object.keys(input.filters).length > 0 ? { filters: { ...input.filters } } : {}),
+    ...(filters && Object.keys(filters).length > 0 ? { filters } : {}),
   };
 }
 

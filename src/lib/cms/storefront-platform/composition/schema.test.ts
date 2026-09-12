@@ -15,6 +15,13 @@ describe("composition document schema", () => {
     assert.equal(parsed.tree.primitive, "section");
   });
 
+  it("rejects unsupported composition schema versions", () => {
+    const document = createDefaultCompositionDocument() as unknown as Record<string, unknown>;
+    document.schemaVersion = COMPOSITION_SCHEMA_VERSION + 1;
+
+    assert.equal(compositionDocumentSchema.safeParse(document).success, false);
+  });
+
   it("rejects unknown primitives and arbitrary primitive props", () => {
     const unknownPrimitive = createDefaultCompositionDocument() as unknown as Record<string, unknown>;
     const unknownTree = unknownPrimitive.tree as Record<string, unknown>;

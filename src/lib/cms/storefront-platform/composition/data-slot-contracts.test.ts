@@ -71,7 +71,7 @@ describe("composition data-slot contracts", () => {
       slot: "featured-products",
       source: "category",
       limit: 8,
-      filters: { category: "shirts", productType: undefined },
+      filters: { category: "shirts" },
     }]);
     assert.equal(adaptStorePageBlockToCompositionDataSlots(testimonials)[0]?.source, "live");
   });

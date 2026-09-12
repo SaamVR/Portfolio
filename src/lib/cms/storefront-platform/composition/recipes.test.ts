@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   compositionRecipeRegistry,
   createCompositionDocumentFromRecipe,
+  getCompositionRecipe,
 } from "@/lib/cms/storefront-platform/composition/recipes";
 import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composition/schema";
 
@@ -34,6 +35,7 @@ describe("composition recipes", () => {
     for (const recipe of compositionRecipeRegistry) {
       assert.ok(recipe.compatibleBusinessFamilies.length > 0);
       assert.ok(recipe.safeFallbackRecipeId);
+      assert.ok(getCompositionRecipe(recipe.safeFallbackRecipeId), `missing safe fallback for ${recipe.id}`);
       assert.ok(recipe.responsive.mobile);
       assert.ok(recipe.responsive.tablet);
       assert.ok(recipe.responsive.desktop);
