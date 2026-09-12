@@ -36,7 +36,7 @@ export const compositionNodeSchema: z.ZodType<CompositionNode> = z.lazy(() =>
   z.object({
     id: nodeIdSchema,
     primitive: z.enum(compositionPrimitiveIds),
-    props: z.record(z.string(), z.unknown()).default({}),
+    props: z.record(z.string(), z.unknown()),
     children: z.array(compositionNodeSchema).max(COMPOSITION_LIMITS.maxChildrenPerNode).optional(),
   }).strict().superRefine((node, ctx) => {
     const definition = getCompositionPrimitiveDefinition(node.primitive);
