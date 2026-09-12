@@ -4,6 +4,7 @@ import type { StorePageBlock } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { StorefrontTemplateSeedDefinition, StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
 import { createDefaultCompositionBlock } from "@/lib/cms/storefront-platform/composition/defaults";
+import { getCompositionRecipeIds } from "@/lib/cms/storefront-platform/composition/recipes";
 import { getVariantIdsForBlock } from "@/lib/cms/storefront-platform/variants/registry";
 
 export interface CmsBlockRegistryItem {
@@ -74,7 +75,7 @@ export const fallbackBlockRegistry: CmsBlockRegistryItem[] = registryBlockTypeOp
   compatibleBusinessFamilies: resolveFallbackBusinessFamilies(option.value),
   requiredCapabilities: resolveFallbackRequiredCapabilities(option.value),
   variantIds: getVariantIdsForBlock(option.value),
-  presetIds: [],
+  presetIds: option.value === "composition" ? getCompositionRecipeIds() : [],
 }));
 
 type BlockRegistryRow = {
@@ -105,7 +106,7 @@ function mergeBlockRegistryRow(row: BlockRegistryRow): CmsBlockRegistryItem {
       : fallback.compatibleBusinessFamilies,
     requiredCapabilities: isStringArray(row.required_capabilities) ? row.required_capabilities : fallback.requiredCapabilities,
     variantIds: getVariantIdsForBlock(row.block_type as StorePageBlock["type"]),
-    presetIds: fallback.presetIds,
+    presetIds: row.block_type === "composition" ? getCompositionRecipeIds() : fallback.presetIds,
   };
 }
 
