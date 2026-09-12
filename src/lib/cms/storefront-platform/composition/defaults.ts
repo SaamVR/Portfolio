@@ -35,12 +35,18 @@ export function createDefaultCompositionDocument(): CompositionDocument {
 }
 
 export function createDefaultCompositionBlock(sortOrder: number): StorePageBlock {
+  const document = createDefaultCompositionDocument();
+
   return {
     id: crypto.randomUUID(),
     type: "composition",
     sortOrder,
     isVisible: true,
     visible: true,
-    props: createDefaultCompositionDocument(),
-  } as StorePageBlock;
+    props: {
+      schemaVersion: document.schemaVersion,
+      ...(document.recipeId ? { recipeId: document.recipeId } : {}),
+      tree: document.tree,
+    },
+  };
 }
