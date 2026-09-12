@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@/test/test-utils";
 import { defaultStore } from "@/lib/cms/default-store";
 import { storePageBlockSchema } from "@/lib/cms/schema";
+import { createDefaultCompositionDocument } from "@/lib/cms/storefront-platform/composition/defaults";
 
 describe("cms schema", () => {
   it("parses the seeded default store", () => {
@@ -36,6 +37,30 @@ describe("cms schema", () => {
     expect(featured.props.autoplay).toBe(false);
     expect(featured.props.autoplayIntervalMs).toBe(6500);
     expect(featured.props.showArrows).toBe(false);
+  });
+
+  it("accepts a schema-versioned universal composition block", () => {
+    const parsed = storePageBlockSchema.parse({
+      id: "composition-proof",
+      type: "composition",
+      sortOrder: 2,
+      isVisible: true,
+      props: createDefaultCompositionDocument(),
+    });
+
+    expect(parsed.type).toBe("composition");
+  });
+
+  it("rejects composition payloads that bypass the composition document contract", () => {
+    const parsed = storePageBlockSchema.safeParse({
+      id: "composition-invalid",
+      type: "composition",
+      sortOrder: 2,
+      isVisible: true,
+      props: { schemaVersion: 1, tree: { id: "root", primitive: "script", props: {} } },
+    });
+
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects invalid featured product limits", () => {
