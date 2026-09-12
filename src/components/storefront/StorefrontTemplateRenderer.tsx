@@ -3,11 +3,10 @@
 import dynamic from "next/dynamic";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { StorefrontRendererBoundary } from "@/components/storefront/platform/StorefrontRendererBoundary";
-import { StorefrontShell } from "@/components/storefront/StorefrontShell";
-import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
-import { ThreadsShell } from "@/components/storefront/threads/ThreadsShell";
+import { StorefrontShellBoundary } from "@/components/storefront/platform/StorefrontShellBoundary";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { resolveStorefrontRenderer } from "@/lib/cms/storefront-platform/rendering/renderer-registry";
+import { resolveStorefrontShell } from "@/lib/cms/storefront-platform/rendering/shell-registry";
 import {
   getStorefrontTemplateDefinition,
   resolveStorefrontTemplateId,
@@ -76,6 +75,7 @@ export function StorefrontTemplateRenderer({
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
   const renderer = resolveStorefrontRenderer(template);
+  const shell = resolveStorefrontShell(template);
   const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
@@ -114,13 +114,14 @@ export function StorefrontTemplateRenderer({
     </>
   );
 
-  if (templateId === "fashion") {
-    return <FashionV3Shell embedded={embedded}>{pageContent}</FashionV3Shell>;
-  }
-
-  if (templateId === "threads") {
-    return <ThreadsShell embedded={embedded}>{pageContent}</ThreadsShell>;
-  }
-
-  return <StorefrontShell templateId={templateId} template={template} embedded={embedded}>{pageContent}</StorefrontShell>;
+  return (
+    <StorefrontShellBoundary
+      shellId={shell.id}
+      templateId={templateId}
+      template={template}
+      embedded={embedded}
+    >
+      {pageContent}
+    </StorefrontShellBoundary>
+  );
 }
