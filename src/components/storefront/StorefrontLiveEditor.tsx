@@ -35,8 +35,11 @@ import { FashionV3Shell } from "./fashion-v3/FashionV3Shell";
 import { ThreadsBlockRenderer } from "./threads/ThreadsBlockRenderer";
 import { ThreadsShell } from "./threads/ThreadsShell";
 import { VisualCssInspector } from "./VisualCssInspector";
+import { MobileMerchantEditorSheet } from "./editor/MobileMerchantEditorSheet";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { buildStorefrontEditorDraftEnvelope, getStorefrontEditorDraftKey, parseStorefrontEditorDraft, serializeStorefrontEditorDraft } from "@/lib/cms/storefront-platform/editor/draft-storage";
+import { getStorefrontEditorQualityIssues } from "@/lib/cms/storefront-platform/editor/quality-assist";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -181,6 +184,9 @@ export function StorefrontLiveEditor({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
+  const [localDraftProtected, setLocalDraftProtected] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -192,6 +198,7 @@ export function StorefrontLiveEditor({
   const storeIdRef = useRef(store.id);
   const pageIdRef = useRef(page.id);
   const draftSnapshotRef = useRef(serializeStoreDraft(store));
+  const storeDraftRef = useRef(store);
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
   const basicEditorHref = buildPageBuilderPath("basic", { pageId: page.id, returnTo });
@@ -200,6 +207,7 @@ export function StorefrontLiveEditor({
   storeIdRef.current = store.id;
   pageIdRef.current = page.id;
   draftSnapshotRef.current = currentSnapshot;
+  storeDraftRef.current = store;
   const hasUnsavedChanges = currentSnapshot !== persistedSnapshot;
   const selectedBlock = useMemo(
     () => page.blocks.find((block) => block.id === selectedBlockId) ?? null,
@@ -208,6 +216,10 @@ export function StorefrontLiveEditor({
   const importChangeSummary = useMemo(
     () => (importPreview ? buildImportChangeSummary(store, importPreview) : null),
     [importPreview, store],
+  );
+  const selectedBlockQualityIssues = useMemo(
+    () => selectedBlock ? getStorefrontEditorQualityIssues(selectedBlock) : [],
+    [selectedBlock],
   );
   const activeTemplateSeed = useMemo(() => {
     const profile = store.siteSettings?.storefront_profile;
@@ -247,36 +259,84 @@ export function StorefrontLiveEditor({
   }, []);
 
   useEffect(() => {
-    lastLoadedStoreRef.current = store;
-    setPersistedSnapshot(serializeStoreDraft(store));
+    const loadedStore = storeDraftRef.current;
+    const baseline = serializeStoreDraft(loadedStore);
+    lastLoadedStoreRef.current = loadedStore;
+    setPersistedSnapshot(baseline);
     setHistory([]);
     setRedoHistory([]);
     setLastSavedAt(null);
+    setSaveError(null);
+    setLocalDraftProtected(false);
+
+    if (typeof window !== "undefined") {
+      const key = getStorefrontEditorDraftKey(loadedStore.id, page.id);
+      const result = parseStorefrontEditorDraft(window.localStorage.getItem(key), {
+        storeId: loadedStore.id,
+        pageId: page.id,
+        baseSnapshot: baseline,
+      });
+      if (result.status === "available" && serializeStoreDraft(result.envelope.draft) !== baseline) {
+        setStore(result.envelope.draft);
+        setHistory([loadedStore]);
+        setLocalDraftProtected(true);
+        toast.info("Recovered your protected storefront draft from this device.");
+      } else if (result.status === "stale" || result.status === "invalid" || result.status === "base-mismatch") {
+        window.localStorage.removeItem(key);
+      }
+    }
   // Reset the persisted baseline only when the loaded storefront identity changes.
   // Ordinary local edits must remain dirty until persistence succeeds.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.id, store.id]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const syncOnlineState = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", syncOnlineState);
+    window.addEventListener("offline", syncOnlineState);
+    return () => {
+      window.removeEventListener("online", syncOnlineState);
+      window.removeEventListener("offline", syncOnlineState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasUnsavedChanges) return undefined;
+    const key = getStorefrontEditorDraftKey(store.id, page.id);
+    const persistLocalDraft = () => {
+      try {
+        const envelope = buildStorefrontEditorDraftEnvelope({
+          store: storeDraftRef.current,
+          pageId: page.id,
+          baseSnapshot: persistedSnapshot,
+        });
+        window.localStorage.setItem(key, serializeStorefrontEditorDraft(envelope));
+        setLocalDraftProtected(true);
+      } catch (error) {
+        console.warn("Unable to protect storefront editor draft locally:", error);
+        setLocalDraftProtected(false);
+      }
+    };
+    const timer = window.setTimeout(persistLocalDraft, 350);
+    const flushDraft = () => persistLocalDraft();
+    const flushOnVisibility = () => {
+      if (document.visibilityState === "hidden") persistLocalDraft();
+    };
+    window.addEventListener("pagehide", flushDraft);
+    document.addEventListener("visibilitychange", flushOnVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pagehide", flushDraft);
+      document.removeEventListener("visibilitychange", flushOnVisibility);
+    };
+  }, [currentSnapshot, hasUnsavedChanges, page.id, persistedSnapshot, store.id]);
+
+  useEffect(() => {
     if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
       setNextBlockType(availableBlockRegistry[0]?.value ?? "rich-text");
     }
   }, [availableBlockRegistry, nextBlockType]);
-
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      if (viewport === "mobile") {
-        document.body.style.width = "420px";
-        document.body.style.margin = "0 auto";
-      } else if (viewport === "tablet") {
-        document.body.style.width = "768px";
-        document.body.style.margin = "0 auto";
-      } else {
-        document.body.style.width = "100%";
-        document.body.style.margin = "0";
-      }
-    }
-  }, [viewport]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hasUnsavedChanges) {
@@ -340,6 +400,11 @@ export function StorefrontLiveEditor({
       setStore(lastLoadedStoreRef.current);
       setHistory([]);
       onSelectedBlockChange(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+      }
+      setLocalDraftProtected(false);
+      setSaveError(null);
       toast.success("Live editor reset to the last loaded storefront state.");
       return;
     }
@@ -374,6 +439,11 @@ export function StorefrontLiveEditor({
     setStore(lastLoadedStoreRef.current);
     setHistory([]);
     onSelectedBlockChange(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+    }
+    setLocalDraftProtected(false);
+    setSaveError(null);
     toast.success("Live editor reset to the last loaded storefront state.");
   };
 
@@ -397,8 +467,8 @@ export function StorefrontLiveEditor({
       entityValue: page.title,
       storeName: store.name,
       impacts: [
-        "The current unsaved edits stay in local page memory so reopening the live editor on this page keeps them available.",
-        "The edits are not persisted yet. Browser or tab navigation remains protected by the existing unsaved-change warning.",
+        "The current unsaved edits stay available and are protected in a page-scoped draft on this device.",
+        "The edits are not published or server-saved yet. Reopen this page to continue, then save when ready.",
       ],
       recoveryText: "Cancel to keep the live editor open with the current draft unchanged.",
       confirmLabel: "Close and keep draft",
@@ -664,6 +734,12 @@ export function StorefrontLiveEditor({
   };
 
   const saveLiveEdits = async (intent: "save" | "publish" | "unpublish" = "save") => {
+    if (!isOnline) {
+      setSaveError("Offline. Your draft is protected on this device and can be retried when the connection returns.");
+      toast.warning("You are offline. The storefront draft is protected locally.");
+      return;
+    }
+    setSaveError(null);
     const targetPublicationState = intent === "publish"
       ? true
       : intent === "unpublish"
@@ -691,7 +767,9 @@ export function StorefrontLiveEditor({
       });
 
       if (result.error) {
-        toast.error(`Failed to save live edits: ${result.error.message || "Unknown error"}`);
+        const message = result.error.message || "Unknown error";
+        setSaveError(`Save failed: ${message}`);
+        toast.error(`Failed to save live edits: ${message}`);
         return;
       }
 
@@ -705,6 +783,11 @@ export function StorefrontLiveEditor({
       lastLoadedStoreRef.current = persistedStore;
       setHistory([]);
       setLastSavedAt(new Date());
+      setSaveError(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+      }
+      setLocalDraftProtected(false);
       toast.success(
         intent === "publish"
           ? "Storefront published."
@@ -712,6 +795,10 @@ export function StorefrontLiveEditor({
             ? "Storefront unpublished. Draft preview remains available to you."
             : "Storefront edits saved.",
       );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown network error";
+      setSaveError(`Save failed: ${message}`);
+      toast.error("Could not save storefront changes. Your local draft is still protected.");
     } finally {
       setSaving(false);
     }
@@ -730,14 +817,24 @@ export function StorefrontLiveEditor({
       ];
   const saveStatusLabel = saving
     ? "Saving storefront changes..."
-    : hasUnsavedChanges
-      ? lastSavedAt
-        ? `Unsaved edits. Last saved ${formatSavedTime(lastSavedAt)}.`
-        : "Unsaved edits. Save before changing storefront visibility."
-      : lastSavedAt
-        ? `Saved at ${formatSavedTime(lastSavedAt)}. Storefront is ${store.isPublished ? "published" : "draft"}.`
-        : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
-  const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
+    : saveError
+      ? saveError
+      : !isOnline && hasUnsavedChanges
+        ? localDraftProtected
+          ? "Offline. Draft protected on this device; retry when connection returns."
+          : "Offline. Keep this page open until local draft protection completes."
+        : hasUnsavedChanges
+          ? localDraftProtected
+            ? lastSavedAt
+              ? `Unsaved edits protected locally. Last server save ${formatSavedTime(lastSavedAt)}.`
+              : "Unsaved edits protected locally on this device."
+            : lastSavedAt
+              ? `Unsaved edits. Last saved ${formatSavedTime(lastSavedAt)}.`
+              : "Unsaved edits. Save before changing storefront visibility."
+          : lastSavedAt
+            ? `Saved at ${formatSavedTime(lastSavedAt)}. Storefront is ${store.isPublished ? "published" : "draft"}.`
+            : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
+  const saveStatusTone = saveError || !isOnline ? "secondary" : saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
   const previewBlocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
   const previewStorefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings.storefront_profile
     ? store.siteSettings.storefront_profile as Record<string, unknown>
@@ -1210,9 +1307,48 @@ export function StorefrontLiveEditor({
   };
 
   return (
-    <div className="pointer-events-none fixed right-2 top-1/2 z-50 flex -translate-y-1/2 justify-end sm:right-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-1/2 sm:-translate-y-1/2">
       {confirmationDialog}
-      <div className="flex w-full max-w-[min(440px,100%)] flex-col items-end gap-3">
+      <div className="w-full sm:hidden">
+        {adminMode ? (
+          <MobileMerchantEditorSheet
+            store={store}
+            selectedBlock={selectedBlock}
+            templateId={previewTemplateId}
+            saving={saving}
+            hasUnsavedChanges={hasUnsavedChanges}
+            saveStatusLabel={saveStatusLabel}
+            isOnline={isOnline}
+            localDraftProtected={localDraftProtected}
+            qualityIssues={selectedBlockQualityIssues}
+            canUndo={history.length > 0}
+            canRedo={redoHistory.length > 0}
+            onClose={() => void toggleAdminMode()}
+            onSave={() => void saveLiveEdits()}
+            onPreview={() => setIsPreviewOpen(true)}
+            onUndo={undoLastChange}
+            onRedo={redoLastChange}
+            onUpdateBlockMeta={updateSelectedBlock}
+            onUpdateBlockProps={updateSelectedBlockProps}
+            onMoveBlock={moveSelectedBlock}
+            onDuplicateBlock={duplicateSelectedBlock}
+            onRemoveBlock={removeSelectedBlock}
+            onUpdateThemeToken={updateStoreThemeToken}
+          />
+        ) : (
+          <div className="pointer-events-auto mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur">
+            <Button type="button" className="min-h-11 flex-1 rounded-xl" onClick={() => void toggleAdminMode()}>
+              <Settings2 className="h-4 w-4" />
+              Edit store
+            </Button>
+            <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={() => setIsPreviewOpen(true)}>
+              <Smartphone className="h-4 w-4" />
+              Preview
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="hidden w-full max-w-[min(440px,100%)] flex-col items-end gap-3 sm:flex">
         <div className="pointer-events-auto flex justify-end">
           {isDockMinimized ? (
             <div className="flex flex-col items-end gap-2">
@@ -1367,7 +1503,7 @@ export function StorefrontLiveEditor({
               <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-950 dark:text-amber-100">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>Your edits are not persisted yet. Save them before leaving or changing storefront visibility.</p>
+                  <p>{localDraftProtected ? "Your edits are protected on this device but not saved to the server yet." : "Your edits are not persisted yet. Save them before leaving or changing storefront visibility."}</p>
                 </div>
               </div>
             ) : (
@@ -1590,7 +1726,8 @@ export function StorefrontLiveEditor({
         ) : null}
       </div>
       {editorMode === "advanced" && (
-        <DomTreeNavigator
+        <div className="hidden sm:block">
+          <DomTreeNavigator
           page={page}
           selectedBlockId={selectedBlockId}
           onSelectBlock={onSelectedBlockChange}
@@ -1616,7 +1753,8 @@ export function StorefrontLiveEditor({
               blocks: p.blocks.filter((b) => b.id !== id).map((b, i) => ({ ...b, sortOrder: i })),
             })));
           }}
-        />
+          />
+        </div>
       )}
       {isPreviewOpen ? (
         <div className="pointer-events-auto fixed inset-0 z-[90] bg-background/95 backdrop-blur">
@@ -1665,7 +1803,7 @@ export function StorefrontLiveEditor({
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="mx-auto max-w-6xl">
+              <div className={`mx-auto w-full ${viewport === "mobile" ? "max-w-[430px]" : viewport === "tablet" ? "max-w-[768px]" : "max-w-6xl"}`}>
                 <StoreProvider store={store}>
                   <StoreThemeScope theme={store.theme}>
                     <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
