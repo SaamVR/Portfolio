@@ -166,10 +166,13 @@ ${scopeSelector} [data-store-motion] { transition-duration: var(--store-motion-d
     --store-motion-duration: 0ms;
     --store-parallax-offset: 0px;
   }
-  ${scopeSelector} [data-store-motion] {
+  ${scopeSelector} *,
+  ${scopeSelector} *::before,
+  ${scopeSelector} *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }`.trim();
 }

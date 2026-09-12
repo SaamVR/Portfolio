@@ -13,6 +13,10 @@ test("specialized storefront renderers and shells stay behind dynamic imports", 
   const shellBoundary = source("src/components/storefront/platform/StorefrontShellBoundary.tsx");
 
   assert.doesNotMatch(templateRenderer, /from ["']@\/components\/storefront\/(?:fashion-v3|threads)\//);
+  assert.doesNotMatch(templateRenderer, /from ["']@\/components\/storefront\/StorefrontAdminMode["']/);
+  assert.doesNotMatch(templateRenderer, /StorefrontLiveEditor|components\/storefront\/editor\//);
+  assert.doesNotMatch(rendererBoundary, /StorefrontLiveEditor|components\/storefront\/editor\//);
+  assert.doesNotMatch(shellBoundary, /StorefrontLiveEditor|components\/storefront\/editor\//);
   assert.match(rendererBoundary, /import\(["']@\/components\/storefront\/fashion-v3\/FashionV3BlockRenderer["']\)/);
   assert.match(rendererBoundary, /import\(["']@\/components\/storefront\/threads\/ThreadsBlockRenderer["']\)/);
   assert.match(shellBoundary, /import\(["']@\/components\/storefront\/fashion-v3\/FashionV3Shell["']\)/);

@@ -27,4 +27,26 @@ test("scoped aesthetic css includes mobile reductions and reduced-motion safegua
   assert.match(css, /data-store-aesthetic-engine="editorial"[\s\S]*--store-overlap-offset: 0px/);
   assert.match(css, /data-store-aesthetic-engine="artisan"[\s\S]*--store-decoration-opacity: 0.32/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /\*::before/);
+  assert.match(css, /\*::after/);
+  assert.match(css, /scroll-behavior: auto !important/);
+  assert.match(css, /--store-parallax-offset: 0px/);
+});
+
+test("merchant-disabled hover effects remain motionless in every proof aesthetic", () => {
+  for (const aesthetic of ["minimal", "editorial", "glassmorphism", "artisan"] as const) {
+    const profile = resolveStorefrontAesthetic({
+      ...defaultStore.theme,
+      aesthetic,
+      effects: {
+        scrollReveals: false,
+        hoverEffects: false,
+        parallax: false,
+        intensity: "bold",
+      },
+    });
+
+    assert.equal(profile.tokens["--store-motion-duration"], "0ms", aesthetic);
+    assert.equal(profile.tokens["--store-parallax-offset"], "0px", aesthetic);
+  }
 });
