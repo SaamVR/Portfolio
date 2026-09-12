@@ -3,6 +3,7 @@ import { createDefaultBlock, cmsBlockTypeOptions } from "@/lib/cms/block-library
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { StorefrontTemplateSeedDefinition, StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
+import { getVariantIdsForBlock } from "@/lib/cms/storefront-platform/variants/registry";
 
 export interface CmsBlockRegistryItem {
   value: StorePageBlock["type"];
@@ -32,17 +33,6 @@ const catalogBlockTypes = new Set<StorePageBlock["type"]>([
   "recommended-products",
   "recently-viewed",
 ]);
-const blockVariantMap: Partial<Record<StorePageBlock["type"], string[]>> = {
-  hero: ["full-bleed", "split", "centered", "editorial", "poster", "collection-spotlight"],
-  "featured-products": ["carousel", "2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right"],
-  "recommended-products": ["2-col", "3-col", "4-col"],
-  "category-showcase": ["cards", "carousel", "masonry", "compact-list"],
-  comparison: ["default", "tech-spec"],
-  "promo-banner": ["standard", "contact-cta"],
-  "trust-badges": ["cards", "stats"],
-  "social-feed": ["gallery", "logo-strip", "before-after"],
-  "rich-text": ["standard", "brand-story", "blog-posts"],
-};
 
 function resolveFallbackBusinessFamilies(type: StorePageBlock["type"]): StoreBusinessFamily[] {
   if (coreBlockTypes.has(type)) {
@@ -69,7 +59,7 @@ export const fallbackBlockRegistry: CmsBlockRegistryItem[] = cmsBlockTypeOptions
   layer: coreBlockTypes.has(option.value) ? "core" : "commerce",
   compatibleBusinessFamilies: resolveFallbackBusinessFamilies(option.value),
   requiredCapabilities: resolveFallbackRequiredCapabilities(option.value),
-  variantIds: [...(blockVariantMap[option.value] ?? [])],
+  variantIds: getVariantIdsForBlock(option.value),
   presetIds: [],
 }));
 
@@ -100,7 +90,7 @@ function mergeBlockRegistryRow(row: BlockRegistryRow): CmsBlockRegistryItem {
       ? row.compatible_business_families as StoreBusinessFamily[]
       : fallback.compatibleBusinessFamilies,
     requiredCapabilities: isStringArray(row.required_capabilities) ? row.required_capabilities : fallback.requiredCapabilities,
-    variantIds: fallback.variantIds,
+    variantIds: getVariantIdsForBlock(row.block_type as StorePageBlock["type"]),
     presetIds: fallback.presetIds,
   };
 }
