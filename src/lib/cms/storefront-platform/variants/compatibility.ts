@@ -96,7 +96,7 @@ export function resolveCompatibleStorefrontVariant(
   const definitions = getStorefrontVariantDefinitions(blockType);
   if (definitions.length === 0) return undefined;
 
-  let candidate = getStorefrontVariantDefinition(blockType, requestedVariantId)
+  let candidate: StorefrontVariantDefinition | undefined = getStorefrontVariantDefinition(blockType, requestedVariantId)
     ?? getStorefrontVariantDefinition(blockType, definitions[0]?.safeFallback)
     ?? definitions[0];
   const visited = new Set<string>();
@@ -117,7 +117,9 @@ export function resolveCompatibleCompositionRecipe(
   requestedRecipeId: string | null | undefined,
   context: StorefrontCompatibilityContext,
 ): CompositionRecipeDefinition | undefined {
-  let candidate = getCompositionRecipe(requestedRecipeId) ?? getCompositionRecipe("basic-content") ?? compositionRecipeRegistry[0];
+  let candidate: CompositionRecipeDefinition | undefined = getCompositionRecipe(requestedRecipeId)
+    ?? getCompositionRecipe("basic-content")
+    ?? compositionRecipeRegistry[0];
   const visited = new Set<string>();
 
   while (candidate && !visited.has(candidate.id)) {
