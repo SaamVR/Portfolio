@@ -3,6 +3,7 @@ import { createDefaultBlock, cmsBlockTypeOptions } from "@/lib/cms/block-library
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { StorefrontTemplateSeedDefinition, StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
+import { createDefaultCompositionBlock } from "@/lib/cms/storefront-platform/composition/defaults";
 import { getVariantIdsForBlock } from "@/lib/cms/storefront-platform/variants/registry";
 
 export interface CmsBlockRegistryItem {
@@ -26,6 +27,7 @@ const coreBlockTypes = new Set<StorePageBlock["type"]>([
   "trust-badges",
   "promo-banner",
   "video-reel",
+  "composition",
 ]);
 const catalogBlockTypes = new Set<StorePageBlock["type"]>([
   "category-showcase",
@@ -33,6 +35,18 @@ const catalogBlockTypes = new Set<StorePageBlock["type"]>([
   "recommended-products",
   "recently-viewed",
 ]);
+const registryBlockTypeOptions: Array<{
+  value: StorePageBlock["type"];
+  label: string;
+  description: string;
+}> = [
+  ...cmsBlockTypeOptions,
+  {
+    value: "composition",
+    label: "Universal Composition",
+    description: "Schema-validated section built from bounded semantic primitives",
+  },
+];
 
 function resolveFallbackBusinessFamilies(type: StorePageBlock["type"]): StoreBusinessFamily[] {
   if (coreBlockTypes.has(type)) {
@@ -54,7 +68,7 @@ function resolveFallbackRequiredCapabilities(type: StorePageBlock["type"]): stri
   return [];
 }
 
-export const fallbackBlockRegistry: CmsBlockRegistryItem[] = cmsBlockTypeOptions.map((option) => ({
+export const fallbackBlockRegistry: CmsBlockRegistryItem[] = registryBlockTypeOptions.map((option) => ({
   ...option,
   layer: coreBlockTypes.has(option.value) ? "core" : "commerce",
   compatibleBusinessFamilies: resolveFallbackBusinessFamilies(option.value),
@@ -166,5 +180,9 @@ export function prioritizeRecommendedBlocks(
 }
 
 export function createRegistryDefaultBlock(type: StorePageBlock["type"], sortOrder: number) {
+  if (type === "composition") {
+    return createDefaultCompositionBlock(sortOrder);
+  }
+
   return createDefaultBlock(type, sortOrder);
 }

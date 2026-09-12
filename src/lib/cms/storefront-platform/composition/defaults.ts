@@ -41,7 +41,6 @@ export function createDefaultCompositionBlock(sortOrder: number): StorePageBlock
     sortOrder,
     isVisible: true,
     visible: true,
-    layoutVariant: "default",
     props: createDefaultCompositionDocument(),
   } as StorePageBlock;
 }

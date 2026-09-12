@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, prioritizeRecommendedBlocks } from "@/lib/cms/block-registry";
+import {
+  createRegistryDefaultBlock,
+  fallbackBlockRegistry,
+  filterBlockRegistryForTemplateSeed,
+  prioritizeRecommendedBlocks,
+} from "@/lib/cms/block-registry";
+import { storePageBlockSchema } from "@/lib/cms/schema";
 import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
 import { getVariantIdsForBlock } from "@/lib/cms/storefront-platform/variants/registry";
 
@@ -14,6 +20,7 @@ describe("block registry template-seed filtering", () => {
     assert.ok(values.includes("rich-text"));
     assert.ok(values.includes("trust-badges"));
     assert.ok(values.includes("faq-accordion"));
+    assert.ok(values.includes("composition"));
     assert.equal(values.includes("featured-products"), true);
     assert.equal(values.includes("category-showcase"), false);
     assert.equal(values.includes("recently-viewed"), false);
@@ -27,6 +34,7 @@ describe("block registry template-seed filtering", () => {
     assert.ok(values.includes("featured-products"));
     assert.ok(values.includes("social-feed"));
     assert.ok(values.includes("faq-accordion"));
+    assert.ok(values.includes("composition"));
   });
 
   it("keeps recommended blocks at the top for guided flows", () => {
@@ -45,5 +53,14 @@ describe("block registry template-seed filtering", () => {
 
     assert.deepEqual(hero?.variantIds, getVariantIdsForBlock("hero"));
     assert.deepEqual(categories?.variantIds, getVariantIdsForBlock("category-showcase"));
+  });
+
+  it("creates a schema-valid default universal composition block", () => {
+    const composition = createRegistryDefaultBlock("composition", 4);
+    const parsed = storePageBlockSchema.safeParse(composition);
+
+    assert.equal(parsed.success, true);
+    assert.equal(composition.type, "composition");
+    assert.equal(composition.sortOrder, 4);
   });
 });
