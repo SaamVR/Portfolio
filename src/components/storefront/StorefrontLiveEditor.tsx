@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
-import { createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
@@ -37,9 +36,10 @@ import { ThreadsShell } from "./threads/ThreadsShell";
 import { VisualCssInspector } from "./VisualCssInspector";
 import { MobileMerchantEditorSheet } from "./editor/MobileMerchantEditorSheet";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
-import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { buildStorefrontEditorDraftEnvelope, getStorefrontEditorDraftKey, parseStorefrontEditorDraft, serializeStorefrontEditorDraft } from "@/lib/cms/storefront-platform/editor/draft-storage";
 import { getStorefrontEditorQualityIssues } from "@/lib/cms/storefront-platform/editor/quality-assist";
+import { applyCompositionRecipe, createCompositionBlockFromRecipe, getCompatibleCompositionRecipes, getCompositionEditorFields, getPlatformAestheticOptions, updateCompositionAction as updateCompositionActionContract, updateCompositionField as updateCompositionFieldContract } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -221,6 +221,7 @@ export function StorefrontLiveEditor({
     () => selectedBlock ? getStorefrontEditorQualityIssues(selectedBlock) : [],
     [selectedBlock],
   );
+  const selectedCompositionEditor = useMemo(() => getCompositionEditorFields(selectedBlock), [selectedBlock]);
   const activeTemplateSeed = useMemo(() => {
     const profile = store.siteSettings?.storefront_profile;
     const inferredTemplateSeedId = typeof profile === "object" && profile && "template_id" in profile && typeof profile.template_id === "string"
@@ -234,6 +235,8 @@ export function StorefrontLiveEditor({
     () => filterBlockRegistryForTemplateSeed(blockRegistry, activeTemplateSeed),
     [activeTemplateSeed, blockRegistry],
   );
+  const compositionEnabled = availableBlockRegistry.some((block) => block.value === "composition");
+  const platformAestheticOptions = useMemo(() => getPlatformAestheticOptions(store.theme), [store.theme]);
 
   useEffect(() => {
     if (!adminMode) {
@@ -543,6 +546,13 @@ export function StorefrontLiveEditor({
     }));
   };
 
+  const updateStoreThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
+    applyStoreChange((current) => ({
+      ...current,
+      theme: { ...current.theme, aesthetic },
+    }));
+  };
+
   const updateSelectedBlockField = (field: string, value: string) => {
     if (!selectedBlock) return;
 
@@ -700,7 +710,7 @@ export function StorefrontLiveEditor({
     if (!selectedBlock || selectedBlock.type === nextType) return;
 
     applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => {
-      const replacement = createDefaultBlock(nextType, block.sortOrder);
+      const replacement = createRegistryDefaultBlock(nextType, block.sortOrder);
       return {
         ...replacement,
         id: block.id,
@@ -721,7 +731,7 @@ export function StorefrontLiveEditor({
       }
 
       const insertionIndex = insertPosition === "before" ? sourceIndex : sourceIndex + 1;
-      const nextBlock = createDefaultBlock(nextBlockType, insertionIndex);
+      const nextBlock = createRegistryDefaultBlock(nextBlockType, insertionIndex);
       const blocks = [...currentPage.blocks];
       blocks.splice(insertionIndex, 0, nextBlock);
       onSelectedBlockChange(nextBlock.id);
@@ -731,6 +741,36 @@ export function StorefrontLiveEditor({
         blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })),
       };
     }));
+  };
+
+  const insertCompositionRecipe = (recipeId: string) => {
+    if (!compositionEnabled) return;
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
+      const sourceIndex = selectedBlock
+        ? currentPage.blocks.findIndex((block) => block.id === selectedBlock.id)
+        : currentPage.blocks.length - 1;
+      const insertionIndex = Math.max(0, sourceIndex + 1);
+      const nextBlock = createCompositionBlockFromRecipe(recipeId, insertionIndex);
+      const blocks = [...currentPage.blocks];
+      blocks.splice(insertionIndex, 0, nextBlock);
+      onSelectedBlockChange(nextBlock.id);
+      return { ...currentPage, blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })) };
+    }));
+  };
+
+  const applySelectedCompositionRecipe = (recipeId: string) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => applyCompositionRecipe(block, recipeId)));
+  };
+
+  const updateSelectedCompositionField = (nodeId: string, key: "text" | "src" | "alt", value: string) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => updateCompositionFieldContract(block, nodeId, key, value)));
+  };
+
+  const updateSelectedCompositionAction = (nodeId: string, index: number, patch: { label?: string; href?: string }) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => updateCompositionActionContract(block, nodeId, index, patch)));
   };
 
   const saveLiveEdits = async (intent: "save" | "publish" | "unpublish" = "save") => {
@@ -844,6 +884,7 @@ export function StorefrontLiveEditor({
     productVisibility: typeof previewStorefrontProfile?.product_visibility === "string" ? previewStorefrontProfile.product_visibility : null,
   });
   const previewTemplate = getStorefrontTemplateDefinition(previewTemplateId);
+  const compatibleCompositionRecipes = getCompatibleCompositionRecipes(previewTemplateId);
 
   const renderAdvancedControls = () => {
     if (!selectedBlock || editorMode !== "advanced") {
@@ -1321,6 +1362,7 @@ export function StorefrontLiveEditor({
             isOnline={isOnline}
             localDraftProtected={localDraftProtected}
             qualityIssues={selectedBlockQualityIssues}
+            compositionEnabled={compositionEnabled}
             canUndo={history.length > 0}
             canRedo={redoHistory.length > 0}
             onClose={() => void toggleAdminMode()}
@@ -1334,6 +1376,11 @@ export function StorefrontLiveEditor({
             onDuplicateBlock={duplicateSelectedBlock}
             onRemoveBlock={removeSelectedBlock}
             onUpdateThemeToken={updateStoreThemeToken}
+            onUpdateThemeAesthetic={updateStoreThemeAesthetic}
+            onInsertCompositionRecipe={insertCompositionRecipe}
+            onApplyCompositionRecipe={applySelectedCompositionRecipe}
+            onUpdateCompositionField={updateSelectedCompositionField}
+            onUpdateCompositionAction={updateSelectedCompositionAction}
           />
         ) : (
           <div className="pointer-events-auto mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur">
@@ -1538,7 +1585,27 @@ export function StorefrontLiveEditor({
                   <div id="live-editor-theme" className="rounded-2xl border border-border p-3 scroll-mt-28">
                     <div className="mb-3 flex items-center gap-2">
                       <Paintbrush2 className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-medium text-foreground">Theme tokens</p>
+                      <p className="text-sm font-medium text-foreground">Theme and aesthetic</p>
+                    </div>
+                    <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                      {platformAestheticOptions.map((option) => {
+                        const selected = store.theme.aesthetic === option.storedValue || (!store.theme.aesthetic && option.engineId === "flat");
+                        return (
+                          <button
+                            key={option.storedValue}
+                            type="button"
+                            className={`rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                            onClick={() => updateStoreThemeAesthetic(option.storedValue)}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold">{option.label}</span>
+                              {selected ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{option.detail}</p>
+                            <p className="mt-2 text-[11px] text-muted-foreground">Presentation only — colors, logo, content, products, navigation, and fonts stay unchanged.</p>
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {GUIDED_THEME_TOKENS.map((token) => {
@@ -1655,7 +1722,48 @@ export function StorefrontLiveEditor({
                             </Button>
                           </div>
                         </div>
-                        {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
+                        {selectedBlock.type === "composition" ? (
+                          <div className="grid gap-3 rounded-xl border border-border p-3">
+                            <div>
+                              <p className="text-sm font-medium">Composition recipe</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Recipe changes stay inside this section. Store colors, logo, products, navigation, and other sections are preserved.</p>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {compatibleCompositionRecipes.map((recipe) => (
+                                <button
+                                  key={recipe.id}
+                                  type="button"
+                                  className={`rounded-xl border p-3 text-left ${selectedCompositionEditor.recipeId === recipe.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                                  onClick={() => applySelectedCompositionRecipe(recipe.id)}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold">{recipe.label}</span>
+                                    {recipe.recommended ? <Badge variant="secondary">Recommended</Badge> : null}
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">{recipe.guidance}</p>
+                                </button>
+                              ))}
+                            </div>
+                            {selectedCompositionEditor.fields.filter((field) => field.key !== "src").map((field) => (
+                              <div key={`${field.nodeId}-${field.key}`} className="grid gap-2">
+                                <Label>{field.label}</Label>
+                                {field.multiline ? (
+                                  <Textarea value={field.value} onChange={(event) => updateSelectedCompositionField(field.nodeId, field.key, event.target.value)} />
+                                ) : (
+                                  <Input value={field.value} onChange={(event) => updateSelectedCompositionField(field.nodeId, field.key, event.target.value)} />
+                                )}
+                              </div>
+                            ))}
+                            {selectedCompositionEditor.actions.map((action) => (
+                              <div key={`${action.nodeId}-${action.index}`} className="grid gap-2 rounded-xl border border-border p-3">
+                                <Label>Action {action.index + 1}</Label>
+                                <Input value={action.label} placeholder="Button label" onChange={(event) => updateSelectedCompositionAction(action.nodeId, action.index, { label: event.target.value })} />
+                                <Input value={action.href} placeholder="/shop" onChange={(event) => updateSelectedCompositionAction(action.nodeId, action.index, { href: event.target.value })} />
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {BASIC_TEXT_FIELDS.filter((field) => selectedBlock.type !== "composition" && typeof selectedBlock.props[field] === "string").map((field) => (
                           <div key={field} className="grid gap-2">
                             <div className="flex items-center justify-between">
                               <Label>{field}</Label>

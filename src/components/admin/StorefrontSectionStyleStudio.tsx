@@ -1037,7 +1037,7 @@ export function StorefrontSectionStyleStudio() {
   const handleAddBlock = (blockType: StorePageBlock["type"]) => {
     if (!data?.homepage || !activeStoreId) return;
     const nextBlock = createRegistryDefaultBlock(blockType, data.homepage.blocks.length);
-    const firstVariant = getBasicLayoutVariantOptions(data.templateId, blockType)[0]?.id;
+    const firstVariant = getBasicLayoutVariantOptions(data.templateId, blockType, nextBlock)[0]?.id;
     const hydratedBlock: StorePageBlock = {
       ...nextBlock,
       layoutVariant: firstVariant ?? nextBlock.layoutVariant,
@@ -1352,7 +1352,8 @@ export function StorefrontSectionStyleStudio() {
           const draft = sectionDrafts[block.id] ?? { props: block.props, layoutVariant: block.layoutVariant };
           const coach = getBasicBlockCoach(data.templateId, block.type);
           const suggestion = getSharedBlockSuggestionInfo(data.templateId, block.type);
-          const variants = getBasicLayoutVariantOptions(data.templateId, block.type);
+          const compatibilityBlock = { ...block, props: draft.props } as StorePageBlock;
+          const variants = getBasicLayoutVariantOptions(data.templateId, block.type, compatibilityBlock);
           const priorityFields = Array.from(new Set([...(coach.priorityFields ?? []), ...(draft.isNew ? ["ctaLink"] : [])])).filter(Boolean);
           const blockIndex = homepageBlocks.findIndex((entry) => entry.id === block.id);
           const arrayFields = priorityFields.filter((field) => ["faqs", "badges", "reviews", "images", "specLabels"].includes(field));
