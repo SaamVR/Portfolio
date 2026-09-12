@@ -1,14 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
-import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
-import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
-import { StorefrontShell } from "@/components/storefront/StorefrontShell";
-import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
-import { FashionV3BlockRenderer } from "@/components/storefront/fashion-v3/FashionV3BlockRenderer";
-import { ThreadsShell } from "@/components/storefront/threads/ThreadsShell";
-import { ThreadsBlockRenderer } from "@/components/storefront/threads/ThreadsBlockRenderer";
+import { StorefrontRendererBoundary } from "@/components/storefront/platform/StorefrontRendererBoundary";
+import { StorefrontShellBoundary } from "@/components/storefront/platform/StorefrontShellBoundary";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
+import { resolveStorefrontRenderer } from "@/lib/cms/storefront-platform/rendering/renderer-registry";
+import { resolveStorefrontShell } from "@/lib/cms/storefront-platform/rendering/shell-registry";
 import {
   getStorefrontTemplateDefinition,
   resolveStorefrontTemplateId,
@@ -16,6 +14,11 @@ import {
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
 import { cn } from "@/lib/utils";
+
+const StorefrontAdminMode = dynamic(
+  () => import("@/components/storefront/StorefrontAdminMode").then((module) => module.StorefrontAdminMode),
+  { ssr: false },
+);
 
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
@@ -71,6 +74,8 @@ export function StorefrontTemplateRenderer({
   embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
+  const renderer = resolveStorefrontRenderer(template);
+  const shell = resolveStorefrontShell(template);
   const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
@@ -78,7 +83,11 @@ export function StorefrontTemplateRenderer({
 
   const pageContent = (
     <>
-      <div data-template-renderer={templateId === "fashion" ? "fashion-v3" : templateId === "threads" ? "threads-earthy" : "composable-blocks"} data-template-homepage={page.isHomepage ? "true" : "false"}>
+      <div
+        data-template-renderer={renderer.implementationId}
+        data-renderer-family={renderer.familyId}
+        data-template-homepage={page.isHomepage ? "true" : "false"}
+      >
         {blocksToRender.map((block, index) => (
           <div
             key={block.id}
@@ -97,21 +106,22 @@ export function StorefrontTemplateRenderer({
             )}
           >
             {canManageStorefront && adminMode ? <StorefrontAdminMode pageId={page.id} block={block} index={index} /> : null}
-            {templateId === "fashion" ? <FashionV3BlockRenderer block={block} template={template} /> : templateId === "threads" ? <ThreadsBlockRenderer block={block} template={template} /> : <StorefrontBlockRenderer block={block} template={template} />}
+            <StorefrontRendererBoundary implementationId={renderer.implementationId} block={block} template={template} />
           </div>
         ))}
       </div>
-      {templateId !== "fashion" && templateId !== "threads" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
+      {renderer.familyId === "generic-commerce" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
     </>
   );
 
-  if (templateId === "fashion") {
-    return <FashionV3Shell embedded={embedded}>{pageContent}</FashionV3Shell>;
-  }
-
-  if (templateId === "threads") {
-    return <ThreadsShell embedded={embedded}>{pageContent}</ThreadsShell>;
-  }
-
-  return <StorefrontShell templateId={templateId} template={template} embedded={embedded}>{pageContent}</StorefrontShell>;
+  return (
+    <StorefrontShellBoundary
+      shellId={shell.id}
+      templateId={templateId}
+      template={template}
+      embedded={embedded}
+    >
+      {pageContent}
+    </StorefrontShellBoundary>
+  );
 }
