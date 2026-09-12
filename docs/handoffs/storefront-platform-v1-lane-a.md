@@ -7,11 +7,11 @@
 - **Frozen BASE_SHA:** `b1ba310bae98ed3145990ff1fd9af4077cf557fe`
 - **Branch:** `arch/v1-composition`
 - **Integration branch:** `architecture/storefront-platform-v1`
-- **Latest implementation SHA at handoff creation:** `4a33682041b4db8ec57fdc243d6d9c245c367fde`
+- **Final implementation SHA:** `f33c93c0588cba145b2a40e6843a74582580dda4`
 - **Draft integration PR:** #356 — `Storefront Platform v1: Lane A composition contracts`
 - **Merge/deploy status:** not merged; no production deployment performed by Lane A.
 
-The branch was created from and still descends from the frozen base. A final compare from the frozen base to the latest implementation SHA showed the branch **8 commits ahead, 0 behind**, with changes confined to Lane A-owned CMS schema/registry and new `storefront-platform/composition/**` and `storefront-platform/variants/**` files.
+The branch was created from and still descends from the frozen base. The final implementation compare from the frozen base to `f33c93c0588cba145b2a40e6843a74582580dda4` showed the branch **12 commits ahead, 0 behind**, with application changes confined to Lane A-owned CMS schema/registry and new `storefront-platform/composition/**` and `storefront-platform/variants/**` files. The only additional changed path is this Lane A handoff document.
 
 ## Completed Gates
 
@@ -213,7 +213,7 @@ Expose the `composition` block and recipe/variant metadata in the editor using `
 3. **Recipe media placeholders:** proof recipes contain safe internal placeholder media paths. Renderer/editor integration should support merchant media replacement and graceful missing-media fallback; compatibility resolution already provides a no-media `basic-content` fallback.
 4. **Binding scope:** bindings reference the concrete data-slot node ID, not only the global slot type. A renderer must resolve repeated slot items deterministically within that node's scope.
 5. **Dynamic payload safety:** Lane C/runtime providers should validate normalized payloads before exposing dynamic values to composition bindings.
-6. **Final build is queue-pending:** the exact post-fix SHA had not started its Vercel build when this handoff was written because multiple parallel branches were occupying the preview queue.
+6. **Preview infrastructure unavailable for the final head:** Vercel status for the post-fix line became rate-limited/blocked, so final validation used an isolated Node 24 checkout. `npm run typecheck` passes and the focused Lane A suite passes 28/28. Final integration should still run its normal environment-configured build after lanes merge.
 
 ## Discoveries
 
@@ -277,13 +277,38 @@ Expose the `composition` block and recipe/variant metadata in the editor using `
 
 **Recommended future phase:** If signed/blob/CDN schemes are required, add them explicitly through a schema-versioned allow-list instead of loosening validation globally.
 
-## What Remains
+## Runtime 2 Finalization
 
-Lane A's defined A1–A5 implementation scope is complete. Remaining work is integration/consumer work owned elsewhere plus final validation:
+Runtime 2 added no new Foundation v1 features. It only closed validation defects and hardened approved contracts.
 
-1. Recheck the exact fixed SHA preview build when the external Vercel queue executes it; resolve only Lane A-owned compiler/test defects if any appear.
-2. Lane B renders the composition tree and consumes registry contracts.
-3. Lane C implements normalized data-slot providers/fetch/cache behavior.
-4. Lane D exposes safe composition/recipe authoring in the editor.
-5. Integration lane controls template-level availability and performs cross-lane integration tests.
-6. Keep PR #356 draft until integration owner decides it is ready; Lane A must not merge it.
+- Fixed strict fallback resolver typing in `variants/compatibility.ts` (`4ac0b3f1f30f3728a7fa60a79f2780beb909bced`).
+- Canonicalized data-slot filters so normalized requests omit undefined/empty filter keys.
+- Added recipe fallback-resolution assertions.
+- Added explicit rejection coverage for unsupported composition schema versions.
+- Final implementation checkpoint: `f33c93c0588cba145b2a40e6843a74582580dda4`.
+- Frozen-base ancestry: PASS — 12 commits ahead / 0 behind.
+- Ownership audit: PASS — no Lane B/C/D/Integration-owned application files changed.
+- Node `v24.19.0` `npm run typecheck`: PASS, exit 0.
+- Focused Lane A tests: PASS — 28/28.
+- Repository-wide `npm test`: 828 total, 825 pass, 3 fail. The failures are in `AdminDashboardCatchAllClient.contract.test.ts`, `beauty-shop-mobile.test.ts`, and `storefront-transactional-truth.test.ts`; none of the failing implementation/test files are in the Lane A diff from the frozen base.
+- Draft PR #356: open, draft, unmerged, `mergeable=true` at final implementation checkpoint.
+- P0 discoveries in Runtime 2: none.
+
+## INTEGRATION BLOCKER
+
+These are not unfinished Lane A implementation tasks; they are required consumer/integration work before Universal Composition can be enabled end-to-end:
+
+1. **Lane B / integration rendering:** add safe runtime rendering for `type: "composition"`, consuming the Lane A schema and allow-listed primitive IDs. Lane B's current handoff does not yet claim this composition renderer dependency as completed.
+2. **Lane C data providers:** implement normalized providers for `CompositionDataSlotRequest`, including fetch/cache/batching under Lane C ownership, and validate payloads before bindings consume them.
+3. **Lane D editor authoring:** expose composition recipes/primitives through the editor while enforcing Lane A limits and schemas.
+4. **Integration-owned template availability:** keep `composition` feature-gated until renderer/editor readiness; then derive availability without creating another authoritative variant/compatibility map.
+5. **Integration regression gate:** the repository-wide suite currently has three pre-existing/out-of-scope failures. They do not invalidate Lane A, but the integration/release gate should reconcile them if a fully green repository suite is required.
+6. **Environment-configured final build:** Vercel preview execution for the final line was unavailable due rate-limit/blocked project status. Integration should perform the normal production build with required environment variables after lane reconciliation.
+
+## POST-FOUNDATION BACKLOG
+
+No new P1/P2 items were added in Runtime 2. The existing Discoveries section remains the complete Lane A post-foundation backlog: consumer-level variant-map consolidation, registry-derived template compatibility, controlled Composition feature gating, richer sanitized rich-text semantics, numeric performance-budget mapping, and controlled URL-policy expansion.
+
+## Final Lane A Status
+
+**COMPLETE — FINAL AUTOMATIC RUNTIME.** There is no Lane A Runtime 3. Keep PR #356 draft and unmerged until the integration owner performs the prescribed Lane A-first merge/reconciliation. Lane A must not merge, deploy, or absorb sibling implementations.
