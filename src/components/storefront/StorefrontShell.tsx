@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import Layout from "@/components/Layout";
+import { ThreadsShell } from "@/components/storefront/threads/ThreadsShell";
 import type { StorefrontTemplateDefinition, StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 function buildTemplateShellStyle(template: StorefrontTemplateDefinition): CSSProperties {
@@ -26,6 +27,10 @@ export function StorefrontShell({
   template: StorefrontTemplateDefinition;
   embedded?: boolean;
 }) {
+  if (templateId === "threads") {
+    return <ThreadsShell embedded={embedded} contentAsMain={false}>{children}</ThreadsShell>;
+  }
+
   const content = (
     <div
       data-storefront-template={templateId}

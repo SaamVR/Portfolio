@@ -20,6 +20,7 @@ import { PropertyListingCard } from "@/components/storefront/real-estate/Propert
 import { ServiceProductCard } from "@/components/storefront/service/ServiceProductCard";
 import { SubscriptionProductCard } from "@/components/storefront/subscriptions/SubscriptionProductCard";
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
+import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProductCard";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
@@ -205,9 +206,13 @@ export default function ContextAwareProductCard({
   onQuickView?: (product: Product) => void;
 }) {
   const currentStore = useOptionalStore();
-  const { cardVariant, metadata } = useStoreProductPresentation(product);
+  const { templateId, cardVariant, metadata } = useStoreProductPresentation(product);
+  if (templateId === "threads") {
+    return <ThreadsProductCard product={product} onQuickView={onQuickView} />;
+  }
+
   const contactHref = storefrontPath("/contact", currentStore?.slug);
-  const reviewStats = useMemo(() => undefined, []);
+  const reviewStats = undefined;
   const renderers = {
     ...productCardRegistry,
     electronics: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <ElectronicsProductCard product={currentProduct} reviewStats={reviewStats} />,

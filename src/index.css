@@ -565,3 +565,31 @@
 [data-store-theme-scope] [data-storefront-template] .shadow-sm {
   box-shadow: var(--store-card-shadow);
 }
+
+/* Threads storefront: carry the editorial language across catalog and utility pages. */
+[data-store-theme-scope] [data-storefront-template="threads"] {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] :is(h1, h2, h3, .font-heading) {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] :is(.rounded-3xl, .rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md) {
+  border-radius: 0.3rem;
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] :is(input, select, textarea) {
+  border-radius: 0.2rem;
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] .shadow-sm {
+  box-shadow: 0 8px 24px rgb(20 40 28 / 0.06);
+}
+
+[data-store-theme-scope] [data-storefront-template="threads"] :is(button, a).bg-primary {
+  letter-spacing: 0.04em;
+}

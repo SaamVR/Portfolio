@@ -27,8 +27,14 @@ const referencePalette = {
   "--ring": "140 28% 15%",
 } as CSSProperties;
 
-export function ThreadsShell({ children, embedded = false }: { children: ReactNode; embedded?: boolean }) {
+export function ThreadsShell({ children, embedded = false, contentAsMain = true }: { children: ReactNode; embedded?: boolean; contentAsMain?: boolean }) {
   const store = useOptionalStore();
   const style = store?.id === "preview-threads" ? referencePalette : undefined;
-  return <div style={style} data-storefront-template="threads" data-threads-presentation="reference-editorial" className="min-h-screen overflow-x-clip bg-background text-foreground antialiased">{!embedded ? <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[120] focus:rounded-full focus:bg-background focus:px-4 focus:py-3">Skip to content</a> : null}<ThreadsHeader embedded={embedded} /><main id="main-content">{children}</main><ThreadsFooter />{!embedded ? <><CartDrawer /><WhatsAppButton /></> : null}</div>;
+  return <div style={style} data-storefront-template="threads" data-threads-presentation="reference-editorial" className="min-h-screen overflow-x-clip bg-background text-foreground antialiased">
+    {!embedded ? <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[120] focus:rounded-full focus:bg-background focus:px-4 focus:py-3">Skip to content</a> : null}
+    <ThreadsHeader embedded={embedded} />
+    {contentAsMain ? <main id="main-content">{children}</main> : <div id="main-content">{children}</div>}
+    <ThreadsFooter />
+    {!embedded ? <><CartDrawer /><WhatsAppButton /></> : null}
+  </div>;
 }

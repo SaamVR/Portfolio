@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, Plus } from "lucide-react";
+import { Eye, Heart, Plus } from "lucide-react";
 import type { Product } from "@/data/products";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
@@ -11,7 +11,7 @@ import { useStoreProductPresentation } from "@/components/storefront/product/use
 import { getPrimaryProductOptionValue, getRenderableSizeOptions } from "@/lib/cms/storefront-product-presentation";
 import { productUrl } from "@/lib/slug";
 
-export function ThreadsProductCard({ product, framed = false }: { product: Product; framed?: boolean }) {
+export function ThreadsProductCard({ product, framed = false, onQuickView }: { product: Product; framed?: boolean; onQuickView?: (product: Product) => void }) {
   const store = useOptionalStore();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
@@ -32,6 +32,7 @@ export function ThreadsProductCard({ product, framed = false }: { product: Produ
     <div className={`${framed ? "px-0.5 pb-1 pt-2 text-primary-foreground" : "px-0.5 pt-2"}`}>
       <Link href={href} className="block truncate text-[11px] font-medium">{product.name}</Link>
       <div className="mt-0.5 flex items-center justify-between gap-2"><span className={`truncate text-[9px] ${framed ? "text-primary-foreground/65" : "text-muted-foreground"}`}>{product.category || product.type}</span><span className="shrink-0 text-[11px] font-semibold">৳{product.price.toLocaleString()}</span></div>
+      {!framed && onQuickView ? <button type="button" onClick={() => onQuickView(product)} className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 border border-border bg-background text-[9px] font-semibold uppercase tracking-[.1em] text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground"><Eye className="h-3.5 w-3.5" />Quick view</button> : null}
     </div>
   </article>;
 }

@@ -7,6 +7,7 @@ import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useProductCategories } from "@/hooks/useProductCategories";
 import { storefrontPath } from "@/lib/slug";
 
 export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
@@ -14,6 +15,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
   const { totalItems, setIsCartOpen } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
+  const { data: categories = [] } = useProductCategories(store?.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -21,20 +23,28 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
 
   const home = storefrontPath("/", store?.slug);
   const shop = storefrontPath("/shop", store?.slug);
-  const brandName = store?.id === "preview-threads" ? "EZCOMO" : (store?.name || "EZCOMO");
-  const nav = [
-    ["Women", `${shop}?category=Women`],
-    ["Men", `${shop}?category=Men`],
-    ["Accessories", `${shop}?category=Accessories`],
-    ["Home & Living", `${shop}?category=Home%20%26%20Living`],
-    ["Sale", `${shop}?sale=1`],
-    ["New", `${shop}?sort=newest`],
-    ["Stories", storefrontPath("/about", store?.slug)],
-  ] as const;
+  const isReferencePreview = store?.id === "preview-threads";
+  const brandName = isReferencePreview ? "EZCOMO" : (store?.name || "EZCOMO");
+  const categoryNav = categories.slice(0, 5).map((category) => [category.name, `${shop}?category=${encodeURIComponent(category.name)}`] as const);
+  const nav = isReferencePreview
+    ? ([
+        ["Women", `${shop}?category=Women`],
+        ["Men", `${shop}?category=Men`],
+        ["Accessories", `${shop}?category=Accessories`],
+        ["Home & Living", `${shop}?category=Home%20%26%20Living`],
+        ["Sale", `${shop}?sale=1`],
+        ["New", `${shop}?sort=newest`],
+        ["Stories", storefrontPath("/about", store?.slug)],
+      ] as const)
+    : ([
+        ...categoryNav,
+        ["New", `${shop}?sort=newest`] as const,
+        ["Stories", storefrontPath("/about", store?.slug)] as const,
+      ]);
 
   return <>
     <div className="hidden h-8 items-center justify-between bg-primary px-8 text-[10px] text-primary-foreground md:flex lg:px-14">
-      <div className="flex items-center gap-7"><span>♧ &nbsp; Free shipping on orders over ৳2000</span><span>♡ &nbsp; Easy returns within 14 days</span></div>
+      <div className="flex items-center gap-7">{isReferencePreview ? <><span>♧ &nbsp; Free shipping on orders over ৳2000</span><span>♡ &nbsp; Easy returns within 14 days</span></> : <><span>♧ &nbsp; Thoughtful shopping with {brandName}</span><span>♡ &nbsp; Secure checkout and order support</span></>}</div>
       <div className="flex items-center gap-4"><Link to={storefrontPath("/track-order", store?.slug)}>Track Order</Link><span className="opacity-35">|</span><Link to={storefrontPath("/faq", store?.slug)} className="flex items-center gap-1"><HelpCircle className="h-3 w-3" /> Help</Link><span className="opacity-35">|</span><span>EN⌄</span></div>
     </div>
     <header className={`${embedded ? "relative" : "sticky top-0"} z-50 border-b border-border bg-background/95 backdrop-blur`}>

@@ -37,6 +37,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
     productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
   });
   const isFashion = templateId === "fashion";
+  const isThreads = templateId === "threads";
 
   // Record recently viewed
   useEffect(() => {
@@ -128,10 +129,10 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         ogImage={product.images?.[0] || product.image}
         jsonLd={productJsonLd}
       />
-      <div className="container mx-auto px-4 py-12">
+      <div className={isThreads ? "mx-auto max-w-[1280px] px-5 py-8 md:px-8 md:py-12" : "container mx-auto px-4 py-12"}>
         <button
           onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className={isThreads ? "mb-6 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground transition-colors hover:text-foreground" : "mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"}
           aria-label="Go back to previous page"
         >
           <ArrowLeft className="h-4 w-4" /> Back

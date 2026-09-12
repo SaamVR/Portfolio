@@ -151,7 +151,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
       <div className="mb-5 flex items-end justify-between gap-5"><h2 className="font-serif text-[28px] leading-none tracking-[-.025em] md:text-[32px]">{title}</h2><Link href={shop} className="text-[10px] font-semibold uppercase tracking-[.12em]">View All →</Link></div>
       <Carousel setApi={setApi} opts={{ align: "start", loop: items.length > 1, skipSnaps: false }} className="relative">
         <CarouselContent className="-ml-3 pb-1">
-          {carouselItems.map((item,i) => <CarouselItem key={`${item.name}-${i}`} className="basis-[72%] pl-3 sm:basis-[36%] md:basis-[24%] lg:basis-[16.9%]">
+          {carouselItems.map((item,i) => <CarouselItem key={`${item.name}-${i}`} className="basis-[72%] pl-3 sm:basis-[36%] md:basis-[16.7%] lg:basis-[16.7%]">
             <Link href={`${shop}?category=${encodeURIComponent(item.value)}`} className="group block overflow-hidden rounded-[5px] border border-border bg-card shadow-[0_8px_24px_rgba(20,40,28,.06)]">
               <div className="relative aspect-[.80] bg-secondary">{item.image ? <SafeStorefrontImage src={item.image} alt={item.name} fill className="object-cover transition duration-500 group-hover:scale-[1.02]"/> : <div className="grid h-full place-items-center text-primary">{categoryFallbackIcon(item.name)}</div>}</div>
               <div className="flex h-11 items-center justify-between bg-card px-3.5 text-[11px] font-semibold"><span>{item.name}</span><ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5"/></div>
@@ -195,7 +195,7 @@ function ThreadsProducts({ block }: { block: StorePageBlock }) {
       </div>
       <Carousel setApi={setApi} opts={{ align: "start", loop: visible.length > 1, skipSnaps: false }} className="min-w-0 pr-1">
         <CarouselContent className="-ml-3">
-          {carouselProducts.map((product, index) => <CarouselItem key={`${product.id}-${index}`} className="basis-[66%] pl-3 sm:basis-[38%] md:basis-[27%] lg:basis-[18.2%]">
+          {carouselProducts.map((product, index) => <CarouselItem key={`${product.id}-${index}`} className="basis-[66%] pl-3 sm:basis-[38%] md:basis-[16.7%] lg:basis-[16.7%]">
             <ThreadsProductCard product={product} framed/>
           </CarouselItem>)}
         </CarouselContent>
