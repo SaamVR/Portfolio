@@ -10,6 +10,7 @@ import RecentlyViewed from "@/components/RecentlyViewed";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
+import { StorefrontCompositionRenderer } from "@/components/storefront/platform/StorefrontCompositionRenderer";
 import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { buildTechnicalSpecs } from "@/components/storefront/electronics/ElectronicsProductCard";
 import type { RichTextDoc, RichTextNode, StorePageBlock } from "@/lib/cms/schema";
@@ -535,6 +536,7 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
 
   const renderBlock = () => {
     switch (block.type) {
+      case "composition": return <StorefrontCompositionRenderer block={block} />;
       case "countdown": return <CountdownTimer overrides={mergedProps} />;
       case "hero": return <HeroSection overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "promo-banner": return <PromoBanner overrides={{ ...mergedProps, disableLegacyFallback: true }} />;

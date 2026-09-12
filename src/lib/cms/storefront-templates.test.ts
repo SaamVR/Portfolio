@@ -41,6 +41,20 @@ describe("storefront template registry", () => {
   });
 
 
+  it("exposes Composition as compatible without changing recommended or default template layouts", () => {
+    for (const templateId of storefrontTemplateIds) {
+      const template = getStorefrontTemplateDefinition(templateId);
+      const seed = getStorefrontTemplateSeedDefinition(templateId);
+
+      expect(template.compatibleBlockSet.includes("composition")).toBe(true);
+      expect(seed.compatibleBlockSet.includes("composition")).toBe(true);
+      expect(template.recommendedBlockSet.includes("composition")).toBe(false);
+      expect(template.defaultBlockSet.includes("composition")).toBe(false);
+      expect(seed.recommendedBlockSet.includes("composition")).toBe(false);
+      expect(seed.defaultBlockSet.includes("composition")).toBe(false);
+    }
+  });
+
   it("keeps Threads as an admin-only specialized renderer", () => {
     const template = getStorefrontTemplateDefinition("threads");
     const seed = getStorefrontTemplateSeedDefinition("threads");

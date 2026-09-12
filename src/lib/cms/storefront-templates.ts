@@ -223,8 +223,9 @@ function createTemplateDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateDefinitionOverride,
 ): StorefrontTemplateDefinition {
-  const compatibleBlockSet = overrides.compatibleBlockSet ?? allBlockTypes;
-  const recommendedBlockSet = overrides.recommendedBlockSet ?? compatibleBlockSet;
+  const legacyCompatibleBlockSet = overrides.compatibleBlockSet ?? allBlockTypes;
+  const compatibleBlockSet = Array.from(new Set<StorefrontBlockType>([...legacyCompatibleBlockSet, "composition"]));
+  const recommendedBlockSet = overrides.recommendedBlockSet ?? legacyCompatibleBlockSet;
   const defaultBlockSet = overrides.defaultBlockSet ?? recommendedBlockSet;
 
   return {
@@ -267,7 +268,8 @@ function createTemplateSeedDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateSeedOverride,
 ): StorefrontTemplateSeedDefinition {
-  const compatibleBlockSet = overrides.compatibleBlockSet ?? overrides.recommendedBlockSet;
+  const legacyCompatibleBlockSet = overrides.compatibleBlockSet ?? overrides.recommendedBlockSet;
+  const compatibleBlockSet = Array.from(new Set([...legacyCompatibleBlockSet, "composition"]));
   const defaultBlockSet = overrides.defaultBlockSet ?? overrides.recommendedBlockSet;
 
   return {
