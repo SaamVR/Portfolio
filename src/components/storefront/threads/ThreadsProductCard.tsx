@@ -58,6 +58,11 @@ export function ThreadsProductCard({
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
     : 0;
   const alternateImage = product.images?.find((image) => image && image !== product.image);
+  const imageSizes = framed
+    ? "(min-width: 1024px) 24vw, (min-width: 640px) 47vw, 72vw"
+    : compact
+      ? "(min-width: 768px) 25vw, 50vw"
+      : "(min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw";
 
   return (
     <article
@@ -75,6 +80,7 @@ export function ThreadsProductCard({
             src={product.image}
             alt={product.name}
             fill
+            sizes={imageSizes}
             className={`object-cover transition duration-500 group-hover:scale-[1.025] ${alternateImage ? "group-hover:opacity-0" : ""}`}
           />
           {alternateImage ? (
@@ -82,6 +88,7 @@ export function ThreadsProductCard({
               src={alternateImage}
               alt={`${product.name} alternate view`}
               fill
+              sizes={imageSizes}
               className="object-cover opacity-0 transition duration-500 group-hover:scale-[1.025] group-hover:opacity-100"
             />
           ) : null}
