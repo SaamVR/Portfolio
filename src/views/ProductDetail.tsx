@@ -121,6 +121,16 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   );
 
   if (isThreads) {
+    const threadsProductJsonLd = {
+      ...productJsonLd,
+      offers: {
+        ...productJsonLd.offers,
+        availability: product.isAvailable === false || hasKnownOutOfStockCount
+          ? "https://schema.org/OutOfStock"
+          : "https://schema.org/InStock",
+      },
+    };
+
     return (
       <StorefrontLayout>
         <SEOHead
@@ -129,7 +139,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
           canonical={absoluteStoreUrl(currentStore ?? (storeSlug ? { slug: storeSlug } : undefined), productUrl(product.id, product.name))}
           ogType="product"
           ogImage={product.images?.[0] || product.image}
-          jsonLd={productJsonLd}
+          jsonLd={threadsProductJsonLd}
         />
         <ThreadsProductViewTracker product={product} />
         <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-5 md:px-8 md:pt-5">
