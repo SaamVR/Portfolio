@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/carousel";
 
 const s = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-const isPreview = (id?: string | null) => id === "preview-threads";
 
 type DecorationLevel = "none" | "subtle" | "full";
 const decorationLevel = (block: StorePageBlock): DecorationLevel =>
@@ -163,15 +162,13 @@ function categoryFallbackIcon(name: string): ReactNode {
 function ThreadsHero({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const p = block.props as Record<string, unknown>;
-  const preview = isPreview(store?.id);
   const image = s(p.imageUrl) || s(p.mediaUrl);
   const mobileImage = s(p.mobileImageUrl) || image;
-  const tagline = preview ? "WEAR YOUR STORY" : s(p.tagline) || "Wear your story";
-  const title = preview ? "Wear\nYour Story" : s(p.title) || "Wear Your Story";
-  const subtitle = preview
-    ? "Art. Culture. People. On a Higher Thread."
-    : s(p.subtitle) || "Art, culture and everyday pieces made to carry a story.";
-  const cta = preview ? "Explore New Arrivals" : s(p.ctaText) || "Explore New Arrivals";
+  const tagline = s(p.tagline) || "Wear your story";
+  const rawTitle = s(p.title) || "Wear Your Story";
+  const title = rawTitle.toLowerCase() === "wear your story" ? "Wear\nYour Story" : rawTitle;
+  const subtitle = s(p.subtitle) || "Art, culture and everyday pieces made to carry a story.";
+  const cta = s(p.ctaText) || "Explore New Arrivals";
 
   return (
     <section className="relative overflow-hidden border-b border-border/60 bg-secondary/35">
@@ -391,25 +388,20 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
 function ThreadsPromo({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const p = block.props as Record<string, unknown>;
-  const preview = isPreview(store?.id);
   const cards = [
     {
       image: s(p.imageUrl),
-      title: preview ? "Handmade\nfor Home" : s(p.title) || "Handmade for Home",
-      subtitle: preview
-        ? "Thoughtful pieces for a warmer, art-led home."
-        : s(p.subtitle) || "Thoughtful pieces for home and everyday life.",
-      cta: preview ? "Explore Home Decor" : s(p.ctaText) || "Explore Collection",
+      title: s(p.title) || "Handmade for Home",
+      subtitle: s(p.subtitle) || "Thoughtful pieces for home and everyday life.",
+      cta: s(p.ctaText) || "Explore Collection",
       href: s(p.ctaLink) || "/shop",
       tone: "clay",
     },
     {
       image: s(p.secondaryImageUrl),
-      title: preview ? "Small Gifts,\nBig Meaning" : s(p.secondaryTitle) || "Small Gifts, Big Meaning",
-      subtitle: preview
-        ? "Handcrafted gifts for every special moment."
-        : s(p.secondarySubtitle) || "Meaningful pieces for everyday moments.",
-      cta: preview ? "Shop Gifts" : s(p.secondaryCtaText) || "Shop Gifts",
+      title: s(p.secondaryTitle) || "Small Gifts, Big Meaning",
+      subtitle: s(p.secondarySubtitle) || "Meaningful pieces for everyday moments.",
+      cta: s(p.secondaryCtaText) || "Shop Gifts",
       href: s(p.secondaryCtaLink) || "/shop",
       tone: "green",
     },
@@ -548,9 +540,7 @@ function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
               {s(p.tagline) || "Just landed"}
             </p>
             <h2 className="font-serif text-[27px] font-semibold leading-none md:text-[32px]">
-              {isPreview(store?.id)
-                ? "New at CHAPCHITRA"
-                : s(p.title) || `New at ${store?.name || "Threads"}`}
+              {s(p.title) || `New at ${store?.name || "Threads"}`}
             </h2>
           </div>
           <Link
@@ -661,13 +651,12 @@ function ThreadsStory({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const p = block.props as Record<string, unknown>;
   const image = s(p.imageUrl);
-  const eyebrow = isPreview(store?.id) ? "Style Travels Further" : s(p.eyebrow) || "Our Story";
-  const title = isPreview(store?.id)
+  const eyebrow = s(p.eyebrow) || "Our Story";
+  const rawTitle = s(p.title) || "Objects That Tell Stories";
+  const title = rawTitle.toLowerCase() === "made for wherever the day takes you."
     ? "Made for wherever\nthe day takes you."
-    : s(p.title) || "Objects That Tell Stories";
-  const body = isPreview(store?.id)
-    ? "Easy layers and expressive graphics should feel just as good on the tenth wear as the first."
-    : extractText(p.body)[0] || "Every collection starts with a place, a person, or a memory worth carrying forward.";
+    : rawTitle;
+  const body = extractText(p.body)[0] || "Every collection starts with a place, a person, or a memory worth carrying forward.";
 
   return (
     <section className="bg-background px-4 pb-8 sm:px-5 md:px-8 md:pb-10">
