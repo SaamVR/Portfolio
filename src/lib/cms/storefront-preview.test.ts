@@ -39,16 +39,31 @@ test("threads preview content is populated from its dedicated demo seed", () => 
   const homepage = store.pages.find((page) => page.isHomepage);
   const hero = homepage?.blocks.find((block) => block.type === "hero");
   const categories = homepage?.blocks.find((block) => block.type === "category-showcase");
+  const recommended = homepage?.blocks.find((block) => block.type === "recommended-products");
   const community = homepage?.blocks.find((block) => block.type === "social-feed");
+  const faq = homepage?.blocks.find((block) => block.type === "faq-accordion");
 
   assert.ok(hero && hero.type === "hero");
   assert.match(hero.props.mediaUrl ?? "", /^\/demo-assets\//);
   assert.ok(categories && categories.type === "category-showcase");
   assert.ok(Array.isArray(categories.props.items));
   assert.ok(categories.props.items.length > 0);
+
+  assert.ok(recommended && recommended.type === "recommended-products");
+  assert.equal(recommended.props.title, "New at EZCOMO");
+
   assert.ok(community && community.type === "social-feed");
   assert.ok(Array.isArray(community.props.images));
   assert.ok(community.props.images.length > 0);
+  assert.equal(
+    new Set(community.props.images).size,
+    community.props.images.length,
+    "Threads community preview should not repeat the same seeded image",
+  );
+
+  assert.ok(faq && faq.type === "faq-accordion");
+  assert.ok(Array.isArray(faq.props.faqs));
+  assert.ok(faq.props.faqs.length > 0);
 });
 
 test("every non-blank built-in preview exposes canonical category demo hero media", () => {
