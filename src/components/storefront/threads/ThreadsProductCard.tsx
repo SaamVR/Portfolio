@@ -10,6 +10,8 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import {
   getPrimaryProductOptionValue,
+  getRenderableColorOptions,
+  getRenderableMetricOptionGroups,
   getRenderableSizeOptions,
 } from "@/lib/cms/storefront-product-presentation";
 import { productUrl } from "@/lib/slug";
@@ -31,7 +33,23 @@ export function ThreadsProductCard({
   const { specs } = useStoreProductPresentation(product);
   const href = productUrl(product.id, product.name, store?.slug);
   const sizes = getRenderableSizeOptions(product, specs, "fashion");
-  const requiresChoice = sizes.length > 1;
+  const colors = getRenderableColorOptions(product, specs, "fashion");
+  const metricGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
+  const requiresChoice =
+    sizes.length > 1 ||
+    colors.length > 1 ||
+    metricGroups.some((group) => group.options.length > 1);
+  const deterministicSelection = [
+    colors.length === 1 ? colors[0] : "",
+    sizes.length === 1 ? sizes[0] : "",
+    ...metricGroups
+      .filter((group) => group.options.length === 1)
+      .map((group) => group.options[0]),
+  ]
+    .filter(Boolean)
+    .join(" • ");
+  const quickAddSelection =
+    deterministicSelection || getPrimaryProductOptionValue(product, specs, "fashion");
   const unavailable = product.isAvailable === false || (typeof product.stock === "number" && product.stock <= 0);
   const onSale = Boolean(
     product.originalPrice && product.originalPrice > product.price,
@@ -108,7 +126,7 @@ export function ThreadsProductCard({
                 name: product.name,
                 price: product.price,
                 image: product.image,
-                size: getPrimaryProductOptionValue(product, specs, "fashion"),
+                size: quickAddSelection,
                 storeId: store?.id,
               })
             }
