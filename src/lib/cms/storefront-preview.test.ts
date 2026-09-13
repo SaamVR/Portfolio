@@ -13,6 +13,44 @@ test("buildTemplatePreviewStore creates a published preview seeded from template
   assert.equal(store.pages[0]?.isHomepage, true);
 });
 
+test("threads preview keeps the reference homepage composition order", () => {
+  const store = buildTemplatePreviewStore("threads");
+  const homepage = store.pages.find((page) => page.isHomepage);
+
+  assert.ok(homepage);
+  assert.deepEqual(
+    homepage.blocks.filter((block) => block.isVisible !== false).map((block) => block.type),
+    [
+      "hero",
+      "trust-badges",
+      "category-showcase",
+      "promo-banner",
+      "featured-products",
+      "recommended-products",
+      "social-feed",
+      "faq-accordion",
+      "rich-text",
+    ],
+  );
+});
+
+test("threads preview content is populated from its dedicated demo seed", () => {
+  const store = buildTemplatePreviewStore("threads");
+  const homepage = store.pages.find((page) => page.isHomepage);
+  const hero = homepage?.blocks.find((block) => block.type === "hero");
+  const categories = homepage?.blocks.find((block) => block.type === "category-showcase");
+  const community = homepage?.blocks.find((block) => block.type === "social-feed");
+
+  assert.ok(hero && hero.type === "hero");
+  assert.match(hero.props.mediaUrl ?? "", /^\/demo-assets\//);
+  assert.ok(categories && categories.type === "category-showcase");
+  assert.ok(Array.isArray(categories.props.items));
+  assert.ok(categories.props.items.length > 0);
+  assert.ok(community && community.type === "social-feed");
+  assert.ok(Array.isArray(community.props.images));
+  assert.ok(community.props.images.length > 0);
+});
+
 test("every non-blank built-in preview exposes canonical category demo hero media", () => {
   const mediaByTemplate = new Map<string, string>();
 
