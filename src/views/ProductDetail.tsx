@@ -141,7 +141,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
             <ArrowLeft className="h-3.5 w-3.5" /> Back to collection
           </button>
         </div>
-        <ThreadsProductDetail product={product} />
+        <ThreadsProductDetail key={product.id} product={product} />
         {(canRequestStockAlert || storeId) ? (
           <div className="mx-auto max-w-[1280px] px-4 pb-10 sm:px-5 md:px-8 md:pb-14">
             {canRequestStockAlert && storeId ? (
