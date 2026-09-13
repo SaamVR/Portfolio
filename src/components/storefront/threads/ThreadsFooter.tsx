@@ -60,14 +60,6 @@ export function ThreadsFooter() {
       })),
     [categories, shop],
   );
-  const referenceShopLinks = [
-    { label: "Women", url: `${shop}?category=Women` },
-    { label: "Men", url: `${shop}?category=Men` },
-    { label: "Accessories", url: `${shop}?category=Accessories` },
-    { label: "Home & Living", url: `${shop}?category=Home%20%26%20Living` },
-    { label: "Sale", url: `${shop}?sale=1` },
-    { label: "New Arrivals", url: `${shop}?sort=newest` },
-  ];
   const support = [
     { label: "Track Your Order", url: "/track-order" },
     { label: "Returns & Exchanges", url: "/returns" },
@@ -88,14 +80,17 @@ export function ThreadsFooter() {
     : footer?.company_links?.length
       ? footer.company_links
       : referenceAbout;
-  const resolvedShopLinks = isReferencePreview
-    ? referenceShopLinks
-    : shopLinks.length
-      ? shopLinks
-      : [
-          { label: "Shop all", url: shop },
-          { label: "New Arrivals", url: `${shop}?sort=newest` },
-        ];
+  const resolvedShopLinks = shopLinks.length
+    ? [
+        ...shopLinks,
+        { label: "Sale", url: `${shop}?sale=1` },
+        { label: "New Arrivals", url: `${shop}?sort=newest` },
+      ]
+    : [
+        { label: "Shop all", url: shop },
+        { label: "Sale", url: `${shop}?sale=1` },
+        { label: "New Arrivals", url: `${shop}?sort=newest` },
+      ];
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.includes("@")) return;
@@ -261,9 +256,11 @@ export function ThreadsFooter() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Your email address"
+                    aria-label="Email address for newsletter"
                     className="min-w-0 flex-1 bg-transparent px-3 text-[10px] text-foreground outline-none"
                   />
                   <button
+                    type="submit"
                     className="grid min-w-11 place-items-center bg-secondary text-foreground"
                     aria-label="Subscribe"
                   >
