@@ -15,6 +15,7 @@ import { ContextAwareProductDetails } from "@/components/storefront/product/Prod
 import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shell";
 import { FashionV3ProductDetail } from "@/components/storefront/fashion-v3/FashionV3ProductDetail";
 import { FashionV3ProductQA } from "@/components/storefront/fashion-v3/FashionV3ProductQA";
+import { ThreadsProductDetail } from "@/components/storefront/threads/ThreadsProductDetail";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const MAX_RECENT = 8;
@@ -39,7 +40,6 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   const isFashion = templateId === "fashion";
   const isThreads = templateId === "threads";
 
-  // Record recently viewed
   useEffect(() => {
     if (!id) return;
     try {
@@ -119,6 +119,39 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
     && (product.isAvailable === false || hasKnownOutOfStockCount),
   );
 
+  if (isThreads) {
+    return (
+      <StorefrontLayout>
+        <SEOHead
+          title={product.name}
+          description={product.description}
+          canonical={absoluteStoreUrl(currentStore ?? (storeSlug ? { slug: storeSlug } : undefined), productUrl(product.id, product.name))}
+          ogType="product"
+          ogImage={product.images?.[0] || product.image}
+          jsonLd={productJsonLd}
+        />
+        <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-5 md:px-8 md:pt-5">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex min-h-11 items-center gap-2 py-3 text-[9px] font-bold uppercase tracking-[.14em] text-muted-foreground transition-colors hover:text-primary"
+            aria-label="Go back to previous page"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to collection
+          </button>
+        </div>
+        <ThreadsProductDetail product={product} />
+        {(canRequestStockAlert || storeId) ? (
+          <div className="mx-auto max-w-[1280px] px-4 pb-10 sm:px-5 md:px-8 md:pb-14">
+            {canRequestStockAlert && storeId ? (
+              <StockNotificationSignup storeId={storeId} productId={product.id} productName={product.name} />
+            ) : null}
+            {storeId ? <ProductQA productId={product.id} /> : null}
+          </div>
+        ) : null}
+      </StorefrontLayout>
+    );
+  }
+
   return (
     <LayoutWrapper>
       <SEOHead
@@ -129,10 +162,10 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
         ogImage={product.images?.[0] || product.image}
         jsonLd={productJsonLd}
       />
-      <div className={isThreads ? "mx-auto max-w-[1280px] px-5 py-8 md:px-8 md:py-12" : "container mx-auto px-4 py-12"}>
+      <div className="container mx-auto px-4 py-12">
         <button
           onClick={() => navigate(-1)}
-          className={isThreads ? "mb-6 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground transition-colors hover:text-foreground" : "mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"}
+          className="mb-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Go back to previous page"
         >
           <ArrowLeft className="h-4 w-4" /> Back
