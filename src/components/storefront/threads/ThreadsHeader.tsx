@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
@@ -17,10 +17,42 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const menuCloseButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.requestAnimationFrame(() => menuCloseButtonRef.current?.focus());
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [searchOpen]);
 
   const home = storefrontPath("/", store?.slug);
   const shop = storefrontPath("/shop", store?.slug);
+  const account = user
+    ? storefrontPath("/account", store?.slug)
+    : storefrontPath(
+        `/auth?next=${encodeURIComponent(storefrontPath("/account", store?.slug))}`,
+        store?.slug,
+      );
+  const wishlist = storefrontPath("/wishlist", store?.slug);
   const isReferencePreview = store?.id === "preview-threads";
   const brandName = isReferencePreview ? "CHAPCHITRA" : store?.name || "THREADS";
   const nav = [
@@ -51,6 +83,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
               onClick={() => setMenuOpen(true)}
               className="grid h-11 w-11 place-items-center lg:hidden"
               aria-label="Open menu"
+              aria-expanded={menuOpen}
+              aria-controls="threads-mobile-menu"
             >
               <Menu className="h-[18px] w-[18px]" />
             </button>
@@ -91,25 +125,19 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
               onClick={() => setSearchOpen((v) => !v)}
               className="grid h-11 w-11 place-items-center"
               aria-label="Search"
+              aria-expanded={searchOpen}
             >
               <Search className="h-[17px] w-[17px]" />
             </button>
             <Link
-              to={
-                user
-                  ? storefrontPath("/account", store?.slug)
-                  : storefrontPath(
-                      `/auth?next=${encodeURIComponent(storefrontPath("/account", store?.slug))}`,
-                      store?.slug,
-                    )
-              }
+              to={account}
               className="hidden h-11 w-11 place-items-center sm:grid"
               aria-label="Account"
             >
               <User className="h-[17px] w-[17px]" />
             </Link>
             <Link
-              to={storefrontPath("/wishlist", store?.slug)}
+              to={wishlist}
               className="relative hidden h-11 w-11 place-items-center sm:grid"
               aria-label="Wishlist"
             >
@@ -146,6 +174,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 name="q"
                 autoFocus
                 placeholder="Search products"
+                aria-label="Search products"
                 className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </form>
@@ -159,10 +188,16 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
             onClick={() => setMenuOpen(false)}
             aria-label="Close menu overlay"
           />
-          <aside className="absolute inset-y-0 left-0 w-[86%] max-w-sm bg-background p-6 shadow-2xl">
+          <aside
+            id="threads-mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="threads-mobile-menu-title"
+            className="absolute inset-y-0 left-0 w-[86%] max-w-sm overflow-y-auto bg-background p-6 shadow-2xl"
+          >
             <div className="mb-7 flex items-center justify-between">
               <div>
-                <div className="font-serif text-2xl uppercase leading-none">
+                <div id="threads-mobile-menu-title" className="font-serif text-2xl uppercase leading-none">
                   {brandName}
                 </div>
                 <div className="mt-1 text-[8px] uppercase tracking-[.12em] text-muted-foreground">
@@ -170,6 +205,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 </div>
               </div>
               <button
+                ref={menuCloseButtonRef}
                 onClick={() => setMenuOpen(false)}
                 className="grid h-11 w-11 place-items-center"
                 aria-label="Close menu"
@@ -177,7 +213,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav>
+            <nav aria-label="Mobile Threads navigation">
               {nav.map(([label, href]) => (
                 <Link
                   key={label}
@@ -189,6 +225,22 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 </Link>
               ))}
             </nav>
+            <div className="mt-8 grid grid-cols-2 gap-3 border-t border-border pt-5">
+              <Link
+                to={account}
+                onClick={() => setMenuOpen(false)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[3px] border border-border px-3 text-[9px] font-bold uppercase tracking-[.08em]"
+              >
+                <User className="h-4 w-4" /> Account
+              </Link>
+              <Link
+                to={wishlist}
+                onClick={() => setMenuOpen(false)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[3px] border border-border px-3 text-[9px] font-bold uppercase tracking-[.08em]"
+              >
+                <Heart className="h-4 w-4" /> Wishlist{mounted && wishlistCount > 0 ? ` (${wishlistCount})` : ""}
+              </Link>
+            </div>
           </aside>
         </div>
       ) : null}
