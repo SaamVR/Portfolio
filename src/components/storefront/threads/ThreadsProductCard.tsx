@@ -50,38 +50,48 @@ export function ThreadsProductCard({
     .join(" • ");
   const quickAddSelection =
     deterministicSelection || getPrimaryProductOptionValue(product, specs, "fashion");
-  const unavailable = product.isAvailable === false || (typeof product.stock === "number" && product.stock <= 0);
-  const onSale = Boolean(
-    product.originalPrice && product.originalPrice > product.price,
-  );
+  const unavailable =
+    product.isAvailable === false ||
+    (typeof product.stock === "number" && product.stock <= 0);
+  const onSale = Boolean(product.originalPrice && product.originalPrice > product.price);
   const discount = onSale
     ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
     : 0;
-  const alternateImage = product.images?.find((image) => image && image !== product.image);
+  const alternateImage = product.images?.find(
+    (image) => image && image !== product.image,
+  );
   const imageSizes = framed
-    ? "(min-width: 1024px) 24vw, (min-width: 640px) 47vw, 72vw"
+    ? "(min-width: 1100px) 23vw, (min-width: 640px) 43vw, 76vw"
     : compact
       ? "(min-width: 768px) 25vw, 50vw"
-      : "(min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw";
+      : "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
 
   return (
     <article
-      className={`group min-w-0 ${framed ? "rounded-md bg-[hsl(var(--muted))] p-2 shadow-[0_10px_24px_rgba(0,0,0,.18)]" : ""}`}
+      className={`group min-w-0 ${
+        framed
+          ? "rounded-[4px] border border-primary-foreground/15 bg-background p-2.5 text-foreground shadow-[0_18px_46px_rgba(0,0,0,.16)]"
+          : ""
+      }`}
     >
       <div
-        className={`relative overflow-hidden bg-secondary ${framed ? "aspect-[4/5] rounded-[3px]" : compact ? "aspect-[1.08/1] rounded-[4px] border border-border/60" : "aspect-[4/5] rounded-sm"}`}
+        className={`relative overflow-hidden bg-secondary ${
+          framed
+            ? "aspect-[4/5] rounded-[2px]"
+            : compact
+              ? "aspect-[1.08/1] rounded-[3px] border border-border/60"
+              : "aspect-[4/5] rounded-[2px]"
+        }`}
       >
-        <Link
-          href={href}
-          aria-label={product.name}
-          className="absolute inset-0"
-        >
+        <Link href={href} aria-label={product.name} className="absolute inset-0">
           <SafeStorefrontImage
             src={product.image}
             alt={product.name}
             fill
             sizes={imageSizes}
-            className={`object-cover transition duration-500 group-hover:scale-[1.025] ${alternateImage ? "group-hover:opacity-0" : ""}`}
+            className={`object-cover transition duration-500 ease-out group-hover:scale-[1.018] ${
+              alternateImage ? "group-hover:opacity-0" : ""
+            }`}
           />
           {alternateImage ? (
             <SafeStorefrontImage
@@ -89,23 +99,25 @@ export function ThreadsProductCard({
               alt={`${product.name} alternate view`}
               fill
               sizes={imageSizes}
-              className="object-cover opacity-0 transition duration-500 group-hover:scale-[1.025] group-hover:opacity-100"
+              className="object-cover opacity-0 transition duration-500 ease-out group-hover:scale-[1.018] group-hover:opacity-100"
             />
           ) : null}
         </Link>
+
         {onSale ? (
-          <span className="absolute left-2 top-2 rounded-sm bg-accent px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] text-accent-foreground">
+          <span className="absolute left-2.5 top-2.5 rounded-[2px] bg-accent px-2 py-1 text-[8px] font-bold uppercase tracking-[.12em] text-accent-foreground">
             −{discount}%
           </span>
         ) : compact ? (
-          <span className="absolute left-2 top-2 rounded-sm bg-primary px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] text-primary-foreground">
+          <span className="absolute left-2.5 top-2.5 rounded-[2px] bg-primary px-2 py-1 text-[8px] font-bold uppercase tracking-[.12em] text-primary-foreground">
             New
           </span>
         ) : null}
+
         <button
           type="button"
           onClick={() => toggleItem(product.id)}
-          className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full bg-background/92 shadow-sm transition hover:text-primary md:h-9 md:w-9"
+          className="absolute right-2.5 top-2.5 grid h-10 w-10 place-items-center rounded-full border border-black/5 bg-background/94 text-foreground shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:text-primary md:h-9 md:w-9"
           aria-label={
             isInWishlist(product.id)
               ? `Remove ${product.name} from wishlist`
@@ -113,13 +125,16 @@ export function ThreadsProductCard({
           }
         >
           <Heart
-            className={`h-3.5 w-3.5 ${isInWishlist(product.id) ? "fill-current text-primary" : ""}`}
+            className={`h-3.5 w-3.5 ${
+              isInWishlist(product.id) ? "fill-current text-primary" : ""
+            }`}
           />
         </button>
+
         {requiresChoice ? (
           <Link
             href={href}
-            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 md:flex"
+            className="absolute inset-x-2.5 bottom-2.5 hidden h-10 items-center justify-center rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 md:flex"
           >
             Choose options
           </Link>
@@ -137,44 +152,47 @@ export function ThreadsProductCard({
                 storeId: store?.id,
               })
             }
-            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center gap-1 bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-55 md:flex"
+            className="absolute inset-x-2.5 bottom-2.5 hidden h-10 items-center justify-center gap-1.5 rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-55 md:flex"
           >
             <Plus className="h-3 w-3" />
             {unavailable ? "Out of stock" : "Quick add"}
           </button>
         )}
       </div>
-      <div
-        className={`${framed ? "px-0.5 pb-1 pt-2 text-primary-foreground" : compact ? "px-1 pb-1 pt-1.5" : "px-0.5 pt-2"}`}
-      >
+
+      <div className={`${framed ? "px-0.5 pb-1 pt-3" : compact ? "px-1 pb-1 pt-2" : "px-0.5 pt-2.5"}`}>
         <Link
           href={href}
-          className={`block truncate font-medium ${compact ? "text-[10px]" : "text-[11px]"}`}
+          className={`block truncate font-medium tracking-[-.01em] ${compact ? "text-[10px]" : "text-[11px] md:text-[12px]"}`}
         >
           {product.name}
         </Link>
-        <div className="mt-0.5 flex items-start justify-between gap-2">
+        <div className="mt-1 flex items-start justify-between gap-2">
           <span
-            className={`min-w-0 truncate ${compact ? "text-[8px]" : "text-[9px]"} ${framed ? "text-primary-foreground/65" : "text-muted-foreground"}`}
+            className={`min-w-0 truncate text-muted-foreground ${
+              compact ? "text-[8px]" : "text-[9px]"
+            }`}
           >
             {product.category || product.type}
           </span>
           <span className="flex shrink-0 items-baseline gap-1.5">
             {onSale ? (
-              <span className={`${compact ? "text-[8px]" : "text-[9px]"} ${framed ? "text-primary-foreground/55" : "text-muted-foreground"} line-through`}>
+              <span className={`${compact ? "text-[8px]" : "text-[9px]"} text-muted-foreground line-through`}>
                 ৳{product.originalPrice!.toLocaleString()}
               </span>
             ) : null}
-            <span className={`font-semibold ${compact ? "text-[10px]" : "text-[11px]"}`}>
+            <span className={`font-semibold text-primary ${compact ? "text-[10px]" : "text-[11px]"}`}>
               ৳{product.price.toLocaleString()}
             </span>
           </span>
         </div>
+
         {unavailable ? (
-          <p className={`mt-1 text-[8px] font-semibold uppercase tracking-[.08em] ${framed ? "text-primary-foreground/65" : "text-destructive"}`}>
+          <p className="mt-1 text-[8px] font-semibold uppercase tracking-[.08em] text-destructive">
             Out of stock
           </p>
         ) : null}
+
         {!framed && onQuickView ? (
           <button
             type="button"
