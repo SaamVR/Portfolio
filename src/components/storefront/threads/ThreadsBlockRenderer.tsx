@@ -11,7 +11,6 @@ import {
   Shirt,
   ShoppingBag,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StorePageBlock } from "@/lib/cms/schema";
@@ -95,6 +94,7 @@ function useThreadsAutoplay(
     root.addEventListener("focusout", resume);
     root.addEventListener("pointerdown", pause);
     root.addEventListener("pointerup", resume);
+    root.addEventListener("pointercancel", resume);
     api.on("select", schedule);
     schedule();
     return () => {
@@ -106,13 +106,53 @@ function useThreadsAutoplay(
       root.removeEventListener("focusout", resume);
       root.removeEventListener("pointerdown", pause);
       root.removeEventListener("pointerup", resume);
+      root.removeEventListener("pointercancel", resume);
     };
   }, [api, enabled, interval]);
 }
 
+function ThreadsCarouselTicks({
+  api,
+  count,
+  inverse = false,
+}: {
+  api: CarouselApi | undefined;
+  count: number;
+  inverse?: boolean;
+}) {
+  const [selected, setSelected] = useState(0);
+  useEffect(() => {
+    if (!api) return;
+    const sync = () => setSelected(count > 0 ? api.selectedScrollSnap() % count : 0);
+    sync();
+    api.on("select", sync);
+    api.on("reInit", sync);
+    return () => {
+      api.off("select", sync);
+      api.off("reInit", sync);
+    };
+  }, [api, count]);
+
+  if (count <= 1) return null;
+  return (
+    <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Carousel position">
+      {Array.from({ length: Math.min(count, 8) }, (_, index) => (
+        <button
+          key={index}
+          type="button"
+          onClick={() => api?.scrollTo(index)}
+          aria-label={`Go to slide ${index + 1}`}
+          aria-current={selected === index ? "true" : undefined}
+          className={`h-[2px] transition-all ${selected === index ? `w-7 ${inverse ? "bg-primary-foreground" : "bg-primary"}` : `w-3 ${inverse ? "bg-primary-foreground/30" : "bg-primary/25"}`}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function categoryFallbackIcon(name: string): ReactNode {
   const value = name.toLowerCase();
-  if (value.includes("shirt") || value.includes("hood"))
+  if (value.includes("shirt") || value.includes("polo") || value.includes("hood"))
     return <Shirt className="h-7 w-7" />;
   if (value.includes("bag")) return <ShoppingBag className="h-7 w-7" />;
   if (value.includes("home") || value.includes("decor"))
@@ -126,45 +166,37 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
   const preview = isPreview(store?.id);
   const image = s(p.imageUrl) || s(p.mediaUrl);
   const mobileImage = s(p.mobileImageUrl) || image;
-  const tagline = preview
-    ? "WEAR YOUR STORY"
-    : s(p.tagline) || "Wear your story";
+  const tagline = preview ? "WEAR YOUR STORY" : s(p.tagline) || "Wear your story";
   const title = preview ? "Wear\nYour Story" : s(p.title) || "Wear Your Story";
   const subtitle = preview
     ? "Art. Culture. People. On a Higher Thread."
-    : s(p.subtitle) ||
-      "Art, culture and everyday pieces made to carry a story.";
-  const cta = preview
-    ? "Explore New Arrivals"
-    : s(p.ctaText) || "Explore New Arrivals";
+    : s(p.subtitle) || "Art, culture and everyday pieces made to carry a story.";
+  const cta = preview ? "Explore New Arrivals" : s(p.ctaText) || "Explore New Arrivals";
 
   return (
-    <section className="relative overflow-hidden border-b border-border/60 bg-secondary/40">
-      <div className="mx-auto grid min-h-[220px] max-w-[1280px] grid-cols-[44%_56%] sm:min-h-[250px] md:min-h-[290px] md:grid-cols-[42%_58%] lg:min-h-[330px]">
-        <div className="relative z-10 flex items-center px-4 py-5 sm:px-6 sm:py-7 md:px-10 md:py-8 lg:px-12">
+    <section className="relative overflow-hidden border-b border-border/60 bg-secondary/35">
+      <div className="mx-auto grid min-h-[230px] max-w-[1280px] grid-cols-[44%_56%] sm:min-h-[270px] md:min-h-[330px] md:grid-cols-[41%_59%] lg:min-h-[365px]">
+        <div className="relative z-10 flex items-center px-4 py-5 sm:px-6 sm:py-7 md:px-10 lg:px-12">
           <div className="max-w-[430px]">
-            <p className="mb-1.5 text-[7px] font-bold uppercase tracking-[.2em] text-primary sm:text-[8px] md:mb-2 md:text-[9px] md:tracking-[.24em]">
+            <p className="mb-2 text-[7px] font-bold uppercase tracking-[.24em] text-primary sm:text-[8px] md:text-[9px]">
               {tagline}
             </p>
-            <h1 className="whitespace-pre-line font-serif text-[32px] font-semibold leading-[.88] tracking-[-.05em] sm:text-[42px] md:text-[56px] lg:text-[66px]">
+            <h1 className="whitespace-pre-line font-serif text-[34px] font-semibold leading-[.86] tracking-[-.055em] sm:text-[45px] md:text-[59px] lg:text-[68px]">
               {title}
             </h1>
-            <p className="mt-2 max-w-[370px] text-[9px] leading-3.5 text-foreground/72 sm:text-[10px] sm:leading-4 md:mt-3 md:text-[13px] md:leading-5">
+            <p className="mt-2.5 max-w-[360px] text-[9px] leading-4 text-foreground/72 sm:text-[10px] md:mt-3 md:text-[12px] md:leading-5">
               {subtitle}
             </p>
             <Link
-              href={storefrontPath(
-                s(p.ctaLink) || "/shop?sort=newest",
-                store?.slug,
-              )}
-              className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-sm bg-primary px-3 text-[8px] font-semibold text-primary-foreground sm:px-4 sm:text-[9px] md:mt-4 md:gap-3 md:px-5 md:text-[10px]"
+              href={storefrontPath(s(p.ctaLink) || "/shop?sort=newest", store?.slug)}
+              className="mt-3.5 inline-flex min-h-11 items-center gap-2.5 rounded-[3px] bg-primary px-4 text-[8px] font-bold uppercase tracking-[.08em] text-primary-foreground md:mt-5 md:px-5 md:text-[9px]"
             >
               {cta}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
-        <div className="relative min-h-[220px] overflow-hidden sm:min-h-[250px] md:min-h-0">
+        <div className="relative min-h-[230px] overflow-hidden sm:min-h-[270px] md:min-h-0">
           {image ? (
             <>
               <div className="absolute inset-0 hidden sm:block">
@@ -189,13 +221,56 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-secondary to-muted" />
           )}
-          <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-secondary/90 to-transparent md:w-28" />
-          <div className="absolute right-5 top-5 hidden rotate-[-5deg] font-serif text-[20px] italic leading-[1.05] text-foreground/70 lg:block">
+          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-secondary/85 to-transparent sm:w-20 md:w-28" />
+          <div className="absolute right-5 top-5 hidden rotate-[-4deg] font-serif text-[20px] italic leading-[1.02] text-background/90 drop-shadow md:block lg:right-8 lg:top-8 lg:text-[24px]">
             Good People.
             <br />
             Brighter Tomorrow.
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+const trustIcons = [Sparkles, Leaf, Palette, Heart];
+function ThreadsTrustStrip({ block }: { block: StorePageBlock }) {
+  const p = block.props as Record<string, unknown>;
+  const raw = Array.isArray(p.badges)
+    ? p.badges.filter(
+        (item): item is Record<string, unknown> => !!item && typeof item === "object",
+      )
+    : [];
+  const defaults = [
+    { label: "Stories You Can Wear", description: "Art with a point of view." },
+    { label: "Rooted in Bengal", description: "Local stories, current forms." },
+    { label: "Original Illustration", description: "Designed to stand apart." },
+    { label: "Made for Repeat Wear", description: "Everyday pieces with character." },
+  ];
+  const values = raw.length ? raw.slice(0, 4) : defaults;
+
+  return (
+    <section className="border-b border-border/70 bg-background">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-2 px-4 sm:px-5 md:grid-cols-4 md:px-8">
+        {values.map((value, index) => {
+          const Icon = trustIcons[index] ?? Sparkles;
+          return (
+            <div
+              key={index}
+              className="flex min-h-[72px] items-center gap-2.5 border-border/65 px-1 py-3 odd:border-r md:min-h-[78px] md:border-r md:px-4 md:odd:border-r last:border-r-0"
+            >
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/25 text-primary">
+                <Icon className="h-3.5 w-3.5 stroke-[1.6]" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[8px] font-bold sm:text-[9px]">{s(value.label)}</p>
+                <p className="mt-0.5 line-clamp-2 text-[7px] leading-3 text-muted-foreground sm:text-[8px]">
+                  {s(value.description)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -207,8 +282,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const p = block.props as Record<string, unknown>;
   const explicit = Array.isArray(p.items)
     ? p.items.filter(
-        (item): item is Record<string, unknown> =>
-          !!item && typeof item === "object",
+        (item): item is Record<string, unknown> => !!item && typeof item === "object",
       )
     : [];
   const items = (
@@ -229,38 +303,40 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
   const [api, setApi] = useState<CarouselApi>();
   useThreadsAutoplay(
     api,
-    typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4200,
+    typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 3600,
     p.autoplay !== false && items.length > 1,
   );
   if (!items.length) return null;
   const shop = storefrontPath("/shop", store?.slug);
 
   return (
-    <section id="categories" className="bg-background py-5 md:py-7">
+    <section id="categories" className="bg-background py-6 md:py-8">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-5 md:px-8">
-        <div className="mb-3 flex items-end justify-between gap-4">
-          <h2 className="font-serif text-[24px] font-semibold leading-none md:text-[27px]">
-            {s(p.title) || "Shop by Category"}
-          </h2>
-          <Link href={shop} className="min-h-11 py-3 text-[9px] font-semibold">
-            Explore all categories →
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-1 text-[7px] font-bold uppercase tracking-[.2em] text-primary md:text-[8px]">
+              {s(p.tagline) || "Find your everyday"}
+            </p>
+            <h2 className="font-serif text-[25px] font-semibold leading-none md:text-[30px]">
+              {s(p.title) || "Shop by Category"}
+            </h2>
+          </div>
+          <Link href={shop} className="inline-flex min-h-11 items-center py-3 text-[8px] font-bold text-primary md:text-[9px]">
+            Explore all →
           </Link>
         </div>
-        <Carousel
-          setApi={setApi}
-          opts={{ align: "start", loop: items.length > 2 }}
-        >
-          <CarouselContent className="-ml-2.5">
+        <Carousel setApi={setApi} opts={{ align: "start", loop: items.length > 2 }} className="relative">
+          <CarouselContent className="-ml-2.5 md:-ml-3">
             {items.map((item, index) => (
               <CarouselItem
                 key={`${item.value}-${index}`}
-                className="basis-[21%] pl-2.5 sm:basis-[19%] md:basis-1/5"
+                className="basis-[42%] pl-2.5 sm:basis-[29%] md:basis-1/5 md:pl-3"
               >
                 <Link
                   href={`${shop}?category=${encodeURIComponent(item.value)}`}
-                  className="group relative block text-center md:overflow-hidden md:rounded-[5px] md:border md:border-border/70 md:bg-card md:text-left"
+                  className="group relative block overflow-hidden rounded-[5px] border border-border/70 bg-card"
                 >
-                  <div className="relative mx-auto aspect-square w-[56px] overflow-hidden rounded-full border border-border/70 bg-secondary sm:w-[70px] md:aspect-[1.12/1] md:w-full md:rounded-none md:border-0">
+                  <div className="relative aspect-[1.03/1] overflow-hidden bg-secondary md:aspect-[1.14/1]">
                     {item.image ? (
                       <SafeStorefrontImage
                         src={item.image}
@@ -273,13 +349,11 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
                         {categoryFallbackIcon(item.name)}
                       </div>
                     )}
-                    <div className="absolute inset-0 hidden bg-gradient-to-t from-primary/90 via-primary/10 to-transparent md:block" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/5 to-transparent" />
                   </div>
-                  <div className="mt-1 px-0.5 text-foreground md:absolute md:inset-x-0 md:bottom-0 md:mt-0 md:p-3 md:text-primary-foreground">
-                    <div className="truncate text-[8px] font-semibold sm:text-[9px] md:text-[12px]">
-                      {item.name}
-                    </div>
-                    <div className="mt-0.5 hidden line-clamp-1 text-[8px] text-primary-foreground/75 md:block">
+                  <div className="absolute inset-x-0 bottom-0 p-3 text-primary-foreground">
+                    <div className="truncate text-[10px] font-bold md:text-[11px]">{item.name}</div>
+                    <div className="mt-0.5 hidden truncate text-[7px] text-primary-foreground/70 sm:block md:text-[8px]">
                       {item.tagline || "Stories you can wear"}
                     </div>
                   </div>
@@ -287,7 +361,28 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
               </CarouselItem>
             ))}
           </CarouselContent>
+          {p.showArrows !== false && items.length > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => api?.scrollPrev()}
+                className="absolute -left-2 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 shadow-sm md:-left-5"
+                aria-label="Previous category"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => api?.scrollNext()}
+                className="absolute -right-2 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/95 shadow-sm md:-right-5"
+                aria-label="Next category"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </>
+          ) : null}
         </Carousel>
+        <ThreadsCarouselTicks api={api} count={items.length} />
       </div>
     </section>
   );
@@ -304,17 +399,13 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
       subtitle: preview
         ? "Thoughtful pieces for a warmer, art-led home."
         : s(p.subtitle) || "Thoughtful pieces for home and everyday life.",
-      cta: preview
-        ? "Explore Home Decor"
-        : s(p.ctaText) || "Explore Collection",
+      cta: preview ? "Explore Home Decor" : s(p.ctaText) || "Explore Collection",
       href: s(p.ctaLink) || "/shop",
       tone: "clay",
     },
     {
       image: s(p.secondaryImageUrl),
-      title: preview
-        ? "Small Gifts,\nBig Meaning"
-        : s(p.secondaryTitle) || "Small Gifts, Big Meaning",
+      title: preview ? "Small Gifts,\nBig Meaning" : s(p.secondaryTitle) || "Small Gifts, Big Meaning",
       subtitle: preview
         ? "Handcrafted gifts for every special moment."
         : s(p.secondarySubtitle) || "Meaningful pieces for everyday moments.",
@@ -325,34 +416,27 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
   ];
 
   return (
-    <section className="bg-background px-4 pb-5 sm:px-5 md:px-8 md:pb-7">
-      <div className="mx-auto grid max-w-[1280px] gap-3 md:grid-cols-2">
+    <section className="bg-background px-4 pb-6 sm:px-5 md:px-8 md:pb-8">
+      <div className="mx-auto grid max-w-[1280px] gap-3 md:grid-cols-2 md:gap-4">
         {cards.map((card, index) => (
           <article
             key={index}
-            className={`relative min-h-[180px] overflow-hidden rounded-[6px] border border-border/60 ${card.tone === "clay" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"}`}
+            className={`relative min-h-[190px] overflow-hidden rounded-[6px] border border-border/60 md:min-h-[215px] ${card.tone === "clay" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"}`}
           >
             {card.image ? (
-              <SafeStorefrontImage
-                src={card.image}
-                alt={card.title.replace("\n", " ")}
-                fill
-                className="object-cover"
-              />
+              <SafeStorefrontImage src={card.image} alt={card.title.replace("\n", " ")} fill className="object-cover" />
             ) : null}
             <div
-              className={`absolute inset-0 ${card.tone === "clay" ? "bg-gradient-to-r from-accent via-accent/90 to-accent/10" : "bg-gradient-to-r from-primary via-primary/92 to-primary/10"}`}
+              className={`absolute inset-0 ${card.tone === "clay" ? "bg-gradient-to-r from-accent via-accent/92 to-accent/12" : "bg-gradient-to-r from-primary via-primary/92 to-primary/12"}`}
             />
-            <div className="relative z-10 flex min-h-[180px] max-w-[58%] flex-col justify-center p-5 md:p-6">
-              <h2 className="whitespace-pre-line font-serif text-[28px] font-semibold leading-[.9] md:text-[34px]">
+            <div className="relative z-10 flex min-h-[190px] max-w-[61%] flex-col justify-center p-5 md:min-h-[215px] md:p-7">
+              <h2 className="whitespace-pre-line font-serif text-[29px] font-semibold leading-[.9] md:text-[36px]">
                 {card.title}
               </h2>
-              <p className="mt-2 text-[10px] leading-4 opacity-80">
-                {card.subtitle}
-              </p>
+              <p className="mt-2 max-w-[240px] text-[9px] leading-4 opacity-82 md:text-[10px]">{card.subtitle}</p>
               <Link
                 href={storefrontPath(card.href, store?.slug)}
-                className="mt-4 inline-flex min-h-11 w-fit items-center gap-2 rounded-sm bg-background px-4 text-[9px] font-semibold text-foreground"
+                className="mt-4 inline-flex min-h-11 w-fit items-center gap-2 rounded-[3px] bg-background px-4 text-[8px] font-bold uppercase tracking-[.06em] text-foreground"
               >
                 {card.cta}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -365,31 +449,120 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
   );
 }
 
+function ThreadsFeatured({ block }: { block: StorePageBlock }) {
+  const store = useOptionalStore();
+  const { data: products = [] } = useProducts(store?.id);
+  const p = block.props as Record<string, unknown>;
+  const featured = products.filter((product) => product.featured);
+  const source = featured.length >= 3 ? featured : products;
+  const visible = source.slice(0, typeof p.limit === "number" ? p.limit : 10);
+  const [api, setApi] = useState<CarouselApi>();
+  useThreadsAutoplay(
+    api,
+    typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4400,
+    p.autoplay !== false && visible.length > 1,
+  );
+  if (!visible.length) return null;
+
+  return (
+    <section className="relative overflow-hidden bg-primary py-7 text-primary-foreground md:py-9">
+      <Botanical side="right" level={decorationLevel(block)} inverse />
+      <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-5 md:px-8">
+        <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:gap-5 lg:grid-cols-[245px_minmax(0,1fr)]">
+          <aside className="relative overflow-hidden rounded-[6px] bg-background p-5 text-foreground md:min-h-[330px] md:p-6">
+            <Botanical level={decorationLevel(block)} />
+            <div className="relative z-10 flex h-full flex-col">
+              <p className="text-[7px] font-bold uppercase tracking-[.22em] text-primary md:text-[8px]">
+                {s(p.tagline) || "Most loved"}
+              </p>
+              <h2 className="mt-2 font-serif text-[32px] font-semibold leading-[.88] tracking-[-.04em] md:text-[38px]">
+                {s(p.title) || "Featured Products"}
+              </h2>
+              <p className="mt-3 max-w-[185px] text-[9px] leading-4 text-muted-foreground md:text-[10px]">
+                {s(p.subtitle) || "Curated pieces, original stories, and the styles people keep reaching for."}
+              </p>
+              <div className="mt-5 h-px w-12 bg-primary/35 md:mt-auto" />
+              <Link
+                href={storefrontPath("/shop", store?.slug)}
+                className="mt-4 inline-flex min-h-11 items-center gap-2 py-3 text-[8px] font-bold uppercase tracking-[.08em] text-primary"
+              >
+                Shop the collection <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </aside>
+
+          <div className="min-w-0 self-center">
+            <Carousel setApi={setApi} opts={{ align: "start", loop: visible.length > 2 }} className="relative">
+              <CarouselContent className="-ml-3">
+                {visible.map((product, index) => (
+                  <CarouselItem
+                    key={`${product.id}-${index}`}
+                    className="basis-[72%] pl-3 sm:basis-[47%] lg:basis-[33.333%]"
+                  >
+                    <ThreadsProductCard product={product} framed />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {p.showArrows !== false && visible.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => api?.scrollPrev()}
+                    className="absolute -left-2 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/45 bg-primary/92 backdrop-blur-sm"
+                    aria-label="Previous product"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => api?.scrollNext()}
+                    className="absolute -right-2 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/55 bg-background text-primary shadow-lg md:-right-4"
+                    aria-label="Next product"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </>
+              ) : null}
+            </Carousel>
+            <ThreadsCarouselTicks api={api} count={visible.length} inverse />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const { data: products = [] } = useProducts(store?.id);
   const p = block.props as Record<string, unknown>;
   const visible = products.slice(0, typeof p.limit === "number" ? p.limit : 8);
   if (!visible.length) return null;
+
   return (
-    <section className="bg-background py-4 md:py-6">
+    <section className="bg-background py-7 md:py-9">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-5 md:px-8">
-        <div className="mb-3 flex items-end justify-between">
-          <h2 className="font-serif text-[24px] font-semibold leading-none md:text-[27px]">
-            {isPreview(store?.id)
-              ? "New at CHAPCHITRA"
-              : s(p.title) || `New at ${store?.name || "Threads"}`}
-          </h2>
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-1 text-[7px] font-bold uppercase tracking-[.2em] text-primary md:text-[8px]">
+              {s(p.tagline) || "Just landed"}
+            </p>
+            <h2 className="font-serif text-[27px] font-semibold leading-none md:text-[32px]">
+              {isPreview(store?.id)
+                ? "New at CHAPCHITRA"
+                : s(p.title) || `New at ${store?.name || "Threads"}`}
+            </h2>
+          </div>
           <Link
             href={storefrontPath("/shop?sort=newest", store?.slug)}
-            className="min-h-11 py-3 text-[9px] font-semibold"
+            className="inline-flex min-h-11 items-center py-3 text-[8px] font-bold text-primary md:text-[9px]"
           >
-            See All New Arrivals →
+            See all new arrivals →
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 md:grid-cols-4 md:gap-x-4 md:gap-y-8">
           {visible.map((product) => (
-            <ThreadsProductCard key={product.id} product={product} compact />
+            <ThreadsProductCard key={product.id} product={product} />
           ))}
         </div>
       </div>
@@ -397,134 +570,77 @@ function ThreadsNewArrivals({ block }: { block: StorePageBlock }) {
   );
 }
 
-function ThreadsFeatured({ block }: { block: StorePageBlock }) {
-  const store = useOptionalStore();
-  const { data: products = [] } = useProducts(store?.id);
+function ThreadsCommunity({ block }: { block: StorePageBlock }) {
   const p = block.props as Record<string, unknown>;
-  const featured = products.filter((product) => product.featured);
-  const source = featured.length >= 3 ? featured : products;
-  const visible = source.slice(0, typeof p.limit === "number" ? p.limit : 8);
-  const [api, setApi] = useState<CarouselApi>();
-  useThreadsAutoplay(
-    api,
-    typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4600,
-    p.autoplay !== false && visible.length > 1,
-  );
-  if (!visible.length) return null;
+  const images = Array.isArray(p.images)
+    ? p.images.filter((image): image is string => typeof image === "string" && image.trim().length > 0).slice(0, 4)
+    : [];
+  if (!images.length) return null;
 
   return (
-    <section className="relative overflow-hidden bg-primary py-6 text-primary-foreground md:py-8">
-      <Botanical side="left" level={decorationLevel(block)} inverse />
-      <Botanical side="right" level={decorationLevel(block)} inverse />
-      <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-5 md:px-8">
-        <div className="mb-4 flex items-end justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="font-serif text-[27px] font-semibold leading-none md:text-[31px]">
-              {s(p.title) || "Featured Products"}
+    <section className="border-y border-border/60 bg-secondary/35 py-7 md:py-9">
+      <div className="mx-auto grid max-w-[1280px] gap-4 px-4 sm:px-5 md:grid-cols-[.7fr_1.3fr] md:px-8">
+        <div className="flex items-center rounded-[6px] bg-primary p-6 text-primary-foreground md:p-7">
+          <div>
+            <p className="text-[7px] font-bold uppercase tracking-[.22em] text-primary-foreground/65 md:text-[8px]">Community</p>
+            <h2 className="mt-2 font-serif text-[31px] font-semibold leading-[.9] md:text-[38px]">
+              {s(p.title) || "Join our community"}
             </h2>
-            <span className="hidden h-px w-12 bg-primary-foreground/50 sm:block" />
+            <p className="mt-3 max-w-[290px] text-[9px] leading-4 text-primary-foreground/72 md:text-[10px]">
+              {s(p.subtitle) || "Real outfits, repeat wears, and the people who make these pieces their own."}
+            </p>
+            <div className="mt-5 h-px w-14 bg-primary-foreground/35" />
+            <p className="mt-3 text-[8px] font-bold uppercase tracking-[.12em] text-primary-foreground/80">#WearYourStory</p>
           </div>
-          <p className="hidden text-[9px] text-primary-foreground/70 sm:block">
-            {s(p.subtitle) || "Curated pieces. Timeless stories."}
-          </p>
         </div>
-        <Carousel
-          setApi={setApi}
-          opts={{ align: "center", loop: visible.length > 1 }}
-          className="relative"
-        >
-          <CarouselContent className="-ml-3">
-            {visible.map((product, index) => (
-              <CarouselItem
-                key={`${product.id}-${index}`}
-                className="basis-[76%] pl-3 sm:basis-[46%] md:basis-[34%] lg:basis-[27%]"
-              >
-                <ThreadsProductCard product={product} framed />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          {p.showArrows !== false ? (
-            <>
-              <button
-                type="button"
-                onClick={() => api?.scrollPrev()}
-                className="absolute left-1 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/60 bg-primary/80"
-                aria-label="Previous product"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => api?.scrollNext()}
-                className="absolute right-1 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-primary-foreground/60 bg-primary/80"
-                aria-label="Next product"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </>
-          ) : null}
-        </Carousel>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+          {images.map((src, index) => (
+            <div key={`${src}-${index}`} className="relative aspect-[4/5] overflow-hidden rounded-[5px] bg-muted">
+              <SafeStorefrontImage src={src} alt={`Community look ${index + 1}`} fill className="object-cover" />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-const valueIcons = [Shirt, Users, Palette, Heart];
-function ThreadsValues({ block }: { block: StorePageBlock }) {
+function ThreadsFAQ({ block }: { block: StorePageBlock }) {
   const p = block.props as Record<string, unknown>;
-  const raw = Array.isArray(p.badges)
-    ? p.badges.filter(
-        (item): item is Record<string, unknown> =>
-          !!item && typeof item === "object",
-      )
+  const raw = Array.isArray(p.faqs)
+    ? p.faqs.filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
     : [];
-  const defaults = [
-    {
-      label: "Stories You Can Wear",
-      description: "Our clothing carries real people and places.",
-    },
-    {
-      label: "Rooted in Bengal",
-      description: "Inspired by our heritage, made for today.",
-    },
-    {
-      label: "Illustrated to Stand Apart",
-      description: "Original art, not mass production.",
-    },
-    {
-      label: "Own What You Wear",
-      description: "Wear with purpose and personality.",
-    },
-  ];
-  const values = raw.length ? raw.slice(0, 4) : defaults;
+  const faqs = raw.length
+    ? raw.slice(0, 6).map((item) => ({ q: s(item.q) || s(item.question), a: s(item.a) || s(item.answer) }))
+    : [
+        { q: "How do I choose the right size?", a: "Use the size guide on product pages and compare it with a garment you already like." },
+        { q: "How long does delivery take?", a: "Available delivery options and timing are shown during checkout." },
+        { q: "Can I exchange an item?", a: "Eligible unworn items can be exchanged according to the store's published exchange policy." },
+        { q: "How should I care for printed pieces?", a: "Follow the care instructions listed on the product page to keep the print and fabric looking their best." },
+      ];
+
   return (
-    <section className="bg-background py-5 md:py-7">
-      <div className="mx-auto max-w-[1100px] px-4 sm:px-5 md:px-8">
-        <h2 className="mb-4 text-center font-serif text-[24px] font-semibold md:text-[28px]">
-          {s(p.title) || "More Than a T-Shirt"}
-        </h2>
-        <div className="grid gap-3 md:grid-cols-4 md:gap-4">
-          {values.map((value, index) => {
-            const Icon = valueIcons[index] ?? Sparkles;
-            return (
-              <div
-                key={index}
-                className="flex items-center gap-3 text-left md:block md:text-center"
-              >
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground md:mx-auto">
-                  <Icon className="h-5 w-5 stroke-[1.6]" />
-                </div>
-                <div className="min-w-0 md:mt-2">
-                  <div className="text-[10px] font-semibold">
-                    {s(value.label)}
-                  </div>
-                  <div className="mt-0.5 max-w-[220px] text-[8px] leading-3 text-muted-foreground md:mx-auto md:mt-1 md:max-w-[150px]">
-                    {s(value.description)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+    <section className="bg-background py-8 md:py-10">
+      <div className="mx-auto grid max-w-[1100px] gap-6 px-4 sm:px-5 md:grid-cols-[.72fr_1.28fr] md:px-8">
+        <div>
+          <p className="text-[7px] font-bold uppercase tracking-[.22em] text-primary md:text-[8px]">Need to know</p>
+          <h2 className="mt-2 font-serif text-[30px] font-semibold leading-[.92] md:text-[38px]">
+            {s(p.title) || "Questions? We have answers"}
+          </h2>
+          <p className="mt-3 max-w-[300px] text-[9px] leading-4 text-muted-foreground md:text-[10px]">
+            {s(p.subtitle) || "Sizing, delivery, care, and everything before checkout."}
+          </p>
+        </div>
+        <div className="border-t border-border">
+          {faqs.map((item, index) => (
+            <details key={`${item.q}-${index}`} className="group border-b border-border py-1">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 text-[10px] font-bold [&::-webkit-details-marker]:hidden md:text-[11px]">
+                <span>{item.q}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border text-primary transition group-open:rotate-45">+</span>
+              </summary>
+              <p className="max-w-[640px] pb-4 pr-10 text-[9px] leading-4 text-muted-foreground md:text-[10px] md:leading-5">{item.a}</p>
+            </details>
+          ))}
         </div>
       </div>
     </section>
@@ -536,9 +652,7 @@ function extractText(value: unknown): string[] {
   if (!value || typeof value !== "object") return [];
   const node = value as Record<string, unknown>;
   return [
-    ...(typeof node.text === "string" && node.text.trim()
-      ? [node.text.trim()]
-      : []),
+    ...(typeof node.text === "string" && node.text.trim() ? [node.text.trim()] : []),
     ...(Array.isArray(node.content) ? node.content.flatMap(extractText) : []),
   ];
 }
@@ -547,44 +661,36 @@ function ThreadsStory({ block }: { block: StorePageBlock }) {
   const store = useOptionalStore();
   const p = block.props as Record<string, unknown>;
   const image = s(p.imageUrl);
+  const eyebrow = isPreview(store?.id) ? "Style Travels Further" : s(p.eyebrow) || "Our Story";
   const title = isPreview(store?.id)
-    ? "Objects\nThat Tell Stories"
+    ? "Made for wherever\nthe day takes you."
     : s(p.title) || "Objects That Tell Stories";
   const body = isPreview(store?.id)
-    ? "More than merchandise — we bring people, places and stories into everyday things."
-    : extractText(p.body)[0] ||
-      "Every collection starts with a place, a person, or a memory worth carrying forward.";
+    ? "Easy layers and expressive graphics should feel just as good on the tenth wear as the first."
+    : extractText(p.body)[0] || "Every collection starts with a place, a person, or a memory worth carrying forward.";
+
   return (
-    <section className="bg-secondary/35">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-[54%_46%] md:grid-cols-[36%_64%]">
-        <div className="relative order-2 min-h-[170px] md:min-h-[260px]">
-          {image ? (
-            <SafeStorefrontImage
-              src={image}
-              alt={s(p.imageAlt) || title.replace("\n", " ")}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-r from-secondary to-muted" />
-          )}
-        </div>
-        <div className="order-1 flex items-center px-4 py-5 sm:px-5 md:px-8 md:py-7">
+    <section className="bg-background px-4 pb-8 sm:px-5 md:px-8 md:pb-10">
+      <div className="relative mx-auto min-h-[245px] max-w-[1280px] overflow-hidden rounded-[7px] bg-primary text-primary-foreground md:min-h-[310px]">
+        {image ? (
+          <SafeStorefrontImage
+            src={image}
+            alt={s(p.imageAlt) || title.replace("\n", " ")}
+            fill
+            className="object-cover"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/88 to-primary/12" />
+        <div className="relative z-10 flex min-h-[245px] max-w-[58%] items-center p-6 md:min-h-[310px] md:max-w-[48%] md:p-9">
           <div>
-            <p className="text-[8px] font-bold uppercase tracking-[.2em] text-primary">
-              Our Story
-            </p>
-            <h2 className="mt-1 whitespace-pre-line font-serif text-[24px] font-semibold leading-[.9] sm:text-[27px] md:text-[36px]">
-              {title}
-            </h2>
-            <p className="mt-2 text-[8px] leading-3.5 text-foreground/70 sm:text-[9px] md:mt-3 md:text-[10px] md:leading-4">
-              {body}
-            </p>
+            <p className="text-[7px] font-bold uppercase tracking-[.22em] text-primary-foreground/65 md:text-[8px]">{eyebrow}</p>
+            <h2 className="mt-2 whitespace-pre-line font-serif text-[31px] font-semibold leading-[.9] md:text-[42px]">{title}</h2>
+            <p className="mt-3 max-w-[390px] text-[9px] leading-4 text-primary-foreground/72 md:text-[10px] md:leading-5">{body}</p>
             <Link
-              href={storefrontPath(s(p.ctaLink) || "/about", store?.slug)}
-              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-sm bg-primary px-4 text-[9px] font-semibold text-primary-foreground"
+              href={storefrontPath(s(p.ctaLink) || "/shop", store?.slug)}
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-[3px] bg-background px-4 text-[8px] font-bold uppercase tracking-[.08em] text-primary"
             >
-              {s(p.ctaText) || "Read Our Story"}
+              {s(p.ctaText) || "Explore the collection"}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -604,16 +710,20 @@ export function ThreadsBlockRenderer({
   switch (block.type) {
     case "hero":
       return <ThreadsHero block={block} />;
+    case "trust-badges":
+      return <ThreadsTrustStrip block={block} />;
     case "category-showcase":
       return <ThreadsCategories block={block} />;
     case "promo-banner":
       return <ThreadsPromo block={block} />;
-    case "recommended-products":
-      return <ThreadsNewArrivals block={block} />;
     case "featured-products":
       return <ThreadsFeatured block={block} />;
-    case "trust-badges":
-      return <ThreadsValues block={block} />;
+    case "recommended-products":
+      return <ThreadsNewArrivals block={block} />;
+    case "social-feed":
+      return <ThreadsCommunity block={block} />;
+    case "faq-accordion":
+      return <ThreadsFAQ block={block} />;
     case "rich-text":
       return <ThreadsStory block={block} />;
     default:
