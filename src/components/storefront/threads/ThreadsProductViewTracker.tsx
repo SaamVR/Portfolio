@@ -17,12 +17,12 @@ export function ThreadsProductViewTracker({ product }: { product: Product }) {
         eventName: "view_item",
         eventCategory: "commerce",
         productId: product.id,
-        productName: product.name,
-        productCategory: product.category || product.type || undefined,
         value: product.price,
-        currency: "BDT",
+        currencyCode: "BDT",
         metadata: {
           source: "threads_product_detail",
+          productName: product.name,
+          productCategory: product.category || product.type || null,
         },
       });
     }, 250);
