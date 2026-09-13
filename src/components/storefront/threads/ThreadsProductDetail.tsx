@@ -187,6 +187,7 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                           src={image}
                           alt={`${product.name} view ${index + 1}`}
                           fill
+                          sizes="74px"
                           className="object-cover"
                         />
                       </button>
@@ -201,6 +202,7 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                         src={activeImage}
                         alt={product.name}
                         fill
+                        sizes="(min-width: 1024px) 58vw, 100vw"
                         priority
                         className="object-cover"
                       />
