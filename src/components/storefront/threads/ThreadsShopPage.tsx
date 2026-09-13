@@ -182,6 +182,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(12);
   const analyticsSnapshotRef = useRef("");
+  const filterCloseButtonRef = useRef<HTMLButtonElement>(null);
   const { data: products = [], isLoading } = useProducts(storeId);
   const { data: categoryRows = [] } = useProductCategories(storeId);
 
@@ -248,6 +249,21 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
   useEffect(() => {
     setDisplayCount(12);
   }, [paramSnapshot]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.requestAnimationFrame(() => filterCloseButtonRef.current?.focus());
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [filtersOpen]);
 
   useEffect(() => {
     if (analyticsSnapshotRef.current === paramSnapshot) return;
@@ -423,6 +439,8 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
             <button
               type="button"
               onClick={() => setFiltersOpen(true)}
+              aria-expanded={filtersOpen}
+              aria-controls="threads-filter-dialog"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-[3px] border border-border bg-background px-4 text-[9px] font-bold uppercase tracking-[.08em] transition hover:border-primary"
             >
               <Filter className="h-3.5 w-3.5" />
@@ -510,10 +528,16 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
       {filtersOpen ? (
         <div className="fixed inset-0 z-[100]">
           <button type="button" className="absolute inset-0 bg-foreground/35 backdrop-blur-[1px]" onClick={() => setFiltersOpen(false)} aria-label="Close filters" />
-          <aside className="absolute inset-y-0 right-0 flex w-[92%] max-w-[390px] flex-col bg-background shadow-2xl">
+          <aside
+            id="threads-filter-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="threads-filter-dialog-title"
+            className="absolute inset-y-0 right-0 flex w-[92%] max-w-[390px] flex-col bg-background shadow-2xl"
+          >
             <div className="flex min-h-16 items-center justify-between border-b border-border px-5">
-              <p className="font-serif text-[24px] font-semibold">Refine collection</p>
-              <button type="button" onClick={() => setFiltersOpen(false)} className="grid h-11 w-11 place-items-center" aria-label="Close filters">
+              <p id="threads-filter-dialog-title" className="font-serif text-[24px] font-semibold">Refine collection</p>
+              <button ref={filterCloseButtonRef} type="button" onClick={() => setFiltersOpen(false)} className="grid h-11 w-11 place-items-center" aria-label="Close filters">
                 <X className="h-4 w-4" />
               </button>
             </div>
