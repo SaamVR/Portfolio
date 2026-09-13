@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import {
-  Check,
   Heart,
   Leaf,
   Minus,
@@ -22,6 +21,7 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
 import {
   getRenderableColorOptions,
+  getRenderableMetricOptionGroups,
   getRenderableSizeOptions,
 } from "@/lib/cms/storefront-product-presentation";
 import { useProducts } from "@/hooks/useProducts";
@@ -90,6 +90,7 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
   const { data: allProducts = [] } = useProducts(store?.id);
   const sizes = getRenderableSizeOptions(product, specs, "fashion");
   const colors = getRenderableColorOptions(product, specs, "fashion");
+  const metricGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
   const images = useMemo(
     () => Array.from(new Set([product.image, ...(product.images ?? [])].filter(Boolean))),
     [product],
@@ -97,6 +98,11 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
   const [activeImage, setActiveImage] = useState(images[0] ?? product.image ?? "");
   const [selectedSize, setSelectedSize] = useState(sizes.length === 1 ? sizes[0] : "");
   const [selectedColor, setSelectedColor] = useState(colors[0] ?? "");
+  const [selectedMetrics, setSelectedMetrics] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      metricGroups.map((group) => [group.key, group.options.length === 1 ? group.options[0] : ""]),
+    ),
+  );
   const [quantity, setQuantity] = useState(1);
   const allowGuestCheckout = resolveAllowGuestCheckoutForStore(store);
   const onSale = Boolean(product.originalPrice && product.originalPrice > product.price);
@@ -132,10 +138,23 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
       toast.error("Select a color to continue.");
       return false;
     }
+    for (const group of metricGroups) {
+      if (group.options.length > 0 && !selectedMetrics[group.key]) {
+        toast.error(`Select ${group.label.toLowerCase()} to continue.`);
+        return false;
+      }
+    }
     return true;
   };
 
-  const selection = [selectedColor, selectedSize].filter(Boolean).join(" • ");
+  const selection = [
+    selectedColor,
+    selectedSize,
+    ...metricGroups.map((group) => {
+      const value = selectedMetrics[group.key];
+      return value ? `${group.label}: ${value}` : "";
+    }),
+  ].filter(Boolean).join(" • ");
   const buildSelectionItems = () =>
     Array.from({ length: quantity }, () => ({
       productId: product.id,
@@ -323,6 +342,31 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                   ) : null}
                 </div>
               ) : null}
+
+              {metricGroups.map((group) => (
+                <div key={group.key} className="border-b border-border py-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[.14em]">{group.label}</p>
+                    <span className="text-[10px] text-muted-foreground">{selectedMetrics[group.key]}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {group.options.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setSelectedMetrics((current) => ({ ...current, [group.key]: option }))}
+                        aria-pressed={selectedMetrics[group.key] === option}
+                        className={`min-h-11 rounded-[3px] border px-3 text-[10px] font-bold transition ${selectedMetrics[group.key] === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary"}`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                  {group.options.length > 1 && !selectedMetrics[group.key] ? (
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">Choose {group.label.toLowerCase()} before adding to bag.</p>
+                  ) : null}
+                </div>
+              ))}
 
               <div className="py-5">
                 <div className="mb-3 flex items-center justify-between gap-4">
