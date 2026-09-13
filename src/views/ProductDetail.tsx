@@ -16,6 +16,7 @@ import { FashionV3Shell } from "@/components/storefront/fashion-v3/FashionV3Shel
 import { FashionV3ProductDetail } from "@/components/storefront/fashion-v3/FashionV3ProductDetail";
 import { FashionV3ProductQA } from "@/components/storefront/fashion-v3/FashionV3ProductQA";
 import { ThreadsProductDetail } from "@/components/storefront/threads/ThreadsProductDetail";
+import { ThreadsProductViewTracker } from "@/components/storefront/threads/ThreadsProductViewTracker";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const MAX_RECENT = 8;
@@ -130,6 +131,7 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
           ogImage={product.images?.[0] || product.image}
           jsonLd={productJsonLd}
         />
+        <ThreadsProductViewTracker product={product} />
         <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-5 md:px-8 md:pt-5">
           <button
             onClick={() => navigate(-1)}
