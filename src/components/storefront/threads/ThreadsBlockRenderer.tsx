@@ -8,6 +8,8 @@ import {
   Home,
   Leaf,
   Palette,
+  Pause,
+  Play,
   Shirt,
   ShoppingBag,
   Sparkles,
@@ -201,6 +203,7 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
                   src={image}
                   alt={s(p.imageAlt) || title.replace("\n", " ")}
                   fill
+                  sizes="(min-width: 768px) 59vw, 56vw"
                   priority
                   className="object-cover"
                 />
@@ -210,6 +213,7 @@ function ThreadsHero({ block }: { block: StorePageBlock }) {
                   src={mobileImage}
                   alt={s(p.imageAlt) || title.replace("\n", " ")}
                   fill
+                  sizes="56vw"
                   priority
                   className="object-cover"
                 />
@@ -298,10 +302,12 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
         }))
   ).slice(0, typeof p.limit === "number" ? p.limit : 5);
   const [api, setApi] = useState<CarouselApi>();
+  const [autoplayPaused, setAutoplayPaused] = useState(false);
+  const autoplayEnabled = p.autoplay !== false && items.length > 1;
   useThreadsAutoplay(
     api,
     typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 3600,
-    p.autoplay !== false && items.length > 1,
+    autoplayEnabled && !autoplayPaused,
   );
   if (!items.length) return null;
   const shop = storefrontPath("/shop", store?.slug);
@@ -318,9 +324,23 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
               {s(p.title) || "Shop by Category"}
             </h2>
           </div>
-          <Link href={shop} className="inline-flex min-h-11 items-center py-3 text-[8px] font-bold text-primary md:text-[9px]">
-            Explore all →
-          </Link>
+          <div className="flex items-center gap-1.5">
+            {autoplayEnabled ? (
+              <button
+                type="button"
+                onClick={() => setAutoplayPaused((value) => !value)}
+                aria-pressed={autoplayPaused}
+                aria-label={autoplayPaused ? "Resume category carousel" : "Pause category carousel"}
+                title={autoplayPaused ? "Resume carousel" : "Pause carousel"}
+                className="grid h-11 w-11 place-items-center rounded-full border border-border text-primary transition hover:border-primary"
+              >
+                {autoplayPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+              </button>
+            ) : null}
+            <Link href={shop} className="inline-flex min-h-11 items-center py-3 text-[8px] font-bold text-primary md:text-[9px]">
+              Explore all →
+            </Link>
+          </div>
         </div>
         <Carousel setApi={setApi} opts={{ align: "start", loop: items.length > 2 }} className="relative">
           <CarouselContent className="-ml-2.5 md:-ml-3">
@@ -339,6 +359,7 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
                         src={item.image}
                         alt={item.name}
                         fill
+                        sizes="(min-width: 768px) 20vw, (min-width: 640px) 29vw, 42vw"
                         className="object-cover transition duration-500 group-hover:scale-[1.025]"
                       />
                     ) : (
@@ -416,7 +437,13 @@ function ThreadsPromo({ block }: { block: StorePageBlock }) {
             className={`relative min-h-[190px] overflow-hidden rounded-[6px] border border-border/60 md:min-h-[215px] ${card.tone === "clay" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"}`}
           >
             {card.image ? (
-              <SafeStorefrontImage src={card.image} alt={card.title.replace("\n", " ")} fill className="object-cover" />
+              <SafeStorefrontImage
+                src={card.image}
+                alt={card.title.replace("\n", " ")}
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover"
+              />
             ) : null}
             <div
               className={`absolute inset-0 ${card.tone === "clay" ? "bg-gradient-to-r from-accent via-accent/92 to-accent/12" : "bg-gradient-to-r from-primary via-primary/92 to-primary/12"}`}
@@ -449,10 +476,12 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
   const source = featured.length >= 3 ? featured : products;
   const visible = source.slice(0, typeof p.limit === "number" ? p.limit : 10);
   const [api, setApi] = useState<CarouselApi>();
+  const [autoplayPaused, setAutoplayPaused] = useState(false);
+  const autoplayEnabled = p.autoplay !== false && visible.length > 1;
   useThreadsAutoplay(
     api,
     typeof p.autoplayIntervalMs === "number" ? p.autoplayIntervalMs : 4400,
-    p.autoplay !== false && visible.length > 1,
+    autoplayEnabled && !autoplayPaused,
   );
   if (!visible.length) return null;
 
@@ -474,12 +503,26 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
                 {s(p.subtitle) || "Curated pieces, original stories, and the styles people keep reaching for."}
               </p>
               <div className="mt-5 h-px w-12 bg-primary/35 md:mt-auto" />
-              <Link
-                href={storefrontPath("/shop", store?.slug)}
-                className="mt-4 inline-flex min-h-11 items-center gap-2 py-3 text-[8px] font-bold uppercase tracking-[.08em] text-primary"
-              >
-                Shop the collection <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              <div className="mt-3 flex items-center gap-1.5">
+                {autoplayEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => setAutoplayPaused((value) => !value)}
+                    aria-pressed={autoplayPaused}
+                    aria-label={autoplayPaused ? "Resume featured product carousel" : "Pause featured product carousel"}
+                    title={autoplayPaused ? "Resume carousel" : "Pause carousel"}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border text-primary transition hover:border-primary"
+                  >
+                    {autoplayPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                  </button>
+                ) : null}
+                <Link
+                  href={storefrontPath("/shop", store?.slug)}
+                  className="inline-flex min-h-11 items-center gap-2 py-3 text-[8px] font-bold uppercase tracking-[.08em] text-primary"
+                >
+                  Shop collection <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </aside>
 
@@ -586,7 +629,13 @@ function ThreadsCommunity({ block }: { block: StorePageBlock }) {
         <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
           {images.map((src, index) => (
             <div key={`${src}-${index}`} className="relative aspect-[4/5] overflow-hidden rounded-[5px] bg-muted">
-              <SafeStorefrontImage src={src} alt={`Community look ${index + 1}`} fill className="object-cover" />
+              <SafeStorefrontImage
+                src={src}
+                alt={`Community look ${index + 1}`}
+                fill
+                sizes="(min-width: 768px) 18vw, 50vw"
+                className="object-cover"
+              />
             </div>
           ))}
         </div>
@@ -666,6 +715,7 @@ function ThreadsStory({ block }: { block: StorePageBlock }) {
             src={image}
             alt={s(p.imageAlt) || title.replace("\n", " ")}
             fill
+            sizes="100vw"
             className="object-cover"
           />
         ) : null}
