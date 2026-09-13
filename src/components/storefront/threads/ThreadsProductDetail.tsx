@@ -97,7 +97,7 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
   );
   const [activeImage, setActiveImage] = useState(images[0] ?? product.image ?? "");
   const [selectedSize, setSelectedSize] = useState(sizes.length === 1 ? sizes[0] : "");
-  const [selectedColor, setSelectedColor] = useState(colors[0] ?? "");
+  const [selectedColor, setSelectedColor] = useState(colors.length === 1 ? colors[0] : "");
   const [selectedMetrics, setSelectedMetrics] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       metricGroups.map((group) => [group.key, group.options.length === 1 ? group.options[0] : ""]),
@@ -306,6 +306,9 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                       </button>
                     ))}
                   </div>
+                  {colors.length > 1 && !selectedColor ? (
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">Choose a color before adding to bag.</p>
+                  ) : null}
                 </div>
               ) : null}
 
