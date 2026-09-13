@@ -45,6 +45,7 @@ export type CmsEditorThemeRecord = {
   palette_source?: Store["theme"]["paletteSource"] | null;
   palette_seed?: string | null;
   schema_version?: number | null;
+  overrides?: Record<string, unknown> | null;
   custom_css?: string | null;
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
@@ -225,7 +226,7 @@ export function useCmsEditorDataController({
           .maybeSingle(),
         client
           .from("store_themes")
-          .select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, custom_css, resolved_tokens")
+          .select("preset_id, theme_package_id, theme_package_version, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, overrides, custom_css, resolved_tokens")
           .eq("store_id", storeRecord.id)
           .maybeSingle(),
         client

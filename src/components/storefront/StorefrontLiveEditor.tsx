@@ -18,6 +18,7 @@ import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
 import { getStorefrontTemplateDefinition, resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
@@ -550,6 +551,13 @@ export function StorefrontLiveEditor({
     applyStoreChange((current) => ({
       ...current,
       theme: { ...current.theme, aesthetic },
+    }));
+  };
+
+  const updateStoreThemeSectionSpacing = (sectionSpacing: StoreSectionSpacing) => {
+    applyStoreChange((current) => ({
+      ...current,
+      theme: { ...current.theme, sectionSpacing },
     }));
   };
 
@@ -1377,6 +1385,7 @@ export function StorefrontLiveEditor({
             onRemoveBlock={removeSelectedBlock}
             onUpdateThemeToken={updateStoreThemeToken}
             onUpdateThemeAesthetic={updateStoreThemeAesthetic}
+            onUpdateThemeSectionSpacing={updateStoreThemeSectionSpacing}
             onInsertCompositionRecipe={insertCompositionRecipe}
             onApplyCompositionRecipe={applySelectedCompositionRecipe}
             onUpdateCompositionField={updateSelectedCompositionField}
@@ -1606,6 +1615,30 @@ export function StorefrontLiveEditor({
                           </button>
                         );
                       })}
+                    </div>
+                    <div className="mb-4">
+                      <div className="mb-2">
+                        <p className="text-sm font-medium text-foreground">Section spacing</p>
+                        <p className="text-xs text-muted-foreground">Controls the gap between top-level sections only.</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {STORE_SECTION_SPACING_VALUES.map((value) => {
+                          const preset = STORE_SECTION_SPACING_PRESETS[value];
+                          const selected = store.theme.sectionSpacing === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              className={`min-h-14 rounded-xl border p-2.5 text-left ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                              onClick={() => updateStoreThemeSectionSpacing(value)}
+                            >
+                              <span className="block text-xs font-semibold">{preset.label}</span>
+                              <span className="mt-1 block text-[10px] leading-4 text-muted-foreground">{preset.mobile} · {preset.desktop}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!store.theme.sectionSpacing ? <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Existing spacing stays unchanged until a preset is selected.</p> : null}
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {GUIDED_THEME_TOKENS.map((token) => {

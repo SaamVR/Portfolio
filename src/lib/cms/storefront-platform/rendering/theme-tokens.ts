@@ -1,4 +1,5 @@
 import type { StoreTheme } from "@/lib/cms/schema";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE, STORE_SECTION_SPACING_PRESETS } from "@/lib/cms/store-theme-contract";
 
 export type StorefrontSemanticTokenStyle = Record<`--${string}`, string>;
 
@@ -13,7 +14,8 @@ function clamp01(value: number) {
 }
 
 export function resolveStorefrontSemanticTokens(theme: StoreTheme): StorefrontSemanticTokenStyle {
-  const density = clamp01(theme.densityScale ?? 0.5);
+  const density = clamp01(theme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE);
+  const sectionSpacing = theme.sectionSpacing ? STORE_SECTION_SPACING_PRESETS[theme.sectionSpacing] : null;
   const intensity = effectIntensity[theme.effects?.intensity ?? "medium"];
 
   return {
@@ -30,7 +32,8 @@ export function resolveStorefrontSemanticTokens(theme: StoreTheme): StorefrontSe
     "--store-border": "var(--border)",
     "--store-radius-card": "var(--radius)",
     "--store-radius-control": "calc(var(--radius) * 0.75)",
-    "--store-section-spacing": `${(2.75 + density * 3.25).toFixed(2)}rem`,
+    "--store-section-gap-mobile": sectionSpacing?.mobile ?? "0rem",
+    "--store-section-gap-desktop": sectionSpacing?.desktop ?? "0rem",
     "--store-card-spacing": `${(0.875 + density * 0.875).toFixed(3)}rem`,
     "--store-elevation-card": "var(--store-card-shadow, 0 8px 24px hsl(var(--foreground) / 0.08))",
     "--store-media-radius": "var(--radius)",

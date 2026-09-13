@@ -80,7 +80,7 @@ describe("homepage settings adapter", () => {
     });
   });
 
-  it("maps saved legacy settings back into matching homepage blocks", () => {
+  it("uses saved legacy settings only as backfill for modern homepage blocks", () => {
     const updatedHero = applyLegacyHomepageSettingToBlock(homepage.blocks[0]!, "hero_section", {
       title: "Updated hero",
       cta_text: "Browse now",
@@ -96,8 +96,8 @@ describe("homepage settings adapter", () => {
       ctaText: "Browse now",
     });
     expect(updatedPromo.type).toBe("promo-banner");
-    expect(updatedPromo.isVisible).toBe(false);
-    expect(updatedPromo.visible).toBe(false);
+    expect(updatedPromo.isVisible).toBe(true);
+    expect(updatedPromo.visible).toBe(true);
     expect(updatedPromo.props).toEqual({
       title: "Keep mine",
       subtitle: "Updated promo",

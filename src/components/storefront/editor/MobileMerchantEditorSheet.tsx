@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { Store, StorePageBlock } from "@/lib/cms/schema";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { getBasicLayoutVariantOptions } from "@/lib/cms/storefront-editor-registry";
 import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
@@ -75,6 +76,7 @@ export function MobileMerchantEditorSheet({
   onRemoveBlock,
   onUpdateThemeToken,
   onUpdateThemeAesthetic,
+  onUpdateThemeSectionSpacing,
   onInsertCompositionRecipe,
   onApplyCompositionRecipe,
   onUpdateCompositionField,
@@ -104,6 +106,7 @@ export function MobileMerchantEditorSheet({
   onRemoveBlock: () => void;
   onUpdateThemeToken: (token: string, value: string) => void;
   onUpdateThemeAesthetic: (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => void;
+  onUpdateThemeSectionSpacing: (spacing: StoreSectionSpacing) => void;
   onInsertCompositionRecipe: (recipeId: string) => void;
   onApplyCompositionRecipe: (recipeId: string) => void;
   onUpdateCompositionField: (nodeId: string, key: "text" | "src" | "alt", value: string) => void;
@@ -349,6 +352,30 @@ export function MobileMerchantEditorSheet({
                   );
                 })}
               </div>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-semibold">Section spacing</p>
+                <p className="text-xs text-muted-foreground">Controls only the gap between top-level storefront sections.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {STORE_SECTION_SPACING_VALUES.map((value) => {
+                  const preset = STORE_SECTION_SPACING_PRESETS[value];
+                  const selected = store.theme.sectionSpacing === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`min-h-14 rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                      onClick={() => onUpdateThemeSectionSpacing(value)}
+                    >
+                      <span className="block text-xs font-semibold">{preset.label}</span>
+                      <span className="mt-1 block text-[10px] text-muted-foreground">{preset.mobile} · {preset.desktop}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!store.theme.sectionSpacing ? <p className="text-[11px] leading-4 text-amber-700 dark:text-amber-300">Existing spacing is preserved until you choose a preset.</p> : null}
             </div>
             <div className="rounded-xl border border-border p-3 text-xs text-muted-foreground">
               Store colors stay independent from section layout and aesthetic. Theme color controls below remain merchant-owned.

@@ -61,6 +61,7 @@ describe("storefront template registry", () => {
 
     expect(template.rendererKind).toBe("threads");
     expect(template.adminOnly).toBe(true);
+    expect(seed.defaultTheme.sectionSpacing).toBe("compact");
     expect(seed.defaultSiteSettings.storefront_profile).toMatchObject({ template_id: "threads" });
   });
 

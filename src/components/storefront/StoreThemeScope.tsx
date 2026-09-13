@@ -7,6 +7,7 @@ import { buildStorefrontAestheticCss, resolveStorefrontAesthetic } from "@/lib/c
 import { resolveStorefrontSemanticTokens } from "@/lib/cms/storefront-platform/rendering/theme-tokens";
 import { scopeStoreThemeCss } from "@/lib/cms/theme-css";
 import { getStoreThemeStyle } from "@/lib/cms/store-theme-style";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE } from "@/lib/cms/store-theme-contract";
 import { resolveStoreThemeForMode } from "@/lib/cms/store-theme-utils";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
@@ -81,7 +82,8 @@ export function StoreThemeScope({
       data-theme-mode={activeMode}
       data-store-aesthetic={effectiveTheme.aesthetic ?? "minimal"}
       data-store-aesthetic-engine={aesthetic.id}
-      data-store-density={effectiveTheme.densityScale ?? 0.5}
+      data-store-density={effectiveTheme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE}
+      data-store-section-spacing-mode={effectiveTheme.sectionSpacing ? "blocks" : "legacy"}
       className={activeMode}
       style={resolvedStyle}
     >

@@ -106,7 +106,7 @@ function createMockSupabaseClient() {
     },
   };
 
-  return { client: client as any, stores, storePages, storePageBlocks };
+  return { client: client as any, stores, storeThemes, storePages, storePageBlocks };
 }
 
 describe("storefront persistence", () => {
@@ -114,6 +114,37 @@ describe("storefront persistence", () => {
     expect(resolvePersistedThemePackageId("default")).toBeNull();
     expect(resolvePersistedThemePackageId("midnight")).toBeNull();
     expect(resolvePersistedThemePackageId("550e8400-e29b-41d4-a716-446655440000")).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+
+  it("persists canonical theme defaults and section spacing overrides", async () => {
+    const { client, storeThemes } = createMockSupabaseClient();
+    const templateSeed = fallbackStorefrontTemplateSeeds[0];
+    const store: Store = {
+      id: "store-theme-contract",
+      name: "Theme Contract Store",
+      slug: "theme-contract-store",
+      description: "Theme contract",
+      currencyCode: "BDT",
+      locale: "en-BD",
+      isPublished: true,
+      theme: {
+        presetId: "default",
+        mode: "light",
+        sectionSpacing: "compact",
+        customCssVars: {},
+      },
+      pages: [{ id: "page-theme-home", slug: "/", title: "Home", isHomepage: true, blocks: [] }],
+    };
+
+    const result = await persistStorefrontState({
+      client, store, templateSeed, themePackages: fallbackThemePackages,
+    });
+    expect(result.error).toBeNull();
+    const persisted = Array.from(storeThemes.values())[0] as any;
+    expect(persisted.radius_scale).toBe(0.55);
+    expect(persisted.density_scale).toBe(0.5);
+    expect(persisted.overrides).toEqual({ sectionSpacing: "compact" });
   });
 
   it("reuses the existing page id when a draft page has the same slug", () => {

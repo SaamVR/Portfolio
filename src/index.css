@@ -553,9 +553,19 @@
   width: 80%;
 }
 
-[data-store-theme-scope] [data-storefront-template] section {
+[data-store-theme-scope][data-store-section-spacing-mode="legacy"] [data-storefront-template] section {
   padding-top: var(--store-section-space);
   padding-bottom: var(--store-section-space);
+}
+
+[data-store-theme-scope][data-store-section-spacing-mode="blocks"] [data-template-renderer] > [data-ezcomo-block-id] + [data-ezcomo-block-id] {
+  margin-top: var(--store-section-gap-mobile);
+}
+
+@media (min-width: 768px) {
+  [data-store-theme-scope][data-store-section-spacing-mode="blocks"] [data-template-renderer] > [data-ezcomo-block-id] + [data-ezcomo-block-id] {
+    margin-top: var(--store-section-gap-desktop);
+  }
 }
 
 [data-store-theme-scope] [data-storefront-template] :is(h1, h2, h3) {

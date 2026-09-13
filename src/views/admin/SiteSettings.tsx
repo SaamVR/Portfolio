@@ -39,7 +39,6 @@ import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
-import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";

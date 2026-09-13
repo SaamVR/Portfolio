@@ -254,6 +254,46 @@ describe("store resolver mapping", () => {
     expect(store.pages.some((page) => page.slug === "/gallery")).toBe(false);
   });
 
+
+  it("hydrates the published storefront with the same modern theme state persisted by the editor", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-theme-parity", name: "Theme Parity", slug: "theme-parity", description: null,
+        currency_code: null, locale: null, is_published: true, store_type: "general-catalog",
+      },
+      { template_id: "general-catalog" },
+      {
+        preset_id: "default", theme_package_id: "default", mode: "light",
+        typography: null, components: { aesthetic: "minimal" }, colors: null,
+        aesthetic: "editorial", radius_scale: 0.23, density_scale: 0.41,
+        effects: { scrollReveals: true, hoverEffects: false, parallax: true, intensity: "bold" },
+        palette_source: "generated", palette_seed: "seed-42", schema_version: 3,
+        overrides: { sectionSpacing: "compact" }, resolved_tokens: null,
+      },
+      [], [], [],
+    );
+
+    expect(store.theme.aesthetic).toBe("editorial");
+    expect(store.theme.radiusScale).toBe(0.23);
+    expect(store.theme.densityScale).toBe(0.41);
+    expect(store.theme.sectionSpacing).toBe("compact");
+    expect(store.theme.effects).toEqual({ scrollReveals: true, hoverEffects: false, parallax: true, intensity: "bold" });
+    expect(store.theme.paletteSource).toBe("generated");
+    expect(store.theme.paletteSeed).toBe("seed-42");
+    expect(store.theme.schemaVersion).toBe(3);
+  });
+
+  it("uses canonical radius and density defaults when no scale is persisted", () => {
+    const store = buildResolvedStoreFromRecords(
+      { id: "store-theme-defaults", name: "Theme Defaults", slug: "theme-defaults", description: null, currency_code: null, locale: null, is_published: true, store_type: "general-catalog" },
+      { template_id: "general-catalog" },
+      { preset_id: "default", theme_package_id: "default", mode: "light", typography: null, components: null, colors: null, resolved_tokens: null },
+      [], [], [],
+    );
+    expect(store.theme.radiusScale).toBe(0.55);
+    expect(store.theme.densityScale).toBe(0.5);
+  });
+
   it("carries store-scoped custom css from the installed theme snapshot", () => {
     const store = buildResolvedStoreFromRecords(
       {

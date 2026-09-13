@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { StoreTheme } from "@/lib/cms/schema";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 import { getContrastRatio, THEME_RECIPES, type ThemeRecipe } from "./theme-recipes";
 
@@ -118,6 +119,7 @@ export function ThemePanel({
   onAestheticChange,
   onScaleChange,
   onScalePresetChange,
+  onSectionSpacingChange,
 }: {
   theme: StoreTheme;
   themePackages: ThemePackageDefinition[];
@@ -132,6 +134,7 @@ export function ThemePanel({
   onAestheticChange: (value: NonNullable<StoreTheme["aesthetic"]>) => void;
   onScaleChange: (target: "radius" | "density", value: number) => void;
   onScalePresetChange: (radius: number, density: number) => void;
+  onSectionSpacingChange: (value: StoreSectionSpacing) => void;
 }) {
   const currentPackage = themePackages.find((item) => item.id === theme.themePackageId || item.presetId === theme.presetId)
     ?? themePackages[0];
@@ -311,8 +314,8 @@ export function ThemePanel({
 
       <section className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Shape and spacing</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Control how crisp or relaxed the storefront feels.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Shape and density</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Control component softness and density without changing the space between sections.</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {spacingPresets.map((preset) => {
@@ -339,10 +342,40 @@ export function ThemePanel({
             <Slider value={[radiusScale * 100]} max={100} step={5} onValueChange={([value]) => onScaleChange("radius", value / 100)} />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between"><Label>Breathing room</Label><span className="text-xs text-gray-500">{Math.round(densityScale * 100)}%</span></div>
+            <div className="flex items-center justify-between"><Label>Component density</Label><span className="text-xs text-gray-500">{Math.round(densityScale * 100)}%</span></div>
             <Slider value={[densityScale * 100]} max={100} step={5} onValueChange={([value]) => onScaleChange("density", value / 100)} />
           </div>
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Section spacing</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Set the distance between top-level storefront sections. Each section keeps its own internal layout.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {STORE_SECTION_SPACING_VALUES.map((value) => {
+            const preset = STORE_SECTION_SPACING_PRESETS[value];
+            const active = theme.sectionSpacing === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onSectionSpacingChange(value)}
+                className={cn(
+                  "min-h-16 rounded-xl border p-3 text-left transition",
+                  active ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900",
+                )}
+              >
+                <span className="block text-xs font-semibold text-gray-900 dark:text-gray-100">{preset.label}</span>
+                <span className="mt-1 block text-[11px] leading-4 text-gray-500">{preset.mobile} mobile · {preset.desktop} desktop</span>
+              </button>
+            );
+          })}
+        </div>
+        {!theme.sectionSpacing ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">This store is preserving its existing section-spacing behavior. Choose a preset to move it to the new block-gap system.</p>
+        ) : null}
       </section>
     </div>
   );

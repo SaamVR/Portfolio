@@ -27,6 +27,7 @@ import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cm
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { getStorefrontLayoutPresets } from "@/lib/cms/storefront-layout-presets";
 import { applyStorefrontLayoutPreset } from "@/lib/cms/storefront-layout-preset-apply";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -42,6 +43,7 @@ interface BasicModeEditorProps {
   updateThemeMode: (mode: "light" | "dark") => void;
   updateFont: (target: "heading" | "body", fontFamily: string) => void;
   updateThemeScale: (target: "radius" | "density", value: number) => void;
+  updateThemeSectionSpacing: (spacing: StoreSectionSpacing) => void;
   updateThemeAesthetic: (aesthetic: "minimal" | "glassmorphism" | "fluid" | "brutalist" | "neumorphism" | "editorial" | "retro" | "artisan" | "dark-luxury" | "playful-pop") => void;
   updateThemeEffect: (effectKey: "scrollReveals" | "hoverEffects" | "parallax" | "intensity", value: any) => void;
   selectPage: (pageId: string) => void;
@@ -805,6 +807,7 @@ export function BasicModeEditor({
   updateThemeMode,
   updateFont,
   updateThemeScale,
+  updateThemeSectionSpacing,
   updateThemeAesthetic,
   updateThemeEffect,
   selectPage,
@@ -1700,7 +1703,7 @@ export function BasicModeEditor({
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Spacing and shape</h4>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Adjust how rounded and spacious the storefront feels without changing layout structure.
+                    Adjust component softness and density without changing the gap between sections.
                   </p>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1748,7 +1751,7 @@ export function BasicModeEditor({
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Spacing density</Label>
+                      <Label>Component density</Label>
                       <span className="text-xs text-muted-foreground">{Math.round(densityScale * 100)}%</span>
                     </div>
                     <input
@@ -1759,6 +1762,32 @@ export function BasicModeEditor({
                       onChange={(event) => updateThemeScale("density", Number(event.target.value) / 100)}
                       className="w-full accent-primary"
                     />
+                  </div>
+                </div>
+                <div className="mt-4 border-t border-border pt-4">
+                  <div>
+                    <h5 className="text-sm font-medium text-foreground">Section spacing</h5>
+                    <p className="mt-1 text-xs text-muted-foreground">Controls only the gap between top-level storefront sections.</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {STORE_SECTION_SPACING_VALUES.map((value) => {
+                      const preset = STORE_SECTION_SPACING_PRESETS[value];
+                      const selected = store.theme.sectionSpacing === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => updateThemeSectionSpacing(value)}
+                          className={cn(
+                            "min-h-14 rounded-xl border p-3 text-left transition-colors hover:border-primary/40",
+                            selected ? "border-primary bg-primary/10" : "border-border bg-card",
+                          )}
+                        >
+                          <span className="block text-xs font-semibold">{preset.label}</span>
+                          <span className="mt-1 block text-[10px] text-muted-foreground">{preset.mobile} · {preset.desktop}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

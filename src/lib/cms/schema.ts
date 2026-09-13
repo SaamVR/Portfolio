@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseLegacyStringToDoc } from "./rich-text-adapter";
 import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composition/schema";
+import { STORE_SECTION_SPACING_VALUES } from "@/lib/cms/store-theme-contract";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
@@ -11,6 +12,7 @@ export const storeThemeSchema = z.object({
   borderRadius: z.string().optional(),
   radiusScale: z.number().min(0).max(1).optional(),
   densityScale: z.number().min(0).max(1).optional(),
+  sectionSpacing: z.enum(STORE_SECTION_SPACING_VALUES).optional(),
   aesthetic: z.enum(["minimal", "glassmorphism", "fluid", "brutalist", "neumorphism", "editorial", "retro", "artisan", "dark-luxury", "playful-pop"]).optional(),
   effects: z.object({
     scrollReveals: z.boolean().default(false),

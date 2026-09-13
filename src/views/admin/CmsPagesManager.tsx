@@ -101,6 +101,7 @@ import {
   type CmsEditorBasicGuideStep as BasicGuideStep,
 } from "@/lib/cms/editor-presentation-controller";
 import { BASIC_THEME_TOKENS, GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE, DEFAULT_STORE_THEME_RADIUS_SCALE, parseStoreSectionSpacing, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TemplateGallery } from "./TemplateGallery";
 import { TemplatePublishDialog } from "@/components/admin/TemplatePublishDialog";
@@ -180,6 +181,7 @@ type ThemeRecord = {
   palette_source?: Store["theme"]["paletteSource"] | null;
   palette_seed?: string | null;
   schema_version?: number | null;
+  overrides?: Record<string, unknown> | null;
   custom_css?: string | null;
   resolved_tokens?: Record<string, Record<string, string>> | null;
 };
@@ -325,8 +327,9 @@ function mapRecordsToStore(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? templateProfile.seedDefinition.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? templateProfile.seedDefinition.defaultTheme.bodyFont),
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? templateProfile.seedDefinition.defaultTheme.borderRadius),
-      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : templateProfile.seedDefinition.defaultTheme.radiusScale,
-      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : templateProfile.seedDefinition.defaultTheme.densityScale,
+      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : (templateProfile.seedDefinition.defaultTheme.radiusScale ?? DEFAULT_STORE_THEME_RADIUS_SCALE),
+      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : (templateProfile.seedDefinition.defaultTheme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE),
+      sectionSpacing: parseStoreSectionSpacing(theme?.overrides?.sectionSpacing ?? theme?.components?.sectionSpacing) ?? templateProfile.seedDefinition.defaultTheme.sectionSpacing,
       aesthetic: theme?.aesthetic ?? (typeof theme?.components?.aesthetic === "string" ? theme.components.aesthetic as Store["theme"]["aesthetic"] : templateProfile.seedDefinition.defaultTheme.aesthetic),
       effects: theme?.effects ?? (typeof theme?.components?.effects === "object" && theme.components.effects ? theme.components.effects as Store["theme"]["effects"] : templateProfile.seedDefinition.defaultTheme.effects),
       paletteSource: theme?.palette_source ?? templateProfile.seedDefinition.defaultTheme.paletteSource,
@@ -789,8 +792,8 @@ export default function CmsPagesManager() {
           effects: templateProfile.seedDefinition.defaultTheme.effects,
         },
         aesthetic: templateProfile.seedDefinition.defaultTheme.aesthetic ?? "minimal",
-        radius_scale: templateProfile.seedDefinition.defaultTheme.radiusScale ?? 1,
-        density_scale: templateProfile.seedDefinition.defaultTheme.densityScale ?? 1,
+        radius_scale: templateProfile.seedDefinition.defaultTheme.radiusScale ?? DEFAULT_STORE_THEME_RADIUS_SCALE,
+        density_scale: templateProfile.seedDefinition.defaultTheme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE,
         effects: templateProfile.seedDefinition.defaultTheme.effects ?? {
           scrollReveals: false,
           hoverEffects: true,
@@ -1241,6 +1244,10 @@ export default function CmsPagesManager() {
 
   const updateThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
     updateStoreTheme({ aesthetic });
+  };
+
+  const updateThemeSectionSpacing = (sectionSpacing: StoreSectionSpacing) => {
+    updateStoreTheme({ sectionSpacing });
   };
 
   const updateThemeScales = (radiusScale: number, densityScale: number) => {
@@ -2595,6 +2602,7 @@ export default function CmsPagesManager() {
           onAestheticChange={updateThemeAesthetic}
           onScaleChange={updateThemeScale}
           onScalePresetChange={updateThemeScales}
+          onSectionSpacingChange={updateThemeSectionSpacing}
         />
       );
     }
@@ -2902,6 +2910,7 @@ export default function CmsPagesManager() {
                 updateThemeMode={updateThemeMode}
                 updateFont={updateFont}
                 updateThemeScale={updateThemeScale}
+                updateThemeSectionSpacing={updateThemeSectionSpacing}
                 updateThemeAesthetic={updateThemeAesthetic}
                 updateThemeEffect={updateThemeEffect}
                 selectPage={selectPage}

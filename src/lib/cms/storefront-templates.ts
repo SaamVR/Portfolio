@@ -737,6 +737,7 @@ export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, Storef
       mode: "light",
       aesthetic: "editorial",
       borderRadius: "0.5rem",
+      sectionSpacing: "compact",
       customCssVars: {
         "--background": "42 38% 97%",
         "--foreground": "165 26% 12%",

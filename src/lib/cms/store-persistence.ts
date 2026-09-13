@@ -3,6 +3,7 @@ import type { Store, StorePage } from "@/lib/cms/schema";
 import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 import { resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 import type { StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE, DEFAULT_STORE_THEME_RADIUS_SCALE } from "@/lib/cms/store-theme-contract";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -130,8 +131,8 @@ export async function persistStorefrontState({
         effects: store.theme.effects,
       },
       aesthetic: store.theme.aesthetic ?? "minimal",
-      radius_scale: store.theme.radiusScale ?? 1,
-      density_scale: store.theme.densityScale ?? 1,
+      radius_scale: store.theme.radiusScale ?? DEFAULT_STORE_THEME_RADIUS_SCALE,
+      density_scale: store.theme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE,
       effects: store.theme.effects ?? {
         scrollReveals: false,
         hoverEffects: true,
@@ -141,6 +142,7 @@ export async function persistStorefrontState({
       palette_source: store.theme.paletteSource ?? null,
       palette_seed: store.theme.paletteSeed ?? null,
       schema_version: store.theme.schemaVersion ?? 1,
+      overrides: store.theme.sectionSpacing ? { sectionSpacing: store.theme.sectionSpacing } : {},
       custom_css: store.theme.customCss ?? selectedThemePackage.customCss ?? null,
     },
     { onConflict: "store_id" },
