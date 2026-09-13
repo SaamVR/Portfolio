@@ -665,6 +665,11 @@ export function applyTemplateDemoContentToPages<
           const productImages = (seedStore?.products ?? [])
             .flatMap((product) => (product.images ?? []).slice(0, 1).map((image) => image.url))
             .filter(Boolean);
+          const communityImages = Array.from(new Set([
+            assets.promo_image_url,
+            assets.story_image_url,
+            ...productImages,
+          ].filter((image): image is string => Boolean(image)))).slice(0, 4);
 
           if (block.type === "hero") {
             return {
@@ -763,7 +768,7 @@ export function applyTemplateDemoContentToPages<
           }
 
           if (block.type === "recommended-products") {
-            return { ...block, decoration: "subtle", props: { ...block.props, tagline: "Just landed", title: "New at Threads", source: "newest", limit: 8 } };
+            return { ...block, decoration: "subtle", props: { ...block.props, tagline: "Just landed", title: "New at EZCOMO", source: "newest", limit: 8 } };
           }
 
           if (block.type === "social-feed") {
@@ -774,13 +779,23 @@ export function applyTemplateDemoContentToPages<
                 ...block.props,
                 title: "Join our community",
                 subtitle: "Real outfits, repeat wears, and the people who make these pieces their own.",
-                images: productImages.slice(0, 4),
+                images: communityImages,
               },
             };
           }
 
           if (block.type === "faq-accordion") {
-            return { ...block, props: { ...block.props, title: "Questions? We have answers", subtitle: "Sizing, delivery, care, and everything before checkout." } };
+            return {
+              ...block,
+              props: {
+                ...block.props,
+                title: "Questions? We have answers",
+                subtitle: "Sizing, delivery, care, and everything before checkout.",
+                faqs: (seedStore?.faqs ?? [])
+                  .filter((entry) => entry.question && entry.answer)
+                  .map((entry) => ({ q: entry.question, a: entry.answer })),
+              },
+            };
           }
 
           if (block.type === "rich-text") {
