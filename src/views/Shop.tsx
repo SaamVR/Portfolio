@@ -2,6 +2,7 @@
 
 import ContextAwareShopPage from "@/components/storefront/shop/ContextAwareShopPage";
 import { FashionV3ShopPage } from "@/components/storefront/fashion-v3/FashionV3ShopPage";
+import { ThreadsShopPage } from "@/components/storefront/threads/ThreadsShopPage";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
@@ -16,6 +17,10 @@ const Shop = ({ explicitStoreId }: ShopProps = {}) => {
     templateSeedId: typeof profile?.template_id === "string" ? profile.template_id : null,
     productVisibility: typeof profile?.product_visibility === "string" ? profile.product_visibility : null,
   });
+
+  if (templateId === "threads") {
+    return <ThreadsShopPage explicitStoreId={explicitStoreId} />;
+  }
 
   return templateId === "fashion"
     ? <FashionV3ShopPage explicitStoreId={explicitStoreId} />
