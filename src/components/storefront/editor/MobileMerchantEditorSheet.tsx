@@ -16,6 +16,8 @@ import { getBasicLayoutVariantOptions } from "@/lib/cms/storefront-editor-regist
 import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import type { StorefrontEditorQualityIssue } from "@/lib/cms/storefront-platform/editor/quality-assist";
 import { getCompatibleCompositionRecipes, getCompositionEditorFields, getPlatformAestheticOptions } from "@/lib/cms/storefront-platform/editor/platform-contracts";
+import { buildSectionStylesPath } from "@/lib/admin-paths";
+import { Link } from "@/lib/react-router-dom-shim";
 import { MobileCameraUpload } from "./MobileCameraUpload";
 
 const MOBILE_TEXT_FIELDS = ["eyebrow", "tagline", "title", "highlight", "subtitle", "body", "ctaText", "ctaLink"] as const;
@@ -295,6 +297,13 @@ export function MobileMerchantEditorSheet({
               </>
             ) : selectedBlock ? (
               <>
+                {layoutOptions.length > 0 ? (
+                  <Button asChild variant="outline" className="min-h-11 w-full justify-center gap-2">
+                    <Link to={buildSectionStylesPath({ storeId: store.id, blockId: selectedBlock.id })}>
+                      <LayoutGrid className="h-4 w-4" /> Browse Section Styles
+                    </Link>
+                  </Button>
+                ) : null}
                 {layoutOptions.length === 0 ? <p className="text-sm text-muted-foreground">No additional compatible registered layout is available for this section.</p> : null}
                 {layoutOptions.map((option) => {
                   const selected = selectedBlock.layoutVariant === option.id || (!selectedBlock.layoutVariant && layoutOptions[0]?.id === option.id);

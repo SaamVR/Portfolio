@@ -3,6 +3,9 @@ import type { StorePageBlock } from "@/lib/cms/schema";
 
 export type StorefrontPerformanceClass = "light" | "standard" | "media-heavy" | "interactive";
 export type StorefrontInteractionRequirement = "none" | "optional" | "carousel" | "accordion" | "video";
+export type StorefrontVariantLifecycle = "draft" | "internal-preview" | "published" | "deprecated";
+export type StorefrontVariantVisibility = "global" | "recommended" | "template-exclusive" | "admin-only";
+export type StorefrontVariantPreviewMode = "generated" | "asset" | "live";
 export type StorefrontBreakpointLayout = "single-column" | "stack" | "two-column" | "grid" | "horizontal-scroll" | "preserve";
 export type StorefrontContentOrder = "source" | "media-first" | "content-first";
 
@@ -23,6 +26,20 @@ export interface StorefrontVariantRequirements {
   minItems?: number;
   minMediaItems?: number;
   requiresPrimaryMedia?: boolean;
+  requiredContentKeys?: readonly string[];
+  recommendedContentKeys?: readonly string[];
+}
+
+export interface StorefrontVariantPreviewTarget {
+  mode: StorefrontVariantPreviewMode;
+  assetUrl?: string;
+}
+
+export interface StorefrontVariantPreviewSpec {
+  fixtureId: string;
+  alt: string;
+  desktop: StorefrontVariantPreviewTarget;
+  mobile: StorefrontVariantPreviewTarget;
 }
 
 export interface StorefrontVariantRecommendation {
@@ -53,5 +70,8 @@ export interface StorefrontVariantDefinition {
   performanceClass: StorefrontPerformanceClass;
   interactionRequirement: StorefrontInteractionRequirement;
   editor: StorefrontVariantEditorMetadata;
-  version: 1;
+  previewSpec: StorefrontVariantPreviewSpec;
+  lifecycle: StorefrontVariantLifecycle;
+  visibility: StorefrontVariantVisibility;
+  version: number;
 }

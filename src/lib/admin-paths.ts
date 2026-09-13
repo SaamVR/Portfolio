@@ -58,6 +58,20 @@ export function buildPageBuilderPath(
   return query ? `/admin/page-builder/${mode}?${query}` : `/admin/page-builder/${mode}`;
 }
 
+
+export function buildSectionStylesPath(options?: {
+  pageId?: string | null;
+  blockId?: string | null;
+  storeId?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (options?.pageId) params.set("page", options.pageId);
+  if (options?.blockId) params.set("block", options.blockId);
+  if (options?.storeId) params.set("storeId", options.storeId);
+  const query = params.toString();
+  return query ? `/admin/page-builder/styles?${query}` : "/admin/page-builder/styles";
+}
+
 export function getHomepageSectionEditorLink(editTab: string, storeId?: string | null) {
   switch (editTab) {
     case "page_builder":

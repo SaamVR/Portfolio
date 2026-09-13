@@ -28,6 +28,10 @@ import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { getStorefrontLayoutPresets } from "@/lib/cms/storefront-layout-presets";
 import { applyStorefrontLayoutPreset } from "@/lib/cms/storefront-layout-preset-apply";
 import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
+import { buildSectionStylesPath } from "@/lib/admin-paths";
+import { Link } from "@/lib/react-router-dom-shim";
+import { getStorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/registry";
+import { SectionStylePreview } from "./editor/SectionStylePreview";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -1420,10 +1424,19 @@ export function BasicModeEditor({
                     ? `Choose a visual structure for section ${focusedLayoutIndex + 1}.`
                     : "Select a hero, product, or category section to choose a layout variant."}
                 </p>
+                {focusedLayoutBlock && focusedLayoutOptions.length > 0 ? (
+                  <Button asChild variant="outline" size="sm" className="mt-3 min-h-11 gap-2 sm:min-h-9">
+                    <Link to={buildSectionStylesPath({ storeId: store.id, pageId: page.id, blockId: focusedLayoutBlock.id })}>
+                      <Sparkles className="h-4 w-4" /> Browse Section Styles
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
               {focusedLayoutBlock && focusedLayoutOptions.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                  {focusedLayoutOptions.map((option) => (
+                  {focusedLayoutOptions.map((option) => {
+                    const definition = getStorefrontVariantDefinition(focusedLayoutBlock.type, option.id);
+                    return (
                     <button
                       key={option.id}
                       type="button"
@@ -1433,8 +1446,8 @@ export function BasicModeEditor({
                         focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
-                      <div className="relative aspect-video rounded-lg border border-border/70 bg-muted/30">
-                        <BlockSkeletonPreview type={focusedLayoutBlock.type} variant={option.id} />
+                      <div className="relative">
+                        {definition ? <SectionStylePreview blockType={focusedLayoutBlock.type} definition={definition} /> : <div className="aspect-video rounded-lg border border-border/70 bg-muted/30"><BlockSkeletonPreview type={focusedLayoutBlock.type} variant={option.id} /></div>}
                         <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
                           <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
                             {getVariantFocusLabel(focusedLayoutBlock.type, option.id)}
@@ -1457,7 +1470,8 @@ export function BasicModeEditor({
                       </p>
                       <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{option.guidance}</p>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-border bg-background/70 p-4 text-xs leading-5 text-muted-foreground">

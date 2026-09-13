@@ -26,10 +26,17 @@ const MOBILE_GRID: StorefrontResponsiveContract = {
   desktop: { layout: "preserve", order: "source", overflow: "wrap" },
 };
 
-type VariantSeed = Omit<StorefrontVariantDefinition, "version" | "requirements" | "requiredCapabilities" | "compatibleBusinessFamilies"> & {
+type VariantSeed = Omit<
+  StorefrontVariantDefinition,
+  "version" | "requirements" | "requiredCapabilities" | "compatibleBusinessFamilies" | "previewSpec" | "lifecycle" | "visibility"
+> & {
   requirements?: StorefrontVariantDefinition["requirements"];
   requiredCapabilities?: readonly string[];
   compatibleBusinessFamilies?: readonly StoreBusinessFamily[];
+  previewSpec?: StorefrontVariantDefinition["previewSpec"];
+  lifecycle?: StorefrontVariantDefinition["lifecycle"];
+  visibility?: StorefrontVariantDefinition["visibility"];
+  version?: number;
 };
 
 function variant(seed: VariantSeed): StorefrontVariantDefinition {
@@ -38,7 +45,15 @@ function variant(seed: VariantSeed): StorefrontVariantDefinition {
     compatibleBusinessFamilies: seed.compatibleBusinessFamilies ?? ALL_BUSINESS_FAMILIES,
     requiredCapabilities: seed.requiredCapabilities ?? [],
     requirements: seed.requirements ?? {},
-    version: 1,
+    previewSpec: seed.previewSpec ?? {
+      fixtureId: `${seed.blockType}-standard`,
+      alt: `${seed.label} ${seed.blockType.replaceAll("-", " ")} style preview`,
+      desktop: { mode: seed.editor.preview === "live" ? "live" : "generated" },
+      mobile: { mode: seed.editor.preview === "live" ? "live" : "generated" },
+    },
+    lifecycle: seed.lifecycle ?? "published",
+    visibility: seed.visibility ?? "global",
+    version: seed.version ?? 1,
   };
 }
 
