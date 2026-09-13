@@ -33,10 +33,11 @@ const threadsFooterSource = readFileSync("src/components/storefront/threads/Thre
 describe("Threads mobile stabilization", () => {
   it("keeps critical shopper controls at the 44px minimum after integration", () => {
     expect(threadsHeaderSource).toContain('h-11 w-11 place-items-center lg:hidden');
-    expect(threadsHeaderSource).toContain('h-11 w-11 place-items-center" aria-label="Search"');
+    expect(threadsHeaderSource).toContain('className="grid h-11 w-11 place-items-center"');
+    expect(threadsHeaderSource).toContain('aria-label="Search"');
     expect(threadsHeaderSource).toContain('relative grid h-11 w-11 place-items-center');
     expect(threadsRendererSource).toContain('inline-flex min-h-11 items-center');
-    expect(threadsRendererSource).toContain('flex min-h-12 overflow-hidden');
+    expect(threadsRendererSource).toContain('grid h-11 w-11 -translate-y-1/2 place-items-center');
     expect(threadsFooterSource).toContain('flex min-h-11 overflow-hidden');
     expect(threadsFooterSource).toContain('grid min-w-11 place-items-center');
   });

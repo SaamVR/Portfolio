@@ -673,11 +673,11 @@ export function applyTemplateDemoContentToPages<
               decoration: "subtle",
               props: {
                 ...block.props,
-                tagline: "Everyday / Naturally",
-                title: "Made to live in",
-                highlight: "every day",
-                subtitle: "Comfort-first tees, easy layers, and graphic staples designed for repeat wear.",
-                ctaText: "Shop the collection",
+                tagline: "Wear Your Story",
+                title: "Wear Your Story",
+                highlight: "",
+                subtitle: "Art. Culture. People. On a Higher Thread.",
+                ctaText: "Explore New Arrivals",
                 ctaLink: "/shop",
                 secondaryCtaText: "New arrivals",
                 secondaryCtaLink: "/shop?sort=newest",
@@ -690,7 +690,12 @@ export function applyTemplateDemoContentToPages<
           }
 
           if (block.type === "trust-badges") {
-            return { ...block, props: { ...block.props, title: "The good stuff, handled" } };
+            return { ...block, props: { ...block.props, title: "More Than a T-Shirt", badges: [
+              { label: "Stories You Can Wear", description: "Our clothing carries real people and places." },
+              { label: "Rooted in Bengal", description: "Inspired by our heritage, made for today." },
+              { label: "Illustrated to Stand Apart", description: "Original art, not mass production." },
+              { label: "Own What You Wear", description: "Wear with purpose and personality." },
+            ] } };
           }
 
           if (block.type === "category-showcase") {
@@ -705,7 +710,7 @@ export function applyTemplateDemoContentToPages<
                 autoplay: true,
                 autoplayIntervalMs: 3600,
                 showArrows: true,
-                limit: 10,
+                limit: 5,
                 items: (seedStore?.categories ?? []).filter((category) => category.is_active !== false).map((category) => ({
                   label: category.name,
                   value: category.name,
@@ -723,16 +728,16 @@ export function applyTemplateDemoContentToPages<
               decoration: "subtle",
               props: {
                 ...block.props,
-                badgeText: "Everyday essentials",
-                title: "More than a T-shirt",
-                subtitle: "Soft, dependable staples made to move through the week with you.",
-                ctaText: "Shop essentials",
+                badgeText: "Made with meaning",
+                title: "Handmade for Home",
+                subtitle: "Thoughtful pieces for a warmer, art-led home.",
+                ctaText: "Explore Home Decor",
                 ctaLink: "/shop",
                 imageUrl: assets.promo_image_url ?? productImages[0] ?? "",
                 imageAlt: "Threads everyday essentials",
-                secondaryTitle: "Made with intention",
-                secondarySubtitle: "A quieter approach to everyday clothing: considered materials, useful fits, fewer throwaway choices.",
-                secondaryCtaText: "Explore the collection",
+                secondaryTitle: "Small Gifts, Big Meaning",
+                secondarySubtitle: "Handcrafted gifts for every special moment.",
+                secondaryCtaText: "Shop Gifts",
                 secondaryCtaLink: "/shop",
                 secondaryImageUrl: assets.story_image_url ?? productImages[1] ?? assets.hero_image_url ?? "",
                 secondaryImageAlt: "Threads considered collection",
