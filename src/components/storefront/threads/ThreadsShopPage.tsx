@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -16,6 +16,7 @@ import SEOHead from "@/components/SEOHead";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProductCard";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProducts, useProductSearch } from "@/hooks/useProducts";
@@ -176,9 +177,11 @@ function ThreadsFilters({
 export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string }) {
   const store = useOptionalStore();
   const storeId = explicitStoreId ?? store?.id;
+  const { trackEvent } = useStorefrontAnalytics();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(12);
+  const analyticsSnapshotRef = useRef("");
   const { data: products = [], isLoading } = useProducts(storeId);
   const { data: categoryRows = [] } = useProductCategories(storeId);
 
@@ -246,6 +249,84 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
     setDisplayCount(12);
   }, [paramSnapshot]);
 
+  useEffect(() => {
+    if (analyticsSnapshotRef.current === paramSnapshot) return;
+    analyticsSnapshotRef.current = paramSnapshot;
+
+    if (query.trim()) {
+      trackEvent({
+        eventName: "search",
+        eventCategory: "discovery",
+        searchQuery: query.trim(),
+        metadata: {
+          resultsCount: filteredProducts.length,
+          activeCategory: category,
+          sort,
+          source: "threads_shop_page",
+          searchBackend: indexedSearchProducts ? "postgres_index" : "supabase_fallback",
+        },
+      });
+    }
+
+    if (category !== "All") {
+      trackEvent({
+        eventName: "tag_click",
+        eventCategory: "discovery",
+        metadata: {
+          tag: category,
+          tagType: "category",
+          source: "threads_shop_page_filter",
+        },
+      });
+    }
+
+    const activeFilters = [
+      category !== "All" ? `category:${category}` : "",
+      saleOnly ? "sale:1" : "",
+      minPrice ? `min:${minPrice}` : "",
+      maxPrice ? `max:${maxPrice}` : "",
+      ...selectedSizes.map((value) => `size:${value}`),
+      ...selectedColors.map((value) => `color:${value}`),
+    ].filter(Boolean);
+
+    if (activeFilters.length > 0) {
+      trackEvent({
+        eventName: "filter_used",
+        eventCategory: "discovery",
+        metadata: {
+          filters: activeFilters,
+          resultsCount: filteredProducts.length,
+          source: "threads_shop_page",
+        },
+      });
+    }
+
+    if (sort !== "newest") {
+      trackEvent({
+        eventName: "sort_changed",
+        eventCategory: "discovery",
+        metadata: {
+          sort,
+          resultsCount: filteredProducts.length,
+          source: "threads_shop_page",
+        },
+      });
+    }
+  }, [
+    category,
+    filteredProducts.length,
+    indexedSearchProducts,
+    maxPrice,
+    minPrice,
+    paramSnapshot,
+    query,
+    saleOnly,
+    selectedColors,
+    selectedSizes,
+    sort,
+    trackEvent,
+  ]);
+
   const updateParam = (key: string, value: string | null) => setSearchParams(setParam(searchParams, key, value));
   const toggleListParam = (key: "size" | "color", value: string) => {
     const current = new Set(parseList(searchParams.get(key)));
@@ -256,6 +337,11 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
   const clearFilters = () => {
     const next = new URLSearchParams(searchParams);
     ["category", "sale", "min", "max", "size", "color", "sort", "page"].forEach((key) => next.delete(key));
+    setSearchParams(next);
+  };
+  const resetCollection = () => {
+    const next = new URLSearchParams(searchParams);
+    ["q", "category", "sale", "min", "max", "size", "color", "sort", "page"].forEach((key) => next.delete(key));
     setSearchParams(next);
   };
 
@@ -387,7 +473,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
             <div className="my-8 rounded-[6px] border border-dashed border-border bg-secondary/30 px-5 py-16 text-center">
               <p className="font-serif text-[28px] font-semibold">Nothing here yet</p>
               <p className="mx-auto mt-2 max-w-md text-[10px] leading-5 text-muted-foreground">Try another category, remove a filter, or search for something different.</p>
-              <button type="button" onClick={() => { clearFilters(); updateParam("q", null); }} className="mt-5 inline-flex min-h-11 items-center rounded-[3px] bg-primary px-5 text-[9px] font-bold uppercase tracking-[.08em] text-primary-foreground">
+              <button type="button" onClick={resetCollection} className="mt-5 inline-flex min-h-11 items-center rounded-[3px] bg-primary px-5 text-[9px] font-bold uppercase tracking-[.08em] text-primary-foreground">
                 Reset collection
               </button>
             </div>
