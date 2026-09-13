@@ -95,7 +95,7 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
     [product],
   );
   const [activeImage, setActiveImage] = useState(images[0] ?? product.image ?? "");
-  const [selectedSize, setSelectedSize] = useState(sizes[0] ?? "");
+  const [selectedSize, setSelectedSize] = useState(sizes.length === 1 ? sizes[0] : "");
   const [selectedColor, setSelectedColor] = useState(colors[0] ?? "");
   const [quantity, setQuantity] = useState(1);
   const allowGuestCheckout = resolveAllowGuestCheckoutForStore(store);
@@ -106,6 +106,9 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
   const sizeGuideHref = specString(specs, ["size_guide_url", "size_chart_url"]);
   const lowStock = typeof product.stock === "number" && product.stock > 0 && product.stock <= 5;
   const unavailable = product.isAvailable === false || (typeof product.stock === "number" && product.stock <= 0);
+  const maxQuantity = typeof product.stock === "number" && product.stock > 0
+    ? Math.min(product.stock, 10)
+    : 10;
   const related = allProducts
     .filter(
       (item) =>
@@ -313,6 +316,9 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                       </button>
                     ))}
                   </div>
+                  {sizes.length > 1 && !selectedSize ? (
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">Choose your size before adding to bag.</p>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -323,7 +329,8 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                     <button
                       type="button"
                       onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                      className="grid h-full w-11 place-items-center hover:bg-secondary"
+                      disabled={quantity <= 1 || unavailable}
+                      className="grid h-full w-11 place-items-center hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="h-3.5 w-3.5" />
@@ -331,8 +338,9 @@ export function ThreadsProductDetail({ product }: { product: Product }) {
                     <span className="w-9 text-center text-[11px] font-bold">{quantity}</span>
                     <button
                       type="button"
-                      onClick={() => setQuantity((value) => Math.min(10, value + 1))}
-                      className="grid h-full w-11 place-items-center hover:bg-secondary"
+                      onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}
+                      disabled={quantity >= maxQuantity || unavailable}
+                      className="grid h-full w-11 place-items-center hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label="Increase quantity"
                     >
                       <Plus className="h-3.5 w-3.5" />
