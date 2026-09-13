@@ -21,8 +21,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
 
   const home = storefrontPath("/", store?.slug);
   const shop = storefrontPath("/shop", store?.slug);
-  const brandName =
-    store?.id === "preview-threads" ? "CHAPCHITRA" : store?.name || "THREADS";
+  const isReferencePreview = store?.id === "preview-threads";
+  const brandName = isReferencePreview ? "CHAPCHITRA" : store?.name || "THREADS";
   const nav = [
     ["Shop", shop],
     ["Categories", `${home}#categories`],
@@ -30,11 +30,20 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
     ["Journal", storefrontPath("/blog", store?.slug)],
   ] as const;
 
+  const brandSubmark = isReferencePreview ? "ছাপচিত্র" : "Art · Culture · Everyday";
+
   return (
     <>
       <header
         className={`${embedded ? "relative" : "sticky top-0"} z-50 border-b border-border/70 bg-background/95 backdrop-blur-md`}
       >
+        <div className="border-b border-primary-foreground/10 bg-primary text-primary-foreground">
+          <div className="mx-auto flex h-7 max-w-[1280px] items-center justify-between gap-4 overflow-hidden px-4 text-[7px] font-semibold uppercase tracking-[.12em] sm:px-5 md:px-8 md:text-[8px]">
+            <span className="truncate">Wear your story · Original art · Everyday pieces</span>
+            <span className="hidden shrink-0 text-primary-foreground/70 sm:inline">Thoughtfully designed</span>
+          </div>
+        </div>
+
         <div className="mx-auto grid h-[58px] max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 md:h-[64px] md:px-8">
           <div className="flex items-center">
             <button
@@ -49,8 +58,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
               <div className="font-serif text-[20px] font-semibold uppercase leading-[.9] tracking-[-.04em]">
                 {brandName}
               </div>
-              <div className="mt-1 text-center text-[7px] leading-none text-muted-foreground">
-                ছাপচিত্র
+              <div className="mt-1 text-center text-[6px] uppercase leading-none tracking-[.12em] text-muted-foreground">
+                {brandSubmark}
               </div>
             </Link>
           </div>
@@ -72,8 +81,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
             <div className="font-serif text-[17px] font-semibold uppercase leading-[.9] tracking-[-.035em]">
               {brandName}
             </div>
-            <div className="mt-1 text-[6px] leading-none text-muted-foreground">
-              ছাপচিত্র
+            <div className="mt-1 text-[5px] uppercase leading-none tracking-[.1em] text-muted-foreground sm:text-[6px]">
+              {brandSubmark}
             </div>
           </Link>
           <div className="flex items-center justify-end gap-0.5">
@@ -156,8 +165,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 <div className="font-serif text-2xl uppercase leading-none">
                   {brandName}
                 </div>
-                <div className="mt-1 text-[9px] text-muted-foreground">
-                  ছাপচিত্র
+                <div className="mt-1 text-[8px] uppercase tracking-[.12em] text-muted-foreground">
+                  {brandSubmark}
                 </div>
               </div>
               <button
