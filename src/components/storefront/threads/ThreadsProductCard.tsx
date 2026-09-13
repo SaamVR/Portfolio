@@ -32,10 +32,14 @@ export function ThreadsProductCard({
   const href = productUrl(product.id, product.name, store?.slug);
   const sizes = getRenderableSizeOptions(product, specs, "fashion");
   const requiresChoice = sizes.length > 1;
-  const unavailable = product.isAvailable === false;
+  const unavailable = product.isAvailable === false || (typeof product.stock === "number" && product.stock <= 0);
   const onSale = Boolean(
     product.originalPrice && product.originalPrice > product.price,
   );
+  const discount = onSale
+    ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
+    : 0;
+  const alternateImage = product.images?.find((image) => image && image !== product.image);
 
   return (
     <article
@@ -53,22 +57,30 @@ export function ThreadsProductCard({
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover transition duration-500 group-hover:scale-[1.025]"
+            className={`object-cover transition duration-500 group-hover:scale-[1.025] ${alternateImage ? "group-hover:opacity-0" : ""}`}
           />
+          {alternateImage ? (
+            <SafeStorefrontImage
+              src={alternateImage}
+              alt={`${product.name} alternate view`}
+              fill
+              className="object-cover opacity-0 transition duration-500 group-hover:scale-[1.025] group-hover:opacity-100"
+            />
+          ) : null}
         </Link>
         {onSale ? (
-          <span className="absolute left-2 top-2 rounded-sm bg-primary px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-primary-foreground">
-            Sale
+          <span className="absolute left-2 top-2 rounded-sm bg-accent px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] text-accent-foreground">
+            −{discount}%
           </span>
         ) : compact ? (
-          <span className="absolute left-2 top-2 rounded-sm bg-primary px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-primary-foreground">
+          <span className="absolute left-2 top-2 rounded-sm bg-primary px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] text-primary-foreground">
             New
           </span>
         ) : null}
         <button
           type="button"
           onClick={() => toggleItem(product.id)}
-          className={`absolute right-2 top-2 grid place-items-center rounded-full bg-background/90 ${compact ? "h-11 w-11" : "h-9 w-9"}`}
+          className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full bg-background/92 shadow-sm transition hover:text-primary md:h-9 md:w-9"
           aria-label={
             isInWishlist(product.id)
               ? `Remove ${product.name} from wishlist`
@@ -82,7 +94,7 @@ export function ThreadsProductCard({
         {requiresChoice ? (
           <Link
             href={href}
-            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 md:flex"
+            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 md:flex"
           >
             Choose options
           </Link>
@@ -100,7 +112,7 @@ export function ThreadsProductCard({
                 storeId: store?.id,
               })
             }
-            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center gap-1 bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 disabled:opacity-50 md:flex"
+            className="absolute inset-x-2 bottom-2 hidden h-9 items-center justify-center gap-1 bg-foreground px-3 text-[9px] font-semibold uppercase tracking-[.1em] text-background opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-55 md:flex"
           >
             <Plus className="h-3 w-3" />
             {unavailable ? "Out of stock" : "Quick add"}
@@ -116,18 +128,28 @@ export function ThreadsProductCard({
         >
           {product.name}
         </Link>
-        <div className="mt-0.5 flex items-center justify-between gap-2">
+        <div className="mt-0.5 flex items-start justify-between gap-2">
           <span
-            className={`truncate ${compact ? "text-[8px]" : "text-[9px]"} ${framed ? "text-primary-foreground/65" : "text-muted-foreground"}`}
+            className={`min-w-0 truncate ${compact ? "text-[8px]" : "text-[9px]"} ${framed ? "text-primary-foreground/65" : "text-muted-foreground"}`}
           >
             {product.category || product.type}
           </span>
-          <span
-            className={`shrink-0 font-semibold ${compact ? "text-[10px]" : "text-[11px]"}`}
-          >
-            ৳{product.price.toLocaleString()}
+          <span className="flex shrink-0 items-baseline gap-1.5">
+            {onSale ? (
+              <span className={`${compact ? "text-[8px]" : "text-[9px]"} ${framed ? "text-primary-foreground/55" : "text-muted-foreground"} line-through`}>
+                ৳{product.originalPrice!.toLocaleString()}
+              </span>
+            ) : null}
+            <span className={`font-semibold ${compact ? "text-[10px]" : "text-[11px]"}`}>
+              ৳{product.price.toLocaleString()}
+            </span>
           </span>
         </div>
+        {unavailable ? (
+          <p className={`mt-1 text-[8px] font-semibold uppercase tracking-[.08em] ${framed ? "text-primary-foreground/65" : "text-destructive"}`}>
+            Out of stock
+          </p>
+        ) : null}
         {!framed && onQuickView ? (
           <button
             type="button"
