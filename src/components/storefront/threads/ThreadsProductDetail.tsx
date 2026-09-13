@@ -1,1 +1,1 @@
-export { ThreadsEditorialProductDetail as ThreadsProductDetail } from "@/components/storefront/threads/ThreadsEditorialProductDetail";
+export { ThreadsEditorialProductDetailV2 as ThreadsProductDetail } from "@/components/storefront/threads/ThreadsEditorialProductDetailV2";
