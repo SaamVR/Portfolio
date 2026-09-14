@@ -4,6 +4,11 @@
       "name": "seed_demo_blog_posts",
       "classification": "non-production",
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    },
+    {
+      "name": "atomic_invite_claim_authority_323",
+      "classification": "pending-production",
+      "reason": "#323 release-blocker migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
     }
   ]
 }
