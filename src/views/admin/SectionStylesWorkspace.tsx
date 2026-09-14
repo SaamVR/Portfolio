@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Monitor, RotateCcw, Smartphone, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cm
 import { getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
 import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "@/lib/cms/storefront-platform/variants/section-style-library";
 import { SectionStylePreview, type SectionStylePreviewMode } from "@/components/storefront/editor/SectionStylePreview";
+import { SectionStudioPreviewModeSwitch, SectionStudioPreviewStage } from "@/components/storefront/editor/section-studio/SectionStudioShells";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { cn } from "@/lib/utils";
 
@@ -252,10 +253,7 @@ export default function SectionStylesWorkspace() {
         <div>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div><h2 className="text-lg font-semibold">{blockLabel(selectedBlock.type)} styles</h2><p className="text-xs text-muted-foreground">Recommended styles appear first.</p></div>
-            <div className="flex rounded-xl border border-border bg-muted/30 p-1">
-              <Button type="button" size="sm" variant={previewMode === "desktop" ? "secondary" : "ghost"} className="min-h-11 gap-1.5" aria-pressed={previewMode === "desktop"} onClick={() => setPreviewMode("desktop")}><Monitor className="h-3.5 w-3.5" />Desktop</Button>
-              <Button type="button" size="sm" variant={previewMode === "mobile" ? "secondary" : "ghost"} className="min-h-11 gap-1.5" aria-pressed={previewMode === "mobile"} onClick={() => setPreviewMode("mobile")}><Smartphone className="h-3.5 w-3.5" />Mobile</Button>
-            </div>
+            <SectionStudioPreviewModeSwitch value={previewMode} onChange={setPreviewMode} />
           </div>
           {hasUnregisteredCurrentStyle ? (
             <div className="mb-3 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
@@ -290,7 +288,9 @@ export default function SectionStylesWorkspace() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="bg-muted/20 p-3">
-                  <SectionStylePreview blockType={selectedBlock.type} definition={selectedEntry.definition} mode={previewMode} className={previewMode === "mobile" ? "mx-auto w-[62%]" : "w-full"} />
+                  <SectionStudioPreviewStage mode={previewMode}>
+                    <SectionStylePreview blockType={selectedBlock.type} definition={selectedEntry.definition} mode={previewMode} className="w-full" />
+                  </SectionStudioPreviewStage>
                 </div>
                 <div className="space-y-4 p-4">
                   <div><div className="flex items-center justify-between gap-2"><h3 className="text-lg font-semibold">{selectedEntry.definition.label}</h3>{selectedEntry.current ? <Badge variant="secondary">Current</Badge> : null}</div><p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedEntry.definition.guidance}</p></div>
