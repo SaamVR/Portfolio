@@ -114,11 +114,15 @@ begin
 
   select count(*) into actual_count from public.store_invoices where id = invoice_id;
   perform pg_temp.assert_true(actual_count = expected_invoice_rows, format('%s store_invoices select mismatch', label));
-  update public.store_invoices
-  set status = case when status = 'pending' then 'paid' else 'pending' end
-  where id = invoice_id;
-  get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_invoice_rows, format('%s store_invoices update mismatch', label));
+
+  begin
+    update public.store_invoices
+    set status = case when status = 'pending' then 'paid' else 'pending' end
+    where id = invoice_id;
+    raise exception '% store_invoices update unexpectedly succeeded', label;
+  exception
+    when insufficient_privilege then null;
+  end;
 
   select count(*) into actual_count
   from public.store_subscriptions
@@ -175,6 +179,66 @@ begin
     raise exception '% unexpectedly deleted a subscription', label;
   exception
     when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+create or replace function pg_temp.assert_billing_authority_mutations_denied(
+  test_user uuid,
+  label text
+)
+returns void
+language plpgsql
+as $$
+declare
+  target_store_id constant uuid := '20000000-0000-4000-8000-000000000001';
+  target_invoice_id constant uuid := '30000000-0000-4000-8000-000000000007';
+  affected integer;
+begin
+  perform pg_temp.set_authenticated_user(test_user);
+
+  begin
+    update public.store_invoices set status = 'paid' where id = target_invoice_id;
+    raise exception '% unexpectedly transitioned an invoice to paid', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set amount = 1 where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice amount', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set plan_id = 'rls-smoke-upgrade-plan' where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice plan', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set provider = 'attacker' where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice provider', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.store_invoices (
+      store_id, plan_id, amount, currency, status, provider, provider_invoice_id
+    ) values (
+      target_store_id, 'rls-smoke-upgrade-plan', 1, 'BDT', 'paid', 'attacker', 'ATTACK-PAID'
+    );
+    raise exception '% unexpectedly inserted a paid invoice', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  affected := 0;
+  begin
+    update public.stores set plan = 'rls-smoke-upgrade-plan' where id = target_store_id;
+    get diagnostics affected = row_count;
+    if affected > 0 then
+      raise exception '% unexpectedly changed legacy stores.plan', label;
+    end if;
+  exception when insufficient_privilege then null;
   end;
 end;
 $$;
@@ -454,6 +518,26 @@ select pg_temp.assert_subscription_mutations_denied(
 );
 
 select pg_temp.assert_subscription_mutations_denied(
+  '10000000-0000-4000-8000-000000000006',
+  'platform_admin_client'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000001',
+  'owner'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000002',
+  'store_admin'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000003',
+  'editor'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
   '10000000-0000-4000-8000-000000000006',
   'platform_admin_client'
 );

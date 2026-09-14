@@ -207,13 +207,16 @@ describe("manual billing invoice route authorization", () => {
       jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
         storeId: "store_1",
         planId: "plan_1",
-        transactionId: "trx_1",
+        transactionId: "TRX1",
       }),
     );
 
     assert.equal(response.status, 403);
     assert.deepEqual(await response.json(), { error: "Forbidden" });
     assert.equal(canManageStoreMock.mock.callCount(), 1);
+    assert.equal(canManageStoreMock.mock.calls[0]?.arguments[1], "store_1");
+    assert.equal(canManageStoreMock.mock.calls[0]?.arguments[2], "viewer_1");
+    assert.deepEqual(canManageStoreMock.mock.calls[0]?.arguments[3], ["owner", "admin"]);
   });
 });
 

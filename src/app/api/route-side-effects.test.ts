@@ -285,14 +285,25 @@ function createManualInvoiceAdminMock(options: {
   };
   existingInvoice?: {
     id: string;
+    store_id?: string;
     status: string;
     provider_invoice_id: string;
   } | null;
+  raceInvoice?: {
+    id: string;
+    store_id?: string;
+    status: string;
+    provider_invoice_id: string;
+  } | null;
+  insertError?: { code?: string; message?: string } | null;
 }) {
   const insertedInvoices: Array<Record<string, unknown>> = [];
+  const invoiceLookups: Array<Array<[string, string]>> = [];
+  let lookupCount = 0;
 
   return {
     insertedInvoices,
+    invoiceLookups,
     client: {
       from(table: string) {
         if (table === "cms_plans") {
@@ -323,25 +334,28 @@ function createManualInvoiceAdminMock(options: {
           return {
             select() {
               const filters: Array<[string, string]> = [];
-
               const chain = {
                 eq(column: string, value: string) {
                   filters.push([column, value]);
                   return chain;
                 },
-                maybeSingle: async () => ({
-                  data: options.existingInvoice
-                    ? {
-                        id: options.existingInvoice.id,
-                        status: options.existingInvoice.status,
-                        plan_id: options.plan.id,
-                        provider_invoice_id: options.existingInvoice.provider_invoice_id,
-                      }
-                    : null,
-                  error: null,
-                }),
+                maybeSingle: async () => {
+                  invoiceLookups.push([...filters]);
+                  const candidate = lookupCount++ === 0 ? options.existingInvoice : options.raceInvoice;
+                  return {
+                    data: candidate
+                      ? {
+                          id: candidate.id,
+                          store_id: candidate.store_id ?? "store_1",
+                          status: candidate.status,
+                          plan_id: options.plan.id,
+                          provider_invoice_id: candidate.provider_invoice_id,
+                        }
+                      : null,
+                    error: null,
+                  };
+                },
               };
-
               return chain;
             },
             insert(payload: Record<string, unknown>) {
@@ -350,11 +364,8 @@ function createManualInvoiceAdminMock(options: {
                 select() {
                   return {
                     single: async () => ({
-                      data: {
-                        id: "invoice_manual_1",
-                        status: "pending",
-                      },
-                      error: null,
+                      data: options.insertError ? null : { id: "invoice_manual_1", status: "pending" },
+                      error: options.insertError ?? null,
                     }),
                   };
                 },
@@ -379,6 +390,9 @@ function createManualReviewAdminMock(invoice: {
   provider?: string | null;
   provider_invoice_id?: string | null;
   platformRoles?: string[];
+}, options?: {
+  transactionCollision?: { id: string; store_id: string; status: string } | null;
+  updateWinner?: boolean;
 }) {
   const invoiceUpdates: Array<{ payload: Record<string, unknown>; filters: Array<[string, string]> }> = [];
   const subscriptionUpserts: Array<Record<string, unknown>> = [];
@@ -394,10 +408,12 @@ function createManualReviewAdminMock(invoice: {
               return {
                 eq(_column: string, _value: string) {
                   return {
-                    in(_column2: string, _value2: string[]) {
+                    in(_column2: string, allowedRoles: string[]) {
                       return {
                         order: async () => ({
-                          data: (invoice.platformRoles ?? ["admin"]).map((role) => ({ role })),
+                          data: (invoice.platformRoles ?? ["admin"])
+                            .filter((role) => allowedRoles.includes(role))
+                            .map((role) => ({ role })),
                           error: null,
                         }),
                       };
@@ -412,10 +428,23 @@ function createManualReviewAdminMock(invoice: {
         if (table === "store_invoices") {
           return {
             select() {
-              return {
-                eq(_column: string, _value: string) {
-                  return {
-                    maybeSingle: async () => ({
+              const filters: Array<[string, string]> = [];
+              const chain = {
+                eq(column: string, value: string) {
+                  filters.push([column, value]);
+                  return chain;
+                },
+                neq(column: string, value: string) {
+                  filters.push([`neq:${column}`, value]);
+                  return chain;
+                },
+                limit(_value: number) {
+                  return chain;
+                },
+                maybeSingle: async () => {
+                  const idFilter = filters.find(([column]) => column === "id");
+                  if (idFilter?.[1] === invoice.id) {
+                    return {
                       data: {
                         id: invoice.id,
                         store_id: invoice.store_id,
@@ -427,20 +456,33 @@ function createManualReviewAdminMock(invoice: {
                         provider_invoice_id: invoice.provider_invoice_id ?? "trx_1",
                       },
                       error: null,
-                    }),
-                  };
+                    };
+                  }
+                  return { data: options?.transactionCollision ?? null, error: null };
                 },
               };
+              return chain;
             },
             update(payload: Record<string, unknown>) {
               const filters: Array<[string, string]> = [];
-              return {
+              const chain = {
                 eq(column: string, value: string) {
                   filters.push([column, value]);
-                  invoiceUpdates.push({ payload, filters: [...filters] });
-                  return Promise.resolve({ error: null });
+                  return chain;
+                },
+                select(_columns: string) {
+                  return {
+                    maybeSingle: async () => {
+                      invoiceUpdates.push({ payload, filters: [...filters] });
+                      return {
+                        data: options?.updateWinner === false ? null : { id: invoice.id },
+                        error: null,
+                      };
+                    },
+                  };
                 },
               };
+              return chain;
             },
           };
         }
@@ -2055,7 +2097,7 @@ describe("manual billing invoice side effects", () => {
         storeId: "store_1",
         planId: "advanced",
         billingInterval: "annual",
-        transactionId: "trx_live_123",
+        transactionId: "trxlive123",
         amount: 1,
         currency: "USD",
       }),
@@ -2078,10 +2120,27 @@ describe("manual billing invoice side effects", () => {
         status: "pending",
         provider: "bkash_manual",
         payment_method: "bkash_manual",
-        provider_invoice_id: "trx_live_123",
+        provider_invoice_id: "TRXLIVE123",
         billing_period_start: FIXED_NOW.toISOString(),
       },
     ]);
+  });
+
+  test("rejects non-provider-shaped manual transaction IDs before billing lookup", async () => {
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
+    const adminClientMock = mock.method(billingManualInvoiceRouteDeps, "getSupabaseAdminClient", () => {
+      throw new Error("billing client should not be created for an invalid transaction id");
+    });
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1", planId: "basic", transactionId: "trx-123",
+      }),
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Invalid bKash transaction ID" });
+    assert.equal(adminClientMock.mock.callCount(), 0);
   });
 
   test("returns the existing invoice for duplicate manual transaction submissions without writing a second row", async () => {
@@ -2093,7 +2152,7 @@ describe("manual billing invoice side effects", () => {
       existingInvoice: {
         id: "invoice_existing_1",
         status: "pending",
-        provider_invoice_id: "trx_dup_1",
+        provider_invoice_id: "trxdup1",
       },
     });
 
@@ -2106,7 +2165,7 @@ describe("manual billing invoice side effects", () => {
         storeId: "store_1",
         planId: "basic",
         billingInterval: "monthly",
-        transactionId: "trx_dup_1",
+        transactionId: "trxdup1",
       }),
     );
 
@@ -2116,6 +2175,94 @@ describe("manual billing invoice side effects", () => {
       invoiceId: "invoice_existing_1",
       duplicated: true,
       status: "pending",
+    });
+    assert.deepEqual(admin.insertedInvoices, []);
+  });
+
+  test("rejects cross-store reuse of a normalized manual bKash transaction identity", async () => {
+    const admin = createManualInvoiceAdminMock({
+      plan: { id: "basic", monthly_price: 499 },
+      existingInvoice: {
+        id: "invoice_other_store",
+        store_id: "store_2",
+        status: "pending",
+        provider_invoice_id: "TRXCROSS1",
+      },
+    });
+
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
+    mock.method(billingManualInvoiceRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(billingManualInvoiceRouteDeps, "canManageStore", async () => true);
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1",
+        planId: "basic",
+        transactionId: "  trxcross1  ",
+      }),
+    );
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: "This bKash transaction has already been submitted." });
+    assert.deepEqual(admin.insertedInvoices, []);
+    assert.deepEqual(admin.invoiceLookups[0], [
+      ["provider", "bkash_manual"],
+      ["provider_invoice_id", "TRXCROSS1"],
+    ]);
+  });
+
+  test("reuses the durable same-store winner after a concurrent unique-index race", async () => {
+    const admin = createManualInvoiceAdminMock({
+      plan: { id: "advanced", monthly_price: 1499 },
+      existingInvoice: null,
+      raceInvoice: {
+        id: "invoice_race_winner",
+        store_id: "store_1",
+        status: "pending",
+        provider_invoice_id: "TRXRACE1",
+      },
+      insertError: { code: "23505", message: "duplicate key value violates unique constraint" },
+    });
+
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
+    mock.method(billingManualInvoiceRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(billingManualInvoiceRouteDeps, "canManageStore", async () => true);
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1", planId: "advanced", transactionId: "trxrace1",
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true, invoiceId: "invoice_race_winner", duplicated: true, status: "pending",
+    });
+    assert.equal(admin.insertedInvoices.length, 1);
+    assert.equal(admin.invoiceLookups.length, 2);
+  });
+
+  test("legitimate retry returns the existing invoice before revalidating a changed plan request", async () => {
+    const admin = createManualInvoiceAdminMock({
+      plan: { id: "retired", monthly_price: 499, is_active: false },
+      existingInvoice: {
+        id: "invoice_retry", store_id: "store_1", status: "pending", provider_invoice_id: "TRXRETRY1",
+      },
+    });
+
+    mock.method(billingManualInvoiceRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
+    mock.method(billingManualInvoiceRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(billingManualInvoiceRouteDeps, "canManageStore", async () => true);
+
+    const response = await billingManualInvoicePost(
+      jsonRequest("https://example.com/api/billing/manual-invoice", "POST", {
+        storeId: "store_1", planId: "retired", transactionId: "trxretry1",
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true, invoiceId: "invoice_retry", duplicated: true, status: "pending",
     });
     assert.deepEqual(admin.insertedInvoices, []);
   });
@@ -2129,7 +2276,7 @@ describe("manual billing review side effects", () => {
       plan_id: "advanced",
       status: "pending",
       billing_interval: "annual",
-      provider_invoice_id: "trx_123",
+      provider_invoice_id: "trx123",
     });
 
     mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_1" }) as never);
@@ -2164,7 +2311,7 @@ describe("manual billing review side effects", () => {
           reviewed_by: "admin_1",
           review_note: "Matched bank log",
         },
-        filters: [["id", "invoice_1"]],
+        filters: [["id", "invoice_1"], ["status", "pending"]],
       },
     ]);
     assert.deepEqual(admin.subscriptionUpserts, [
@@ -2173,7 +2320,7 @@ describe("manual billing review side effects", () => {
         planId: "advanced",
         status: "active",
         provider: "bkash_manual",
-        providerSubscriptionId: "trx_123",
+        providerSubscriptionId: "TRX123",
         currentPeriodEndsAt: expectedPeriodEnd,
         trialEndsAt: null,
       },
@@ -2187,7 +2334,7 @@ describe("manual billing review side effects", () => {
       plan_id: "basic",
       status: "pending",
       billing_interval: "monthly",
-      provider_invoice_id: "trx_456",
+      provider_invoice_id: "trx456",
     });
 
     mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_2" }) as never);
@@ -2214,10 +2361,99 @@ describe("manual billing review side effects", () => {
           reviewed_by: "admin_2",
           review_note: "Transaction could not be verified.",
         },
-        filters: [["id", "invoice_2"]],
+        filters: [["id", "invoice_2"], ["status", "pending"]],
       },
     ]);
     assert.equal(upsertMock.mock.callCount(), 0);
+  });
+
+  test("rejects manual-review rows whose provider and payment method disagree", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_method_provider_mismatch",
+      store_id: "store_2",
+      plan_id: "basic",
+      status: "pending",
+      payment_method: "bkash_manual",
+      provider: "bkash",
+      provider_invoice_id: "trxmismatch1",
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_mismatch" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    const upsertMock = mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_method_provider_mismatch", action: "approve" },
+        { Authorization: "Bearer token_mismatch" },
+      ),
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Only manual bKash invoices can be reviewed here" });
+    assert.equal(admin.invoiceUpdates.length, 0);
+    assert.equal(upsertMock.mock.callCount(), 0);
+  });
+
+  for (const platformRole of ["billing_admin", "super_admin"] as const) {
+    test(`accepts ${platformRole}-only operators for manual billing review`, async () => {
+      const admin = createManualReviewAdminMock({
+        id: `invoice_${platformRole}`,
+        store_id: "store_role_test",
+        plan_id: "advanced",
+        status: "pending",
+        billing_interval: "monthly",
+        provider_invoice_id: `trx${platformRole.replace("_", "")}`,
+        platformRoles: [platformRole],
+      });
+
+      mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: `${platformRole}_1` }) as never);
+      mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+      mock.method(manualBillingReviewRouteDeps, "now", () => FIXED_NOW);
+      mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+      const response = await manualBillingReviewPost(
+        jsonRequest(
+          "https://example.com/api/platform/billing/manual-review",
+          "POST",
+          { invoiceId: `invoice_${platformRole}`, action: "approve" },
+          { Authorization: "Bearer token_role_test" },
+        ),
+      );
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { success: true, status: "paid" });
+      assert.equal(admin.invoiceUpdates.length, 1);
+    });
+  }
+
+  test("rejects support-agent-only operators from manual billing review", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_support_agent",
+      store_id: "store_role_test",
+      plan_id: "advanced",
+      status: "pending",
+      provider_invoice_id: "trxsupportagent",
+      platformRoles: ["support_agent"],
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "support_agent_1" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_support_agent", action: "approve" },
+        { Authorization: "Bearer token_support" },
+      ),
+    );
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(admin.invoiceUpdates.length, 0);
   });
 
   test("accepts admins that have multiple allowed platform role rows", async () => {
@@ -2227,7 +2463,7 @@ describe("manual billing review side effects", () => {
       plan_id: "pro",
       status: "pending",
       billing_interval: "monthly",
-      provider_invoice_id: "trx_789",
+      provider_invoice_id: "trx789",
       platformRoles: ["admin", "billing_admin"],
     });
 
@@ -2260,7 +2496,7 @@ describe("manual billing review side effects", () => {
       store_id: "store_4",
       plan_id: "pro",
       status: "pending",
-      provider_invoice_id: "trx_999",
+      provider_invoice_id: "trx999",
     });
 
     mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_4" }) as never);
@@ -2287,6 +2523,66 @@ describe("manual billing review side effects", () => {
       error:
         "insert or update on table \"store_subscriptions\" violates foreign key constraint Key (plan_id)=(pro) is not present in table \"cms_plans\". (code: 23503)",
     });
+  });
+
+  test("blocks manual approval when another invoice owns the provider transaction identity", async () => {
+    const admin = createManualReviewAdminMock(
+      {
+        id: "invoice_collision", store_id: "store_1", plan_id: "advanced", status: "pending",
+        provider_invoice_id: "trxcollision1",
+      },
+      { transactionCollision: { id: "invoice_paid_elsewhere", store_id: "store_2", status: "paid" } },
+    );
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_5" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    const incidentMock = mock.method(manualBillingReviewRouteDeps, "recordPlatformIncident", async () => true);
+    const upsertMock = mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_collision", action: "approve" },
+        { Authorization: "Bearer token_collision" },
+      ),
+    );
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), {
+      error: "This bKash transaction is already attached to another invoice.",
+    });
+    assert.equal(admin.invoiceUpdates.length, 0);
+    assert.equal(upsertMock.mock.callCount(), 0);
+    assert.equal(incidentMock.mock.callCount(), 1);
+  });
+
+  test("does not grant entitlement when a concurrent reviewer already consumed pending state", async () => {
+    const admin = createManualReviewAdminMock(
+      {
+        id: "invoice_review_race", store_id: "store_1", plan_id: "advanced", status: "pending",
+        provider_invoice_id: "trxreviewrace",
+      },
+      { updateWinner: false },
+    );
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_6" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    const upsertMock = mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_review_race", action: "approve" },
+        { Authorization: "Bearer token_review_race" },
+      ),
+    );
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: "This invoice is no longer pending review" });
+    assert.equal(admin.invoiceUpdates.length, 1);
+    assert.equal(upsertMock.mock.callCount(), 0);
   });
 });
 
