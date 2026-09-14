@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties } from "react";
 import { useTheme } from "next-themes";
-import { useId } from "react";
 import type { StoreTheme } from "@/lib/cms/schema";
+import { buildStorefrontAestheticCss, resolveStorefrontAesthetic } from "@/lib/cms/storefront-platform/rendering/aesthetic-engine";
+import { resolveStorefrontSemanticTokens } from "@/lib/cms/storefront-platform/rendering/theme-tokens";
 import { scopeStoreThemeCss } from "@/lib/cms/theme-css";
 import { getStoreThemeStyle } from "@/lib/cms/store-theme-style";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE } from "@/lib/cms/store-theme-contract";
 import { resolveStoreThemeForMode } from "@/lib/cms/store-theme-utils";
 import type { ThemePackageDefinition } from "@/lib/theme-packages";
 
@@ -44,6 +46,18 @@ export function StoreThemeScope({
     () => resolveStoreThemeForMode(theme, activeMode),
     [activeMode, theme],
   );
+  const semanticTokens = useMemo(
+    () => resolveStorefrontSemanticTokens(effectiveTheme),
+    [effectiveTheme],
+  );
+  const aesthetic = useMemo(
+    () => resolveStorefrontAesthetic(effectiveTheme),
+    [effectiveTheme],
+  );
+  const aestheticCss = useMemo(
+    () => buildStorefrontAestheticCss(scopeSelector),
+    [scopeSelector],
+  );
   const scopedCustomCss = scopeStoreThemeCss(effectiveTheme.customCss, scopeSelector);
   const safeHeadInjection = useMemo(
     () => (effectiveTheme.globalHeadInjection ? sanitizeHtmlInjection(effectiveTheme.globalHeadInjection) : ""),
@@ -53,19 +67,30 @@ export function StoreThemeScope({
     () => (effectiveTheme.globalBodyInjection ? sanitizeHtmlInjection(effectiveTheme.globalBodyInjection) : ""),
     [effectiveTheme.globalBodyInjection],
   );
+  const resolvedStyle = useMemo(
+    () => ({
+      ...getStoreThemeStyle(effectiveTheme, themePackages),
+      ...semanticTokens,
+      ...aesthetic.tokens,
+    }) as CSSProperties,
+    [aesthetic.tokens, effectiveTheme, semanticTokens, themePackages],
+  );
 
   return (
     <div
       data-store-theme-scope={scopeId}
       data-theme-mode={activeMode}
       data-store-aesthetic={effectiveTheme.aesthetic ?? "minimal"}
-      data-store-density={effectiveTheme.densityScale ?? 0.5}
+      data-store-aesthetic-engine={aesthetic.id}
+      data-store-density={effectiveTheme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE}
+      data-store-section-spacing-mode={effectiveTheme.sectionSpacing ? "blocks" : "legacy"}
       className={activeMode}
-      style={getStoreThemeStyle(effectiveTheme, themePackages)}
+      style={resolvedStyle}
     >
       {safeHeadInjection ? (
         <template dangerouslySetInnerHTML={{ __html: safeHeadInjection }} />
       ) : null}
+      <style>{aestheticCss}</style>
       {scopedCustomCss ? <style>{scopedCustomCss}</style> : null}
       {children}
       {safeBodyInjection ? (

@@ -254,6 +254,46 @@ describe("store resolver mapping", () => {
     expect(store.pages.some((page) => page.slug === "/gallery")).toBe(false);
   });
 
+
+  it("hydrates the published storefront with the same modern theme state persisted by the editor", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-theme-parity", name: "Theme Parity", slug: "theme-parity", description: null,
+        currency_code: null, locale: null, is_published: true, store_type: "general-catalog",
+      },
+      { template_id: "general-catalog" },
+      {
+        preset_id: "default", theme_package_id: "default", mode: "light",
+        typography: null, components: { aesthetic: "minimal" }, colors: null,
+        aesthetic: "editorial", radius_scale: 0.23, density_scale: 0.41,
+        effects: { scrollReveals: true, hoverEffects: false, parallax: true, intensity: "bold" },
+        palette_source: "generated", palette_seed: "seed-42", schema_version: 3,
+        overrides: { sectionSpacing: "compact" }, resolved_tokens: null,
+      },
+      [], [], [],
+    );
+
+    expect(store.theme.aesthetic).toBe("editorial");
+    expect(store.theme.radiusScale).toBe(0.23);
+    expect(store.theme.densityScale).toBe(0.41);
+    expect(store.theme.sectionSpacing).toBe("compact");
+    expect(store.theme.effects).toEqual({ scrollReveals: true, hoverEffects: false, parallax: true, intensity: "bold" });
+    expect(store.theme.paletteSource).toBe("generated");
+    expect(store.theme.paletteSeed).toBe("seed-42");
+    expect(store.theme.schemaVersion).toBe(3);
+  });
+
+  it("uses canonical radius and density defaults when no scale is persisted", () => {
+    const store = buildResolvedStoreFromRecords(
+      { id: "store-theme-defaults", name: "Theme Defaults", slug: "theme-defaults", description: null, currency_code: null, locale: null, is_published: true, store_type: "general-catalog" },
+      { template_id: "general-catalog" },
+      { preset_id: "default", theme_package_id: "default", mode: "light", typography: null, components: null, colors: null, resolved_tokens: null },
+      [], [], [],
+    );
+    expect(store.theme.radiusScale).toBe(0.55);
+    expect(store.theme.densityScale).toBe(0.5);
+  });
+
   it("carries store-scoped custom css from the installed theme snapshot", () => {
     const store = buildResolvedStoreFromRecords(
       {
@@ -310,6 +350,48 @@ describe("store resolver mapping", () => {
     );
 
     expect(store.customDomain).toBe("shop.domain-store.com");
+  });
+
+
+  it("hydrates persisted layout variants and canonical variant options for public storefront rendering", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-r4-options",
+        name: "R4 Options Store",
+        slug: "r4-options-store",
+        description: "R4 options",
+        currency_code: "BDT",
+        locale: "en-BD",
+        is_published: true,
+        store_type: "threads",
+      },
+      { template_id: "threads" },
+      null,
+      [{
+        id: "page-r4-home",
+        slug: "/",
+        title: "Home",
+        seo_title: null,
+        seo_description: null,
+        is_homepage: true,
+      }],
+      [{
+        id: "block-r4-hero",
+        page_id: "page-r4-home",
+        block_type: "hero",
+        props: { title: "Modern hero" },
+        sort_order: 0,
+        is_visible: true,
+        layout_variant: "split",
+        variant_options: { mediaFit: "contain", contentWidth: "wide", rogue: "ignored" },
+      }],
+      [{ key: "storefront_profile", value: { template_id: "threads" } }],
+    );
+
+    const hero = store.pages[0]?.blocks[0];
+    expect(hero?.layoutVariant).toBe("split");
+    expect(hero?.variantOptions).toEqual({ mediaFit: "contain", contentWidth: "wide" });
+    expect(hero?.props).toEqual({ title: "Modern hero" });
   });
 
   it("can build a lightweight shell store without persisted page rows or page blocks", () => {

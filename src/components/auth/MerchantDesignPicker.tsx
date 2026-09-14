@@ -35,7 +35,7 @@ export default function MerchantDesignPicker({ selectedId, onSelect, onBack, onC
   const [previewId, setPreviewId] = useState<StorefrontTemplateId | null>(null);
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
 
-  const templates = useMemo(() => storefrontTemplateOptions.map((option) => {
+  const templates = useMemo(() => storefrontTemplateOptions.filter((option) => !option.adminOnly).map((option) => {
     const seed = getStorefrontTemplateSeedDefinition(option.value);
     const definition = getStorefrontTemplateDefinition(option.value);
     return {

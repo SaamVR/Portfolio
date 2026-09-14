@@ -39,6 +39,10 @@ export function normalizeOrderItems(items: unknown) {
   }
 
   return items.map((raw) => {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      throw new Error("Cart contains invalid items");
+    }
+
     const item = raw as OrderItemInput;
     const rawProductId = typeof item.productId === "string" ? item.productId.trim() : "";
     const productId = extractIdFromSlug(rawProductId);

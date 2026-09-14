@@ -21,62 +21,6 @@ interface Review {
   imageUrl?: string;
 }
 
-// Seeded pseudo-random reviews (kept as a floor until real reviews fill in)
-const generateSeededReviews = (productId: string): Review[] => {
-  const seed = parseInt(productId.replace(/-/g, "").slice(0, 8), 16) || 1;
-  const names = [
-    "Raihan K.", "Nusrat A.", "Tanvir H.", "Fahim M.", "Sadia R.",
-    "Arif S.", "Mithila D.", "Sakib N.", "Lamia J.", "Imran C.",
-    "Tasnim F.", "Rifat B.",
-  ];
-  const comments = [
-    "Excellent quality fabric, feels premium. Will definitely order more.",
-    "Great fit! True to size and the color is exactly as shown.",
-    "Very comfortable for daily wear. The stitching is solid.",
-    "Good value for the price. Delivery was fast too.",
-    "Love the material — soft yet durable. Highly recommend.",
-    "Ordered two more after trying the first one. Perfect basics.",
-    "Slightly longer than expected but overall great quality.",
-    "Best purchase this month. The fabric breathes really well.",
-    "Color faded slightly after first wash, but still looks good.",
-    "Perfect gift for my brother. He loved the fit and feel.",
-    "Wearing this every other day now. Super comfortable.",
-    "Impressed with the packaging and product quality both.",
-  ];
-  const sizes = ["S", "M", "L", "XL", "XXL"];
-  const mockPhotos = [
-    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=300", // T-shirt close up
-    "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&q=80&w=300", // Folded clothes
-    "https://images.unsplash.com/photo-1564584217132-2271fea7366b?auto=format&fit=crop&q=80&w=300", // Clothing rack
-    "https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&q=80&w=300", // Fabric texture
-  ];
-
-  const count = 3 + (seed % 3);
-  const reviews: Review[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const idx = (seed * 7 + i * 13) % names.length;
-    const cIdx = (seed * 3 + i * 11) % comments.length;
-    const rating = 3 + ((seed + i * 5) % 3);
-    const month = 1 + ((seed + i) % 12);
-    const day = 1 + ((seed * 3 + i * 7) % 28);
-
-    reviews.push({
-      id: `${productId}-seeded-${i}`,
-      author: names[idx],
-      rating,
-      date: `2025-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-      text: comments[cIdx],
-      size: sizes[(seed + i) % sizes.length],
-      verified: (seed + i) % 3 !== 0,
-      isReal: false,
-      imageUrl: (i === 0 || i === 2) ? mockPhotos[(seed + i) % mockPhotos.length] : undefined,
-    });
-  }
-
-  return reviews;
-};
-
 const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => {
   const dims = size === "sm" ? "h-3.5 w-3.5" : "h-5 w-5";
   return (
@@ -145,10 +89,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
     imageUrl: r.image_url ?? undefined,
   }));
 
-  const seededReviews = generateSeededReviews(productId);
-
-  // Real reviews shown first, seeded fill in after
-  const allReviews = [...realReviews, ...seededReviews];
+  const allReviews = realReviews;
   const visibleReviews = showAll ? allReviews : allReviews.slice(0, 3);
 
   const avgRating =
@@ -159,6 +100,8 @@ const ProductReviews = ({ productId }: { productId: string }) => {
   }));
 
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  if (allReviews.length === 0) return null;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

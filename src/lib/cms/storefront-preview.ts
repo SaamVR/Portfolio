@@ -1,5 +1,5 @@
 import type { Store } from "@/lib/cms/schema";
-import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
+import { applyTemplateDemoContentToPages, buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
 import { instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import {
   getStorefrontTemplateSeedDefinition,
@@ -7,12 +7,15 @@ import {
 } from "@/lib/cms/storefront-templates";
 import { sanitizeStoreBlocks } from "@/lib/cms/validation";
 import { fallbackThemePackages, resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
+import { STOREFRONT_TAXONOMY_SETTING_KEY } from "@/lib/storefront-taxonomy-snapshot";
 
 export function buildTemplatePreviewStore(
   templateId: StorefrontTemplateId,
   themePackages: ThemePackageDefinition[] = fallbackThemePackages,
 ): Store {
   const seed = getStorefrontTemplateSeedDefinition(templateId);
+  const previewStoreId = `preview-${templateId}`;
+  const catalogSeed = buildTemplateCatalogSeedRows(previewStoreId, templateId);
   const themePackage = resolveThemePackageById(seed.defaultTheme.themePackageId, themePackages, seed.defaultTheme.presetId);
   const pages = applyTemplateDemoContentToPages(
     instantiateStorePagesFromTemplate(templateId),
@@ -23,7 +26,7 @@ export function buildTemplatePreviewStore(
   }));
 
   return {
-    id: `preview-${templateId}`,
+    id: previewStoreId,
     name: `${seed.shortName} Demo`,
     slug: templateId,
     description: seed.storeDescription,
@@ -45,6 +48,20 @@ export function buildTemplatePreviewStore(
       customCss: seed.defaultTheme.customCss ?? themePackage.customCss,
     },
     pages,
-    siteSettings: seed.defaultSiteSettings,
+    siteSettings: {
+      ...seed.defaultSiteSettings,
+      [STOREFRONT_TAXONOMY_SETTING_KEY]: {
+        categories: catalogSeed.categoryRows.map((row, index) => ({
+          id: String(row.id),
+          name: row.name,
+          sort_order: typeof row.sort_order === "number" ? row.sort_order : index,
+        })),
+        types: catalogSeed.productTypeRows.map((row, index) => ({
+          id: `${previewStoreId}-type-${index}`,
+          name: row.name,
+          sort_order: typeof row.sort_order === "number" ? row.sort_order : index,
+        })),
+      },
+    },
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, Heart, ShoppingBag, Star } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useMemo, useState, type ReactElement } from "react";
 import type { Product } from "@/data/products";
 import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
@@ -21,6 +21,7 @@ import { PropertyListingCard } from "@/components/storefront/real-estate/Propert
 import { ServiceProductCard } from "@/components/storefront/service/ServiceProductCard";
 import { SubscriptionProductCard } from "@/components/storefront/subscriptions/SubscriptionProductCard";
 import { useStoreProductPresentation } from "@/components/storefront/product/useStoreProductPresentation";
+import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProductCard";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { cn } from "@/lib/utils";
@@ -70,81 +71,83 @@ function FashionProductCard({
   const metricOptionGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
   const cartSelection = resolveDefaultProductCartSelection(product, getPrimaryProductOptionValue(product, specs, "fashion"));
   const url = productUrl(product.id, product.name, currentStore?.slug);
-
-  const visibleColors = colorOptions.slice(0, 4);
+  const visibleColors = colorOptions.slice(0, 5);
   const remainingColors = colorOptions.length - visibleColors.length;
-
-  const visibleSizes = sizeOptions.slice(0, 3);
+  const visibleSizes = sizeOptions.slice(0, 4);
   const remainingSizes = sizeOptions.length - visibleSizes.length;
-  const visibleMetricGroups = metricOptionGroups.slice(0, 2);
-  const remainingMetricGroups = metricOptionGroups.length - visibleMetricGroups.length;
+  const visibleMetricGroups = metricOptionGroups.slice(0, 1);
 
   return (
-    <ProductCardShell>
-      <ProductCardMedia src={product.image} alt={product.name} href={url} aspect="4/5" fit="cover">
+    <ProductCardShell className="overflow-visible rounded-none border-0 bg-transparent shadow-none hover:translate-y-0 hover:shadow-none">
+      <ProductCardMedia
+        src={product.image}
+        alt={product.name}
+        href={url}
+        aspect="4/5"
+        fit="cover"
+        className="bg-muted"
+      >
         <ProductCardBadgeLayer
           badge={badge}
+          badgeClassName="rounded-none bg-background/95 px-2.5 py-1 text-[9px] tracking-[0.16em] text-foreground shadow-none"
           isInWishlist={isInWishlist(product.id)}
           onToggleWishlist={() => toggleItem(product.id)}
           wishlistLabel={product.name}
         />
       </ProductCardMedia>
 
-      <ProductCardContent>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground truncate min-w-0">
+      <ProductCardContent className="space-y-2 px-0 pb-1 pt-3">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {getDisplayableProductType(product.category) || getDisplayableProductType(product.type) || "Collection"}
         </p>
 
-        <ProductCardTitle href={url}>
+        <ProductCardTitle
+          href={url}
+          className="h-auto min-h-0 text-[0.96rem] font-medium leading-5 sm:text-[1.02rem]"
+        >
           {product.name}
         </ProductCardTitle>
 
-        <div className="flex flex-wrap items-center gap-1.5 min-h-[1.5rem]">
+        <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1">
           {visibleColors.map((color, index) => (
             <span
               key={`${color}-${index}`}
-              className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10 shadow-sm"
+              className="h-3 w-3 shrink-0 rounded-full border border-black/15 shadow-none"
               style={{ backgroundColor: color.toLowerCase() === "white" ? "#f3f4f6" : color.toLowerCase() }}
               title={color}
             />
           ))}
           {remainingColors > 0 ? (
-            <span className="text-[10px] font-semibold text-muted-foreground">+{remainingColors}</span>
+            <span className="text-[10px] text-muted-foreground">+{remainingColors} colors</span>
           ) : null}
 
-          {visibleSizes.map((size, index) => (
-            <span key={`${size}-${index}`} className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              {size}
+          {visibleSizes.length > 0 ? (
+            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              {visibleSizes.join(" · ")}{remainingSizes > 0 ? ` · +${remainingSizes}` : ""}
             </span>
-          ))}
-          {remainingSizes > 0 ? (
-            <span className="text-[10px] font-semibold text-muted-foreground">+{remainingSizes}</span>
           ) : null}
 
           {visibleMetricGroups.map((group) => (
-            <span key={group.key} className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            <span key={group.key} className="text-[10px] text-muted-foreground">
               {group.label}: {group.options[0]}
             </span>
           ))}
-          {remainingMetricGroups > 0 ? (
-            <span className="text-[10px] font-semibold text-muted-foreground">+{remainingMetricGroups}</span>
-          ) : null}
         </div>
 
-        <div className="flex items-baseline gap-2 pt-1 min-w-0">
-          <span className="text-lg font-bold text-primary truncate min-w-0">{formatPrice(product)}</span>
+        <div className="flex min-w-0 items-baseline gap-2 pt-0.5">
+          <span className="min-w-0 truncate text-base font-semibold text-foreground sm:text-lg">{formatPrice(product)}</span>
           {product.originalPrice && product.originalPrice > product.price ? (
-            <span className="text-xs text-muted-foreground line-through truncate min-w-0">BDT {product.originalPrice.toLocaleString()}</span>
+            <span className="min-w-0 truncate text-xs text-muted-foreground line-through">BDT {product.originalPrice.toLocaleString()}</span>
           ) : null}
         </div>
 
-        <ProductCardActions>
-          <div className="flex items-center gap-2 w-full">
+        <ProductCardActions className="pt-1">
+          <div className="flex w-full items-center gap-2">
             {onQuickView ? (
               <button
                 type="button"
                 onClick={() => onQuickView(product)}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-foreground hover:bg-secondary transition-colors"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border bg-background text-foreground transition-colors hover:border-foreground/40 hover:bg-muted sm:h-10 sm:w-10"
                 aria-label={`Quick view ${product.name}`}
               >
                 <Eye className="h-4 w-4" />
@@ -162,7 +165,7 @@ function FashionProductCard({
                 fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType,
                 storeId: currentStore?.id,
               })}
-              className="inline-flex h-10 flex-1 min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex h-11 min-w-0 flex-1 items-center justify-center border border-foreground bg-foreground px-3 text-sm font-semibold text-background transition-colors hover:bg-primary hover:text-primary-foreground sm:h-10"
             >
               Quick Add
             </button>
@@ -207,9 +210,13 @@ export default function ContextAwareProductCard({
   onQuickView?: (product: Product) => void;
 }) {
   const currentStore = useOptionalStore();
-  const { cardVariant, metadata } = useStoreProductPresentation(product);
+  const { templateId, cardVariant, metadata } = useStoreProductPresentation(product);
+  if (templateId === "threads") {
+    return <ThreadsProductCard product={product} onQuickView={onQuickView} />;
+  }
+
   const contactHref = storefrontPath("/contact", currentStore?.slug);
-  const reviewStats = useMemo(() => undefined, []);
+  const reviewStats = undefined;
   const renderers = {
     ...productCardRegistry,
     electronics: ({ product: currentProduct }: { product: Product; onQuickView?: (product: Product) => void }) => <ElectronicsProductCard product={currentProduct} reviewStats={reviewStats} />,

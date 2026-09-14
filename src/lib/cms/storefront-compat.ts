@@ -75,7 +75,7 @@ export function isSettingsTabCompatible(
   businessFamily: StoreBusinessFamily,
   catalogMode: StoreCatalogMode,
 ) {
-  if (tabValue === "payment" || tabValue === "delivery") {
+  if (tabValue === "payment" || tabValue === "delivery" || tabValue === "couriers") {
     return supportsTransactionalCheckout(businessFamily, catalogMode);
   }
 

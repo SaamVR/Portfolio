@@ -1,13 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/auth-context";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
-import { StorefrontLiveEditor } from "@/components/storefront/StorefrontLiveEditor";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
 import { StorefrontTemplateRenderer } from "@/components/storefront/StorefrontTemplateRenderer";
 import type { Store, StorePage } from "@/lib/cms/schema";
 import { useSearchParams } from "@/lib/react-router-dom-shim";
+
+const StorefrontLiveEditor = dynamic(
+  () => import("@/components/storefront/StorefrontLiveEditor").then((module) => module.StorefrontLiveEditor),
+  { ssr: false },
+);
 
 export function StorefrontPage({
   store,

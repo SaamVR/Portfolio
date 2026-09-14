@@ -42,6 +42,7 @@ test("theme swatches render repeated colors without duplicate React keys", () =>
         onAestheticChange={() => undefined}
         onScaleChange={() => undefined}
         onScalePresetChange={() => undefined}
+        onSectionSpacingChange={() => undefined}
       />,
     );
   } finally {
@@ -49,4 +50,32 @@ test("theme swatches render repeated colors without duplicate React keys", () =>
   }
 
   assert.equal(errors.filter((message) => message.includes("same key")).length, 0);
+});
+
+
+test("theme panel exposes section spacing presets", () => {
+  const html = renderToStaticMarkup(
+    <ThemePanel
+      theme={{ ...defaultStore.theme, sectionSpacing: "compact" }}
+      themePackages={fallbackThemePackages}
+      colors={{ primary: "#111111", accent: "#facc15", background: "#ffffff", foreground: "#111111" }}
+      fonts={["Inter"]}
+      onThemePackageChange={() => undefined}
+      onModeChange={() => undefined}
+      onColorChange={() => undefined}
+      onResetPalette={() => undefined}
+      onApplyRecipe={() => undefined}
+      onFontChange={() => undefined}
+      onAestheticChange={() => undefined}
+      onScaleChange={() => undefined}
+      onScalePresetChange={() => undefined}
+      onSectionSpacingChange={() => undefined}
+    />,
+  );
+
+  assert.match(html, /Section spacing/);
+  assert.match(html, /Tight/);
+  assert.match(html, /Compact/);
+  assert.match(html, /Comfortable/);
+  assert.match(html, /Airy/);
 });

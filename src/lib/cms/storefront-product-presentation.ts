@@ -191,6 +191,7 @@ function getVariantFromProductType(productType: string): ProductPresentationVari
 
 function getVariantFromTemplate(templateId: StorefrontTemplateId | null | undefined): ProductPresentationVariant {
   switch (templateId) {
+    case "threads":
     case "fashion":
       return "fashion";
     case "beauty":
@@ -238,6 +239,10 @@ export function resolveProductCardVariant({
     return explicit as ProductCardVariant;
   }
 
+  if (templateId === "threads") {
+    return "fashion";
+  }
+
   const fromType = getVariantFromProductType(normalizeVariant(productType ?? metadata?.product_type));
   if (fromType && fromType !== "single_product") {
     return fromType as ProductCardVariant;
@@ -264,6 +269,10 @@ export function resolveProductDetailVariant({
   const explicit = getExplicitPresentationVariant(normalizeVariant(displayVariant ?? metadata?.detail_variant));
   if (explicit) {
     return explicit as ProductDetailVariant;
+  }
+
+  if (templateId === "threads") {
+    return "fashion";
   }
 
   const fromType = getVariantFromProductType(normalizeVariant(productType ?? metadata?.product_type));

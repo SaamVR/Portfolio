@@ -3,6 +3,7 @@ import {
   getStorefrontTemplateDefinition,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
+import { getCompatibleVariantDefinitions, buildEditorCompatibilityContext } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 
 export type LayoutVariantOption = {
   id: string;
@@ -72,69 +73,6 @@ export type BasicStarterLayoutRecommendation = {
   summary: string;
   bestFor: string;
   sectionFocus: "content" | "layout" | "theme" | "pages";
-};
-
-const baseLayoutVariantOptions: Partial<Record<StorePageBlock["type"], LayoutVariantOption[]>> = {
-  hero: [
-    { id: "full-bleed", label: "Full Bleed", guidance: "Best when one strong image should sell the first impression.", previewSummary: "Big image first with copy layered over it." },
-    { id: "split", label: "Split", guidance: "Best when copy and product media need equal attention.", previewSummary: "Balanced copy and media side by side." },
-    { id: "centered", label: "Centered", guidance: "Best for a simple premium message and one focused CTA.", previewSummary: "Quiet centered message with a clear action." },
-    { id: "editorial", label: "Editorial", guidance: "Best for story-led and visual brands.", previewSummary: "Magazine-like framing with image drama." },
-  ],
-  "featured-products": [
-    { id: "2-col", label: "2 Columns", guidance: "Bigger cards for premium products or services.", previewSummary: "Large cards and slower scanning." },
-    { id: "3-col", label: "3 Columns", guidance: "Balanced density for most stores.", previewSummary: "Balanced browsing density." },
-    { id: "4-col", label: "4 Columns", guidance: "Fast scanning for larger catalogs.", previewSummary: "Dense catalog browsing." },
-    { id: "3-col-sidebar-left", label: "Left Guide", guidance: "Keeps browsing guidance beside the catalog.", previewSummary: "Products with a left guidance rail." },
-    { id: "3-col-sidebar-right", label: "Right Guide", guidance: "Keeps products visually first while retaining guidance.", previewSummary: "Products with a right guidance rail." },
-  ],
-  "recommended-products": [
-    { id: "2-col", label: "2 Columns", guidance: "Use larger recommendation cards when each item needs context." },
-    { id: "3-col", label: "3 Columns", guidance: "Balanced recommendations for most storefronts." },
-    { id: "4-col", label: "4 Columns", guidance: "Compact recommendation grid for larger catalogs." },
-  ],
-  "category-showcase": [
-    { id: "cards", label: "Cards", guidance: "Clear category discovery with equal visual weight." },
-    { id: "carousel", label: "Swipe Rail", guidance: "Best when mobile browsing should stay short and swipeable." },
-    { id: "masonry", label: "Masonry", guidance: "Best for visual categories with varied photography." },
-    { id: "compact-list", label: "Compact List", guidance: "Best when categories are practical rather than image-led." },
-  ],
-  "promo-banner": [
-    { id: "standard", label: "Promotion", guidance: "A normal campaign or offer CTA using the block copy and link." },
-    { id: "contact-cta", label: "WhatsApp / Contact", guidance: "Uses existing WhatsApp support settings automatically and falls back to Contact.", previewSummary: "Direct contact CTA without duplicate phone settings." },
-  ],
-  "trust-badges": [
-    { id: "cards", label: "Trust Cards", guidance: "Icons and short reassurance for delivery, support, returns, or payment." },
-    { id: "stats", label: "Proof Numbers", guidance: "Use badge labels as strong proof numbers such as 10K+ Orders, 4.9 Rating, or 3 Years." },
-  ],
-  "social-feed": [
-    { id: "gallery", label: "Gallery", guidance: "A visual grid for social or brand imagery." },
-    { id: "logo-strip", label: "Logo / Press Strip", guidance: "A compact row for partner, brand, publication, or trust logos." },
-    { id: "before-after", label: "Before / After", guidance: "Uses the first two images as a side-by-side transformation comparison." },
-  ],
-  "rich-text": [
-    { id: "standard", label: "Text Story", guidance: "Focused editorial copy without extra media." },
-    { id: "brand-story", label: "Image + Brand Story", guidance: "Pairs a brand image with the story in a two-column layout." },
-    { id: "blog-posts", label: "Blog Articles", guidance: "Turns this existing section slot into the store's configured Blog homepage widget so it can be reordered normally." },
-  ],
-};
-
-const templateLayoutVariantOrder: Partial<Record<StorefrontTemplateId, Partial<Record<StorePageBlock["type"], string[]>>>> = {
-  fashion: { hero: ["editorial", "full-bleed", "split", "centered"], "featured-products": ["2-col", "3-col", "4-col"], "category-showcase": ["cards", "masonry", "carousel"] },
-  beauty: { hero: ["split", "centered", "full-bleed"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "carousel"] },
-  electronics: { hero: ["split", "full-bleed", "centered"], "featured-products": ["4-col", "3-col", "3-col-sidebar-left", "3-col-sidebar-right"], "category-showcase": ["cards", "compact-list"] },
-  food: { hero: ["split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["compact-list", "carousel", "cards"], "promo-banner": ["contact-cta", "standard"] },
-  crafts: { hero: ["editorial", "split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["masonry", "cards", "carousel"], "rich-text": ["brand-story", "standard", "blog-posts"] },
-  "single-product": { hero: ["split", "full-bleed", "centered"], "trust-badges": ["cards", "stats"] },
-  "inquiry-catalog": { hero: ["split", "centered"], "featured-products": ["3-col", "4-col", "3-col-sidebar-left"], "category-showcase": ["cards", "compact-list"], "promo-banner": ["contact-cta", "standard"] },
-  service: { hero: ["split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "compact-list"], "promo-banner": ["contact-cta", "standard"], "trust-badges": ["stats", "cards"] },
-  booking: { hero: ["split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "compact-list"], "promo-banner": ["contact-cta", "standard"] },
-  hotel: { hero: ["full-bleed", "split", "centered"], "featured-products": ["2-col", "3-col"], "category-showcase": ["cards", "carousel"], "promo-banner": ["contact-cta", "standard"] },
-  "real-estate": { hero: ["full-bleed", "split", "centered"], "featured-products": ["3-col", "3-col-sidebar-left", "4-col"], "category-showcase": ["cards", "compact-list"], "promo-banner": ["contact-cta", "standard"] },
-  subscriptions: { hero: ["split", "centered"], "featured-products": ["3-col", "4-col"], "category-showcase": ["cards", "compact-list"], "trust-badges": ["stats", "cards"] },
-  "digital-downloads": { hero: ["split", "centered"], "featured-products": ["3-col", "4-col"], "category-showcase": ["cards", "compact-list"] },
-  landing: { hero: ["centered", "split", "full-bleed"], "promo-banner": ["contact-cta", "standard"], "trust-badges": ["stats", "cards"] },
-  "general-catalog": { hero: ["split", "full-bleed", "centered"], "featured-products": ["3-col", "4-col", "3-col-sidebar-left"], "category-showcase": ["cards", "carousel", "compact-list"] },
 };
 
 const defaultStarterLayouts: Record<BasicEditorPageType, BasicStarterLayoutRecommendation[]> = {
@@ -229,20 +167,18 @@ const noDeliveryTemplates = new Set<StorefrontTemplateId>([
 export function getBasicLayoutVariantOptions(
   templateId: StorefrontTemplateId,
   blockType: StorePageBlock["type"],
+  block?: StorePageBlock,
 ): LayoutVariantOption[] {
-  const base = baseLayoutVariantOptions[blockType] ?? [];
-  const preferredOrder = templateLayoutVariantOrder[templateId]?.[blockType];
-  if (!preferredOrder?.length) {
-    return base.map((option, index) => ({ ...option, recommended: index === 0 }));
-  }
-
-  const optionMap = new Map(base.map((option) => [option.id, option]));
-  const ordered = [
-    ...preferredOrder.map((id) => optionMap.get(id)).filter((option): option is LayoutVariantOption => Boolean(option)),
-    ...base.filter((option) => !preferredOrder.includes(option.id)),
-  ];
-
-  return ordered.map((option, index) => ({ ...option, recommended: index === 0 }));
+  const context = buildEditorCompatibilityContext(templateId, block);
+  return getCompatibleVariantDefinitions(templateId, blockType, block).map((definition) => ({
+    id: definition.id,
+    label: definition.label,
+    guidance: definition.guidance,
+    previewSummary: definition.description,
+    recommended: definition.recommendedFor?.templateIds?.includes(templateId)
+      || definition.recommendedFor?.businessFamilies?.includes(context.businessFamily)
+      || definition.editor.badge === "recommended",
+  }));
 }
 
 export function resolveBasicEditorPageType(pageSlug: string): BasicEditorPageType {

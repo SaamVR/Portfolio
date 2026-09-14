@@ -75,8 +75,11 @@ test("dedicated heavy routes remain outside the catch-all implementation contrac
   const orders = readFileSync(resolve(process.cwd(), "src/app/admin/(admin-dashboard)/orders/page.tsx"), "utf8");
   const products = readFileSync(resolve(process.cwd(), "src/app/admin/(admin-dashboard)/products/page.tsx"), "utf8");
   const settings = readFileSync(resolve(process.cwd(), "src/app/admin/(admin-dashboard)/site-settings/page.tsx"), "utf8");
+  const settingsExperience = readFileSync(resolve(process.cwd(), "src/views/admin/SiteSettingsExperience.tsx"), "utf8");
 
   assert.match(orders, /from "@\/views\/admin\/Orders"/);
   assert.match(products, /from "@\/views\/admin\/Products"/);
-  assert.match(settings, /from "@\/views\/admin\/SiteSettings"/);
+  assert.match(settings, /from "@\/views\/admin\/SiteSettingsExperience"/);
+  assert.match(settingsExperience, /from "@\/views\/admin\/SiteSettings"/);
+  assert.match(settingsExperience, /<SiteSettingsCore \/>/);
 });

@@ -30,11 +30,8 @@ const RelatedProducts = ({ currentProduct }: RelatedProductsProps) => {
         <AnimatedSection animation="blur">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <div className="mb-2 flex items-center gap-2">
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">Complete the look</p>
-                <span className="rounded bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-500 border border-green-500/20">BUNDLE & SAVE 10%</span>
-              </div>
-              <h2 className="font-heading text-2xl font-bold text-foreground">Frequently Bought Together</h2>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-primary">Complete the look</p>
+              <h2 className="font-heading text-2xl font-bold text-foreground">You may also like</h2>
             </div>
             <Link
               href={storefrontPath(`/shop?type=${encodeURIComponent(currentProduct.type)}`, currentStore?.slug)}

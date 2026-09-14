@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       supabaseAdmin,
       storeId,
       user.id,
-      ["owner", "admin", "editor"],
+      ["owner", "admin"],
     );
 
     if (!authorized) {

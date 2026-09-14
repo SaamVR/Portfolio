@@ -45,9 +45,5 @@ export function StorefrontShell({
     return content;
   }
 
-  return (
-    <Layout>
-      {content}
-    </Layout>
-  );
+  return <Layout>{content}</Layout>;
 }

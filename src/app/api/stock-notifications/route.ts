@@ -1,11 +1,14 @@
 import { createHash, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
+import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_BODY_BYTES = 4000;
 
 const STOCK_REQUESTER_WINDOW_MS = 60 * 60_000;
 const STOCK_REQUESTER_LIMIT = 15;
@@ -90,13 +93,31 @@ function rateLimitResponse(result: LimitResult) {
 }
 
 export const stockNotificationRouteDeps = {
+  loadStorePlanState,
   getSupabaseAdminClient,
   rateLimit,
 };
 
 export async function POST(req: Request) {
   try {
-    const parsed = parseStockNotificationInput(await req.json());
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Stock notification request is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Stock notification request is too large" }, { status: 413 });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    const parsed = parseStockNotificationInput(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid stock notification request" }, { status: 400 });
     }
@@ -105,13 +126,17 @@ export async function POST(req: Request) {
     if (website) return NextResponse.json({ success: true }, { status: 201 });
 
     const supabaseAdmin = stockNotificationRouteDeps.getSupabaseAdminClient();
-    const { data: store, error: storeError } = await supabaseAdmin
-      .from("stores")
-      .select("id,is_published")
-      .eq("id", storeId)
-      .maybeSingle();
-    if (storeError) throw storeError;
-    if (!store?.id || store.is_published !== true) {
+    const { data: storePlanState, error: storePlanError } = await stockNotificationRouteDeps.loadStorePlanState(
+      supabaseAdmin as never,
+      storeId,
+      { includePublished: true },
+    );
+    if (storePlanError) throw storePlanError;
+    if (!canExposePublicStorefront({
+      isPublished: storePlanState?.isPublished ?? false,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    })) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 

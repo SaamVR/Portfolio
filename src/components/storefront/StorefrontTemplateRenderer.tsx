@@ -1,10 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
-import { StorefrontAdminMode } from "@/components/storefront/StorefrontAdminMode";
-import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
-import { StorefrontShell } from "@/components/storefront/StorefrontShell";
+import { StorefrontRendererBoundary } from "@/components/storefront/platform/StorefrontRendererBoundary";
+import { StorefrontShellBoundary } from "@/components/storefront/platform/StorefrontShellBoundary";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
+import { resolveStorefrontRenderer } from "@/lib/cms/storefront-platform/rendering/renderer-registry";
+import { resolveStorefrontShell } from "@/lib/cms/storefront-platform/rendering/shell-registry";
 import {
   getStorefrontTemplateDefinition,
   resolveStorefrontTemplateId,
@@ -12,6 +14,11 @@ import {
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
 import { cn } from "@/lib/utils";
+
+const StorefrontAdminMode = dynamic(
+  () => import("@/components/storefront/StorefrontAdminMode").then((module) => module.StorefrontAdminMode),
+  { ssr: false },
+);
 
 function sortBlocksForTemplate(
   blocks: StorePageBlock[],
@@ -67,23 +74,27 @@ export function StorefrontTemplateRenderer({
   embedded?: boolean;
 }) {
   const { template, templateId } = resolveTemplateForStore(store);
+  const renderer = resolveStorefrontRenderer(template);
+  const shell = resolveStorefrontShell(template);
   const blocksToRender = sortBlocksForTemplate(blocks, template).filter(isBlockVisible);
   const hasComposableBlogBlock = blocksToRender.some(
     (block) => block.type === "rich-text" && block.layoutVariant === "blog-posts",
   );
 
-  return (
-    <StorefrontShell templateId={templateId} template={template} embedded={embedded}>
-      <div data-template-renderer="composable-blocks" data-template-homepage={page.isHomepage ? "true" : "false"}>
+  const pageContent = (
+    <>
+      <div
+        data-template-renderer={renderer.implementationId}
+        data-renderer-family={renderer.familyId}
+        data-template-homepage={page.isHomepage ? "true" : "false"}
+      >
         {blocksToRender.map((block, index) => (
           <div
             key={block.id}
             data-ezcomo-block-id={block.id}
             data-ezcomo-block-type={block.type}
             onClick={() => {
-              if (canManageStorefront && adminMode) {
-                onSelectBlock(block.id);
-              }
+              if (canManageStorefront && adminMode) onSelectBlock(block.id);
             }}
             className={cn(
               "relative transition-shadow",
@@ -94,14 +105,23 @@ export function StorefrontTemplateRenderer({
               selectedBlockId === block.id && "ring-2 ring-primary/50",
             )}
           >
-            {canManageStorefront && adminMode ? (
-              <StorefrontAdminMode pageId={page.id} block={block} index={index} />
-            ) : null}
-            <StorefrontBlockRenderer block={block} template={template} />
+            {canManageStorefront && adminMode ? <StorefrontAdminMode pageId={page.id} block={block} index={index} /> : null}
+            <StorefrontRendererBoundary implementationId={renderer.implementationId} block={block} template={template} />
           </div>
         ))}
       </div>
-      {page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
-    </StorefrontShell>
+      {renderer.familyId === "generic-commerce" && page.isHomepage && !hasComposableBlogBlock ? <BlogHomepageWidget /> : null}
+    </>
+  );
+
+  return (
+    <StorefrontShellBoundary
+      shellId={shell.id}
+      templateId={templateId}
+      template={template}
+      embedded={embedded}
+    >
+      {pageContent}
+    </StorefrontShellBoundary>
   );
 }

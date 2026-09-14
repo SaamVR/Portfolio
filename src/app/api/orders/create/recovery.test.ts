@@ -35,6 +35,7 @@ function createAdminMock(options?: {
   persistedPaymentMethod?: string;
   rpcError?: { message: string } | null;
   onRpc?: (name: string, args: Record<string, unknown>) => void;
+  storefrontProfile?: Record<string, unknown> | null;
 }) {
   const replayed = options?.replayed ?? true;
   const persistedPaymentMethod = options?.persistedPaymentMethod ?? "bkash";
@@ -84,9 +85,14 @@ function createAdminMock(options?: {
             return {
               eq() {
                 return {
-                  eq() {
+                  eq(_column: string, key: string) {
                     return {
-                      maybeSingle: async () => ({ data: null, error: null }),
+                      maybeSingle: async () => ({
+                        data: key === "storefront_profile" && options?.storefrontProfile !== undefined
+                          ? { value: options.storefrontProfile }
+                          : null,
+                        error: null,
+                      }),
                     };
                   },
                 };
@@ -139,6 +145,143 @@ afterEach(() => {
 });
 
 describe("order creation checkout recovery", () => {
+  test("rejects malformed JSON as a client error before touching commerce data", async () => {
+    let adminCalls = 0;
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => {
+      adminCalls += 1;
+      throw new Error("admin client should not be created");
+    });
+
+    const response = await POST(new Request("https://example.com/api/orders/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"storeId":',
+    }));
+
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /invalid json/i);
+    assert.equal(adminCalls, 0);
+  });
+
+  test("rejects oversized order payloads before parsing or database access", async () => {
+    let adminCalls = 0;
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => {
+      adminCalls += 1;
+      throw new Error("admin client should not be created");
+    });
+
+    const response = await POST(new Request("https://example.com/api/orders/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ notes: "x".repeat(70 * 1024) }),
+    }));
+
+    assert.equal(response.status, 413);
+    const body = await response.json();
+    assert.match(body.error, /too large/i);
+    assert.equal(adminCalls, 0);
+  });
+
+  test("uses the authenticated user email instead of a browser-supplied email", async () => {
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
+    const rpcArgs: Array<Record<string, unknown>> = [];
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string, args: Record<string, unknown>) => {
+      rpcArgs.push(args);
+      return originalRpc(name, args);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => ({
+      id: "10000000-0000-4000-8000-000000000099",
+      email: "owner@example.test",
+    }) as never);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+    mock.method(orderCreateRouteDeps, "resolveStorePaymentAuthority", async (_admin, _storeId, method) => ({
+      allowed: true, paymentMethod: method, providerId: null, prepaidEligible: false, reason: null,
+    }));
+
+    const request = buildRequest("cod");
+    const body = await request.json();
+    body.customerEmail = "attacker@example.test";
+    const response = await POST(new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer test" },
+      body: JSON.stringify(body),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(rpcArgs[0]?._customer_email, "owner@example.test");
+  });
+
+  test("does not accept an injected guest notification email", async () => {
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
+    const rpcArgs: Array<Record<string, unknown>> = [];
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string, args: Record<string, unknown>) => {
+      rpcArgs.push(args);
+      return originalRpc(name, args);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+    mock.method(orderCreateRouteDeps, "resolveStorePaymentAuthority", async (_admin, _storeId, method) => ({
+      allowed: true, paymentMethod: method, providerId: null, prepaidEligible: false, reason: null,
+    }));
+
+    const request = buildRequest("cod");
+    const body = await request.json();
+    body.customerEmail = "victim@example.test";
+    const response = await POST(new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(rpcArgs[0]?._customer_email, null);
+  });
+
+  test("rejects unauthenticated order creation when the merchant disables guest checkout", async () => {
+    const admin = createAdminMock({
+      replayed: false,
+      persistedPaymentMethod: "cod",
+      storefrontProfile: { allow_guest_checkout: false },
+    });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string, args: Record<string, unknown>) => {
+      rpcCalls += 1;
+      return originalRpc(name, args);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("cod"));
+    assert.equal(response.status, 401);
+    const body = await response.json();
+    assert.match(body.error, /sign in is required/i);
+    assert.equal(rpcCalls, 0);
+  });
+
   test("returns the persisted payment method and skips order-created side effects for an idempotent replay", async () => {
     const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "bkash" });
     let dispatchCount = 0;

@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminEmptyState from "@/components/admin/AdminEmptyState";
 import { toast } from "sonner";
 import { Star, Check, X, MessageSquare, Loader2, RefreshCw } from "lucide-react";
@@ -29,7 +31,7 @@ interface ProductReview {
 }
 
 const StarDisplay = ({ rating }: { rating: number }) => (
-  <div className="flex items-center gap-0.5">
+  <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
     {[1, 2, 3, 4, 5].map((s) => (
       <Star
         key={s}
@@ -43,7 +45,7 @@ const StarDisplay = ({ rating }: { rating: number }) => (
 );
 
 const statusBadge = {
-  pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  pending: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:text-yellow-300",
   approved: "bg-primary/10 text-primary border-primary/20",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
 };
@@ -147,64 +149,82 @@ const Reviews = () => {
 
   const filtered = filterTab === "all" ? reviews : reviews.filter((r) => r.status === filterTab);
   const pendingCount = reviews.filter((r) => r.status === "pending").length;
+  const approvedCount = reviews.filter((r) => r.status === "approved").length;
+  const rejectedCount = reviews.filter((r) => r.status === "rejected").length;
 
-  const tabs: { key: ReviewStatus; label: string }[] = [
-    { key: "all", label: `All (${reviews.length})` },
-    { key: "pending", label: `Pending (${pendingCount})` },
-    { key: "approved", label: `Approved (${reviews.filter((r) => r.status === "approved").length})` },
-    { key: "rejected", label: `Rejected (${reviews.filter((r) => r.status === "rejected").length})` },
+  const tabs: { key: ReviewStatus; label: string; count: number }[] = [
+    { key: "all", label: "All", count: reviews.length },
+    { key: "pending", label: "Pending", count: pendingCount },
+    { key: "approved", label: "Approved", count: approvedCount },
+    { key: "rejected", label: "Rejected", count: rejectedCount },
   ];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Reviews</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Moderate customer reviews before they appear on product pages
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-heading text-xl font-bold text-foreground">Review moderation</h2>
+            {pendingCount > 0 ? <Badge>{pendingCount} awaiting decision</Badge> : <Badge variant="secondary">Caught up</Badge>}
+          </div>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Decide what appears publicly, then reply when a customer needs a visible store response.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" onClick={() => void refetch()} className="min-h-11 w-full gap-2 sm:w-auto">
+          <RefreshCw className="h-4 w-4" /> Refresh reviews
         </Button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="mb-6 flex gap-1 border-b border-border">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilterTab(key)}
-            className={cn(
-              "border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
-              filterTab === key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {label}
-            {key === "pending" && pendingCount > 0 && (
-              <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-                {pendingCount}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="space-y-2 sm:hidden">
+        <Label htmlFor="review-status-filter">Review status</Label>
+        <Select value={filterTab} onValueChange={(value) => setFilterTab(value as ReviewStatus)}>
+          <SelectTrigger id="review-status-filter" className="min-h-12 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {tabs.map(({ key, label, count }) => (
+              <SelectItem key={key} value={key}>{label} ({count})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Content */}
+      <div className="hidden overflow-x-auto border-b border-border sm:block">
+        <div className="flex min-w-max gap-1">
+          {tabs.map(({ key, label, count }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilterTab(key)}
+              className={cn(
+                "min-h-11 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                filterTab === key
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label} ({count})
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isLoading && reviews.length === 0 ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="flex min-h-56 items-center justify-center rounded-xl border border-border bg-card/40">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading reviews…
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <AdminEmptyState
           icon={MessageSquare}
-          title={filterTab === "pending" ? "No reviews awaiting moderation" : "No reviews yet"}
-          description={filterTab === "pending" ? "You are caught up. Any newly submitted reviews will show here for moderation." : "Reviews will appear here once customers start submitting feedback after real orders."}
-          helper={filterTab === "pending" ? "This is the ideal calm state before or after launch." : "Once the first orders are fulfilled, this screen becomes the trust-management queue for the storefront."}
-          actions={activeStoreId ? [
+          title={filterTab === "pending" ? "No reviews awaiting moderation" : filterTab === "all" ? "No reviews yet" : `No ${filterTab} reviews`}
+          description={filterTab === "pending" ? "You are caught up. Newly submitted reviews will appear here for moderation." : filterTab === "all" ? "Reviews will appear here once customers start submitting feedback after real orders." : `There are no reviews with ${filterTab} status right now.`}
+          helper={filterTab === "pending" ? "A clear queue makes it easier to keep storefront trust current without repeatedly scanning old reviews." : "Use the status filter to switch between moderation states."}
+          actions={filterTab !== "all" ? [
+            { label: "Show all reviews", onClick: () => setFilterTab("all") } as any,
+          ] : activeStoreId ? [
             { label: "Open orders", href: `/admin/orders?storeId=${encodeURIComponent(activeStoreId)}` },
             { label: "Open launch readiness", href: `/admin/launch?storeId=${encodeURIComponent(activeStoreId)}`, variant: "outline" },
           ] : []}
@@ -212,16 +232,17 @@ const Reviews = () => {
       ) : (
         <div className="space-y-4">
           {filtered.map((review) => (
-            <div key={review.id} className="rounded-xl border border-border bg-card overflow-hidden">
-              {/* Review Card Header */}
-              <div className="p-5">
-                <div className="flex items-start gap-4">
-                  {/* Product thumbnail */}
-                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-secondary">
+            <div key={review.id} className={cn(
+              "overflow-hidden rounded-xl border bg-card",
+              review.status === "pending" ? "border-primary/30" : "border-border",
+            )}>
+              <div className="p-4 sm:p-5">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-secondary sm:h-14 sm:w-14">
                     {review.products?.image_url ? (
                       <img
                         src={review.products.image_url}
-                        alt={review.products?.name}
+                        alt={review.products?.name ?? "Reviewed product"}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -229,83 +250,73 @@ const Reviews = () => {
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <p className="font-heading text-sm font-semibold text-foreground line-clamp-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="line-clamp-1 font-heading text-sm font-semibold text-foreground">
                           {review.products?.name ?? "Unknown Product"}
                         </p>
-                        <div className="mt-1 flex items-center gap-3 flex-wrap">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <StarDisplay rating={review.rating} />
                           <span className="text-xs text-muted-foreground">by {review.author_name}</span>
-                          {review.size_purchased && (
-                            <span className="text-xs text-muted-foreground">Size: {review.size_purchased}</span>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            Order: {review.orders?.order_number ?? "-"}
-                          </span>
+                          {review.size_purchased ? <span className="text-xs text-muted-foreground">Size {review.size_purchased}</span> : null}
                         </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {new Date(review.created_at).toLocaleDateString("en-US", {
-                            year: "numeric", month: "short", day: "numeric",
-                          })}
-                        </p>
                       </div>
-                      <Badge
-                        className={cn(
-                          "capitalize border text-xs",
-                          statusBadge[review.status]
-                        )}
-                      >
-                        {review.status}
-                      </Badge>
+                      <Badge className={cn("capitalize border text-xs", statusBadge[review.status])}>{review.status}</Badge>
                     </div>
-
-                    {review.review_text && (
-                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                        "{review.review_text}"
-                      </p>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span>Order {review.orders?.order_number ?? "—"}</span>
+                      <span>{new Date(review.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
+                    </div>
+                    {review.review_text ? (
+                      <p className="mt-3 text-sm leading-6 text-foreground/85">“{review.review_text}”</p>
+                    ) : (
+                      <p className="mt-3 text-sm italic text-muted-foreground">Rating submitted without written feedback.</p>
                     )}
                   </div>
                 </div>
 
-                {/* Admin reply display */}
-                {review.admin_reply && replyingId !== review.id && (
-                  <div className="mt-4 ml-18 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-primary">Store Reply</span>
-                      <button
+                {review.admin_reply && replyingId !== review.id ? (
+                  <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:ml-[4.5rem]">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-xs font-semibold text-primary">Store reply</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11 justify-start px-2 text-xs text-muted-foreground hover:text-destructive sm:justify-center"
                         onClick={() => handleDeleteReply(review.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                        disabled={updateReview.isPending}
                       >
                         Remove reply
-                      </button>
+                      </Button>
                     </div>
-                    <p className="text-sm text-foreground">{review.admin_reply}</p>
+                    <p className="text-sm leading-6 text-foreground">{review.admin_reply}</p>
                   </div>
-                )}
+                ) : null}
 
-                {/* Inline reply form */}
-                {replyingId === review.id && (
-                  <div className="mt-4 space-y-2">
+                {replyingId === review.id ? (
+                  <div className="mt-4 space-y-3 sm:ml-[4.5rem]">
+                    <Label htmlFor={`review-reply-${review.id}`}>Public store reply</Label>
                     <Textarea
+                      id={`review-reply-${review.id}`}
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Write a reply that customers will see below this review..."
-                      className="min-h-[80px] text-sm"
+                      placeholder="Write a helpful reply customers will see below this review…"
+                      className="min-h-24 text-sm"
                       autoFocus
                     />
-                    <div className="flex gap-2">
+                    <div className="grid gap-2 sm:flex">
                       <Button
-                        size="sm"
+                        className="min-h-11"
                         onClick={() => handleSaveReply(review.id)}
                         disabled={!replyText.trim() || updateReview.isPending}
                       >
-                        {updateReview.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-                        Save Reply
+                        {updateReview.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save reply
                       </Button>
                       <Button
-                        size="sm"
+                        className="min-h-11"
                         variant="outline"
                         onClick={() => { setReplyingId(null); setReplyText(""); }}
                       >
@@ -313,37 +324,32 @@ const Reviews = () => {
                       </Button>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Action Bar */}
-              <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-5 py-3">
-                {review.status !== "approved" && (
+              <div className="grid grid-cols-2 gap-2 border-t border-border bg-muted/30 p-3 sm:flex sm:flex-wrap sm:items-center sm:px-5">
+                {review.status !== "approved" ? (
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1.5 text-primary hover:bg-primary/10 hover:text-primary"
+                    className="min-h-11 gap-2"
                     onClick={() => handleApprove(review.id)}
                     disabled={updateReview.isPending}
                   >
-                    <Check className="h-3.5 w-3.5" /> Approve
+                    <Check className="h-4 w-4" /> Approve
                   </Button>
-                )}
-                {review.status !== "rejected" && (
+                ) : null}
+                {review.status !== "rejected" ? (
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    variant="outline"
+                    className="min-h-11 gap-2 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => handleReject(review.id)}
                     disabled={updateReview.isPending}
                   >
-                    <X className="h-3.5 w-3.5" /> Reject
+                    <X className="h-4 w-4" /> Reject
                   </Button>
-                )}
+                ) : null}
                 <Button
-                  size="sm"
-                  variant="ghost"
-                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  variant="outline"
+                  className="min-h-11 gap-2"
                   onClick={() => {
                     if (replyingId === review.id) {
                       setReplyingId(null);
@@ -354,17 +360,18 @@ const Reviews = () => {
                     }
                   }}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {review.admin_reply ? "Edit Reply" : "Reply"}
+                  <MessageSquare className="h-4 w-4" />
+                  {review.admin_reply ? "Edit reply" : "Reply"}
                 </Button>
                 <Button
-                  size="sm"
                   variant="ghost"
-                  className="ml-auto gap-1.5 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => deleteReview.mutate(review.id)}
+                  className="min-h-11 text-destructive/70 hover:bg-destructive/10 hover:text-destructive sm:ml-auto"
+                  onClick={() => {
+                    if (confirm("Delete this customer review? This cannot be undone.")) deleteReview.mutate(review.id);
+                  }}
                   disabled={deleteReview.isPending}
                 >
-                  Delete
+                  Delete review
                 </Button>
               </div>
             </div>

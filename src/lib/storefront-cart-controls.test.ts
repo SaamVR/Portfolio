@@ -7,9 +7,13 @@ const root = process.cwd();
 
 test("CartDrawer mobile icon controls keep 44px hit areas and accessible names", () => {
   const source = readFileSync(path.resolve(root, "src/components/CartDrawer.tsx"), "utf8");
+  const sheetSource = readFileSync(path.resolve(root, "src/components/ui/sheet.tsx"), "utf8");
 
-  assert.ok((source.match(/h-11 w-11/g) || []).length >= 5);
-  assert.match(source, /aria-label="Close cart"/);
+  assert.ok((source.match(/h-11 w-11/g) || []).length >= 4);
+  assert.match(source, /<Sheet open=\{isCartOpen\} onOpenChange=\{setIsCartOpen\}>/);
+  assert.match(source, /<SheetContent/);
+  assert.match(sheetSource, /h-11 w-11/);
+  assert.match(sheetSource, /<span className="sr-only">Close<\/span>/);
   assert.match(source, /aria-label={`Remove \$\{item\.name\} from cart`}/);
   assert.match(source, /aria-label={`Decrease quantity of \$\{item\.name\}`}/);
   assert.match(source, /aria-label={`Increase quantity of \$\{item\.name\}`}/);

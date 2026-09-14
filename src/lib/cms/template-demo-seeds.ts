@@ -185,6 +185,7 @@ const templateAliasMap: Record<string, TemplateDemoSeedId> = {
   landing_page: "landing",
   beauty_personal_care: "beauty",
   fashion_catalog: "fashion",
+  threads: "fashion",
   gadgets_electronics: "electronics",
   food_menu: "food",
   crafts_bengali_heritage: "crafts",
@@ -636,6 +637,7 @@ export function applyTemplateDemoContentToPages<
     blocks: Array<{
       type: string;
       props: Record<string, unknown>;
+      layoutVariant?: string;
     }>;
   },
 >(pages: TPage[], templateId: string): TPage[] {
@@ -648,6 +650,8 @@ export function applyTemplateDemoContentToPages<
   const featuredSeed = homepageBlocks.find((block) => block.type === "featured_products")?.data ?? null;
   const faqSeed = homepageBlocks.find((block) => ["faq", "faq_accordion"].includes(block.type ?? ""))?.data ?? null;
   const promoSeed = homepageBlocks.find((block) => ["promo_banner", "offer_banner", "deal_banner", "countdown", "cta"].includes(block.type ?? ""))?.data ?? null;
+  const isThreadsPreview = templateId === "threads";
+  const isFashionPreview = normalizeTemplateId(templateId) === "fashion" && !isThreadsPreview;
 
   return pages.map((page) => {
     if (!page.isHomepage && page.slug !== "/") {
@@ -657,21 +661,179 @@ export function applyTemplateDemoContentToPages<
     return {
       ...page,
       blocks: page.blocks.map((block) => {
+        if (isThreadsPreview) {
+          const productImages = (seedStore?.products ?? [])
+            .flatMap((product) => (product.images ?? []).slice(0, 1).map((image) => image.url))
+            .filter(Boolean);
+          const communityImages = Array.from(new Set([
+            assets.promo_image_url,
+            assets.story_image_url,
+            ...productImages,
+          ].filter((image): image is string => Boolean(image)))).slice(0, 4);
+
+          if (block.type === "hero") {
+            return {
+              ...block,
+              layoutVariant: "split",
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                tagline: "Wear Your Story",
+                title: "Wear Your Story",
+                highlight: "",
+                subtitle: "Art. Culture. People. On a Higher Thread.",
+                ctaText: "Explore New Arrivals",
+                ctaLink: "/shop",
+                secondaryCtaText: "New arrivals",
+                secondaryCtaLink: "/shop?sort=newest",
+                mediaUrl: assets.hero_image_url ?? "",
+                mediaType: "image",
+                mobileImageUrl: assets.hero_mobile_image_url ?? assets.hero_image_url ?? "",
+                imageAlt: `${seedStore?.name ?? "Threads"} collection`,
+              },
+            };
+          }
+
+          if (block.type === "trust-badges") {
+            return { ...block, props: { ...block.props, title: "More Than a T-Shirt", badges: [
+              { label: "Stories You Can Wear", description: "Our clothing carries real people and places." },
+              { label: "Rooted in Bengal", description: "Inspired by our heritage, made for today." },
+              { label: "Illustrated to Stand Apart", description: "Original art, not mass production." },
+              { label: "Own What You Wear", description: "Wear with purpose and personality." },
+            ] } };
+          }
+
+          if (block.type === "category-showcase") {
+            return {
+              ...block,
+              layoutVariant: "carousel",
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                tagline: "Find your everyday",
+                title: "Shop by category",
+                autoplay: true,
+                autoplayIntervalMs: 3600,
+                showArrows: true,
+                limit: 5,
+                items: (seedStore?.categories ?? []).filter((category) => category.is_active !== false).map((category) => ({
+                  label: category.name,
+                  value: category.name,
+                  tagline: category.description ?? "",
+                  imageUrl: category.image_url ?? "",
+                  filterKey: "category" as const,
+                })),
+              },
+            };
+          }
+
+          if (block.type === "promo-banner") {
+            return {
+              ...block,
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                badgeText: "Made with meaning",
+                title: "Handmade for Home",
+                subtitle: "Thoughtful pieces for a warmer, art-led home.",
+                ctaText: "Explore Home Decor",
+                ctaLink: "/shop",
+                imageUrl: assets.promo_image_url ?? productImages[0] ?? "",
+                imageAlt: "Threads everyday essentials",
+                secondaryTitle: "Small Gifts, Big Meaning",
+                secondarySubtitle: "Handcrafted gifts for every special moment.",
+                secondaryCtaText: "Shop Gifts",
+                secondaryCtaLink: "/shop",
+                secondaryImageUrl: assets.story_image_url ?? productImages[1] ?? assets.hero_image_url ?? "",
+                secondaryImageAlt: "Threads considered collection",
+              },
+            };
+          }
+
+          if (block.type === "featured-products") {
+            return {
+              ...block,
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                tagline: "Most loved",
+                title: "Featured products",
+                source: "featured-or-all",
+                limit: 10,
+                autoplay: true,
+                autoplayIntervalMs: 4400,
+                showArrows: true,
+              },
+            };
+          }
+
+          if (block.type === "recommended-products") {
+            return { ...block, decoration: "subtle", props: { ...block.props, tagline: "Just landed", title: "New at EZCOMO", source: "newest", limit: 8 } };
+          }
+
+          if (block.type === "social-feed") {
+            return {
+              ...block,
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                title: "Join our community",
+                subtitle: "Real outfits, repeat wears, and the people who make these pieces their own.",
+                images: communityImages,
+              },
+            };
+          }
+
+          if (block.type === "faq-accordion") {
+            return {
+              ...block,
+              props: {
+                ...block.props,
+                title: "Questions? We have answers",
+                subtitle: "Sizing, delivery, care, and everything before checkout.",
+                faqs: (seedStore?.faqs ?? [])
+                  .filter((entry) => entry.question && entry.answer)
+                  .map((entry) => ({ q: entry.question, a: entry.answer })),
+              },
+            };
+          }
+
+          if (block.type === "rich-text") {
+            return {
+              ...block,
+              decoration: "subtle",
+              props: {
+                ...block.props,
+                eyebrow: "Style travels further",
+                title: "Made for wherever the day takes you.",
+                body: "Easy layers and expressive graphics should feel just as good on the tenth wear as the first. Threads keeps the shapes relaxed, the palette grounded, and the details useful.",
+                align: "left",
+                imageUrl: assets.story_image_url ?? productImages[2] ?? assets.hero_image_url ?? "",
+                imageAlt: "Threads lifestyle story",
+              },
+            };
+          }
+        }
+
         if (block.type === "hero" && heroSeed) {
           const primaryCta = heroSeed.primary_cta as Record<string, unknown> | undefined;
           const secondaryCta = heroSeed.secondary_cta as Record<string, unknown> | undefined;
 
           return {
             ...block,
+            ...(isFashionPreview ? { layoutVariant: "poster" } : {}),
             props: {
               ...block.props,
-              tagline: getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
-              title: getString(heroSeed.heading, block.props.title as string | undefined),
-              subtitle: getString(heroSeed.subheading, block.props.subtitle as string | undefined),
-              ctaText: getString(primaryCta?.label, block.props.ctaText as string | undefined),
+              tagline: isFashionPreview ? "New Drop / 2026" : getString(heroSeed.eyebrow, block.props.tagline as string | undefined),
+              title: isFashionPreview ? "Built for the" : getString(heroSeed.heading, block.props.title as string | undefined),
+              highlight: isFashionPreview ? "City" : block.props.highlight,
+              subtitle: isFashionPreview
+                ? "Relaxed silhouettes, graphic staples, and easy layers made for everyday wear."
+                : getString(heroSeed.subheading, block.props.subtitle as string | undefined),
+              ctaText: isFashionPreview ? "Shop New Drop" : getString(primaryCta?.label, block.props.ctaText as string | undefined),
               ctaLink: getString(primaryCta?.url, block.props.ctaLink as string | undefined),
-              secondaryCtaText: getString(secondaryCta?.label, block.props.secondaryCtaText as string | undefined),
-              secondaryCtaLink: getString(secondaryCta?.url, block.props.secondaryCtaLink as string | undefined),
+              secondaryCtaText: isFashionPreview ? "View Collections" : getString(secondaryCta?.label, block.props.secondaryCtaText as string | undefined),
+              secondaryCtaLink: isFashionPreview ? "/shop" : getString(secondaryCta?.url, block.props.secondaryCtaLink as string | undefined),
               imageUrl: getString(heroSeed.image_url, assets.hero_image_url ?? (block.props.imageUrl as string | undefined)),
               mobileImageUrl: getString(heroSeed.mobile_image_url, assets.hero_mobile_image_url ?? (block.props.mobileImageUrl as string | undefined)),
               imageAlt: getString(heroSeed.image_alt, `${seedStore?.name ?? "Store"} hero`),
@@ -682,10 +844,21 @@ export function applyTemplateDemoContentToPages<
         if (block.type === "category-showcase" && categorySeed) {
           return {
             ...block,
+            ...(isFashionPreview ? { layoutVariant: "cards" } : {}),
             props: {
               ...block.props,
-              title: getString(categorySeed.title, block.props.title as string | undefined),
-              tagline: getString(categorySeed.subtitle ?? categorySeed.eyebrow, block.props.tagline as string | undefined),
+              title: isFashionPreview ? "Shop by Collection" : getString(categorySeed.title, block.props.title as string | undefined),
+              tagline: isFashionPreview ? "Collections" : getString(categorySeed.subtitle ?? categorySeed.eyebrow, block.props.tagline as string | undefined),
+              ...(isFashionPreview ? {
+                limit: 5,
+                items: (seedStore?.categories ?? []).filter((category) => category.is_active !== false).map((category) => ({
+                  label: category.name,
+                  value: category.name,
+                  tagline: category.description ?? "",
+                  imageUrl: category.image_url ?? "",
+                  filterKey: "category" as const,
+                })),
+              } : {}),
               fallbackImageUrl: getString(categorySeed.fallback_image_url, assets.fallback_category_image_url ?? (block.props.fallbackImageUrl as string | undefined)),
             },
           };
@@ -718,11 +891,29 @@ export function applyTemplateDemoContentToPages<
             ...block,
             props: {
               ...block.props,
-              title: getString(promoSeed.title ?? promoSeed.heading, block.props.title as string | undefined),
+              title: isFashionPreview ? "The Mid-Season Edit" : getString(promoSeed.title ?? promoSeed.heading, block.props.title as string | undefined),
+              ...(isFashionPreview ? {
+                subtitle: "Selected staples and easy layers, brought together for the season ahead.",
+                ctaText: "Shop the edit",
+                ctaLink: "/shop",
+              } : {}),
               imageUrl: getString(promoSeed.image_url, assets.promo_image_url ?? (block.props.imageUrl as string | undefined)),
               backgroundImageUrl: getString(promoSeed.background_image_url, assets.promo_image_url ?? (block.props.backgroundImageUrl as string | undefined)),
             },
           };
+        }
+
+        if (isFashionPreview && block.type === "testimonials") {
+          return { ...block, props: { ...block.props, title: "Worn. Washed. Repeated.", subtitle: "What customers say after receiving their order." } };
+        }
+        if (isFashionPreview && block.type === "social-feed") {
+          return { ...block, props: { ...block.props, title: "Styled beyond the studio", subtitle: "Outfits, details, and everyday styling from the lookbook." } };
+        }
+        if (isFashionPreview && block.type === "trust-badges") {
+          return { ...block, props: { ...block.props, title: "The essentials, handled" } };
+        }
+        if (isFashionPreview && block.type === "faq-accordion") {
+          return { ...block, props: { ...block.props, title: "Before you order" } };
         }
 
         return block;

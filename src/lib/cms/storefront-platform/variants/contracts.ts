@@ -1,0 +1,79 @@
+import type { StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
+import type { StorePageBlock } from "@/lib/cms/schema";
+import type { StorefrontVariantOptionCapabilities } from "./variant-option-contract";
+
+export type StorefrontPerformanceClass = "light" | "standard" | "media-heavy" | "interactive";
+export type StorefrontInteractionRequirement = "none" | "optional" | "carousel" | "accordion" | "video";
+export type StorefrontVariantLifecycle = "draft" | "internal-preview" | "published" | "deprecated";
+export type StorefrontVariantVisibility = "global" | "recommended" | "template-exclusive" | "admin-only";
+export type StorefrontVariantPreviewMode = "generated" | "asset" | "live";
+export type StorefrontBreakpointLayout = "single-column" | "stack" | "two-column" | "grid" | "horizontal-scroll" | "preserve";
+export type StorefrontContentOrder = "source" | "media-first" | "content-first";
+
+export interface StorefrontBreakpointContract {
+  layout: StorefrontBreakpointLayout;
+  columns?: 1 | 2 | 3 | 4 | 5 | 6;
+  order?: StorefrontContentOrder;
+  overflow?: "clip" | "wrap" | "scroll-x";
+}
+
+export interface StorefrontResponsiveContract {
+  mobile: StorefrontBreakpointContract;
+  tablet: StorefrontBreakpointContract;
+  desktop: StorefrontBreakpointContract;
+}
+
+export interface StorefrontVariantRequirements {
+  minItems?: number;
+  minMediaItems?: number;
+  requiresPrimaryMedia?: boolean;
+  requiredContentKeys?: readonly string[];
+  recommendedContentKeys?: readonly string[];
+}
+
+export interface StorefrontVariantPreviewTarget {
+  mode: StorefrontVariantPreviewMode;
+  assetUrl?: string;
+}
+
+export interface StorefrontVariantPreviewSpec {
+  fixtureId: string;
+  alt: string;
+  desktop: StorefrontVariantPreviewTarget;
+  mobile: StorefrontVariantPreviewTarget;
+}
+
+export interface StorefrontVariantRecommendation {
+  businessFamilies?: readonly StoreBusinessFamily[];
+  templateIds?: readonly string[];
+}
+
+export interface StorefrontVariantEditorMetadata {
+  group: "layout" | "content" | "commerce" | "media" | "specialized";
+  order: number;
+  preview: "schematic" | "thumbnail" | "live";
+  badge?: "recommended" | "advanced" | "media";
+}
+
+export interface StorefrontVariantDefinition {
+  id: string;
+  blockType: StorePageBlock["type"];
+  label: string;
+  description: string;
+  guidance: string;
+  rendererKey?: string;
+  compatibleBusinessFamilies: readonly StoreBusinessFamily[];
+  requiredCapabilities: readonly string[];
+  recommendedFor?: StorefrontVariantRecommendation;
+  requirements: StorefrontVariantRequirements;
+  responsive: StorefrontResponsiveContract;
+  safeFallback: string;
+  performanceClass: StorefrontPerformanceClass;
+  interactionRequirement: StorefrontInteractionRequirement;
+  editor: StorefrontVariantEditorMetadata;
+  previewSpec: StorefrontVariantPreviewSpec;
+  lifecycle: StorefrontVariantLifecycle;
+  visibility: StorefrontVariantVisibility;
+  version: number;
+  optionCapabilities?: StorefrontVariantOptionCapabilities;
+}

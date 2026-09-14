@@ -3,6 +3,7 @@ import { normalizeThemeFontFamily } from "@/lib/font-families";
 import type { StoreTheme } from "@/lib/cms/schema";
 import { fallbackThemePackages, resolveThemePackageById, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE, DEFAULT_STORE_THEME_RADIUS_SCALE } from "@/lib/cms/store-theme-contract";
 
 const aestheticPresentation: Record<NonNullable<StoreTheme["aesthetic"]>, { shadow: string; tracking: string }> = {
   minimal: { shadow: "0 8px 24px hsl(220 20% 10% / 0.08)", tracking: "-0.025em" },
@@ -18,8 +19,8 @@ const aestheticPresentation: Record<NonNullable<StoreTheme["aesthetic"]>, { shad
 };
 
 export function getStoreThemePresentationStyle(theme: StoreTheme): Record<string, string> {
-  const radiusScale = Math.max(0, Math.min(1, theme.radiusScale ?? 0.55));
-  const densityScale = Math.max(0, Math.min(1, theme.densityScale ?? 0.5));
+  const radiusScale = Math.max(0, Math.min(1, theme.radiusScale ?? DEFAULT_STORE_THEME_RADIUS_SCALE));
+  const densityScale = Math.max(0, Math.min(1, theme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE));
   const presentation = aestheticPresentation[theme.aesthetic ?? "minimal"];
   const radius = typeof theme.radiusScale === "number"
     ? `${(0.12 + radiusScale * 1.05).toFixed(2)}rem`

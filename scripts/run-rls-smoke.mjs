@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 const sqlFiles = [
-  path.join(repoRoot, "supabase", "migrations", "rls_smoke_can_manage_store.sql"),
+  path.join(repoRoot, "supabase", "migrations", "store_role_capability_matrix_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "rls_smoke_cross_tenant.sql"),
   path.join(repoRoot, "supabase", "migrations", "billing_authority_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "storefront_routine_acl_smoke.sql"),
@@ -16,6 +16,12 @@ const sqlFiles = [
   path.join(repoRoot, "supabase", "migrations", "order_authority_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "provider_plugin_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "order_checkout_recovery_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "commerce_hardening_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "commerce_function_security_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "external_auth_identity_binding_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "store_coupon_scope_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "order_background_effect_idempotency_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "tenant_reference_consistency_smoke.sql"),
 ];
 
 const databaseUrl =

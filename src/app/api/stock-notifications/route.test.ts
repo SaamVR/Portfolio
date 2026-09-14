@@ -93,4 +93,12 @@ describe("stock notification server boundary", () => {
     expect(productPageSource).toContain("StockNotificationSignup");
     expect(productPageSource).not.toContain('.from("stock_notifications")');
   });
+
+  it("maps malformed and oversized JSON at the request boundary", () => {
+    expect(routeSource).toContain("const MAX_BODY_BYTES = 4000");
+    expect(routeSource).toContain('error: "Invalid JSON payload"');
+    expect(routeSource).toContain('error: "Stock notification request is too large"');
+    expect(routeSource).toContain('Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES');
+  });
+
 });

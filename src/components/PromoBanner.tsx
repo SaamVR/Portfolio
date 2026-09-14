@@ -2,7 +2,13 @@ import Link from "next/link";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { PromoBannerVisualStyles } from "@/components/storefront/section-styles/PromoBannerVisualStyles";
+import { resolvePromoSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { storefrontPath } from "@/lib/slug";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 
 interface PromoBannerSettings {
   enabled: boolean;
@@ -42,6 +48,15 @@ interface PromoBannerProps {
     enableParticles?: boolean;
     enableOrbs?: boolean;
     cardOpacity?: number;
+    imageUrl?: string;
+    imageAlt?: string;
+    secondaryImageUrl?: string;
+    secondaryImageAlt?: string;
+    secondaryTitle?: string;
+    secondarySubtitle?: string;
+    secondaryCtaText?: string;
+    secondaryCtaLink?: string;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -160,6 +175,14 @@ const SparkleSVG = ({ className }: { className: string }) => (
 
 const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const currentStore = useOptionalStore();
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
   const { data: settings } = useSiteSettings<PromoBannerSettings>("promo_banner", currentStore?.id);
   const preloadedWhatsApp = currentStore?.siteSettings?.whatsapp_support as WhatsAppSettings | undefined;
   const { data: fetchedWhatsApp } = useSiteSettings<WhatsAppSettings>("whatsapp_support", currentStore?.id);
@@ -167,6 +190,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const useLegacyThemeOverrides = hasExplicitPromoThemeOverrides(legacySettings);
   const isContactVariant = overrides?.layoutVariant === "contact-cta";
+  const optionClasses = resolveSectionOptionClasses(overrides?.variantOptions);
 
   if (legacySettings?.enabled === false) return null;
 
@@ -195,7 +219,30 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
     : storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
   const isExternalContact = isContactVariant && Boolean(contactNumber);
 
-  const align = overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
+  const visualStyle = resolvePromoSectionStyle(overrides?.layoutVariant);
+  if (visualStyle) {
+    return (
+      <PromoBannerVisualStyles
+        variant={visualStyle}
+        badgeText={badgeText}
+        title={title}
+        subtitle={subtitle}
+        ctaText={ctaText}
+        ctaLink={ctaLink}
+        imageUrl={overrides?.imageUrl}
+        imageAlt={overrides?.imageAlt}
+        secondaryImageUrl={overrides?.secondaryImageUrl}
+        secondaryImageAlt={overrides?.secondaryImageAlt}
+        secondaryTitle={overrides?.secondaryTitle}
+        secondarySubtitle={overrides?.secondarySubtitle}
+        secondaryCtaText={overrides?.secondaryCtaText}
+        secondaryCtaLink={overrides?.secondaryCtaLink ? storefrontPath(overrides.secondaryCtaLink, currentStore?.slug) : undefined}
+        variantOptions={overrides?.variantOptions}
+      />
+    );
+  }
+
+  const align = overrides?.variantOptions?.alignment ?? overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
   const containerAlignCls = align === "left" ? "items-start" : align === "right" ? "items-end" : "items-center";
   const textMaxCls = align === "left" ? "mr-auto" : align === "right" ? "ml-auto" : "mx-auto";
@@ -236,10 +283,39 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
       : "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20"
   }`;
 
+  if (isFashion && !isContactVariant && !usesCustomBannerTheme) {
+    return (
+      <section className={cn("border-y border-foreground/10 bg-foreground py-12 text-background md:py-16", optionClasses.spacingClassName)} aria-label="Promotional banner">
+        <div className={cn("container mx-auto px-4", optionClasses.contentWidthClassName)}>
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-10">
+            <div className={cn("max-w-4xl", alignCls, textMaxCls)}>
+              {badgeText ? (
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-background/65 md:text-xs">{badgeText}</p>
+              ) : null}
+              <h2 className={cn("max-w-[14ch] font-heading text-3xl font-bold leading-[0.98] tracking-tight text-background sm:text-4xl md:text-5xl", optionClasses.emphasis.titleClassName)}>
+                {title}
+              </h2>
+              {subtitle ? <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 md:text-base">{subtitle}</p> : null}
+            </div>
+            {ctaLink && ctaText ? (
+              <Link
+                href={ctaLink}
+                className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-background pb-1 text-sm font-semibold text-background transition-opacity hover:opacity-70"
+              >
+                {ctaText}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       style={style}
-      className={`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`}
+      className={cn(`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`, optionClasses.spacingClassName)}
       aria-label={isContactVariant ? "Contact call to action" : "Promotional banner"}
     >
       {usesCustomBannerTheme ? <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
@@ -263,7 +339,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
 
       {usesCustomBannerTheme && isDarkBg ? <div className="absolute inset-0 grain-texture opacity-[0.025] pointer-events-none" /> : null}
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className={cn("container mx-auto px-4 relative z-10", optionClasses.contentWidthClassName)}>
         <div
           style={
             customOpacity !== null
@@ -272,7 +348,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
                 }
               : undefined
           }
-          className={`max-w-4xl ${textMaxCls} rounded-lg border ${cardBgCls} backdrop-blur-xl p-6 md:p-10 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`}
+          className={cn(`max-w-4xl ${textMaxCls} rounded-lg border ${cardBgCls} backdrop-blur-xl p-6 md:p-10 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`, optionClasses.contentWidthClassName)}
         >
           <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
           <div className="absolute -bottom-24 -right-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
@@ -285,7 +361,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
               </span>
             ) : null}
 
-            <h2 className={`font-heading text-[1.9rem] font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`}>
+            <h2 className={cn(`font-heading text-[1.9rem] font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`, optionClasses.emphasis.titleClassName)}>
               {title}
             </h2>
 

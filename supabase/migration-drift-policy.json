@@ -6,6 +6,96 @@
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
     },
     {
+      "name": "storefront_manual_payment_replay_guard",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: exactly-once storefront manual payment reference claims are ready for regression validation before production rollout."
+    },
+    {
+      "name": "scope_coupon_codes_per_store",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: replaces accidental platform-global coupon code uniqueness with the canonical per-store identity contract."
+    },
+    {
+      "name": "bound_cart_item_quantity",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: persists the existing 1..99 checkout line quantity contract on authenticated cart rows."
+    },
+    {
+      "name": "lock_direct_order_mutations",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: removes direct client order mutation grants/policies so governed server routes remain lifecycle authority."
+    },
+    {
+      "name": "enforce_commerce_numeric_bounds",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: moves existing product/coupon numeric UI and checkout bounds into database constraints."
+    },
+    {
+      "name": "product_link_tenant_consistency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: enforces store/product composite identity for cart, stock-notification, and product-QA rows."
+    },
+    {
+      "name": "tenant_owned_reference_consistency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: enforces same-store order/product references for shipments, revenue events, and analytics while preserving existing delete semantics."
+    },
+    {
+      "name": "commerce_tenant_graph_consistency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: closes remaining cross-store courier, recovery, and category hierarchy references with composite tenant keys."
+    },
+    {
+      "name": "r4_section_studio_variant_options",
+      "classification": "pending-production",
+      "reason": "Frozen R4 Section Studio migration is present in the frozen storefront baseline but has not yet been applied to production; keep it explicit until coordinated R4 rollout and ledger refresh."
+    },
+    {
+      "name": "harden_return_refund_recordkeeping",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: keeps return/refund operations as truthful manual recordkeeping until provider/store-credit settlement authority exists."
+    },
+    {
+      "name": "lock_cart_recovery_message_mutations",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: removes direct client mutation authority from the cart-recovery delivery ledger so only governed server queue/processor paths can author outreach truth."
+    },
+    {
+      "name": "dedupe_cart_recovery_scheduled_touches",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: gives each scheduled recovery touch a durable store/lead/time identity so concurrent authorized queue requests cannot enqueue duplicate outreach."
+    },
+    {
+      "name": "hide_store_coupon_codes",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: prevents storefront clients from enumerating active promo codes while preserving the scoped validate_coupon RPC."
+    },
+    {
+      "name": "pin_commerce_function_search_paths",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: pins name resolution for storefront search and subscription renewal trigger functions to pg_catalog/public."
+    },
+    {
+      "name": "order_background_effect_idempotency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: gives order-created analytics and merchant-notification claims durable sink identities so retry-required recovery work can be retried without duplicate side effects."
+    },
+    {
+      "name": "external_auth_identity_binding_334",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: replaces mutable Firebase email/phone account discovery with a durable server-only Firebase project+subject binding before password-reset bridge authority is retired."
+    },
+    {
+      "name": "store_role_capability_matrix_324",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: splits editor content/commerce authority from owner/admin tenant administration, integrations, finance, publication, and team authority."
+    },
+    {
+      "name": "store_role_viewer_read_contract_324",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: completes viewer read-only catalog/content access while keeping payment, domain, integration, publication, and preview-token surfaces owner/admin-only."
+    },
+    {
       "name": "lock_store_invoice_client_authority_308",
       "classification": "pending-production",
       "reason": "P0 #308 billing-authority migration is implementation-complete on release/p0-billing-authority but this lane is explicitly prohibited from deploying production. Remove after trusted production rollout and ledger refresh."
@@ -29,7 +119,6 @@
       "name": "atomic_invite_claim_authority_323",
       "classification": "pending-production",
       "reason": "#323 release-blocker migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
-
     }
   ]
 }

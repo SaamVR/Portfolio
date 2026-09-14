@@ -1,0 +1,89 @@
+{
+  "program": "EZComo / EcomCMS R4 Section Studio v0",
+  "repository": "SaamVR/EcomCMS",
+  "coordination_only": true,
+  "frozen_r3_sha": "449e0f6a45200d33e9863d2034a621a298eb3378",
+  "r3_freeze_tag": "storefront-r3-frozen-2026-09-14",
+  "integration_branch": "r4/section-studio",
+  "lane_branches": {
+    "A": "r4/section-studio-contracts",
+    "B": "r4/section-studio-ux",
+    "C": "r4/section-studio-primitives",
+    "D": "r4/section-studio-qa"
+  },
+  "canonical_variant_option_keys": [
+    "alignment",
+    "contentWidth",
+    "mediaFit",
+    "emphasis",
+    "spacing",
+    "mobileBehavior"
+  ],
+  "single_authority": {
+    "lane": "A",
+    "owns": [
+      "StorePageBlock.variantOptions schema",
+      "database persistence and migration",
+      "generated Supabase types",
+      "normalization and legacy compatibility",
+      "canonical option catalog",
+      "per-style capability metadata",
+      "reset/inheritance semantics",
+      "publisher/preview/backup/restore round-trips"
+    ]
+  },
+  "lane_scopes": {
+    "A": "Contracts, persistence, migration, normalization, canonical option metadata, compatibility, integration",
+    "B": "Desktop/mobile Section Studio merchant UX consuming Lane A contracts only",
+    "C": "Safe shared renderer/composition helpers consuming Lane A canonical options only",
+    "D": "Read-only QA of exact integrated SHA"
+  },
+  "protected_contract_files": {
+    "src/lib/cms/schema.ts": "A",
+    "src/integrations/supabase/types.ts": "A",
+    "supabase/migrations/**": "A",
+    "src/lib/cms/store-persistence.ts": "A",
+    "src/lib/store-backup-restore.ts": "A",
+    "src/lib/cms/storefront-platform/variants/**": "A",
+    "src/components/admin/StorefrontSectionStyleStudio.tsx": "B",
+    "src/components/storefront/editor/**": "B",
+    "src/components/storefront/section-styles/**": "C"
+  },
+  "frozen_boundaries": [
+    "R2 Section Style IDs and reset/inheritance semantics",
+    "R3 Threads visual baseline",
+    "theme ownership of global palette, typography, radius, density, and global section spacing",
+    "merchant content/catalog truth"
+  ],
+  "forbidden": [
+    "arbitrary merchant JSX/HTML/JavaScript",
+    "raw CSS or Tailwind/class strings in variantOptions",
+    "merchant-defined breakpoints",
+    "second registry",
+    "second renderer system",
+    "duplicate persistence path",
+    "new option keys outside Lane A",
+    "template-specific escape hatches",
+    "production deploy during lane implementation"
+  ],
+  "required_viewports": [360, 390, 430, 768, 1440],
+  "working_method": [
+    "A lands canonical contract first",
+    "B and C may inspect/scaffold but wire against A's committed contract",
+    "Integration reviews ownership before merging lane checkpoints",
+    "Targeted tests first, full regression near closeout",
+    "D audits only stable pushed integration SHAs"
+  ],
+  "completion_gate": [
+    "modern persistence round-trip passes",
+    "invalid and unsupported options fail closed or normalize predictably",
+    "Reset One and Reset All restore inherited/default presentation",
+    "Basic/mobile/Studio surfaces agree",
+    "public renderers consume the same normalized options",
+    "content IDs and catalog truth remain stable",
+    "Generic, Fashion, and Threads regressions pass",
+    "Lane D reports no P0/P1"
+  ],
+  "coordination_document": "docs/handoffs/r4-section-studio-coordination.md",
+  "contract_document": "docs/handoffs/r4-section-studio-contract.md"
+}

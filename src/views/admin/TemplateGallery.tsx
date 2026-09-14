@@ -156,7 +156,9 @@ export function TemplateGallery({
   const canApplyTemplate = typeof applyThemeBundle === "function";
 
   const builtInTemplates = useMemo<BuiltInTemplateItem[]>(
-    () => storefrontTemplateOptions.map((option) => {
+    () => storefrontTemplateOptions
+      .filter((option) => !option.adminOnly || isPlatformRole(platformRole))
+      .map((option) => {
       const templateDefinition = getStorefrontTemplateDefinition(option.value);
       const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
       return {
@@ -174,8 +176,8 @@ export function TemplateGallery({
         defaultBlockCount: seedDefinition.defaultBlockSet.length,
         compatibleBlockCount: templateDefinition.compatibleBlockSet.length,
       };
-    }),
-    [],
+      }),
+    [platformRole],
   );
 
   const { data: communityTemplates = [], isLoading: isLoadingCommunity } = useQuery({
@@ -237,6 +239,11 @@ export function TemplateGallery({
 
   const handleApplyBuiltIn = async (templateId: StorefrontTemplateId) => {
     if (!applyThemeBundle) return false;
+    const definition = getStorefrontTemplateDefinition(templateId);
+    if (definition.adminOnly && !isPlatformRole(platformRole)) {
+      toast.error("This template is restricted to EZComo platform administrators.");
+      return false;
+    }
     try {
       setApplyingTemplateId(templateId);
       const selectedTemplate = builtInTemplates.find((template) => template.id === templateId);

@@ -6,10 +6,10 @@ import { resolve } from "node:path";
 const shopSource = readFileSync(resolve(process.cwd(), "src/components/storefront/shop/ContextAwareShopPage.tsx"), "utf8");
 const cardSource = readFileSync(resolve(process.cwd(), "src/components/storefront/beauty/BeautyProductCard.tsx"), "utf8");
 
-test("Beauty shop opts into the compact mobile discovery layout only for the beauty variant", () => {
+test("Beauty shop opts into compact mobile discovery while fashion keeps scrollable category navigation", () => {
   assert.match(shopSource, /const isBeautyShop = shopVariant === "beauty";/);
   assert.match(shopSource, /productGridClass\.replace\("grid-cols-1", "grid-cols-2"\)/);
-  assert.match(shopSource, /mobileScrollable=\{isBeautyShop\}/);
+  assert.match(shopSource, /mobileScrollable=\{isBeautyShop \|\| isFashionShop\}/);
   assert.match(shopSource, /compactMobile=\{isBeautyShop\}/);
   assert.match(shopSource, /isBeautyShop && "py-8 md:py-16"/);
   assert.match(shopSource, /variant === "beauty" && "hidden sm:grid"/);

@@ -6,6 +6,12 @@ import { useAuth } from "@/hooks/auth-context";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { CartContext, type CartItem } from "@/context/cart-context";
 
+import {
+  MAX_CART_LINES,
+  MAX_CART_QUANTITY,
+  clampCartQuantity,
+  normalizePersistedCartItems,
+} from "@/lib/cart-state";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 import {
   getCommercialSelectionPrice,
@@ -48,15 +54,21 @@ function isValidUUID(str: string): boolean {
 function loadCart(storeId?: string): CartItem[] {
   try {
     const saved = localStorage.getItem(getStorageKey(storeId));
-    return saved ? JSON.parse(saved) : [];
+    const parsed = saved ? JSON.parse(saved) : [];
+    return normalizePersistedCartItems(parsed, storeId);
   } catch {
     return [];
   }
 }
 
 function saveCart(items: CartItem[], storeId?: string) {
-  localStorage.setItem(getStorageKey(storeId), JSON.stringify(items));
-  localStorage.setItem(getTimeKey(storeId), Date.now().toString());
+  try {
+    const normalized = normalizePersistedCartItems(items, storeId);
+    localStorage.setItem(getStorageKey(storeId), JSON.stringify(normalized));
+    localStorage.setItem(getTimeKey(storeId), Date.now().toString());
+  } catch {
+    // Keep the in-memory cart usable when browser storage is unavailable/full.
+  }
 }
 
 function getScopedItems(items: CartItem[], storeId?: string | null) {
@@ -218,7 +230,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       }
 
       try {
-        // 1. Fetch DB cart items
+        const localItems = normalizePersistedCartItems(itemsRef.current, storeId);
         const { data: dbCart, error } = await supabase
           .from("cart_items")
           .select("product_id, size, option_ids, quantity, store_id")
@@ -226,44 +238,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           .eq("store_id", storeId);
 
         if (error) throw error;
-        if (!dbCart || dbCart.length === 0) {
-          // No items in DB, sync current local cart to DB
-          if (itemsRef.current.length > 0) {
-            const inserts: TablesInsert<"cart_items">[] = itemsRef.current.map(item => ({
-              user_id: user.id,
-              product_id: item.productId,
-              size: item.size,
-              option_ids: item.optionIds ?? [],
-              quantity: item.quantity,
-              store_id: item.storeId ?? storeId
-            }));
-            await supabase.from("cart_items").upsert(inserts, {
-              onConflict: "user_id,product_id,size,option_ids",
-            });
-          }
+
+        const dbRows = (dbCart ?? []) as CartItemRow[];
+        const candidateProductIds = Array.from(new Set([
+          ...localItems.map((item) => item.productId),
+          ...dbRows.map((item) => item.product_id),
+        ]));
+
+        if (candidateProductIds.length === 0) {
           hasMerged.current = true;
           return;
         }
 
-        // 2. Fetch product details for those items
-        const productIds = dbCart.map(item => item.product_id);
-        const { data: dbProducts } = await supabase
+        const { data: dbProducts, error: productsError } = await supabase
           .from("products")
           .select("id, name, price, image_url, commercial_options, fulfillment_type")
           .eq("store_id", storeId)
-          .in("id", productIds);
+          .eq("is_available", true)
+          .in("id", candidateProductIds);
+
+        if (productsError) throw productsError;
 
         const productsMap = new Map((dbProducts as ProductLookupRow[] | null | undefined)?.map((p) => [p.id, p]));
-
-        // Convert dbCart to CartItem format
-        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).flatMap(item => {
+        const validLocalItems = localItems.filter((item) => productsMap.has(item.productId));
+        const dbCartItems: CartItem[] = dbRows.flatMap(item => {
           const prod = productsMap.get(item.product_id);
           if (!prod) return [];
           const commercialOptions = normalizeCommercialOptions(prod.commercial_options);
           const optionIds = item.option_ids ?? [];
           const authoritativePrice = commercialOptions.length > 0
             ? getCommercialSelectionPrice(prod.price, commercialOptions, optionIds)
-            : prod.price;
+            : Number(prod.price ?? 0);
           if (authoritativePrice === null || authoritativePrice < 0) return [];
           return [{
             productId: item.product_id,
@@ -274,23 +279,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             size: item.size,
             optionIds,
             fulfillmentType: normalizeFulfillmentType(prod.fulfillment_type),
-            quantity: item.quantity,
+            quantity: clampCartQuantity(item.quantity),
           }];
         });
 
-        // 3. Merge local cart items and db cart items
-        setItems(prev => {
-          const merged = [...prev];
+        setItems(() => {
+          const merged = [...validLocalItems];
           dbCartItems.forEach(dbItem => {
             const existing = merged.find(i => isSameCartLine(i, dbItem.productId, dbItem.size, dbItem.storeId, dbItem.optionIds));
             if (existing) {
-              // Keep the larger quantity
-              existing.quantity = Math.max(existing.quantity, dbItem.quantity);
+              existing.quantity = clampCartQuantity(Math.max(existing.quantity, dbItem.quantity));
             } else {
               merged.push(dbItem);
             }
           });
-          return merged;
+          return normalizePersistedCartItems(merged, storeId);
         });
 
         hasMerged.current = true;
@@ -315,7 +318,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
 
     const syncToDb = async () => {
       try {
-        const scopedItems = getScopedItems(items, storeId);
+        const scopedItems = normalizePersistedCartItems(getScopedItems(items, storeId), storeId);
         const scopedProductIds = Array.from(new Set(scopedItems.map((item) => item.productId)));
         let validProductIds = new Set(scopedProductIds);
 
@@ -324,6 +327,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             .from("products")
             .select("id")
             .eq("store_id", storeId)
+            .eq("is_available", true)
             .in("id", scopedProductIds);
 
           if (productsError) throw productsError;
@@ -375,12 +379,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     const scopedItem = { ...item, storeId: item.storeId ?? storeId };
     const existing = itemsRef.current.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds));
+
+    if (!existing && getScopedItems(itemsRef.current, scopedItem.storeId).length >= MAX_CART_LINES) {
+      setIsCartOpen(true);
+      toast("Cart limit reached", { description: `A cart can contain up to ${MAX_CART_LINES} different items.` });
+      return;
+    }
+
+    if (existing && existing.quantity >= MAX_CART_QUANTITY) {
+      setIsCartOpen(true);
+      toast("Maximum quantity reached", { description: `You can order up to ${MAX_CART_QUANTITY} of one cart item at a time.` });
+      return;
+    }
+
     setItems((prev) => {
       const existingLine = prev.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds));
       if (existingLine) {
         return prev.map((i) =>
           isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds)
-            ? { ...i, quantity: i.quantity + 1 }
+            ? { ...i, quantity: clampCartQuantity(i.quantity + 1) }
             : i
         );
       }
@@ -427,18 +444,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       removeItem(productId, size, storeId, optionIds);
       return;
     }
+    const nextQuantity = clampCartQuantity(quantity);
+    if (quantity > MAX_CART_QUANTITY) {
+      toast("Maximum quantity reached", { description: `You can order up to ${MAX_CART_QUANTITY} of one cart item at a time.` });
+    }
     setItems((prev) =>
       prev.map((i) =>
-        isSameCartLine(i, productId, size, storeId, optionIds) ? { ...i, quantity } : i
+        isSameCartLine(i, productId, size, storeId, optionIds) ? { ...i, quantity: nextQuantity } : i
       )
     );
-    if (existing && existing.quantity !== quantity) {
+    if (existing && existing.quantity !== nextQuantity) {
       trackEvent({
         eventName: "cart_quantity_changed",
         eventCategory: "commerce",
         productId: existing.productId,
-        quantity,
-        value: existing.price * quantity,
+        quantity: nextQuantity,
+        value: existing.price * nextQuantity,
         metadata: {
           productName: existing.name,
           variant: existing.size,

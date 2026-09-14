@@ -1,0 +1,60 @@
+[
+  {
+    "viewport": "360x800",
+    "overflow": 0,
+    "small": [],
+    "clipped": [],
+    "dialogCount": 1,
+    "hasAdjustments": true,
+    "hasInherited": true,
+    "resetFlow": null,
+    "badResponses": []
+  },
+  {
+    "viewport": "390x844",
+    "overflow": 0,
+    "small": [],
+    "clipped": [],
+    "dialogCount": 1,
+    "hasAdjustments": true,
+    "hasInherited": true,
+    "resetFlow": {
+      "explicitAfterChange": true,
+      "inheritedAfterReset": true
+    },
+    "badResponses": []
+  },
+  {
+    "viewport": "430x932",
+    "overflow": 0,
+    "small": [],
+    "clipped": [],
+    "dialogCount": 1,
+    "hasAdjustments": true,
+    "hasInherited": true,
+    "resetFlow": null,
+    "badResponses": []
+  },
+  {
+    "viewport": "768x1024",
+    "overflow": 0,
+    "small": [],
+    "clipped": [],
+    "dialogCount": 1,
+    "hasAdjustments": true,
+    "hasInherited": true,
+    "resetFlow": null,
+    "badResponses": []
+  },
+  {
+    "viewport": "1440x1000",
+    "overflow": 0,
+    "small": [],
+    "clipped": [],
+    "dialogCount": 1,
+    "hasAdjustments": true,
+    "hasInherited": true,
+    "resetFlow": null,
+    "badResponses": []
+  }
+]

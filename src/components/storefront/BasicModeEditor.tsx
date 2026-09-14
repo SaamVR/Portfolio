@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +22,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { CmsBlockRegistryItem } from "@/lib/cms/block-registry";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections, type BasicFlowSectionId } from "@/lib/cms/storefront-editor-registry";
+import { getPlatformAestheticOptions } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
+import { getStorefrontLayoutPresets } from "@/lib/cms/storefront-layout-presets";
+import { applyStorefrontLayoutPreset } from "@/lib/cms/storefront-layout-preset-apply";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
+import { buildSectionStylesPath } from "@/lib/admin-paths";
+import { Link } from "@/lib/react-router-dom-shim";
+import { getStorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/registry";
+import { applySectionStyleToBlock } from "@/lib/cms/storefront-platform/variants/section-style-library";
+import { SectionStylePreview } from "./editor/SectionStylePreview";
+import { SectionStudioOptionControls } from "./editor/section-studio/SectionStudioOptionControls";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -32,12 +42,14 @@ interface BasicModeEditorProps {
   updateBlockProps: (blockId: string, patch: Record<string, unknown>) => void;
   updateBlockMeta: (blockId: string, patch: Partial<StorePageBlock>) => void;
   reorderBlocks: (startIndex: number, endIndex: number) => void;
+  replacePageBlocks: (blocks: StorePageBlock[]) => void;
   updateThemeVar: (cssKey: string, hexValue: string) => void;
   updateThemeVars: (hexVars: Record<string, string>) => void;
   updateThemePackage: (packageId: string) => void;
   updateThemeMode: (mode: "light" | "dark") => void;
   updateFont: (target: "heading" | "body", fontFamily: string) => void;
   updateThemeScale: (target: "radius" | "density", value: number) => void;
+  updateThemeSectionSpacing: (spacing: StoreSectionSpacing) => void;
   updateThemeAesthetic: (aesthetic: "minimal" | "glassmorphism" | "fluid" | "brutalist" | "neumorphism" | "editorial" | "retro" | "artisan" | "dark-luxury" | "playful-pop") => void;
   updateThemeEffect: (effectKey: "scrollReveals" | "hoverEffects" | "parallax" | "intensity", value: any) => void;
   selectPage: (pageId: string) => void;
@@ -52,24 +64,6 @@ type SectionId = "start" | "pages" | "layout" | "content" | "theme" | "effects" 
 
 const HEADING_FONTS = ["Inter", "Poppins", "Playfair Display", "Raleway", "Oswald", "Montserrat"];
 const BODY_FONTS = ["Inter", "Open Sans", "Lato", "Nunito", "Source Sans 3"];
-
-const vibeCards: Array<{
-  id: NonNullable<Store["theme"]["aesthetic"]>;
-  label: string;
-  detail: string;
-  heading: string;
-  body: string;
-  swatches: string[];
-}> = [
-  { id: "minimal", label: "Minimal", detail: "Clean, quiet, fast to scan.", heading: "Inter", body: "Inter", swatches: ["#111827", "#F9FAFB", "#E5E7EB"] },
-  { id: "glassmorphism", label: "Glass", detail: "Soft blur, airy surfaces.", heading: "Poppins", body: "Inter", swatches: ["#7C3AED", "#DBEAFE", "#FFFFFF"] },
-  { id: "fluid", label: "Fluid", detail: "Organic, modern, softer flow.", heading: "Raleway", body: "Nunito", swatches: ["#0F766E", "#A7F3D0", "#F0FDFA"] },
-  { id: "brutalist", label: "Cubic", detail: "Bold blocks, strong contrast.", heading: "Oswald", body: "Lato", swatches: ["#111111", "#FACC15", "#FFFFFF"] },
-  { id: "editorial", label: "Editorial", detail: "Magazine-like and story-led.", heading: "Playfair Display", body: "Source Sans 3", swatches: ["#1F2937", "#F5F5F4", "#A16207"] },
-  { id: "artisan", label: "Artisan", detail: "Warm, handmade, trustworthy.", heading: "Poppins", body: "Nunito", swatches: ["#92400E", "#FEF3C7", "#FFFFFF"] },
-  { id: "dark-luxury", label: "Luxury", detail: "Premium, dark, polished.", heading: "Playfair Display", body: "Inter", swatches: ["#111111", "#B88A44", "#F8F3EA"] },
-  { id: "playful-pop", label: "Pop", detail: "Bright, cheerful, energetic.", heading: "Montserrat", body: "Nunito", swatches: ["#EC4899", "#38BDF8", "#FFF7FB"] },
-];
 
 const storeFlowSlugs = new Set(["/shop", "/product", "/cart", "/checkout", "/account", "/wishlist", "/order-success", "/track-order"]);
 const systemSlugs = new Set(["/admin", "/auth", "/bkash", "/cms-admin"]);
@@ -131,6 +125,33 @@ function BlockSkeletonPreview({ type, variant }: { type: string; variant?: strin
           <div className="flex flex-col justify-end gap-1">
             <div className="h-2 w-full rounded-sm bg-muted-foreground/30" />
             <div className="h-1.5 w-3/4 rounded-sm bg-muted-foreground/20" />
+          </div>
+        </div>
+      );
+    }
+
+    if (variant === "poster") {
+      return (
+        <div className="relative h-full w-full overflow-hidden rounded-sm bg-muted-foreground/25 p-2">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          <div className="absolute inset-x-2 bottom-2 flex flex-col items-start gap-1">
+            <div className="h-2.5 w-4/5 rounded-sm bg-background/85" />
+            <div className="h-2.5 w-3/5 rounded-sm bg-background/70" />
+            <div className="mt-1 h-2 w-1/4 rounded-sm bg-primary/50" />
+          </div>
+        </div>
+      );
+    }
+
+    if (variant === "collection-spotlight") {
+      return (
+        <div className="grid h-full w-full grid-cols-[1.25fr_0.75fr] gap-1 p-2">
+          <div className="rounded-sm bg-muted-foreground/25" />
+          <div className="flex flex-col justify-center gap-1 rounded-sm bg-background/70 p-1.5">
+            <div className="h-1 w-2/5 rounded-sm bg-primary/35" />
+            <div className="h-2 w-full rounded-sm bg-muted-foreground/30" />
+            <div className="h-1.5 w-4/5 rounded-sm bg-muted-foreground/20" />
+            <div className="mt-1 h-2 w-1/2 rounded-sm bg-primary/30" />
           </div>
         </div>
       );
@@ -801,12 +822,14 @@ export function BasicModeEditor({
   updateBlockProps,
   updateBlockMeta,
   reorderBlocks,
+  replacePageBlocks,
   updateThemeVar,
   updateThemeVars,
   updateThemePackage,
   updateThemeMode,
   updateFont,
   updateThemeScale,
+  updateThemeSectionSpacing,
   updateThemeAesthetic,
   updateThemeEffect,
   selectPage,
@@ -837,6 +860,7 @@ export function BasicModeEditor({
   );
   const pageType = resolveBasicEditorPageType(page.slug);
   const starterLayouts = getBasicStarterLayouts(templateId, pageType);
+  const layoutPresets = pageType === "homepage" ? getStorefrontLayoutPresets(templateId) : [];
 
   const generateAITheme = async () => {
     if (!aiPrompt.trim()) return;
@@ -901,7 +925,9 @@ export function BasicModeEditor({
   const fgHex = hslChannelsToHex(fgHsl) ?? "#000000";
   const radiusScale = store.theme.radiusScale ?? 0.55;
   const densityScale = store.theme.densityScale ?? 0.5;
-  const activeVibe = vibeCards.find((vibe) => vibe.id === store.theme.aesthetic);
+  const platformAestheticOptions = useMemo(() => getPlatformAestheticOptions(store.theme), [store.theme]);
+  const activeVibe = platformAestheticOptions.find((vibe) => vibe.storedValue === store.theme.aesthetic)
+    ?? platformAestheticOptions.find((vibe) => vibe.engineId === "flat");
   const effectState = {
     scrollReveals: store.theme.effects?.scrollReveals ?? false,
     hoverEffects: store.theme.effects?.hoverEffects ?? true,
@@ -1176,7 +1202,7 @@ export function BasicModeEditor({
       case "layout": {
         const focusedLayoutBlock = page.blocks.find((block) => block.id === focusedLayoutBlockId) ?? page.blocks[0] ?? null;
         const focusedLayoutIndex = focusedLayoutBlock ? page.blocks.findIndex((block) => block.id === focusedLayoutBlock.id) : -1;
-        const focusedLayoutOptions = focusedLayoutBlock ? getBasicLayoutVariantOptions(templateId, focusedLayoutBlock.type) : [];
+        const focusedLayoutOptions = focusedLayoutBlock ? getBasicLayoutVariantOptions(templateId, focusedLayoutBlock.type, focusedLayoutBlock) : [];
 
         return (
           <div className="space-y-4">
@@ -1219,6 +1245,41 @@ export function BasicModeEditor({
                 </Dialog>
               </div>
             </div>
+            {layoutPresets.length > 0 ? (
+              <div className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Fashion layout presets</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Reorder the homepage and switch section layouts without replacing your existing copy, media, or product sources.</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Content-safe</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {layoutPresets.map((preset) => (
+                    <div key={preset.id} className="rounded-xl border border-border bg-background/80 p-3">
+                      <p className="text-sm font-semibold text-foreground">{preset.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{preset.description}</p>
+                      <p className="mt-2 text-[11px] leading-5 text-foreground/75">Best for: {preset.bestFor}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 min-h-11 w-full justify-center"
+                        onClick={() => {
+                          const result = applyStorefrontLayoutPreset(page.blocks, preset);
+                          replacePageBlocks(result.blocks);
+                          setFocusedLayoutBlockId(result.blocks[0]?.id ?? null);
+                          const added = result.addedSlotIds.length;
+                          toast.success(`${preset.label} layout applied${added ? ` · ${added} required section${added === 1 ? "" : "s"} added` : ""}. Your existing section content was preserved.`);
+                        }}
+                      >
+                        Apply {preset.label}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {starterLayouts.length > 0 ? (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Recommended composition</p>
@@ -1381,21 +1442,36 @@ export function BasicModeEditor({
                     ? `Choose a visual structure for section ${focusedLayoutIndex + 1}.`
                     : "Select a hero, product, or category section to choose a layout variant."}
                 </p>
+                {focusedLayoutBlock && focusedLayoutOptions.length > 0 ? (
+                  <Button asChild variant="outline" size="sm" className="mt-3 min-h-11 gap-2 sm:min-h-9">
+                    <Link to={buildSectionStylesPath({ storeId: store.id, pageId: page.id, blockId: focusedLayoutBlock.id })}>
+                      <Sparkles className="h-4 w-4" /> Browse Section Styles
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
               {focusedLayoutBlock && focusedLayoutOptions.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                  {focusedLayoutOptions.map((option) => (
+                  {focusedLayoutOptions.map((option) => {
+                    const definition = getStorefrontVariantDefinition(focusedLayoutBlock.type, option.id);
+                    return (
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => updateBlockMeta(focusedLayoutBlock.id, { layoutVariant: option.id })}
+                      onClick={() => {
+                        const nextBlock = applySectionStyleToBlock(focusedLayoutBlock, option.id, templateId);
+                        updateBlockMeta(focusedLayoutBlock.id, {
+                          layoutVariant: nextBlock.layoutVariant,
+                          variantOptions: nextBlock.variantOptions,
+                        });
+                      }}
                       className={cn(
                         "rounded-xl border p-2.5 text-left transition-colors",
                         focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
-                      <div className="relative aspect-video rounded-lg border border-border/70 bg-muted/30">
-                        <BlockSkeletonPreview type={focusedLayoutBlock.type} variant={option.id} />
+                      <div className="relative">
+                        {definition ? <SectionStylePreview blockType={focusedLayoutBlock.type} definition={definition} /> : <div className="aspect-video rounded-lg border border-border/70 bg-muted/30"><BlockSkeletonPreview type={focusedLayoutBlock.type} variant={option.id} /></div>}
                         <div className="pointer-events-none absolute inset-x-2 top-2 flex items-start justify-between gap-2">
                           <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
                             {getVariantFocusLabel(focusedLayoutBlock.type, option.id)}
@@ -1418,13 +1494,21 @@ export function BasicModeEditor({
                       </p>
                       <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{option.guidance}</p>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-border bg-background/70 p-4 text-xs leading-5 text-muted-foreground">
                 This section keeps a simple default layout. Use Content to edit the message, or duplicate it if you want to try another version.
               </div>
               )}
+              {focusedLayoutBlock ? (
+                <SectionStudioOptionControls
+                  templateId={templateId}
+                  block={focusedLayoutBlock}
+                  onChange={(nextBlock) => updateBlockMeta(focusedLayoutBlock.id, { variantOptions: nextBlock.variantOptions })}
+                />
+              ) : null}
             </div>
           </div>
         );
@@ -1560,9 +1644,9 @@ export function BasicModeEditor({
           <div className="space-y-10">
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Choose the brand feel</h3>
+                <h3 className="text-lg font-semibold text-foreground">Choose the storefront aesthetic</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pick a vibe first. The editor will pair fonts with it, then you can tune colors only if needed.
+                  Choose Flat / Minimal, Editorial, Glass, or Artisan. This changes presentation only; your colors, logo, content, products, navigation, and fonts stay unchanged.
                 </p>
               </div>
 
@@ -1570,9 +1654,9 @@ export function BasicModeEditor({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Current style</p>
                 <div className="mt-3 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{activeVibe?.label ?? "Not chosen yet"}</p>
+                    <p className="text-sm font-semibold text-foreground">{activeVibe?.label ?? "Flat / Minimal"}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {activeVibe?.detail ?? "Choose a look below to give the storefront a stronger direction."}
+                      {activeVibe?.detail ?? "Clean surfaces, restrained motion, and minimal decoration."}
                     </p>
                   </div>
                   {activeVibe ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <Palette className="h-5 w-5 shrink-0 text-primary" />}
@@ -1580,32 +1664,37 @@ export function BasicModeEditor({
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {vibeCards.map((vibe) => (
-                  <button
-                    key={vibe.id}
-                    type="button"
-                    onClick={() => {
-                      updateThemeAesthetic(vibe.id);
-                      updateFont("heading", vibe.heading);
-                      updateFont("body", vibe.body);
-                    }}
-                    className={cn(
-                      "rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
-                      store.theme.aesthetic === vibe.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
-                    )}
-                  >
-                    <div className="flex h-10 overflow-hidden rounded-lg border border-border/70">
-                      {vibe.swatches.map((swatch, index) => (
-                        <span key={`${vibe.id}-${swatch}-${index}`} className="flex-1" style={{ backgroundColor: swatch }} />
-                      ))}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground">{vibe.label}</p>
-                      {store.theme.aesthetic === vibe.id ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{vibe.detail}</p>
-                  </button>
-                ))}
+                {platformAestheticOptions.map((vibe) => {
+                  const selected = store.theme.aesthetic === vibe.storedValue || (!store.theme.aesthetic && vibe.engineId === "flat");
+                  return (
+                    <button
+                      key={vibe.storedValue}
+                      type="button"
+                      onClick={() => updateThemeAesthetic(vibe.storedValue)}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5",
+                        selected ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card",
+                      )}
+                    >
+                      <div
+                        className="h-10 border border-border/70 bg-background/80 p-2"
+                        style={{
+                          borderRadius: `calc(0.75rem * ${vibe.profile.tokens["--store-radius-card-scale"] ?? "1"})`,
+                          boxShadow: vibe.profile.tokens["--store-elevation-card"],
+                          backdropFilter: `blur(${vibe.profile.tokens["--store-backdrop-blur"] ?? "0px"})`,
+                        }}
+                      >
+                        <div className="h-2 w-3/5 rounded bg-foreground/65" />
+                        <div className="mt-2 h-1.5 w-4/5 rounded bg-foreground/20" />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">{vibe.label}</p>
+                        {selected ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{vibe.detail}</p>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -1659,7 +1748,7 @@ export function BasicModeEditor({
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Spacing and shape</h4>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Adjust how rounded and spacious the storefront feels without changing layout structure.
+                    Adjust component softness and density without changing the gap between sections.
                   </p>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1707,7 +1796,7 @@ export function BasicModeEditor({
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label>Spacing density</Label>
+                      <Label>Component density</Label>
                       <span className="text-xs text-muted-foreground">{Math.round(densityScale * 100)}%</span>
                     </div>
                     <input
@@ -1718,6 +1807,32 @@ export function BasicModeEditor({
                       onChange={(event) => updateThemeScale("density", Number(event.target.value) / 100)}
                       className="w-full accent-primary"
                     />
+                  </div>
+                </div>
+                <div className="mt-4 border-t border-border pt-4">
+                  <div>
+                    <h5 className="text-sm font-medium text-foreground">Section spacing</h5>
+                    <p className="mt-1 text-xs text-muted-foreground">Controls only the gap between top-level storefront sections.</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {STORE_SECTION_SPACING_VALUES.map((value) => {
+                      const preset = STORE_SECTION_SPACING_PRESETS[value];
+                      const selected = store.theme.sectionSpacing === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => updateThemeSectionSpacing(value)}
+                          className={cn(
+                            "min-h-14 rounded-xl border p-3 text-left transition-colors hover:border-primary/40",
+                            selected ? "border-primary bg-primary/10" : "border-border bg-card",
+                          )}
+                        >
+                          <span className="block text-xs font-semibold">{preset.label}</span>
+                          <span className="mt-1 block text-[10px] text-muted-foreground">{preset.mobile} · {preset.desktop}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

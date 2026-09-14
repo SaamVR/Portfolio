@@ -7,8 +7,11 @@ import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 import { resolveStorePaymentAuthority } from "@/lib/payments/store-payment-authority";
+import { resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
+import { canExposePublicStorefront, type PublicStorefrontAccessState } from "@/lib/storefront-public-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const maxOrderBodyBytes = 64 * 1024;
 
 function getClientIp(req: Request) {
   return (
@@ -65,34 +68,17 @@ function mapOrderError(message: string) {
     return { message, status: 409 };
   }
 
-  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider|manual payment/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider|manual payment|unavailable/i.test(message)) {
     return { message, status: 400 };
   }
 
   return { message: "Failed to create order", status: 500 };
 }
 
-type StoreOrderAccessState = {
-  isPublished?: boolean | null;
-  hasSubscription?: boolean;
-  planLive?: boolean;
-};
+type StoreOrderAccessState = PublicStorefrontAccessState;
 
 export function canStoreAcceptOrders(access: StoreOrderAccessState | null | undefined) {
-  if (!access) return false;
-
-  // Match storefront access semantics exactly: a live trial/active plan may make
-  // the storefront public before the legacy is_published flag is flipped.
-  if (!access.isPublished) {
-    return access.planLive === true;
-  }
-
-  // Published legacy stores with no subscription record remain accessible.
-  if (!access.hasSubscription) {
-    return true;
-  }
-
-  return access.planLive === true;
+  return canExposePublicStorefront(access);
 }
 
 export const orderCreateRouteDeps = {
@@ -115,14 +101,29 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "Too many order attempts. Please wait a minute." }, { status: 429 });
     }
 
-    const body = await req.json();
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return jsonNoStore({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
     const manualPayment = readManualPaymentEvidence(paymentMethod, body?.manualPaymentReference);
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
-    const customerEmail = readText(body?.customerEmail, 180);
     const shippingAddress = readText(body?.shippingAddress, 500);
     const shippingCity = readText(body?.shippingCity, 100);
     const deliveryZone = readDeliveryZone(body?.deliveryZone);
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
 
     const items = normalizeOrderItems(body?.items);
     const user = await orderCreateRouteDeps.getAuthenticatedUser(req);
+    const customerEmail = user?.email ? readText(user.email, 180) : "";
     const supabaseAdmin = orderCreateRouteDeps.getSupabaseAdminClient();
     const [{ data: store }, { data: storefrontSetting }, storePlanResult] = await Promise.all([
       supabaseAdmin
@@ -174,10 +176,8 @@ export async function POST(req: Request) {
       planLive: storePlanState?.resolved.live ?? false,
     };
 
-    // Private preview links may reveal a non-public draft to an authorized
-    // merchant, but must never make that draft transactional. Live trial/active
-    // stores remain orderable because they are already publicly accessible by
-    // the canonical storefront resolver.
+    // Preview/private draft visibility never grants transactional authority.
+    // Publication and plan eligibility are independent requirements.
     if (!canStoreAcceptOrders(orderAccess)) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
@@ -185,6 +185,10 @@ export async function POST(req: Request) {
     const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
       ? storefrontSetting.value as Record<string, unknown>
       : null;
+    if (!user && !resolveAllowGuestCheckout(storefrontProfile)) {
+      return jsonNoStore({ error: "Sign in is required to checkout at this store." }, { status: 401 });
+    }
+
     const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
     const paymentAuthority = await orderCreateRouteDeps.resolveStorePaymentAuthority(
       supabaseAdmin,

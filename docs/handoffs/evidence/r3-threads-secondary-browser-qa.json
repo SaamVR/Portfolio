@@ -1,0 +1,572 @@
+[
+  {
+    "surface": "shop",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Shop the Story"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/shop-360x800.png"
+  },
+  {
+    "surface": "product",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Essential Black Tee"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/product-360x800.png"
+  },
+  {
+    "surface": "about",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "About Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/about-360x800.png"
+  },
+  {
+    "surface": "contact",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Contact Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/contact-360x800.png"
+  },
+  {
+    "surface": "faq",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Questions, answered simply."
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/faq-360x800.png"
+  },
+  {
+    "surface": "wishlist",
+    "viewport": "360x800",
+    "status": 200,
+    "scrollWidth": 360,
+    "bodyScrollWidth": 360,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Saved pieces"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/wishlist-360x800.png"
+  },
+  {
+    "surface": "shop",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Shop the Story"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/shop-390x844.png"
+  },
+  {
+    "surface": "product",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Essential Black Tee"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/product-390x844.png"
+  },
+  {
+    "surface": "about",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "About Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/about-390x844.png"
+  },
+  {
+    "surface": "contact",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Contact Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/contact-390x844.png"
+  },
+  {
+    "surface": "faq",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Questions, answered simply."
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/faq-390x844.png"
+  },
+  {
+    "surface": "wishlist",
+    "viewport": "390x844",
+    "status": 200,
+    "scrollWidth": 390,
+    "bodyScrollWidth": 390,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Saved pieces"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/wishlist-390x844.png"
+  },
+  {
+    "surface": "shop",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Shop the Story"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/shop-430x932.png"
+  },
+  {
+    "surface": "product",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Essential Black Tee"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/product-430x932.png"
+  },
+  {
+    "surface": "about",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "About Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/about-430x932.png"
+  },
+  {
+    "surface": "contact",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Contact Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/contact-430x932.png"
+  },
+  {
+    "surface": "faq",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Questions, answered simply."
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/faq-430x932.png"
+  },
+  {
+    "surface": "wishlist",
+    "viewport": "430x932",
+    "status": 200,
+    "scrollWidth": 430,
+    "bodyScrollWidth": 430,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Saved pieces"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/wishlist-430x932.png"
+  },
+  {
+    "surface": "shop",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Shop the Story"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/shop-768x1024.png"
+  },
+  {
+    "surface": "product",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Essential Black Tee"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/product-768x1024.png"
+  },
+  {
+    "surface": "about",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "About Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/about-768x1024.png"
+  },
+  {
+    "surface": "contact",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Contact Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/contact-768x1024.png"
+  },
+  {
+    "surface": "faq",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Questions, answered simply."
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/faq-768x1024.png"
+  },
+  {
+    "surface": "wishlist",
+    "viewport": "768x1024",
+    "status": 200,
+    "scrollWidth": 768,
+    "bodyScrollWidth": 768,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Saved pieces"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/wishlist-768x1024.png"
+  },
+  {
+    "surface": "shop",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Shop the Story"
+    ],
+    "badResponses": [],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/shop-1440x1000.png"
+  },
+  {
+    "surface": "product",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Essential Black Tee"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/product-1440x1000.png"
+  },
+  {
+    "surface": "about",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "About Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/about-1440x1000.png"
+  },
+  {
+    "surface": "contact",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Contact Threads Demo"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/contact-1440x1000.png"
+  },
+  {
+    "surface": "faq",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Questions, answered simply."
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/faq-1440x1000.png"
+  },
+  {
+    "surface": "wishlist",
+    "viewport": "1440x1000",
+    "status": 200,
+    "scrollWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "overflow": 0,
+    "undersized": [],
+    "hardClipped": [],
+    "h1": [
+      "Saved pieces"
+    ],
+    "badResponses": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:8081/api/analytics/track"
+      }
+    ],
+    "screenshot": "/tmp/r3-threads-secondary-qa-final/wishlist-1440x1000.png"
+  }
+]
