@@ -12,6 +12,7 @@ import { isStorefrontPaymentMethodConfigured } from "@/lib/payments/storefront-p
 import { resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const maxOrderBodyBytes = 64 * 1024;
 
 function getClientIp(req: Request) {
   return (
@@ -90,7 +91,23 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "Too many order attempts. Please wait a minute." }, { status: 429 });
     }
 
-    const body = await req.json();
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return jsonNoStore({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();

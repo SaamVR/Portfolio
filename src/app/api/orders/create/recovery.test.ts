@@ -157,6 +157,45 @@ afterEach(() => {
 });
 
 describe("order creation checkout recovery", () => {
+  test("rejects malformed JSON as a client error before touching commerce data", async () => {
+    let adminCalls = 0;
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => {
+      adminCalls += 1;
+      throw new Error("admin client should not be created");
+    });
+
+    const response = await POST(new Request("https://example.com/api/orders/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"storeId":',
+    }));
+
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /invalid json/i);
+    assert.equal(adminCalls, 0);
+  });
+
+  test("rejects oversized order payloads before parsing or database access", async () => {
+    let adminCalls = 0;
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => {
+      adminCalls += 1;
+      throw new Error("admin client should not be created");
+    });
+
+    const response = await POST(new Request("https://example.com/api/orders/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ notes: "x".repeat(70 * 1024) }),
+    }));
+
+    assert.equal(response.status, 413);
+    const body = await response.json();
+    assert.match(body.error, /too large/i);
+    assert.equal(adminCalls, 0);
+  });
   test("returns the persisted payment method and skips order-created side effects for an idempotent replay", async () => {
     const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
     let dispatchCount = 0;
