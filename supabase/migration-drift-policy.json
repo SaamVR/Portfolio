@@ -14,6 +14,11 @@
       "name": "p0_authoritative_order_boundary",
       "classification": "pending-production",
       "reason": "#309/#310/#318 release-blocker migration is intentionally pending governed production deployment; apply and smoke-test with the matching authoritative order API before refreshing the production migration ledger."
+    },
+    {
+      "name": "atomic_invite_claim_authority_323",
+      "classification": "pending-production",
+      "reason": "#323/#325 invite and staff-seat authority migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
     }
   ]
 }
