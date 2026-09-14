@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import type { PromoSectionStyle } from "./lane-c-style-keys";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "./section-option-primitives";
 
 interface PromoBannerVisualStylesProps {
   variant: PromoSectionStyle;
@@ -20,6 +23,7 @@ interface PromoBannerVisualStylesProps {
   secondarySubtitle?: string;
   secondaryCtaText?: string;
   secondaryCtaLink?: string;
+  variantOptions?: StorefrontVariantOptions;
 }
 
 function Action({ href, label, inverse = false }: { href?: string; label?: string; inverse?: boolean }) {
@@ -49,15 +53,16 @@ function PromoTile({ imageUrl, imageAlt, eyebrow, title, subtitle, ctaText, ctaL
 
 export function PromoBannerVisualStyles(props: PromoBannerVisualStylesProps) {
   const { variant, badgeText, title, subtitle, ctaText, ctaLink, imageUrl, imageAlt } = props;
+  const options = resolveSectionOptionClasses(props.variantOptions);
   if (variant === "image-campaign-banner" && imageUrl) {
     return (
-      <section className="relative min-h-[420px] overflow-hidden bg-foreground text-background md:min-h-[560px]" data-section-renderer="promo-banner/image-campaign-banner">
-        <SafeStorefrontImage src={imageUrl} fill sizes="100vw" alt={imageAlt || title} className="object-cover opacity-85" />
+      <section className={cn("relative min-h-[420px] overflow-hidden bg-foreground text-background md:min-h-[560px]", options.mobile.isCompact && "min-h-[340px] md:min-h-[460px]")} data-section-renderer="promo-banner/image-campaign-banner">
+        <SafeStorefrontImage src={imageUrl} fill sizes="100vw" alt={imageAlt || title} className={cn("object-cover opacity-85", options.mediaFitClassName)} />
         <div className="absolute inset-0 bg-gradient-to-r from-foreground/90 via-foreground/45 to-transparent" />
-        <div className="container relative z-10 mx-auto flex min-h-[420px] items-end px-4 py-10 md:min-h-[560px] md:items-center md:py-16">
-          <div className="max-w-2xl">
+        <div className={cn("container relative z-10 mx-auto flex min-h-[420px] items-end px-4 py-10 md:min-h-[560px] md:items-center md:py-16", options.contentWidthClassName, options.spacingClassName, options.mobile.isCompact && "min-h-[340px] md:min-h-[460px]")}>
+          <div className={cn("max-w-2xl", options.alignment.textClassName, options.alignment.marginClassName)}>
             {badgeText ? <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-background/70">{badgeText}</p> : null}
-            <h2 className="mt-3 max-w-[11ch] font-heading text-4xl font-semibold leading-[0.94] tracking-tight md:text-6xl">{title}</h2>
+            <h2 className={cn("mt-3 max-w-[11ch] font-heading text-4xl font-semibold leading-[0.94] tracking-tight md:text-6xl", options.emphasis.titleClassName, options.alignment.marginClassName)}>{title}</h2>
             {subtitle ? <p className="mt-4 max-w-xl text-sm leading-7 text-background/75 md:text-base">{subtitle}</p> : null}
             <div className="mt-6"><Action href={ctaLink} label={ctaText} inverse /></div>
           </div>
@@ -85,11 +90,11 @@ export function PromoBannerVisualStyles(props: PromoBannerVisualStylesProps) {
     );
   }
   return (
-    <section className="border-y border-border bg-foreground py-12 text-background md:py-16" data-section-renderer="promo-banner/campaign-cta">
-      <div className="container mx-auto grid gap-6 px-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-10">
-        <div className="max-w-4xl">
+    <section className={cn("border-y border-border bg-foreground py-12 text-background md:py-16", options.spacingClassName)} data-section-renderer="promo-banner/campaign-cta">
+      <div className={cn("container mx-auto grid gap-6 px-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-10", options.contentWidthClassName, options.alignment.textClassName)}>
+        <div className={cn("max-w-4xl", options.alignment.marginClassName)}>
           {badgeText ? <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-background/60">{badgeText}</p> : null}
-          <h2 className="mt-3 max-w-[14ch] font-heading text-3xl font-semibold leading-[0.98] tracking-tight sm:text-4xl md:text-5xl">{title}</h2>
+          <h2 className={cn("mt-3 max-w-[14ch] font-heading text-3xl font-semibold leading-[0.98] tracking-tight sm:text-4xl md:text-5xl", options.emphasis.titleClassName, options.alignment.marginClassName)}>{title}</h2>
           {subtitle ? <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 md:text-base">{subtitle}</p> : null}
         </div>
         <Action href={ctaLink} label={ctaText} inverse />

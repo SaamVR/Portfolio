@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { ComponentType, ReactElement, ReactNode, Ref } from "react";
 import { ArrowRight, MoveDownRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 import {
   resolveHeroVisualStyleId,
   type HeroVisualStyleId,
@@ -15,6 +18,7 @@ type HeroVisualStylesProps = {
   anchorId?: string;
   sectionRef?: Ref<HTMLElement>;
   layoutVariant?: string;
+  variantOptions?: StorefrontVariantOptions;
   tagline: string;
   title: string;
   highlight: string;
@@ -117,23 +121,24 @@ function FullImageStory(props: HeroVisualStylesProps) {
 }
 
 function EditorialSplit(props: HeroVisualStylesProps) {
+  const options = resolveSectionOptionClasses(props.variantOptions);
   return (
     <section ref={props.sectionRef} id={props.anchorId} className="overflow-hidden bg-background text-foreground">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:min-h-[78vh] lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,1.18fr)] lg:items-center lg:gap-12 lg:px-8 xl:gap-16">
-        <div className="order-2 lg:order-1">
+      <div className={cn("mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:min-h-[78vh] lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,1.18fr)] lg:items-center lg:gap-12 lg:px-8 xl:gap-16", options.contentWidthClassName, options.spacingClassName)}>
+        <div className={cn("order-2 lg:order-1", options.alignment.textClassName)}>
           <div className="mb-6 flex items-center gap-3">
             <span className="h-px w-9 bg-primary" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary sm:text-xs">{props.tagline}</p>
           </div>
-          <h1 className="max-w-[10ch] font-heading text-[clamp(2.75rem,11vw,4.5rem)] font-black leading-[0.92] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
+          <h1 className={cn("max-w-[10ch] font-heading text-[clamp(2.75rem,11vw,4.5rem)] font-black leading-[0.92] tracking-[-0.045em] sm:text-6xl lg:text-7xl", options.alignment.marginClassName, options.emphasis.titleClassName)}>
             {props.title} <span className="text-primary">{props.highlight}</span>
           </h1>
-          <p className="mt-5 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7 md:text-lg">{props.subtitle}</p>
-          <div className="mt-7"><HeroActions {...props} tone="light" /></div>
+          <p className={cn("mt-5 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7 md:text-lg", options.alignment.marginClassName, options.emphasis.copyClassName)}>{props.subtitle}</p>
+          <div className={cn("mt-7 flex", options.alignment.justifyClassName)}><HeroActions {...props} tone="light" /></div>
           <TrustRow items={props.trustHighlights} />
         </div>
         <div className="order-1 lg:order-2">
-          <div className="relative min-h-[390px] overflow-hidden rounded-[1.5rem] border border-border bg-muted shadow-2xl sm:min-h-[500px] lg:min-h-[680px] lg:rounded-[2rem]">
+          <div className={cn("relative min-h-[390px] overflow-hidden rounded-[1.5rem] border border-border bg-muted shadow-2xl sm:min-h-[500px] lg:min-h-[680px] lg:rounded-[2rem]", options.mobile.isCompact && "min-h-[300px] sm:min-h-[420px]")}>
             {props.renderMedia("absolute inset-0 h-full w-full")}
             <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-white backdrop-blur-md sm:bottom-6 sm:left-6 sm:right-6">
@@ -148,16 +153,17 @@ function EditorialSplit(props: HeroVisualStylesProps) {
 }
 
 function MinimalProductFocus(props: HeroVisualStylesProps) {
+  const options = resolveSectionOptionClasses(props.variantOptions);
   return (
     <section ref={props.sectionRef} id={props.anchorId} className="bg-background text-foreground">
-      <div className="mx-auto max-w-6xl px-4 py-12 text-center sm:px-6 sm:py-16 md:py-20 lg:py-24">
+      <div className={cn("mx-auto max-w-6xl px-4 py-12 text-center sm:px-6 sm:py-16 md:py-20 lg:py-24", options.contentWidthClassName, options.spacingClassName, options.alignment.textClassName)}>
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary sm:text-xs">{props.tagline}</p>
-        <h1 className="mx-auto mt-4 max-w-[12ch] font-heading text-[clamp(2.65rem,11vw,4.75rem)] font-black leading-[0.94] tracking-[-0.045em] md:text-7xl">
+        <h1 className={cn("mt-4 max-w-[12ch] font-heading text-[clamp(2.65rem,11vw,4.75rem)] font-black leading-[0.94] tracking-[-0.045em] md:text-7xl", options.alignment.marginClassName || "mx-auto", options.emphasis.titleClassName)}>
           {props.title} <span className="text-primary">{props.highlight}</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7 md:text-lg">{props.subtitle}</p>
-        <div className="mt-7 flex justify-center"><HeroActions {...props} tone="minimal" /></div>
-        <div className="relative mx-auto mt-10 aspect-[4/3] w-full max-w-4xl overflow-hidden rounded-[1.75rem] border border-border bg-muted shadow-[0_24px_80px_rgba(0,0,0,0.10)] sm:mt-12 sm:aspect-[16/9] md:rounded-[2.5rem]">
+        <p className={cn("mt-5 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7 md:text-lg", options.alignment.marginClassName || "mx-auto", options.emphasis.copyClassName)}>{props.subtitle}</p>
+        <div className={cn("mt-7 flex justify-center", options.alignment.justifyClassName)}><HeroActions {...props} tone="minimal" /></div>
+        <div className={cn("relative mx-auto mt-10 aspect-[4/3] w-full max-w-4xl overflow-hidden rounded-[1.75rem] border border-border bg-muted shadow-[0_24px_80px_rgba(0,0,0,0.10)] sm:mt-12 sm:aspect-[16/9] md:rounded-[2.5rem]", options.mobile.isCompact && "mt-7 aspect-[16/10] sm:mt-9")}>
           {props.renderMedia("absolute inset-0 h-full w-full")}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
         </div>

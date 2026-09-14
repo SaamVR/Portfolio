@@ -9,6 +9,7 @@ import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media
 import { StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { CategoryVisualStyles } from "@/components/storefront/section-styles/CategoryVisualStyles";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 const fallbackCategories = [
   { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
@@ -37,6 +38,7 @@ interface CategoryShowcaseProps {
     imagePosition?: string;
     focalX?: number;
     focalY?: number;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -188,6 +190,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
       fallbackImageUrl={settings?.fallback_image_url ?? null}
       imageObjectPosition={imageObjectPosition}
       containerClass={containerClass}
+      variantOptions={overrides?.variantOptions}
     />
   );
 };

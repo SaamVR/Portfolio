@@ -4,6 +4,9 @@ import AnimatedSection from "@/components/AnimatedSection";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { Link } from "@/lib/react-router-dom-shim";
 import { storefrontPath } from "@/lib/slug";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 import {
   resolveCategoryVisualStyleId,
   type CategoryVisualStyleId,
@@ -27,6 +30,7 @@ type CategoryVisualStylesProps = {
   fallbackImageUrl?: string | null;
   imageObjectPosition?: CSSProperties["objectPosition"];
   containerClass: string;
+  variantOptions?: StorefrontVariantOptions;
 };
 
 function categoryHref(item: CategoryVisualItem, storeSlug?: string | null) {
@@ -106,13 +110,14 @@ function SectionHeading({ styleId, tagline, title }: { styleId: CategoryVisualSt
 }
 
 function ImageCards(props: CategoryVisualStylesProps) {
+  const options = resolveSectionOptionClasses(props.variantOptions);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+    <div className={cn("grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4", options.mobile.isScroll && "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-width:none] md:grid md:overflow-visible [&::-webkit-scrollbar]:hidden", options.mobile.isCompact && "gap-2 sm:gap-3")}>
       {props.items.map((item, index) => (
-        <AnimatedSection key={`${item.filterKey}-${item.type}`} delay={index * 45} animation="blur">
+        <AnimatedSection key={item.filterKey + "-" + item.type} delay={index * 45} animation="blur" className={cn(options.mobile.isScroll && "w-[78vw] max-w-[320px] shrink-0 snap-start sm:w-[42vw] md:w-auto md:max-w-none md:shrink md:snap-none")}>
           <Link to={categoryHref(item, props.storeSlug)} className="group block overflow-hidden rounded-[1.25rem] border border-border bg-card transition hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl">
-            <CategoryMedia item={item} fallbackImageUrl={props.fallbackImageUrl} imageObjectPosition={props.imageObjectPosition} className="aspect-[4/5]" />
-            <div className="p-3 sm:p-4">
+            <CategoryMedia item={item} fallbackImageUrl={props.fallbackImageUrl} imageObjectPosition={props.imageObjectPosition} className={cn("aspect-[4/5]", options.mobile.isCompact && "aspect-square md:aspect-[4/5]")} />
+            <div className={cn("p-3 sm:p-4", options.mobile.isCompact && "p-2 sm:p-3")}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-heading text-sm font-bold text-foreground sm:text-base">{item.label}</p>
@@ -129,10 +134,11 @@ function ImageCards(props: CategoryVisualStylesProps) {
 }
 
 function EditorialRail(props: CategoryVisualStylesProps) {
+  const options = resolveSectionOptionClasses(props.variantOptions);
   return (
     <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-4 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
       {props.items.map((item, index) => (
-        <AnimatedSection key={`${item.filterKey}-${item.type}`} delay={index * 40} animation="blur" className="min-w-[82vw] max-w-[360px] snap-start sm:min-w-[330px]">
+        <AnimatedSection key={`${item.filterKey}-${item.type}`} delay={index * 40} animation="blur" className={cn("min-w-[82vw] max-w-[360px] snap-start sm:min-w-[330px]", options.mobile.isCompact && "min-w-[64vw] max-w-[300px] sm:min-w-[280px]")}>
           <Link to={categoryHref(item, props.storeSlug)} className="group grid min-h-[132px] grid-cols-[104px_minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/40 sm:grid-cols-[124px_minmax(0,1fr)]">
             <CategoryMedia item={item} fallbackImageUrl={props.fallbackImageUrl} imageObjectPosition={props.imageObjectPosition} className="h-full min-h-[132px] rounded-none" iconClassName="h-6 w-6" />
             <div className="flex min-w-0 flex-col justify-between p-4">
@@ -241,6 +247,7 @@ function MinimalList(props: CategoryVisualStylesProps) {
 
 export function CategoryVisualStyles(props: CategoryVisualStylesProps) {
   const styleId = resolveCategoryVisualStyleId(props.layoutVariant);
+  const options = resolveSectionOptionClasses(props.variantOptions);
   const content = styleId === "carousel"
     ? <EditorialRail {...props} />
     : styleId === "circular-categories"
@@ -254,8 +261,8 @@ export function CategoryVisualStyles(props: CategoryVisualStylesProps) {
             : <ImageCards {...props} />;
 
   return (
-    <section className="bg-background py-12 text-foreground sm:py-14 md:py-18 lg:py-20">
-      <div className={`mx-auto px-4 sm:px-6 ${props.containerClass}`}>
+    <section className={cn("bg-background py-12 text-foreground sm:py-14 md:py-18 lg:py-20", options.spacingClassName)}>
+      <div className={cn("mx-auto px-4 sm:px-6", props.containerClass, options.contentWidthClassName)}>
         <AnimatedSection animation="blur">
           {styleId === "compact-list" ? (
             <div className="grid gap-8 lg:grid-cols-[minmax(240px,0.36fr)_minmax(0,0.64fr)] lg:gap-14">

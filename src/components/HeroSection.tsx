@@ -9,6 +9,7 @@ import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { HeroVisualStyles } from "@/components/storefront/section-styles/HeroVisualStyles";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 interface HeroSettings {
   tagline?: string;
@@ -56,6 +57,7 @@ interface HeroSectionProps {
     overlayColor?: string;
     overlayOpacity?: number;
     layoutVariant?: "full-bleed" | "split" | "centered" | "editorial" | string;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -89,7 +91,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
-  const mediaFit = overrides?.mediaFit ?? "cover";
+  const mediaFit = overrides?.variantOptions?.mediaFit ?? overrides?.mediaFit ?? "cover";
   const imageObjectPosition = resolveStorefrontImageObjectPosition({
     position: overrides?.imagePosition ?? legacyHero?.image_position,
     focalX: overrides?.focalX ?? legacyHero?.focal_x,
@@ -169,6 +171,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
         anchorId={overrides?.anchorId}
         sectionRef={sectionRef}
         layoutVariant={layoutVariant}
+        variantOptions={overrides?.variantOptions}
         tagline={tagline}
         title={title}
         highlight={highlight}

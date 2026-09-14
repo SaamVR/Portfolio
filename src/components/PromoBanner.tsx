@@ -6,6 +6,9 @@ import { PromoBannerVisualStyles } from "@/components/storefront/section-styles/
 import { resolvePromoSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { storefrontPath } from "@/lib/slug";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 
 interface PromoBannerSettings {
   enabled: boolean;
@@ -53,6 +56,7 @@ interface PromoBannerProps {
     secondarySubtitle?: string;
     secondaryCtaText?: string;
     secondaryCtaLink?: string;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -186,6 +190,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const useLegacyThemeOverrides = hasExplicitPromoThemeOverrides(legacySettings);
   const isContactVariant = overrides?.layoutVariant === "contact-cta";
+  const optionClasses = resolveSectionOptionClasses(overrides?.variantOptions);
 
   if (legacySettings?.enabled === false) return null;
 
@@ -232,11 +237,12 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
         secondarySubtitle={overrides?.secondarySubtitle}
         secondaryCtaText={overrides?.secondaryCtaText}
         secondaryCtaLink={overrides?.secondaryCtaLink ? storefrontPath(overrides.secondaryCtaLink, currentStore?.slug) : undefined}
+        variantOptions={overrides?.variantOptions}
       />
     );
   }
 
-  const align = overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
+  const align = overrides?.variantOptions?.alignment ?? overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";
   const containerAlignCls = align === "left" ? "items-start" : align === "right" ? "items-end" : "items-center";
   const textMaxCls = align === "left" ? "mr-auto" : align === "right" ? "ml-auto" : "mx-auto";
@@ -279,14 +285,14 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
 
   if (isFashion && !isContactVariant && !usesCustomBannerTheme) {
     return (
-      <section className="border-y border-foreground/10 bg-foreground py-12 text-background md:py-16" aria-label="Promotional banner">
-        <div className="container mx-auto px-4">
+      <section className={cn("border-y border-foreground/10 bg-foreground py-12 text-background md:py-16", optionClasses.spacingClassName)} aria-label="Promotional banner">
+        <div className={cn("container mx-auto px-4", optionClasses.contentWidthClassName)}>
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-10">
-            <div className="max-w-4xl">
+            <div className={cn("max-w-4xl", alignCls, textMaxCls)}>
               {badgeText ? (
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-background/65 md:text-xs">{badgeText}</p>
               ) : null}
-              <h2 className="max-w-[14ch] font-heading text-3xl font-bold leading-[0.98] tracking-tight text-background sm:text-4xl md:text-5xl">
+              <h2 className={cn("max-w-[14ch] font-heading text-3xl font-bold leading-[0.98] tracking-tight text-background sm:text-4xl md:text-5xl", optionClasses.emphasis.titleClassName)}>
                 {title}
               </h2>
               {subtitle ? <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 md:text-base">{subtitle}</p> : null}
@@ -309,7 +315,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
   return (
     <section
       style={style}
-      className={`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`}
+      className={cn(`${paddingCls} relative overflow-hidden transition-all duration-300 ${usesCustomBannerTheme ? "" : "border-y border-border bg-secondary/35"}`, optionClasses.spacingClassName)}
       aria-label={isContactVariant ? "Contact call to action" : "Promotional banner"}
     >
       {usesCustomBannerTheme ? <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${borderGrad}`} /> : null}
@@ -333,7 +339,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
 
       {usesCustomBannerTheme && isDarkBg ? <div className="absolute inset-0 grain-texture opacity-[0.025] pointer-events-none" /> : null}
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className={cn("container mx-auto px-4 relative z-10", optionClasses.contentWidthClassName)}>
         <div
           style={
             customOpacity !== null
@@ -342,7 +348,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
                 }
               : undefined
           }
-          className={`max-w-4xl ${textMaxCls} rounded-lg border ${cardBgCls} backdrop-blur-xl p-6 md:p-10 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`}
+          className={cn(`max-w-4xl ${textMaxCls} rounded-lg border ${cardBgCls} backdrop-blur-xl p-6 md:p-10 relative overflow-hidden group transition-all duration-700 hover:border-white/20 hover:shadow-primary/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]`, optionClasses.contentWidthClassName)}
         >
           <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
           <div className="absolute -bottom-24 -right-24 h-48 w-48 rounded-full bg-white/5 blur-2xl pointer-events-none group-hover:bg-white/10 transition-colors duration-500" />
@@ -355,7 +361,7 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
               </span>
             ) : null}
 
-            <h2 className={`font-heading text-[1.9rem] font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`}>
+            <h2 className={cn(`font-heading text-[1.9rem] font-extrabold tracking-tight md:text-5xl md:leading-tight ${headingCls} drop-shadow-md`, optionClasses.emphasis.titleClassName)}>
               {title}
             </h2>
 

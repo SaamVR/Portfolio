@@ -30,6 +30,10 @@ import { sanitizeStoreBlockCustomCss, sanitizeStoreBlockCustomHtml } from "@/lib
 import { getSharedBlockPresetProps } from "@/lib/cms/storefront-shared-block-presets";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
+import { getExplicitVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-options";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
+import { cn } from "@/lib/utils";
 
 function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
   if (!nodes || !Array.isArray(nodes)) return null;
@@ -88,6 +92,7 @@ function RichTextBlock({
   focalX,
   focalY,
   templateId,
+  variantOptions,
 }: {
   eyebrow?: string;
   title?: string;
@@ -100,10 +105,13 @@ function RichTextBlock({
   focalX?: number;
   focalY?: number;
   templateId?: string;
+  variantOptions?: StorefrontVariantOptions;
 }) {
   const isFashion = templateId === "fashion";
-  const textAlignClass = align === "left" ? "text-left" : "text-center";
-  const contentAlignClass = align === "left" ? "mr-auto" : "mx-auto";
+  const resolvedAlign = variantOptions?.alignment ?? align;
+  const textAlignClass = resolvedAlign === "left" ? "text-left" : resolvedAlign === "right" ? "text-right" : "text-center";
+  const contentAlignClass = resolvedAlign === "left" ? "mr-auto" : resolvedAlign === "right" ? "ml-auto" : "mx-auto";
+  const optionClasses = resolveSectionOptionClasses(variantOptions);
   const doc = typeof body === "string" ? parseLegacyStringToDoc(body) : (body || { type: "doc", content: [] });
   const isBrandStory = layoutVariant === "brand-story";
   const objectPosition = resolveStorefrontImageObjectPosition({ position: imagePosition, focalX, focalY });
@@ -120,23 +128,24 @@ function RichTextBlock({
         imageUrl={imageUrl}
         imageAlt={imageAlt}
         objectPosition={objectPosition}
+        variantOptions={variantOptions}
       />
     );
   }
 
   const storyCopy = (
-    <div className={isFashion && isBrandStory ? "max-w-2xl text-left" : `max-w-3xl ${isBrandStory ? "" : contentAlignClass} ${isBrandStory ? "text-left" : textAlignClass}`}>
+    <div className={cn(isFashion && isBrandStory ? "max-w-2xl" : "max-w-3xl", !isBrandStory && contentAlignClass, isBrandStory ? "text-left" : textAlignClass, variantOptions?.alignment && textAlignClass)}>
       {eyebrow ? <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-primary">{eyebrow}</p> : null}
-      <h2 className={isFashion && isBrandStory ? "font-heading text-4xl font-semibold leading-[1.02] tracking-tight text-foreground md:text-6xl" : "font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl"}>{title}</h2>
+      <h2 className={cn(isFashion && isBrandStory ? "font-heading text-4xl font-semibold leading-[1.02] tracking-tight text-foreground md:text-6xl" : "font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl", optionClasses.emphasis.titleClassName)}>{title}</h2>
       <div className="mt-5 space-y-4">{renderRichTextNodes(doc.content)}</div>
     </div>
   );
 
   if (isBrandStory) {
     return (
-      <section className={isFashion ? "border-y border-border py-12 md:py-20" : "py-14 md:py-24"}>
-        <div className={isFashion ? "container mx-auto grid gap-8 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16" : "container mx-auto grid gap-8 px-4 lg:grid-cols-2 lg:items-center lg:gap-12"}>
-          <div className={isFashion ? "relative aspect-[4/5] overflow-hidden bg-muted" : "relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-muted"}>
+      <section className={cn(isFashion ? "border-y border-border py-12 md:py-20" : "py-14 md:py-24", optionClasses.spacingClassName)}>
+        <div className={cn(isFashion ? "container mx-auto grid gap-8 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16" : "container mx-auto grid gap-8 px-4 lg:grid-cols-2 lg:items-center lg:gap-12", optionClasses.contentWidthClassName, optionClasses.mobile.isCompact && "gap-5 lg:gap-8")}>
+          <div className={cn(isFashion ? "relative aspect-[4/5] overflow-hidden bg-muted" : "relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-muted", optionClasses.mobile.isCompact && "aspect-[16/10] lg:aspect-[4/3]")}>
             {imageUrl ? (
               <SafeStorefrontImage src={imageUrl} fill alt={imageAlt || title} className="object-cover" style={{ objectPosition }} />
             ) : (
@@ -150,9 +159,9 @@ function RichTextBlock({
   }
 
   return (
-    <section className="py-14 md:py-24">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-4xl">{storyCopy}</div>
+    <section className={cn("py-14 md:py-24", optionClasses.spacingClassName)}>
+      <div className={cn("container mx-auto px-4", optionClasses.contentWidthClassName)}>
+        <div className={cn("mx-auto max-w-4xl", optionClasses.alignment.marginClassName)}>{storyCopy}</div>
       </div>
     </section>
   );
@@ -554,7 +563,8 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
   const resolvedProps = resolveTags(block.props);
   const blockLayoutVariant = block.layoutVariant ?? template?.presentation.blockLayoutVariants?.[block.type];
   const presetProps = template ? getSharedBlockPresetProps(template.id, block.type) : {};
-  const mergedProps = { ...presetProps, ...resolvedProps, layoutVariant: blockLayoutVariant };
+  const variantOptions = template ? getExplicitVariantOptions(template.id, block) : undefined;
+  const mergedProps = { ...presetProps, ...resolvedProps, layoutVariant: blockLayoutVariant, variantOptions };
 
   const renderBlock = () => {
     switch (block.type) {
@@ -564,9 +574,9 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
       case "promo-banner": return <PromoBanner overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "category-showcase": return <CategoryShowcase overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "featured-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
       case "recommended-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
       case "comparison": return <ComparisonBlock {...mergedProps} layoutVariant={blockLayoutVariant} />;
       case "recently-viewed": return <RecentlyViewed title={typeof mergedProps.title === "string" ? mergedProps.title : undefined} />;
       case "rich-text": return blockLayoutVariant === "blog-posts" ? <BlogHomepageWidget /> : <RichTextBlock {...mergedProps} templateId={template?.id} />;

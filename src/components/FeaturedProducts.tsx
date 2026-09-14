@@ -14,6 +14,9 @@ import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/
 import { FeaturedProductsVisualStyles } from "@/components/storefront/section-styles/FeaturedProductsVisualStyles";
 import { resolveFeaturedProductSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 
 const FeaturedProducts = ({
   limit = 6,
@@ -26,6 +29,7 @@ const FeaturedProducts = ({
   imagePosition,
   focalX,
   focalY,
+  variantOptions,
   disableLegacyFallback = false,
 }: {
   limit?: number;
@@ -38,6 +42,7 @@ const FeaturedProducts = ({
   imagePosition?: string;
   focalX?: number;
   focalY?: number;
+  variantOptions?: StorefrontVariantOptions;
   disableLegacyFallback?: boolean;
 }) => {
   const currentStore = useOptionalStore();
@@ -73,7 +78,14 @@ const FeaturedProducts = ({
     }
   })();
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
-  const variantGridClass =
+  const optionClasses = resolveSectionOptionClasses(variantOptions);
+  const variantGridClass = optionClasses.mobile.isStack
+    ? layoutVariant === "4-col"
+      ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+      : layoutVariant === "3-col" || layoutVariant === "grid"
+        ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+        : "grid-cols-1 md:grid-cols-2"
+    :
     layoutVariant === "2-col"
       ? "grid-cols-2"
       : layoutVariant === "3-col" || layoutVariant === "grid" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
@@ -132,13 +144,14 @@ const FeaturedProducts = ({
         viewAllHref={storefrontPath("/shop", currentStore?.slug)}
         containerClass={containerClass}
         sectionStyle={sectionStyle}
+        variantOptions={variantOptions}
       />
     );
   }
 
   return (
-    <section className={isFashion ? "py-16 md:py-28" : "py-14 md:py-20"} style={sectionStyle}>
-      <div className={`mx-auto px-4 ${containerClass}`}>
+    <section className={cn(isFashion ? "py-16 md:py-28" : "py-14 md:py-20", optionClasses.spacingClassName)} style={sectionStyle}>
+      <div className={cn("mx-auto px-4", containerClass, optionClasses.contentWidthClassName)}>
         <AnimatedSection animation="blur">
           {isFashion ? (
             <div className="mb-8 flex items-end justify-between gap-6 border-b border-border/70 pb-5 md:mb-12 md:pb-7">
@@ -146,7 +159,7 @@ const FeaturedProducts = ({
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-primary md:text-sm">
                   {tagline ?? legacySettings?.tagline ?? "Featured"}
                 </p>
-                <h2 className="font-heading text-4xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+                <h2 className={cn("font-heading text-4xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl", optionClasses.emphasis.titleClassName)}>
                   {title ?? legacySettings?.title ?? "Explore What’s Available"}
                 </h2>
               </div>
@@ -160,7 +173,7 @@ const FeaturedProducts = ({
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary md:text-sm">
                 {tagline ?? legacySettings?.tagline ?? "Featured"}
               </p>
-              <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              <h2 className={cn("font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl", optionClasses.emphasis.titleClassName)}>
                 {title ?? legacySettings?.title ?? "Explore What’s Available"}
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:mx-auto md:text-base">
