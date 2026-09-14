@@ -172,7 +172,7 @@ describe("order background queue dispatcher", () => {
     orderBackgroundQueueDeps.getSupabaseAdminClient = () => ({ kind: "queue-admin" }) as never;
     orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs = (async (args) => {
       processed.push(args);
-      return Promise.allSettled([Promise.resolve()]);
+      return Promise.allSettled([]);
     }) as typeof orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs;
 
     try {
