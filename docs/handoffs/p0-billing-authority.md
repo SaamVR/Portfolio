@@ -65,7 +65,7 @@ A read-only provenance sweep found no matching `billing_webhook_events`, `platfo
 
 Before production rollout, finance/operator review must compare both rows to the authoritative bKash record and correct only the proven bad historical fact. Do not choose by timestamp, amount, plan, or current subscription state.
 
-Historical source reconstruction shows both rows have the exact timing/period shape produced by the July 12 platform manual-approval UI (pending submission followed by paid activation with a one-month period): the first was paid 118 seconds after creation, the second 10 seconds after creation. This strongly suggests old manual approvals, but reviewer identity was not persisted then and the application did not establish provider truth in the database. Treat this only as provenance context, never as authorization to select or rewrite either paid invoice.
+Historical source reconstruction shows both rows have the exact timing/period shape produced by the July 12 platform manual-approval UI (pending submission followed by paid activation with a one-month period): the first was paid 118 seconds after creation, the second 10 seconds after creation. This strongly suggests old manual approvals, but reviewer identity was not persisted then and the application did not establish provider truth in the database. Both duplicate invoices belong to stores owned by the same account. That strengthens the historical test/admin-submission hypothesis, but it still does not identify the real bKash payment and must not be used as a reconciliation decision. Treat this only as provenance context, never as authorization to select or rewrite either paid invoice.
 
 Runbook: `docs/runbooks/p0-billing-authority-rollout.md`.
 
