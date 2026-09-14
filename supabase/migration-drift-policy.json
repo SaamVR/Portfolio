@@ -49,6 +49,11 @@
       "name": "r4_section_studio_variant_options",
       "classification": "pending-production",
       "reason": "Frozen R4 Section Studio migration is present in the frozen storefront baseline but has not yet been applied to production; keep it explicit until coordinated R4 rollout and ledger refresh."
+    },
+    {
+      "name": "harden_return_refund_recordkeeping",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: keeps return/refund operations as truthful manual recordkeeping until provider/store-credit settlement authority exists."
     }
   ]
 }

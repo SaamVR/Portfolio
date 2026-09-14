@@ -163,5 +163,40 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'product-linked store_id columns remain nullable';
   END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'store_return_requests'
+      AND c.conname = 'store_return_requests_refund_mode_check'
+      AND pg_get_constraintdef(c.oid) ILIKE '%store_credit%'
+  ) THEN
+    RAISE EXCEPTION 'store credit is still selectable as return settlement authority';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'store_return_requests'
+      AND c.conname = 'store_return_requests_settlement_evidence_check'
+  ) THEN
+    RAISE EXCEPTION 'return settlement evidence constraint is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'store_return_requests'
+      AND t.tgname = 'trg_enforce_return_amount_within_order_total'
+      AND NOT t.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'return amount authority trigger is missing';
+  END IF;
 END;
 $$;

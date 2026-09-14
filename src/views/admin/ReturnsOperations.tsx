@@ -61,6 +61,7 @@ export default function ReturnsOperationsPage() {
   const [customerNote, setCustomerNote] = useState("");
   const [requestedAmount, setRequestedAmount] = useState("0");
   const [refundMode, setRefundMode] = useState<NonNullable<ReturnRequestRow["refund_mode"]>>("original_payment");
+  const [returnSettlementNotes, setReturnSettlementNotes] = useState<Record<string, string>>({});
   const [codOrderId, setCodOrderId] = useState(defaultOrderId);
   const [courierProvider, setCourierProvider] = useState("");
   const [amountCollected, setAmountCollected] = useState("0");
@@ -83,6 +84,7 @@ export default function ReturnsOperationsPage() {
       setCustomerNote("");
       setRequestedAmount("0");
       setRefundMode("original_payment");
+      setReturnSettlementNotes({});
       setCodOrderId("");
       setCourierProvider("");
       setAmountCollected("0");
@@ -144,7 +146,6 @@ export default function ReturnsOperationsPage() {
     return {
       open: returns.filter((entry) => !["completed", "rejected"].includes(entry.status)).length,
       refundsPending: returns.filter((entry) => ["approved", "received"].includes(entry.status)).length,
-      refundedValue: returns.filter((entry) => ["refunded", "completed"].includes(entry.status)).reduce((sum, entry) => sum + (entry.approved_amount || entry.requested_amount || 0), 0),
     };
   }, [data?.returns]);
 
@@ -232,7 +233,7 @@ export default function ReturnsOperationsPage() {
       if (updateError) throw updateError;
     },
     onSuccess: async (_data, variables) => {
-      toast.success("Return case updated.");
+      toast.success("Return case record updated.");
       await queryClient.invalidateQueries({ queryKey: ["returns-ops", variables.storeId] });
     },
   });
@@ -318,6 +319,25 @@ export default function ReturnsOperationsPage() {
     });
   };
 
+  const updateReturnStatus = (entry: ReturnRequestRow, status: ReturnRequestRow["status"]) => {
+    const settlementNote = (returnSettlementNotes[entry.id] ?? entry.internal_note ?? "").trim();
+    const requiresSettlementEvidence = status === "refunded" || (status === "completed" && entry.refund_mode !== null);
+    if (requiresSettlementEvidence && !settlementNote) {
+      toast.error("Record the external refund or settlement reference before marking this case resolved.");
+      return;
+    }
+
+    updateReturnMutation.mutate({
+      storeId: activeStoreId as string,
+      id: entry.id,
+      status,
+      approvedAmount: entry.approved_amount || entry.requested_amount || 0,
+      courierStatus: entry.courier_status,
+      internalNote: settlementNote || null,
+      resolvedBy: user?.id ?? null,
+    });
+  };
+
   const handleCreateCod = () => {
     if (!activeStoreId) {
       toast.error("Select a store first.");
@@ -394,7 +414,7 @@ export default function ReturnsOperationsPage() {
         <Card className="border-border bg-card/50">
           <CardHeader>
             <CardTitle>Create return, exchange, or refund case</CardTitle>
-            <CardDescription>Start from a real order so the team can track customer support and money flow together.</CardDescription>
+            <CardDescription>EZComo records return and refund operations here; it does not move refund money from this screen. Complete the refund externally, then record its reference before marking it refunded.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -434,10 +454,9 @@ export default function ReturnsOperationsPage() {
                 <Select value={refundMode} onValueChange={(value) => setRefundMode(value as NonNullable<ReturnRequestRow["refund_mode"]>)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="original_payment">Original payment path</SelectItem>
-                    <SelectItem value="cod_cash">COD cash return</SelectItem>
-                    <SelectItem value="manual_transfer">Manual transfer</SelectItem>
-                    <SelectItem value="store_credit">Store credit</SelectItem>
+                    <SelectItem value="original_payment">Original payment — record external refund</SelectItem>
+                    <SelectItem value="cod_cash">COD cash — record external refund</SelectItem>
+                    <SelectItem value="manual_transfer">Manual transfer — record external refund</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -541,24 +560,31 @@ export default function ReturnsOperationsPage() {
                       <p className="mt-1 text-xs text-muted-foreground">{entry.status}</p>
                     </div>
                   </div>
+                  {entry.refund_mode ? (
+                    <div className="mt-3 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                      <Label htmlFor={`return-settlement-${entry.id}`}>External settlement / refund reference</Label>
+                      <Input
+                        id={`return-settlement-${entry.id}`}
+                        value={returnSettlementNotes[entry.id] ?? entry.internal_note ?? ""}
+                        onChange={(event) => setReturnSettlementNotes((current) => ({ ...current, [entry.id]: event.target.value }))}
+                        placeholder="Provider TrxID, bank reference, cash receipt, or external settlement note"
+                      />
+                      <p className="text-xs text-muted-foreground">Required before recording a refund as completed. This note documents an external action; EZComo does not execute the refund.</p>
+                      {entry.refund_mode === "store_credit" ? (
+                        <p className="text-xs font-medium text-destructive">Legacy store-credit mode is unsupported: no customer credit balance was issued by EZComo.</p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-3 grid gap-3 md:grid-cols-3">
-                    <Select defaultValue={entry.status} onValueChange={(value) => updateReturnMutation.mutate({
-                      storeId: activeStoreId,
-                      id: entry.id,
-                      status: value as ReturnRequestRow["status"],
-                      approvedAmount: entry.approved_amount || entry.requested_amount || 0,
-                      courierStatus: entry.courier_status,
-                      internalNote: entry.internal_note,
-                      resolvedBy: user?.id ?? null,
-                    })}>
+                    <Select defaultValue={entry.status} onValueChange={(value) => updateReturnStatus(entry, value as ReturnRequestRow["status"])}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="requested">Requested</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="received">Received back</SelectItem>
-                        <SelectItem value="refunded">Refunded</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="refunded">Refund recorded externally</SelectItem>
+                        <SelectItem value="completed">Case completed</SelectItem>
                       </SelectContent>
                     </Select>
                     <Select defaultValue={entry.courier_status} onValueChange={(value) => updateReturnMutation.mutate({
