@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     }
 
     const isManualInvoice =
-      invoice.payment_method === MANUAL_BKASH_PROVIDER || invoice.provider === MANUAL_BKASH_PROVIDER;
+      invoice.payment_method === MANUAL_BKASH_PROVIDER && invoice.provider === MANUAL_BKASH_PROVIDER;
     if (!isManualInvoice) {
       return NextResponse.json({ error: "Only manual bKash invoices can be reviewed here" }, { status: 400 });
     }

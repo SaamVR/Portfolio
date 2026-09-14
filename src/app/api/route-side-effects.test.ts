@@ -2367,6 +2367,36 @@ describe("manual billing review side effects", () => {
     assert.equal(upsertMock.mock.callCount(), 0);
   });
 
+  test("rejects manual-review rows whose provider and payment method disagree", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_method_provider_mismatch",
+      store_id: "store_2",
+      plan_id: "basic",
+      status: "pending",
+      payment_method: "bkash_manual",
+      provider: "bkash",
+      provider_invoice_id: "trxmismatch1",
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_mismatch" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    const upsertMock = mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_method_provider_mismatch", action: "approve" },
+        { Authorization: "Bearer token_mismatch" },
+      ),
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Only manual bKash invoices can be reviewed here" });
+    assert.equal(admin.invoiceUpdates.length, 0);
+    assert.equal(upsertMock.mock.callCount(), 0);
+  });
+
   for (const platformRole of ["billing_admin", "super_admin"] as const) {
     test(`accepts ${platformRole}-only operators for manual billing review`, async () => {
       const admin = createManualReviewAdminMock({

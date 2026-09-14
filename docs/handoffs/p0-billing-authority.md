@@ -17,7 +17,7 @@ Code implementation is complete. No production deployment or `main` merge was pe
 
 #308 removes authenticated/anon mutation authority from `store_invoices`, adds a defense-in-depth trigger against client invoice DML, and protects the legacy `stores.plan` entitlement fallback from authenticated plan escalation while preserving ordinary permitted store updates.
 
-#314 normalizes manual bKash transaction IDs, fails closed on ambiguous history, adds a global normalized uniqueness constraint, and makes the application routes idempotent under duplicate submission and concurrent unique-index races.
+#314 normalizes manual bKash transaction IDs, requires the canonical `provider='bkash_manual'` + `payment_method='bkash_manual'` pair, fails closed on ambiguous history, adds a global normalized uniqueness constraint, and makes the application routes idempotent under duplicate submission and concurrent unique-index races.
 ## Database proof
 
 Disposable PostgreSQL 16.15 proof executed the exact #308 and #314 migration files.
@@ -27,6 +27,7 @@ Clean-history path passed:
 - #308 and #314 applied successfully;
 - manual bKash identity normalization passed;
 - invalid provider identity rejection passed;
+- both provider/payment-method mismatch directions are rejected by the permanent DB smoke;
 - authenticated invoice paid/amount mutation was rejected;
 - authenticated legacy `stores.plan` escalation was rejected;
 - service-role settlement remained functional.
@@ -38,14 +39,14 @@ Dirty-history proof inserted one duplicate normalized transaction across two pai
 
 Final branch gates before handoff:
 
-- targeted billing suite: 57/57 pass;
+- combined billing + route-authorization regression suite: 88/88 pass;
 - TypeScript typecheck: pass;
 - targeted ESLint: pass;
 - `git diff --check`: pass;
 - migration drift guard: pass;
 - permanent rollback-only `billing_authority_smoke.sql` is wired into the DB smoke runner.
 - `npm run billing:authority:preflight` provides a read-only fail-closed production reconciliation gate.
-- `npm run billing:authority:postdeploy` provides a read-only effective-grant/trigger/index/constraint verification gate.
+- `npm run billing:authority:postdeploy` provides a read-only effective-grant/trigger/index/constraint verification gate and verifies the canonical provider/payment-method constraint semantics plus zero mismatched rows.
 - both executable gates were proven against disposable PostgreSQL 16.15, including expected preflight failure on one duplicate group.
 
 The repository-wide test command still contains the previously isolated storefront transactional-truth assertion failure. The billing branch does not modify either the failing storefront test or its component, so this lane did not take ownership of that unrelated baseline failure.
@@ -63,6 +64,8 @@ Both are `paid`; neither has review metadata. Current subscriptions have changed
 
 A read-only provenance sweep found no matching `billing_webhook_events`, `platform_audit_logs`, or `store_lifecycle_events` that independently tie either invoice to the provider transaction. Database provenance therefore does not resolve the ambiguity; finance-authoritative bKash evidence is still required.
 
+Latest read-only production preflight also reports `provider_method_mismatch=0`, `missing_identity=0`, and `invalid_identity=0`; only the known duplicate normalized transaction group remains. The canonical provider/payment-method constraint therefore introduces no additional historical cleanup beyond the already-known duplicate reconciliation.
+
 Before production rollout, finance/operator review must compare both rows to the authoritative bKash record and correct only the proven bad historical fact. Do not choose by timestamp, amount, plan, or current subscription state.
 
 Historical source reconstruction shows both rows have the exact timing/period shape produced by the July 12 platform manual-approval UI (pending submission followed by paid activation with a one-month period): the first was paid 118 seconds after creation, the second 10 seconds after creation. This strongly suggests old manual approvals, but reviewer identity was not persisted then and the application did not establish provider truth in the database. Both duplicate invoices belong to stores owned by the same account. That strengthens the historical test/admin-submission hypothesis, but it still does not identify the real bKash payment and must not be used as a reconciliation decision. Treat this only as provenance context, never as authorization to select or rewrite either paid invoice.
@@ -72,7 +75,7 @@ Runbook: `docs/runbooks/p0-billing-authority-rollout.md`.
 ## Production closeout order
 
 1. Reconcile the historical duplicate using the finance-authoritative record.
-2. Confirm duplicate/missing/invalid manual bKash identity counts are all zero.
+2. Confirm duplicate/provider-method-mismatch/missing/invalid manual bKash counts are all zero.
 3. Apply #308 migration.
 4. Verify effective invoice grants and client denial behavior.
 5. Apply #314 migration.

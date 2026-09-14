@@ -3,15 +3,29 @@
 
 DO $$
 DECLARE
+  v_provider_method_mismatch_count integer;
   v_blank_count integer;
   v_invalid_count integer;
   v_duplicate_groups integer;
   v_duplicate_paid_rows integer;
 BEGIN
   SELECT count(*)
+    INTO v_provider_method_mismatch_count
+  FROM public.store_invoices
+  WHERE COALESCE(provider = 'bkash_manual', false) IS DISTINCT FROM COALESCE(payment_method = 'bkash_manual', false);
+
+  IF v_provider_method_mismatch_count > 0 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'manual_bkash_provider_method_mismatch',
+      DETAIL = format('%s invoice(s) disagree on manual bKash provider/payment method identity', v_provider_method_mismatch_count),
+      HINT = 'Reconcile provider and payment_method before applying the replay-guard migration.';
+  END IF;
+
+  SELECT count(*)
     INTO v_blank_count
   FROM public.store_invoices
-  WHERE provider = 'bkash_manual'
+  WHERE (provider = 'bkash_manual' OR payment_method = 'bkash_manual')
     AND (provider_invoice_id IS NULL OR btrim(provider_invoice_id) = '');
 
   IF v_blank_count > 0 THEN
@@ -25,7 +39,7 @@ BEGIN
   SELECT count(*)
     INTO v_invalid_count
   FROM public.store_invoices
-  WHERE provider = 'bkash_manual'
+  WHERE (provider = 'bkash_manual' OR payment_method = 'bkash_manual')
     AND (
       char_length(btrim(provider_invoice_id)) > 128
       OR btrim(provider_invoice_id) !~ '^[A-Za-z0-9]+$'
@@ -114,13 +128,17 @@ ALTER TABLE public.store_invoices
 ALTER TABLE public.store_invoices
   ADD CONSTRAINT store_invoices_bkash_manual_identity_required
   CHECK (
-    provider IS DISTINCT FROM 'bkash_manual'
-    OR (
-      payment_method = 'bkash_manual'
+    (
+      provider = 'bkash_manual'
+      AND payment_method = 'bkash_manual'
       AND provider_invoice_id IS NOT NULL
       AND btrim(provider_invoice_id) <> ''
       AND char_length(provider_invoice_id) <= 128
       AND provider_invoice_id ~ '^[A-Z0-9]+$'
+    )
+    OR (
+      provider IS DISTINCT FROM 'bkash_manual'
+      AND payment_method IS DISTINCT FROM 'bkash_manual'
     )
   );
 

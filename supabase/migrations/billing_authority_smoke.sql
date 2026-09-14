@@ -43,6 +43,8 @@ declare
   v_identity text;
   v_duplicate_blocked boolean := false;
   v_invalid_blocked boolean := false;
+  v_provider_method_mismatch_blocked boolean := false;
+  v_provider_manual_method_mismatch_blocked boolean := false;
 begin
   insert into public.store_invoices (
     id, store_id, plan_id, amount, currency, status,
@@ -100,6 +102,46 @@ begin
 
   if not v_invalid_blocked then
     raise exception 'invalid manual bKash provider identity was not blocked';
+  end if;
+
+  begin
+    insert into public.store_invoices (
+      id, store_id, plan_id, amount, currency, status,
+      provider, payment_method, provider_invoice_id
+    ) values (
+      '34000000-0000-4000-8000-000000000004',
+      '24000000-0000-4000-8000-000000000002',
+      'billing-authority-smoke-plan',
+      0, 'BDT', 'pending',
+      'bkash', 'bkash_manual', 'TRXMISMATCH1'
+    );
+  exception
+    when check_violation then
+      v_provider_method_mismatch_blocked := true;
+  end;
+
+  if not v_provider_method_mismatch_blocked then
+    raise exception 'manual bKash provider/payment method mismatch was not blocked';
+  end if;
+
+  begin
+    insert into public.store_invoices (
+      id, store_id, plan_id, amount, currency, status,
+      provider, payment_method, provider_invoice_id
+    ) values (
+      '34000000-0000-4000-8000-000000000005',
+      '24000000-0000-4000-8000-000000000002',
+      'billing-authority-smoke-plan',
+      0, 'BDT', 'pending',
+      'bkash_manual', 'bkash', 'TRXMISMATCH2'
+    );
+  exception
+    when check_violation then
+      v_provider_manual_method_mismatch_blocked := true;
+  end;
+
+  if not v_provider_manual_method_mismatch_blocked then
+    raise exception 'manual bKash payment method/provider mismatch was not blocked';
   end if;
 end;
 $$;

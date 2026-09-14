@@ -83,9 +83,9 @@ Preferred executable gate (read-only):
 npm run billing:authority:preflight
 ```
 
-The command uses a configured database URL when present, otherwise the linked Supabase project. It exits nonzero unless all three conditions below are zero.
+The command uses a configured database URL when present, otherwise the linked Supabase project. It exits nonzero unless all four conditions below are zero.
 
-After reconciliation, all three queries below must be zero:
+After reconciliation, all four queries below must be zero:
 
 ```sql
 SELECT count(*) AS duplicate_groups
@@ -97,19 +97,24 @@ FROM (
   HAVING count(*) > 1
 ) AS duplicates;
 
+SELECT count(*) AS provider_method_mismatch
+FROM public.store_invoices
+WHERE COALESCE(provider = 'bkash_manual', false)
+      IS DISTINCT FROM COALESCE(payment_method = 'bkash_manual', false);
+
 SELECT count(*) AS missing_identity
 FROM public.store_invoices
-WHERE provider = 'bkash_manual'
+WHERE (provider = 'bkash_manual' OR payment_method = 'bkash_manual')
   AND (provider_invoice_id IS NULL OR btrim(provider_invoice_id) = '');
 
 SELECT count(*) AS invalid_identity
 FROM public.store_invoices
-WHERE provider = 'bkash_manual'
+WHERE (provider = 'bkash_manual' OR payment_method = 'bkash_manual')
   AND (char_length(btrim(provider_invoice_id)) > 128
        OR btrim(provider_invoice_id) !~ '^[A-Za-z0-9]+$');
 ```
 
-If any value is non-zero, do not apply #314.
+If any value is non-zero, do not apply #314. Manual bKash is canonical only when both `provider` and `payment_method` equal `bkash_manual`; a one-sided/manual-looking row is treated as historical ambiguity and must be reconciled before rollout.
 
 ## Deployment order
 

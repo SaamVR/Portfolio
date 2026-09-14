@@ -29,6 +29,9 @@ test("#314 fails closed on ambiguous history and enforces global normalized uniq
   );
   assert.match(replaySql, /WHERE provider = 'bkash_manual'/);
   assert.match(replaySql, /store_invoices_bkash_manual_identity_required/);
+  assert.match(replaySql, /manual_bkash_provider_method_mismatch/);
+  assert.match(replaySql, /provider = 'bkash_manual'[\s\S]*payment_method = 'bkash_manual'/);
+  assert.match(replaySql, /provider IS DISTINCT FROM 'bkash_manual'[\s\S]*payment_method IS DISTINCT FROM 'bkash_manual'/);
   assert.match(replaySql, /provider_invoice_id ~ '\^\[A-Z0-9\]\+\$'/);
 });
 

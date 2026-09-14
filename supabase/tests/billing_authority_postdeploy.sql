@@ -16,6 +16,7 @@ DECLARE
   v_plan_triggers integer;
   v_unique_index integer;
   v_identity_constraint integer;
+  v_provider_method_mismatch integer;
   v_duplicate_groups integer;
 BEGIN
   SELECT (
@@ -90,7 +91,15 @@ BEGIN
   WHERE conrelid = 'public.store_invoices'::regclass
     AND conname = 'store_invoices_bkash_manual_identity_required'
     AND contype = 'c'
-    AND convalidated;
+    AND convalidated
+    AND position('provider = ''bkash_manual''' in pg_get_constraintdef(oid)) > 0
+    AND position('payment_method = ''bkash_manual''' in pg_get_constraintdef(oid)) > 0
+    AND position('provider IS DISTINCT FROM ''bkash_manual''' in pg_get_constraintdef(oid)) > 0
+    AND position('payment_method IS DISTINCT FROM ''bkash_manual''' in pg_get_constraintdef(oid)) > 0;
+
+  SELECT count(*) INTO v_provider_method_mismatch
+  FROM public.store_invoices
+  WHERE COALESCE(provider = 'bkash_manual', false) IS DISTINCT FROM COALESCE(payment_method = 'bkash_manual', false);
 
   SELECT count(*) INTO v_duplicate_groups
   FROM (
@@ -111,16 +120,17 @@ BEGIN
      OR v_plan_triggers <> 2
      OR v_unique_index <> 1
      OR v_identity_constraint <> 1
+     OR v_provider_method_mismatch <> 0
      OR v_duplicate_groups <> 0 THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
       MESSAGE = 'billing_authority_postdeploy_verification_failed',
       DETAIL = format(
-        'anon_privileges=%s auth_nonselect=%s auth_select=%s service_dml=%s mutation_policies=%s select_policy=%s invoice_trigger=%s plan_triggers=%s unique_index=%s identity_constraint=%s duplicate_groups=%s',
+        'anon_privileges=%s auth_nonselect=%s auth_select=%s service_dml=%s mutation_policies=%s select_policy=%s invoice_trigger=%s plan_triggers=%s unique_index=%s identity_constraint=%s provider_method_mismatch=%s duplicate_groups=%s',
         v_anon_privileges, v_authenticated_nonselect, v_authenticated_select,
         v_service_role_dml, v_mutation_policies, v_select_policy,
         v_invoice_trigger, v_plan_triggers, v_unique_index,
-        v_identity_constraint, v_duplicate_groups
+        v_identity_constraint, v_provider_method_mismatch, v_duplicate_groups
       );
   END IF;
 
