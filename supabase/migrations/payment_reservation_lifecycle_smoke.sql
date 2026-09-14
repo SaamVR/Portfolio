@@ -23,6 +23,7 @@ DECLARE
   _status text;
   _reservation text;
   _attempt_state text;
+  _blocked boolean;
   _slug text := 'payment-lifecycle-smoke-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
   _coupon_code text;
 BEGIN
@@ -110,6 +111,13 @@ BEGIN
   SELECT uses_count INTO _uses FROM public.coupon_codes WHERE id = _coupon;
   IF _stock <> 1 OR _uses <> 0 THEN RAISE EXCEPTION 'provider cancellation did not restore resources'; END IF;
 
+  -- Durable release markers prevent a later status transition from restoring again.
+  UPDATE public.orders SET status = 'pending' WHERE id = _order.id;
+  UPDATE public.orders SET status = 'cancelled' WHERE id = _order.id;
+  SELECT stock INTO _stock FROM public.products WHERE id = _product;
+  SELECT uses_count INTO _uses FROM public.coupon_codes WHERE id = _coupon;
+  IF _stock <> 1 OR _uses <> 0 THEN RAISE EXCEPTION 'released reservation restored resources more than once'; END IF;
+
   -- 3) One-winner execute claim + second paymentID rejection + final-failure release.
   _product := gen_random_uuid();
   _coupon := gen_random_uuid();
@@ -157,7 +165,27 @@ BEGIN
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   PERFORM public.bind_storefront_payment_attempt(_prepare.attempt_id, 'PAY-RECON', 'https://example.invalid/bkash', '{}'::jsonb);
   SELECT * INTO _claim FROM public.claim_storefront_payment_execution(_store, _order.order_number, 'bkash', 'PAY-RECON');
+
+  _blocked := false;
+  BEGIN
+    UPDATE public.orders SET status = 'cancelled' WHERE id = _order.id;
+  EXCEPTION WHEN OTHERS THEN
+    _blocked := position('cannot cancel order while payment execution outcome is unresolved' in SQLERRM) > 0;
+    IF NOT _blocked THEN RAISE; END IF;
+  END;
+  IF NOT _blocked THEN RAISE EXCEPTION 'executing provider attempt allowed order cancellation'; END IF;
+
   PERFORM public.mark_storefront_payment_reconciliation_required(_claim.attempt_id, 'execute_transport_unknown', '{}'::jsonb);
+
+  _blocked := false;
+  BEGIN
+    UPDATE public.orders SET status = 'cancelled' WHERE id = _order.id;
+  EXCEPTION WHEN OTHERS THEN
+    _blocked := position('cannot cancel order while payment execution outcome is unresolved' in SQLERRM) > 0;
+    IF NOT _blocked THEN RAISE; END IF;
+  END;
+  IF NOT _blocked THEN RAISE EXCEPTION 'reconciliation-required attempt allowed order cancellation'; END IF;
+
   PERFORM public.expire_storefront_payment_reservations();
   SELECT status, reservation_state INTO _status, _reservation FROM public.orders WHERE id = _order.id;
   SELECT stock INTO _stock FROM public.products WHERE id = _product;
@@ -232,7 +260,27 @@ BEGIN
     RAISE EXCEPTION 'duplicate provider transaction identity changed order settlement truth';
   END IF;
 
-  -- 6) COD is accepted immediately and is outside redirect auto-expiry semantics.
+  -- 6) A durable succeeded attempt bars creation of another provider obligation.
+  _product := gen_random_uuid();
+  INSERT INTO public.products (id, store_id, name, price, image_url, stock, is_available)
+  VALUES (_product, _store, 'Succeeded attempt product', 1000, 'https://example.invalid/product.png', 1, true);
+  SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
+    _store, 'smoke-succeeded-attempt', NULL,
+    jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
+    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'succeeded attempt', NULL
+  );
+  SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
+  UPDATE public.storefront_payment_attempts SET state = 'succeeded' WHERE id = _prepare.attempt_id;
+  _blocked := false;
+  BEGIN
+    PERFORM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
+  EXCEPTION WHEN OTHERS THEN
+    _blocked := position('payment obligation already succeeded' in SQLERRM) > 0;
+    IF NOT _blocked THEN RAISE; END IF;
+  END;
+  IF NOT _blocked THEN RAISE EXCEPTION 'succeeded payment attempt allowed a second provider attempt'; END IF;
+
+  -- 7) COD is accepted immediately and is outside redirect auto-expiry semantics.
   _product := gen_random_uuid();
   INSERT INTO public.products (id, store_id, name, price, image_url, stock, is_available)
   VALUES (_product, _store, 'COD product', 1000, 'https://example.invalid/product.png', 1, true);

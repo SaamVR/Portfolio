@@ -42,6 +42,8 @@ describe("payment reservation lifecycle database contract", () => {
     assert.match(migration, /is_available = CASE WHEN stock \+ _line\.quantity > 0 THEN true/);
     assert.match(migration, /SET uses_count = greatest\(uses_count - 1, 0\)/);
     assert.match(migration, /NEW\.reservation_state := 'released'/);
+    assert.match(migration, /OLD\.reservation_state IS DISTINCT FROM 'released'[\s\S]*OLD\.reservation_released_at IS NULL/);
+    assert.match(migration, /storefront_payment_attempts[\s\S]*state IN \('executing', 'reconciliation_required'\)[\s\S]*cannot cancel order while payment execution outcome is unresolved/);
   });
 
   it("binds one active attempt, provider payment id, and transaction id authoritatively", () => {
@@ -59,6 +61,10 @@ describe("payment reservation lifecycle database contract", () => {
     assert.match(smoke, /TRX-GLOBAL-DUP/);
     assert.match(smoke, /duplicate provider transaction identity was not quarantined/);
     assert.match(smoke, /_reservation <> 'reconciliation_required'/);
+  });
+
+  it("refuses to create another payment attempt after provider success", () => {
+    assert.match(migration, /state = 'succeeded'[\s\S]*payment obligation already succeeded/);
   });
 
   it("claims execution durably before the Edge Function calls bKash execute", () => {

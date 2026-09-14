@@ -121,7 +121,22 @@ AS $$
 DECLARE
   _line record;
 BEGIN
-  IF NEW.status = 'cancelled' AND OLD.status IS DISTINCT FROM 'cancelled' THEN
+  IF NEW.status = 'cancelled'
+    AND OLD.status IS DISTINCT FROM 'cancelled'
+    AND OLD.reservation_state IS DISTINCT FROM 'released'
+    AND OLD.reservation_released_at IS NULL
+  THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.storefront_payment_attempts a
+      WHERE a.order_id = OLD.id
+        AND a.store_id = OLD.store_id
+        AND a.state IN ('executing', 'reconciliation_required')
+    ) THEN
+      RAISE EXCEPTION 'cannot cancel order while payment execution outcome is unresolved'
+        USING ERRCODE = 'P0001';
+    END IF;
+
     IF jsonb_typeof(NEW.items) = 'array' THEN
       FOR _line IN
         SELECT
@@ -352,6 +367,17 @@ BEGIN
 
   IF _order.status <> 'pending' THEN
     RAISE EXCEPTION 'order is no longer awaiting payment' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.storefront_payment_attempts a
+    WHERE a.order_id = _order.id
+      AND a.store_id = _store_id
+      AND a.provider = _provider_norm
+      AND a.state = 'succeeded'
+  ) THEN
+    RAISE EXCEPTION 'payment obligation already succeeded' USING ERRCODE = 'P0001';
   END IF;
 
   IF _order.reservation_state = 'reconciliation_required' THEN
