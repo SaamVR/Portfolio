@@ -5,6 +5,7 @@ import { normalizeOrderItems } from "@/lib/cms/order-input";
 import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefront-order-experience";
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
+import { resolveAuthoritativeCheckoutPricing } from "@/lib/orders/authoritative-checkout-pricing";
 import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -37,7 +38,7 @@ function mapOrderError(message: string) {
     return { message, status: 409 };
   }
 
-  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed|unavailable/i.test(message)) {
     return { message, status: 400 };
   }
 
@@ -113,9 +114,17 @@ export async function POST(req: Request) {
     }
 
     const items = normalizeOrderItems(body?.items);
+    const productIds = Array.from(new Set(items.map((item) => item.productId)));
     const user = await orderCreateRouteDeps.getAuthenticatedUser(req);
     const supabaseAdmin = orderCreateRouteDeps.getSupabaseAdminClient();
-    const [{ data: store }, { data: storefrontSetting }, storePlanResult] = await Promise.all([
+    const [
+      { data: store },
+      { data: storefrontSetting },
+      deliverySettingResult,
+      paymentSettingResult,
+      productsResult,
+      storePlanResult,
+    ] = await Promise.all([
       supabaseAdmin
         .from("stores")
         .select("name, is_published")
@@ -127,11 +136,37 @@ export async function POST(req: Request) {
         .eq("store_id", storeId)
         .eq("key", "storefront_profile")
         .maybeSingle(),
+      supabaseAdmin
+        .from("site_settings")
+        .select("value")
+        .eq("store_id", storeId)
+        .eq("key", "delivery_settings")
+        .maybeSingle(),
+      supabaseAdmin
+        .from("site_settings")
+        .select("value")
+        .eq("store_id", storeId)
+        .eq("key", "payment_settings")
+        .maybeSingle(),
+      supabaseAdmin
+        .from("products")
+        .select("id, price, type")
+        .eq("store_id", storeId)
+        .in("id", productIds),
       orderCreateRouteDeps.loadStorePlanState(supabaseAdmin, storeId, { includePublished: true }),
     ]);
 
     if (storePlanResult.error) {
       throw storePlanResult.error;
+    }
+    if (deliverySettingResult.error) {
+      throw deliverySettingResult.error;
+    }
+    if (paymentSettingResult.error) {
+      throw paymentSettingResult.error;
+    }
+    if (productsResult.error) {
+      throw productsResult.error;
     }
 
     const storePlanState = storePlanResult.data;
@@ -149,6 +184,26 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
 
+    const authoritativePricing = resolveAuthoritativeCheckoutPricing({
+      items,
+      products: (productsResult.data ?? []).map((product) => ({
+        id: product.id,
+        price: Number(product.price),
+        type: product.type,
+      })),
+      deliverySettings: deliverySettingResult.data?.value,
+      paymentSettings: paymentSettingResult.data?.value,
+      paymentMethod,
+    });
+    const requestedDeliveryFee = readMoney(body?.deliveryFee);
+
+    if (requestedDeliveryFee !== authoritativePricing.deliveryFee) {
+      return jsonNoStore(
+        { error: "checkout pricing changed; refresh checkout and try again" },
+        { status: 400 },
+      );
+    }
+
     const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
       ? storefrontSetting.value as Record<string, unknown>
       : null;
@@ -159,7 +214,7 @@ export async function POST(req: Request) {
       _client_request_id: idempotencyKey,
       _user_id: user?.id ?? null,
       _items: items,
-      _delivery_fee: readMoney(body?.deliveryFee),
+      _delivery_fee: authoritativePricing.deliveryFee,
       _discount_amount: readMoney(body?.discountAmount),
       _customer_name: customerName,
       _customer_phone: customerPhone,

@@ -6,7 +6,7 @@ const storeId = "10000000-0000-4000-8000-000000000001";
 const orderId = "10000000-0000-4000-8000-000000000002";
 const productId = "10000000-0000-4000-8000-000000000003";
 
-function buildRequest(paymentMethod = "bkash") {
+function buildRequest(paymentMethod = "bkash", deliveryFee = 80) {
   return new Request("https://example.com/api/orders/create", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -14,7 +14,7 @@ function buildRequest(paymentMethod = "bkash") {
       storeId,
       idempotencyKey: "checkout-attempt-123",
       items: [{ productId, size: "M", quantity: 1 }],
-      deliveryFee: 80,
+      deliveryFee,
       discountAmount: 0,
       customerName: "Test Customer",
       customerPhone: "01700000000",
@@ -85,6 +85,23 @@ function createAdminMock(options?: {
                       maybeSingle: async () => ({ data: null, error: null }),
                     };
                   },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "products") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  in: async () => ({
+                    data: [{ id: productId, price: 1000, type: "T-Shirt" }],
+                    error: null,
+                  }),
                 };
               },
             };
@@ -192,5 +209,29 @@ describe("order creation checkout recovery", () => {
     // existing bKash order, simulating an old/drifted database RPC.
     const response = await POST(buildRequest("cod"));
     assert.equal(response.status, 409);
+  });
+
+  test("rejects a client-supplied delivery fee that disagrees with authoritative store pricing", async () => {
+    const admin = createAdminMock({ replayed: false, persistedPaymentMethod: "cod" });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("cod", 0));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /pricing changed/i);
+    assert.equal(rpcCalls, 0);
   });
 });
