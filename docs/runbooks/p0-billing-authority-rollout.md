@@ -2,7 +2,7 @@
 
 This runbook closes the operational gap for P0 issues #308 and #314 after branch `release/p0-billing-authority` is approved.
 
-Implementation checkpoint: `a730f34f145ab85e5d75465273086bf418f901e3`.
+Release PR: `#364` from branch `release/p0-billing-authority`.
 
 ## Non-negotiable invariants
 
@@ -75,6 +75,14 @@ COMMIT;
 Never run this template until `<VERIFIED_ACTUAL_TRXID>` is confirmed from an authoritative payment source.
 ## Pre-deploy gate
 
+Preferred executable gate (read-only):
+
+```bash
+npm run billing:authority:preflight
+```
+
+The command uses a configured database URL when present, otherwise the linked Supabase project. It exits nonzero unless all three conditions below are zero.
+
 After reconciliation, all three queries below must be zero:
 
 ```sql
@@ -116,6 +124,14 @@ If any value is non-zero, do not apply #314.
 11. Run `npm run migrations:drift`; expected result is green without those exceptions.
 
 ## Post-deploy privilege verification
+
+Run the executable read-only verifier first:
+
+```bash
+npm run billing:authority:postdeploy
+```
+
+It validates client/server invoice grants, all authority triggers, the manual-bKash check constraint and unique index, and zero duplicate normalized identities. Then inspect the grant query below for operator evidence.
 
 ```sql
 SELECT grantee, privilege_type

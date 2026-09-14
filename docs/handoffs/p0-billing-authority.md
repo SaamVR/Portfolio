@@ -44,6 +44,9 @@ Final branch gates before handoff:
 - `git diff --check`: pass;
 - migration drift guard: pass;
 - permanent rollback-only `billing_authority_smoke.sql` is wired into the DB smoke runner.
+- `npm run billing:authority:preflight` provides a read-only fail-closed production reconciliation gate.
+- `npm run billing:authority:postdeploy` provides a read-only effective-grant/trigger/index/constraint verification gate.
+- both executable gates were proven against disposable PostgreSQL 16.15, including expected preflight failure on one duplicate group.
 
 The repository-wide test command still contains the previously isolated storefront transactional-truth assertion failure. The billing branch does not modify either the failing storefront test or its component, so this lane did not take ownership of that unrelated baseline failure.
 

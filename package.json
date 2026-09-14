@@ -26,7 +26,9 @@
     "test:db:rls": "node scripts/run-rls-smoke.mjs",
     "test:db:subscription-jwt": "tsx scripts/run-subscription-owner-jwt-smoke.ts",
     "test:db:billing": "tsx scripts/run-billing-route-smoke.ts",
-    "test:db:billing-consistency": "node scripts/run-billing-consistency.mjs"
+    "test:db:billing-consistency": "node scripts/run-billing-consistency.mjs",
+    "billing:authority:preflight": "node scripts/run-billing-authority-gate.mjs preflight",
+    "billing:authority:postdeploy": "node scripts/run-billing-authority-gate.mjs postdeploy"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.18",
