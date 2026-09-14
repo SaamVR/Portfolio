@@ -42,4 +42,10 @@ describe("order input normalization", () => {
       },
     ]), /invalid product/i);
   });
+
+  it("rejects null and primitive cart entries as malformed input", () => {
+    assert.throws(() => normalizeOrderItems([null]), /invalid items/i);
+    assert.throws(() => normalizeOrderItems([undefined]), /invalid items/i);
+    assert.throws(() => normalizeOrderItems(["not-an-item"]), /invalid items/i);
+  });
 });
