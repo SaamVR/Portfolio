@@ -74,16 +74,15 @@ function makeTruthfulOrderCreatedArgs(args: RunOrderCreatedBackgroundJobsArgs): 
 export async function dispatchOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgroundJobsArgs) {
   const truthfulArgs = makeTruthfulOrderCreatedArgs(args);
   const { supabaseAdmin, ...payload } = truthfulArgs;
+  const message: OrderBackgroundQueueMessage = {
+    type: "order_created",
+    payload,
+  };
+  const idempotencyKey = `order-created:${args.recoveryOrderId}`;
 
   if (shouldUseOrderBackgroundQueue()) {
     try {
-      await enqueueOrderBackgroundMessage(
-        {
-          type: "order_created",
-          payload,
-        },
-        `order-created:${args.recoveryOrderId}`,
-      );
+      await enqueueOrderBackgroundMessage(message, idempotencyKey);
       return { mode: "queue" as const };
     } catch (error) {
       await recordCaughtIncident(supabaseAdmin, {
@@ -100,11 +99,44 @@ export async function dispatchOrderCreatedBackgroundJobs(args: RunOrderCreatedBa
     }
   }
 
-  await orderBackgroundQueueDeps.runOrderCreatedBackgroundJobs({
-    ...payload,
-    supabaseAdmin,
-  });
-  return { mode: "inline" as const };
+  try {
+    await orderBackgroundQueueDeps.runOrderCreatedBackgroundJobs({
+      ...payload,
+      supabaseAdmin,
+    });
+    return { mode: "inline" as const };
+  } catch (error) {
+    // The runner only rejects for retry-required recovery-state mutation. Even
+    // when normal transport is inline, hand this failure to the durable queue so
+    // it is not permanently lost after an incident log.
+    await recordCaughtIncident(supabaseAdmin, {
+      fingerprint: "orders.background.created.inline-retry-required",
+      severity: "warning",
+      source: "orders",
+      title: "Inline order-created recovery failed; durable retry requested",
+      error,
+      route: "/api/orders/create",
+      storeId: args.storeId,
+      metadata: { orderId: args.recoveryOrderId, retryRequired: true },
+    });
+
+    try {
+      await enqueueOrderBackgroundMessage(message, idempotencyKey);
+      return { mode: "queue-recovery" as const };
+    } catch (queueError) {
+      await recordCaughtIncident(supabaseAdmin, {
+        fingerprint: "orders.queue.publish.created-recovery",
+        severity: "warning",
+        source: "orders",
+        title: "Retry-required order-created recovery could not be queued",
+        error: queueError,
+        route: "/api/orders/create",
+        storeId: args.storeId,
+        metadata: { orderId: args.recoveryOrderId, retryRequired: true },
+      });
+      throw error;
+    }
+  }
 }
 
 export async function dispatchOrderCancelledBackgroundJobs(args: RunOrderCancelledBackgroundJobsArgs) {
@@ -246,8 +278,8 @@ export async function processOrderBackgroundQueueMessage(message: OrderBackgroun
       route: "/api/queues/order-background",
       storeId,
     });
-    // Preserve the failure so the queue runtime can retry instead of treating
-    // the message as successfully consumed.
+    // Preserve retry-required failure so the queue runtime can retry instead of
+    // acknowledging a permanently incomplete recovery-state mutation.
     throw error;
   }
 }
