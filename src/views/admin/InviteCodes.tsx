@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { resolveStorePlanState } from "@/lib/billing/plans";
 import { Plus, Copy, Loader2, KeyRound, ShieldCheck, Users as UsersIcon, UserRoundPlus } from "lucide-react";
 
 type StaffInvite = {
@@ -116,21 +117,42 @@ const InviteCodes = () => {
       return null;
     }
 
-    const { data, error } = await (supabase as any)
-      .from("store_subscriptions")
-      .select("plan_id, cms_plans(name, feature_flags)")
-      .eq("store_id", activeStoreId as string)
+    const [{ data: subscription, error: subscriptionError }, { data: store, error: storeError }] = await Promise.all([
+      (supabase as any)
+        .from("store_subscriptions")
+        .select("plan_id, status, trial_ends_at, current_period_ends_at")
+        .eq("store_id", activeStoreId as string)
+        .maybeSingle(),
+      (supabase as any)
+        .from("stores")
+        .select("plan")
+        .eq("id", activeStoreId as string)
+        .maybeSingle(),
+    ]);
+
+    if (subscriptionError) throw subscriptionError;
+    if (storeError) throw storeError;
+
+    const planState = resolveStorePlanState({
+      subscription,
+      legacyPlanId: store?.plan ?? null,
+    });
+    const effectivePlanId = planState.effectivePlanId ?? "free";
+    const { data: plan, error: planError } = await (supabase as any)
+      .from("cms_plans")
+      .select("name, feature_flags")
+      .eq("id", effectivePlanId)
       .maybeSingle();
 
-    if (error) throw error;
+    if (planError) throw planError;
 
-    const featureFlags = data?.cms_plans?.feature_flags && typeof data.cms_plans.feature_flags === "object"
-      ? data.cms_plans.feature_flags as Record<string, unknown>
+    const featureFlags = plan?.feature_flags && typeof plan.feature_flags === "object"
+      ? plan.feature_flags as Record<string, unknown>
       : null;
-    const rawStaffLimit = featureFlags && typeof featureFlags.staff === "number" ? featureFlags.staff : null;
+    const rawStaffLimit = featureFlags && typeof featureFlags.staff === "number" ? featureFlags.staff : 0;
 
     return {
-      name: data?.cms_plans?.name ?? "Current plan",
+      name: plan?.name ?? "Current plan",
       staffLimit: rawStaffLimit,
     } satisfies PlanSummary;
   }, [activeStoreId]);
@@ -193,15 +215,17 @@ const InviteCodes = () => {
     () => codes.filter((code) => code.claimed_by || code.status === "claimed"),
     [codes],
   );
+  const activeStaffCount = members.filter((member) => member.role !== "owner").length;
   const staffLimit = planSummary?.staffLimit ?? null;
   const isUnlimitedSeats = staffLimit != null && staffLimit < 0;
+  const seatLimitReached = typeof staffLimit === "number" && staffLimit >= 0 && activeStaffCount >= staffLimit;
   const seatSummary = !planSummary
     ? "Checking package access"
     : isUnlimitedSeats
-      ? `${members.length} active team members with unlimited seats`
+      ? `${activeStaffCount} active staff with unlimited seats`
       : typeof staffLimit === "number"
-        ? `${members.length} of ${staffLimit} seats in use`
-        : `${members.length} active team members`;
+        ? `${activeStaffCount} of ${staffLimit} staff seats in use`
+        : `${activeStaffCount} active staff`;
 
   const roleLabel = (memberRole: StoreMember["role"] | StaffInvite["role"]) => {
     switch (memberRole) {
@@ -229,6 +253,10 @@ const InviteCodes = () => {
   const handleCreate = async () => {
     if (!activeStoreId) {
       toast.error("Select a store before creating invite codes.");
+      return;
+    }
+    if (seatLimitReached) {
+      toast.error("This package is already at its active staff-seat limit.");
       return;
     }
 
@@ -278,11 +306,11 @@ const InviteCodes = () => {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <UsersIcon className="h-4 w-4 text-primary" />
-              Active team
+              Active staff
             </CardTitle>
             <CardDescription>{seatSummary}</CardDescription>
           </CardHeader>
-          <CardContent className="text-2xl font-semibold text-foreground">{members.length}</CardContent>
+          <CardContent className="text-2xl font-semibold text-foreground">{activeStaffCount}</CardContent>
         </Card>
 
         <Card className="border-border">
@@ -337,11 +365,11 @@ const InviteCodes = () => {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleCreate} disabled={creating} className="gap-2">
+          <Button onClick={handleCreate} disabled={creating || seatLimitReached} className="gap-2">
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Generate Code
           </Button>
-          {typeof staffLimit === "number" && staffLimit >= 0 && members.length >= staffLimit ? (
+          {seatLimitReached ? (
             <p className="text-sm text-amber-600 md:col-span-3">
               This package is already at its active seat limit. Upgrade if you need more staff access.
             </p>

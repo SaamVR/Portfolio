@@ -24,6 +24,12 @@
       "name": "payment_reservation_lifecycle_317_327",
       "classification": "pending-production",
       "reason": "P0 release-blocker migration for #317/#327. Must be applied and smoke-tested before deploying the matching bkash-payment Edge Function; remove this exception after the production ledger is refreshed."
+    },
+    {
+      "name": "atomic_invite_claim_authority_323",
+      "classification": "pending-production",
+      "reason": "#323 release-blocker migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
+
     }
   ]
 }
