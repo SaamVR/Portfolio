@@ -67,3 +67,21 @@ Issue #314 remains Lane A-owned billing authority. This lane does not modify `st
 ## Validation scope
 
 Automated coverage includes abandoned payment expiry, stock and coupon restoration, same-client replay, provider cancellation/failure, late callback, simultaneous execute claims, unbound second payment ID, timeout after provider success, local finalization failure, duplicate callbacks, stale sessions, session recreation boundaries, and reconciliation success/failure behavior.
+Local release-gate evidence:
+- PostgreSQL 16.15 disposable cluster: migration applied successfully.
+- `payment_reservation_lifecycle_smoke.sql`: passed in its rollback-only transaction.
+- Smoke now covers provider-global duplicate `paymentID` rejection and duplicate `trxID` reconciliation quarantine in addition to reservation/execute lifecycle cases.
+- Focused TypeScript lifecycle/contract/runtime tests are green.
+- Full repository test execution still exposes the pre-existing `storefront-transactional-truth` assertion; both that test and `SubscriptionProductCard.tsx` are byte-identical to the production base and outside Lane C.
+- PR workflow jobs currently fail before running steps; the same workflow failures are present on the exact production-base `main` SHA, so they are repository/runner infrastructure blockers rather than Lane C regressions.
+
+The disposable PostgreSQL run is additional confidence, not a substitute for the required staging smoke against the real Supabase schema and extensions.
+
+### Real PostgreSQL concurrency proof
+
+A disposable PostgreSQL 16.15 cluster was used to exercise the database authority with concurrent sessions after applying the migration.
+
+- Two simultaneous `claim_storefront_payment_execution` transactions for the same bound `paymentID` produced exactly one `claimed=true`; the loser observed `executing` and could not become a second provider executor.
+- Two simultaneous `finalize_storefront_payment_success` transactions for distinct orders using the same provider transaction ID produced exactly one `succeeded`; the loser was atomically moved to `reconciliation_required`.
+
+This directly exercises the row-lock and provider-global advisory-lock behavior. The disposable cluster was isolated from production and all other lane databases.

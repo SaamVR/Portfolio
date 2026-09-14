@@ -10,6 +10,10 @@ const edge = readFileSync(
   new URL("../../../supabase/functions/bkash-payment/index.ts", import.meta.url),
   "utf8",
 );
+const smoke = readFileSync(
+  new URL("../../../supabase/migrations/payment_reservation_lifecycle_smoke.sql", import.meta.url),
+  "utf8",
+);
 const route = readFileSync(
   new URL("../../app/api/orders/create/route.ts", import.meta.url),
   "utf8",
@@ -47,6 +51,14 @@ describe("payment reservation lifecycle database contract", () => {
     assert.match(migration, /idx_storefront_payment_attempts_provider_transaction[\s\S]*\(provider, provider_transaction_id\)/);
     assert.match(migration, /duplicate_provider_payment_identity/);
     assert.match(migration, /duplicate_provider_transaction_identity/);
+  });
+
+  it("executes replay smoke for provider-global payment and transaction identities", () => {
+    assert.match(smoke, /PAY-GLOBAL-DUP/);
+    assert.match(smoke, /duplicate provider payment identity bound to a second obligation/);
+    assert.match(smoke, /TRX-GLOBAL-DUP/);
+    assert.match(smoke, /duplicate provider transaction identity was not quarantined/);
+    assert.match(smoke, /_reservation <> 'reconciliation_required'/);
   });
 
   it("claims execution durably before the Edge Function calls bKash execute", () => {

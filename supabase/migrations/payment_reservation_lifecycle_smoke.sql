@@ -8,8 +8,10 @@ DECLARE
   _product uuid;
   _coupon uuid;
   _order record;
+  _order2 record;
   _replay record;
   _prepare record;
+  _prepare2 record;
   _release record;
   _claim record;
   _claim2 record;
@@ -178,7 +180,59 @@ BEGIN
     RAISE EXCEPTION 'reconciled provider success did not consume reservation';
   END IF;
 
-  -- 5) COD is accepted immediately and is outside redirect auto-expiry semantics.
+  -- 5) Provider identities are global replay barriers, not tenant-local labels.
+  _product := gen_random_uuid();
+  INSERT INTO public.products (id, store_id, name, price, image_url, stock, is_available)
+  VALUES (_product, _store, 'Identity product A', 1000, 'https://example.invalid/product.png', 1, true);
+  SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
+    _store, 'smoke-identity-a', NULL,
+    jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
+    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'identity A', NULL
+  );
+  SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
+  IF NOT public.bind_storefront_payment_attempt(_prepare.attempt_id, 'PAY-GLOBAL-DUP', 'https://example.invalid/a', '{}'::jsonb) THEN
+    RAISE EXCEPTION 'first provider payment identity did not bind';
+  END IF;
+
+  _product := gen_random_uuid();
+  INSERT INTO public.products (id, store_id, name, price, image_url, stock, is_available)
+  VALUES (_product, _store, 'Identity product B', 1000, 'https://example.invalid/product.png', 1, true);
+  SELECT * INTO _order2 FROM public.create_store_order_with_payment_lifecycle(
+    _store, 'smoke-identity-b', NULL,
+    jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
+    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'identity B', NULL
+  );
+  SELECT * INTO _prepare2 FROM public.prepare_storefront_payment_attempt(_store, _order2.order_number, 'bkash');
+  IF public.bind_storefront_payment_attempt(_prepare2.attempt_id, 'PAY-GLOBAL-DUP', 'https://example.invalid/b-duplicate', '{}'::jsonb) THEN
+    RAISE EXCEPTION 'duplicate provider payment identity bound to a second obligation';
+  END IF;
+  SELECT state INTO _attempt_state FROM public.storefront_payment_attempts WHERE id = _prepare2.attempt_id;
+  IF _attempt_state <> 'failed' THEN RAISE EXCEPTION 'duplicate provider payment identity was not quarantined'; END IF;
+
+  SELECT * INTO _prepare2 FROM public.prepare_storefront_payment_attempt(_store, _order2.order_number, 'bkash');
+  IF NOT _prepare2.claimed THEN RAISE EXCEPTION 'failed duplicate identity did not allow a fresh safe provider session'; END IF;
+  IF NOT public.bind_storefront_payment_attempt(_prepare2.attempt_id, 'PAY-GLOBAL-B', 'https://example.invalid/b', '{}'::jsonb) THEN
+    RAISE EXCEPTION 'fresh provider payment identity did not bind';
+  END IF;
+  SELECT * INTO _claim FROM public.claim_storefront_payment_execution(_store, _order.order_number, 'bkash', 'PAY-GLOBAL-DUP');
+  SELECT * INTO _claim2 FROM public.claim_storefront_payment_execution(_store, _order2.order_number, 'bkash', 'PAY-GLOBAL-B');
+  IF NOT _claim.claimed OR NOT _claim2.claimed THEN RAISE EXCEPTION 'identity replay fixtures did not acquire execute claims'; END IF;
+
+  SELECT * INTO _finalize FROM public.finalize_storefront_payment_success(
+    _claim.attempt_id, 'PAY-GLOBAL-DUP', 'TRX-GLOBAL-DUP', '{"transactionStatus":"Completed"}'::jsonb
+  );
+  SELECT * INTO _finalize2 FROM public.finalize_storefront_payment_success(
+    _claim2.attempt_id, 'PAY-GLOBAL-B', 'TRX-GLOBAL-DUP', '{"transactionStatus":"Completed"}'::jsonb
+  );
+  IF NOT _finalize.finalized OR _finalize2.finalized OR _finalize2.attempt_state <> 'reconciliation_required' THEN
+    RAISE EXCEPTION 'duplicate provider transaction identity was not quarantined';
+  END IF;
+  SELECT status, reservation_state INTO _status, _reservation FROM public.orders WHERE id = _order2.id;
+  IF _status <> 'pending' OR _reservation <> 'reconciliation_required' THEN
+    RAISE EXCEPTION 'duplicate provider transaction identity changed order settlement truth';
+  END IF;
+
+  -- 6) COD is accepted immediately and is outside redirect auto-expiry semantics.
   _product := gen_random_uuid();
   INSERT INTO public.products (id, store_id, name, price, image_url, stock, is_available)
   VALUES (_product, _store, 'COD product', 1000, 'https://example.invalid/product.png', 1, true);
