@@ -34,7 +34,7 @@ async function requireCourierManager(req: Request, storeId: string) {
     supabaseAdmin,
     storeId,
     user.id,
-    ["owner", "admin", "editor"],
+    ["owner", "admin"],
   );
   if (!authorized) return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   return { supabaseAdmin, userId: user.id };
