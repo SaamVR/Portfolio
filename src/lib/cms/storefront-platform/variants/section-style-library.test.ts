@@ -98,6 +98,20 @@ describe("section style library", () => {
 
     const workspaceSource = readFileSync("src/views/admin/SectionStylesWorkspace.tsx", "utf8");
     assert.ok(workspaceSource.includes("persistStyleVariant(selectedBlock, null)"));
+    assert.ok(workspaceSource.includes('resetEntry?.definition.id ?? ""'));
+    assert.ok(workspaceSource.includes("Reset to inherited/default"));
+    assert.equal(workspaceSource.includes("?? entries[0]"), false);
+  });
+
+  it("does not invent a reset target when the template has no section default", () => {
+    const products = {
+      id: "products-1", type: "featured-products", sortOrder: 0, isVisible: true, visible: true,
+      layoutVariant: "4-col", props: { limit: 6 },
+    } as StorePageBlock;
+
+    assert.equal(getEffectiveSectionStyleVariantId("general-catalog", { ...products, layoutVariant: undefined }), undefined);
+    assert.equal(getSectionStyleResetTarget("general-catalog", products), undefined);
+    assert.equal(getSectionStyleLibraryEntries("general-catalog", { ...products, layoutVariant: undefined }).some((entry) => entry.current), false);
   });
 
   it("keeps manifest versions internal until blocks can persist a pinned version", () => {

@@ -51,3 +51,7 @@ The bounded closeout pass resolves every R2 P1 raised against `9081289`:
 Closeout validation: typecheck PASS; focused R2 suite 41/41 PASS; targeted ESLint PASS; `git diff --check` PASS. Browser smoke across General Catalog, Fashion, and Threads at 360/390/430/768/1440 returned HTTP 200 with no document-level horizontal overflow or fatal page errors. The full repository suite is 912 tests / 909 PASS / the same 3 documented pre-existing non-R2 source-contract failures.
 
 Lane D should perform only a short read-only verification of these resolved P1s against the exact closeout SHA before the R2 freeze.
+
+## Final reset semantics closeout
+
+The final read-only QA pass found one remaining merchant-state mismatch for sections whose template declares no `blockLayoutVariants` default. The closeout now treats that state explicitly as inherited/default presentation: reset still persists `layout_variant = null`, no recommended library style is fabricated as the reset target or Current selection, and the workspace presents an inherited/default Current state until the merchant selects an explicit style. Templates with a declared section default continue to name and select that inherited default.

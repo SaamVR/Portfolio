@@ -134,8 +134,7 @@ export default function SectionStylesWorkspace() {
     [workspace, selectedBlock],
   );
   const selectedEntry = entries.find((entry) => entry.definition.id === selectedStyleId)
-    ?? entries.find((entry) => entry.current)
-    ?? entries[0];
+    ?? entries.find((entry) => entry.current);
   const resetEntry = workspace && selectedBlock ? getSectionStyleResetTarget(workspace.templateId, selectedBlock) : undefined;
   const hasUnregisteredCurrentStyle = Boolean(selectedBlock?.layoutVariant && !entries.some((entry) => entry.definition.id === selectedBlock.layoutVariant));
 
@@ -184,14 +183,16 @@ export default function SectionStylesWorkspace() {
   };
 
   const resetToTemplateStyle = async () => {
-    if (!selectedBlock || !resetEntry || selectedBlock.layoutVariant == null) return;
+    if (!selectedBlock || selectedBlock.layoutVariant == null) return;
     setApplying(true);
     try {
       const previousVariantId = selectedBlock.layoutVariant;
       await persistStyleVariant(selectedBlock, null);
-      setSelectedStyleId(resetEntry.definition.id);
+      setSelectedStyleId(resetEntry?.definition.id ?? "");
       setLastChange({ blockId: selectedBlock.id, previousVariantId, nextVariantId: null });
-      toast.success(`Reset to inherited ${resetEntry.definition.label}. Section content was preserved.`);
+      toast.success(resetEntry
+        ? `Reset to inherited ${resetEntry.definition.label}. Section content was preserved.`
+        : "Reset to the template's inherited/default presentation. Section content was preserved.");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Could not reset this section style.");
     } finally {
@@ -301,9 +302,9 @@ export default function SectionStylesWorkspace() {
                   {!selectedEntry.compatible ? <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs leading-5 text-destructive">{selectedEntry.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div> : null}
                   <div className="rounded-xl border border-emerald-300/50 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900"><p className="font-semibold">Content-safe style switch</p><p className="mt-1">Only the section style ID changes. Existing section content stays stored.</p></div>
                   <Button type="button" className="min-h-12 w-full gap-2" disabled={!selectedEntry.compatible || selectedEntry.current || applying} onClick={() => void applyStyle()}>{selectedEntry.current ? <><Check className="h-4 w-4" />Already applied</> : applying ? "Applying…" : `Apply ${selectedEntry.definition.label}`}</Button>
-                  {resetEntry && selectedBlock.layoutVariant != null ? (
+                  {selectedBlock.layoutVariant != null ? (
                     <Button type="button" variant="outline" className="min-h-11 w-full gap-2" disabled={applying} onClick={() => void resetToTemplateStyle()}>
-                      <RotateCcw className="h-4 w-4" />Reset to {resetEntry.definition.label}
+                      <RotateCcw className="h-4 w-4" />{resetEntry ? `Reset to ${resetEntry.definition.label}` : "Reset to inherited/default"}
                     </Button>
                   ) : null}
                   {lastChange ? (
@@ -316,7 +317,22 @@ export default function SectionStylesWorkspace() {
               </CardContent>
             </Card>
           </aside>
-        ) : null}
+        ) : (
+          <aside className="order-first lg:order-none lg:sticky lg:top-5 lg:self-start">
+            <Card>
+              <CardContent className="space-y-4 p-5">
+                <div className="flex items-center justify-between gap-3"><h3 className="text-lg font-semibold">Inherited/default presentation</h3><Badge variant="secondary">Current</Badge></div>
+                <p className="text-sm leading-6 text-muted-foreground">This template does not declare a Section Style default for this section. The storefront is using the renderer&apos;s inherited/default presentation, so no library style is selected.</p>
+                <div className="rounded-xl border border-border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">Choose a style card to preview an explicit visual treatment. Resetting an explicit style returns here without changing section content.</div>
+                {lastChange ? (
+                  <Button type="button" variant="outline" className="min-h-11 w-full gap-2" disabled={applying} onClick={() => void undoLastStyleChange()}>
+                    <RotateCcw className="h-4 w-4" />Undo last style change
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          </aside>
+        )}
       </div>
     </div>
   );

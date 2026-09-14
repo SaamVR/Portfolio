@@ -83,10 +83,11 @@ export function getSectionStyleResetTarget(
   templateId: StorefrontTemplateId,
   block: StorePageBlock,
 ): SectionStyleLibraryEntry | undefined {
+  const templateDefaultId = getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type];
+  if (!templateDefaultId) return undefined;
+
   const entries = getSectionStyleLibraryEntries(templateId, { ...block, layoutVariant: undefined });
-  return entries.find((entry) => entry.templateDefault && entry.compatible)
-    ?? entries.find((entry) => entry.recommended && entry.compatible)
-    ?? entries.find((entry) => entry.compatible);
+  return entries.find((entry) => entry.definition.id === templateDefaultId);
 }
 
 export function applySectionStyleToBlock(
