@@ -39,6 +39,11 @@
       "name": "tenant_owned_reference_consistency",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: enforces same-store order/product references for shipments, revenue events, and analytics while preserving existing delete semantics."
+    },
+    {
+      "name": "commerce_tenant_graph_consistency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: closes remaining cross-store courier, recovery, and category hierarchy references with composite tenant keys."
     }
   ]
 }
