@@ -6,6 +6,7 @@ import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefron
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
+import { resolveStorePaymentAuthority } from "@/lib/payments/store-payment-authority";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -22,10 +23,37 @@ function readText(value: unknown, maxLength: number) {
   return value.trim().slice(0, maxLength);
 }
 
-function readMoney(value: unknown) {
+function readMoneyAssertion(value: unknown, label: string) {
+  if (value === undefined || value === null || value === "") return null;
   const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
+  if (!Number.isFinite(amount) || amount < 0 || amount > 2_000_000_000) {
+    throw new Error(`Invalid ${label} pricing assertion`);
+  }
+  return Math.round(amount);
+}
+
+function readDeliveryZone(value: unknown) {
+  const zone = readText(value, 20).toLowerCase();
+  if (!zone) return null;
+  if (zone !== "primary" && zone !== "secondary") {
+    throw new Error("Invalid delivery zone");
+  }
+  return zone;
+}
+
+function readManualPaymentEvidence(paymentMethod: string, value: unknown) {
+  const isBkashManual = paymentMethod === "bkash_manual";
+  const isNagadManual = paymentMethod === "nagad";
+  if (!isBkashManual && !isNagadManual) {
+    return { provider: null, reference: null };
+  }
+
+  const reference = readText(value, 80).toUpperCase();
+  if (!/^[A-Z0-9_-]{4,50}$/.test(reference)) {
+    throw new Error("Invalid manual payment reference");
+  }
+
+  return { provider: isBkashManual ? "bkash" : "nagad", reference };
 }
 
 function safeRecord(value: unknown) {
@@ -37,7 +65,7 @@ function mapOrderError(message: string) {
     return { message, status: 409 };
   }
 
-  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider|manual payment/i.test(message)) {
     return { message, status: 400 };
   }
 
@@ -73,6 +101,7 @@ export const orderCreateRouteDeps = {
   getSupabaseAdminClient,
   loadStorePlanState,
   dispatchOrderCreatedBackgroundJobs,
+  resolveStorePaymentAuthority,
 };
 
 export async function POST(req: Request) {
@@ -90,11 +119,15 @@ export async function POST(req: Request) {
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
+    const manualPayment = readManualPaymentEvidence(paymentMethod, body?.manualPaymentReference);
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
     const customerEmail = readText(body?.customerEmail, 180);
     const shippingAddress = readText(body?.shippingAddress, 500);
     const shippingCity = readText(body?.shippingCity, 100);
+    const deliveryZone = readDeliveryZone(body?.deliveryZone);
+    const expectedDeliveryFee = readMoneyAssertion(body?.deliveryFee, "delivery fee");
+    const expectedDiscountAmount = readMoneyAssertion(body?.discountAmount, "discount");
 
     if (!uuidPattern.test(storeId)) {
       return jsonNoStore({ error: "Invalid store" }, { status: 400 });
@@ -153,20 +186,32 @@ export async function POST(req: Request) {
       ? storefrontSetting.value as Record<string, unknown>
       : null;
     const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
+    const paymentAuthority = await orderCreateRouteDeps.resolveStorePaymentAuthority(
+      supabaseAdmin,
+      storeId,
+      paymentMethod,
+    );
+
 
     const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_payment_lifecycle", {
       _store_id: storeId,
       _client_request_id: idempotencyKey,
       _user_id: user?.id ?? null,
       _items: items,
-      _delivery_fee: readMoney(body?.deliveryFee),
-      _discount_amount: readMoney(body?.discountAmount),
+      _delivery_zone: deliveryZone,
+      _expected_delivery_fee: expectedDeliveryFee,
+      _expected_discount_amount: expectedDiscountAmount,
       _customer_name: customerName,
       _customer_phone: customerPhone,
       _customer_email: customerEmail || null,
       _shipping_address: shippingAddress,
       _shipping_city: shippingCity,
-      _payment_method: paymentMethod,
+      _payment_method: paymentAuthority.paymentMethod,
+      _payment_method_authorized: paymentAuthority.allowed,
+      _payment_method_prepaid: paymentAuthority.prepaidEligible,
+      _payment_provider: paymentAuthority.providerId,
+      _manual_payment_provider: manualPayment.provider,
+      _manual_payment_reference: manualPayment.reference,
       _notes: readText(body?.notes, 1000) || null,
       _coupon_code: readText(body?.couponCode, 80) || null,
     });
@@ -183,7 +228,7 @@ export async function POST(req: Request) {
 
     const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, subtotal, delivery_fee, total, items, status, payment_method, client_request_id, reservation_state, reservation_expires_at")
+      .select("id, order_number, subtotal, delivery_fee, delivery_zone, total, items, status, payment_method, manual_payment_provider, manual_payment_reference, client_request_id, reservation_state, reservation_expires_at")
       .eq("id", rpcOrder.id)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -195,7 +240,7 @@ export async function POST(req: Request) {
     const order = persistedOrder ?? rpcOrder;
     const persistedPaymentMethod = readText(order.payment_method, 30).toLowerCase() || paymentMethod;
 
-    // Defense in depth: the v2 RPC already rejects this mismatch while holding
+    // Defense in depth: the authoritative RPC already rejects this mismatch while holding
     // the checkout-attempt lock. Do not let a drifted database function turn a
     // changed-method retry into a false success at the HTTP boundary.
     if (persistedPaymentMethod !== paymentMethod) {

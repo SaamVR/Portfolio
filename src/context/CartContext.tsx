@@ -7,6 +7,11 @@ import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyt
 import { CartContext, type CartItem } from "@/context/cart-context";
 
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
+import {
+  getCommercialSelectionPrice,
+  normalizeCommercialOptions,
+  normalizeFulfillmentType,
+} from "@/lib/commerce/product-commercial-options";
 
 const GLOBAL_CART_KEY = "global";
 
@@ -22,12 +27,18 @@ function getCouponStorageKey(storeId?: string | null) {
   return getScopedStorefrontStorageKey("cart-coupon", storeId);
 }
 
-function isSameCartLine(item: CartItem, productId: string, size: string, storeId?: string) {
-  return (
-    item.productId === productId &&
-    item.size === size &&
-    (item.storeId ?? null) === (storeId ?? null)
-  );
+function optionIdentity(optionIds: string[] | undefined) {
+  return [...(optionIds ?? [])].map((id) => id.trim()).filter(Boolean).sort().join("\u001f");
+}
+
+function isSameCartLine(item: CartItem, productId: string, size: string, storeId?: string, optionIds?: string[]) {
+  if (item.productId !== productId || (item.storeId ?? null) !== (storeId ?? null)) return false;
+  const itemOptionIdentity = optionIdentity(item.optionIds);
+  const requestedOptionIdentity = optionIdentity(optionIds);
+  if (itemOptionIdentity || requestedOptionIdentity) {
+    return itemOptionIdentity === requestedOptionIdentity;
+  }
+  return item.size === size;
 }
 
 function isValidUUID(str: string): boolean {
@@ -68,8 +79,8 @@ function getErrorMessage(error: unknown) {
   return "Unknown cart sync error";
 }
 
-type CartItemRow = Pick<Tables<"cart_items">, "product_id" | "size" | "quantity" | "store_id">;
-type ProductLookupRow = Pick<Tables<"products">, "id" | "name" | "price" | "image_url">;
+type CartItemRow = Pick<Tables<"cart_items">, "product_id" | "size" | "option_ids" | "quantity" | "store_id">;
+type ProductLookupRow = Pick<Tables<"products">, "id" | "name" | "price" | "image_url" | "commercial_options" | "fulfillment_type">;
 
 export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: string }> = ({ children, storeId }) => {
   const expectedCartScope = storeId || GLOBAL_CART_KEY;
@@ -210,7 +221,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
         // 1. Fetch DB cart items
         const { data: dbCart, error } = await supabase
           .from("cart_items")
-          .select("product_id, size, quantity, store_id")
+          .select("product_id, size, option_ids, quantity, store_id")
           .eq("user_id", user.id)
           .eq("store_id", storeId);
 
@@ -222,11 +233,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
               user_id: user.id,
               product_id: item.productId,
               size: item.size,
+              option_ids: item.optionIds ?? [],
               quantity: item.quantity,
               store_id: item.storeId ?? storeId
             }));
             await supabase.from("cart_items").upsert(inserts, {
-              onConflict: "user_id,product_id,size",
+              onConflict: "user_id,product_id,size,option_ids",
             });
           }
           hasMerged.current = true;
@@ -237,31 +249,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
         const productIds = dbCart.map(item => item.product_id);
         const { data: dbProducts } = await supabase
           .from("products")
-          .select("id, name, price, image_url")
+          .select("id, name, price, image_url, commercial_options, fulfillment_type")
           .eq("store_id", storeId)
           .in("id", productIds);
 
         const productsMap = new Map((dbProducts as ProductLookupRow[] | null | undefined)?.map((p) => [p.id, p]));
 
         // Convert dbCart to CartItem format
-        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).map(item => {
+        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).flatMap(item => {
           const prod = productsMap.get(item.product_id);
-          return {
+          if (!prod) return [];
+          const commercialOptions = normalizeCommercialOptions(prod.commercial_options);
+          const optionIds = item.option_ids ?? [];
+          const authoritativePrice = commercialOptions.length > 0
+            ? getCommercialSelectionPrice(prod.price, commercialOptions, optionIds)
+            : prod.price;
+          if (authoritativePrice === null || authoritativePrice < 0) return [];
+          return [{
             productId: item.product_id,
             storeId: item.store_id ?? undefined,
-            name: prod?.name || "Product",
-            price: prod?.price || 0,
-            image: prod?.image_url || "",
+            name: prod.name || "Product",
+            price: authoritativePrice,
+            image: prod.image_url || "",
             size: item.size,
-            quantity: item.quantity
-          };
-        }).filter(item => item.price > 0);
+            optionIds,
+            fulfillmentType: normalizeFulfillmentType(prod.fulfillment_type),
+            quantity: item.quantity,
+          }];
+        });
 
         // 3. Merge local cart items and db cart items
         setItems(prev => {
           const merged = [...prev];
           dbCartItems.forEach(dbItem => {
-            const existing = merged.find(i => isSameCartLine(i, dbItem.productId, dbItem.size, dbItem.storeId));
+            const existing = merged.find(i => isSameCartLine(i, dbItem.productId, dbItem.size, dbItem.storeId, dbItem.optionIds));
             if (existing) {
               // Keep the larger quantity
               existing.quantity = Math.max(existing.quantity, dbItem.quantity);
@@ -327,12 +348,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             user_id: user.id,
             product_id: item.productId,
             size: item.size,
+            option_ids: item.optionIds ?? [],
             quantity: item.quantity,
             store_id: item.storeId ?? storeId
           }));
           if (inserts.length > 0) {
             const { error } = await supabase.from("cart_items").upsert(inserts, {
-              onConflict: "user_id,product_id,size",
+              onConflict: "user_id,product_id,size,option_ids",
             });
             if (error) throw error;
           }
@@ -352,12 +374,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     const scopedItem = { ...item, storeId: item.storeId ?? storeId };
-    const existing = itemsRef.current.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId));
+    const existing = itemsRef.current.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds));
     setItems((prev) => {
-      const existingLine = prev.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId));
+      const existingLine = prev.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds));
       if (existingLine) {
         return prev.map((i) =>
-          isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId)
+          isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId, scopedItem.optionIds)
             ? { ...i, quantity: i.quantity + 1 }
             : i
         );
@@ -380,9 +402,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     });
   }, [storeId, trackEvent]);
 
-  const removeItem = useCallback((productId: string, size: string, storeId?: string) => {
-    const removed = itemsRef.current.find((item) => isSameCartLine(item, productId, size, storeId));
-    setItems((prev) => prev.filter((i) => !isSameCartLine(i, productId, size, storeId)));
+  const removeItem = useCallback((productId: string, size: string, storeId?: string, optionIds?: string[]) => {
+    const removed = itemsRef.current.find((item) => isSameCartLine(item, productId, size, storeId, optionIds));
+    setItems((prev) => prev.filter((i) => !isSameCartLine(i, productId, size, storeId, optionIds)));
     if (removed) {
       trackEvent({
         eventName: "remove_from_cart",
@@ -399,15 +421,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
     }
   }, [trackEvent]);
 
-  const updateQuantity = useCallback((productId: string, size: string, quantity: number, storeId?: string) => {
-    const existing = itemsRef.current.find((item) => isSameCartLine(item, productId, size, storeId));
+  const updateQuantity = useCallback((productId: string, size: string, quantity: number, storeId?: string, optionIds?: string[]) => {
+    const existing = itemsRef.current.find((item) => isSameCartLine(item, productId, size, storeId, optionIds));
     if (quantity <= 0) {
-      removeItem(productId, size, storeId);
+      removeItem(productId, size, storeId, optionIds);
       return;
     }
     setItems((prev) =>
       prev.map((i) =>
-        isSameCartLine(i, productId, size, storeId) ? { ...i, quantity } : i
+        isSameCartLine(i, productId, size, storeId, optionIds) ? { ...i, quantity } : i
       )
     );
     if (existing && existing.quantity !== quantity) {

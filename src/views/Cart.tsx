@@ -189,7 +189,7 @@ const Cart = () => {
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)}
+                        onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId, item.optionIds)}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Decrease quantity of ${item.name}`}
                       >
@@ -197,7 +197,7 @@ const Cart = () => {
                       </button>
                       <span className="w-6 text-center text-sm font-medium text-foreground">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)}
+                        onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId, item.optionIds)}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                         aria-label={`Increase quantity of ${item.name}`}
                       >
@@ -205,7 +205,7 @@ const Cart = () => {
                       </button>
                     </div>
                     <button
-                      onClick={() => removeItem(item.productId, item.size, item.storeId)}
+                      onClick={() => removeItem(item.productId, item.size, item.storeId, item.optionIds)}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive"
                       aria-label={`Remove ${item.name} from cart`}
                     >

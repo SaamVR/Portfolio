@@ -66,7 +66,7 @@ export function createDefaultRegistrationAnswers(template: StorefrontTemplateDef
     heroSubtitle: "",
     whatsappEnabled: false,
     whatsappNumber: "",
-    deliveryEnabled: true,
+    deliveryEnabled: false,
     deliveryFee: "80",
     deliveryFeeOutside: "140",
   };
@@ -190,13 +190,13 @@ export default function MerchantRegistrationWizard({
 
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><div><p className="text-sm font-semibold">Delivery pricing</p><p className="text-xs text-muted-foreground">Add simple inside/outside delivery fees.</p></div></div>
+                <div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><div><p className="text-sm font-semibold">Delivery pricing</p><p className="text-xs text-muted-foreground">Configure delivery fees after choosing which cities belong to your primary zone.</p></div></div>
                 <Switch checked={value.deliveryEnabled} onCheckedChange={(checked) => update("deliveryEnabled", checked)} />
               </div>
               {value.deliveryEnabled ? (
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div><Label htmlFor="registration-delivery-inside">Inside Dhaka</Label><Input id="registration-delivery-inside" inputMode="decimal" value={value.deliveryFee} onChange={(e) => update("deliveryFee", e.target.value)} placeholder="80" className="mt-2" /></div>
-                  <div><Label htmlFor="registration-delivery-outside">Outside Dhaka</Label><Input id="registration-delivery-outside" inputMode="decimal" value={value.deliveryFeeOutside} onChange={(e) => update("deliveryFeeOutside", e.target.value)} placeholder="140" className="mt-2" /></div>
+                  <div><Label htmlFor="registration-delivery-inside">Primary zone fee</Label><Input id="registration-delivery-inside" inputMode="decimal" value={value.deliveryFee} onChange={(e) => update("deliveryFee", e.target.value)} placeholder="80" className="mt-2" /></div>
+                  <div><Label htmlFor="registration-delivery-outside">Extended zone fee</Label><Input id="registration-delivery-outside" inputMode="decimal" value={value.deliveryFeeOutside} onChange={(e) => update("deliveryFeeOutside", e.target.value)} placeholder="140" className="mt-2" /></div>
                 </div>
               ) : null}
             </div>

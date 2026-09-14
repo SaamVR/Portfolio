@@ -16,6 +16,7 @@ import { useNavigate } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 import type { Product } from "@/data/products";
+import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
 
 function getConfiguredEarnRate(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
@@ -147,7 +148,7 @@ const CartDrawer = () => {
                             ) : null}
                           </div>
                           <button
-                            onClick={() => removeItem(item.productId, item.size, item.storeId)}
+                            onClick={() => removeItem(item.productId, item.size, item.storeId, item.optionIds)}
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={`Remove ${item.name} from cart`}
                           >
@@ -157,7 +158,7 @@ const CartDrawer = () => {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex h-11 items-center rounded-md border border-border">
                             <button
-                              onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId)}
+                              onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.storeId, item.optionIds)}
                               className="flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               aria-label={`Decrease quantity of ${item.name}`}
                             >
@@ -165,7 +166,7 @@ const CartDrawer = () => {
                             </button>
                             <span className="w-8 text-center text-xs font-medium">{item.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId)}
+                              onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.storeId, item.optionIds)}
                               className="flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               aria-label={`Increase quantity of ${item.name}`}
                             >
@@ -191,12 +192,15 @@ const CartDrawer = () => {
                             </div>
                             <button
                               onClick={() => {
+                                const selection = resolveDefaultProductCartSelection(upsell);
                                 addItem({
                                   productId: upsell.id,
                                   name: upsell.name,
-                                  price: upsell.price,
+                                  price: selection?.unitPrice ?? upsell.price,
                                   image: upsell.image,
-                                  size: upsell.sizes?.[0] || "",
+                                  size: selection?.label ?? upsell.sizes?.[0] ?? "Default option",
+                                  optionIds: selection?.optionIds ?? [],
+                                  fulfillmentType: selection?.fulfillmentType ?? upsell.fulfillmentType,
                                   storeId: cartStoreId,
                                 });
                                 toast.success("Added to cart!");

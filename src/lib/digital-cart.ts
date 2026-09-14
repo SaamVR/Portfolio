@@ -59,6 +59,8 @@ export function getCartVariantDisplayLabel(value: string | null | undefined) {
   return "Digital item";
 }
 
-export function isDigitalOnlyCart<TItem extends { size?: string | null }>(items: TItem[]) {
-  return items.length > 0 && items.every((item) => isDigitalCartVariant(item.size));
+export function isDigitalOnlyCart<TItem extends { size?: string | null; fulfillmentType?: string | null }>(items: TItem[]) {
+  return items.length > 0 && items.every((item) =>
+    item.fulfillmentType === "digital" || isDigitalCartVariant(item.size),
+  );
 }

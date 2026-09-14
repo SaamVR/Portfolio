@@ -1,3 +1,5 @@
+import type { ProductCommercialOption, ProductFulfillmentType } from "@/lib/commerce/product-commercial-options";
+
 export type ProductType = "T-Shirt" | "Polo" | "Shirt" | "Drop Shoulder" | "Undergarment" | "Pants";
 
 export interface Product {
@@ -18,6 +20,8 @@ export interface Product {
   isAvailable?: boolean;
   metricValues?: Record<string, string[]>;
   typeMetricSchema?: Array<{ key: string; label: string }>;
+  commercialOptions?: ProductCommercialOption[];
+  fulfillmentType?: ProductFulfillmentType;
 }
 
 export const productTypes: { label: string; value: ProductType | "All" }[] = [

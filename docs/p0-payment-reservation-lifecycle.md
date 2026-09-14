@@ -85,3 +85,9 @@ A disposable PostgreSQL 16.15 cluster was used to exercise the database authorit
 - Two simultaneous `finalize_storefront_payment_success` transactions for distinct orders using the same provider transaction ID produced exactly one `succeeded`; the loser was atomically moved to `reconciliation_required`.
 
 This directly exercises the row-lock and provider-global advisory-lock behavior. The disposable cluster was isolated from production and all other lane databases.
+
+## Lane B dependency / authoritative composition
+
+- This lane is stacked on `release/p0-order-authority`; the lifecycle wrapper calls `create_store_order_authoritative_v3` and never legacy v1/v2 order creation.
+- The HTTP route preserves Lane B city-derived delivery, stable option pricing, store-payment eligibility, and structured manual-payment evidence while adding Lane C reservation/recovery semantics.
+- Merge order remains Order before Payment. Do not deploy this lifecycle migration without the authoritative-order migration already applied.

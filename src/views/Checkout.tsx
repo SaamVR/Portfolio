@@ -17,7 +17,7 @@ import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { DownloadAccessPanel } from "@/components/storefront/digital-downloads/DownloadAccessPanel";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
-import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
+import { getNormalizedDeliverySettings, getStorefrontPricing, resolveStorefrontDeliveryLocation, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 import { buildCustomerAuthPath, getCurrentRelativePath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
@@ -315,6 +315,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       ? Math.round((checkoutSubtotal * appliedCoupon.discount_value) / 100)
       : appliedCoupon.discount_value
     : 0;
+  const deliveryZone = digitalOnlyCheckout
+    ? "secondary" as const
+    : resolveStorefrontDeliveryLocation(deliverySettings, form.city);
   const pricing = getStorefrontPricing({
     subtotal: checkoutSubtotal,
     couponDiscount,
@@ -323,7 +326,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       : deliverySettings,
     paymentSettings,
     paymentMethod: form.paymentMethod,
-    location: "primary",
+    location: deliveryZone,
   });
   const deliveryFee = pricing.deliveryFee;
   const grandTotal = pricing.grandTotal;
@@ -458,7 +461,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       const notesParts: string[] = [];
 
       if (isManualMobilePayment) {
-        notesParts.push(`Payment: ${manualPaymentLabel} | TrxID: ${form.trxId.trim()}`);
+        notesParts.push(`Payment: ${manualPaymentLabel} (manual reference submitted)`);
       } else if (selectedGateway) {
         notesParts.push(`Payment: ${selectedGateway.label} (Automated)`);
       }
@@ -484,11 +487,14 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           price: item.price,
           image: item.image,
           size: item.size,
+          optionIds: item.optionIds ?? [],
+          fulfillmentType: item.fulfillmentType,
           quantity: item.quantity,
         })),
         subtotal: checkoutSubtotal,
         delivery_fee: deliveryFee,
-        discount_amount: pricing.couponDiscount + pricing.orderDiscountAmount,
+        delivery_zone: deliveryZone,
+        discount_amount: Math.max(0, checkoutSubtotal + deliveryFee - grandTotal),
         coupon_code: appliedCoupon?.code ?? null,
         total: grandTotal,
         customer_name: form.name,
@@ -497,6 +503,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         shipping_address: shippingAddress,
         shipping_city: shippingCity,
         payment_method: form.paymentMethod,
+        manual_payment_reference: isManualMobilePayment ? form.trxId.trim() : null,
         notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
 
@@ -656,6 +663,22 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   </div>
                 );
               })}
+
+              {!digitalOnlyCheckout && deliverySettings.enabled ? (
+                <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">
+                      {deliveryZone === "primary"
+                        ? (deliverySettings.primary_zone_label?.trim() || "Primary delivery zone")
+                        : (deliverySettings.secondary_zone_label?.trim() || "Extended delivery zone")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      BDT {deliveryZone === "primary" ? deliverySettings.delivery_fee : deliverySettings.delivery_fee_outside}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Delivery zone is determined from your city and recalculated securely when the order is placed.</p>
+                </div>
+              ) : null}
 
               {digitalOnlyCheckout ? <DownloadAccessPanel compact /> : null}
             </div>

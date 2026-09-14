@@ -27,8 +27,12 @@ DECLARE
   _slug text := 'payment-lifecycle-smoke-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
   _coupon_code text;
 BEGIN
-  INSERT INTO public.stores (id, name, slug, is_published)
-  VALUES (_store, 'Payment lifecycle smoke', _slug, false);
+  INSERT INTO public.stores (id) VALUES (_store);
+
+  INSERT INTO public.site_settings (store_id, key, value)
+  VALUES (_store, 'delivery_settings', '{"enabled":false,"primary_zone_aliases":[]}'::jsonb);
+  INSERT INTO public.store_payment_connections_secure (store_id, provider, status)
+  VALUES (_store, 'bkash', 'connected');
 
   -- 1) Abandoned redirect reservation: replay is idempotent, expiry restores final item + coupon exactly once.
   _product := gen_random_uuid();
@@ -43,7 +47,7 @@ BEGIN
   FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-expiry', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'smoke expiry', _coupon_code
+    'secondary', 0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'smoke expiry', _coupon_code
   );
   IF _order.replayed OR _order.reservation_state <> 'reserved' OR _order.reservation_expires_at IS NULL THEN
     RAISE EXCEPTION 'fresh bKash order did not establish a finite reservation';
@@ -59,7 +63,7 @@ BEGIN
   FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-expiry', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'smoke expiry', _coupon_code
+    'secondary', 0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'smoke expiry', _coupon_code
   );
   SELECT stock INTO _stock FROM public.products WHERE id = _product;
   SELECT uses_count INTO _uses FROM public.coupon_codes WHERE id = _coupon;
@@ -94,7 +98,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-cancel', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'smoke cancel', _coupon_code
+    'secondary', 0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'smoke cancel', _coupon_code
   );
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   IF NOT _prepare.claimed THEN RAISE EXCEPTION 'provider-create claim was not acquired'; END IF;
@@ -129,7 +133,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-execute', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'smoke execute', _coupon_code
+    'secondary', 0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'smoke execute', _coupon_code
   );
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   PERFORM public.bind_storefront_payment_attempt(_prepare.attempt_id, 'PAY-EXECUTE', 'https://example.invalid/bkash', '{}'::jsonb);
@@ -160,7 +164,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-reconcile', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'smoke reconcile', _coupon_code
+    'secondary', 0, 100, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'smoke reconcile', _coupon_code
   );
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   PERFORM public.bind_storefront_payment_attempt(_prepare.attempt_id, 'PAY-RECON', 'https://example.invalid/bkash', '{}'::jsonb);
@@ -215,7 +219,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-identity-a', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'identity A', NULL
+    'secondary', 0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'identity A', NULL
   );
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   IF NOT public.bind_storefront_payment_attempt(_prepare.attempt_id, 'PAY-GLOBAL-DUP', 'https://example.invalid/a', '{}'::jsonb) THEN
@@ -228,7 +232,7 @@ BEGIN
   SELECT * INTO _order2 FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-identity-b', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'identity B', NULL
+    'secondary', 0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'identity B', NULL
   );
   SELECT * INTO _prepare2 FROM public.prepare_storefront_payment_attempt(_store, _order2.order_number, 'bkash');
   IF public.bind_storefront_payment_attempt(_prepare2.attempt_id, 'PAY-GLOBAL-DUP', 'https://example.invalid/b-duplicate', '{}'::jsonb) THEN
@@ -267,7 +271,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-succeeded-attempt', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', 'succeeded attempt', NULL
+    'secondary', 0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'bkash', true, true, 'bkash', NULL, NULL, 'succeeded attempt', NULL
   );
   SELECT * INTO _prepare FROM public.prepare_storefront_payment_attempt(_store, _order.order_number, 'bkash');
   UPDATE public.storefront_payment_attempts SET state = 'succeeded' WHERE id = _prepare.attempt_id;
@@ -287,7 +291,7 @@ BEGIN
   SELECT * INTO _order FROM public.create_store_order_with_payment_lifecycle(
     _store, 'smoke-cod', NULL,
     jsonb_build_array(jsonb_build_object('productId', _product::text, 'size', 'M', 'quantity', 1)),
-    0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'cod', 'smoke cod', NULL
+    'secondary', 0, 0, 'Smoke Buyer', '01700000000', NULL, 'Smoke Road', 'Dhaka', 'cod', true, false, NULL, NULL, NULL, 'smoke cod', NULL
   );
   IF _order.reservation_state <> 'accepted' OR _order.reservation_expires_at IS NOT NULL THEN
     RAISE EXCEPTION 'COD was incorrectly given redirect-payment expiry semantics';

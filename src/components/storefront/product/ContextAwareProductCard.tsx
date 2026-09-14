@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Eye, Heart, ShoppingBag, Star } from "lucide-react";
 import { useMemo, useState, type ReactElement } from "react";
 import type { Product } from "@/data/products";
+import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -67,6 +68,7 @@ function FashionProductCard({
   const colorOptions = getRenderableColorOptions(product, specs, "fashion");
   const sizeOptions = getRenderableSizeOptions(product, specs, "fashion");
   const metricOptionGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
+  const cartSelection = resolveDefaultProductCartSelection(product, getPrimaryProductOptionValue(product, specs, "fashion"));
   const url = productUrl(product.id, product.name, currentStore?.slug);
 
   const visibleColors = colorOptions.slice(0, 4);
@@ -153,9 +155,11 @@ function FashionProductCard({
               onClick={() => addItem({
                 productId: product.id,
                 name: product.name,
-                price: product.price,
+                price: cartSelection?.unitPrice ?? product.price,
                 image: product.image,
-                size: getPrimaryProductOptionValue(product, specs, "fashion"),
+                size: cartSelection?.label ?? getPrimaryProductOptionValue(product, specs, "fashion"),
+                optionIds: cartSelection?.optionIds ?? [],
+                fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType,
                 storeId: currentStore?.id,
               })}
               className="inline-flex h-10 flex-1 min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"

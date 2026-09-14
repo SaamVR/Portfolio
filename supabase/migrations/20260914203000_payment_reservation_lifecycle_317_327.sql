@@ -189,21 +189,27 @@ CREATE TRIGGER trg_order_cancellation
 COMMENT ON FUNCTION public.handle_order_cancellation() IS
   'Atomically releases reserved product stock and coupon capacity exactly once when an order transitions to cancelled.';
 
--- New wrapper: leave the canonical pricing/stock function and v2 idempotency
--- contract untouched so parallel order-authority work can compose underneath it.
+-- Lifecycle wrapper composes on the authoritative order boundary from Lane B.
+-- Monetary, option, delivery, and payment eligibility truth remains owned by v3.
 CREATE OR REPLACE FUNCTION public.create_store_order_with_payment_lifecycle(
   _store_id uuid,
   _client_request_id text,
   _user_id uuid,
   _items jsonb,
-  _delivery_fee integer,
-  _discount_amount integer,
+  _delivery_zone text,
+  _expected_delivery_fee integer,
+  _expected_discount_amount integer,
   _customer_name text,
   _customer_phone text,
   _customer_email text,
   _shipping_address text,
   _shipping_city text,
   _payment_method text,
+  _payment_method_authorized boolean,
+  _payment_method_prepaid boolean,
+  _payment_provider text,
+  _manual_payment_provider text,
+  _manual_payment_reference text,
   _notes text,
   _coupon_code text
 )
@@ -230,19 +236,25 @@ DECLARE
   _is_redirect_payment boolean := lower(trim(coalesce(_payment_method, ''))) = 'bkash';
 BEGIN
   SELECT * INTO _result
-  FROM public.create_store_order_with_stock_v2(
+  FROM public.create_store_order_authoritative_v3(
     _store_id,
     _client_request_id,
     _user_id,
     _items,
-    _delivery_fee,
-    _discount_amount,
+    _delivery_zone,
+    _expected_delivery_fee,
+    _expected_discount_amount,
     _customer_name,
     _customer_phone,
     _customer_email,
     _shipping_address,
     _shipping_city,
     _payment_method,
+    _payment_method_authorized,
+    _payment_method_prepaid,
+    _payment_provider,
+    _manual_payment_provider,
+    _manual_payment_reference,
     _notes,
     _coupon_code
   );
@@ -287,7 +299,6 @@ BEGIN
       AND a.store_id = _store_id
       AND a.state IN ('creating', 'created');
 
-    -- Do not expire an obligation whose provider outcome is uncertain.
     IF NOT EXISTS (
       SELECT 1 FROM public.storefront_payment_attempts a
       WHERE a.order_id = _order.id
@@ -317,12 +328,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) TO service_role;
-GRANT ALL ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) TO postgres;
+REVOKE ALL ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text, text, boolean, boolean, text, text, text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text, text, boolean, boolean, text, text, text, text, text) TO service_role;
+GRANT ALL ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text, text, boolean, boolean, text, text, text, text, text) TO postgres;
 
-COMMENT ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, integer, integer, text, text, text, text, text, text, text, text) IS
-  'Wraps v2 idempotent order creation and atomically establishes finite bKash redirect reservation authority plus coupon identity.';
+COMMENT ON FUNCTION public.create_store_order_with_payment_lifecycle(uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text, text, boolean, boolean, text, text, text, text, text) IS
+  'Wraps authoritative v3 order creation and atomically establishes finite bKash redirect reservation authority plus coupon identity.';
 
 CREATE OR REPLACE FUNCTION public.prepare_storefront_payment_attempt(
   _store_id uuid,

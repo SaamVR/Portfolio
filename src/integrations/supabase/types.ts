@@ -127,6 +127,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          option_ids: string[]
           product_id: string
           quantity: number
           size: string
@@ -136,6 +137,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          option_ids?: string[]
           product_id: string
           quantity?: number
           size: string
@@ -145,6 +147,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          option_ids?: string[]
           product_id?: string
           quantity?: number
           size?: string
@@ -894,11 +897,14 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          delivery_zone: string | null
           id: string
           items: Json
           notes: string | null
           order_number: string
           payment_method: string
+          manual_payment_provider: string | null
+          manual_payment_reference: string | null
           shipping_address: string
           shipping_city: string
           status: string
@@ -915,11 +921,14 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address: string
           shipping_city: string
           status?: string
@@ -936,11 +945,14 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number?: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address?: string
           shipping_city?: string
           status?: string
@@ -1199,9 +1211,11 @@ export type Database = {
           badge: string | null
           category: string
           colors: string[]
+          commercial_options: Json
           created_at: string
           description: string
           featured: boolean
+          fulfillment_type: string
           id: string
           image_url: string
           images: string[]
@@ -1219,9 +1233,11 @@ export type Database = {
           badge?: string | null
           category?: string
           colors?: string[]
+          commercial_options?: Json
           created_at?: string
           description?: string
           featured?: boolean
+          fulfillment_type?: string
           id?: string
           image_url: string
           images?: string[]
@@ -1239,9 +1255,11 @@ export type Database = {
           badge?: string | null
           category?: string
           colors?: string[]
+          commercial_options?: Json
           created_at?: string
           description?: string
           featured?: boolean
+          fulfillment_type?: string
           id?: string
           image_url?: string
           images?: string[]
