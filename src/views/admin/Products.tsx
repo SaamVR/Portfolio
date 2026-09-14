@@ -50,6 +50,13 @@ import {
 } from "@/lib/catalog/catalog-dialog-validation";
 import { refreshStorefrontProductCache } from "@/lib/storefront-cache-client";
 import type { Json } from "@/integrations/supabase/types";
+import {
+  inferCommercialOptionKind,
+  normalizeCommercialOptions,
+  serializeCommercialOptions,
+  type ProductCommercialOption,
+  type ProductFulfillmentType,
+} from "@/lib/commerce/product-commercial-options";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   fetchAdminProductDetail,
@@ -86,6 +93,8 @@ const emptyProduct = {
   badge: null as string | null,
   stock: 1,
   metric_values: {} as Record<string, string[]>,
+  commercial_options: [] as ProductCommercialOption[],
+  fulfillment_type: "physical" as ProductFulfillmentType,
 };
 
 const BADGES = ["none", "New", "Sale"];
@@ -531,6 +540,8 @@ const AdminProducts = () => {
         badge: p.badge,
         stock: p.stock,
         metric_values: normalizeMetricValues(p.metric_values),
+        commercial_options: normalizeCommercialOptions(p.commercial_options),
+        fulfillment_type: p.fulfillment_type === "digital" ? "digital" : "physical",
       });
       setDialogOpen(true);
     } catch (error) {
@@ -548,16 +559,73 @@ const AdminProducts = () => {
   );
   const selectedTypeHasExplicitSchema = Array.isArray(selectedTypeRow?.metric_schema);
 
-  const updateMetricValue = (metricKey: string, nextValues: string[]) => {
+  const isDefaultCommercialMetric = (metricKey: string) => {
+    const kind = inferCommercialOptionKind(undefined, metricKey);
+    return metricKey === "size" || metricKey === "color" || kind !== "variant";
+  };
+
+  const reconcileCommercialMetricGroup = (
+    currentOptions: ProductCommercialOption[],
+    metricKey: string,
+    values: string[],
+    enabled: boolean,
+  ) => {
+    const otherGroups = currentOptions.filter((option) => option.groupKey !== metricKey);
+    if (!enabled) return otherGroups;
+    const existingByLabel = new Map(
+      currentOptions
+        .filter((option) => option.groupKey === metricKey)
+        .map((option) => [option.label.trim().toLowerCase(), option]),
+    );
+    const kind = inferCommercialOptionKind(undefined, metricKey);
+    return [
+      ...otherGroups,
+      ...values.map((label) => {
+        const existing = existingByLabel.get(label.trim().toLowerCase());
+        return existing
+          ? { ...existing, label, groupKey: metricKey, kind, active: true }
+          : { id: crypto.randomUUID(), groupKey: metricKey, label, priceDelta: 0, kind, active: true };
+      }),
+    ];
+  };
+
+  const setCommercialMetricEnabled = (metricKey: string, values: string[], enabled: boolean) => {
     setForm((current) => ({
       ...current,
-      sizes: metricKey === "size" ? nextValues : current.sizes,
-      colors: metricKey === "color" ? nextValues : current.colors,
-      metric_values: {
-        ...current.metric_values,
-        [metricKey]: nextValues,
-      },
+      commercial_options: reconcileCommercialMetricGroup(current.commercial_options, metricKey, values, enabled),
     }));
+  };
+
+  const setCommercialOptionDelta = (optionId: string, nextDelta: number) => {
+    const safeDelta = Number.isFinite(nextDelta) ? Math.max(-2_000_000_000, Math.min(2_000_000_000, Math.round(nextDelta))) : 0;
+    setForm((current) => ({
+      ...current,
+      commercial_options: current.commercial_options.map((option) =>
+        option.id === optionId ? { ...option, priceDelta: safeDelta } : option,
+      ),
+    }));
+  };
+
+  const updateMetricValue = (metricKey: string, nextValues: string[]) => {
+    setForm((current) => {
+      const commercialEnabled = isDefaultCommercialMetric(metricKey)
+        || current.commercial_options.some((option) => option.groupKey === metricKey);
+      return {
+        ...current,
+        sizes: metricKey === "size" ? nextValues : current.sizes,
+        colors: metricKey === "color" ? nextValues : current.colors,
+        metric_values: {
+          ...current.metric_values,
+          [metricKey]: nextValues,
+        },
+        commercial_options: reconcileCommercialMetricGroup(
+          current.commercial_options,
+          metricKey,
+          nextValues,
+          commercialEnabled,
+        ),
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -593,6 +661,8 @@ const AdminProducts = () => {
       metric_values: form.metric_values,
       sizes: form.metric_values.size ?? form.sizes,
       colors: form.metric_values.color ?? form.colors,
+      commercial_options: serializeCommercialOptions(form.commercial_options),
+      fulfillment_type: form.fulfillment_type,
       store_id: storeId,
     };
 
@@ -996,6 +1066,17 @@ const AdminProducts = () => {
                 ) : null}
               </div>
               <div className="grid gap-2">
+                <Label>Fulfillment</Label>
+                <Select value={form.fulfillment_type} onValueChange={(value) => setForm({ ...form, fulfillment_type: value === "digital" ? "digital" : "physical" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="physical">Physical delivery</SelectItem>
+                    <SelectItem value="digital">Digital delivery / access</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Digital products are always delivery-fee free at authoritative checkout.</p>
+              </div>
+              <div className="grid gap-2">
                 <Label>Category</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1050,21 +1131,69 @@ const AdminProducts = () => {
               {resolvedMetricDefinitions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No metrics configured for this type yet.</p>
               ) : (
-                resolvedMetricDefinitions.map((metric) => (
-                  <MetricValueChipInput
-                    key={metric.key}
-                    label={metric.label}
-                    values={form.metric_values[metric.key] ?? (metric.key === "size" ? form.sizes : metric.key === "color" ? form.colors : [])}
-                    onChange={(nextValues) => updateMetricValue(metric.key, nextValues)}
-                    placeholder={
-                      metric.key === "size"
-                        ? "Add values like Small, 256GB, 15-inch"
-                        : metric.key === "color"
-                          ? "Add values like Black, Silver, Navy"
-                          : "Add metric values"
-                    }
-                  />
-                ))
+                resolvedMetricDefinitions.map((metric) => {
+                  const values = form.metric_values[metric.key] ?? (metric.key === "size" ? form.sizes : metric.key === "color" ? form.colors : []);
+                  const forcedCommercial = isDefaultCommercialMetric(metric.key);
+                  const commercialEnabled = forcedCommercial || form.commercial_options.some((option) => option.groupKey === metric.key);
+                  const commercialOptions = form.commercial_options.filter((option) => option.groupKey === metric.key);
+                  return (
+                    <div key={metric.key} className="grid gap-3 rounded-md border border-border/70 p-3">
+                      <MetricValueChipInput
+                        label={metric.label}
+                        values={values}
+                        onChange={(nextValues) => updateMetricValue(metric.key, nextValues)}
+                        placeholder={
+                          metric.key === "size"
+                            ? "Add values like Small, 256GB, 15-inch"
+                            : metric.key === "color"
+                              ? "Add values like Black, Silver, Navy"
+                              : "Add metric values"
+                        }
+                      />
+                      {values.length > 0 ? (
+                        <>
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <Label className="text-xs">Commercial option identity</Label>
+                              <p className="mt-1 text-[11px] text-muted-foreground">When enabled, checkout resolves this value by stable ID and derives its price server-side.</p>
+                            </div>
+                            <Switch
+                              checked={commercialEnabled}
+                              disabled={forcedCommercial}
+                              onCheckedChange={(checked) => setCommercialMetricEnabled(metric.key, values, checked)}
+                            />
+                          </div>
+                          {commercialEnabled ? (
+                            <div className="grid gap-2">
+                              {values.map((value) => {
+                                const option = commercialOptions.find((candidate) => candidate.label.trim().toLowerCase() === value.trim().toLowerCase());
+                                return (
+                                  <div key={`${metric.key}:${value}`} className="grid grid-cols-[minmax(0,1fr)_140px] items-center gap-3">
+                                    <span className="truncate text-xs font-medium text-foreground">{value}</span>
+                                    <div>
+                                      <Label className="sr-only">Price adjustment for {value}</Label>
+                                      <Input
+                                        type="number"
+                                        step="1"
+                                        value={option?.priceDelta ?? 0}
+                                        onChange={(event) => {
+                                          if (!option) return;
+                                          setCommercialOptionDelta(option.id, Number(event.target.value || 0));
+                                        }}
+                                        aria-label={`Price adjustment for ${value}`}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              <p className="text-[11px] text-muted-foreground">Adjustments are in BDT and may be zero, positive, or negative. Final unit price cannot go below 0.</p>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })
               )}
             </div>
             <div className="flex items-center gap-2">

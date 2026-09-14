@@ -7,6 +7,8 @@ export interface CartItem {
   price: number;
   image: string;
   size: string;
+  optionIds?: string[];
+  fulfillmentType?: "physical" | "digital";
   quantity: number;
 }
 
@@ -14,8 +16,8 @@ export interface CartContextType {
   items: CartItem[];
   isCartReady: boolean;
   addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (productId: string, size: string, storeId?: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number, storeId?: string) => void;
+  removeItem: (productId: string, size: string, storeId?: string, optionIds?: string[]) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, storeId?: string, optionIds?: string[]) => void;
   clearCart: (storeId?: string) => void;
   totalItems: number;
   totalPrice: number;

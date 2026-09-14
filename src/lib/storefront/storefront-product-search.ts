@@ -26,6 +26,8 @@ type SearchDocument = {
   updated_at?: string | null;
   metric_values?: unknown;
   type_metric_schema?: unknown;
+  commercial_options?: unknown;
+  fulfillment_type?: unknown;
 };
 
 type SearchRow = SearchDocument & {
@@ -282,6 +284,30 @@ async function searchStorefrontProductsInPostgres(args: StorefrontSearchArgs): P
   );
 }
 
+async function hydrateSearchCommerceAuthority<T extends SearchDocument | SearchRow>(
+  args: StorefrontSearchArgs,
+  results: T[],
+): Promise<T[]> {
+  if (results.length === 0) return results;
+  const products = await getStorefrontProducts({
+    storeId: args.storeId,
+    ids: results.map((result) => String(result.id)),
+    previewToken: args.previewToken ?? null,
+  });
+  if (!products) return [];
+  const authorityById = new Map(products.map((product) => [String(product.id), product]));
+  return results.flatMap((result) => {
+    const authority = authorityById.get(String(result.id));
+    if (!authority) return [];
+    return [{
+      ...result,
+      commercial_options: authority.commercial_options ?? [],
+      fulfillment_type: authority.fulfillment_type ?? "physical",
+      type_metric_schema: authority.type_metric_schema ?? result.type_metric_schema,
+    } as T];
+  });
+}
+
 async function runTypesenseSearch(args: StorefrontSearchArgs): Promise<SearchDocument[] | null> {
   // Optional future seam: keep this isolated so we can plug in an external
   // search index later without rewriting the storefront query path again.
@@ -344,21 +370,21 @@ export async function searchStorefrontProducts(args: StorefrontSearchArgs) {
   if (normalizedArgs.previewToken) {
     const postgresResults = await searchStorefrontProductsInPostgres(normalizedArgs);
     if (postgresResults && postgresResults.length > 0) {
-      return postgresResults;
+      return hydrateSearchCommerceAuthority(normalizedArgs, postgresResults);
     }
     const externalResults = await runTypesenseSearch(normalizedArgs);
-    return externalResults ?? [];
+    return hydrateSearchCommerceAuthority(normalizedArgs, externalResults ?? []);
   }
 
   const runCachedSearch = unstable_cache(
     async () => {
       const postgresResults = await searchStorefrontProductsInPostgres(normalizedArgs);
       if (postgresResults && postgresResults.length > 0) {
-        return postgresResults;
+        return hydrateSearchCommerceAuthority(normalizedArgs, postgresResults);
       }
 
       const externalResults = await runTypesenseSearch(normalizedArgs);
-      return externalResults ?? [];
+      return hydrateSearchCommerceAuthority(normalizedArgs, externalResults ?? []);
     },
     [
       "storefront-product-search",

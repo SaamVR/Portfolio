@@ -3,6 +3,7 @@ import { Link } from "@/lib/react-router-dom-shim";
 import { ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Product } from "@/data/products";
+import { resolveProductCartSelection } from "@/lib/commerce/product-cart-selection";
 import { useCart } from "@/context/useCart";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -45,14 +46,25 @@ const ProductQuickView = ({ product, open, onOpenChange }: ProductQuickViewProps
       toast.error("Please select a size");
       return;
     }
+    const fallbackLabel = [selectedSize, ...selectedOptionLabels]
+      .filter(Boolean)
+      .join(" • ") || getPrimaryProductOptionValue(product, specs, cardVariant);
+    const cartSelection = resolveProductCartSelection(product, [
+      ...(selectedSize ? [{ groupKey: "size", label: selectedSize }] : []),
+      ...metricOptionGroups.flatMap((group) => {
+        const label = selectedMetricOptions[group.key]?.[0];
+        return label ? [{ groupKey: group.key, label }] : [];
+      }),
+    ], fallbackLabel);
+
     addItem({
       productId: product.id,
       name: product.name,
-      price: product.price,
+      price: cartSelection?.unitPrice ?? product.price,
       image: product.image,
-      size: [selectedSize, ...selectedOptionLabels]
-        .filter(Boolean)
-        .join(" • ") || getPrimaryProductOptionValue(product, specs, cardVariant),
+      size: cartSelection?.label ?? fallbackLabel,
+      optionIds: cartSelection?.optionIds ?? [],
+      fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType,
       storeId: currentStore?.id,
     });
     toast.success("Added to cart!");

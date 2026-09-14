@@ -5,6 +5,7 @@ import { normalizeMetricDefinitions, normalizeMetricValues } from "@/lib/cms/pro
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { isUuid } from "@/lib/slug";
 import { canUseIndexedStorefrontSearch } from "@/lib/storefront/storefront-product-search";
+import { normalizeCommercialOptions, normalizeFulfillmentType } from "@/lib/commerce/product-commercial-options";
 
 type DBProduct = {
   id: string;
@@ -24,6 +25,8 @@ type DBProduct = {
   is_available: boolean;
   metric_values?: unknown;
   type_metric_schema?: unknown;
+  commercial_options?: unknown;
+  fulfillment_type?: unknown;
 };
 
 export type ProductSearchOptions = {
@@ -59,6 +62,8 @@ function mapDBProduct(product: DBProduct): Product {
     isAvailable: product.is_available,
     metricValues: normalizeMetricValues(product.metric_values),
     typeMetricSchema: normalizeMetricDefinitions(product.type_metric_schema),
+    commercialOptions: normalizeCommercialOptions(product.commercial_options),
+    fulfillmentType: normalizeFulfillmentType(product.fulfillment_type),
   };
 }
 

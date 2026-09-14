@@ -3,6 +3,8 @@
 import { Download, HardDrive, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Product } from "@/data/products";
+import { resolveProductCartSelection } from "@/lib/commerce/product-cart-selection";
+import { findCommercialOptionByKind, getActiveCommercialOptions } from "@/lib/commerce/product-commercial-options";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -40,6 +42,17 @@ function configuredLicenses(
   product: Product,
   metadata?: TemplateSeedCatalogMetadata["products"][string],
 ): DigitalLicenseOption[] {
+  const commercial = getActiveCommercialOptions(product.commercialOptions).filter((option) => option.kind === "license");
+  if (commercial.length > 0) {
+    return commercial
+      .map((option) => ({
+        id: option.id,
+        label: option.label,
+        description: "Merchant-configured license option.",
+        price: product.price + option.priceDelta,
+      }))
+      .filter((option) => option.price >= 0);
+  }
   const variant = (metadata?.variants ?? []).find((item) => /license/i.test(item.name));
   if (!variant?.values?.length) return [];
 
@@ -94,6 +107,16 @@ export function DigitalProductCard({
   }, [product, trustedMetadata?.specs, trustedSpecs]);
   const [selectedLicenseId, setSelectedLicenseId] = useState(licenses[0]?.id ?? "");
   const selectedLicense = licenses.find((license) => license.id === selectedLicenseId) ?? licenses[0];
+  const selectedLicenseCommercial = selectedLicense
+    ? findCommercialOptionByKind(product.commercialOptions, "license", selectedLicense.id)
+      ?? findCommercialOptionByKind(product.commercialOptions, "license", selectedLicense.label)
+    : null;
+  const legacyVariantLabel = encodeDigitalCartVariant({ license: selectedLicense?.label ?? "", formats });
+  const cartSelection = product.commercialOptions?.length
+    ? resolveProductCartSelection(product, selectedLicenseCommercial
+        ? [{ groupKey: selectedLicenseCommercial.groupKey, label: selectedLicenseCommercial.label }]
+        : [], legacyVariantLabel)
+    : null;
   const rating = reviewStats?.average ?? null;
   const reviewCount = reviewStats?.count ?? 0;
   const fileSize = typeof trustedMetadata?.specs?.file_size === "string" && trustedMetadata.specs.file_size.trim()
@@ -175,7 +198,7 @@ export function DigitalProductCard({
         <ProductCardActions>
           <div className="flex items-center justify-between gap-2 w-full pt-1">
             <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-xl font-bold text-primary truncate min-w-0">BDT {selectedLicense?.price ?? product.price}</span>
+              <span className="text-xl font-bold text-primary truncate min-w-0">BDT {cartSelection?.unitPrice ?? selectedLicense?.price ?? product.price}</span>
               {isOnSale ? <span className="text-xs text-muted-foreground line-through truncate min-w-0">BDT {product.originalPrice}</span> : null}
             </div>
             <button
@@ -183,9 +206,11 @@ export function DigitalProductCard({
               onClick={() => addItem({
                 productId: product.id,
                 name: product.name,
-                price: selectedLicense?.price ?? product.price,
+                price: cartSelection?.unitPrice ?? selectedLicense?.price ?? product.price,
                 image: product.image,
-                size: encodeDigitalCartVariant({ license: selectedLicense?.label ?? "", formats }),
+                size: cartSelection?.label ?? legacyVariantLabel,
+                optionIds: cartSelection?.optionIds ?? [],
+                fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType ?? "digital",
                 storeId: currentStore?.id,
               })}
               className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"

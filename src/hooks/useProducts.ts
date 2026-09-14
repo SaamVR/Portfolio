@@ -8,6 +8,7 @@ import { buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
 import { normalizeMetricDefinitions, normalizeMetricValues } from "@/lib/cms/product-metrics";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { canUseIndexedStorefrontSearch } from "@/lib/storefront/storefront-product-search";
+import { normalizeCommercialOptions, normalizeFulfillmentType } from "@/lib/commerce/product-commercial-options";
 import { resolveStorefrontCatalogSource } from "@/lib/storefront/storefront-product-truth";
 
 interface DBProduct {
@@ -28,6 +29,8 @@ interface DBProduct {
   is_available: boolean;
   metric_values?: unknown;
   type_metric_schema?: unknown;
+  commercial_options?: unknown;
+  fulfillment_type?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +59,8 @@ function mapDBProduct(p: DBProduct): Product {
     isAvailable: p.is_available,
     metricValues: normalizeMetricValues(p.metric_values),
     typeMetricSchema: normalizeMetricDefinitions(p.type_metric_schema),
+    commercialOptions: normalizeCommercialOptions(p.commercial_options),
+    fulfillmentType: normalizeFulfillmentType(p.fulfillment_type),
   };
 }
 
@@ -77,6 +82,8 @@ type SeedRowProduct = {
   is_available: boolean;
   metric_values?: unknown;
   type_metric_schema?: unknown;
+  commercial_options?: unknown;
+  fulfillment_type?: unknown;
 };
 
 function mapSeedRowProduct(product: SeedRowProduct): Product {
@@ -102,6 +109,8 @@ function mapSeedRowProduct(product: SeedRowProduct): Product {
     isAvailable: product.is_available,
     metricValues: normalizeMetricValues(product.metric_values),
     typeMetricSchema: normalizeMetricDefinitions(product.type_metric_schema),
+    commercialOptions: normalizeCommercialOptions(product.commercial_options),
+    fulfillmentType: normalizeFulfillmentType(product.fulfillment_type),
   };
 }
 

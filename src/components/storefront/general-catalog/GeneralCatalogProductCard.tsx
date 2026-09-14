@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ShoppingBag, Star } from "lucide-react";
 import type { Product } from "@/data/products";
+import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -63,6 +64,7 @@ export function GeneralCatalogProductCard({
   const url = productUrl(product.id, product.name, currentStore?.slug);
   const { specs } = useStoreProductPresentation(product);
   const primaryOption = getPrimaryProductOptionValue(product, specs, "generic");
+  const cartSelection = resolveDefaultProductCartSelection(product, primaryOption);
 
   return (
     <ProductCardShell>
@@ -110,9 +112,11 @@ export function GeneralCatalogProductCard({
               onClick={() => addItem({
                 productId: product.id,
                 name: product.name,
-                price: product.price,
+                price: cartSelection?.unitPrice ?? product.price,
                 image: product.image,
-                size: primaryOption,
+                size: cartSelection?.label ?? primaryOption,
+                optionIds: cartSelection?.optionIds ?? [],
+                fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType,
                 storeId: currentStore?.id,
               })}
               className="inline-flex h-10 min-w-0 items-center justify-center rounded-xl border border-border bg-background px-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors truncate"

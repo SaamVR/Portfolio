@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 
 export type SubscriptionDurationOption = {
-  id: "monthly" | "yearly";
+  id: string;
   label: string;
   price: number;
   hint: string;
@@ -15,8 +15,8 @@ export function SubscriptionDurationSelector({
   onChange,
 }: {
   durations: SubscriptionDurationOption[];
-  value: "monthly" | "yearly";
-  onChange: (durationId: "monthly" | "yearly") => void;
+  value: string;
+  onChange: (durationId: string) => void;
 }) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">

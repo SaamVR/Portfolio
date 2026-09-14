@@ -2,6 +2,7 @@
 
 import { ShoppingBag, Star } from "lucide-react";
 import type { Product } from "@/data/products";
+import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -47,6 +48,7 @@ export function BeautyProductCard({
   const url = productUrl(product.id, product.name, currentStore?.slug);
   const { specs } = useStoreProductPresentation(product);
   const primaryOption = getPrimaryProductOptionValue(product, specs, "beauty");
+  const cartSelection = resolveDefaultProductCartSelection(product, primaryOption);
   const beautyColors = getRenderableColorOptions(product, specs, "beauty");
   const beautySizes = getRenderableSizeOptions(product, specs, "beauty");
   const visibleShades = beautyColors.slice(0, 4);
@@ -92,7 +94,7 @@ export function BeautyProductCard({
           {product.originalPrice && product.originalPrice > product.price ? <span className="min-w-0 truncate text-[11px] text-muted-foreground line-through sm:text-xs">৳{product.originalPrice.toLocaleString()}</span> : null}
         </div>
         <ProductCardActions>
-          <button type="button" onClick={() => addItem({ productId: product.id, name: product.name, price: product.price, image: product.image, size: primaryOption, storeId: currentStore?.id })} className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:gap-2 sm:px-3">
+          <button type="button" onClick={() => addItem({ productId: product.id, name: product.name, price: cartSelection?.unitPrice ?? product.price, image: product.image, size: cartSelection?.label ?? primaryOption, optionIds: cartSelection?.optionIds ?? [], fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType, storeId: currentStore?.id })} className="inline-flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:gap-2 sm:px-3">
             <ShoppingBag className="h-4 w-4 shrink-0" /><span className="sm:hidden">Add</span><span className="hidden sm:inline">Add to Cart</span>
           </button>
         </ProductCardActions>

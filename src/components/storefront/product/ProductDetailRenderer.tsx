@@ -11,6 +11,8 @@ import SizeGuide from "@/components/SizeGuide";
 import SocialShare from "@/components/SocialShare";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import type { Product } from "@/data/products";
+import { resolveProductCartSelection } from "@/lib/commerce/product-cart-selection";
+import { findCommercialOptionByKind, getActiveCommercialOptions } from "@/lib/commerce/product-commercial-options";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -342,6 +344,10 @@ function StickyMobileAction({
 }
 
 function buildSubscriptionPlanOptions(product: Product, specs: Record<string, unknown>) {
+  const commercial = getActiveCommercialOptions(product.commercialOptions).filter((option) => option.kind === "plan");
+  if (commercial.length > 0) {
+    return commercial.map((option) => ({ id: option.id, label: option.label, description: "Merchant-configured plan option" }));
+  }
   const variantGroups = Array.isArray(specs.variants) ? specs.variants as Array<{ name?: string; values?: Array<{ label?: string }> }> : [];
   const planGroup = variantGroups.find((item) => item.name?.toLowerCase() === "plan");
   const seeded = (planGroup?.values ?? []).map((item) => item.label?.trim()).filter((value): value is string => Boolean(value));
@@ -356,20 +362,31 @@ function buildSubscriptionPlanOptions(product: Product, specs: Record<string, un
 }
 
 function buildSubscriptionDurationOptions(product: Product, specs: Record<string, unknown>) {
+  const commercial = getActiveCommercialOptions(product.commercialOptions).filter((option) => option.kind === "duration");
+  if (commercial.length > 0) {
+    return commercial
+      .map((option) => ({
+        id: option.id,
+        label: option.label,
+        price: product.price + option.priceDelta,
+        hint: "Merchant-configured duration option",
+      }))
+      .filter((option) => option.price >= 0);
+  }
   const variantGroups = Array.isArray(specs.variants) ? specs.variants as Array<{ name?: string; values?: Array<{ label?: string; price_delta?: number }> }> : [];
   const durationGroup = variantGroups.find((item) => item.name?.toLowerCase() === "duration");
   const seeded = (durationGroup?.values ?? [])
     .map((item) => item.label?.trim() ? ({
-      id: item.label!.toLowerCase().includes("year") ? "yearly" as const : "monthly" as const,
+      id: item.label!.trim().toLowerCase().replace(/\s+/g, "-"),
       label: item.label!.trim(),
       price: product.price + Math.max(0, Math.round(Number(item.price_delta ?? 0))),
       hint: "Store-managed duration option",
     }) : null)
-    .filter((item): item is { id: "monthly" | "yearly"; label: string; price: number; hint: string } => Boolean(item));
+    .filter((item): item is { id: string; label: string; price: number; hint: string } => Boolean(item));
   if (seeded.length > 0) return seeded;
   return [
-    { id: "monthly" as const, label: "Monthly", price: product.price, hint: "Flexible access" },
-    { id: "yearly" as const, label: "Yearly", price: product.originalPrice && product.originalPrice > product.price ? product.originalPrice : Math.round(product.price * 10), hint: "Longer-term savings" },
+    { id: "monthly", label: "Monthly", price: product.price, hint: "Flexible access" },
+    { id: "yearly", label: "Yearly", price: product.originalPrice && product.originalPrice > product.price ? product.originalPrice : Math.round(product.price * 10), hint: "Longer-term savings" },
   ];
 }
 
@@ -431,13 +448,26 @@ function GenericProductDetailsContent({
   const [guestCount, setGuestCount] = useState(2);
   const [roomCount, setRoomCount] = useState(1);
 
-  const digitalLicenses = useMemo(() => getDigitalLicenses(product), [product]);
+  const digitalLicenses = useMemo(() => {
+    const commercial = getActiveCommercialOptions(product.commercialOptions).filter((option) => option.kind === "license");
+    if (commercial.length > 0) {
+      return commercial
+        .map((option) => ({
+          id: option.id,
+          label: option.label,
+          description: "Merchant-configured license option.",
+          price: product.price + option.priceDelta,
+        }))
+        .filter((option) => option.price >= 0);
+    }
+    return getDigitalLicenses(product);
+  }, [product]);
   const [selectedLicenseId, setSelectedLicenseId] = useState(digitalLicenses[0]?.id ?? "personal");
   const selectedLicense = digitalLicenses.find((license) => license.id === selectedLicenseId) ?? digitalLicenses[0];
   const subscriptionPlans = useMemo(() => buildSubscriptionPlanOptions(product, specs), [product, specs]);
   const subscriptionDurations = useMemo(() => buildSubscriptionDurationOptions(product, specs), [product, specs]);
   const [selectedPlanId, setSelectedPlanId] = useState(subscriptionPlans[0]?.id ?? "individual");
-  const [selectedDurationId, setSelectedDurationId] = useState<"monthly" | "yearly">(subscriptionDurations[0]?.id ?? "monthly");
+  const [selectedDurationId, setSelectedDurationId] = useState(subscriptionDurations[0]?.id ?? "monthly");
   const selectedPlan = subscriptionPlans.find((item) => item.id === selectedPlanId) ?? subscriptionPlans[0];
   const selectedDuration = subscriptionDurations.find((item) => item.id === selectedDurationId) ?? subscriptionDurations[0];
   const colorOptions = useMemo(() => getRenderableColorOptions(product, specs, variant), [product, specs, variant]);
@@ -448,6 +478,51 @@ function GenericProductDetailsContent({
   const [selectedMetricOptions, setSelectedMetricOptions] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(metricOptionGroups.map((group) => [group.key, [group.options[0] ?? ""]])),
   );
+
+  const genericFallbackLabel = [
+    selectedSize,
+    selectedColor,
+    ...metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
+  ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(product, specs, variant);
+  const genericCartSelection = resolveProductCartSelection(product, [
+    ...(selectedSize ? [{ groupKey: "size", label: selectedSize }] : []),
+    ...(selectedColor ? [{ groupKey: "color", label: selectedColor }] : []),
+    ...metricOptionGroups.flatMap((group) => {
+      const label = selectedMetricOptions[group.key]?.[0];
+      return label ? [{ groupKey: group.key, label }] : [];
+    }),
+  ], genericFallbackLabel);
+
+  const subscriptionFallbackLabel = [selectedPlan?.label, selectedDuration?.label].filter(Boolean).join(" • ");
+  const selectedPlanCommercial = selectedPlan
+    ? findCommercialOptionByKind(product.commercialOptions, "plan", selectedPlan.id)
+      ?? findCommercialOptionByKind(product.commercialOptions, "plan", selectedPlan.label)
+    : null;
+  const selectedDurationCommercial = selectedDuration
+    ? findCommercialOptionByKind(product.commercialOptions, "duration", selectedDuration.id)
+      ?? findCommercialOptionByKind(product.commercialOptions, "duration", selectedDuration.label)
+    : null;
+  const subscriptionCartSelection = product.commercialOptions?.length
+    ? resolveProductCartSelection(product, [
+        ...(selectedPlanCommercial ? [{ groupKey: selectedPlanCommercial.groupKey, label: selectedPlanCommercial.label }] : []),
+        ...(selectedDurationCommercial ? [{ groupKey: selectedDurationCommercial.groupKey, label: selectedDurationCommercial.label }] : []),
+      ], subscriptionFallbackLabel)
+    : null;
+
+  const digitalFallbackLabel = encodeDigitalCartVariant({
+    license: selectedLicense?.label || "Personal",
+    formats: getDigitalFormats(product),
+  });
+  const selectedLicenseCommercial = selectedLicense
+    ? findCommercialOptionByKind(product.commercialOptions, "license", selectedLicense.id)
+      ?? findCommercialOptionByKind(product.commercialOptions, "license", selectedLicense.label)
+    : null;
+  const digitalCartSelection = product.commercialOptions?.length
+    ? resolveProductCartSelection(product, selectedLicenseCommercial
+        ? [{ groupKey: selectedLicenseCommercial.groupKey, label: selectedLicenseCommercial.label }]
+        : [], digitalFallbackLabel)
+    : null;
+
   const showColorSelector = shouldShowColorOptions(product, specs, variant);
   const showSizeSelector = shouldShowSizeOptions(product, specs, variant);
   const showSizeGuideButton = shouldShowSizeGuide(product, specs, variant);
@@ -461,10 +536,10 @@ function GenericProductDetailsContent({
     ...customMetricItems.map((item) => ({ icon: <ShieldCheck className="h-4 w-4" />, label: item.label, value: item.value })),
   ]);
   const totalPrice = variant === "subscription"
-    ? (selectedDuration?.price ?? product.price)
+    ? (subscriptionCartSelection?.unitPrice ?? selectedDuration?.price ?? product.price)
     : variant === "digital"
-      ? (selectedLicense?.price ?? product.price)
-      : product.price * quantity;
+      ? (digitalCartSelection?.unitPrice ?? selectedLicense?.price ?? product.price)
+      : (genericCartSelection?.unitPrice ?? product.price) * quantity;
   const contactBaseHref = storefrontPath("/contact", currentStore?.slug);
   const generalInquiryHref = buildStorefrontInquiryHref(contactBaseHref, {
     intent: variant === "inquiry" ? "quote" : "service_booking",
@@ -560,9 +635,11 @@ function GenericProductDetailsContent({
       return [{
         productId: product.id,
         name: product.name,
-        price: selectedDuration?.price ?? product.price,
+        price: subscriptionCartSelection?.unitPrice ?? selectedDuration?.price ?? product.price,
         image: product.image,
-        size: `${selectedPlan?.label || "Individual"} • ${selectedDuration?.label || "Monthly"}`,
+        size: (subscriptionCartSelection?.label ?? subscriptionFallbackLabel) || "Subscription",
+        optionIds: subscriptionCartSelection?.optionIds ?? [],
+        fulfillmentType: subscriptionCartSelection?.fulfillmentType ?? product.fulfillmentType,
         quantity: 1,
         storeId: currentStore?.id,
       }];
@@ -572,29 +649,24 @@ function GenericProductDetailsContent({
       return [{
         productId: product.id,
         name: product.name,
-        price: selectedLicense?.price ?? product.price,
+        price: digitalCartSelection?.unitPrice ?? selectedLicense?.price ?? product.price,
         image: product.image,
-        size: encodeDigitalCartVariant({
-          license: selectedLicense?.label || "Personal",
-          formats: getDigitalFormats(product),
-        }),
+        size: digitalCartSelection?.label ?? digitalFallbackLabel,
+        optionIds: digitalCartSelection?.optionIds ?? [],
+        fulfillmentType: digitalCartSelection?.fulfillmentType ?? product.fulfillmentType ?? "digital",
         quantity: 1,
         storeId: currentStore?.id,
       }];
     }
 
-    const cartSelection = [
-      selectedSize,
-      selectedColor,
-      ...metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
-    ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(product, specs, variant);
-
     return Array.from({ length: quantity }, () => ({
       productId: product.id,
       name: product.name,
-      price: product.price,
+      price: genericCartSelection?.unitPrice ?? product.price,
       image: product.image,
-      size: cartSelection,
+      size: genericCartSelection?.label ?? genericFallbackLabel,
+      optionIds: genericCartSelection?.optionIds ?? [],
+      fulfillmentType: genericCartSelection?.fulfillmentType ?? product.fulfillmentType,
       quantity: 1,
       storeId: currentStore?.id,
     }));
@@ -605,9 +677,11 @@ function GenericProductDetailsContent({
       addItem({
         productId: product.id,
         name: product.name,
-        price: selectedDuration?.price ?? product.price,
+        price: subscriptionCartSelection?.unitPrice ?? selectedDuration?.price ?? product.price,
         image: product.image,
-        size: `${selectedPlan?.label || "Individual"} • ${selectedDuration?.label || "Monthly"}`,
+        size: (subscriptionCartSelection?.label ?? subscriptionFallbackLabel) || "Subscription",
+        optionIds: subscriptionCartSelection?.optionIds ?? [],
+        fulfillmentType: subscriptionCartSelection?.fulfillmentType ?? product.fulfillmentType,
         storeId: currentStore?.id,
       });
       return;
@@ -617,30 +691,25 @@ function GenericProductDetailsContent({
       addItem({
         productId: product.id,
         name: product.name,
-        price: selectedLicense?.price ?? product.price,
+        price: digitalCartSelection?.unitPrice ?? selectedLicense?.price ?? product.price,
         image: product.image,
-        size: encodeDigitalCartVariant({
-          license: selectedLicense?.label || "Personal",
-          formats: getDigitalFormats(product),
-        }),
+        size: digitalCartSelection?.label ?? digitalFallbackLabel,
+        optionIds: digitalCartSelection?.optionIds ?? [],
+        fulfillmentType: digitalCartSelection?.fulfillmentType ?? product.fulfillmentType ?? "digital",
         storeId: currentStore?.id,
       });
       return;
     }
 
-    const cartSelection = [
-      selectedSize,
-      selectedColor,
-      ...metricOptionGroups.flatMap((group) => selectedMetricOptions[group.key] ?? []),
-    ].filter(Boolean).join(" • ") || getPrimaryProductOptionValue(product, specs, variant);
-
     for (let index = 0; index < quantity; index += 1) {
       addItem({
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: genericCartSelection?.unitPrice ?? product.price,
         image: product.image,
-        size: cartSelection,
+        size: genericCartSelection?.label ?? genericFallbackLabel,
+        optionIds: genericCartSelection?.optionIds ?? [],
+        fulfillmentType: genericCartSelection?.fulfillmentType ?? product.fulfillmentType,
         storeId: currentStore?.id,
       });
     }
@@ -956,7 +1025,7 @@ function GenericProductDetailsContent({
           </button>
         </div>
         <ProductPrice
-          price={variant === "subscription" ? (selectedDuration?.price ?? product.price) : variant === "digital" ? (selectedLicense?.price ?? product.price) : product.price}
+          price={variant === "subscription" ? (subscriptionCartSelection?.unitPrice ?? selectedDuration?.price ?? product.price) : variant === "digital" ? (digitalCartSelection?.unitPrice ?? selectedLicense?.price ?? product.price) : (genericCartSelection?.unitPrice ?? product.price)}
           originalPrice={product.originalPrice}
           suffix={variant === "hotel_room" ? "per night" : variant === "property" ? (getString(specs, ["listing_type"], "").toLowerCase().includes("rent") ? "per month" : "sale price") : undefined}
         />

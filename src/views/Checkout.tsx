@@ -108,6 +108,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [deliveryZone, setDeliveryZone] = useState<"primary" | "secondary">("primary");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -323,7 +324,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       : deliverySettings,
     paymentSettings,
     paymentMethod: form.paymentMethod,
-    location: "primary",
+    location: deliveryZone,
   });
   const deliveryFee = pricing.deliveryFee;
   const grandTotal = pricing.grandTotal;
@@ -484,11 +485,14 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
           price: item.price,
           image: item.image,
           size: item.size,
+          optionIds: item.optionIds ?? [],
+          fulfillmentType: item.fulfillmentType,
           quantity: item.quantity,
         })),
         subtotal: checkoutSubtotal,
         delivery_fee: deliveryFee,
-        discount_amount: pricing.couponDiscount + pricing.orderDiscountAmount,
+        delivery_zone: deliveryZone,
+        discount_amount: Math.max(0, checkoutSubtotal + deliveryFee - grandTotal),
         coupon_code: appliedCoupon?.code ?? null,
         total: grandTotal,
         customer_name: form.name,
@@ -656,6 +660,37 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   </div>
                 );
               })}
+
+              {!digitalOnlyCheckout && deliverySettings.enabled ? (
+                <fieldset className="grid gap-2">
+                  <legend className="mb-1 text-sm font-medium text-foreground">Delivery zone</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      { value: "primary" as const, label: deliverySettings.primary_zone_label?.trim() || "Primary delivery zone", fee: deliverySettings.delivery_fee },
+                      { value: "secondary" as const, label: deliverySettings.secondary_zone_label?.trim() || "Secondary delivery zone", fee: deliverySettings.delivery_fee_outside },
+                    ].map((zone) => (
+                      <label
+                        key={zone.value}
+                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${deliveryZone === zone.value ? "border-primary bg-primary/5" : "border-border bg-background"}`}
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="radio"
+                            name="delivery-zone"
+                            value={zone.value}
+                            checked={deliveryZone === zone.value}
+                            onChange={() => setDeliveryZone(zone.value)}
+                            className="h-4 w-4 shrink-0 accent-primary"
+                          />
+                          <span className="truncate font-medium text-foreground">{zone.label}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">BDT {zone.fee}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Final delivery charge is recalculated securely when the order is placed.</p>
+                </fieldset>
+              ) : null}
 
               {digitalOnlyCheckout ? <DownloadAccessPanel compact /> : null}
             </div>

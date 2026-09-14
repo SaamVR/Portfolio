@@ -2,6 +2,7 @@
 
 import { Clock3, Plus, Star } from "lucide-react";
 import type { Product } from "@/data/products";
+import { resolveDefaultProductCartSelection } from "@/lib/commerce/product-cart-selection";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/useCart";
 import { useOptionalStore } from "@/components/storefront/store-context";
@@ -41,6 +42,7 @@ export function FoodMenuCard({
   const prepTime = getExplicitFactText(product, ["preparation_time", "prep_time", "fulfillment_time"], previewSpecs);
   const url = productUrl(product.id, product.name, currentStore?.slug);
   const primaryOption = getPrimaryProductOptionValue(product, specs, "food");
+  const cartSelection = resolveDefaultProductCartSelection(product, primaryOption);
 
   return (
     <ProductCardShell>
@@ -65,7 +67,7 @@ export function FoodMenuCard({
               <span className="text-xl font-bold text-primary truncate">৳{product.price.toLocaleString()}</span>
               {product.originalPrice && product.originalPrice > product.price ? <span className="text-xs text-muted-foreground line-through truncate">৳{product.originalPrice.toLocaleString()}</span> : null}
             </div>
-            <button type="button" onClick={() => addItem({ productId: product.id, name: product.name, price: product.price, image: product.image, size: primaryOption, storeId: currentStore?.id })} className="inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0">
+            <button type="button" onClick={() => addItem({ productId: product.id, name: product.name, price: cartSelection?.unitPrice ?? product.price, image: product.image, size: cartSelection?.label ?? primaryOption, optionIds: cartSelection?.optionIds ?? [], fulfillmentType: cartSelection?.fulfillmentType ?? product.fulfillmentType, storeId: currentStore?.id })} className="inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 active:translate-y-0">
               Add<Plus className="h-4 w-4" />
             </button>
           </div>

@@ -17,10 +17,14 @@ export interface Order {
     price: number;
     image: string;
     size: string;
+    optionIds?: string[];
+    options?: Array<{ id: string; groupKey: string; label: string; priceDelta: number; kind: string }>;
+    fulfillmentType?: "physical" | "digital";
     quantity: number;
   }>;
   subtotal: number;
   delivery_fee: number;
+  delivery_zone?: "primary" | "secondary" | "none" | null;
   total: number;
   customer_name: string;
   customer_phone: string;
@@ -188,6 +192,7 @@ export function useCreateOrder() {
       items: Order["items"];
       subtotal: number;
       delivery_fee?: number;
+      delivery_zone?: "primary" | "secondary";
       discount_amount?: number;
       coupon_code?: string | null;
       total: number;
@@ -222,8 +227,11 @@ export function useCreateOrder() {
           items: order.items.map((item) => ({
             productId: item.productId,
             size: item.size,
+            optionIds: item.optionIds ?? [],
+            expectedUnitPrice: item.price,
             quantity: item.quantity,
           })),
+          deliveryZone: order.delivery_zone ?? "primary",
           deliveryFee: order.delivery_fee ?? 0,
           discountAmount: order.discount_amount ?? Math.max(0, order.subtotal + (order.delivery_fee ?? 0) - order.total),
           couponCode: order.coupon_code || null,
