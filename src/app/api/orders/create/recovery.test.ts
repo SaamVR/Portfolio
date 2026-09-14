@@ -33,6 +33,7 @@ function createAdminMock(options?: {
   replayed?: boolean;
   persistedPaymentMethod?: string;
   rpcError?: { message: string } | null;
+  storefrontProfile?: Record<string, unknown> | null;
 }) {
   const replayed = options?.replayed ?? true;
   const persistedPaymentMethod = options?.persistedPaymentMethod ?? "cod";
@@ -81,9 +82,14 @@ function createAdminMock(options?: {
             return {
               eq() {
                 return {
-                  eq() {
+                  eq(_column: string, key: string) {
                     return {
-                      maybeSingle: async () => ({ data: null, error: null }),
+                      maybeSingle: async () => ({
+                        data: key === "storefront_profile" && options?.storefrontProfile !== undefined
+                          ? { value: options.storefrontProfile }
+                          : null,
+                        error: null,
+                      }),
                     };
                   },
                 };
@@ -208,6 +214,35 @@ describe("order creation checkout recovery", () => {
 
     const response = await POST(buildRequest("cod"));
     assert.equal(response.status, 409);
+  });
+
+
+  test("rejects unauthenticated order creation when the merchant disables guest checkout", async () => {
+    const admin = createAdminMock({
+      replayed: false,
+      persistedPaymentMethod: "cod",
+      storefrontProfile: { allow_guest_checkout: false },
+    });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("cod"));
+    assert.equal(response.status, 401);
+    const body = await response.json();
+    assert.match(body.error, /sign in is required/i);
+    assert.equal(rpcCalls, 0);
   });
 
   test("rejects a product option that is not configured for the store product", async () => {

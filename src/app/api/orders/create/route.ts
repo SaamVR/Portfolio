@@ -9,6 +9,7 @@ import { resolveAuthoritativeCheckoutPricing } from "@/lib/orders/authoritative-
 import { validateAuthoritativeCheckoutSelections } from "@/lib/orders/authoritative-checkout-selection";
 import { getPaymentProviderByPaymentMethod, isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 import { isStorefrontPaymentMethodConfigured } from "@/lib/payments/storefront-payment-availability";
+import { resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -196,6 +197,13 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
 
+    const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
+      ? storefrontSetting.value as Record<string, unknown>
+      : null;
+    if (!user && !resolveAllowGuestCheckout(storefrontProfile)) {
+      return jsonNoStore({ error: "Sign in is required to checkout at this store." }, { status: 401 });
+    }
+
     const gatewayProvider = getPaymentProviderByPaymentMethod(paymentMethod);
     let gatewayConnection: unknown = null;
     if (gatewayProvider?.connectionRequired) {
@@ -251,9 +259,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
-      ? storefrontSetting.value as Record<string, unknown>
-      : null;
     const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
 
     const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock_v2", {

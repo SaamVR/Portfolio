@@ -1,5 +1,3 @@
-"use client";
-
 import type { Store } from "@/lib/cms/schema";
 import { storefrontPath } from "@/lib/slug";
 
