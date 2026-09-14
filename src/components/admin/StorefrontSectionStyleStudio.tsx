@@ -8,6 +8,9 @@ import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/auth-context";
 import { createRegistryDefaultBlock } from "@/lib/cms/block-registry";
 import { storePageBlockSchema, type StorePage, type StorePageBlock } from "@/lib/cms/schema";
+import { normalizeCanonicalVariantOptions, type StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { buildVariantOptionsPersistencePatch } from "@/lib/cms/storefront-platform/variants/variant-options";
+import { applySectionStyleToBlock } from "@/lib/cms/storefront-platform/variants/section-style-library";
 import {
   getBasicBlockCoach,
   getBasicLayoutVariantOptions,
@@ -33,6 +36,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionStudioOptionControls } from "@/components/storefront/editor/section-studio/SectionStudioOptionControls";
+import { SectionStudioSaveStatus } from "@/components/storefront/editor/section-studio/SectionStudioShells";
 
 type NavigationSettings = {
   primary_links?: Array<{ label?: string; url?: string; children?: Array<{ label?: string; url?: string }> }>;
@@ -50,6 +55,7 @@ type NavigationSettings = {
 
 type SectionDraft = {
   layoutVariant?: string;
+  variantOptions?: StorefrontVariantOptions;
   props: Record<string, unknown>;
   isNew?: boolean;
 };
@@ -74,6 +80,7 @@ type SnapshotBlockRow = {
   hover_effect: StorePageBlock["hoverEffect"] | null;
   effect_override: boolean | null;
   layout_variant: string | null;
+  variant_options: unknown;
   custom_html: string | null;
   custom_css: string | null;
 };
@@ -130,9 +137,9 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
       .select("id, slug, title, seo_title, seo_description, is_homepage")
       .eq("store_id", storeId)
       .order("is_homepage", { ascending: false }),
-    supabase
+    (supabase as any)
       .from("store_page_blocks")
-      .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css")
+      .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css")
       .eq("store_id", storeId)
       .order("sort_order", { ascending: true }),
   ]);
@@ -153,6 +160,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
       hoverEffect: blockRow.hover_effect ?? "none",
       effectOverride: blockRow.effect_override ?? false,
       layoutVariant: blockRow.layout_variant ?? undefined,
+      variantOptions: normalizeCanonicalVariantOptions(blockRow.variant_options),
       customHtml: blockRow.custom_html ?? undefined,
       customCss: blockRow.custom_css ?? undefined,
     } as StorePageBlock);
@@ -803,6 +811,18 @@ export function StorefrontSectionStyleStudio() {
   const [navigationDraft, setNavigationDraft] = useState<NavigationSettings | null>(null);
   const [visibilityDraft, setVisibilityDraft] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHasUnsavedChanges(false);
+    setSaveError(null);
+  }, [activeStoreId]);
+
+  const markUnsaved = () => {
+    setHasUnsavedChanges(true);
+    setSaveError(null);
+  };
 
   const { data, isLoading, refetch } = useQuery<StudioData>({
     queryKey: ["storefront-section-style-studio", activeStoreId],
@@ -855,6 +875,7 @@ export function StorefrontSectionStyleStudio() {
     for (const block of data.homepage.blocks.filter((item) => ELIGIBLE_BLOCKS.includes(item.type))) {
       nextDrafts[block.id] = {
         layoutVariant: block.layoutVariant,
+        variantOptions: block.variantOptions,
         props: { ...block.props },
       };
     }
@@ -902,6 +923,7 @@ export function StorefrontSectionStyleStudio() {
     fallbackProps: Record<string, unknown>,
     updater: (currentProps: Record<string, unknown>) => Record<string, unknown>,
   ) => {
+    markUnsaved();
     setSectionDrafts((prev) => ({
       ...prev,
       [blockId]: {
@@ -912,6 +934,7 @@ export function StorefrontSectionStyleStudio() {
   };
 
   const moveBlock = (blockId: string, direction: "up" | "down") => {
+    markUnsaved();
     if (!activeStoreId) return;
     queryClient.setQueryData<StudioData>(["storefront-section-style-studio", activeStoreId], (current) => {
       if (!current?.homepage) return current;
@@ -936,6 +959,7 @@ export function StorefrontSectionStyleStudio() {
   };
 
   const toggleBlockVisibility = (blockId: string) => {
+    markUnsaved();
     if (!activeStoreId) return;
     const targetBlock = homepageBlocks.find((block) => block.id === blockId);
     queryClient.setQueryData<StudioData>(["storefront-section-style-studio", activeStoreId], (current) => {
@@ -966,6 +990,7 @@ export function StorefrontSectionStyleStudio() {
   };
 
   const updateSectionVisibility = (blockType: StorePageBlock["type"], enabled: boolean) => {
+    markUnsaved();
     setVisibilityDraft((prev) => ({
       ...prev,
       [blockType]: enabled,
@@ -994,6 +1019,7 @@ export function StorefrontSectionStyleStudio() {
   };
 
   const duplicateBlock = (blockId: string) => {
+    markUnsaved();
     if (!activeStoreId) return;
     const duplicateId = crypto.randomUUID();
 
@@ -1035,6 +1061,7 @@ export function StorefrontSectionStyleStudio() {
   };
 
   const handleAddBlock = (blockType: StorePageBlock["type"]) => {
+    markUnsaved();
     if (!data?.homepage || !activeStoreId) return;
     const nextBlock = createRegistryDefaultBlock(blockType, data.homepage.blocks.length);
     const firstVariant = getBasicLayoutVariantOptions(data.templateId, blockType, nextBlock)[0]?.id;
@@ -1068,12 +1095,14 @@ export function StorefrontSectionStyleStudio() {
       [hydratedBlock.id]: {
         props: { ...hydratedBlock.props },
         layoutVariant: hydratedBlock.layoutVariant,
+        variantOptions: hydratedBlock.variantOptions,
         isNew: true,
       },
     }));
   };
 
   const restoreRecommendedOrder = () => {
+    markUnsaved();
     if (!activeStoreId) return;
     queryClient.setQueryData<StudioData>(["storefront-section-style-studio", activeStoreId], (current) => {
       if (!current?.homepage) return current;
@@ -1110,6 +1139,7 @@ export function StorefrontSectionStyleStudio() {
         sortOrder: index,
         props: sectionDrafts[block.id]?.props ?? block.props,
         layoutVariant: sectionDrafts[block.id]?.layoutVariant ?? block.layoutVariant,
+        variantOptions: sectionDrafts[block.id] ? sectionDrafts[block.id].variantOptions : block.variantOptions,
         isVisible: visibilityEnabled,
         visible: visibilityEnabled,
       });
@@ -1118,15 +1148,17 @@ export function StorefrontSectionStyleStudio() {
     for (const block of homepageBlocksToSave) {
       const issue = validateDraftBlock(block, sectionDrafts[block.id] ?? { props: block.props, layoutVariant: block.layoutVariant });
       if (issue) {
+        setSaveError(issue);
         toast.error(issue);
         return;
       }
     }
 
     setSaving(true);
+    setSaveError(null);
     try {
       const [{ error: blockError }, { error: navigationError }, { error: visibilityError }] = await Promise.all([
-        supabase.from("store_page_blocks").upsert(
+        (supabase as any).from("store_page_blocks").upsert(
           homepageBlocksToSave.map((block, index) => ({
             id: block.id,
             page_id: data.homepage!.id,
@@ -1139,6 +1171,7 @@ export function StorefrontSectionStyleStudio() {
             hover_effect: block.hoverEffect ?? null,
             effect_override: block.effectOverride ?? null,
             layout_variant: block.layoutVariant ?? null,
+            ...buildVariantOptionsPersistencePatch(block.variantOptions),
             custom_html: block.customHtml ?? null,
             custom_css: block.customCss ?? null,
           })),
@@ -1167,11 +1200,15 @@ export function StorefrontSectionStyleStudio() {
       if (visibilityError) throw visibilityError;
 
       await refreshStorefrontContentCache(supabase, activeStoreId);
+      setHasUnsavedChanges(false);
+      setSaveError(null);
       toast.success("Storefront styles updated.");
       await refetch();
       void queryClient.invalidateQueries({ queryKey: ["site_settings", activeStoreId] });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to save storefront styles.");
+      const message = error?.message || "Failed to save storefront styles.";
+      setSaveError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -1242,7 +1279,10 @@ export function StorefrontSectionStyleStudio() {
               <button
                 key={option.id}
                 type="button"
-                onClick={() => setNavigationDraft((prev) => ({ ...(prev ?? {}), nav_layout: option.id }))}
+                onClick={() => {
+                  markUnsaved();
+                  setNavigationDraft((prev) => ({ ...(prev ?? {}), nav_layout: option.id }));
+                }}
                 className={cn("rounded-xl border p-3 text-left transition-colors", selected ? "border-primary bg-primary/8" : "border-border bg-card hover:border-primary/30")}
               >
                 <NavLayoutPreview layoutId={option.id} />
@@ -1353,6 +1393,12 @@ export function StorefrontSectionStyleStudio() {
           const coach = getBasicBlockCoach(data.templateId, block.type);
           const suggestion = getSharedBlockSuggestionInfo(data.templateId, block.type);
           const compatibilityBlock = { ...block, props: draft.props } as StorePageBlock;
+          const studioControlBlock = {
+            ...block,
+            props: draft.props,
+            layoutVariant: draft.layoutVariant,
+            variantOptions: draft.variantOptions,
+          } as StorePageBlock;
           const variants = getBasicLayoutVariantOptions(data.templateId, block.type, compatibilityBlock);
           const priorityFields = Array.from(new Set([...(coach.priorityFields ?? []), ...(draft.isNew ? ["ctaLink"] : [])])).filter(Boolean);
           const blockIndex = homepageBlocks.findIndex((entry) => entry.id === block.id);
@@ -1416,13 +1462,18 @@ export function StorefrontSectionStyleStudio() {
                           <button
                             key={variant.id}
                             type="button"
-                            onClick={() => setSectionDrafts((prev) => ({
-                              ...prev,
-                              [block.id]: {
-                                ...(prev[block.id] ?? { props: block.props }),
-                                layoutVariant: variant.id,
-                              },
-                            }))}
+                            onClick={() => {
+                              markUnsaved();
+                              const nextBlock = applySectionStyleToBlock(studioControlBlock, variant.id, data.templateId);
+                              setSectionDrafts((prev) => ({
+                                ...prev,
+                                [block.id]: {
+                                  ...(prev[block.id] ?? { props: block.props }),
+                                  layoutVariant: nextBlock.layoutVariant,
+                                  variantOptions: nextBlock.variantOptions,
+                                },
+                              }));
+                            }}
                             className={cn("rounded-lg border p-2 text-left transition-colors", selected ? "border-primary bg-primary/8" : "border-border bg-background hover:border-primary/30")}
                           >
                             <BlockPreview blockType={block.type} variantId={variant.id} props={draft.props} />
@@ -1439,6 +1490,21 @@ export function StorefrontSectionStyleStudio() {
                     </div>
                   </div>
                 ) : null}
+
+                <SectionStudioOptionControls
+                  templateId={data.templateId}
+                  block={studioControlBlock}
+                  onChange={(nextBlock) => {
+                    markUnsaved();
+                    setSectionDrafts((prev) => ({
+                      ...prev,
+                      [block.id]: {
+                        ...(prev[block.id] ?? { props: block.props }),
+                        variantOptions: nextBlock.variantOptions,
+                      },
+                    }));
+                  }}
+                />
 
                 {showCarouselBehavior ? (
                   <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
@@ -1928,14 +1994,20 @@ export function StorefrontSectionStyleStudio() {
         })}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Save storefront styles</p>
-          <p className="text-xs text-muted-foreground">This keeps the shared section system aligned across the live storefront and future template reuse.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Save Section Style, supported adjustments, content edits, ordering, visibility, and navigation together.</p>
+          <SectionStudioSaveStatus
+            state={saveError ? "error" : saving ? "saving" : hasUnsavedChanges ? "unsaved" : "saved"}
+            label={saveError ? "Save failed" : saving ? "Saving storefront styles" : hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
+            detail={saveError ?? (hasUnsavedChanges ? "Review your changes, then save them to the storefront." : "The Studio matches the last saved storefront state.")}
+            className="mt-3 max-w-xl"
+          />
         </div>
-        <Button type="button" onClick={() => void saveChanges()} disabled={saving} className="gap-2">
+        <Button type="button" onClick={() => void saveChanges()} disabled={saving || !hasUnsavedChanges} className="min-h-11 gap-2 sm:min-w-44">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-          Save storefront styles
+          {saving ? "Saving…" : hasUnsavedChanges ? "Save storefront styles" : "Saved"}
         </Button>
       </div>
     </div>

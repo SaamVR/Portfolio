@@ -31,7 +31,9 @@ import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type Store
 import { buildSectionStylesPath } from "@/lib/admin-paths";
 import { Link } from "@/lib/react-router-dom-shim";
 import { getStorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/registry";
+import { applySectionStyleToBlock } from "@/lib/cms/storefront-platform/variants/section-style-library";
 import { SectionStylePreview } from "./editor/SectionStylePreview";
+import { SectionStudioOptionControls } from "./editor/section-studio/SectionStudioOptionControls";
 
 interface BasicModeEditorProps {
   store: Store;
@@ -1440,7 +1442,13 @@ export function BasicModeEditor({
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => updateBlockMeta(focusedLayoutBlock.id, { layoutVariant: option.id })}
+                      onClick={() => {
+                        const nextBlock = applySectionStyleToBlock(focusedLayoutBlock, option.id, templateId);
+                        updateBlockMeta(focusedLayoutBlock.id, {
+                          layoutVariant: nextBlock.layoutVariant,
+                          variantOptions: nextBlock.variantOptions,
+                        });
+                      }}
                       className={cn(
                         "rounded-xl border p-2.5 text-left transition-colors",
                         focusedLayoutBlock.layoutVariant === option.id ? "border-primary bg-primary/10 ring-1 ring-primary/30" : "border-border bg-card hover:border-primary/40",
@@ -1478,6 +1486,13 @@ export function BasicModeEditor({
                 This section keeps a simple default layout. Use Content to edit the message, or duplicate it if you want to try another version.
               </div>
               )}
+              {focusedLayoutBlock ? (
+                <SectionStudioOptionControls
+                  templateId={templateId}
+                  block={focusedLayoutBlock}
+                  onChange={(nextBlock) => updateBlockMeta(focusedLayoutBlock.id, { variantOptions: nextBlock.variantOptions })}
+                />
+              ) : null}
             </div>
           </div>
         );

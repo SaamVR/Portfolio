@@ -23,7 +23,8 @@ export function SectionStudioPreviewModeSwitch({
       className={cn("flex rounded-xl border border-border bg-muted/30 p-1", className)}
       role="group"
       aria-label="Preview device"
-    >      <Button
+    >
+      <Button
         type="button"
         size="sm"
         variant={value === "desktop" ? "secondary" : "ghost"}
@@ -74,7 +75,8 @@ export function SectionStudioOptionShell({
     <section className={cn("rounded-2xl border border-border bg-card p-4", className)} aria-label={label}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">            <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground">{label}</h3>
             <Badge variant={explicit ? "secondary" : "outline"} className="text-[10px]">
               {explicit ? explicitLabel : inheritedLabel}
             </Badge>
@@ -123,7 +125,8 @@ export function SectionStudioSaveStatus({
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", state === "saving" && "animate-spin")} />
       <div className="min-w-0">
-        <p className="font-medium text-foreground">{label}</p>        {detail ? <p className="mt-0.5 leading-5">{detail}</p> : null}
+        <p className="font-medium text-foreground">{label}</p>
+        {detail ? <p className="mt-0.5 leading-5">{detail}</p> : null}
       </div>
     </div>
   );

@@ -13,12 +13,15 @@ import type { Store, StorePageBlock } from "@/lib/cms/schema";
 import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
 import { getBasicLayoutVariantOptions } from "@/lib/cms/storefront-editor-registry";
+import { applySectionStyleToBlock } from "@/lib/cms/storefront-platform/variants/section-style-library";
 import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import type { StorefrontEditorQualityIssue } from "@/lib/cms/storefront-platform/editor/quality-assist";
 import { getCompatibleCompositionRecipes, getCompositionEditorFields, getPlatformAestheticOptions } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import { buildSectionStylesPath } from "@/lib/admin-paths";
 import { Link } from "@/lib/react-router-dom-shim";
 import { MobileCameraUpload } from "./MobileCameraUpload";
+import { SectionStudioOptionControls } from "./section-studio/SectionStudioOptionControls";
+import { SectionStudioSaveStatus } from "./section-studio/SectionStudioShells";
 
 const MOBILE_TEXT_FIELDS = ["eyebrow", "tagline", "title", "highlight", "subtitle", "body", "ctaText", "ctaLink"] as const;
 type MobileEditorTab = "content" | "layout" | "style" | "media";
@@ -61,6 +64,7 @@ export function MobileMerchantEditorSheet({
   saving,
   hasUnsavedChanges,
   saveStatusLabel,
+  saveError,
   isOnline,
   localDraftProtected,
   qualityIssues,
@@ -92,6 +96,7 @@ export function MobileMerchantEditorSheet({
   saving: boolean;
   hasUnsavedChanges: boolean;
   saveStatusLabel: string;
+  saveError?: string | null;
   isOnline: boolean;
   localDraftProtected: boolean;
   qualityIssues: StorefrontEditorQualityIssue[];
@@ -151,6 +156,12 @@ export function MobileMerchantEditorSheet({
             <X className="h-4 w-4" />
           </Button>
         </div>
+        <SectionStudioSaveStatus
+          state={saveError ? "error" : saving ? "saving" : hasUnsavedChanges ? "unsaved" : "saved"}
+          label={saveError ? "Save failed" : saving ? "Saving changes" : hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
+          detail={saveError ?? saveStatusLabel}
+          className="mt-3"
+        />
         <div className="mt-3 grid grid-cols-4 gap-2">
           {(["content", "layout", "style", "media"] as MobileEditorTab[]).map((tab) => (
             <Button
@@ -314,13 +325,25 @@ export function MobileMerchantEditorSheet({
                       key={option.id}
                       type="button"
                       className={`w-full rounded-2xl border p-4 text-left transition ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
-                      onClick={() => onUpdateBlockMeta({ layoutVariant: option.id })}
+                      onClick={() => {
+                        const nextBlock = applySectionStyleToBlock(selectedBlock, option.id, templateId);
+                        onUpdateBlockMeta({
+                          layoutVariant: nextBlock.layoutVariant,
+                          variantOptions: nextBlock.variantOptions,
+                        });
+                      }}
                     >
                       <div className="flex items-center justify-between gap-2"><p className="font-semibold">{option.label}</p>{option.recommended ? <Badge variant="secondary">Recommended</Badge> : null}</div>
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">{option.previewSummary ?? option.guidance}</p>
                     </button>
                   );
                 })}
+                <SectionStudioOptionControls
+                  templateId={templateId}
+                  block={selectedBlock}
+                  compact
+                  onChange={(nextBlock) => onUpdateBlockMeta({ variantOptions: nextBlock.variantOptions })}
+                />
               </>
             ) : null}
           </div>

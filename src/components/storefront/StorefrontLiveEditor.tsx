@@ -1368,6 +1368,7 @@ export function StorefrontLiveEditor({
             saving={saving}
             hasUnsavedChanges={hasUnsavedChanges}
             saveStatusLabel={saveStatusLabel}
+            saveError={saveError}
             isOnline={isOnline}
             localDraftProtected={localDraftProtected}
             qualityIssues={selectedBlockQualityIssues}
