@@ -4,6 +4,31 @@
       "name": "seed_demo_blog_posts",
       "classification": "non-production",
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    },
+    {
+      "name": "storefront_manual_payment_replay_guard",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: exactly-once storefront manual payment reference claims are ready for regression validation before production rollout."
+    },
+    {
+      "name": "scope_coupon_codes_per_store",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: replaces accidental platform-global coupon code uniqueness with the canonical per-store identity contract."
+    },
+    {
+      "name": "bound_cart_item_quantity",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: persists the existing 1..99 checkout line quantity contract on authenticated cart rows."
+    },
+    {
+      "name": "lock_direct_order_mutations",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: removes direct client order mutation grants/policies so governed server routes remain lifecycle authority."
+    },
+    {
+      "name": "enforce_commerce_numeric_bounds",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: moves existing product/coupon numeric UI and checkout bounds into database constraints."
     }
   ]
 }
