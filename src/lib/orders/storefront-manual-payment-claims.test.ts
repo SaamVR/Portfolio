@@ -21,6 +21,12 @@ test("storefront manual payment claims are globally replay-safe", () => {
   assert.match(migration, /AFTER INSERT ON public\.orders/i);
 });
 
+test("consumed manual payment identities survive store and order deletion", () => {
+  assert.match(migration, /REFERENCES public\.stores\(id\) ON DELETE SET NULL/i);
+  assert.match(migration, /REFERENCES public\.orders\(id\) ON DELETE SET NULL/i);
+  assert.equal(/ON DELETE CASCADE/i.test(migration), false);
+});
+
 test("storefront manual payment migration reconciles historical claims before enforcing new writes", () => {
   assert.match(migration, /existing duplicate provider\/reference/i);
   assert.match(migration, /INSERT INTO public\.storefront_manual_payment_claims/i);
