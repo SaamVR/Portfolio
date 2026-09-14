@@ -54,6 +54,20 @@ function asAnalyticsRecord(value: unknown) {
     : null;
 }
 
+function errorCode(value: unknown) {
+  return value && typeof value === "object" && "code" in value
+    ? String((value as { code?: unknown }).code ?? "")
+    : "";
+}
+
+function errorMessage(value: unknown) {
+  if (value instanceof Error) return value.message;
+  if (value && typeof value === "object" && "message" in value) {
+    return String((value as { message?: unknown }).message ?? "Unknown background error");
+  }
+  return String(value || "Unknown background error");
+}
+
 export function normalizeOrderCreatedAnalyticsRows(rows: unknown[]) {
   return rows.map((row) => {
     const record = asAnalyticsRecord(row);
@@ -84,7 +98,12 @@ async function insertAnalyticsEvents({
   }
 
   const truthfulRows = normalizeOrderCreatedAnalyticsRows(purchaseEventRows);
-  return (supabaseAdmin as any).from("store_analytics_events").insert(truthfulRows);
+  const result = await (supabaseAdmin as any).from("store_analytics_events").insert(truthfulRows);
+  // The #326 sink identity makes duplicate queue delivery a successful no-op.
+  if (errorCode(result?.error) === "23505") {
+    return { ...result, error: null, duplicate: true };
+  }
+  return result;
 }
 
 async function markRecoveryLeadRecovered({
@@ -106,15 +125,20 @@ async function markRecoveryLeadRecovered({
     .order("updated_at", { ascending: false })
     .limit(1);
 
-  const { data: matchingRecoveryLead } = customerPhone
+  const lookup = customerPhone
     ? await recoveryLeadQuery.eq("contact_phone", customerPhone).maybeSingle()
     : await recoveryLeadQuery.eq("contact_email", customerEmail).maybeSingle();
 
+  if (lookup?.error) {
+    throw new Error(errorMessage(lookup.error));
+  }
+
+  const matchingRecoveryLead = lookup?.data;
   if (!matchingRecoveryLead?.id) {
     return null;
   }
 
-  return (supabaseAdmin as any)
+  const update = await (supabaseAdmin as any)
     .from("store_cart_recovery_leads")
     .update({
       status: "recovered",
@@ -124,22 +148,105 @@ async function markRecoveryLeadRecovered({
       // revenue. Settlement lifecycle code may attribute revenue later.
       recovered_revenue: 0,
       last_activity_at: new Date().toISOString(),
+      next_contact_at: null,
     })
     .eq("id", matchingRecoveryLead.id)
     .eq("store_id", storeId);
+
+  if (update?.error) {
+    throw new Error(errorMessage(update.error));
+  }
+
+  return update;
+}
+
+async function claimMerchantOrderNotification(args: RunOrderCreatedBackgroundJobsArgs) {
+  const result = await (args.supabaseAdmin as any)
+    .from("email_events")
+    .insert({
+      store_id: args.storeId,
+      order_id: args.recoveryOrderId,
+      template_name: "order-created-merchant-notify-claim",
+      recipient: null,
+      channel: "whatsapp",
+      status: "processing",
+      provider: "order-background",
+      retry_count: 0,
+      metadata: {
+        authority: "best_effort_notification_claim",
+      },
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (errorCode(result?.error) === "23505") {
+    return null;
+  }
+  if (result?.error) {
+    throw new Error(errorMessage(result.error));
+  }
+  if (!result?.data?.id) {
+    throw new Error("Merchant notification claim was not persisted");
+  }
+  return String(result.data.id);
+}
+
+async function finishMerchantOrderNotificationClaim(
+  supabaseAdmin: SupabaseAdminClient,
+  claimId: string,
+  updates: Record<string, unknown>,
+) {
+  const result = await (supabaseAdmin as any)
+    .from("email_events")
+    .update({
+      ...updates,
+      last_attempt_at: new Date().toISOString(),
+      processing_started_at: null,
+      processing_token: null,
+    })
+    .eq("id", claimId);
+
+  if (result?.error) {
+    throw new Error(errorMessage(result.error));
+  }
+}
+
+async function runMerchantNotificationBestEffort(args: RunOrderCreatedBackgroundJobsArgs) {
+  const claimId = await claimMerchantOrderNotification(args);
+  if (!claimId) {
+    return { status: "skipped", reason: "duplicate order-created notification delivery" };
+  }
+
+  try {
+    const result = await triggerWhatsAppOrderNotify(args.supabaseAdmin, args.notification);
+    await finishMerchantOrderNotificationClaim(args.supabaseAdmin, claimId, {
+      status: result.status === "sent" ? "sent" : "skipped",
+      provider: result.provider,
+      provider_message_id: result.status === "sent" ? result.providerMessageId : null,
+      error: result.status === "skipped" ? result.reason : null,
+      recipient: "recipient" in result ? result.recipient ?? null : null,
+    });
+    return result;
+  } catch (error) {
+    try {
+      await finishMerchantOrderNotificationClaim(args.supabaseAdmin, claimId, {
+        status: "failed",
+        error: errorMessage(error),
+      });
+    } catch (claimError) {
+      console.error("Failed to persist merchant notification claim outcome:", claimError);
+    }
+    throw error;
+  }
 }
 
 function resultError(result: PromiseSettledResult<unknown>) {
   if (result.status === "rejected") {
-    return result.reason instanceof Error ? result.reason.message : String(result.reason || "Unknown rejection");
+    return errorMessage(result.reason);
   }
   const value = result.value as { error?: unknown } | null | undefined;
   if (!value?.error) return null;
-  if (value.error instanceof Error) return value.error.message;
-  if (typeof value.error === "object" && value.error && "message" in value.error) {
-    return String((value.error as { message?: unknown }).message || "Unknown background error");
-  }
-  return String(value.error);
+  return errorMessage(value.error);
 }
 
 async function reportBackgroundFailures(
@@ -167,21 +274,40 @@ async function reportBackgroundFailures(
 }
 
 export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgroundJobsArgs) {
-  // Order creation may notify, record order-created funnel events, and close a
-  // recovery lead. It must not create purchase/revenue truth before collection.
-  const taskNames = ["merchant-notification", "analytics", "cart-recovery"];
-  const tasks = [
-    triggerWhatsAppOrderNotify(args.supabaseAdmin, args.notification),
-    insertAnalyticsEvents({
-      purchaseEventRows: args.purchaseEventRows,
-      supabaseAdmin: args.supabaseAdmin,
-    }),
-    markRecoveryLeadRecovered({
+  // Cart-recovery closure is retry-required: a failed mutation can otherwise
+  // leave an already-converted shopper in the abandoned-cart campaign. Run it
+  // before any best-effort side effect so a retry cannot duplicate those effects.
+  try {
+    await markRecoveryLeadRecovered({
       customerEmail: args.customerEmail,
       customerPhone: args.customerPhone,
       orderId: args.recoveryOrderId,
       recoveredRevenue: args.recoveredRevenue,
       storeId: args.storeId,
+      supabaseAdmin: args.supabaseAdmin,
+    });
+  } catch (error) {
+    await recordPlatformIncident(args.supabaseAdmin, {
+      fingerprint: "orders.background.created.cart-recovery-retry-required",
+      severity: "warning",
+      source: "orders",
+      title: "Retry-required order recovery mutation failed",
+      message: errorMessage(error),
+      route: "/api/orders/create",
+      storeId: args.storeId,
+      metadata: { task: "cart-recovery", scope: "created", retryRequired: true },
+    });
+    throw error;
+  }
+
+  // Merchant notification and order-created analytics are explicitly best-effort.
+  // Durable sink identities prevent duplicate queue deliveries from duplicating
+  // provider sends or funnel rows, but their failure never changes order truth.
+  const taskNames = ["merchant-notification", "analytics"];
+  const tasks = [
+    runMerchantNotificationBestEffort(args),
+    insertAnalyticsEvents({
+      purchaseEventRows: args.purchaseEventRows,
       supabaseAdmin: args.supabaseAdmin,
     }),
   ];
@@ -194,6 +320,7 @@ export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgro
 export async function runOrderCancelledBackgroundJobs(args: RunOrderCancelledBackgroundJobsArgs) {
   // Cancellation is operational state, not evidence that money was collected or
   // refunded. Provider/manual settlement authority must write financial events.
+  // There is therefore no retry-required financial side effect in this runner.
   void args.revenueEventRow;
   return Promise.allSettled([]);
 }
