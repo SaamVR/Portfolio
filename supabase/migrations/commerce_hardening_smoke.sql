@@ -200,3 +200,27 @@ BEGIN
   END IF;
 END;
 $$;
+
+DO $$
+DECLARE
+  _recovery_write_policy_count integer;
+BEGIN
+  IF has_table_privilege('anon', 'public.store_cart_recovery_messages', 'INSERT')
+     OR has_table_privilege('anon', 'public.store_cart_recovery_messages', 'UPDATE')
+     OR has_table_privilege('anon', 'public.store_cart_recovery_messages', 'DELETE')
+     OR has_table_privilege('authenticated', 'public.store_cart_recovery_messages', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.store_cart_recovery_messages', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.store_cart_recovery_messages', 'DELETE') THEN
+    RAISE EXCEPTION 'client roles still have direct cart-recovery message mutation privileges';
+  END IF;
+
+  SELECT count(*)::integer INTO _recovery_write_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'store_cart_recovery_messages'
+    AND cmd IN ('ALL', 'INSERT', 'UPDATE', 'DELETE');
+  IF _recovery_write_policy_count <> 0 THEN
+    RAISE EXCEPTION 'cart-recovery messages still has % direct write policies', _recovery_write_policy_count;
+  END IF;
+END;
+$$;

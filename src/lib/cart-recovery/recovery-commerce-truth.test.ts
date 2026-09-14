@@ -60,3 +60,14 @@ test("cart recovery request boundaries reject malformed or oversized JSON before
   assert.match(queue, /return NextResponse\.json\(\{ error: "Invalid JSON payload" \}, \{ status: 400 \}\)/);
   assert.match(queue, /if \(!uuidPattern\.test\(storeId\)\)/);
 });
+
+
+test("cart recovery delivery rows are server-governed rather than merchant-authored", () => {
+  const migration = source("supabase/migrations/20260914223000_lock_cart_recovery_message_mutations.sql");
+  const smoke = source("supabase/migrations/commerce_hardening_smoke.sql");
+
+  assert.match(migration, /REVOKE INSERT, UPDATE, DELETE[\s\S]*store_cart_recovery_messages[\s\S]*FROM anon, authenticated/i);
+  assert.match(migration, /DROP POLICY IF EXISTS "Store staff can manage cart recovery messages"/);
+  assert.match(migration, /cmd IN \('ALL', 'INSERT', 'UPDATE', 'DELETE'\)/);
+  assert.match(smoke, /client roles still have direct cart-recovery message mutation privileges/);
+});
