@@ -221,6 +221,69 @@ describe("order creation checkout recovery", () => {
     assert.equal(dispatchCount, 0);
   });
 
+  test("uses the authenticated user email instead of a browser-supplied email", async () => {
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
+    const rpcArgs: Array<Record<string, unknown>> = [];
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string, args?: Record<string, unknown>) => {
+      if (args) rpcArgs.push(args);
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => ({
+      id: "10000000-0000-4000-8000-000000000099",
+      email: "owner@example.test",
+    }) as never);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const request = buildRequest("cod");
+    const body = await request.json();
+    body.customerEmail = "attacker@example.test";
+    const response = await POST(new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer test" },
+      body: JSON.stringify(body),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(rpcArgs[0]?._customer_email, "owner@example.test");
+  });
+
+  test("does not accept an injected guest notification email", async () => {
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
+    const rpcArgs: Array<Record<string, unknown>> = [];
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string, args?: Record<string, unknown>) => {
+      if (args) rpcArgs.push(args);
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const request = buildRequest("cod");
+    const body = await request.json();
+    body.customerEmail = "victim@example.test";
+    const response = await POST(new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(rpcArgs[0]?._customer_email, null);
+  });
+
   test("returns a conflict when the recovery RPC rejects changed payment-method reuse", async () => {
     const admin = createAdminMock({
       rpcError: { message: "checkout recovery conflict: payment method does not match the existing order" },

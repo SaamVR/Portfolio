@@ -113,7 +113,6 @@ export async function POST(req: Request) {
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
-    const customerEmail = readText(body?.customerEmail, 180);
     const shippingAddress = readText(body?.shippingAddress, 500);
     const shippingCity = readText(body?.shippingCity, 100);
     const requestedDeliveryLocation = readText(body?.deliveryLocation, 20).toLowerCase();
@@ -146,6 +145,7 @@ export async function POST(req: Request) {
     const items = normalizeOrderItems(body?.items);
     const productIds = Array.from(new Set(items.map((item) => item.productId)));
     const user = await orderCreateRouteDeps.getAuthenticatedUser(req);
+    const customerEmail = user?.email ? readText(user.email, 180) : "";
     const supabaseAdmin = orderCreateRouteDeps.getSupabaseAdminClient();
     const [
       { data: store },
