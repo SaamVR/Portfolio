@@ -22,11 +22,12 @@
     "domain-routing-kv:backfill": "tsx scripts/backfill-domain-routing-kv.ts",
     "sync:cms-library": "tsx scripts/sync-cms-library.ts",
     "storefront-search:setup": "tsx scripts/setup-storefront-search.ts",
-    "test:db": "npm run test:db:rls && npm run test:db:subscription-jwt && npm run test:db:billing && npm run test:db:billing-consistency",
+    "test:db": "npm run test:db:rls && npm run test:db:subscription-jwt && npm run test:db:billing && npm run test:db:billing-consistency && npm run test:db:invite-atomicity",
     "test:db:rls": "node scripts/run-rls-smoke.mjs",
     "test:db:subscription-jwt": "tsx scripts/run-subscription-owner-jwt-smoke.ts",
     "test:db:billing": "tsx scripts/run-billing-route-smoke.ts",
-    "test:db:billing-consistency": "node scripts/run-billing-consistency.mjs"
+    "test:db:billing-consistency": "node scripts/run-billing-consistency.mjs",
+    "test:db:invite-atomicity": "node scripts/run-invite-atomicity-smoke.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.18",

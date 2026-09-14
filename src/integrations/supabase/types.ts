@@ -731,6 +731,7 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          email: string | null
           expires_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -741,6 +742,7 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -751,6 +753,7 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -3206,6 +3209,10 @@ export type Database = {
       }
       check_contact_rate_limit: { Args: { _email: string }; Returns: boolean }
       check_store_lifecycles: { Args: never; Returns: undefined }
+      claim_invite_code_atomic: {
+        Args: { p_code: string; p_user_email?: string | null; p_user_id: string }
+        Returns: Json
+      }
       claim_coupon:
         | { Args: { _code: string; _order_total: number }; Returns: Json }
         | {
