@@ -188,6 +188,7 @@ export function useCreateOrder() {
       items: Order["items"];
       subtotal: number;
       delivery_fee?: number;
+      delivery_location?: "primary" | "secondary";
       discount_amount?: number;
       coupon_code?: string | null;
       total: number;
@@ -225,6 +226,7 @@ export function useCreateOrder() {
             quantity: item.quantity,
           })),
           deliveryFee: order.delivery_fee ?? 0,
+          deliveryLocation: order.delivery_location ?? "primary",
           discountAmount: order.discount_amount ?? Math.max(0, order.subtotal + (order.delivery_fee ?? 0) - order.total),
           couponCode: order.coupon_code || null,
           customerName: order.customer_name,

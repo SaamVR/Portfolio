@@ -2,6 +2,7 @@ import type { PublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import {
   getStorefrontPricing,
   type StorefrontDeliverySettings,
+  type StorefrontLocation,
 } from "@/lib/storefront-pricing";
 
 export type AuthoritativeCheckoutItem = {
@@ -48,12 +49,14 @@ export function resolveAuthoritativeCheckoutPricing({
   deliverySettings,
   paymentSettings,
   paymentMethod,
+  location = "primary",
 }: {
   items: AuthoritativeCheckoutItem[];
   products: AuthoritativeCheckoutProduct[];
   deliverySettings?: unknown;
   paymentSettings?: unknown;
   paymentMethod?: string;
+  location?: StorefrontLocation;
 }) {
   const productsById = new Map(products.map((product) => [product.id, product]));
   let subtotal = 0;
@@ -101,7 +104,7 @@ export function resolveAuthoritativeCheckoutPricing({
     deliverySettings: normalizedDeliverySettings,
     paymentSettings: normalizedPaymentSettings,
     paymentMethod,
-    location: "primary",
+    location,
   });
 
   return {

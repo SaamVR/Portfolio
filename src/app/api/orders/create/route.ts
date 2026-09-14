@@ -97,6 +97,12 @@ export async function POST(req: Request) {
     const customerEmail = readText(body?.customerEmail, 180);
     const shippingAddress = readText(body?.shippingAddress, 500);
     const shippingCity = readText(body?.shippingCity, 100);
+    const requestedDeliveryLocation = readText(body?.deliveryLocation, 20).toLowerCase();
+    const deliveryLocation = requestedDeliveryLocation === "" || requestedDeliveryLocation === "primary"
+      ? "primary"
+      : requestedDeliveryLocation === "secondary"
+        ? "secondary"
+        : null;
 
     if (!uuidPattern.test(storeId)) {
       return jsonNoStore({ error: "Invalid store" }, { status: 400 });
@@ -108,6 +114,10 @@ export async function POST(req: Request) {
 
     if (!customerName || !customerPhone || !shippingAddress || !shippingCity) {
       return jsonNoStore({ error: "Missing required customer or shipping fields" }, { status: 400 });
+    }
+
+    if (!deliveryLocation) {
+      return jsonNoStore({ error: "Invalid delivery location" }, { status: 400 });
     }
 
     if (!isAllowedStorefrontPaymentMethod(paymentMethod)) {
@@ -218,6 +228,7 @@ export async function POST(req: Request) {
       deliverySettings: deliverySettingResult.data?.value,
       paymentSettings: paymentSettingResult.data?.value,
       paymentMethod,
+      location: deliveryLocation,
     });
     const requestedDeliveryFee = readMoney(body?.deliveryFee);
 

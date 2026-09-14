@@ -17,7 +17,7 @@ import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { DownloadAccessPanel } from "@/components/storefront/digital-downloads/DownloadAccessPanel";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
-import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
+import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings, type StorefrontLocation } from "@/lib/storefront-pricing";
 import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 import { buildCustomerAuthPath, getCurrentRelativePath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
@@ -108,6 +108,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [deliveryLocation, setDeliveryLocation] = useState<StorefrontLocation>("primary");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -323,7 +324,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       : deliverySettings,
     paymentSettings,
     paymentMethod: form.paymentMethod,
-    location: "primary",
+    location: deliveryLocation,
   });
   const deliveryFee = pricing.deliveryFee;
   const grandTotal = pricing.grandTotal;
@@ -488,6 +489,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         })),
         subtotal: checkoutSubtotal,
         delivery_fee: deliveryFee,
+        delivery_location: digitalOnlyCheckout ? "primary" : deliveryLocation,
         discount_amount: pricing.couponDiscount + pricing.orderDiscountAmount,
         coupon_code: appliedCoupon?.code ?? null,
         total: grandTotal,
@@ -590,6 +592,11 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         ? `Pay BDT ${grandTotal} with ${selectedGateway.label}`
         : experience.labels.placeOrderLabel;
 
+  const deliveryZoneOptions: Array<{ value: StorefrontLocation; label: string }> = [
+    { value: "primary", label: deliverySettings.primary_zone_label?.trim() || "Primary delivery zone" },
+    { value: "secondary", label: deliverySettings.secondary_zone_label?.trim() || "Secondary delivery zone" },
+  ];
+
   const detailFields = [
     { key: "name", label: experience.labels.customerNameLabel, placeholder: "e.g. Hasan Mahmud", type: "text", autoComplete: "name", inputMode: undefined },
     { key: "phone", label: experience.labels.phoneLabel, placeholder: "01XXXXXXXXX", type: "tel", autoComplete: "tel", inputMode: "tel" as const },
@@ -656,6 +663,34 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
                   </div>
                 );
               })}
+
+              {!digitalOnlyCheckout && deliverySettings.enabled ? (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-foreground">Delivery zone</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {deliveryZoneOptions.map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm transition-colors ${
+                          deliveryLocation === option.value
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-background hover:border-primary/40"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="delivery-zone"
+                          value={option.value}
+                          checked={deliveryLocation === option.value}
+                          onChange={() => setDeliveryLocation(option.value)}
+                          className="h-4 w-4 shrink-0 accent-primary"
+                        />
+                        <span className="font-medium text-foreground">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
 
               {digitalOnlyCheckout ? <DownloadAccessPanel compact /> : null}
             </div>

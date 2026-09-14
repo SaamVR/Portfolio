@@ -6,7 +6,7 @@ const storeId = "10000000-0000-4000-8000-000000000001";
 const orderId = "10000000-0000-4000-8000-000000000002";
 const productId = "10000000-0000-4000-8000-000000000003";
 
-function buildRequest(paymentMethod = "cod", deliveryFee = 80) {
+function buildRequest(paymentMethod = "cod", deliveryFee = 80, deliveryLocation = "primary") {
   return new Request("https://example.com/api/orders/create", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -15,6 +15,7 @@ function buildRequest(paymentMethod = "cod", deliveryFee = 80) {
       idempotencyKey: "checkout-attempt-123",
       items: [{ productId, size: "M", quantity: 1 }],
       deliveryFee,
+      deliveryLocation,
       discountAmount: 0,
       customerName: "Test Customer",
       customerPhone: "01700000000",
@@ -230,6 +231,54 @@ describe("order creation checkout recovery", () => {
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.match(body.error, /pricing changed/i);
+    assert.equal(rpcCalls, 0);
+  });
+
+  test("rejects the primary delivery fee when the customer selected the secondary zone", async () => {
+    const admin = createAdminMock({ replayed: false, persistedPaymentMethod: "cod" });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("cod", 80, "secondary"));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /pricing changed/i);
+    assert.equal(rpcCalls, 0);
+  });
+
+  test("rejects an unknown delivery location before reserving stock", async () => {
+    const admin = createAdminMock({ replayed: false, persistedPaymentMethod: "cod" });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("cod", 80, "unknown-zone"));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /invalid delivery location/i);
     assert.equal(rpcCalls, 0);
   });
 

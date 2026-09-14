@@ -28,6 +28,20 @@ test("authoritative checkout pricing applies the merchant primary delivery fee",
   assert.equal(pricing.digitalOnly, false);
 });
 
+test("authoritative checkout pricing applies the merchant secondary delivery fee", () => {
+  const pricing = resolveAuthoritativeCheckoutPricing({
+    items: [{ productId: physicalProduct.id, quantity: 1 }],
+    products: [physicalProduct],
+    deliverySettings: { enabled: true, delivery_fee: 120, delivery_fee_outside: 180, free_threshold: 2000 },
+    paymentSettings: { prepayment_discount_type: "none" },
+    paymentMethod: "cod",
+    location: "secondary",
+  });
+
+  assert.equal(pricing.subtotal, 1000);
+  assert.equal(pricing.deliveryFee, 180);
+});
+
 test("authoritative checkout pricing grants threshold free delivery from database prices", () => {
   const pricing = resolveAuthoritativeCheckoutPricing({
     items: [{ productId: physicalProduct.id, quantity: 2 }],
