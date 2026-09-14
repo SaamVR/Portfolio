@@ -219,7 +219,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       }
 
       try {
-        // 1. Fetch DB cart items
+        const localItems = normalizePersistedCartItems(itemsRef.current, storeId);
         const { data: dbCart, error } = await supabase
           .from("cart_items")
           .select("product_id, size, quantity, store_id")
@@ -227,37 +227,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           .eq("store_id", storeId);
 
         if (error) throw error;
-        if (!dbCart || dbCart.length === 0) {
-          // No items in DB, sync current local cart to DB
-          if (itemsRef.current.length > 0) {
-            const boundedItems = normalizePersistedCartItems(itemsRef.current, storeId);
-            const inserts: TablesInsert<"cart_items">[] = boundedItems.map(item => ({
-              user_id: user.id,
-              product_id: item.productId,
-              size: item.size,
-              quantity: item.quantity,
-              store_id: item.storeId ?? storeId
-            }));
-            await supabase.from("cart_items").upsert(inserts, {
-              onConflict: "user_id,product_id,size",
-            });
-          }
+
+        const dbRows = (dbCart ?? []) as CartItemRow[];
+        const candidateProductIds = Array.from(new Set([
+          ...localItems.map((item) => item.productId),
+          ...dbRows.map((item) => item.product_id),
+        ]));
+
+        if (candidateProductIds.length === 0) {
           hasMerged.current = true;
           return;
         }
 
-        // 2. Fetch current, orderable product details for those items.
-        const productIds = dbCart.map(item => item.product_id);
-        const { data: dbProducts } = await supabase
+        const { data: dbProducts, error: productsError } = await supabase
           .from("products")
           .select("id, name, price, image_url")
           .eq("store_id", storeId)
           .eq("is_available", true)
-          .in("id", productIds);
+          .in("id", candidateProductIds);
+
+        if (productsError) throw productsError;
 
         const productsMap = new Map((dbProducts as ProductLookupRow[] | null | undefined)?.map((p) => [p.id, p]));
-
-        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).flatMap(item => {
+        const validLocalItems = localItems.filter((item) => productsMap.has(item.productId));
+        const dbCartItems: CartItem[] = dbRows.flatMap(item => {
           const prod = productsMap.get(item.product_id);
           if (!prod) return [];
           return [{
@@ -271,20 +264,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           }];
         });
 
-        // 3. Merge local cart items and db cart items
-        setItems(prev => {
-          const merged = [...prev];
+        setItems(() => {
+          const merged = [...validLocalItems];
           dbCartItems.forEach(dbItem => {
             const existing = merged.find(i => isSameCartLine(i, dbItem.productId, dbItem.size, dbItem.storeId));
             if (existing) {
-              // Keep the larger valid quantity without exceeding checkout bounds.
               existing.quantity = clampCartQuantity(Math.max(existing.quantity, dbItem.quantity));
             } else {
               merged.push(dbItem);
             }
           });
-          return normalizePersistedCartItems(merged, storeId)
-            .filter((item) => productsMap.has(item.productId));
+          return normalizePersistedCartItems(merged, storeId);
         });
 
         hasMerged.current = true;
