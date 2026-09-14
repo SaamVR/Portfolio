@@ -29,6 +29,11 @@
       "name": "enforce_commerce_numeric_bounds",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: moves existing product/coupon numeric UI and checkout bounds into database constraints."
+    },
+    {
+      "name": "product_link_tenant_consistency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: enforces store/product composite identity for cart, stock-notification, and product-QA rows."
     }
   ]
 }
