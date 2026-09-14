@@ -8,7 +8,7 @@
     {
       "name": "atomic_invite_claim_authority_323",
       "classification": "pending-production",
-      "reason": "#323 release-blocker migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
+      "reason": "#323/#325 invite and staff-seat authority migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
     }
   ]
 }

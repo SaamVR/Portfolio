@@ -24,6 +24,11 @@ const ids = {
 };
 
 const storeId = "00000000-0000-4000-8000-000000000330";
+const seatStoreId = "00000000-0000-4000-8000-000000000334";
+const unlimitedStoreId = "00000000-0000-4000-8000-000000000335";
+const mainPlanId = "p0-323-staff-main";
+const seatPlanId = "p0-323-staff-one";
+const unlimitedPlanId = "p0-323-staff-unlimited";
 const prefix = "P0-323-";
 const sqlText = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
@@ -75,17 +80,45 @@ async function resetFixtures() {
   const userRows = users.map(([id, email]) =>
     `(${sqlText(id)}::uuid, ${sqlText(email)}, now(), now())`
   ).join(",\n");
+  const storeList = [storeId, seatStoreId, unlimitedStoreId].map((id) => `${sqlText(id)}::uuid`).join(",");
+  const planList = [mainPlanId, seatPlanId, unlimitedPlanId].map(sqlText).join(",");
 
   await sql(`
     delete from public.user_roles where user_id in (${userList});
-    delete from public.store_memberships where user_id in (${userList}) or store_id = ${sqlText(storeId)}::uuid;
+    delete from public.store_memberships where user_id in (${userList}) or store_id in (${storeList});
     delete from public.store_staff_invites where invite_code like ${sqlText(prefix + "%")};
     delete from public.invite_codes where code like ${sqlText(prefix + "%")};
-    delete from public.stores where id = ${sqlText(storeId)}::uuid;
+    delete from public.store_subscriptions where store_id in (${storeList});
+    delete from public.stores where id in (${storeList});
+    delete from public.cms_plans where id in (${planList});
     delete from auth.users where id in (${userList});
+
     insert into auth.users (id, email, created_at, updated_at) values ${userRows};
-    insert into public.stores (id, owner_id, name, slug)
-    values (${sqlText(storeId)}::uuid, ${sqlText(ids.owner)}::uuid, 'Invite Atomicity Test', 'invite-atomicity-323');
+
+    insert into public.cms_plans
+      (id, name, description, monthly_price, store_limit, feature_flags, is_active, sort_order)
+    values
+      (${sqlText(mainPlanId)}, 'Invite Smoke Staff 10', 'Rollback-only #323/#325 fixture', 0, 1, '{"staff":10}'::jsonb, true, 9323),
+      (${sqlText(seatPlanId)}, 'Invite Smoke Staff 1', 'Rollback-only #323/#325 fixture', 0, 1, '{"staff":1}'::jsonb, true, 9324),
+      (${sqlText(unlimitedPlanId)}, 'Invite Smoke Unlimited', 'Rollback-only #323/#325 fixture', 0, 1, '{"staff":-1}'::jsonb, true, 9325);
+
+    insert into public.stores (id, owner_id, name, slug, plan)
+    values
+      (${sqlText(storeId)}::uuid, ${sqlText(ids.owner)}::uuid, 'Invite Atomicity Test', 'invite-atomicity-323', ${sqlText(mainPlanId)}),
+      (${sqlText(seatStoreId)}::uuid, ${sqlText(ids.owner)}::uuid, 'Invite Seat Limit Test', 'invite-seat-limit-325', ${sqlText(seatPlanId)}),
+      (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(ids.owner)}::uuid, 'Invite Unlimited Test', 'invite-unlimited-325', ${sqlText(unlimitedPlanId)});
+
+    insert into public.store_subscriptions (store_id, plan_id, status)
+    values
+      (${sqlText(storeId)}::uuid, ${sqlText(mainPlanId)}, 'active'),
+      (${sqlText(seatStoreId)}::uuid, ${sqlText(seatPlanId)}, 'active'),
+      (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(unlimitedPlanId)}, 'active');
+
+    insert into public.store_memberships (store_id, user_id, role)
+    values
+      (${sqlText(storeId)}::uuid, ${sqlText(ids.owner)}::uuid, 'owner'),
+      (${sqlText(seatStoreId)}::uuid, ${sqlText(ids.owner)}::uuid, 'owner'),
+      (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(ids.owner)}::uuid, 'owner');
   `);
 }
 
@@ -100,7 +133,11 @@ async function seedCases() {
       (${sqlText(storeId)}::uuid, '${prefix}STAFF-WRONG', 'target-323@example.test', 'viewer', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
       (${sqlText(storeId)}::uuid, '${prefix}STAFF-EXISTING', 'existing-323@example.test', 'admin', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
       (${sqlText(storeId)}::uuid, '${prefix}STAFF-SUCCESS', 'success-323@example.test', 'admin', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
-      (${sqlText(storeId)}::uuid, '${prefix}STAFF-ROLLBACK', 'fail-323@example.test', 'editor', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid);
+      (${sqlText(storeId)}::uuid, '${prefix}STAFF-ROLLBACK', 'fail-323@example.test', 'editor', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
+      (${sqlText(storeId)}::uuid, '${prefix}STAFF-DOWNGRADE', 'platform-used-323@example.test', 'viewer', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
+      (${sqlText(seatStoreId)}::uuid, '${prefix}STAFF-SEAT-A', 'staff-a-323@example.test', 'editor', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
+      (${sqlText(seatStoreId)}::uuid, '${prefix}STAFF-SEAT-B', 'staff-b-323@example.test', 'editor', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid),
+      (${sqlText(seatStoreId)}::uuid, '${prefix}STAFF-SEAT-FREED', 'success-323@example.test', 'viewer', 'pending', null, null, now() + interval '1 hour', ${sqlText(ids.owner)}::uuid);
 
     insert into public.store_memberships (store_id, user_id, role)
     values (${sqlText(storeId)}::uuid, ${sqlText(ids.staffExisting)}::uuid, 'viewer');
@@ -201,6 +238,88 @@ async function testPrivilegedIdentityBinding() {
   console.log("platform identity binding: new unbound invite rejected");
 }
 
+async function testOwnerRoleInviteRejected() {
+  const insertResult = await sql(`
+    insert into public.store_staff_invites
+      (store_id, invite_code, email, role, status, created_by, expires_at)
+    values
+      (${sqlText(storeId)}::uuid, '${prefix}STAFF-OWNER-BLOCKED', 'staff-b-323@example.test', 'owner', 'pending', ${sqlText(ids.owner)}::uuid, now() + interval '1 hour');
+  `, { allowFailure: true });
+  expect(typeof insertResult === "object" && insertResult.failed === true, "pending owner staff invite must be rejected by the database constraint");
+  const count = await scalar(`select count(*) from public.store_staff_invites where invite_code='${prefix}STAFF-OWNER-BLOCKED';`);
+  expect(count === "0", "rejected pending owner invite was persisted");
+  console.log("owner invite authority: pending owner invite rejected by database constraint");
+}
+
+async function testLastStaffSeatRace() {
+  const results = await Promise.all([
+    claim(`${prefix}STAFF-SEAT-A`, ids.staffA, "staff-a-323@example.test"),
+    claim(`${prefix}STAFF-SEAT-B`, ids.staffB, "staff-b-323@example.test"),
+  ]);
+  expect(results.filter((x) => x.success).length === 1, `last-seat race must have exactly one winner: ${JSON.stringify(results)}`);
+  expect(results.filter((x) => x.error === "staff_seat_limit_reached").length === 1, `last-seat loser must see staff_seat_limit_reached: ${JSON.stringify(results)}`);
+  const count = await scalar(`select count(*) from public.store_memberships where store_id=${sqlText(seatStoreId)}::uuid and role <> 'owner';`);
+  expect(count === "1", `last-seat race created ${count} non-owner memberships instead of 1`);
+  const pending = await scalar(`select count(*) from public.store_staff_invites where invite_code in ('${prefix}STAFF-SEAT-A','${prefix}STAFF-SEAT-B') and claimed_by is null and status='pending';`);
+  expect(pending === "1", `last-seat loser invite was consumed unexpectedly: pending=${pending}`);
+  console.log(`last-seat race: ${JSON.stringify(results)} seats=${count} pending=${pending}`);
+}
+
+async function testDirectMembershipAuthority() {
+  const overLimit = await sql(`
+    insert into public.store_memberships (store_id, user_id, role, invited_by)
+    values (${sqlText(seatStoreId)}::uuid, ${sqlText(ids.staffExisting)}::uuid, 'viewer', ${sqlText(ids.owner)}::uuid);
+  `, { allowFailure: true });
+  expect(typeof overLimit === "object" && overLimit.failed === true, "direct membership insert over the plan seat limit must fail");
+
+  const ownerEscalation = await sql(`
+    insert into public.store_memberships (store_id, user_id, role, invited_by)
+    values (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(ids.staffExisting)}::uuid, 'owner', ${sqlText(ids.owner)}::uuid);
+  `, { allowFailure: true });
+  expect(typeof ownerEscalation === "object" && ownerEscalation.failed === true, "direct non-owner owner-role membership must fail");
+
+  const overLimitCount = await scalar(`select count(*) from public.store_memberships where store_id=${sqlText(seatStoreId)}::uuid and user_id=${sqlText(ids.staffExisting)}::uuid;`);
+  const badOwnerCount = await scalar(`select count(*) from public.store_memberships where store_id=${sqlText(unlimitedStoreId)}::uuid and user_id=${sqlText(ids.staffExisting)}::uuid and role='owner';`);
+  expect(overLimitCount === "0" && badOwnerCount === "0", `direct bypass persisted authority unexpectedly: seat=${overLimitCount} owner=${badOwnerCount}`);
+  console.log("direct membership authority: over-limit and owner-escalation inserts rejected");
+}
+
+async function testFreedSeatCanBeClaimed() {
+  const winnerId = await scalar(`select user_id::text from public.store_memberships where store_id=${sqlText(seatStoreId)}::uuid and role <> 'owner' limit 1;`);
+  expect(Boolean(winnerId), "last-seat race winner membership missing before seat-release proof");
+  await sql(`delete from public.store_memberships where store_id=${sqlText(seatStoreId)}::uuid and user_id=${sqlText(winnerId)}::uuid;`);
+
+  const result = await claim(`${prefix}STAFF-SEAT-FREED`, ids.staffSuccess, "success-323@example.test");
+  expect(result.success === true, `freed staff seat must be claimable: ${JSON.stringify(result)}`);
+  const count = await scalar(`select count(*) from public.store_memberships where store_id=${sqlText(seatStoreId)}::uuid and role <> 'owner';`);
+  expect(count === "1", `freed-seat claim should restore exactly one active staff seat, got ${count}`);
+  console.log(`freed seat: winner_removed=${winnerId} replacement=${JSON.stringify(result)}`);
+}
+
+async function testUnlimitedStaffPlan() {
+  await sql(`
+    insert into public.store_memberships (store_id, user_id, role, invited_by)
+    values
+      (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(ids.staffA)}::uuid, 'editor', ${sqlText(ids.owner)}::uuid),
+      (${sqlText(unlimitedStoreId)}::uuid, ${sqlText(ids.staffB)}::uuid, 'viewer', ${sqlText(ids.owner)}::uuid);
+  `);
+  const count = await scalar(`select count(*) from public.store_memberships where store_id=${sqlText(unlimitedStoreId)}::uuid and role <> 'owner';`);
+  expect(count === "2", `unlimited plan should allow multiple non-owner staff memberships, got ${count}`);
+  const limit = await scalar(`select public.resolve_store_staff_seat_limit(${sqlText(unlimitedStoreId)}::uuid);`);
+  expect(limit === "-1", `unlimited plan sentinel should resolve to -1, got ${limit}`);
+  console.log(`unlimited staff plan: limit=${limit} active_staff=${count}`);
+}
+
+async function testPlanDowngradeBlocksNewSeat() {
+  await sql(`update public.cms_plans set feature_flags = jsonb_set(feature_flags, '{staff}', '0'::jsonb, true) where id=${sqlText(mainPlanId)};`);
+  const result = await claim(`${prefix}STAFF-DOWNGRADE`, ids.platformUsedBy, "platform-used-323@example.test");
+  expect(result.error === "staff_seat_limit_reached", `plan downgrade must block new staff claim: ${JSON.stringify(result)}`);
+  const inviteState = await scalar(`select (claimed_by is null)::int || '|' || status from public.store_staff_invites where invite_code='${prefix}STAFF-DOWNGRADE';`);
+  expect(inviteState === "1|pending", `downgrade-blocked invite was consumed: ${inviteState}`);
+  await sql(`update public.cms_plans set feature_flags = jsonb_set(feature_flags, '{staff}', '10'::jsonb, true) where id=${sqlText(mainPlanId)};`);
+  console.log(`plan downgrade: claim=${result.error} invite=${inviteState}`);
+}
+
 async function testLegitimateSuccesses() {
   const staff = await claim(`${prefix}STAFF-SUCCESS`, ids.staffSuccess, "success-323@example.test");
   expect(staff.success === true && staff.membership_type === "store", "legitimate staff invite must succeed");
@@ -257,16 +376,20 @@ async function testPlatformGrantFailureRollback() {
 
 async function cleanup() {
   const userList = Object.values(ids).map((id) => `${sqlText(id)}::uuid`).join(",");
+  const storeList = [storeId, seatStoreId, unlimitedStoreId].map((id) => `${sqlText(id)}::uuid`).join(",");
+  const planList = [mainPlanId, seatPlanId, unlimitedPlanId].map(sqlText).join(",");
   await sql(`
     drop trigger if exists test_323_reject_membership on public.store_memberships;
     drop function if exists public.test_323_reject_membership();
     drop trigger if exists test_323_reject_role on public.user_roles;
     drop function if exists public.test_323_reject_role();
     delete from public.user_roles where user_id in (${userList});
-    delete from public.store_memberships where user_id in (${userList}) or store_id=${sqlText(storeId)}::uuid;
+    delete from public.store_memberships where user_id in (${userList}) or store_id in (${storeList});
     delete from public.store_staff_invites where invite_code like ${sqlText(prefix + "%")};
     delete from public.invite_codes where code like ${sqlText(prefix + "%")};
-    delete from public.stores where id=${sqlText(storeId)}::uuid;
+    delete from public.store_subscriptions where store_id in (${storeList});
+    delete from public.stores where id in (${storeList});
+    delete from public.cms_plans where id in (${planList});
     delete from auth.users where id in (${userList});
   `);
 }
@@ -282,9 +405,15 @@ try {
   await testStaffNegativeCases();
   await testPlatformNegativeCases();
   await testPrivilegedIdentityBinding();
+  await testOwnerRoleInviteRejected();
+  await testLastStaffSeatRace();
+  await testDirectMembershipAuthority();
+  await testFreedSeatCanBeClaimed();
+  await testUnlimitedStaffPlan();
   await testLegitimateSuccesses();
   await testStaffGrantFailureRollback();
   await testPlatformGrantFailureRollback();
+  await testPlanDowngradeBlocksNewSeat();
   console.log("invite atomicity smoke: PASS");
 } catch (error) {
   failed = true;
