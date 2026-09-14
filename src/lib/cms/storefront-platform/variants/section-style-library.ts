@@ -4,7 +4,8 @@ import { getStorefrontTemplateDefinition, type StorefrontTemplateId } from "@/li
 import { buildEditorCompatibilityContext } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import { evaluateStorefrontVariantCompatibility, getAvailableStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/compatibility";
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
-import { getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
+import { getStorefrontVariantDefinition, getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
+import { normalizeVariantOptionsForDefinition } from "@/lib/cms/storefront-platform/variants/variant-options";
 
 export type SectionStyleLibraryEntry = {
   definition: StorefrontVariantDefinition;
@@ -93,10 +94,17 @@ export function getSectionStyleResetTarget(
 export function applySectionStyleToBlock(
   block: StorePageBlock,
   variantId: string | null | undefined,
+  templateId?: StorefrontTemplateId,
 ): StorePageBlock {
+  const targetVariantId = variantId
+    ?? (templateId ? getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type] : undefined);
+  const targetDefinition = getStorefrontVariantDefinition(block.type, targetVariantId);
   return {
     ...block,
     layoutVariant: variantId ?? undefined,
+    variantOptions: targetDefinition
+      ? normalizeVariantOptionsForDefinition(targetDefinition, block.variantOptions)
+      : block.variantOptions,
   };
 }
 
