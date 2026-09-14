@@ -255,12 +255,14 @@ Most other Order changes apply cleanly onto R4, including current delivery edito
 The previous sections are retained as historical coordination evidence. The current accepted implementation heads are:
 
 - Billing #308/#314: `7270899b8f27628bb7b304b2db1fb41cd53e133f`
-- Order #309/#310/#318: `8846129614ad6bf17633954a2e8d6cc59baf597c`
-- Payment #317/#327: `42815b160af3e8c6e4e6ce6ff0d3ede76a186d58`
+- Order #309/#310/#318: `23ef1f689405539ec191b91180a4c3b609c307da`
+- Payment #317/#327: `4c9d91d8071d7eb75ac1270840c1291edf970913`
 - Invite #323 plus staff-seat #325 composition: `849abada98722a3b65f915198a46fd42c1f760e5`
 - Image dependency #367: `f538362b43f400be1f98f2b5b7088a513dacda5c` (draft PR #369)
 
 The four authority lanes converge in merge commit `c154420a7ca0389f48023e7e2a88930277304301`. The durable integrated branch is `release/p0-integrated-2026-09-15`; after applying the #367 dependency commit its initial all-in head is `ddacbcd0cbbcd6d953905a4a2d07acfdd0ff0e48` before this documentation checkpoint.
+
+Order and Payment later advanced only by stacking merges. Those current heads plus #367 were recorded as ancestry-only merges after a reviewed tree comparison; the integrated tree hash remained `5840471a310a5b42d9b3f771c06c7939598d113c` before/after both merges. This preserves the stronger coordinator Payment composition while making every accepted lane head an ancestor of the release branch.
 
 ### Exact all-in regression evidence
 
