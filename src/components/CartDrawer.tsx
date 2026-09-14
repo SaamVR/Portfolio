@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Minus, Plus, ShoppingBag, PlusCircle, Tag } from "lucide-react";
-import { Link } from "@/lib/react-router-dom-shim";
+import { Link, useNavigate } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,7 +12,6 @@ import { storefrontPath } from "@/lib/slug";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { getNormalizedDeliverySettings, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
-import { useNavigate } from "@/lib/react-router-dom-shim";
 import { useAuth } from "@/hooks/auth-context";
 import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 import type { Product } from "@/data/products";
@@ -20,7 +19,6 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
-  const storeId = currentStore?.id;
   const storeSlug = currentStore?.slug;
   const navigate = useNavigate();
   const { user } = useAuth();
