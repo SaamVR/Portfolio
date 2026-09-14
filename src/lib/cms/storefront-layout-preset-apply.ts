@@ -1,6 +1,8 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontBlockType } from "@/lib/cms/storefront-templates";
 import type { StorefrontLayoutPreset, StorefrontLayoutPresetSection } from "@/lib/cms/storefront-layout-presets";
+import { getStorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/registry";
+import { normalizeVariantOptionsForDefinition } from "@/lib/cms/storefront-platform/variants/variant-options";
 
 export type StorefrontLayoutPresetApplicationResult = {
   blocks: StorePageBlock[];
@@ -53,9 +55,17 @@ function mergeSuggestedProps(
     if (nextProps[key] === undefined) nextProps[key] = value;
   }
 
+  const nextVariantId = section.layoutVariant ?? block.layoutVariant;
+  const targetDefinition = section.layoutVariant
+    ? getStorefrontVariantDefinition(block.type, section.layoutVariant)
+    : undefined;
+
   return {
     ...block,
-    layoutVariant: section.layoutVariant ?? block.layoutVariant,
+    layoutVariant: nextVariantId,
+    variantOptions: targetDefinition
+      ? normalizeVariantOptionsForDefinition(targetDefinition, block.variantOptions)
+      : block.variantOptions,
     props: nextProps,
   } as StorePageBlock;
 }

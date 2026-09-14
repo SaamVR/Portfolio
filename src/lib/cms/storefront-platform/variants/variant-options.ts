@@ -79,6 +79,21 @@ export function normalizeBlockVariantOptionsForStyle(
   return { ...block, variantOptions: normalizeVariantOptionsForDefinition(definition, block.variantOptions) };
 }
 
+
+export function applyVariantAwareBlockPatch(
+  templateId: StorefrontTemplateId,
+  block: StorePageBlock,
+  patch: Partial<StorePageBlock>,
+): StorePageBlock {
+  const next = { ...block, ...patch } as StorePageBlock;
+  if (!("layoutVariant" in patch) && !("variantOptions" in patch)) return next;
+  const definition = getEffectiveVariantDefinition(templateId, next);
+  return {
+    ...next,
+    variantOptions: normalizeVariantOptionsForDefinition(definition, next.variantOptions),
+  };
+}
+
 export function resetVariantOption(block: StorePageBlock, key: StorefrontVariantOptionKey): StorePageBlock {
   const next = { ...(block.variantOptions ?? {}) };
   delete next[key];

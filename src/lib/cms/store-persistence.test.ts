@@ -147,6 +147,57 @@ describe("storefront persistence", () => {
     expect(persisted.overrides).toEqual({ sectionSpacing: "compact" });
   });
 
+
+  it("round-trips canonical variant options separately from content props and clears them on reset", async () => {
+    const { client, storePageBlocks } = createMockSupabaseClient();
+    const templateSeed = fallbackStorefrontTemplateSeeds[0];
+    const store: Store = {
+      id: "store-variant-options",
+      name: "Variant Options Store",
+      slug: "variant-options-store",
+      description: "Variant options persistence",
+      currencyCode: "BDT",
+      locale: "en-BD",
+      isPublished: true,
+      theme: { presetId: "default", mode: "light", customCssVars: {} },
+      pages: [{
+        id: "page-variant-home",
+        slug: "/",
+        title: "Home",
+        isHomepage: true,
+        blocks: [{
+          id: "hero-variant",
+          type: "hero",
+          props: { title: "Keep content", mediaFit: "cover" },
+          sortOrder: 0,
+          isVisible: true,
+          visible: true,
+          layoutVariant: "split",
+          variantOptions: { mediaFit: "contain", alignment: "right", contentWidth: "wide" },
+        }],
+      }],
+    };
+
+    const first = await persistStorefrontState({
+      client, store, templateSeed, themePackages: fallbackThemePackages,
+    });
+    expect(first.error).toBeNull();
+    const persisted = Array.from(storePageBlocks.values())[0] as any;
+    expect(persisted.props).toEqual({ title: "Keep content", mediaFit: "cover" });
+    expect(persisted.layout_variant).toBe("split");
+    expect(persisted.variant_options).toEqual({ mediaFit: "contain", contentWidth: "wide" });
+
+    const resetStore = structuredClone(store);
+    resetStore.pages[0]!.blocks[0]!.variantOptions = undefined;
+    const second = await persistStorefrontState({
+      client, store: resetStore, templateSeed, themePackages: fallbackThemePackages,
+    });
+    expect(second.error).toBeNull();
+    const afterReset = Array.from(storePageBlocks.values())[0] as any;
+    expect(afterReset.layout_variant).toBe("split");
+    expect(afterReset.variant_options).toBeNull();
+  });
+
   it("reuses the existing page id when a draft page has the same slug", () => {
     const pageIds = mapPersistedPageIdsByLocalId(
       [

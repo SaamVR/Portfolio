@@ -183,13 +183,9 @@ export default function SectionStylesWorkspace() {
           : block.variantOptions,
     };
     const nextBlock = applySectionStyleToBlock(sourceBlock, variantId, workspace.templateId);
-    const patch = {
-      ...buildSectionStylePersistencePatch(variantId),
-      ...buildVariantOptionsPersistencePatch(nextBlock.variantOptions),
-    };
     const { data, error: updateError } = await (supabase as any)
       .from("store_page_blocks")
-      .update(patch)
+      .update(buildSectionStylePersistencePatch(variantId, sourceBlock, workspace.templateId))
       .eq("store_id", activeStoreId)
       .eq("page_id", workspace.page.id)
       .eq("id", block.id)

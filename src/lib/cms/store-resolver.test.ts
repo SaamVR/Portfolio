@@ -352,6 +352,48 @@ describe("store resolver mapping", () => {
     expect(store.customDomain).toBe("shop.domain-store.com");
   });
 
+
+  it("hydrates persisted layout variants and canonical variant options for public storefront rendering", () => {
+    const store = buildResolvedStoreFromRecords(
+      {
+        id: "store-r4-options",
+        name: "R4 Options Store",
+        slug: "r4-options-store",
+        description: "R4 options",
+        currency_code: "BDT",
+        locale: "en-BD",
+        is_published: true,
+        store_type: "threads",
+      },
+      { template_id: "threads" },
+      null,
+      [{
+        id: "page-r4-home",
+        slug: "/",
+        title: "Home",
+        seo_title: null,
+        seo_description: null,
+        is_homepage: true,
+      }],
+      [{
+        id: "block-r4-hero",
+        page_id: "page-r4-home",
+        block_type: "hero",
+        props: { title: "Modern hero" },
+        sort_order: 0,
+        is_visible: true,
+        layout_variant: "split",
+        variant_options: { mediaFit: "contain", contentWidth: "wide", rogue: "ignored" },
+      }],
+      [{ key: "storefront_profile", value: { template_id: "threads" } }],
+    );
+
+    const hero = store.pages[0]?.blocks[0];
+    expect(hero?.layoutVariant).toBe("split");
+    expect(hero?.variantOptions).toEqual({ mediaFit: "contain", contentWidth: "wide" });
+    expect(hero?.props).toEqual({ title: "Modern hero" });
+  });
+
   it("can build a lightweight shell store without persisted page rows or page blocks", () => {
     const store = buildResolvedStoreFromRecords(
       {

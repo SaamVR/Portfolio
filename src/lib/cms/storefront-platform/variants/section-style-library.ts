@@ -102,14 +102,23 @@ export function applySectionStyleToBlock(
   return {
     ...block,
     layoutVariant: variantId ?? undefined,
-    variantOptions: targetDefinition
-      ? normalizeVariantOptionsForDefinition(targetDefinition, block.variantOptions)
-      : block.variantOptions,
+    variantOptions: normalizeVariantOptionsForDefinition(targetDefinition, block.variantOptions),
   };
 }
 
-export function buildSectionStylePersistencePatch(variantId: string | null | undefined) {
-  return { layout_variant: variantId ?? null };
+export function buildSectionStylePersistencePatch(
+  variantId: string | null | undefined,
+  block?: StorePageBlock,
+  templateId?: StorefrontTemplateId,
+) {
+  if (!block) return { layout_variant: variantId ?? null };
+  const targetVariantId = variantId
+    ?? (templateId ? getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type] : undefined);
+  const targetDefinition = getStorefrontVariantDefinition(block.type, targetVariantId);
+  return {
+    layout_variant: variantId ?? null,
+    variant_options: normalizeVariantOptionsForDefinition(targetDefinition, block.variantOptions) ?? null,
+  };
 }
 
 export function getSectionStyleSupportedBlockTypes() {
