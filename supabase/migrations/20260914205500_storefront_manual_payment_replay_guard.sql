@@ -24,13 +24,37 @@ ALTER TABLE public.storefront_manual_payment_claims ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.storefront_manual_payment_claims FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.storefront_manual_payment_claims TO service_role;
 
--- Fail closed before backfilling if two historical orders already claim the
--- same provider transaction identity. Manual bKash uses the canonical `bkash`
--- provider namespace so automated bKash settlement can share this ledger later.
+-- Fail closed before backfilling if a historical manual-payment order does not
+-- contain exactly one parseable TrxID, or if two orders claim the same external
+-- settlement identity. Manual bKash uses canonical provider `bkash` so the
+-- automated bKash path can share this identity namespace later.
 DO $$
 DECLARE
+  _invalid record;
   _duplicate record;
 BEGIN
+  SELECT o.id AS order_id, parsed.match_count
+    INTO _invalid
+  FROM public.orders o
+  CROSS JOIN LATERAL (
+    SELECT count(*)::integer AS match_count
+    FROM regexp_matches(
+      coalesce(o.notes, ''),
+      '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})',
+      'g'
+    ) AS m
+  ) parsed
+  WHERE lower(trim(o.payment_method)) IN ('bkash_manual', 'nagad')
+    AND parsed.match_count <> 1
+  LIMIT 1;
+
+  IF FOUND THEN
+    RAISE EXCEPTION
+      'cannot enable storefront manual payment replay guard: manual order % has % parseable transaction references; exactly one is required',
+      _invalid.order_id,
+      _invalid.match_count;
+  END IF;
+
   SELECT provider, normalized_reference, count(*) AS claim_count
     INTO _duplicate
   FROM (
@@ -39,14 +63,18 @@ BEGIN
         WHEN 'bkash_manual' THEN 'bkash'
         WHEN 'nagad' THEN 'nagad'
       END AS provider,
-      upper(substring(
-        coalesce(o.notes, '')
-        FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
-      )) AS normalized_reference
+      parsed.normalized_reference
     FROM public.orders o
+    CROSS JOIN LATERAL (
+      SELECT min(upper(m[1])) AS normalized_reference
+      FROM regexp_matches(
+        coalesce(o.notes, ''),
+        '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})',
+        'g'
+      ) AS m
+    ) parsed
     WHERE lower(trim(o.payment_method)) IN ('bkash_manual', 'nagad')
   ) extracted
-  WHERE normalized_reference IS NOT NULL
   GROUP BY provider, normalized_reference
   HAVING count(*) > 1
   ORDER BY count(*) DESC
@@ -73,18 +101,22 @@ SELECT
     WHEN 'bkash_manual' THEN 'bkash'
     WHEN 'nagad' THEN 'nagad'
   END AS provider,
-  upper(substring(
-    coalesce(o.notes, '')
-    FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
-  )) AS normalized_reference,
+  parsed.normalized_reference,
   o.store_id,
   o.id
 FROM public.orders o
+CROSS JOIN LATERAL (
+  SELECT
+    count(*)::integer AS match_count,
+    min(upper(m[1])) AS normalized_reference
+  FROM regexp_matches(
+    coalesce(o.notes, ''),
+    '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})',
+    'g'
+  ) AS m
+) parsed
 WHERE lower(trim(o.payment_method)) IN ('bkash_manual', 'nagad')
-  AND substring(
-    coalesce(o.notes, '')
-    FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
-  ) IS NOT NULL
+  AND parsed.match_count = 1
 ON CONFLICT (provider, normalized_reference) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.claim_storefront_manual_payment_reference()
@@ -97,6 +129,7 @@ DECLARE
   _payment_method text := lower(trim(coalesce(NEW.payment_method, '')));
   _provider text;
   _reference text;
+  _reference_count integer;
 BEGIN
   IF _payment_method = 'bkash_manual' THEN
     _provider := 'bkash';
@@ -106,13 +139,18 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  _reference := upper(substring(
-    coalesce(NEW.notes, '')
-    FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
-  ));
+  SELECT
+    count(*)::integer,
+    min(upper(m[1]))
+  INTO _reference_count, _reference
+  FROM regexp_matches(
+    coalesce(NEW.notes, ''),
+    '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})',
+    'g'
+  ) AS m;
 
-  IF nullif(trim(coalesce(_reference, '')), '') IS NULL THEN
-    RAISE EXCEPTION 'manual payment transaction id is required'
+  IF _reference_count <> 1 OR nullif(trim(coalesce(_reference, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'exactly one manual payment transaction id is required'
       USING ERRCODE = '22023';
   END IF;
 
@@ -159,4 +197,4 @@ FOR EACH ROW
 EXECUTE FUNCTION public.claim_storefront_manual_payment_reference();
 
 COMMENT ON TABLE public.storefront_manual_payment_claims IS
-  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Provider + normalized reference is globally unique across storefronts, uses canonical provider namespaces, and remains consumed after related store/order deletion.';
+  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Exactly one normalized TrxID is required per manual order; provider + reference is globally unique and remains consumed after store/order deletion.';
