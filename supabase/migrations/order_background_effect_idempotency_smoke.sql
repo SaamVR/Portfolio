@@ -21,7 +21,9 @@ BEGIN
       AND tablename = 'store_analytics_events'
       AND indexname = 'idx_store_analytics_order_created_item_once'
       AND indexdef ILIKE '%UNIQUE%'
-      AND indexdef ILIKE '%(store_id, order_id, event_name, product_id)%'
+      AND indexdef ILIKE '%store_id%order_id%event_name%product_id%'
+      AND indexdef ILIKE '%md5%'
+      AND indexdef ILIKE '%metadata%'
       AND indexdef ILIKE '%order_created_item%'
   ) THEN
     RAISE EXCEPTION 'order-created item analytics idempotency index is missing';
