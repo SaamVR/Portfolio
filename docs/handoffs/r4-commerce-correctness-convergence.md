@@ -7,7 +7,7 @@ Snapshot date: 2026-09-15 (Asia/Dhaka)
 - Frozen R4 storefront: `d6c689a469fdc419cefca224c0e5f046644bb2df` (`r4/section-studio`)
 - Production/P0 baseline: `4caa14c351cf0f7071e5b4ea14fb069a79403215`
 - P0 coordinator remote checkpoint inspected: `2a4ab729989c3cf9739c62572aa465ba4a4ad03e` (`release/p0-blocker-coordination-2026-09-14`)
-- Commerce/security implementation checkpoint before this document refresh: `d1487b64965fa0b1ad273f7f1b7e117653408f92`
+- Commerce/security implementation checkpoint: `d1487b64965fa0b1ad273f7f1b7e117653408f92`
 - Last earlier production-preflight-validated commerce checkpoint: `768e82483a97e82d57392a2b41a3d2d2fabb93a2`
 - Billing PR #364: `7270899b8f27628bb7b304b2db1fb41cd53e133f`
 - Order PR #365: `8846129614ad6bf17633954a2e8d6cc59baf597c`
@@ -15,7 +15,7 @@ Snapshot date: 2026-09-15 (Asia/Dhaka)
 - Invite PR #368: `849abada98722a3b65f915198a46fd42c1f760e5`
 - Dependency-security P0: #367 remains open
 
-The commit produced by refreshing this document is metadata-only and is therefore newer than the implementation checkpoint above. Use the PR head for the exact post-refresh branch SHA.
+The commit produced by refreshing this document is metadata-only and newer than the implementation checkpoint above. Use the PR head for the exact post-refresh branch SHA.
 
 ## Integration authority
 
@@ -50,25 +50,13 @@ Order's `CartDrawer.tsx` also carries #318 option identity but reintroduces the 
 
 ### Payment — #317 / #327
 
-PR #366 head `42815b160...` materially strengthens lifecycle safety:
-- release-at-most-once markers;
-- cancellation blocked while provider execution is `executing` / `reconciliation_required`;
-- durable succeeded-attempt guard against a second obligation.
+PR #366 head `42815b160...` strengthens lifecycle safety with release-at-most-once markers, unresolved-provider cancellation blocking and a durable succeeded-attempt guard. The **pushed** Payment branch still calls legacy v2 and carries the same stale unpublished/live-plan route rule, so it is not independently convergence-accepted.
 
-The **pushed** Payment branch still calls legacy v2 and carries the same stale unpublished/live-plan route rule. Therefore it is not independently convergence-accepted.
-
-A detached local composition on `samvr` has already proven the required semantic revision: Payment lifecycle wrapper → `create_store_order_authoritative_v3(...)`, route → lifecycle wrapper, full authoritative delivery/payment/manual-reference inputs preserved, and latest lifecycle guards retained. This is proof of composition feasibility, not a published release branch.
+A detached local composition on `samvr` has already proven the required semantic revision: Payment lifecycle wrapper → `create_store_order_authoritative_v3(...)`, route → lifecycle wrapper, full authoritative delivery/payment/manual-reference inputs preserved, and latest lifecycle guards retained. This proves feasibility; it is not a published release branch.
 
 ### Invite + staff seats — #323 / #325
 
-PR #368 head `849abada...` now composes #323/#325 in one authority boundary:
-- pending staff `role='owner'` rejected;
-- staff-seat entitlement resolved transactionally at claim time;
-- pending invites do not reserve seats;
-- owner excluded from purchasable staff-seat count;
-- negative limit is the explicit unlimited sentinel;
-- store-scoped transaction lock serializes last-seat claims;
-- direct membership writes share the same entitlement boundary.
+PR #368 head `849abada...` now composes #323/#325 in one authority boundary: pending owner-valued staff invites are rejected, staff-seat entitlement is resolved transactionally at claim time, pending invites do not reserve seats, owner does not consume a purchasable staff seat, negative limit is unlimited, store-scoped locking serializes last-seat claims, and direct membership writes share the same entitlement boundary.
 
 Real PostgreSQL proof on the lane reports exactly one last-seat winner, loser invite remaining pending, direct over-limit denial, freed-seat reuse, unlimited-plan behavior and plan-downgrade rejection. Keep the issues open until integrated rollout/postdeploy proof.
 
@@ -78,9 +66,9 @@ Still open. Apply the patched Next/Sharp graph only after code/schema convergenc
 
 ## Detached P0 composition proof on `samvr`
 
-A local, detached all-P0 composition was built from the current Billing/Order/Payment/Invite heads. It is **not a published release branch** and must not be deployed directly, but it demonstrates that the remaining Payment→v3 semantic composition is implementable without weakening the coordinator contract.
+A local detached all-P0 composition was built from the current Billing/Order/Payment/Invite heads. It is **not a published release branch** and must not be deployed directly, but it demonstrates that Payment→v3 composition is viable without weakening the coordinator contract.
 
-Observed proof on the local candidate:
+Observed proof:
 - P0 coordinator contract: **22/22 PASS**;
 - full repository suite: **844/844 PASS**;
 - typecheck: PASS;
@@ -92,97 +80,38 @@ Observed proof on the local candidate:
 - transactional Order/Payment composition smoke: PASS;
 - adapted Payment lifecycle DB smoke: PASS.
 
-The proof specifically confirms:
-- Payment wrapper calls v3, not v2;
-- route calls the lifecycle wrapper, not v2;
-- release-at-most-once, unresolved-provider cancellation block and terminal-success guard survive composition;
-- Billing/Invite/Order/Payment drift entries can coexist;
-- Invite owner rejection and atomic claim contract survive composition.
+The candidate confirms Payment wrapper → v3, route → lifecycle wrapper, latest release/reconciliation/terminal-success guards retained, Billing/Invite/Order/Payment drift entries coexisting, and Invite owner rejection/atomic claim surviving composition. It still predates hand-composition with the full R4 hardening branch and is not the final release candidate.
 
-This candidate still predates hand-composition with the full R4 hardening branch and therefore is not the final release candidate.
+## Hardening branch validation at `d1487b6...`
 
-## Hardening branch truth at `d1487b6...`
+An isolated detached worktree executed the hardening code locally on `samvr`, independent of the non-executing hosted runners.
 
-### Executed validation
-
-An isolated detached worktree was created from the hardening implementation and executed locally on `samvr` so results do not depend on the non-executing hosted runners.
-
-- focused commerce/security/accessibility suite: **33/33 PASS** on `2dadb314...`;
-- follow-up queue + CartDrawer regression set after the two test fixes: **7/7 PASS**;
-- full suite after those fixes: **1,070 total / 1,067 pass / 3 fail**;
-- the remaining three failures are the inherited frozen-R4 source-contract failures: admin catch-all heavy-route contract, Beauty compact-mobile discovery contract, and subscription transactional source contract;
-- typecheck after `5a1bc244...`: PASS;
+- focused commerce/security/accessibility suite: **33/33 PASS** on the implementation state before two regression-test repairs;
+- follow-up queue + CartDrawer regression set: **7/7 PASS**;
+- full suite after the test repairs: **1,070 total / 1,067 pass / 3 fail**;
+- the three remaining failures are inherited frozen-R4 source-contract failures: admin catch-all heavy-route contract, Beauty compact-mobile discovery contract, subscription transactional source contract;
+- typecheck after the queue test repair: PASS;
 - migration drift: PASS;
-- lint: 0 errors (warnings only);
+- lint: 0 errors, warnings only;
 - `git diff --check`: PASS;
-- production build of the same implementation code before the two test-only follow-ups: PASS.
+- production build of the identical runtime implementation before the two test-only repairs: PASS.
 
-The test-only commits after the passing build do not alter runtime/build code. Hosted GitHub workflow badges remain non-evidence: inspected Quality Gate jobs complete with `steps=[]` and `runner_id=0`, so no checkout/test/typecheck/lint/build command runs there.
+The two follow-up commits change tests only, not runtime/build code. Hosted GitHub badges remain non-evidence: inspected Quality Gate jobs complete with `steps=[]` and `runner_id=0`, so no checkout/test/typecheck/lint/build command runs there.
 
-### #311 — public commerce access
+## Hardening contracts that must survive convergence
 
-Unpublished stores remain non-public/non-transactional even when a subscription is live. Published legacy stores remain supported; published subscribed stores require a live plan. Order, payment settings, recovery intake, contact and stock notification endpoints share the same public-commerce decision.
-
-### #312 — analytics/revenue truth
-
-Order creation records `order_created` / `order_created_item`, not settlement. It writes no `sale` revenue event, recovery revenue stays zero until true settlement authority, and cancellation alone creates no fabricated financial reversal. Production inspection found no historical purchase/item-purchase or revenue rows requiring reconciliation.
-
-### #313 — coupon tenant identity
-
-Pending `20260914211000_scope_coupon_codes_per_store.sql`. Registered DB smoke proves same normalized code may exist in two stores while same-store duplication fails. Production currently has zero coupon rows.
-
-### #315 — loyalty truth
-
-Launch remains fail-closed: merchant loyalty controls are inactive/read-only and CartDrawer makes no points-earning promise until a real earning/redemption ledger exists.
-
-### #319 — refund/store-credit truth
-
-Returns are explicit external/manual recordkeeping. Unsupported store credit cannot be selected, financial completion requires external settlement/reference evidence, and the pending DB migration caps refund amounts against authoritative order total. Production has no existing return rows requiring cleanup.
-
-### #322 — recovery recipient authority
-
-Guest recovery cannot nominate arbitrary automated recipients. Automated recovery email is bound to authenticated identity and scheduling is throttled. Production has no guest recovery-message reconciliation debt.
-
-### #324 — merchant capability matrix
-
-Pending migrations:
-- `20260914233000_store_role_capability_matrix_324.sql`
-- `20260914233500_store_role_viewer_read_contract_324.sql`
-
-Owner/admin owns tenant administration; editor retains intended catalog/content/day-to-day fulfillment; viewer gets non-sensitive read-only catalog/content review. Sensitive service-role routes require owner/admin. Browser membership mutation is removed.
-
-Registered proof:
-- `supabase/migrations/store_role_capability_matrix_smoke.sql`
-- `supabase/tests/store_role_capability_preflight.sql`
-- `src/lib/security/store-role-capability-contract.test.ts`
-
-Read-only production preflight found 19 owner memberships and **0 admin/editor/viewer memberships, 0 delegated-owner memberships and 0 pending staff invites**.
-
-### #326 — background retry/idempotency
-
-Retry-required cart-recovery work precedes best-effort effects; failed inline work is handed to the durable queue. Merchant notification and analytics sinks have durable identities. Cancellation runner deliberately has no financial side effect until settlement authority exists.
-
-### #329 — merchandising/evidence truth
-
-No unsupported `Frequently Bought Together`, fabricated 10% bundle saving, `featured => Bestseller`, unconditional `New`, or one-image Before/After transformation claim remains on the hardening branch.
-
-### #331 — storefront accessibility
-
-- Navbar: keyed disclosure state, focus/hover open, focus-leave/Escape close, focus restoration, ARIA disclosure attributes;
-- CartDrawer: shared Radix-backed `Sheet` with modal focus/Escape semantics;
-- ProductImageGallery fullscreen: shared `Dialog`, labelled arrows, keyboard arrows and visible/focusable close behavior;
-- SearchBar: coherent combobox/listbox/active-descendant semantics and non-nested history controls;
-- Sheet/Dialog close targets are 44×44px.
-
-Source contract: `src/lib/storefront-accessibility-contract.test.ts`. Real browser keyboard/focus/200%-zoom/screen-reader proof is still required.
-
-### #333 / #334 — Firebase CSP + durable subject binding
-
-CSP is narrowly extended for required Firebase/reCAPTCHA endpoints. The auth bridge binds immutable Firebase project+UID, does not silently match existing users by mutable email/phone, never resets matched Supabase passwords, and persists a server-only binding. The old public Edge bridge is a branch 410 tombstone. Production has 19 auth users and zero legacy `firebase_uid` metadata.
-
-### #363 — printable invoice XSS boundary
-
-Dynamic printable invoice fields are HTML-encoded before `document.write`; hostile-markup regressions are present.
+- **#311 public commerce:** unpublished stores remain non-public/non-transactional even with live subscription; published legacy stores remain supported; published subscribed stores require live plan.
+- **#312 analytics/revenue:** order creation records `order_created` / `order_created_item`, not settlement; no sale revenue at order creation; cancellation alone creates no fabricated financial reversal.
+- **#313 coupon identity:** store-scoped coupon identity with positive two-store/same-code DB smoke.
+- **#315 loyalty:** launch fail-closed; no shopper points-earning promise until a real ledger exists.
+- **#319 returns/refunds:** explicit external/manual recordkeeping; unsupported store credit disabled; settlement reference required; pending DB cap against order total.
+- **#322 recovery recipient authority:** no arbitrary guest automated recipients; authenticated email authority retained.
+- **#324 RBAC:** owner/admin tenant administration; editor catalog/content/day-to-day fulfillment; viewer non-sensitive read-only; browser membership mutation removed.
+- **#326 background reliability:** retry-required recovery first, durable notification/analytics identities, cancellation runner intentionally has no financial side effect before settlement authority.
+- **#329 merchandising truth:** no unsupported FBT, 10% bundle saving, fabricated Bestseller/New, or one-image Before/After claim.
+- **#331 accessibility:** Navbar disclosure semantics, CartDrawer Radix Sheet, product lightbox Dialog, SearchBar combobox/listbox semantics, 44×44px modal close controls.
+- **#333/#334 auth:** restrictive Firebase CSP + immutable project/UID subject binding; no silent mutable email/phone account merge or password reset bridge.
+- **#363 invoice print:** dynamic print fields HTML-encoded before `document.write`.
 
 ## High-risk shared-file composition rules
 
@@ -199,7 +128,7 @@ The P0 candidate and hardening branch differ substantially in the exact files mo
 - `scripts/run-rls-smoke.mjs`: strict union of all accepted smokes; capability-matrix smoke supersedes obsolete editor-as-manager semantics.
 - `package.json` / `package-lock.json`: preserve all coordinator scripts; apply #367 last and regenerate lock once.
 
-A final integrated regression must explicitly prove: unpublished+live-plan store cannot transact, non-zero commercial option delta persists authoritatively, city-derived zone cannot be downgraded by client input, structured manual-payment evidence survives, cart option identities do not collapse, stale/unavailable products are pruned, loyalty promise stays absent, and CartDrawer remains a modal Sheet.
+Final integrated regressions must explicitly prove: unpublished+live-plan store cannot transact, non-zero commercial option delta persists authoritatively, city-derived zone cannot be downgraded by client input, structured manual-payment evidence survives, cart option identities do not collapse, stale/unavailable products are pruned, loyalty promise stays absent, and CartDrawer remains a modal Sheet.
 
 ## Migration order
 
@@ -240,4 +169,4 @@ No production mutation has been performed by this hardening lane.
 
 **NO-GO / SAFE TO INTEGRATE AS-IS: NO.**
 
-The main technical uncertainty is no longer whether Order and Payment can compose: the detached P0 proof demonstrates that they can. The remaining work is to publish a conflict-resolved P0+R4 candidate that preserves the hardening contracts above, resolve #314 historical finance truth and #367, then execute the governed DB/browser/provider/identity validation on that one exact SHA.
+The main technical uncertainty is no longer whether Order and Payment can compose: detached P0 proof demonstrates that they can. Remaining work is to publish a conflict-resolved P0+R4 candidate that preserves every hardening contract above, resolve #314 historical finance truth and #367, then execute governed DB/browser/provider/identity validation on that one exact SHA.
