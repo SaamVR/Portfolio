@@ -99,3 +99,12 @@ test("testimonials and trust blocks never manufacture social proof", () => {
   assert.match(blocks, /rawRating >= 1 && rawRating <= 5/);
   assert.match(blocks, /review\.name \? <p/);
 });
+
+
+test("before/after evidence requires two distinct configured images", () => {
+  const blocks = source("src/components/storefront/StorefrontBlockRenderer.tsx");
+
+  assert.equal(blocks.includes("displayImages[1] ?? displayImages[0]"), false);
+  assert.match(blocks, /layoutVariant === "before-after" && displayImages\.length >= 2 && displayImages\[0\] !== displayImages\[1\]/);
+  assert.match(blocks, /title \|\| "Gallery"/);
+});

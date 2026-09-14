@@ -204,9 +204,9 @@ function SocialFeedBlock({
     );
   }
 
-  if (layoutVariant === "before-after") {
+  if (layoutVariant === "before-after" && displayImages.length >= 2 && displayImages[0] !== displayImages[1]) {
     const before = displayImages[0];
-    const after = displayImages[1] ?? displayImages[0];
+    const after = displayImages[1];
     return (
       <section className="bg-background py-14 md:py-20">
         <div className="container mx-auto px-4">
@@ -221,6 +221,24 @@ function SocialFeedBlock({
                 <figcaption className="px-4 py-3 text-center text-sm font-semibold text-foreground">{item.label}</figcaption>
               </figure>
             ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (layoutVariant === "before-after") {
+    return (
+      <section className="bg-background py-14 md:py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-8 max-w-2xl text-center">
+            <h2 className="font-heading text-3xl font-bold text-foreground">{title || "Gallery"}</h2>
+            {subtitle ? <p className="mt-3 text-muted-foreground">{subtitle}</p> : null}
+          </div>
+          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="aspect-[4/3] overflow-hidden">
+              <img src={displayImages[0]} alt={title || "Gallery image"} className="h-full w-full object-cover" loading="lazy" />
+            </div>
           </div>
         </div>
       </section>
