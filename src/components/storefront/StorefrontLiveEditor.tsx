@@ -1363,6 +1363,7 @@ export function StorefrontLiveEditor({
           <MobileMerchantEditorSheet
             store={store}
             selectedBlock={selectedBlock}
+            pageId={page.id}
             templateId={previewTemplateId}
             saving={saving}
             hasUnsavedChanges={hasUnsavedChanges}

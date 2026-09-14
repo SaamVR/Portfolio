@@ -74,6 +74,36 @@ function evaluateRequirements(
   return { compatible: reasons.length === 0, reasons };
 }
 
+
+export interface StorefrontVariantAvailabilityOptions {
+  currentVariantId?: string | null;
+  includeAdminOnly?: boolean;
+  includeNonPublished?: boolean;
+}
+
+export function isStorefrontVariantAvailable(
+  definition: StorefrontVariantDefinition,
+  context: StorefrontCompatibilityContext,
+  options: StorefrontVariantAvailabilityOptions = {},
+): boolean {
+  if (definition.id === options.currentVariantId) return true;
+  if (!options.includeNonPublished && definition.lifecycle !== "published") return false;
+  if (!options.includeAdminOnly && definition.visibility === "admin-only") return false;
+  if (definition.visibility === "template-exclusive") {
+    return Boolean(context.templateId && definition.recommendedFor?.templateIds?.includes(context.templateId));
+  }
+  return true;
+}
+
+export function getAvailableStorefrontVariantDefinitions(
+  blockType: StorePageBlock["type"],
+  context: StorefrontCompatibilityContext,
+  options: StorefrontVariantAvailabilityOptions = {},
+): StorefrontVariantDefinition[] {
+  return getStorefrontVariantDefinitions(blockType)
+    .filter((definition) => isStorefrontVariantAvailable(definition, context, options));
+}
+
 export function evaluateStorefrontVariantCompatibility(
   definition: StorefrontVariantDefinition,
   context: StorefrontCompatibilityContext,

@@ -56,6 +56,7 @@ function tabIcon(tab: MobileEditorTab) {
 export function MobileMerchantEditorSheet({
   store,
   selectedBlock,
+  pageId,
   templateId,
   saving,
   hasUnsavedChanges,
@@ -86,6 +87,7 @@ export function MobileMerchantEditorSheet({
 }: {
   store: Store;
   selectedBlock: StorePageBlock | null;
+  pageId: string;
   templateId: StorefrontTemplateId;
   saving: boolean;
   hasUnsavedChanges: boolean;
@@ -299,7 +301,7 @@ export function MobileMerchantEditorSheet({
               <>
                 {layoutOptions.length > 0 ? (
                   <Button asChild variant="outline" className="min-h-11 w-full justify-center gap-2">
-                    <Link to={buildSectionStylesPath({ storeId: store.id, blockId: selectedBlock.id })}>
+                    <Link to={buildSectionStylesPath({ storeId: store.id, pageId, blockId: selectedBlock.id })}>
                       <LayoutGrid className="h-4 w-4" /> Browse Section Styles
                     </Link>
                   </Button>

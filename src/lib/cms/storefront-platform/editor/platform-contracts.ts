@@ -12,9 +12,9 @@ import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composi
 import {
   evaluateCompositionRecipeCompatibility,
   evaluateStorefrontVariantCompatibility,
+  getAvailableStorefrontVariantDefinitions,
   type StorefrontCompatibilityContext,
 } from "@/lib/cms/storefront-platform/variants/compatibility";
-import { getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
 import {
   resolveStorefrontAesthetic,
@@ -97,7 +97,7 @@ export function getCompatibleVariantDefinitions(
   block?: StorePageBlock,
 ): StorefrontVariantDefinition[] {
   const context = buildEditorCompatibilityContext(templateId, block);
-  return getStorefrontVariantDefinitions(blockType)
+  return getAvailableStorefrontVariantDefinitions(blockType, context, { currentVariantId: block?.layoutVariant })
     .filter((definition) => evaluateStorefrontVariantCompatibility(definition, context).compatible)
     .sort((left, right) => recommendationRank(left, context) - recommendationRank(right, context) || left.editor.order - right.editor.order);
 }

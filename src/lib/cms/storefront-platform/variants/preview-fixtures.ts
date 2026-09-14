@@ -108,3 +108,27 @@ const fallbackFixture: SectionStylePreviewFixture = {
 export function getSectionStylePreviewFixture(blockType: StorePageBlock["type"]): SectionStylePreviewFixture {
   return fixtures[blockType] ?? { ...fallbackFixture, id: `${blockType}-standard` };
 }
+
+const fixturesById = new Map<string, SectionStylePreviewFixture>(
+  Object.values(fixtures)
+    .filter((fixture): fixture is SectionStylePreviewFixture => Boolean(fixture))
+    .map((fixture) => [fixture.id, fixture]),
+);
+
+export function getSectionStylePreviewFixtureById(
+  fixtureId: string | null | undefined,
+  blockType: StorePageBlock["type"],
+): SectionStylePreviewFixture {
+  if (fixtureId) {
+    const fixture = fixturesById.get(fixtureId);
+    if (fixture) return fixture;
+  }
+  return getSectionStylePreviewFixture(blockType);
+}
+
+export function hasSectionStylePreviewFixture(
+  fixtureId: string,
+  blockType?: StorePageBlock["type"],
+): boolean {
+  return fixturesById.has(fixtureId) || Boolean(blockType && fixtureId === `${blockType}-standard`);
+}

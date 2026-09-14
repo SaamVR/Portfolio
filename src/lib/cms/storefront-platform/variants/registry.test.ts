@@ -6,6 +6,7 @@ import {
   getVariantIdsForBlock,
   resolveStorefrontVariant,
 } from "@/lib/cms/storefront-platform/variants/registry";
+import { validateStorefrontVariantManifest } from "@/lib/cms/storefront-platform/variants/validation";
 
 describe("canonical storefront variant registry", () => {
   it("keeps block/id pairs unique and every fallback resolvable", () => {
@@ -21,6 +22,7 @@ describe("canonical storefront variant registry", () => {
       );
       assert.equal(definition.version, 1);
       assert.ok(definition.responsive.mobile, `missing mobile contract for ${key}`);
+      assert.deepEqual(validateStorefrontVariantManifest(definition), [], `invalid manifest: ${key}`);
     }
   });
 

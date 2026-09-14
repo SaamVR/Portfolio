@@ -1,6 +1,6 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
-import { getSectionStylePreviewFixture } from "@/lib/cms/storefront-platform/variants/preview-fixtures";
+import { getSectionStylePreviewFixtureById } from "@/lib/cms/storefront-platform/variants/preview-fixtures";
 import { cn } from "@/lib/utils";
 
 export type SectionStylePreviewMode = "desktop" | "mobile";
@@ -11,7 +11,7 @@ function PreviewImage({ src, alt, className }: { src?: string; alt: string; clas
 }
 
 function HeroPreview({ definition, mode }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode }) {
-  const fixture = getSectionStylePreviewFixture("hero");
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, "hero");
   const mobile = mode === "mobile";
   const copy = (
     <div className={cn("flex min-w-0 flex-col justify-center", mobile ? "gap-1.5 p-3" : "gap-2 p-4")}>
@@ -72,7 +72,7 @@ function HeroPreview({ definition, mode }: { definition: StorefrontVariantDefini
 }
 
 function CategoryPreview({ definition, mode }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode }) {
-  const fixture = getSectionStylePreviewFixture("category-showcase");
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, "category-showcase");
   const items = fixture.items ?? [];
   const mobile = mode === "mobile";
   if (definition.id === "compact-list") {
@@ -86,7 +86,7 @@ function CategoryPreview({ definition, mode }: { definition: StorefrontVariantDe
 }
 
 function ProductPreview({ definition, mode, blockType }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode; blockType: StorePageBlock["type"] }) {
-  const fixture = getSectionStylePreviewFixture(blockType);
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, blockType);
   const items = fixture.items ?? [];
   const mobile = mode === "mobile";
   const sidebar = definition.id.includes("sidebar");
@@ -96,14 +96,14 @@ function ProductPreview({ definition, mode, blockType }: { definition: Storefron
 }
 
 function PromoPreview({ definition, mode }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode }) {
-  const fixture = getSectionStylePreviewFixture("promo-banner");
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, "promo-banner");
   const mobile = mode === "mobile";
   if (definition.id === "contact-cta") return <div className="flex h-full flex-col items-center justify-center bg-emerald-950 p-4 text-center text-white"><span className="text-[7px] uppercase tracking-[0.2em] text-amber-200">Talk to us</span><p className={cn("mt-1 font-serif font-semibold", mobile ? "text-[15px]" : "text-[18px]")}>Need help choosing?</p><p className="mt-1 max-w-[80%] text-[7px] text-white/65">Friendly support, quotes, and product questions.</p><span className="mt-2 rounded-full bg-white px-2.5 py-1 text-[7px] font-semibold text-emerald-950">Contact us</span></div>;
   return <div className="relative h-full overflow-hidden"><PreviewImage src={fixture.primaryMediaUrl} alt="Promo preview" className="h-full w-full" /><div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 to-transparent" /><div className="absolute inset-y-0 left-0 flex max-w-[72%] flex-col justify-center p-3 text-white"><span className="text-[7px] uppercase tracking-[0.18em] text-amber-200">{fixture.eyebrow}</span><p className={cn("mt-1 font-serif font-semibold leading-none", mobile ? "text-[15px]" : "text-[18px]")}>{fixture.title}</p><span className="mt-2 w-fit border border-white/60 px-2 py-1 text-[7px]">{fixture.ctaLabel}</span></div></div>;
 }
 
 function StoryPreview({ definition, mode }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode }) {
-  const fixture = getSectionStylePreviewFixture("rich-text");
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, "rich-text");
   const mobile = mode === "mobile";
   if (definition.id === "brand-story") return <div className={cn("grid h-full bg-[#f7f3ea]", mobile ? "grid-rows-[0.55fr_0.45fr]" : "grid-cols-2")}><PreviewImage src={fixture.primaryMediaUrl} alt="Story preview" className="h-full w-full" /><div className="flex flex-col justify-center p-3"><span className="text-[7px] uppercase tracking-[0.18em] text-emerald-700">{fixture.eyebrow}</span><p className={cn("mt-1 font-serif font-semibold leading-none", mobile ? "text-[14px]" : "text-[17px]")}>{fixture.title}</p><p className="mt-1.5 line-clamp-3 text-[7px] leading-snug text-slate-600">{fixture.subtitle}</p></div></div>;
   if (definition.id === "blog-posts") return <div className="h-full bg-white p-3"><span className="text-[7px] uppercase tracking-[0.18em] text-emerald-700">Journal</span><p className="mt-1 font-serif text-[15px] font-semibold">From the studio</p><div className="mt-2 space-y-1.5">{["How we make it", "Materials worth keeping", "A slower way to shop"].map((title) => <div key={title} className="flex items-center justify-between border-t border-slate-200 py-1.5 text-[7px]"><span>{title}</span><span>→</span></div>)}</div></div>;
@@ -111,7 +111,7 @@ function StoryPreview({ definition, mode }: { definition: StorefrontVariantDefin
 }
 
 function GenericPreview({ blockType, definition }: { blockType: StorePageBlock["type"]; definition: StorefrontVariantDefinition }) {
-  const fixture = getSectionStylePreviewFixture(blockType);
+  const fixture = getSectionStylePreviewFixtureById(definition.previewSpec.fixtureId, blockType);
   return <div className="flex h-full flex-col justify-center bg-[#f7f3ea] p-3"><span className="text-[7px] uppercase tracking-[0.18em] text-emerald-700">{fixture.eyebrow ?? blockType.replaceAll("-", " ")}</span><p className="mt-1 font-serif text-[15px] font-semibold text-slate-950">{fixture.title}</p><p className="mt-1 text-[7px] text-slate-600">{definition.description}</p><div className="mt-2 grid grid-cols-2 gap-1.5">{(fixture.items ?? []).slice(0, 4).map((item) => <div key={item.title} className="rounded-sm border border-slate-200 bg-white p-1.5"><p className="text-[7px] font-semibold">{item.title}</p><p className="text-[6px] text-slate-500">{item.meta}</p></div>)}</div></div>;
 }
 
@@ -126,8 +126,23 @@ export function SectionStylePreview({
   mode?: SectionStylePreviewMode;
   className?: string;
 }) {
+  const target = definition.previewSpec[mode];
+  const frameClassName = cn(
+    "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
+    mode === "mobile" ? "aspect-[9/14]" : "aspect-[16/9]",
+    className,
+  );
+
+  if (target.mode === "asset" && target.assetUrl) {
+    return (
+      <div className={frameClassName} aria-label={definition.previewSpec.alt}>
+        <PreviewImage src={target.assetUrl} alt={definition.previewSpec.alt} className="h-full w-full" />
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm", mode === "mobile" ? "aspect-[9/14]" : "aspect-[16/9]", className)} aria-label={definition.previewSpec.alt}>
+    <div className={frameClassName} aria-label={definition.previewSpec.alt}>
       {blockType === "hero" ? <HeroPreview definition={definition} mode={mode} /> : null}
       {blockType === "category-showcase" ? <CategoryPreview definition={definition} mode={mode} /> : null}
       {blockType === "featured-products" || blockType === "recommended-products" ? <ProductPreview definition={definition} mode={mode} blockType={blockType} /> : null}

@@ -1,7 +1,7 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
-import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { getStorefrontTemplateDefinition, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { buildEditorCompatibilityContext } from "@/lib/cms/storefront-platform/editor/platform-contracts";
-import { evaluateStorefrontVariantCompatibility } from "@/lib/cms/storefront-platform/variants/compatibility";
+import { evaluateStorefrontVariantCompatibility, getAvailableStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/compatibility";
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
 import { getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
 
@@ -10,6 +10,7 @@ export type SectionStyleLibraryEntry = {
   compatible: boolean;
   reasons: string[];
   recommended: boolean;
+  templateDefault: boolean;
   current: boolean;
   contentHints: string[];
 };
@@ -32,29 +33,24 @@ function contentHints(definition: StorefrontVariantDefinition, block: StorePageB
   return hints;
 }
 
-function isRecommended(definition: StorefrontVariantDefinition, templateId: StorefrontTemplateId, businessFamily: string) {
-  return definition.recommendedFor?.templateIds?.includes(templateId)
-    || definition.recommendedFor?.businessFamilies?.includes(businessFamily as never)
-    || definition.editor.badge === "recommended"
-    || definition.visibility === "recommended";
+function isRecommended(definition: StorefrontVariantDefinition, templateId: StorefrontTemplateId, businessFamily: string, templateDefaultId?: string) {
+  return Boolean(
+    definition.id === templateDefaultId
+      || definition.recommendedFor?.templateIds?.includes(templateId)
+      || definition.recommendedFor?.businessFamilies?.includes(businessFamily as never)
+      || definition.editor.badge === "recommended"
+      || definition.visibility === "recommended"
+  );
 }
 
-function isMerchantVisible(definition: StorefrontVariantDefinition, templateId: StorefrontTemplateId, current: boolean) {
-  if (current) return true;
-  if (definition.lifecycle !== "published") return false;
-  if (definition.visibility === "admin-only") return false;
-  if (definition.visibility === "template-exclusive") {
-    return definition.recommendedFor?.templateIds?.includes(templateId) ?? false;
-  }
-  return true;
-}
 
 export function getSectionStyleLibraryEntries(
   templateId: StorefrontTemplateId,
   block: StorePageBlock,
 ): SectionStyleLibraryEntry[] {
   const context = buildEditorCompatibilityContext(templateId, block);
-  return getStorefrontVariantDefinitions(block.type)
+  const templateDefaultId = getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type];
+  return getAvailableStorefrontVariantDefinitions(block.type, context, { currentVariantId: block.layoutVariant })
     .map((definition) => {
       const current = block.layoutVariant === definition.id;
       const compatibility = evaluateStorefrontVariantCompatibility(definition, context);
@@ -62,13 +58,39 @@ export function getSectionStyleLibraryEntries(
         definition,
         compatible: compatibility.compatible,
         reasons: compatibility.reasons,
-        recommended: isRecommended(definition, templateId, context.businessFamily),
+        recommended: isRecommended(definition, templateId, context.businessFamily, templateDefaultId),
+        templateDefault: definition.id === templateDefaultId,
         current,
         contentHints: contentHints(definition, block),
       };
     })
-    .filter((entry) => isMerchantVisible(entry.definition, templateId, entry.current))
     .sort((left, right) => Number(right.recommended) - Number(left.recommended) || left.definition.editor.order - right.definition.editor.order);
+}
+
+
+
+export function getSectionStyleResetTarget(
+  templateId: StorefrontTemplateId,
+  block: StorePageBlock,
+): SectionStyleLibraryEntry | undefined {
+  const entries = getSectionStyleLibraryEntries(templateId, { ...block, layoutVariant: undefined });
+  return entries.find((entry) => entry.templateDefault && entry.compatible)
+    ?? entries.find((entry) => entry.recommended && entry.compatible)
+    ?? entries.find((entry) => entry.compatible);
+}
+
+export function applySectionStyleToBlock(
+  block: StorePageBlock,
+  variantId: string | null | undefined,
+): StorePageBlock {
+  return {
+    ...block,
+    layoutVariant: variantId ?? undefined,
+  };
+}
+
+export function buildSectionStylePersistencePatch(variantId: string | null | undefined) {
+  return { layout_variant: variantId ?? null };
 }
 
 export function getSectionStyleSupportedBlockTypes() {

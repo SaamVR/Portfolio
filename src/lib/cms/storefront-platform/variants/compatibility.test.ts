@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { compositionRecipeRegistry } from "@/lib/cms/storefront-platform/composition/recipes";
 import {
+  isStorefrontVariantAvailable,
   resolveCompatibleCompositionRecipe,
   resolveCompatibleStorefrontVariant,
   validateMobileFirstResponsiveContract,
 } from "@/lib/cms/storefront-platform/variants/compatibility";
-import { canonicalStorefrontVariantRegistry } from "@/lib/cms/storefront-platform/variants/registry";
+import { canonicalStorefrontVariantRegistry, getStorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/registry";
 
 describe("storefront compatibility contracts", () => {
   it("keeps every reusable variant and recipe mobile-first", () => {
@@ -44,6 +45,19 @@ describe("storefront compatibility contracts", () => {
       mediaCount: 1,
     };
     assert.equal(resolveCompatibleStorefrontVariant("hero", "collection-spotlight", serviceContext)?.id, "split");
+  });
+
+
+  it("uses one merchant visibility policy for lifecycle and template-exclusive styles", () => {
+    const base = getStorefrontVariantDefinition("hero", "centered");
+    assert.ok(base);
+    const context = { businessFamily: "commerce" as const, capabilities: ["catalog"], templateId: "threads" };
+
+    assert.equal(isStorefrontVariantAvailable({ ...base, lifecycle: "draft" }, context), false);
+    assert.equal(isStorefrontVariantAvailable({ ...base, visibility: "admin-only" }, context), false);
+    assert.equal(isStorefrontVariantAvailable({ ...base, lifecycle: "deprecated" }, context, { currentVariantId: base.id }), true);
+    assert.equal(isStorefrontVariantAvailable({ ...base, visibility: "template-exclusive", recommendedFor: { templateIds: ["threads"] } }, context), true);
+    assert.equal(isStorefrontVariantAvailable({ ...base, visibility: "template-exclusive", recommendedFor: { templateIds: ["fashion"] } }, context), false);
   });
 
   it("falls media-dependent recipes back to a no-media composition", () => {
