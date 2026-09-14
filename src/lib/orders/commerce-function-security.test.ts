@@ -7,6 +7,14 @@ const migration = readFileSync(
   path.join(process.cwd(), "supabase/migrations/20260914225500_pin_commerce_function_search_paths.sql"),
   "utf8",
 );
+const smoke = readFileSync(
+  path.join(process.cwd(), "supabase/migrations/commerce_function_security_smoke.sql"),
+  "utf8",
+);
+const runner = readFileSync(
+  path.join(process.cwd(), "scripts/run-rls-smoke.mjs"),
+  "utf8",
+);
 
 test("commerce functions pin search_path without changing their public contracts", () => {
   assert.match(
@@ -19,4 +27,11 @@ test("commerce functions pin search_path without changing their public contracts
   );
   assert.doesNotMatch(migration, /DROP FUNCTION/i);
   assert.doesNotMatch(migration, /REVOKE\s+EXECUTE/i);
+});
+
+test("database smoke locks function search paths and coupon RPC ACL separation", () => {
+  assert.match(smoke, /search_path=pg_catalog, public/);
+  assert.match(smoke, /legacy two-argument validate_coupon ACL is not service-role-only/);
+  assert.match(smoke, /store-scoped validate_coupon is not available to storefront roles/);
+  assert.match(runner, /commerce_function_security_smoke\.sql/);
 });
