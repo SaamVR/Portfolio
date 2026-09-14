@@ -8,6 +8,8 @@ import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_BODY_BYTES = 12000;
+
 const CONTACT_WINDOW_MS = 60 * 60_000;
 const CONTACT_REQUESTER_LIMIT = 12;
 const CONTACT_EMAIL_LIMIT = 5;
@@ -73,7 +75,24 @@ export const contactRouteDeps = {
 
 export async function POST(req: Request) {
   try {
-    const parsed = contactSchema.safeParse(await req.json());
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Contact message is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Contact message is too large" }, { status: 413 });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    const parsed = contactSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid contact message" }, { status: 400 });
     }

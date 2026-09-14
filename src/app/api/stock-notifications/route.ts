@@ -8,6 +8,8 @@ import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_BODY_BYTES = 4000;
+
 const STOCK_REQUESTER_WINDOW_MS = 60 * 60_000;
 const STOCK_REQUESTER_LIMIT = 15;
 const STOCK_STORE_WINDOW_MS = 60 * 60_000;
@@ -98,7 +100,24 @@ export const stockNotificationRouteDeps = {
 
 export async function POST(req: Request) {
   try {
-    const parsed = parseStockNotificationInput(await req.json());
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Stock notification request is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Stock notification request is too large" }, { status: 413 });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    const parsed = parseStockNotificationInput(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid stock notification request" }, { status: 400 });
     }
