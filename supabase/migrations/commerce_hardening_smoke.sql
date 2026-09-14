@@ -30,17 +30,29 @@ BEGIN
       AND indexname = 'idx_coupon_codes_store_code_unique'
       AND indexdef ILIKE '%UNIQUE%'
       AND indexdef ILIKE '%(store_id, code)%'
+      AND indexdef NOT ILIKE '%WHERE%'
   ) THEN
-    RAISE EXCEPTION 'store-scoped coupon uniqueness index is missing';
+    RAISE EXCEPTION 'store-scoped coupon uniqueness index is missing or partial';
   END IF;
 
   IF EXISTS (
     SELECT 1 FROM pg_indexes
     WHERE schemaname = 'public'
       AND tablename = 'coupon_codes'
-      AND indexname = 'coupon_codes_code_key'
+      AND indexname IN ('coupon_codes_code_key', 'idx_coupon_codes_global_code_unique')
   ) THEN
-    RAISE EXCEPTION 'legacy global coupon uniqueness still exists';
+    RAISE EXCEPTION 'legacy/global coupon uniqueness still exists';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'coupon_codes'
+      AND column_name = 'store_id'
+      AND is_nullable = 'YES'
+  ) THEN
+    RAISE EXCEPTION 'coupon store_id remains nullable';
   END IF;
 
   IF NOT EXISTS (
