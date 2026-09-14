@@ -591,6 +591,14 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
   const featured = products.filter((product) => product.featured);
   const source = featured.length >= 3 ? featured : products;
   const visible = source.slice(0, typeof p.limit === "number" ? p.limit : 10);
+  const featuredDesktopBasis =
+    visible.length <= 3
+      ? "min-[900px]:basis-1/3"
+      : visible.length === 4
+        ? "min-[900px]:basis-1/4"
+        : visible.length === 5
+          ? "min-[900px]:basis-[20%]"
+          : "min-[900px]:basis-1/6";
   const [api, setApi] = useState<CarouselApi>();
   const [autoplayPaused, setAutoplayPaused] = useState(false);
   const autoplayEnabled = p.autoplay !== false && visible.length > 1;
@@ -628,7 +636,7 @@ function ThreadsFeatured({ block }: { block: StorePageBlock }) {
             {visible.map((product, index) => (
               <CarouselItem
                 key={`${product.id}-${index}`}
-                className="basis-[58%] pl-2.5 sm:basis-[34%] md:basis-1/4 md:pl-3 min-[900px]:basis-1/6"
+                className={`basis-[58%] pl-2.5 sm:basis-[34%] md:basis-1/4 md:pl-3 ${featuredDesktopBasis}`}
               >
                 <ThreadsProductCard product={product} framed />
               </CarouselItem>

@@ -33,6 +33,14 @@ describe("Threads homepage behavior contracts", () => {
     expect(footerSource).not.toContain('label: "Home & Living"');
   });
 
+  it("expands sparse featured rails to fill the desktop merchandising band", () => {
+    expect(rendererSource).toContain("visible.length === 4");
+    expect(rendererSource).toContain('"min-[900px]:basis-1/4"');
+    expect(rendererSource).toContain("visible.length === 5");
+    expect(rendererSource).toContain('"min-[900px]:basis-[20%]"');
+    expect(rendererSource).toContain("${featuredDesktopBasis}");
+  });
+
   it("keeps visible carousel position controls touch-safe", () => {
     expect(rendererSource).toContain('className="grid h-11 min-w-11 place-items-center"');
     expect(rendererSource).toContain('aria-label={`Go to slide ${index + 1}`}');
