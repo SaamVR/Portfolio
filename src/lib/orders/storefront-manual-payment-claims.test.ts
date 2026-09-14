@@ -16,9 +16,16 @@ test("storefront manual payment claims are globally replay-safe", () => {
     "provider + transaction reference must be globally unique rather than tenant-scoped",
   );
   assert.match(migration, /pg_advisory_xact_lock/i);
-  assert.match(migration, /manual payment transaction id is required/i);
+  assert.match(migration, /exactly one manual payment transaction id is required/i);
   assert.match(migration, /invalid manual payment transaction id: already used/i);
   assert.match(migration, /AFTER INSERT ON public\.orders/i);
+});
+
+test("manual payment claims require exactly one parseable transaction reference", () => {
+  assert.match(migration, /regexp_matches\([\s\S]*?'g'[\s\S]*?\)/i);
+  assert.match(migration, /parsed\.match_count <> 1/i);
+  assert.match(migration, /parsed\.match_count = 1/i);
+  assert.match(migration, /_reference_count <> 1/i);
 });
 
 test("manual payment claims use canonical provider namespaces", () => {
