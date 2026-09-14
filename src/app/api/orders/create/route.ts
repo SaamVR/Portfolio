@@ -6,6 +6,7 @@ import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefron
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 import { resolveAuthoritativeCheckoutPricing } from "@/lib/orders/authoritative-checkout-pricing";
+import { validateAuthoritativeCheckoutSelections } from "@/lib/orders/authoritative-checkout-selection";
 import { getPaymentProviderByPaymentMethod, isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 import { isStorefrontPaymentMethodConfigured } from "@/lib/payments/storefront-payment-availability";
 
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
         .maybeSingle(),
       supabaseAdmin
         .from("products")
-        .select("id, price, type")
+        .select("id, price, type, sizes, colors, metric_values")
         .eq("store_id", storeId)
         .in("id", productIds),
       orderCreateRouteDeps.loadStorePlanState(supabaseAdmin, storeId, { includePublished: true }),
@@ -217,6 +218,17 @@ export async function POST(req: Request) {
     })) {
       return jsonNoStore({ error: "Payment method is not available for this store" }, { status: 400 });
     }
+
+    validateAuthoritativeCheckoutSelections({
+      items,
+      products: (productsResult.data ?? []).map((product) => ({
+        id: product.id,
+        type: product.type,
+        sizes: product.sizes,
+        colors: product.colors,
+        metric_values: product.metric_values,
+      })),
+    });
 
     const authoritativePricing = resolveAuthoritativeCheckoutPricing({
       items,

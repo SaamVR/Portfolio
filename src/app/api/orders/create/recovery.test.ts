@@ -100,7 +100,7 @@ function createAdminMock(options?: {
               eq() {
                 return {
                   in: async () => ({
-                    data: [{ id: productId, price: 1000, type: "T-Shirt" }],
+                    data: [{ id: productId, price: 1000, type: "T-Shirt", sizes: ["M"], colors: [], metric_values: {} }],
                     error: null,
                   }),
                 };
@@ -208,6 +208,39 @@ describe("order creation checkout recovery", () => {
 
     const response = await POST(buildRequest("cod"));
     assert.equal(response.status, 409);
+  });
+
+  test("rejects a product option that is not configured for the store product", async () => {
+    const admin = createAdminMock({ replayed: false, persistedPaymentMethod: "cod" });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const request = buildRequest("cod");
+    const body = await request.json();
+    body.items[0].size = "XXL";
+    const tamperedRequest = new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const response = await POST(tamperedRequest);
+    assert.equal(response.status, 400);
+    const responseBody = await response.json();
+    assert.match(responseBody.error, /invalid product option/i);
+    assert.equal(rpcCalls, 0);
   });
 
   test("rejects a client-supplied delivery fee that disagrees with authoritative store pricing", async () => {
