@@ -7,7 +7,7 @@ Snapshot date: 2026-09-15 (Asia/Dhaka)
 - Frozen R4 storefront: `d6c689a469fdc419cefca224c0e5f046644bb2df` (`r4/section-studio`)
 - Production/P0 baseline: `4caa14c351cf0f7071e5b4ea14fb069a79403215`
 - P0 coordinator remote checkpoint inspected: `2a4ab729989c3cf9739c62572aa465ba4a4ad03e` (`release/p0-blocker-coordination-2026-09-14`)
-- Commerce/security implementation checkpoint: `d1487b64965fa0b1ad273f7f1b7e117653408f92`
+- Commerce/security runtime implementation checkpoint: `d1487b64965fa0b1ad273f7f1b7e117653408f92`
 - Last earlier production-preflight-validated commerce checkpoint: `768e82483a97e82d57392a2b41a3d2d2fabb93a2`
 - Billing PR #364: `7270899b8f27628bb7b304b2db1fb41cd53e133f`
 - Order PR #365: `8846129614ad6bf17633954a2e8d6cc59baf597c`
@@ -15,7 +15,7 @@ Snapshot date: 2026-09-15 (Asia/Dhaka)
 - Invite PR #368: `849abada98722a3b65f915198a46fd42c1f760e5`
 - Dependency-security P0: #367 remains open
 
-The commit produced by refreshing this document is metadata-only and newer than the implementation checkpoint above. Use the PR head for the exact post-refresh branch SHA.
+Commits after `d1487b6...` only refresh this convergence document; they do not change runtime code or executable regression tests.
 
 ## Integration authority
 
