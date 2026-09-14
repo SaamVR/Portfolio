@@ -21,6 +21,12 @@ test("storefront manual payment claims are globally replay-safe", () => {
   assert.match(migration, /AFTER INSERT ON public\.orders/i);
 });
 
+test("manual payment claims use canonical provider namespaces", () => {
+  assert.match(migration, /provider text NOT NULL CHECK \(provider IN \('bkash', 'nagad'\)\)/i);
+  assert.match(migration, /WHEN 'bkash_manual' THEN 'bkash'/i);
+  assert.match(migration, /WHEN 'nagad' THEN 'nagad'/i);
+});
+
 test("consumed manual payment identities survive store and order deletion", () => {
   assert.match(migration, /REFERENCES public\.stores\(id\) ON DELETE SET NULL/i);
   assert.match(migration, /REFERENCES public\.orders\(id\) ON DELETE SET NULL/i);
