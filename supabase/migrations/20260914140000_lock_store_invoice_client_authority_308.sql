@@ -4,7 +4,7 @@
 DROP POLICY IF EXISTS "Store managers can create invoices" ON public.store_invoices;
 DROP POLICY IF EXISTS "Store managers can update invoices" ON public.store_invoices;
 
-REVOKE ALL PRIVILEGES ON TABLE public.store_invoices FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.store_invoices FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.store_invoices TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.store_invoices TO service_role;
 

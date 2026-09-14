@@ -111,17 +111,23 @@ If any value is non-zero, do not apply #314.
 
 ## Deployment order
 
-1. Re-run the reconciliation discovery query and the three zero-count preflight queries.
+Keep PR #364 draft while the production database is still on the vulnerable contract. The database changes are the authority boundary; do not deploy the new application head first and leave a window where route-level protection exists without the database invariant. Repository re-trace found merchant-facing `store_invoices` use outside governed server routes is read-only, while billing settlement routes use trusted server authority.
+
+If merging `main` automatically deploys the app, use this order:
+
+1. Re-run the reconciliation discovery query and `npm run billing:authority:preflight`; it must pass.
 2. Apply `20260914140000_lock_store_invoice_client_authority_308.sql`.
 3. Verify authenticated/anon invoice mutation privileges are absent and `stores.plan` client changes are blocked.
 4. Apply `20260914140500_manual_bkash_transaction_replay_guard_314.sql`.
-5. Run `npm run test:db` against the migrated environment.
-6. Re-run the duplicate query; expected result is zero groups.
-7. Verify the unique index `store_invoices_bkash_manual_provider_transaction_uidx` exists and is valid.
+5. Run `npm run billing:authority:postdeploy`; it must pass.
+6. Run `npm run test:db` against the migrated environment.
+7. Re-run the duplicate query; expected result is zero groups.
 8. Verify one legitimate server-side/manual-review settlement path still succeeds.
-9. Refresh the production migration ledger.
-10. Remove the two `pending-production` drift exceptions only after the ledger proves both migrations are applied.
-11. Run `npm run migrations:drift`; expected result is green without those exceptions.
+9. Only now mark PR #364 ready, merge it, and deploy the exact approved application SHA.
+10. Smoke manual-invoice retry, platform manual review, and the normal billing read UX on the deployed app.
+11. Refresh the production migration ledger.
+12. Remove the two `pending-production` drift exceptions only after the ledger proves both migrations are applied.
+13. Run `npm run migrations:drift`; expected result is green without those exceptions.
 
 ## Post-deploy privilege verification
 

@@ -6,28 +6,40 @@ SET TRANSACTION READ ONLY;
 
 DO $$
 DECLARE
-  v_client_dml integer;
+  v_anon_privileges integer;
+  v_authenticated_nonselect integer;
   v_authenticated_select integer;
   v_service_role_dml integer;
+  v_mutation_policies integer;
+  v_select_policy integer;
   v_invoice_trigger integer;
   v_plan_triggers integer;
   v_unique_index integer;
   v_identity_constraint integer;
   v_duplicate_groups integer;
 BEGIN
-  SELECT count(*) INTO v_client_dml
-  FROM information_schema.role_table_grants
-  WHERE table_schema = 'public'
-    AND table_name = 'store_invoices'
-    AND grantee IN ('anon', 'authenticated')
-    AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
+  SELECT (
+    has_table_privilege('anon', 'public.store_invoices', 'SELECT')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'INSERT')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'UPDATE')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'DELETE')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'TRUNCATE')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'REFERENCES')::int
+    + has_table_privilege('anon', 'public.store_invoices', 'TRIGGER')::int
+  ) INTO v_anon_privileges;
 
-  SELECT count(*) INTO v_authenticated_select
-  FROM information_schema.role_table_grants
-  WHERE table_schema = 'public'
-    AND table_name = 'store_invoices'
-    AND grantee = 'authenticated'
-    AND privilege_type = 'SELECT';
+  SELECT (
+    has_table_privilege('authenticated', 'public.store_invoices', 'INSERT')::int
+    + has_table_privilege('authenticated', 'public.store_invoices', 'UPDATE')::int
+    + has_table_privilege('authenticated', 'public.store_invoices', 'DELETE')::int
+    + has_table_privilege('authenticated', 'public.store_invoices', 'TRUNCATE')::int
+    + has_table_privilege('authenticated', 'public.store_invoices', 'REFERENCES')::int
+    + has_table_privilege('authenticated', 'public.store_invoices', 'TRIGGER')::int
+  ) INTO v_authenticated_nonselect;
+
+  SELECT has_table_privilege(
+    'authenticated', 'public.store_invoices', 'SELECT'
+  )::int INTO v_authenticated_select;
 
   SELECT count(*) INTO v_service_role_dml
   FROM information_schema.role_table_grants
@@ -35,6 +47,19 @@ BEGIN
     AND table_name = 'store_invoices'
     AND grantee = 'service_role'
     AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE');
+
+  SELECT count(*) INTO v_mutation_policies
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'store_invoices'
+    AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL');
+
+  SELECT count(*) INTO v_select_policy
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'store_invoices'
+    AND policyname = 'Store managers can view invoices'
+    AND cmd = 'SELECT';
 
   SELECT count(*) INTO v_invoice_trigger
   FROM pg_trigger
@@ -76,9 +101,12 @@ BEGIN
     HAVING count(*) > 1
   ) AS duplicates;
 
-  IF v_client_dml <> 0
+  IF v_anon_privileges <> 0
+     OR v_authenticated_nonselect <> 0
      OR v_authenticated_select <> 1
      OR v_service_role_dml <> 4
+     OR v_mutation_policies <> 0
+     OR v_select_policy <> 1
      OR v_invoice_trigger <> 1
      OR v_plan_triggers <> 2
      OR v_unique_index <> 1
@@ -88,8 +116,9 @@ BEGIN
       ERRCODE = '23514',
       MESSAGE = 'billing_authority_postdeploy_verification_failed',
       DETAIL = format(
-        'client_dml=%s auth_select=%s service_dml=%s invoice_trigger=%s plan_triggers=%s unique_index=%s identity_constraint=%s duplicate_groups=%s',
-        v_client_dml, v_authenticated_select, v_service_role_dml,
+        'anon_privileges=%s auth_nonselect=%s auth_select=%s service_dml=%s mutation_policies=%s select_policy=%s invoice_trigger=%s plan_triggers=%s unique_index=%s identity_constraint=%s duplicate_groups=%s',
+        v_anon_privileges, v_authenticated_nonselect, v_authenticated_select,
+        v_service_role_dml, v_mutation_policies, v_select_policy,
         v_invoice_trigger, v_plan_triggers, v_unique_index,
         v_identity_constraint, v_duplicate_groups
       );

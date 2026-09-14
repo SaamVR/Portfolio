@@ -14,7 +14,7 @@ const replaySql = readFileSync(
 test("#308 removes browser invoice mutation authority while preserving managed reads", () => {
   assert.match(authoritySql, /DROP POLICY IF EXISTS "Store managers can create invoices"/);
   assert.match(authoritySql, /DROP POLICY IF EXISTS "Store managers can update invoices"/);
-  assert.match(authoritySql, /REVOKE ALL PRIVILEGES ON TABLE public\.store_invoices FROM anon, authenticated/);
+  assert.match(authoritySql, /REVOKE ALL PRIVILEGES ON TABLE public\.store_invoices FROM PUBLIC, anon, authenticated/);
   assert.match(authoritySql, /GRANT SELECT ON TABLE public\.store_invoices TO authenticated/);
   assert.match(authoritySql, /store_invoice_server_authority_required/);
 });

@@ -61,6 +61,8 @@ Read-only production inspection on 2026-09-14 found exactly one normalized manua
 
 Both are `paid`; neither has review metadata. Current subscriptions have changed since those invoices and cannot establish which historical invoice owns the real provider transaction. The raw provider transaction identity is intentionally not recorded in this handoff; obtain it from the discovery query in the rollout runbook.
 
+A read-only provenance sweep found no matching `billing_webhook_events`, `platform_audit_logs`, or `store_lifecycle_events` that independently tie either invoice to the provider transaction. Database provenance therefore does not resolve the ambiguity; finance-authoritative bKash evidence is still required.
+
 Before production rollout, finance/operator review must compare both rows to the authoritative bKash record and correct only the proven bad historical fact. Do not choose by timestamp, amount, plan, or current subscription state.
 
 Runbook: `docs/runbooks/p0-billing-authority-rollout.md`.
