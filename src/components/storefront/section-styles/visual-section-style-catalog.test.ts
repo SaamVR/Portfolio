@@ -46,7 +46,7 @@ test("mobile review contract covers the required 360/390/430 widths", () => {
 
   const categorySource = readSibling("./CategoryVisualStyles.tsx");
   assert.match(categorySource, /min-w-\[82vw\]/, "editorial rail should use viewport-relative cards on narrow screens");
-  assert.match(categorySource, /grid-cols-3/, "circular categories should retain a compact mobile grid");
+  assert.match(categorySource, /grid-cols-2/, "circular categories should respect the platform two-column mobile ceiling");
   assert.match(categorySource, /grid-cols-2/, "tile and image-card styles should remain two-column capable on mobile");
 
   const heroSource = readSibling("./HeroVisualStyles.tsx");

@@ -27,7 +27,7 @@ describe("Storefront Platform v1 integration contracts", () => {
   });
 });
 const threadsHeaderSource = readFileSync("src/components/storefront/threads/ThreadsHeader.tsx", "utf8");
-const threadsRendererSource = readFileSync("src/components/storefront/threads/ThreadsBlockRenderer.tsx", "utf8");
+const threadsRendererSource = readFileSync("src/components/storefront/threads/ThreadsEditorialBlockRenderer.tsx", "utf8");
 const threadsFooterSource = readFileSync("src/components/storefront/threads/ThreadsFooter.tsx", "utf8");
 
 describe("Threads mobile stabilization", () => {

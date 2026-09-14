@@ -1,4 +1,5 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
+import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
 import { getSectionStylePreviewFixtureById } from "@/lib/cms/storefront-platform/variants/preview-fixtures";
 import { cn } from "@/lib/utils";
@@ -7,7 +8,7 @@ export type SectionStylePreviewMode = "desktop" | "mobile";
 
 function PreviewImage({ src, alt, className }: { src?: string; alt: string; className?: string }) {
   if (!src) return <div className={cn("bg-gradient-to-br from-emerald-900 via-emerald-700 to-amber-200", className)} />;
-  return <img src={src} alt={alt} className={cn("object-cover", className)} loading="lazy" />;
+  return <SafeStorefrontImage src={src} alt={alt} width={480} height={320} className={cn("object-cover", className)} />;
 }
 
 function HeroPreview({ definition, mode }: { definition: StorefrontVariantDefinition; mode: SectionStylePreviewMode }) {
@@ -22,15 +23,31 @@ function HeroPreview({ definition, mode }: { definition: StorefrontVariantDefini
     </div>
   );
 
-  if (definition.id === "full-bleed" || definition.id === "poster") {
+  if (definition.id === "full-bleed") {
     return (
       <div className="relative h-full overflow-hidden bg-slate-950">
-        <PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full opacity-85" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
+        <PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
         <div className={cn("absolute inset-x-0 bottom-0 text-white", mobile ? "p-3" : "p-4")}>
           <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-white/70">{fixture.eyebrow}</span>
           <p className={cn("mt-1 max-w-[78%] font-serif font-semibold leading-none", mobile ? "text-[15px]" : "text-[20px]")}>{fixture.title}</p>
-          <span className="mt-2 inline-block border border-white/60 px-2 py-1 text-[7px]">{fixture.ctaLabel}</span>
+          <p className="mt-1.5 max-w-[70%] line-clamp-2 text-[7px] text-white/70">{fixture.subtitle}</p>
+          <span className="mt-2 inline-block rounded-full bg-white px-2 py-1 text-[7px] font-semibold text-slate-950">{fixture.ctaLabel}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (definition.id === "poster") {
+    return (
+      <div className="relative h-full overflow-hidden bg-slate-950">
+        <PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full opacity-75" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/30 to-transparent" />
+        <div className="absolute inset-2 border border-white/45" />
+        <div className={cn("absolute inset-x-0 bottom-0 text-white", mobile ? "p-4" : "p-5")}>
+          <div className="flex items-center justify-between border-b border-white/40 pb-1 text-[6px] uppercase tracking-[0.2em] text-white/70"><span>{fixture.eyebrow}</span><span>Campaign</span></div>
+          <p className={cn("mt-2 max-w-[88%] font-sans font-black uppercase leading-[0.83] tracking-[-0.05em]", mobile ? "text-[18px]" : "text-[25px]")}>{fixture.title}</p>
+          <span className="mt-2 inline-block border-b border-white pb-0.5 text-[7px] font-semibold uppercase">{fixture.ctaLabel}</span>
         </div>
       </div>
     );
@@ -52,13 +69,21 @@ function HeroPreview({ definition, mode }: { definition: StorefrontVariantDefini
 
   if (definition.id === "editorial") {
     return (
-      <div className={cn("grid h-full bg-[#f7f3ea]", mobile ? "grid-rows-[0.58fr_0.42fr]" : "grid-cols-[1.15fr_0.85fr]")}>
-        <PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full" />
-        <div className="flex flex-col justify-end bg-emerald-950 p-3 text-white">
-          <span className="text-[7px] uppercase tracking-[0.18em] text-amber-200">{fixture.eyebrow}</span>
-          <p className={cn("mt-1 font-serif font-semibold leading-none", mobile ? "text-[15px]" : "text-[19px]")}>{fixture.title}</p>
-          <p className="mt-1.5 line-clamp-2 text-[7px] leading-snug text-white/65">{fixture.subtitle}</p>
+      <div className={cn("grid h-full gap-1 bg-[#f7f3ea] p-2", mobile ? "grid-rows-[0.52fr_0.48fr]" : "grid-cols-[1.08fr_0.72fr]")}>
+        <div className="flex min-w-0 flex-col justify-between border-y border-slate-300 py-2">
+          <div><span className="text-[6px] font-semibold uppercase tracking-[0.22em] text-emerald-700">{fixture.eyebrow}</span><p className={cn("mt-1 max-w-[8ch] font-sans font-black leading-[0.82] tracking-[-0.06em] text-slate-950", mobile ? "text-[18px]" : "text-[25px]")}>{fixture.title}</p></div>
+          <p className="line-clamp-2 max-w-[85%] text-[7px] text-slate-600">{fixture.subtitle}</p>
         </div>
+        <PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full" />
+      </div>
+    );
+  }
+
+  if (definition.id === "collection-spotlight") {
+    return (
+      <div className={cn("grid h-full bg-[#f7f3ea]", mobile ? "grid-rows-[0.55fr_0.45fr]" : "grid-cols-[1.15fr_0.85fr]")}>
+        <div className="relative overflow-hidden"><PreviewImage src={fixture.primaryMediaUrl} alt="Hero preview" className="h-full w-full" /><span className="absolute bottom-2 left-2 bg-black/55 px-2 py-1 text-[6px] uppercase tracking-wider text-white">Collection</span></div>
+        <div className="flex flex-col justify-center bg-white p-3"><span className="text-[7px] uppercase tracking-[0.18em] text-emerald-700">{fixture.eyebrow}</span><p className={cn("mt-1 font-serif font-semibold leading-none", mobile ? "text-[14px]" : "text-[18px]")}>{fixture.title}</p><p className="mt-1.5 line-clamp-2 text-[7px] text-slate-600">{fixture.subtitle}</p><span className="mt-2 w-fit border-b border-emerald-800 pb-0.5 text-[7px] font-semibold text-emerald-900">{fixture.ctaLabel}</span></div>
       </div>
     );
   }
@@ -78,6 +103,12 @@ function CategoryPreview({ definition, mode }: { definition: StorefrontVariantDe
   if (definition.id === "compact-list") {
     return <div className="flex h-full flex-col bg-white p-3"><p className="font-serif text-[14px] font-semibold">{fixture.title}</p><div className="mt-2 divide-y divide-slate-200">{items.slice(0, 4).map((item, index) => <div key={item.title} className="flex items-center justify-between py-1.5 text-[8px]"><span>{item.title}</span><span className="text-slate-400">0{index + 1}</span></div>)}</div></div>;
   }
+  if (definition.id === "circular-categories") {
+    return <div className="h-full bg-[#f7f3ea] p-2.5"><p className="font-serif text-[13px] font-semibold">{fixture.title}</p><div className={cn("mt-2 grid gap-2", mobile ? "grid-cols-2" : "grid-cols-4")}>{items.slice(0, 4).map((item) => <div key={item.title} className="text-center"><div className="mx-auto aspect-square w-[82%] overflow-hidden rounded-full border border-slate-200"><PreviewImage src={item.imageUrl} alt={item.title} className="h-full w-full" /></div><p className="mt-1 truncate text-[7px] font-semibold">{item.title}</p></div>)}</div></div>;
+  }
+  if (definition.id === "collection-tiles") {
+    return <div className="grid h-full grid-cols-2 grid-rows-2 gap-1 bg-[#f7f3ea] p-2">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn("relative overflow-hidden", index === 0 && "row-span-2")}><PreviewImage src={item.imageUrl} alt={item.title} className="h-full w-full" /><div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" /><span className="absolute bottom-1 left-1 text-[7px] font-semibold text-white">{item.title}</span></div>)}</div>;
+  }
   if (definition.id === "masonry") {
     return <div className="grid h-full grid-cols-2 grid-rows-2 gap-1 bg-[#f7f3ea] p-2">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn("relative overflow-hidden", index === 0 && "row-span-2")}><PreviewImage src={item.imageUrl} alt={item.title} className="h-full w-full" /><span className="absolute bottom-1 left-1 bg-white/90 px-1.5 py-0.5 text-[7px] font-semibold">{item.title}</span></div>)}</div>;
   }
@@ -96,7 +127,7 @@ function ProductPreview({ definition, mode, blockType }: { definition: Storefron
     </div>
   );
   if (definition.id === "editorial-grid") return <div className="h-full bg-[#f3efe5] p-2"><div className="flex items-end justify-between border-b border-slate-300 pb-1"><p className="max-w-[60%] font-serif text-[14px] font-semibold leading-none">{fixture.title}</p><span className="text-[6px] uppercase">Edit 01</span></div><div className="mt-1.5 grid h-[78%] grid-cols-2 gap-1">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn(index === 0 && "row-span-2")}>{tile(item, "h-full")}</div>)}</div></div>;
-  if (definition.id === "center-focus-rail") return <div className="h-full overflow-hidden bg-[#f3efe5] p-2 text-center"><p className="font-serif text-[13px] font-semibold">{fixture.title}</p><div className="mt-2 flex justify-center gap-1.5">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn(index === 1 ? "w-[42%]" : "w-[27%] opacity-70")}>{tile(item)}</div>)}</div></div>;
+  if (definition.id === "center-focus-rail" || definition.id === "carousel") return <div className="h-full overflow-hidden bg-[#f3efe5] p-2 text-center"><p className="font-serif text-[13px] font-semibold">{fixture.title}</p><div className="mt-2 flex justify-center gap-1.5">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn(index === 1 ? "w-[42%]" : "w-[27%] opacity-70")}>{tile(item)}</div>)}</div></div>;
   if (definition.id === "compact-commerce-grid") return <div className="h-full bg-white p-2"><p className="font-serif text-[12px] font-semibold">{fixture.title}</p><div className={cn("mt-1.5 grid gap-1", mobile ? "grid-cols-2" : "grid-cols-4")}>{items.slice(0, 4).map((item) => <div key={item.title}>{tile(item)}</div>)}</div></div>;
   if (definition.id === "product-spotlight") return <div className="h-full bg-[#f7f3ea] p-2"><p className="font-serif text-[13px] font-semibold">{fixture.title}</p><div className="mt-1.5 grid h-[80%] grid-cols-2 gap-1">{items.slice(0, 3).map((item, index) => <div key={item.title} className={cn(index === 0 && "row-span-2")}>{tile(item, "h-full")}</div>)}</div></div>;
   if (definition.id === "magazine-rail") return <div className="h-full overflow-hidden bg-[#f3efe5] p-2"><p className="font-serif text-[13px] font-semibold">{fixture.title}</p><div className="mt-2 flex items-start gap-1.5">{items.slice(0, 4).map((item, index) => <div key={item.title} className={cn("w-[29%] shrink-0", index % 2 === 1 && "pt-3")}>{tile(item)}</div>)}</div></div>;

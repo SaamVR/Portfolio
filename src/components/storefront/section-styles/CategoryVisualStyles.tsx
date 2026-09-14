@@ -151,7 +151,7 @@ function EditorialRail(props: CategoryVisualStylesProps) {
 
 function CircularCategories(props: CategoryVisualStylesProps) {
   return (
-    <div className="grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-4 sm:gap-x-5 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4 sm:gap-x-5 lg:grid-cols-6">
       {props.items.map((item, index) => (
         <AnimatedSection key={`${item.filterKey}-${item.type}`} delay={index * 40} animation="blur">
           <Link to={categoryHref(item, props.storeSlug)} className="group block text-center">

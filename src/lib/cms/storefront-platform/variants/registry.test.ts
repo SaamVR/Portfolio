@@ -28,9 +28,10 @@ describe("canonical storefront variant registry", () => {
 
   it("preserves the currently supported variant ids", () => {
     assert.deepEqual(getVariantIdsForBlock("hero"), ["full-bleed", "split", "centered", "editorial", "poster", "collection-spotlight"]);
-    assert.deepEqual(getVariantIdsForBlock("featured-products"), ["carousel", "2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right"]);
-    assert.deepEqual(getVariantIdsForBlock("category-showcase"), ["cards", "carousel", "masonry", "compact-list"]);
-    assert.deepEqual(getVariantIdsForBlock("rich-text"), ["standard", "brand-story", "blog-posts"]);
+    assert.deepEqual(getVariantIdsForBlock("featured-products"), ["carousel", "2-col", "3-col", "4-col", "3-col-sidebar-left", "3-col-sidebar-right", "editorial-grid", "center-focus-rail", "compact-commerce-grid", "product-spotlight", "magazine-rail", "dense-catalog"]);
+    assert.deepEqual(getVariantIdsForBlock("category-showcase"), ["cards", "carousel", "circular-categories", "collection-tiles", "masonry", "compact-list"]);
+    assert.deepEqual(getVariantIdsForBlock("promo-banner"), ["standard", "contact-cta", "dual-editorial", "image-campaign-banner", "dual-promo", "campaign-cta"]);
+    assert.deepEqual(getVariantIdsForBlock("rich-text"), ["standard", "brand-story", "blog-posts", "split-brand-story", "editorial-quote", "minimal-story"]);
   });
 
   it("falls back safely for unknown variant ids", () => {

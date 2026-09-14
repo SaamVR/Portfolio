@@ -32,6 +32,7 @@ test("Lane C exposes the requested renderer keys", () => {
 
 test("Lane C resolvers ignore legacy and unknown variants", () => {
   assert.equal(resolveFeaturedProductSectionStyle("editorial-grid"), "editorial-grid");
+  assert.equal(resolveFeaturedProductSectionStyle("carousel"), "center-focus-rail");
   assert.equal(resolveFeaturedProductSectionStyle("3-col"), null);
   assert.equal(resolvePromoSectionStyle("campaign-cta"), "campaign-cta");
   assert.equal(resolvePromoSectionStyle("contact-cta"), null);

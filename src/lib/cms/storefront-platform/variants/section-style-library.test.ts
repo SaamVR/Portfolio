@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { buildSectionStylesPath } from "@/lib/admin-paths";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import { getSectionStylePreviewFixture, getSectionStylePreviewFixtureById } from "./preview-fixtures";
 import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "./section-style-library";
 import { canonicalStorefrontVariantRegistry } from "./registry";
+import { SECTION_STYLE_VERSIONING_POLICY } from "./validation";
 
 describe("section style library", () => {
   it("gives every registered style lifecycle, preview, visibility, and version metadata", () => {
@@ -76,8 +78,15 @@ describe("section style library", () => {
     assert.equal(heroTarget?.templateDefault, true);
 
     const promoTarget = getSectionStyleResetTarget("threads", promo);
-    assert.equal(promoTarget?.definition.id, "standard");
-    assert.equal(promoTarget?.templateDefault, false);
+    assert.equal(promoTarget?.definition.id, "dual-editorial");
+    assert.equal(promoTarget?.templateDefault, true);
+  });
+
+  it("keeps manifest versions internal until blocks can persist a pinned version", () => {
+    assert.equal(SECTION_STYLE_VERSIONING_POLICY, "new-id-for-breaking-change");
+    assert.deepEqual(buildSectionStylePersistencePatch("editorial"), { layout_variant: "editorial" });
+    const workspaceSource = readFileSync("src/views/admin/SectionStylesWorkspace.tsx", "utf8");
+    assert.equal(workspaceSource.includes("entry.definition.version"), false);
   });
 
   it("uses canonical preview fixtures and stable Section Styles routing", () => {

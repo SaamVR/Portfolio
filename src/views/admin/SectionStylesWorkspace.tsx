@@ -274,7 +274,7 @@ export default function SectionStylesWorkspace() {
                     </div>
                   </div>
                   <div className="p-2 pb-1">
-                    <div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{entry.definition.label}</p><span className="text-[10px] text-muted-foreground">v{entry.definition.version}</span></div>
+                    <div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{entry.definition.label}</p></div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{entry.definition.description}</p>
                     {!entry.compatible ? <p className="mt-1 text-[11px] text-amber-700">{entry.reasons[0]}</p> : null}
                   </div>
