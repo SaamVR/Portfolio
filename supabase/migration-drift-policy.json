@@ -4,6 +4,16 @@
       "name": "seed_demo_blog_posts",
       "classification": "non-production",
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    },
+    {
+      "name": "lock_store_invoice_client_authority_308",
+      "classification": "pending-production",
+      "reason": "P0 #308 billing-authority migration is implementation-complete on release/p0-billing-authority but this lane is explicitly prohibited from deploying production. Remove after trusted production rollout and ledger refresh."
+    },
+    {
+      "name": "manual_bkash_transaction_replay_guard_314",
+      "classification": "pending-production",
+      "reason": "P0 #314 replay-guard migration must wait for explicit reconciliation of the read-only production preflight duplicate paid manual bKash transaction identity before trusted rollout. Remove after reconciliation, production apply, and ledger refresh."
     }
   ]
 }

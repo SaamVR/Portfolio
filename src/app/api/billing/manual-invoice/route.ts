@@ -4,6 +4,12 @@ import {
   getAuthenticatedUser,
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
+import {
+  isDatabaseUniqueViolation,
+  isValidManualBkashTransactionId,
+  MANUAL_BKASH_PROVIDER,
+  normalizeManualBkashTransactionId,
+} from "@/lib/billing/provider-transaction-id";
 
 export const billingManualInvoiceRouteDeps = {
   getAuthenticatedUser,
@@ -11,6 +17,39 @@ export const billingManualInvoiceRouteDeps = {
   canManageStore,
   now: () => new Date().toISOString(),
 };
+
+type BillingAdminClient = ReturnType<typeof getSupabaseAdminClient>;
+
+async function findManualInvoiceByTransaction(
+  supabaseAdmin: BillingAdminClient,
+  transactionId: string,
+) {
+  return supabaseAdmin
+    .from("store_invoices")
+    .select("id, store_id, status, plan_id, provider_invoice_id")
+    .eq("provider", MANUAL_BKASH_PROVIDER)
+    .eq("provider_invoice_id", transactionId)
+    .maybeSingle();
+}
+
+function existingInvoiceResponse(
+  existingInvoice: { id: string; store_id: string; status: string },
+  requestedStoreId: string,
+) {
+  if (existingInvoice.store_id !== requestedStoreId) {
+    return NextResponse.json(
+      { error: "This bKash transaction has already been submitted." },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    invoiceId: existingInvoice.id,
+    duplicated: true,
+    status: existingInvoice.status,
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -23,10 +62,14 @@ export async function POST(req: Request) {
     const storeId = typeof body?.storeId === "string" ? body.storeId.trim() : "";
     const planId = typeof body?.planId === "string" ? body.planId.trim() : "";
     const billingInterval = body?.billingInterval === "annual" ? "annual" : "monthly";
-    const transactionId = typeof body?.transactionId === "string" ? body.transactionId.trim() : "";
+    const rawTransactionId = typeof body?.transactionId === "string" ? body.transactionId : "";
+    const transactionId = normalizeManualBkashTransactionId(rawTransactionId);
 
     if (!storeId || !planId || !transactionId) {
       return NextResponse.json({ error: "Missing storeId, planId, or transactionId" }, { status: 400 });
+    }
+    if (!isValidManualBkashTransactionId(rawTransactionId)) {
+      return NextResponse.json({ error: "Invalid bKash transaction ID" }, { status: 400 });
     }
 
     const supabaseAdmin = billingManualInvoiceRouteDeps.getSupabaseAdminClient();
@@ -38,6 +81,15 @@ export async function POST(req: Request) {
     );
     if (!authorized) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Provider transaction identity is global, not tenant-local. Check it before
+    // resolving the requested plan so a legitimate retry reuses durable truth.
+    const { data: existingInvoice, error: existingInvoiceError } =
+      await findManualInvoiceByTransaction(supabaseAdmin, transactionId);
+    if (existingInvoiceError) throw existingInvoiceError;
+    if (existingInvoice?.id) {
+      return existingInvoiceResponse(existingInvoice, storeId);
     }
 
     const { data: plan, error: planError } = await supabaseAdmin
@@ -63,25 +115,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This plan does not require manual payment submission" }, { status: 400 });
     }
 
-    const { data: existingInvoice, error: existingInvoiceError } = await supabaseAdmin
-      .from("store_invoices")
-      .select("id, status, plan_id, provider_invoice_id")
-      .eq("store_id", storeId)
-      .eq("provider", "bkash_manual")
-      .eq("provider_invoice_id", transactionId)
-      .maybeSingle();
-
-    if (existingInvoiceError) throw existingInvoiceError;
-
-    if (existingInvoice?.id) {
-      return NextResponse.json({
-        success: true,
-        invoiceId: existingInvoice.id,
-        duplicated: true,
-        status: existingInvoice.status,
-      });
-    }
-
     const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from("store_invoices")
       .insert({
@@ -91,15 +124,29 @@ export async function POST(req: Request) {
         billing_interval: billingInterval,
         currency: plan.currency_code || "BDT",
         status: "pending",
-        provider: "bkash_manual",
-        payment_method: "bkash_manual",
+        provider: MANUAL_BKASH_PROVIDER,
+        payment_method: MANUAL_BKASH_PROVIDER,
         provider_invoice_id: transactionId,
         billing_period_start: billingManualInvoiceRouteDeps.now(),
       })
       .select("id, status")
       .single();
 
+    if (invoiceError && isDatabaseUniqueViolation(invoiceError)) {
+      // Another request may have won the unique provider-identity race after
+      // our pre-check. Resolve the durable winner instead of granting twice.
+      const { data: racedInvoice, error: racedInvoiceError } =
+        await findManualInvoiceByTransaction(supabaseAdmin, transactionId);
+      if (racedInvoiceError) throw racedInvoiceError;
+      if (racedInvoice?.id) {
+        return existingInvoiceResponse(racedInvoice, storeId);
+      }
+    }
+
     if (invoiceError) throw invoiceError;
+    if (!invoice?.id) {
+      throw new Error("Manual invoice insert returned no invoice");
+    }
 
     return NextResponse.json({
       success: true,
