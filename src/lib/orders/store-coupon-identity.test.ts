@@ -11,14 +11,21 @@ const migration = readFileSync(
 test("coupon identity is store-scoped instead of globally unique", () => {
   assert.match(
     migration,
-    /CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_codes_store_code_unique\s+ON public\.coupon_codes\(store_id, code\)/i,
+    /CREATE UNIQUE INDEX idx_coupon_codes_store_code_unique\s+ON public\.coupon_codes\(store_id, code\)/i,
   );
   assert.match(migration, /DROP CONSTRAINT IF EXISTS coupon_codes_code_key/i);
-  assert.match(migration, /WHERE store_id IS NOT NULL/i);
+  assert.match(migration, /ALTER COLUMN store_id SET NOT NULL/i);
+  assert.match(migration, /DROP INDEX IF EXISTS public\.idx_coupon_codes_global_code_unique/i);
+  assert.equal(/WHERE store_id IS NULL/i.test(migration), false);
 });
 
-test("coupon codes are canonicalized before uniqueness is enforced", () => {
+test("coupon codes are canonicalized after the obsolete global constraint is removed", () => {
+  const dropGlobal = migration.indexOf("DROP CONSTRAINT IF EXISTS coupon_codes_code_key");
+  const normalizeExisting = migration.indexOf("SET code = upper(trim(code))");
+  assert.ok(dropGlobal >= 0);
+  assert.ok(normalizeExisting > dropGlobal);
   assert.match(migration, /NEW\.code := upper\(trim\(coalesce\(NEW\.code, ''\)\)\)/i);
-  assert.match(migration, /BEFORE INSERT OR UPDATE OF code ON public\.coupon_codes/i);
+  assert.match(migration, /BEFORE INSERT OR UPDATE OF code, store_id ON public\.coupon_codes/i);
   assert.match(migration, /duplicate normalized coupon code/i);
+  assert.match(migration, /coupon store is required/i);
 });
