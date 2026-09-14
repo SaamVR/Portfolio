@@ -7,6 +7,9 @@ import {
 import { normalizeCartRecoverySettings } from "@/lib/admin/merchant-growth-settings";
 import { isRecoveryCouponUsable, normalizeRecoveryCouponCode } from "@/lib/cart-recovery/recovery-coupon";
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const maxQueueBodyBytes = 16_000;
+
 export async function POST(req: Request) {
   try {
     const user = await getAuthenticatedUser(req);
@@ -14,9 +17,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { storeId, settings } = await req.json();
-    if (!storeId) {
-      return NextResponse.json({ error: "Missing storeId" }, { status: 400 });
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > maxQueueBodyBytes) {
+      return NextResponse.json({ error: "Recovery queue payload is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > maxQueueBodyBytes) {
+      return NextResponse.json({ error: "Recovery queue payload is too large" }, { status: 413 });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      body = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    const storeId = typeof body.storeId === "string" ? body.storeId.trim() : "";
+    const settings = body.settings;
+    if (!uuidPattern.test(storeId)) {
+      return NextResponse.json({ error: "Invalid storeId" }, { status: 400 });
     }
 
     const supabaseAdmin = getSupabaseAdminClient();

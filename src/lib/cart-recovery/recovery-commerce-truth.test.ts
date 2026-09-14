@@ -48,3 +48,15 @@ test("automated recovery queues only deliverable email outreach", () => {
   assert.doesNotMatch(admin, /<SelectItem value="whatsapp">/);
   assert.match(admin, /Automated WhatsApp recovery is unavailable/);
 });
+
+
+test("cart recovery request boundaries reject malformed or oversized JSON before database work", () => {
+  const lead = source("src/app/api/cart-recovery/lead/route.ts");
+  const queue = source("src/app/api/cart-recovery/queue/route.ts");
+
+  assert.match(lead, /return NextResponse\.json\(\{ error: "Invalid JSON payload" \}, \{ status: 400 \}\)/);
+  assert.match(queue, /const maxQueueBodyBytes = 16_000/);
+  assert.match(queue, /Buffer\.byteLength\(rawBody, "utf8"\) > maxQueueBodyBytes/);
+  assert.match(queue, /return NextResponse\.json\(\{ error: "Invalid JSON payload" \}, \{ status: 400 \}\)/);
+  assert.match(queue, /if \(!uuidPattern\.test\(storeId\)\)/);
+});

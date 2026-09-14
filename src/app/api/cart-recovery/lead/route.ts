@@ -65,7 +65,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Recovery payload is too large" }, { status: 413 });
     }
 
-    const body = JSON.parse(rawBody || "{}");
+    let body: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      body = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
     const storeId = readText(body?.storeId, 80);
     if (!uuidPattern.test(storeId)) {
       return NextResponse.json({ error: "Invalid store" }, { status: 400 });
@@ -74,8 +82,9 @@ export async function POST(req: Request) {
     const visitorIdRaw = readText(body?.visitorId, 160);
     const sessionIdRaw = readText(body?.sessionId, 160);
     const leadStage = readText(body?.recoveryStage, 20) || "cart";
-    const consentStatus = (["accepted", "declined", "unknown"].includes(body?.contactConsentStatus)
-      ? body.contactConsentStatus
+    const requestedConsentStatus = readText(body?.contactConsentStatus, 16);
+    const consentStatus = (["accepted", "declined", "unknown"].includes(requestedConsentStatus)
+      ? requestedConsentStatus
       : "unknown") as RecoveryStatus;
     const cartSnapshot = Array.isArray(body?.cartSnapshot) ? body.cartSnapshot.slice(0, 30) : [];
     const metadata = body?.metadata && typeof body.metadata === "object" ? body.metadata : {};
