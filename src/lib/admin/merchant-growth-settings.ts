@@ -7,7 +7,6 @@ export type CartRecoverySettings = {
   maxTouchesPerLead: number;
   preferredChannel: "smart" | "email" | "whatsapp";
   dailyQueueLimit: number;
-  couponPrefix: string;
 };
 
 export type AnalyticsPrivacySettings = {
@@ -27,7 +26,6 @@ export function normalizeCartRecoverySettings(value: unknown): CartRecoverySetti
     maxTouchesPerLead: Math.min(6, Math.max(1, Number(record.maxTouchesPerLead) || 3)),
     preferredChannel: record.preferredChannel === "email" || record.preferredChannel === "whatsapp" ? record.preferredChannel : "smart",
     dailyQueueLimit: Math.min(500, Math.max(5, Number(record.dailyQueueLimit) || 50)),
-    couponPrefix: typeof record.couponPrefix === "string" ? record.couponPrefix.trim().slice(0, 12).toUpperCase() : "RECOVER",
   };
 }
 

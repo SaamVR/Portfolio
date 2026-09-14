@@ -5,6 +5,7 @@ import {
   getSupabaseAdminClient,
 } from "@/lib/api/supabase-route";
 import { normalizeCartRecoverySettings } from "@/lib/admin/merchant-growth-settings";
+import { isRecoveryCouponUsable, normalizeRecoveryCouponCode } from "@/lib/cart-recovery/recovery-coupon";
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     const nowIso = new Date().toISOString();
     const { data: leads, error: leadError } = await (supabaseAdmin as any)
       .from("store_cart_recovery_leads")
-      .select("id, contact_email, contact_phone, status, recovery_stage, next_contact_at, recovery_coupon_code")
+      .select("id, contact_email, contact_phone, status, recovery_stage, next_contact_at, recovery_coupon_code, cart_value")
       .eq("store_id", storeId)
       .eq("contact_consent_status", "accepted")
       .in("status", ["abandoned", "contacted", "active"])
@@ -67,13 +68,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ queuedCount: 0 });
     }
 
+    const candidateCodes = Array.from(new Set(
+      dueLeads
+        .map((lead: any) => normalizeRecoveryCouponCode(lead.recovery_coupon_code))
+        .filter((code): code is string => Boolean(code)),
+    ));
+    const couponByCode = new Map<string, Record<string, unknown>>();
+
+    if (candidateCodes.length > 0) {
+      const { data: coupons, error: couponError } = await (supabaseAdmin as any)
+        .from("coupon_codes")
+        .select("code, is_active, expires_at, max_uses, uses_count, min_order")
+        .eq("store_id", storeId)
+        .in("code", candidateCodes);
+      if (couponError) throw couponError;
+
+      for (const coupon of coupons ?? []) {
+        const code = normalizeRecoveryCouponCode(coupon.code);
+        if (code) couponByCode.set(code, coupon);
+      }
+    }
+
     const queuedAt = new Date();
     const nextContactAt = new Date(queuedAt.getTime() + normalized.cooldownHours * 60 * 60 * 1000).toISOString();
-    const inserts = dueLeads.map((lead: any) => {
+    const queuedLeads = dueLeads.map((lead: any) => {
+      const candidateCode = normalizeRecoveryCouponCode(lead.recovery_coupon_code);
+      const coupon = candidateCode ? couponByCode.get(candidateCode) : null;
+      const couponCode = candidateCode && isRecoveryCouponUsable(coupon, lead.cart_value, queuedAt.getTime())
+        ? candidateCode
+        : null;
+      return { lead, couponCode };
+    });
+
+    const inserts = queuedLeads.map(({ lead, couponCode }) => {
       const preferredChannel = normalized.preferredChannel === "smart"
         ? (lead.contact_phone ? "whatsapp" : "email")
         : normalized.preferredChannel;
-      const couponCode = lead.recovery_coupon_code || `${normalized.couponPrefix}-${lead.id.slice(0, 6).toUpperCase()}`;
 
       return {
         store_id: storeId,
@@ -96,8 +126,7 @@ export async function POST(req: Request) {
       .insert(inserts);
     if (insertError) throw insertError;
 
-    for (const lead of dueLeads) {
-      const couponCode = lead.recovery_coupon_code || `${normalized.couponPrefix}-${lead.id.slice(0, 6).toUpperCase()}`;
+    for (const { lead, couponCode } of queuedLeads) {
       const { error: updateError } = await (supabaseAdmin as any)
         .from("store_cart_recovery_leads")
         .update({

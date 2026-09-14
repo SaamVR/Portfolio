@@ -567,10 +567,6 @@ export default function CartRecoveryPage() {
             <p id="cart-daily-queue-limit-help" className="text-xs text-muted-foreground">Use a whole number from 5–500 follow-ups per day.</p>
             {cartNumericErrors.dailyQueueLimit ? <p id="cart-daily-queue-limit-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.dailyQueueLimit}</p> : null}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="cart-coupon-prefix">Recovery coupon prefix</Label>
-            <Input id="cart-coupon-prefix" value={settings.couponPrefix} onChange={(event) => setSettings((prev) => ({ ...prev, couponPrefix: event.target.value }))} />
-          </div>
         </CardContent>
       </Card>
 

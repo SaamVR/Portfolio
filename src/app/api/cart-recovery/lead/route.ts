@@ -131,7 +131,6 @@ export async function POST(req: Request) {
     const contactName = canStoreContact ? readText(contact.name, 100) || null : null;
     const contactEmail = canStoreContact ? readText(contact.email, 180) || null : null;
     const contactPhone = canStoreContact ? readText(contact.phone, 30) || null : null;
-    const recoveryCouponCode = canStoreContact ? readText(body?.recoveryCouponCode, 80) || null : null;
     const attribution = body?.attribution && typeof body.attribution === "object" ? body.attribution as Record<string, unknown> : {};
 
     let leadQuery = supabaseAdmin
@@ -184,7 +183,6 @@ export async function POST(req: Request) {
       abandoned_at: itemCount > 0 ? now : null,
       last_activity_at: now,
       next_contact_at: existingLead?.marketing_opt_out_at ? null : nextContactAt,
-      recovery_coupon_code: recoveryCouponCode,
       attribution_source: readText(attribution.source, 120) || null,
       attribution_medium: readText(attribution.medium, 120) || null,
       attribution_campaign: readText(attribution.campaign, 160) || null,
