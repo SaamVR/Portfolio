@@ -54,7 +54,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { theme, resolvedTheme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
   const currentStore = useOptionalStore();
   const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
   const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
@@ -70,6 +70,10 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setOpenDropdownKey(null);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (themeCustomization?.nav_style !== "hidden") {
@@ -229,121 +233,147 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             isFashion ? (isCompactNav ? "gap-4 lg:gap-5" : "gap-5 lg:gap-7") : (isCompactNav ? "gap-4 lg:gap-5" : "gap-6 lg:gap-8"),
             isCenteredNav ? "md:flex-1 md:justify-center" : "",
           )}>
-            {navLinks.map((link) => (
-              <div
-                key={link.to}
-                className="relative group"
-                onMouseEnter={() => link.hasDropdown && setShopDropdownOpen(true)}
-                onMouseLeave={() => link.hasDropdown && setShopDropdownOpen(false)}
-                onFocus={() => link.hasDropdown && setShopDropdownOpen(true)}
-                onBlur={(event) => {
-                  if (link.hasDropdown && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                    setShopDropdownOpen(false);
-                  }
-                }}
-              >
-                <Link
-                  to={link.to}
-                  className={cn(
-                    "nav-link-anim relative flex items-center gap-1.5 py-2 transition-colors",
-                    isFashion
-                      ? `${isCompactNav ? "text-[11px]" : "text-xs"} font-semibold uppercase tracking-[0.13em]`
-                      : `${isCompactNav ? "text-sm" : "text-[15px]"} font-semibold tracking-wide`,
-                    location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {link.to.endsWith("/shop") ? shopLabel : link.label}
-                  {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
-                </Link>
+            {navLinks.map((link, index) => {
+              const isDropdownOpen = link.hasDropdown && openDropdownKey === link.to;
+              const dropdownId = `storefront-nav-dropdown-${index}`;
 
-                {link.hasDropdown && link.to.endsWith("/shop") && shopDropdownOpen && (
-                  <div className={cn("absolute left-0 top-full pt-1", isFashion ? "w-[720px]" : "w-[640px]")}>
-                    <div
-                      className={cn(
-                        "grid gap-6 border bg-background/95 p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-200",
-                        isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15 ring-1 ring-black/5 dark:ring-white/10",
-                        megaMenuGridClass,
-                      )}
-                    >
-                      <div>
-                        <h4 className={cn("mb-3 font-bold uppercase text-primary", isFashion ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.18em]")}>
-                          {isFashion ? "Shop by type" : "Types"}
-                        </h4>
-                        <div className="flex flex-col gap-1.5">
-                          <Link
-                            to={storefrontPath("/shop", currentStore?.slug)}
-                            className={cn("px-2 py-1 text-xs font-semibold text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
-                          >
-                            All {shopLabel}
-                          </Link>
-                          {dynamicProductTypes.map((t: any) => (
-                            <Link
-                              key={t.id}
-                              to={storefrontPath(`/shop?type=${encodeURIComponent(t.name)}`, currentStore?.slug)}
-                              className={cn("px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
-                            >
-                              {t.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                      {dynamicProductCategories.length > 0 ? (
+              return (
+                <div
+                  key={link.to}
+                  className="relative group"
+                  onMouseEnter={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                  onMouseLeave={() => link.hasDropdown && setOpenDropdownKey(null)}
+                  onFocus={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                  onBlur={(event) => {
+                    if (link.hasDropdown && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setOpenDropdownKey(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (link.hasDropdown && event.key === "Escape" && isDropdownOpen) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setOpenDropdownKey(null);
+                      event.currentTarget
+                        .querySelector<HTMLElement>("[data-nav-dropdown-trigger='true']")
+                        ?.focus();
+                    }
+                  }}
+                >
+                  <Link
+                    to={link.to}
+                    data-nav-dropdown-trigger={link.hasDropdown ? "true" : undefined}
+                    aria-expanded={link.hasDropdown ? isDropdownOpen : undefined}
+                    aria-controls={link.hasDropdown ? dropdownId : undefined}
+                    aria-haspopup={link.hasDropdown ? "true" : undefined}
+                    className={cn(
+                      "nav-link-anim relative flex items-center gap-1.5 py-2 transition-colors",
+                      isFashion
+                        ? `${isCompactNav ? "text-[11px]" : "text-xs"} font-semibold uppercase tracking-[0.13em]`
+                        : `${isCompactNav ? "text-sm" : "text-[15px]"} font-semibold tracking-wide`,
+                      location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {link.to.endsWith("/shop") ? shopLabel : link.label}
+                    {link.hasDropdown && (
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 opacity-70 transition-transform duration-150 group-hover:opacity-100",
+                          isDropdownOpen ? "rotate-180" : "",
+                        )}
+                      />
+                    )}
+                  </Link>
+
+                  {link.hasDropdown && link.to.endsWith("/shop") && isDropdownOpen && (
+                    <div id={dropdownId} className={cn("absolute left-0 top-full pt-1", isFashion ? "w-[720px]" : "w-[640px]")}>
+                      <div
+                        className={cn(
+                          "grid gap-6 border bg-background/95 p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-200",
+                          isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15 ring-1 ring-black/5 dark:ring-white/10",
+                          megaMenuGridClass,
+                        )}
+                      >
                         <div>
                           <h4 className={cn("mb-3 font-bold uppercase text-primary", isFashion ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.18em]")}>
-                            {isFashion ? "Collections" : "Categories"}
+                            {isFashion ? "Shop by type" : "Types"}
                           </h4>
                           <div className="flex flex-col gap-1.5">
-                            {dynamicProductCategories.map((c: any) => (
+                            <Link
+                              to={storefrontPath("/shop", currentStore?.slug)}
+                              className={cn("px-2 py-1 text-xs font-semibold text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
+                            >
+                              All {shopLabel}
+                            </Link>
+                            {dynamicProductTypes.map((t: any) => (
                               <Link
-                                key={c.id}
-                                to={storefrontPath(`/shop?category=${encodeURIComponent(c.name)}`, currentStore?.slug)}
+                                key={t.id}
+                                to={storefrontPath(`/shop?type=${encodeURIComponent(t.name)}`, currentStore?.slug)}
                                 className={cn("px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
                               >
-                                {c.name}
+                                {t.name}
                               </Link>
                             ))}
                           </div>
                         </div>
-                      ) : null}
-                      {hasShopFeature ? (
-                        <div className={cn("relative min-h-[180px] overflow-hidden bg-muted/50 shadow-inner group/card", isFashion ? "rounded-none" : "rounded-xl border border-white/10")}>
-                          <img
-                            src={shopFeatureImage}
-                            alt={shopFeatureTitle || `${shopLabel} feature`}
-                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover/card:scale-[1.035]"
-                          />
-                          {(shopFeatureTitle || shopFeatureSubtitle) ? (
-                            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/20 to-transparent p-4">
-                              {shopFeatureTitle ? <h4 className="line-clamp-1 text-sm font-bold text-white">{shopFeatureTitle}</h4> : null}
-                              {shopFeatureSubtitle ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/75">{shopFeatureSubtitle}</p> : null}
+                        {dynamicProductCategories.length > 0 ? (
+                          <div>
+                            <h4 className={cn("mb-3 font-bold uppercase text-primary", isFashion ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.18em]")}>
+                              {isFashion ? "Collections" : "Categories"}
+                            </h4>
+                            <div className="flex flex-col gap-1.5">
+                              {dynamicProductCategories.map((c: any) => (
+                                <Link
+                                  key={c.id}
+                                  to={storefrontPath(`/shop?category=${encodeURIComponent(c.name)}`, currentStore?.slug)}
+                                  className={cn("px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
+                                >
+                                  {c.name}
+                                </Link>
+                              ))}
                             </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                )}
-                {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length ? (
-                  <div className="pointer-events-none absolute left-0 top-full mt-1 w-64 pt-1 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-                    <div className={cn("border bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl", isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15")}>
-                      <div className="flex flex-col gap-1">
-                        {link.children.map((child) => (
-                          <Link
-                            key={child.to}
-                            to={child.to}
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
-                          >
-                            {child.label}
-                          </Link>
-                        ))}
+                          </div>
+                        ) : null}
+                        {hasShopFeature ? (
+                          <div className={cn("relative min-h-[180px] overflow-hidden bg-muted/50 shadow-inner group/card", isFashion ? "rounded-none" : "rounded-xl border border-white/10")}>
+                            <img
+                              src={shopFeatureImage}
+                              alt={shopFeatureTitle || `${shopLabel} feature`}
+                              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover/card:scale-[1.035]"
+                            />
+                            {(shopFeatureTitle || shopFeatureSubtitle) ? (
+                              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/20 to-transparent p-4">
+                                {shopFeatureTitle ? <h4 className="line-clamp-1 text-sm font-bold text-white">{shopFeatureTitle}</h4> : null}
+                                {shopFeatureSubtitle ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/75">{shopFeatureSubtitle}</p> : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
+                  )}
+                  {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length && isDropdownOpen ? (
+                    <div id={dropdownId} className="absolute left-0 top-full mt-1 w-64 pt-1">
+                      <div className={cn("border bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl", isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15")}>
+                        <div className="flex flex-col gap-1">
+                          {link.children.map((child) => (
+                            <Link
+                              key={child.to}
+                              to={child.to}
+                              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                            >
+                              {child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           <div className={cn("flex shrink-0 items-center", isCompactNav ? "gap-0.5 sm:gap-1.5" : "gap-0.5 sm:gap-2", isCenteredNav ? "md:flex-1 md:justify-end" : "")}>
