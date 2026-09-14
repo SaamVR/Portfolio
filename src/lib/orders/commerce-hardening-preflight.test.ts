@@ -14,7 +14,8 @@ test("commerce rollout preflight is read-only and covers reconciliation blockers
   assert.match(preflight, /duplicate normalized coupon code within store/);
   assert.match(preflight, /analytics owned-reference mismatch/);
   assert.match(preflight, /legacy store-credit return row/);
-  assert.match(preflight, /duplicate scheduled recovery touch/);
+  assert.match(preflight, /GROUP BY store_id, lead_id, created_at HAVING count\(\*\) > 1/);
+  assert.doesNotMatch(preflight, /GROUP BY store_id, lead_id, scheduled_for/);
   assert.match(preflight, /manual-payment order without exactly one legacy transaction reference/);
   assert.match(preflight, /duplicate legacy manual-payment provider\/reference/);
   assert.match(preflight, /commerce hardening preflight failed/);

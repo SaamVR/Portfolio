@@ -116,10 +116,12 @@ BEGIN
       AND NULLIF(BTRIM(COALESCE(internal_note, '')), '') IS NULL
   ) THEN _issue := 'resolved refund without external settlement evidence'; END IF;
 
+  -- scheduled_for does not exist until its migration. Existing rows are backfilled
+  -- from created_at, so duplicate (store, lead, created_at) is the pre-migration
+  -- condition that would become a scheduled-touch uniqueness collision.
   IF _issue IS NULL AND EXISTS (
     SELECT 1 FROM public.store_cart_recovery_messages
-    WHERE scheduled_for IS NOT NULL
-    GROUP BY store_id, lead_id, scheduled_for HAVING count(*) > 1
+    GROUP BY store_id, lead_id, created_at HAVING count(*) > 1
   ) THEN _issue := 'duplicate scheduled recovery touch'; END IF;
 
   IF _issue IS NULL AND EXISTS (
