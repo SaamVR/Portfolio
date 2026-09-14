@@ -14,11 +14,13 @@ import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
+import { useProductCategories } from "@/hooks/useProductCategories";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { storefrontPath } from "@/lib/slug";
 
 export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
   const store = useOptionalStore();
+  const { data: categories = [] } = useProductCategories(store?.id);
   const { totalItems, setIsCartOpen } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const { user } = useAuth();
@@ -72,19 +74,20 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
     ["Our Story", storefrontPath("/about", store?.slug)],
     ["Journal", storefrontPath("/blog", store?.slug)],
   ] as const;
-  const referenceNav = [
-    ["Women", `${shop}?category=${encodeURIComponent("Women")}`],
-    ["Men", `${shop}?category=${encodeURIComponent("Men")}`],
-    ["Accessories", `${shop}?category=${encodeURIComponent("Accessories")}`],
-    [
-      "Home & Living",
-      `${shop}?category=${encodeURIComponent("Home & Living")}`,
-    ],
+  const referenceCategoryNav = categories
+    .map((category) => category.name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .slice(0, 4)
+    .map((name) => [name, `${shop}?category=${encodeURIComponent(name)}`] as const);
+  const referenceNav: ReadonlyArray<readonly [string, string]> = [
+    ...referenceCategoryNav,
     ["Sale", `${shop}?sale=1`],
     ["New", `${shop}?sort=newest`],
     ["Stories", storefrontPath("/blog", store?.slug)],
-  ] as const;
-  const nav = isReferencePreview ? referenceNav : defaultNav;
+  ];
+  const nav: ReadonlyArray<readonly [string, string]> = isReferencePreview
+    ? referenceNav
+    : defaultNav;
 
   return (
     <>

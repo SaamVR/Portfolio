@@ -160,12 +160,17 @@ function CarouselTicks({
           onClick={() => api?.scrollTo(index)}
           aria-label={`Go to slide ${index + 1}`}
           aria-current={selected === index ? "true" : undefined}
-          className={`h-[2px] transition-all duration-300 ${
-            selected === index
-              ? `w-9 ${inverse ? "bg-primary-foreground" : "bg-primary"}`
-              : `w-4 ${inverse ? "bg-primary-foreground/25" : "bg-primary/20"}`
-          }`}
-        />
+          className="grid h-11 min-w-11 place-items-center"
+        >
+          <span
+            aria-hidden
+            className={`h-[2px] transition-all duration-300 ${
+              selected === index
+                ? `w-9 ${inverse ? "bg-primary-foreground" : "bg-primary"}`
+                : `w-4 ${inverse ? "bg-primary-foreground/25" : "bg-primary/20"}`
+            }`}
+          />
+        </button>
       ))}
     </div>
   );
@@ -373,23 +378,10 @@ function ThreadsCategories({ block }: { block: StorePageBlock }) {
         tagline: "",
       }));
   const isReferencePreview = store?.id === "preview-threads";
-  const referenceLabels = [
-    "Women",
-    "Men",
-    "T-Shirts",
-    "Accessories",
-    "Home & Living",
-  ];
   const items = (
     isReferencePreview
-      ? referenceLabels
-          .map((name, index) => ({
-            name,
-            value: name,
-            image:
-              sourceItems[index % Math.max(sourceItems.length, 1)]?.image || "",
-            tagline: "",
-          }))
+      ? sourceItems
+          .slice(0, 5)
           .concat({ name: "Sale", value: "Sale", image: "", tagline: "" })
       : sourceItems
   ).slice(

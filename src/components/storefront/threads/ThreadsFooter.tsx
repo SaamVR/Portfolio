@@ -66,10 +66,7 @@ export function ThreadsFooter() {
         { label: "New Arrivals", url: `${shop}?sort=newest` },
       ]
     : [
-        { label: "Women", url: `${shop}?category=Women` },
-        { label: "Men", url: `${shop}?category=Men` },
-        { label: "Accessories", url: `${shop}?category=Accessories` },
-        { label: "Home & Living", url: `${shop}?category=Home%20%26%20Living` },
+        { label: "Shop all", url: shop },
         { label: "Sale", url: `${shop}?sale=1` },
         { label: "New Arrivals", url: `${shop}?sort=newest` },
       ];
