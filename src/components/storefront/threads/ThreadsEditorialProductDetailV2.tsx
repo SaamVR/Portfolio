@@ -453,7 +453,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
               <div className="py-5">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <p className="text-[10px] font-bold uppercase tracking-[.15em]">Quantity</p>
-                  <div className="flex h-11 items-center overflow-hidden rounded-[2px] border border-border bg-background">
+                  <div className="flex h-12 items-center overflow-hidden rounded-[2px] border border-border bg-background">
                     <button
                       type="button"
                       onClick={() => setQuantity((value) => Math.max(1, value - 1))}
