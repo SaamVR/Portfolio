@@ -11,6 +11,8 @@ import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/li
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
+import { FeaturedProductsVisualStyles } from "@/components/storefront/section-styles/FeaturedProductsVisualStyles";
+import { resolveFeaturedProductSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const FeaturedProducts = ({
@@ -115,6 +117,21 @@ const FeaturedProducts = ({
         primaryHref={storefrontPath("/shop", currentStore?.slug)}
         secondaryLabel="Contact the store"
         secondaryHref={storefrontPath("/contact", currentStore?.slug)}
+      />
+    );
+  }
+
+  const visualStyle = resolveFeaturedProductSectionStyle(layoutVariant);
+  if (visualStyle) {
+    return (
+      <FeaturedProductsVisualStyles
+        variant={visualStyle}
+        products={productsToRender.slice(0, limit)}
+        title={title ?? legacySettings?.title ?? "Explore What’s Available"}
+        tagline={tagline ?? legacySettings?.tagline ?? "Featured"}
+        viewAllHref={storefrontPath("/shop", currentStore?.slug)}
+        containerClass={containerClass}
+        sectionStyle={sectionStyle}
       />
     );
   }

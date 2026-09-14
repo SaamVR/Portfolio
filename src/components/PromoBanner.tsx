@@ -2,6 +2,8 @@ import Link from "next/link";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { useOptionalStore } from "@/components/storefront/store-context";
+import { PromoBannerVisualStyles } from "@/components/storefront/section-styles/PromoBannerVisualStyles";
+import { resolvePromoSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { storefrontPath } from "@/lib/slug";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
@@ -43,6 +45,14 @@ interface PromoBannerProps {
     enableParticles?: boolean;
     enableOrbs?: boolean;
     cardOpacity?: number;
+    imageUrl?: string;
+    imageAlt?: string;
+    secondaryImageUrl?: string;
+    secondaryImageAlt?: string;
+    secondaryTitle?: string;
+    secondarySubtitle?: string;
+    secondaryCtaText?: string;
+    secondaryCtaLink?: string;
   };
 }
 
@@ -203,6 +213,28 @@ const PromoBanner = ({ overrides }: PromoBannerProps) => {
     ? contactHref
     : storefrontPath(overrides?.ctaLink ?? legacySettings?.cta_link ?? "/", currentStore?.slug);
   const isExternalContact = isContactVariant && Boolean(contactNumber);
+
+  const visualStyle = resolvePromoSectionStyle(overrides?.layoutVariant);
+  if (visualStyle) {
+    return (
+      <PromoBannerVisualStyles
+        variant={visualStyle}
+        badgeText={badgeText}
+        title={title}
+        subtitle={subtitle}
+        ctaText={ctaText}
+        ctaLink={ctaLink}
+        imageUrl={overrides?.imageUrl}
+        imageAlt={overrides?.imageAlt}
+        secondaryImageUrl={overrides?.secondaryImageUrl}
+        secondaryImageAlt={overrides?.secondaryImageAlt}
+        secondaryTitle={overrides?.secondaryTitle}
+        secondarySubtitle={overrides?.secondarySubtitle}
+        secondaryCtaText={overrides?.secondaryCtaText}
+        secondaryCtaLink={overrides?.secondaryCtaLink ? storefrontPath(overrides.secondaryCtaLink, currentStore?.slug) : undefined}
+      />
+    );
+  }
 
   const align = overrides?.textAlignment ?? (useLegacyThemeOverrides ? legacySettings?.text_alignment : undefined) ?? "center";
   const alignCls = align === "left" ? "text-left" : align === "right" ? "text-right" : "text-center";

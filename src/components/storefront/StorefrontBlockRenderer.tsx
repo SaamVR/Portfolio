@@ -10,6 +10,8 @@ import RecentlyViewed from "@/components/RecentlyViewed";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
+import { RichTextVisualStyles } from "@/components/storefront/section-styles/RichTextVisualStyles";
+import { resolveStorySectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
 import { StorefrontCompositionRenderer } from "@/components/storefront/platform/StorefrontCompositionRenderer";
 import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { buildTechnicalSpecs } from "@/components/storefront/electronics/ElectronicsProductCard";
@@ -105,6 +107,22 @@ function RichTextBlock({
   const doc = typeof body === "string" ? parseLegacyStringToDoc(body) : (body || { type: "doc", content: [] });
   const isBrandStory = layoutVariant === "brand-story";
   const objectPosition = resolveStorefrontImageObjectPosition({ position: imagePosition, focalX, focalY });
+  const requestedVisualStyle = resolveStorySectionStyle(layoutVariant);
+  const visualStyle = requestedVisualStyle === "split-brand-story" && !imageUrl ? "minimal-story" : requestedVisualStyle;
+
+  if (visualStyle) {
+    return (
+      <RichTextVisualStyles
+        variant={visualStyle}
+        eyebrow={eyebrow}
+        title={title}
+        body={renderRichTextNodes(doc.content)}
+        imageUrl={imageUrl}
+        imageAlt={imageAlt}
+        objectPosition={objectPosition}
+      />
+    );
+  }
 
   const storyCopy = (
     <div className={isFashion && isBrandStory ? "max-w-2xl text-left" : `max-w-3xl ${isBrandStory ? "" : contentAlignClass} ${isBrandStory ? "text-left" : textAlignClass}`}>
