@@ -1,5 +1,6 @@
 import type { StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
 import type { StorePageBlock } from "@/lib/cms/schema";
+import type { StorefrontVariantOptionCapabilities } from "./variant-option-contract";
 
 export type StorefrontPerformanceClass = "light" | "standard" | "media-heavy" | "interactive";
 export type StorefrontInteractionRequirement = "none" | "optional" | "carousel" | "accordion" | "video";
@@ -74,4 +75,5 @@ export interface StorefrontVariantDefinition {
   lifecycle: StorefrontVariantLifecycle;
   visibility: StorefrontVariantVisibility;
   version: number;
+  optionCapabilities?: StorefrontVariantOptionCapabilities;
 }

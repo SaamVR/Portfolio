@@ -2,6 +2,7 @@ import { z } from "zod";
 import { parseLegacyStringToDoc } from "./rich-text-adapter";
 import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composition/schema";
 import { STORE_SECTION_SPACING_VALUES } from "@/lib/cms/store-theme-contract";
+import { storefrontVariantOptionsSchema } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
@@ -38,6 +39,7 @@ const baseBlockFields = {
   hoverEffect: z.enum(["none", "lift", "zoom", "glow"]).optional(),
   effectOverride: z.boolean().optional(),
   layoutVariant: z.string().optional(),
+  variantOptions: storefrontVariantOptionsSchema,
   customHtml: z.string().optional(),
   customCss: z.string().optional(),
   decoration: z.enum(["none", "subtle", "full"]).optional(),
