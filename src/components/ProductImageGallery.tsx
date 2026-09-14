@@ -131,7 +131,7 @@ const ProductImageGallery = ({
 
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent
-          className="left-0 top-0 z-[120] flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-0 bg-black/90 p-4 shadow-none sm:rounded-none"
+          className="left-0 top-0 z-[120] flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-0 bg-black/90 p-4 text-white shadow-none sm:rounded-none"
           onKeyDown={(event) => {
             if (safeImages.length <= 1) return;
             if (event.key === "ArrowLeft") {
