@@ -20,6 +20,7 @@ export interface StorefrontCompatibilityContext {
   capabilities: readonly string[];
   templateId?: string;
   itemCount?: number;
+  itemCountUpperBound?: number;
   mediaCount?: number;
   hasPrimaryMedia?: boolean;
 }
@@ -51,12 +52,15 @@ function evaluateRequirements(
     }
   }
 
-  if (
-    definition.requirements.minItems !== undefined
-    && context.itemCount !== undefined
-    && context.itemCount < definition.requirements.minItems
-  ) {
-    reasons.push(`requires at least ${definition.requirements.minItems} items`);
+  if (definition.requirements.minItems !== undefined) {
+    const belowExactMinimum = context.itemCount !== undefined
+      && context.itemCount < definition.requirements.minItems;
+    const cappedBelowMinimum = context.itemCount === undefined
+      && context.itemCountUpperBound !== undefined
+      && context.itemCountUpperBound < definition.requirements.minItems;
+    if (belowExactMinimum || cappedBelowMinimum) {
+      reasons.push(`requires at least ${definition.requirements.minItems} items`);
+    }
   }
 
   if (

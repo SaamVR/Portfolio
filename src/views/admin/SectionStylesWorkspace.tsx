@@ -63,7 +63,7 @@ export default function SectionStylesWorkspace() {
   const [previewMode, setPreviewMode] = useState<SectionStylePreviewMode>("desktop");
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
-  const [lastChange, setLastChange] = useState<{ blockId: string; previousVariantId: string | null; nextVariantId: string } | null>(null);
+  const [lastChange, setLastChange] = useState<{ blockId: string; previousVariantId: string | null; nextVariantId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -184,14 +184,14 @@ export default function SectionStylesWorkspace() {
   };
 
   const resetToTemplateStyle = async () => {
-    if (!selectedBlock || !resetEntry || selectedBlock.layoutVariant === resetEntry.definition.id) return;
+    if (!selectedBlock || !resetEntry || selectedBlock.layoutVariant == null) return;
     setApplying(true);
     try {
-      const previousVariantId = selectedBlock.layoutVariant ?? null;
-      await persistStyleVariant(selectedBlock, resetEntry.definition.id);
+      const previousVariantId = selectedBlock.layoutVariant;
+      await persistStyleVariant(selectedBlock, null);
       setSelectedStyleId(resetEntry.definition.id);
-      setLastChange({ blockId: selectedBlock.id, previousVariantId, nextVariantId: resetEntry.definition.id });
-      toast.success(`Reset to ${resetEntry.definition.label}. Section content was preserved.`);
+      setLastChange({ blockId: selectedBlock.id, previousVariantId, nextVariantId: null });
+      toast.success(`Reset to inherited ${resetEntry.definition.label}. Section content was preserved.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Could not reset this section style.");
     } finally {
@@ -301,7 +301,7 @@ export default function SectionStylesWorkspace() {
                   {!selectedEntry.compatible ? <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs leading-5 text-destructive">{selectedEntry.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div> : null}
                   <div className="rounded-xl border border-emerald-300/50 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900"><p className="font-semibold">Content-safe style switch</p><p className="mt-1">Only the section style ID changes. Existing section content stays stored.</p></div>
                   <Button type="button" className="min-h-12 w-full gap-2" disabled={!selectedEntry.compatible || selectedEntry.current || applying} onClick={() => void applyStyle()}>{selectedEntry.current ? <><Check className="h-4 w-4" />Already applied</> : applying ? "Applying…" : `Apply ${selectedEntry.definition.label}`}</Button>
-                  {resetEntry && selectedBlock.layoutVariant !== resetEntry.definition.id ? (
+                  {resetEntry && selectedBlock.layoutVariant != null ? (
                     <Button type="button" variant="outline" className="min-h-11 w-full gap-2" disabled={applying} onClick={() => void resetToTemplateStyle()}>
                       <RotateCcw className="h-4 w-4" />Reset to {resetEntry.definition.label}
                     </Button>

@@ -367,7 +367,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "centered",
-        "rich-text": "centered",
+        "rich-text": "standard",
       },
     },
   }),
@@ -502,7 +502,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "split",
-        "featured-products": "grid",
+        "featured-products": "3-col",
       },
     },
   }),
@@ -522,7 +522,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "split",
-        "featured-products": "grid",
+        "featured-products": "3-col",
       },
     },
   }),

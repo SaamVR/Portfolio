@@ -1,4 +1,5 @@
 import type { StorePageBlock } from "@/lib/cms/schema";
+import type { StoreBusinessFamily } from "@/lib/cms/storefront-template-seeds";
 import { getStorefrontTemplateDefinition, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { buildEditorCompatibilityContext } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import { evaluateStorefrontVariantCompatibility, getAvailableStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/compatibility";
@@ -33,16 +34,24 @@ function contentHints(definition: StorefrontVariantDefinition, block: StorePageB
   return hints;
 }
 
-function isRecommended(definition: StorefrontVariantDefinition, templateId: StorefrontTemplateId, businessFamily: string, templateDefaultId?: string) {
+function isRecommended(definition: StorefrontVariantDefinition, templateId: StorefrontTemplateId, businessFamily: StoreBusinessFamily, templateDefaultId?: string) {
   return Boolean(
     definition.id === templateDefaultId
       || definition.recommendedFor?.templateIds?.includes(templateId)
-      || definition.recommendedFor?.businessFamilies?.includes(businessFamily as never)
+      || definition.recommendedFor?.businessFamilies?.includes(businessFamily)
       || definition.editor.badge === "recommended"
       || definition.visibility === "recommended"
   );
 }
 
+
+export function getEffectiveSectionStyleVariantId(
+  templateId: StorefrontTemplateId,
+  block: StorePageBlock,
+): string | undefined {
+  return block.layoutVariant
+    ?? getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type];
+}
 
 export function getSectionStyleLibraryEntries(
   templateId: StorefrontTemplateId,
@@ -50,9 +59,10 @@ export function getSectionStyleLibraryEntries(
 ): SectionStyleLibraryEntry[] {
   const context = buildEditorCompatibilityContext(templateId, block);
   const templateDefaultId = getStorefrontTemplateDefinition(templateId).presentation.blockLayoutVariants?.[block.type];
-  return getAvailableStorefrontVariantDefinitions(block.type, context, { currentVariantId: block.layoutVariant })
+  const effectiveVariantId = getEffectiveSectionStyleVariantId(templateId, block);
+  return getAvailableStorefrontVariantDefinitions(block.type, context, { currentVariantId: effectiveVariantId })
     .map((definition) => {
-      const current = block.layoutVariant === definition.id;
+      const current = effectiveVariantId === definition.id;
       const compatibility = evaluateStorefrontVariantCompatibility(definition, context);
       return {
         definition,

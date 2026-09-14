@@ -56,18 +56,22 @@ export function getPlatformAestheticOptions(theme: Store["theme"]): PlatformAest
   });
 }
 
-function blockSignals(block?: StorePageBlock): Partial<Pick<StorefrontCompatibilityContext, "itemCount" | "mediaCount" | "hasPrimaryMedia">> {
+function blockSignals(block?: StorePageBlock): Partial<Pick<StorefrontCompatibilityContext, "itemCount" | "itemCountUpperBound" | "mediaCount" | "hasPrimaryMedia">> {
   if (!block) return {};
   const props = (block.props ?? {}) as Record<string, unknown>;
   const hasExplicitImages = Array.isArray(props.images);
   const hasExplicitItems = Array.isArray(props.items);
   const imageList = hasExplicitImages ? (props.images as unknown[]).filter((value) => typeof value === "string" && value.trim()) : [];
   const itemList = hasExplicitItems ? props.items as unknown[] : [];
+  const rawLimit = typeof props.limit === "number" ? props.limit : Number(props.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : undefined;
+  const exactItemCount = hasExplicitItems ? Math.min(itemList.length, limit ?? itemList.length) : undefined;
   const mediaKeys = ["mediaUrl", "imageUrl", "videoUrl"];
   const hasPrimaryMedia = mediaKeys.some((key) => typeof props[key] === "string" && String(props[key]).trim().length > 0);
 
   return {
-    ...(hasExplicitItems ? { itemCount: itemList.length } : {}),
+    ...(exactItemCount !== undefined ? { itemCount: exactItemCount } : {}),
+    ...(!hasExplicitItems && limit !== undefined ? { itemCountUpperBound: limit } : {}),
     ...(hasExplicitImages ? { mediaCount: imageList.length } : hasPrimaryMedia ? { mediaCount: 1 } : {}),
     hasPrimaryMedia,
   };

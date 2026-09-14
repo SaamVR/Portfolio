@@ -50,6 +50,22 @@ function Heading({ tagline, title, href, compact = false }: { tagline: string; t
 export function FeaturedProductsVisualStyles({
   variant, products, title, tagline, viewAllHref, containerClass, sectionStyle,
 }: FeaturedProductsVisualStylesProps) {
+  if (variant === "carousel") {
+    return (
+      <section className="overflow-hidden bg-background py-12 md:py-18" style={sectionStyle} data-section-renderer="featured-products/carousel">
+        <div className={cn("mx-auto px-4", containerClass)}>
+          <Heading tagline={tagline} title={title} href={viewAllHref} compact />
+        </div>
+        <div className="mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 md:px-6">
+          {products.map((product, index) => (
+            <ProductTile key={product.id} product={product} index={index}
+              className="w-[72vw] max-w-[300px] shrink-0 snap-start sm:w-[42vw] md:w-[31vw] lg:w-[23vw] lg:max-w-[320px]" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   if (variant === "editorial-grid") {
     return (
       <section className="border-y border-border/70 bg-background py-12 md:py-20" style={sectionStyle} data-section-renderer="featured-products/editorial-grid">

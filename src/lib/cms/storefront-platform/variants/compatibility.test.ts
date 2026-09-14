@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { compositionRecipeRegistry } from "@/lib/cms/storefront-platform/composition/recipes";
+import type { StorePageBlock } from "@/lib/cms/schema";
+import { buildEditorCompatibilityContext } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 import {
+  evaluateStorefrontVariantCompatibility,
   isStorefrontVariantAvailable,
   resolveCompatibleCompositionRecipe,
   resolveCompatibleStorefrontVariant,
@@ -47,6 +50,28 @@ describe("storefront compatibility contracts", () => {
     assert.equal(resolveCompatibleStorefrontVariant("hero", "collection-spotlight", serviceContext)?.id, "split");
   });
 
+
+  it("uses section limits as an upper bound for DB-sourced compatibility", () => {
+    const productBlock = {
+      id: "featured-1", type: "featured-products", sortOrder: 0, isVisible: true, visible: true,
+      props: { source: "all", limit: 2 },
+    } as StorePageBlock;
+    const productContext = buildEditorCompatibilityContext("general-catalog", productBlock);
+    assert.equal(productContext.itemCount, undefined);
+    assert.equal(productContext.itemCountUpperBound, 2);
+    const fourCol = getStorefrontVariantDefinition("featured-products", "4-col");
+    assert.ok(fourCol);
+    assert.equal(evaluateStorefrontVariantCompatibility(fourCol, productContext).compatible, false);
+
+    const categoryBlock = {
+      id: "categories-1", type: "category-showcase", sortOrder: 1, isVisible: true, visible: true,
+      props: { source: "categories", limit: 2 },
+    } as StorePageBlock;
+    const categoryContext = buildEditorCompatibilityContext("general-catalog", categoryBlock);
+    const masonry = getStorefrontVariantDefinition("category-showcase", "masonry");
+    assert.ok(masonry);
+    assert.equal(evaluateStorefrontVariantCompatibility(masonry, categoryContext).compatible, false);
+  });
 
   it("uses one merchant visibility policy for lifecycle and template-exclusive styles", () => {
     const base = getStorefrontVariantDefinition("hero", "centered");

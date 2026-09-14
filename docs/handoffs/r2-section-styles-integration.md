@@ -35,3 +35,19 @@ The persistent workspace has no production Supabase secrets. Browser smoke used 
 ## Final QA gate
 
 Lane D should re-run read-only QA against the exact Lane A integration SHA after this handoff is committed and pushed. R2 is ready for that independent freeze gate; Lane D, not Lane A, owns the final P0/P1 release verdict.
+
+## R2 closeout after Lane D release-candidate audit
+
+The bounded closeout pass resolves every R2 P1 raised against `9081289`:
+
+- Inherited template defaults are resolved as the effective/current style in Section Styles.
+- Reset restores inheritance by persisting `layout_variant = null` rather than pinning the current template default.
+- All declared template defaults now resolve through the canonical registry; legacy `centered`/`grid` values remain readable as deprecated compatibility entries where required.
+- DB-sourced sections use an explicit `limit` as a known item-count upper bound for compatibility filtering.
+- Generated previews no longer claim `live` fidelity; manifest validation rejects an unsupported live-preview declaration.
+- Responsive metadata now matches the public renderer at the requested mobile/tablet/desktop breakpoints.
+- Featured Products `carousel` and `center-focus-rail` are distinct renderers and distinct previews.
+
+Closeout validation: typecheck PASS; focused R2 suite 41/41 PASS; targeted ESLint PASS; `git diff --check` PASS. Browser smoke across General Catalog, Fashion, and Threads at 360/390/430/768/1440 returned HTTP 200 with no document-level horizontal overflow or fatal page errors. The full repository suite is 912 tests / 909 PASS / the same 3 documented pre-existing non-R2 source-contract failures.
+
+Lane D should perform only a short read-only verification of these resolved P1s against the exact closeout SHA before the R2 freeze.

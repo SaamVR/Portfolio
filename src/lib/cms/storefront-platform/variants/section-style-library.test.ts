@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { buildSectionStylesPath } from "@/lib/admin-paths";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import { getSectionStylePreviewFixture, getSectionStylePreviewFixtureById } from "./preview-fixtures";
-import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "./section-style-library";
+import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getEffectiveSectionStyleVariantId, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "./section-style-library";
 import { canonicalStorefrontVariantRegistry } from "./registry";
 import { SECTION_STYLE_VERSIONING_POLICY } from "./validation";
 
@@ -36,6 +36,20 @@ describe("section style library", () => {
     assert.equal(entries.find((entry) => entry.current)?.definition.id, "editorial");
     assert.ok(entries.every((entry) => entry.definition.lifecycle === "published" || entry.current));
     assert.ok(entries.some((entry) => entry.recommended));
+  });
+
+  it("marks inherited template defaults as the current style", () => {
+    const fashionHero = {
+      id: "hero-fashion", type: "hero", sortOrder: 0, isVisible: true, visible: true, props: { mediaUrl: "/fashion.jpg" },
+    } as StorePageBlock;
+    const threadsHero = {
+      id: "hero-threads", type: "hero", sortOrder: 0, isVisible: true, visible: true, props: { mediaUrl: "/threads.jpg" },
+    } as StorePageBlock;
+
+    assert.equal(getEffectiveSectionStyleVariantId("fashion", fashionHero), "poster");
+    assert.equal(getSectionStyleLibraryEntries("fashion", fashionHero).find((entry) => entry.current)?.definition.id, "poster");
+    assert.equal(getEffectiveSectionStyleVariantId("threads", threadsHero), "split");
+    assert.equal(getSectionStyleLibraryEntries("threads", threadsHero).find((entry) => entry.current)?.definition.id, "split");
   });
 
   it("changes only presentation when a section style is applied or reset", () => {
@@ -80,6 +94,10 @@ describe("section style library", () => {
     const promoTarget = getSectionStyleResetTarget("threads", promo);
     assert.equal(promoTarget?.definition.id, "dual-editorial");
     assert.equal(promoTarget?.templateDefault, true);
+    assert.deepEqual(buildSectionStylePersistencePatch(null), { layout_variant: null });
+
+    const workspaceSource = readFileSync("src/views/admin/SectionStylesWorkspace.tsx", "utf8");
+    assert.ok(workspaceSource.includes("persistStyleVariant(selectedBlock, null)"));
   });
 
   it("keeps manifest versions internal until blocks can persist a pinned version", () => {

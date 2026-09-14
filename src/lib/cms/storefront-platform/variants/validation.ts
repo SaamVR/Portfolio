@@ -7,6 +7,7 @@ import { hasSectionStylePreviewFixture } from "@/lib/cms/storefront-platform/var
  * exists, a breaking visual change must ship under a new variant ID.
  */
 export const SECTION_STYLE_VERSIONING_POLICY = "new-id-for-breaking-change" as const;
+export const SECTION_STYLE_LIVE_PREVIEW_SUPPORTED = false as const;
 
 export function validateStorefrontVariantManifest(definition: StorefrontVariantDefinition): string[] {
   const issues: string[] = [];
@@ -21,6 +22,9 @@ export function validateStorefrontVariantManifest(definition: StorefrontVariantD
     const target = definition.previewSpec[mode];
     if (target.mode === "asset" && !target.assetUrl?.trim()) {
       issues.push(`${mode} asset preview requires assetUrl`);
+    }
+    if (target.mode === "live" && !SECTION_STYLE_LIVE_PREVIEW_SUPPORTED) {
+      issues.push(`${mode} live preview is not implemented; use generated or asset mode`);
     }
   }
   return issues;

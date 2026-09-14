@@ -1,4 +1,5 @@
 export const FEATURED_PRODUCT_SECTION_RENDERER_KEYS = {
+  "carousel": "featured-products/carousel",
   "editorial-grid": "featured-products/editorial-grid",
   "center-focus-rail": "featured-products/center-focus-rail",
   "compact-commerce-grid": "featured-products/compact-commerce-grid",
@@ -28,7 +29,6 @@ function resolveKey<T extends Record<string, string>>(map: T, variant: string | 
 }
 
 export function resolveFeaturedProductSectionStyle(variant: string | null | undefined): FeaturedProductSectionStyle | null {
-  if (variant === "carousel") return "center-focus-rail";
   return resolveKey(FEATURED_PRODUCT_SECTION_RENDERER_KEYS, variant);
 }
 
