@@ -4,6 +4,11 @@
       "name": "seed_demo_blog_posts",
       "classification": "non-production",
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    },
+    {
+      "name": "p0_authoritative_order_boundary",
+      "classification": "pending-production",
+      "reason": "#309/#310/#318 release-blocker migration is intentionally pending governed production deployment; apply and smoke-test with the matching authoritative order API before refreshing the production migration ledger."
     }
   ]
 }
