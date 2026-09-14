@@ -5,7 +5,7 @@
 -- changing the existing order RPC signature or provider execution lifecycle.
 
 CREATE TABLE IF NOT EXISTS public.storefront_manual_payment_claims (
-  provider text NOT NULL CHECK (provider IN ('bkash_manual', 'nagad')),
+  provider text NOT NULL CHECK (provider IN ('bkash', 'nagad')),
   normalized_reference text NOT NULL CHECK (
     normalized_reference = upper(normalized_reference)
     AND normalized_reference ~ '^[A-Z0-9_-]{4,50}$'
@@ -25,8 +25,8 @@ REVOKE ALL ON TABLE public.storefront_manual_payment_claims FROM PUBLIC, anon, a
 GRANT SELECT ON TABLE public.storefront_manual_payment_claims TO service_role;
 
 -- Fail closed before backfilling if two historical orders already claim the
--- same provider transaction identity. This requires reconciliation instead of
--- silently blessing an ambiguous settlement history.
+-- same provider transaction identity. Manual bKash uses the canonical `bkash`
+-- provider namespace so automated bKash settlement can share this ledger later.
 DO $$
 DECLARE
   _duplicate record;
@@ -35,7 +35,10 @@ BEGIN
     INTO _duplicate
   FROM (
     SELECT
-      lower(trim(o.payment_method)) AS provider,
+      CASE lower(trim(o.payment_method))
+        WHEN 'bkash_manual' THEN 'bkash'
+        WHEN 'nagad' THEN 'nagad'
+      END AS provider,
       upper(substring(
         coalesce(o.notes, '')
         FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
@@ -66,7 +69,10 @@ INSERT INTO public.storefront_manual_payment_claims (
   order_id
 )
 SELECT
-  lower(trim(o.payment_method)) AS provider,
+  CASE lower(trim(o.payment_method))
+    WHEN 'bkash_manual' THEN 'bkash'
+    WHEN 'nagad' THEN 'nagad'
+  END AS provider,
   upper(substring(
     coalesce(o.notes, '')
     FROM '[Tt][Rr][Xx][Ii][Dd]:[[:space:]]*([A-Za-z0-9_-]{4,50})'
@@ -88,10 +94,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  _provider text := lower(trim(coalesce(NEW.payment_method, '')));
+  _payment_method text := lower(trim(coalesce(NEW.payment_method, '')));
+  _provider text;
   _reference text;
 BEGIN
-  IF _provider NOT IN ('bkash_manual', 'nagad') THEN
+  IF _payment_method = 'bkash_manual' THEN
+    _provider := 'bkash';
+  ELSIF _payment_method = 'nagad' THEN
+    _provider := 'nagad';
+  ELSE
     RETURN NEW;
   END IF;
 
@@ -148,4 +159,4 @@ FOR EACH ROW
 EXECUTE FUNCTION public.claim_storefront_manual_payment_reference();
 
 COMMENT ON TABLE public.storefront_manual_payment_claims IS
-  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Provider + normalized reference is globally unique across storefronts and remains consumed after related store/order deletion.';
+  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Provider + normalized reference is globally unique across storefronts, uses canonical provider namespaces, and remains consumed after related store/order deletion.';
