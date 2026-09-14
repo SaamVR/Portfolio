@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/auth-context";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { CartContext, type CartItem } from "@/context/cart-context";
 
+import { MAX_CART_LINES, clampCartQuantity, normalizePersistedCartItems } from "@/lib/cart-state";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const GLOBAL_CART_KEY = "global";
@@ -37,15 +38,21 @@ function isValidUUID(str: string): boolean {
 function loadCart(storeId?: string): CartItem[] {
   try {
     const saved = localStorage.getItem(getStorageKey(storeId));
-    return saved ? JSON.parse(saved) : [];
+    const parsed = saved ? JSON.parse(saved) : [];
+    return normalizePersistedCartItems(parsed, storeId);
   } catch {
     return [];
   }
 }
 
 function saveCart(items: CartItem[], storeId?: string) {
-  localStorage.setItem(getStorageKey(storeId), JSON.stringify(items));
-  localStorage.setItem(getTimeKey(storeId), Date.now().toString());
+  try {
+    const normalized = normalizePersistedCartItems(items, storeId);
+    localStorage.setItem(getStorageKey(storeId), JSON.stringify(normalized));
+    localStorage.setItem(getTimeKey(storeId), Date.now().toString());
+  } catch {
+    // Keep the in-memory cart usable when browser storage is unavailable/full.
+  }
 }
 
 function getScopedItems(items: CartItem[], storeId?: string | null) {
@@ -218,7 +225,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
         if (!dbCart || dbCart.length === 0) {
           // No items in DB, sync current local cart to DB
           if (itemsRef.current.length > 0) {
-            const inserts: TablesInsert<"cart_items">[] = itemsRef.current.map(item => ({
+            const boundedItems = normalizePersistedCartItems(itemsRef.current, storeId);
+            const inserts: TablesInsert<"cart_items">[] = boundedItems.map(item => ({
               user_id: user.id,
               product_id: item.productId,
               size: item.size,
@@ -253,7 +261,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             price: prod?.price || 0,
             image: prod?.image_url || "",
             size: item.size,
-            quantity: item.quantity
+            quantity: clampCartQuantity(item.quantity)
           };
         }).filter(item => item.price > 0);
 
@@ -263,13 +271,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           dbCartItems.forEach(dbItem => {
             const existing = merged.find(i => isSameCartLine(i, dbItem.productId, dbItem.size, dbItem.storeId));
             if (existing) {
-              // Keep the larger quantity
-              existing.quantity = Math.max(existing.quantity, dbItem.quantity);
+              // Keep the larger valid quantity without exceeding checkout bounds.
+              existing.quantity = clampCartQuantity(Math.max(existing.quantity, dbItem.quantity));
             } else {
               merged.push(dbItem);
             }
           });
-          return merged;
+          return normalizePersistedCartItems(merged, storeId);
         });
 
         hasMerged.current = true;
@@ -294,7 +302,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
 
     const syncToDb = async () => {
       try {
-        const scopedItems = getScopedItems(items, storeId);
+        const scopedItems = normalizePersistedCartItems(getScopedItems(items, storeId), storeId);
         const scopedProductIds = Array.from(new Set(scopedItems.map((item) => item.productId)));
         let validProductIds = new Set(scopedProductIds);
 
@@ -353,12 +361,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     const scopedItem = { ...item, storeId: item.storeId ?? storeId };
     const existing = itemsRef.current.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId));
+
+    if (!existing && getScopedItems(itemsRef.current, scopedItem.storeId).length >= MAX_CART_LINES) {
+      setIsCartOpen(true);
+      toast("Cart limit reached", { description: `A cart can contain up to ${MAX_CART_LINES} different items.` });
+      return;
+    }
+
+    if (existing && existing.quantity >= 99) {
+      setIsCartOpen(true);
+      toast("Maximum quantity reached", { description: "You can order up to 99 of one cart item at a time." });
+      return;
+    }
+
     setItems((prev) => {
       const existingLine = prev.find((i) => isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId));
       if (existingLine) {
         return prev.map((i) =>
           isSameCartLine(i, scopedItem.productId, scopedItem.size, scopedItem.storeId)
-            ? { ...i, quantity: i.quantity + 1 }
+            ? { ...i, quantity: clampCartQuantity(i.quantity + 1) }
             : i
         );
       }
@@ -405,18 +426,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       removeItem(productId, size, storeId);
       return;
     }
+    const nextQuantity = clampCartQuantity(quantity);
+    if (quantity > 99) {
+      toast("Maximum quantity reached", { description: "You can order up to 99 of one cart item at a time." });
+    }
     setItems((prev) =>
       prev.map((i) =>
-        isSameCartLine(i, productId, size, storeId) ? { ...i, quantity } : i
+        isSameCartLine(i, productId, size, storeId) ? { ...i, quantity: nextQuantity } : i
       )
     );
-    if (existing && existing.quantity !== quantity) {
+    if (existing && existing.quantity !== nextQuantity) {
       trackEvent({
         eventName: "cart_quantity_changed",
         eventCategory: "commerce",
         productId: existing.productId,
-        quantity,
-        value: existing.price * quantity,
+        quantity: nextQuantity,
+        value: existing.price * nextQuantity,
         metadata: {
           productName: existing.name,
           variant: existing.size,
