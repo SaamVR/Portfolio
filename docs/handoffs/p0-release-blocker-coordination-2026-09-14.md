@@ -249,3 +249,48 @@ Most other Order changes apply cleanly onto R4, including current delivery edito
 - Added `docs/runbooks/p0-r4-production-cutover.md` as the coordinator-owned final cutover contract.
 - It fixes the checkout drain/maintenance rule, chronological migration sequence, app + Edge deploy ordering, postdeploy authority smokes, legacy v1/v2 RPC retirement, R4/P0 data-compatibility checks, #314 reconciliation, six-store delivery review, and #367 final security gate.
 - Latest R4 delta through `8b8b98805e04b323911ef278c7c0c2e7afe76b0b` only updates convergence documentation and order-background reliability tests; it does not cross into P0 monetary/order/payment-attempt ownership.
+
+## 2026-09-15 exact-head convergence checkpoint
+
+The previous sections are retained as historical coordination evidence. The current accepted implementation heads are:
+
+- Billing #308/#314: `7270899b8f27628bb7b304b2db1fb41cd53e133f`
+- Order #309/#310/#318: `8846129614ad6bf17633954a2e8d6cc59baf597c`
+- Payment #317/#327: `42815b160af3e8c6e4e6ce6ff0d3ede76a186d58`
+- Invite #323 plus staff-seat #325 composition: `849abada98722a3b65f915198a46fd42c1f760e5`
+- Image dependency #367: `f538362b43f400be1f98f2b5b7088a513dacda5c` (draft PR #369)
+
+The four authority lanes converge in merge commit `c154420a7ca0389f48023e7e2a88930277304301`. The durable integrated branch is `release/p0-integrated-2026-09-15`; after applying the #367 dependency commit its initial all-in head is `ddacbcd0cbbcd6d953905a4a2d07acfdd0ff0e48` before this documentation checkpoint.
+
+### Exact all-in regression evidence
+
+An independently installed tree byte-identical to the integrated package/lock graph passed:
+
+- full repository suite: **844/844**, 0 failures;
+- P0 release contracts: **25/25**;
+- TypeScript typecheck: PASS;
+- ESLint: **0 errors**, 4 existing warnings on the integrated source set;
+- migration drift: PASS with all five P0 migrations explicitly `pending-production`;
+- `npm audit`: **0 total vulnerabilities**;
+- `git diff --check`: PASS;
+- production Next.js **16.3.5** webpack build: PASS.
+
+#367 additionally passed a production `next start` image-optimizer smoke on its exact isolated head: local image optimization returned HTTP 200 / 256x256 JPEG, and an allowed remote `placehold.co` source returned HTTP 200 / 256x144 PNG; both outputs decoded successfully with Sharp **0.35.4**.
+
+### Database composition evidence
+
+- Order v3 -> Payment lifecycle transactional composition smoke: `COMPOSE_TRANSACTIONAL_SMOKE=PASS`.
+- Final Invite atomicity/staff-seat PostgreSQL matrix: PASS, including owner-role rejection and one-winner last-seat race.
+- Billing authority/replay database proofs remain green from the Billing lane; production #314 still requires finance-authoritative reconciliation of the pre-existing ambiguous paid manual-bKash identity before trusted migration application.
+
+### Remaining release gates
+
+This checkpoint does **not** authorize production publication. Remaining external/integration gates are:
+
+1. finance-authoritative #314 reconciliation;
+2. hosted GitHub Actions/account recovery and required workflow reruns on the exact approved release head;
+3. final frozen-R4/P0 reconciliation and regression on one target SHA;
+4. governed production migration/Edge/app cutover with postdeploy smokes and migration-ledger refresh;
+5. Runtime-8 exact production GO/CONDITIONAL-GO/NO-GO decision.
+
+Do not close canonical P0s merely because local implementation is green; close them only after their production evidence gates are satisfied.

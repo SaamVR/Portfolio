@@ -81,6 +81,21 @@ requireMatch(
   /(?:CHECK\s*\([\s\S]{0,220}role[\s\S]{0,220}(?:admin|editor|viewer)|v_store_invite\.role\s*(?:=\s*'owner'|NOT\s+IN))/i,
 );
 requireMatch("invite-service-only", inviteMigration, /REVOKE ALL ON FUNCTION public\.claim_invite_code_atomic[\s\S]*authenticated[\s\S]*GRANT EXECUTE[\s\S]*service_role/i);
+requireMatch(
+  "staff-seat-authority",
+  inviteMigration,
+  /resolve_store_staff_seat_limit[\s\S]*store_staff_seat_limit_reached/i,
+);
+requireMatch(
+  "staff-seat-serialized",
+  inviteMigration,
+  /pg_advisory_xact_lock[\s\S]{0,240}staff-seat:[\s\S]*resolve_store_staff_seat_limit/i,
+);
+requireMatch(
+  "direct-owner-membership-rejected",
+  inviteMigration,
+  /store_owner_membership_identity_required/i,
+);
 
 for (const migrationName of [
   "lock_store_invoice_client_authority_308",

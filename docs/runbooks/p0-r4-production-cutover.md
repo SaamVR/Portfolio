@@ -83,3 +83,11 @@ GO only when all gates above are green and no unresolved P0 authority or release
 CONDITIONAL-GO may only be used for a non-security, non-authority condition with an explicit bounded operational mitigation; do not use it to waive #308/#309/#310/#314/#317/#318/#323/#327 or #367.
 
 NO-GO if any monetary authority, settlement authority, invite authority, reservation/provider state, migration composition, dependency-security, or production-evidence gate remains unresolved.
+
+## Current pre-cutover candidate — 2026-09-15
+
+P0 authority convergence is locally green on `release/p0-integrated-2026-09-15`. The integrated graph contains the exact Billing, Order, Payment, Invite and #367 dependency heads recorded in the coordination handoff.
+
+Before declaring the final deploy SHA, re-run the Runtime-7 suite after the frozen R4 reconciliation. The already-proven P0 candidate baseline is: 844/844 tests, 25/25 authority contracts, typecheck PASS, lint 0 errors, migration drift PASS, audit 0 vulnerabilities, production build PASS, commerce transactional DB composition PASS, and Invite atomicity/staff-seat DB smoke PASS.
+
+Do not advance from this checkpoint to production until #314 historical finance reconciliation and hosted CI/account recovery are both complete. The database-first sequencing and Edge/app ordering above remain binding.
