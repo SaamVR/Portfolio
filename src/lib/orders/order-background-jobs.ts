@@ -117,23 +117,35 @@ async function markRecoveryLeadRecovered({
     return null;
   }
 
-  const recoveryLeadQuery = (supabaseAdmin as any)
-    .from("store_cart_recovery_leads")
-    .select("id, recovered_revenue")
-    .eq("store_id", storeId)
-    .in("status", ["active", "abandoned", "contacted"])
-    .order("updated_at", { ascending: false })
-    .limit(1);
+  const findRecoveryLead = async (column: "contact_phone" | "contact_email", value: string) => {
+    const lookup = await (supabaseAdmin as any)
+      .from("store_cart_recovery_leads")
+      .select("id, recovered_revenue")
+      .eq("store_id", storeId)
+      .in("status", ["active", "abandoned", "contacted"])
+      .eq(column, value)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const lookup = customerPhone
-    ? await recoveryLeadQuery.eq("contact_phone", customerPhone).maybeSingle()
-    : await recoveryLeadQuery.eq("contact_email", customerEmail).maybeSingle();
+    if (lookup?.error) {
+      throw new Error(errorMessage(lookup.error));
+    }
+    return lookup?.data ?? null;
+  };
 
-  if (lookup?.error) {
-    throw new Error(errorMessage(lookup.error));
+  let matchingRecoveryLead = customerPhone
+    ? await findRecoveryLead("contact_phone", customerPhone)
+    : null;
+
+  // #322 intentionally stops persisting browser-supplied phone authority. An
+  // authenticated recovery lead can therefore have only its account email even
+  // though the eventual order has a phone number. Fall back to that email rather
+  // than silently leaving the converted lead in the recovery campaign.
+  if (!matchingRecoveryLead?.id && customerEmail) {
+    matchingRecoveryLead = await findRecoveryLead("contact_email", customerEmail);
   }
 
-  const matchingRecoveryLead = lookup?.data;
   if (!matchingRecoveryLead?.id) {
     return null;
   }
