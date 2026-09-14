@@ -6,7 +6,8 @@ import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefron
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 import { resolveAuthoritativeCheckoutPricing } from "@/lib/orders/authoritative-checkout-pricing";
-import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
+import { getPaymentProviderByPaymentMethod, isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
+import { isStorefrontPaymentMethodConfigured } from "@/lib/payments/storefront-payment-availability";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -182,6 +183,29 @@ export async function POST(req: Request) {
     // the canonical storefront resolver.
     if (!canStoreAcceptOrders(orderAccess)) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
+    }
+
+    const gatewayProvider = getPaymentProviderByPaymentMethod(paymentMethod);
+    let gatewayConnection: unknown = null;
+    if (gatewayProvider?.connectionRequired) {
+      const connectionResult = await (supabaseAdmin as any)
+        .from("store_payment_connections_secure")
+        .select("provider, status")
+        .eq("store_id", storeId)
+        .eq("provider", gatewayProvider.id)
+        .maybeSingle();
+      if (connectionResult.error) {
+        throw connectionResult.error;
+      }
+      gatewayConnection = connectionResult.data;
+    }
+
+    if (!isStorefrontPaymentMethodConfigured({
+      paymentMethod,
+      paymentSettings: paymentSettingResult.data?.value,
+      gatewayConnection,
+    })) {
+      return jsonNoStore({ error: "Payment method is not available for this store" }, { status: 400 });
     }
 
     const authoritativePricing = resolveAuthoritativeCheckoutPricing({

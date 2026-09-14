@@ -6,7 +6,7 @@ const storeId = "10000000-0000-4000-8000-000000000001";
 const orderId = "10000000-0000-4000-8000-000000000002";
 const productId = "10000000-0000-4000-8000-000000000003";
 
-function buildRequest(paymentMethod = "bkash", deliveryFee = 80) {
+function buildRequest(paymentMethod = "cod", deliveryFee = 80) {
   return new Request("https://example.com/api/orders/create", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -22,7 +22,7 @@ function buildRequest(paymentMethod = "bkash", deliveryFee = 80) {
       shippingAddress: "123 Test Road",
       shippingCity: "Dhaka",
       paymentMethod,
-      notes: "Payment: bKash (Automated)",
+      notes: "Checkout recovery test",
       couponCode: null,
     }),
   });
@@ -34,7 +34,7 @@ function createAdminMock(options?: {
   rpcError?: { message: string } | null;
 }) {
   const replayed = options?.replayed ?? true;
-  const persistedPaymentMethod = options?.persistedPaymentMethod ?? "bkash";
+  const persistedPaymentMethod = options?.persistedPaymentMethod ?? "cod";
 
   return {
     rpc: async (name: string) => {
@@ -151,7 +151,7 @@ afterEach(() => {
 
 describe("order creation checkout recovery", () => {
   test("returns the persisted payment method and skips order-created side effects for an idempotent replay", async () => {
-    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "bkash" });
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "cod" });
     let dispatchCount = 0;
 
     mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
@@ -166,11 +166,11 @@ describe("order creation checkout recovery", () => {
       return { mode: "inline" as const };
     });
 
-    const response = await POST(buildRequest("bkash"));
+    const response = await POST(buildRequest("cod"));
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.replayed, true);
-    assert.equal(body.order.payment_method, "bkash");
+    assert.equal(body.order.payment_method, "cod");
     assert.equal(body.order.order_number, "ORD-RECOVERY-1");
     assert.equal(dispatchCount, 0);
   });
@@ -205,8 +205,6 @@ describe("order creation checkout recovery", () => {
       error: null,
     }) as never);
 
-    // The mock intentionally ignores the requested COD method and returns the
-    // existing bKash order, simulating an old/drifted database RPC.
     const response = await POST(buildRequest("cod"));
     assert.equal(response.status, 409);
   });
@@ -232,6 +230,30 @@ describe("order creation checkout recovery", () => {
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.match(body.error, /pricing changed/i);
+    assert.equal(rpcCalls, 0);
+  });
+
+  test("rejects a globally valid manual payment method when the merchant has not enabled it", async () => {
+    const admin = createAdminMock({ replayed: false, persistedPaymentMethod: "bkash_manual" });
+    let rpcCalls = 0;
+    const originalRpc = admin.rpc;
+    admin.rpc = async (name: string) => {
+      rpcCalls += 1;
+      return originalRpc(name);
+    };
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
+
+    const response = await POST(buildRequest("bkash_manual"));
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /not available/i);
     assert.equal(rpcCalls, 0);
   });
 });
