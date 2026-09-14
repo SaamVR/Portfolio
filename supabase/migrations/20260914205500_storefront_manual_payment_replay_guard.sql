@@ -10,8 +10,11 @@ CREATE TABLE IF NOT EXISTS public.storefront_manual_payment_claims (
     normalized_reference = upper(normalized_reference)
     AND normalized_reference ~ '^[A-Z0-9_-]{4,50}$'
   ),
-  store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  -- The settlement claim must survive store/order deletion so a consumed
+  -- external transaction identity can never become reusable. Keep nullable
+  -- references for diagnostics while the related records still exist.
+  store_id uuid REFERENCES public.stores(id) ON DELETE SET NULL,
+  order_id uuid REFERENCES public.orders(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (provider, normalized_reference),
   UNIQUE (order_id)
@@ -145,4 +148,4 @@ FOR EACH ROW
 EXECUTE FUNCTION public.claim_storefront_manual_payment_reference();
 
 COMMENT ON TABLE public.storefront_manual_payment_claims IS
-  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Provider + normalized reference is globally unique across storefronts.';
+  'Exactly-once claims for shopper-supplied manual bKash/Nagad settlement identities. Provider + normalized reference is globally unique across storefronts and remains consumed after related store/order deletion.';
