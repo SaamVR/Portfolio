@@ -9,11 +9,6 @@ type OrderAnalyticsInsertPayload = {
   supabaseAdmin: SupabaseAdminClient;
 };
 
-type OrderRevenueInsertPayload = {
-  row: Record<string, unknown>;
-  supabaseAdmin: SupabaseAdminClient;
-};
-
 type OrderRecoveryPayload = {
   customerEmail: string;
   customerPhone: string;
@@ -23,17 +18,21 @@ type OrderRecoveryPayload = {
   supabaseAdmin: SupabaseAdminClient;
 };
 
-type OrderCancellationRevenuePayload = {
-  row: Record<string, unknown>;
-  supabaseAdmin: SupabaseAdminClient;
-};
-
 export type RunOrderCreatedBackgroundJobsArgs = {
   customerEmail: string;
   customerPhone: string;
   notification: OrderNotificationPayload;
+  /**
+   * Legacy wire name retained so queued messages created by the current order route
+   * stay compatible. These rows are normalized to order_created/order_created_item
+   * before persistence; order creation is not purchase/settlement authority.
+   */
   purchaseEventRows: unknown[];
   recoveryOrderId: string;
+  /**
+   * Legacy queue payload retained for compatibility only. Order creation must not
+   * write revenue truth before payment/collection authority is established.
+   */
   revenueEventRow: Record<string, unknown>;
   recoveredRevenue: number;
   storeId: string;
@@ -41,9 +40,40 @@ export type RunOrderCreatedBackgroundJobsArgs = {
 };
 
 export type RunOrderCancelledBackgroundJobsArgs = {
+  /**
+   * Retained for queue compatibility. Cancellation alone does not prove that a
+   * settled payment was refunded, so no revenue/refund event is written here.
+   */
   revenueEventRow: Record<string, unknown>;
   supabaseAdmin: SupabaseAdminClient;
 };
+
+function asAnalyticsRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+export function normalizeOrderCreatedAnalyticsRows(rows: unknown[]) {
+  return rows.map((row) => {
+    const record = asAnalyticsRecord(row);
+    if (!record) return row;
+
+    const eventName = typeof record.event_name === "string" ? record.event_name : "";
+    if (eventName !== "purchase" && eventName !== "purchase_item") {
+      return row;
+    }
+
+    return {
+      ...record,
+      event_name: eventName === "purchase" ? "order_created" : "order_created_item",
+      metadata: {
+        ...(asAnalyticsRecord(record.metadata) ?? {}),
+        lifecycle_truth: "order_created_unsettled",
+      },
+    };
+  });
+}
 
 async function insertAnalyticsEvents({
   purchaseEventRows,
@@ -53,21 +83,14 @@ async function insertAnalyticsEvents({
     return null;
   }
 
-  return (supabaseAdmin as any).from("store_analytics_events").insert(purchaseEventRows);
-}
-
-async function insertRevenueEvent({
-  row,
-  supabaseAdmin,
-}: OrderRevenueInsertPayload | OrderCancellationRevenuePayload) {
-  return (supabaseAdmin as any).from("store_revenue_events").insert(row);
+  const truthfulRows = normalizeOrderCreatedAnalyticsRows(purchaseEventRows);
+  return (supabaseAdmin as any).from("store_analytics_events").insert(truthfulRows);
 }
 
 async function markRecoveryLeadRecovered({
   customerEmail,
   customerPhone,
   orderId,
-  recoveredRevenue,
   storeId,
   supabaseAdmin,
 }: OrderRecoveryPayload) {
@@ -97,7 +120,9 @@ async function markRecoveryLeadRecovered({
       status: "recovered",
       recovery_stage: "recovered",
       recovered_order_id: orderId,
-      recovered_revenue: recoveredRevenue,
+      // An order being placed proves recovery of the checkout, not collection of
+      // revenue. Settlement lifecycle code may attribute revenue later.
+      recovered_revenue: 0,
       last_activity_at: new Date().toISOString(),
     })
     .eq("id", matchingRecoveryLead.id)
@@ -142,15 +167,13 @@ async function reportBackgroundFailures(
 }
 
 export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgroundJobsArgs) {
-  const taskNames = ["merchant-notification", "analytics", "revenue", "cart-recovery"];
+  // Order creation may notify, record order-created funnel events, and close a
+  // recovery lead. It must not create purchase/revenue truth before collection.
+  const taskNames = ["merchant-notification", "analytics", "cart-recovery"];
   const tasks = [
     triggerWhatsAppOrderNotify(args.supabaseAdmin, args.notification),
     insertAnalyticsEvents({
       purchaseEventRows: args.purchaseEventRows,
-      supabaseAdmin: args.supabaseAdmin,
-    }),
-    insertRevenueEvent({
-      row: args.revenueEventRow,
       supabaseAdmin: args.supabaseAdmin,
     }),
     markRecoveryLeadRecovered({
@@ -169,13 +192,8 @@ export async function runOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgro
 }
 
 export async function runOrderCancelledBackgroundJobs(args: RunOrderCancelledBackgroundJobsArgs) {
-  const results = await Promise.allSettled([
-    insertRevenueEvent({
-      row: args.revenueEventRow,
-      supabaseAdmin: args.supabaseAdmin,
-    }),
-  ]);
-  const storeId = typeof args.revenueEventRow.store_id === "string" ? args.revenueEventRow.store_id : null;
-  await reportBackgroundFailures(args.supabaseAdmin, storeId, "cancelled", ["revenue"], results);
-  return results;
+  // Cancellation is operational state, not evidence that money was collected or
+  // refunded. Provider/manual settlement authority must write financial events.
+  void args.revenueEventRow;
+  return Promise.allSettled([]);
 }
