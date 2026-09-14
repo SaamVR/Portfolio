@@ -53,9 +53,29 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   if (isLoading) {
     return (
       <LayoutWrapper>
-        <div className="flex min-h-[70vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        {isThreads ? (
+          <section className="mx-auto min-h-[68vh] max-w-[1320px] px-4 py-10 sm:px-6 md:px-8 md:py-14" aria-label="Loading product" aria-live="polite">
+            <div className="mb-8 flex items-center gap-3 border-b border-border pb-4 text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" /> Preparing the piece
+            </div>
+            <div className="grid animate-pulse gap-9 lg:grid-cols-[minmax(0,1.12fr)_minmax(390px,.72fr)] lg:gap-14">
+              <div className="aspect-[4/5] max-h-[760px] rounded-[3px] bg-secondary" />
+              <div className="space-y-5 pt-2">
+                <div className="h-3 w-28 bg-secondary" />
+                <div className="h-12 w-4/5 bg-secondary" />
+                <div className="h-5 w-32 bg-secondary" />
+                <div className="h-px bg-border" />
+                <div className="h-24 bg-secondary/70" />
+                <div className="h-12 bg-secondary" />
+                <div className="h-12 bg-secondary" />
+              </div>
+            </div>
+          </section>
+        ) : (
+          <div className="flex min-h-[70vh] items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
       </LayoutWrapper>
     );
   }
@@ -63,17 +83,33 @@ const ProductDetail = ({ explicitStoreId, explicitStoreSlug }: { explicitStoreId
   if (!product) {
     return (
       <LayoutWrapper>
-        <div className="flex min-h-[70vh] items-center justify-center">
-          <div className="text-center">
-            <p className="mb-4 font-heading text-xl font-semibold text-foreground">Product not found</p>
-            <button
-              onClick={() => navigate(storefrontPath("/shop", storeSlug))}
-              className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
-            >
-              Browse Shop
-            </button>
+        {isThreads ? (
+          <section className="grid min-h-[68vh] place-items-center border-b border-border/60 bg-secondary/25 px-4 py-16">
+            <div className="max-w-xl text-center">
+              <p className="text-[9px] font-bold uppercase tracking-[.22em] text-primary">Collection note</p>
+              <h1 className="mt-3 font-serif text-[42px] font-semibold leading-[.9] tracking-[-.045em] sm:text-[52px]">This piece is no longer here.</h1>
+              <p className="mx-auto mt-5 max-w-md text-[12px] leading-6 text-muted-foreground">It may have moved, sold through, or been removed from the current collection. Browse the shop to find what is available now.</p>
+              <button
+                onClick={() => navigate(storefrontPath("/shop", storeSlug))}
+                className="mt-7 inline-flex min-h-11 items-center bg-primary px-6 text-[10px] font-bold uppercase tracking-[.1em] text-primary-foreground transition hover:opacity-90"
+              >
+                Browse the collection
+              </button>
+            </div>
+          </section>
+        ) : (
+          <div className="flex min-h-[70vh] items-center justify-center">
+            <div className="text-center">
+              <p className="mb-4 font-heading text-xl font-semibold text-foreground">Product not found</p>
+              <button
+                onClick={() => navigate(storefrontPath("/shop", storeSlug))}
+                className="rounded-md bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                Browse Shop
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </LayoutWrapper>
     );
   }

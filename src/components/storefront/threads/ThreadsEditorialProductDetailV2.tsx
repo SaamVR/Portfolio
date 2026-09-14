@@ -310,7 +310,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                   ) : null}
                 </div>
 
-                <div className="mt-3 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[.08em]">
+                <div className="mt-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.08em]">
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
                       unavailable ? "bg-destructive" : "bg-primary"
@@ -326,7 +326,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                 </div>
 
                 {product.description ? (
-                  <p className="mt-5 max-w-[520px] text-[10px] leading-5 text-foreground/68 md:text-[11px]">
+                  <p className="mt-5 max-w-[540px] text-[12px] leading-6 text-foreground/70 md:text-[13px]">
                     {product.description}
                   </p>
                 ) : null}
@@ -335,8 +335,8 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
               {colors.length > 0 ? (
                 <div className="border-b border-border py-5">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-bold uppercase tracking-[.15em]">Color</p>
-                    <span className="text-[9px] text-muted-foreground">
+                    <p className="text-[10px] font-bold uppercase tracking-[.15em]">Color</p>
+                    <span className="text-[10px] text-muted-foreground">
                       {selectedColor || "Choose a color"}
                     </span>
                   </div>
@@ -363,7 +363,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                     ))}
                   </div>
                   {colors.length > 1 && !selectedColor ? (
-                    <p className="mt-2.5 text-[9px] text-muted-foreground">
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">
                       Choose a color before adding to bag.
                     </p>
                   ) : null}
@@ -373,13 +373,13 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
               {sizes.length > 0 ? (
                 <div className="border-b border-border py-5">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-bold uppercase tracking-[.15em]">Size</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[.15em]">Size</p>
                     {sizeGuideHref ? (
                       <a
                         href={sizeGuideHref}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex min-h-11 items-center gap-1.5 py-3 text-[9px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                        className="inline-flex min-h-11 items-center gap-1.5 py-3 text-[10px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
                       >
                         <Ruler className="h-3.5 w-3.5" /> Size guide
                       </a>
@@ -392,7 +392,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                         type="button"
                         onClick={() => setSelectedSize(size)}
                         aria-pressed={selectedSize === size}
-                        className={`min-h-11 rounded-[2px] border px-2 text-[9px] font-bold transition ${
+                        className={`min-h-11 rounded-[2px] border px-2 text-[10px] font-bold transition ${
                           selectedSize === size
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-background hover:border-primary"
@@ -403,7 +403,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                     ))}
                   </div>
                   {sizes.length > 1 && !selectedSize ? (
-                    <p className="mt-2.5 text-[9px] text-muted-foreground">
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">
                       Choose your size before adding to bag.
                     </p>
                   ) : null}
@@ -413,10 +413,10 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
               {metricGroups.map((group) => (
                 <div key={group.key} className="border-b border-border py-5">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-bold uppercase tracking-[.15em]">
+                    <p className="text-[10px] font-bold uppercase tracking-[.15em]">
                       {group.label}
                     </p>
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       {selectedMetrics[group.key] || `Choose ${group.label.toLowerCase()}`}
                     </span>
                   </div>
@@ -432,7 +432,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                           }))
                         }
                         aria-pressed={selectedMetrics[group.key] === option}
-                        className={`min-h-11 rounded-[2px] border px-3 text-[9px] font-bold transition ${
+                        className={`min-h-11 rounded-[2px] border px-3 text-[10px] font-bold transition ${
                           selectedMetrics[group.key] === option
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-background hover:border-primary"
@@ -443,7 +443,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                     ))}
                   </div>
                   {group.options.length > 1 && !selectedMetrics[group.key] ? (
-                    <p className="mt-2.5 text-[9px] text-muted-foreground">
+                    <p className="mt-2.5 text-[10px] text-muted-foreground">
                       Choose {group.label.toLowerCase()} before adding to bag.
                     </p>
                   ) : null}
@@ -452,7 +452,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
 
               <div className="py-5">
                 <div className="mb-4 flex items-center justify-between gap-4">
-                  <p className="text-[9px] font-bold uppercase tracking-[.15em]">Quantity</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[.15em]">Quantity</p>
                   <div className="flex h-11 items-center overflow-hidden rounded-[2px] border border-border bg-background">
                     <button
                       type="button"
@@ -482,7 +482,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                   type="button"
                   onClick={addToBag}
                   disabled={unavailable}
-                  className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-[2px] bg-primary px-5 py-4 text-[9px] font-bold uppercase tracking-[.13em] text-primary-foreground transition hover:bg-primary/92 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-[2px] bg-primary px-5 py-4 text-[10px] font-bold uppercase tracking-[.13em] text-primary-foreground transition hover:bg-primary/92 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   {unavailable
@@ -493,12 +493,12 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                   type="button"
                   onClick={buyNow}
                   disabled={unavailable}
-                  className="mt-2.5 min-h-12 w-full rounded-[2px] border border-primary bg-background px-5 py-3 text-[9px] font-bold uppercase tracking-[.13em] text-primary transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
+                  className="mt-2.5 min-h-12 w-full rounded-[2px] border border-primary bg-background px-5 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-primary transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   Buy now
                 </button>
                 {!allowGuestCheckout ? (
-                  <p className="mt-2.5 text-[9px] leading-4 text-muted-foreground">
+                  <p className="mt-2.5 text-[10px] leading-5 text-muted-foreground">
                     This store asks customers to sign in before checkout.
                   </p>
                 ) : null}
@@ -545,11 +545,11 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
 
           <div>
             {product.description ? (
-              <p className="max-w-[680px] text-[10px] leading-6 text-foreground/70 md:text-[11px]">
+              <p className="max-w-[680px] text-[12px] leading-6 text-foreground/72 md:text-[13px]">
                 {product.description}
               </p>
             ) : (
-              <p className="max-w-[680px] text-[10px] leading-6 text-foreground/70 md:text-[11px]">
+              <p className="max-w-[680px] text-[12px] leading-6 text-foreground/72 md:text-[13px]">
                 A considered everyday piece from this collection.
               </p>
             )}
@@ -558,7 +558,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
                 {details.map(([label, value]) => (
                   <div
                     key={label}
-                    className="grid grid-cols-[78px_1fr] gap-3 border-b border-border py-4 text-[9px] leading-4 md:text-[10px]"
+                    className="grid grid-cols-[78px_1fr] gap-3 border-b border-border py-4 text-[10px] leading-5 md:text-[11px]"
                   >
                     <dt className="font-bold text-primary">{label}</dt>
                     <dd className="text-foreground/68">{value}</dd>
@@ -584,7 +584,7 @@ export function ThreadsEditorialProductDetailV2({ product }: { product: Product 
               </div>
               <a
                 href={storefrontPath("/shop", store?.slug)}
-                className="inline-flex min-h-11 items-center py-3 text-[9px] font-bold text-primary"
+                className="inline-flex min-h-11 items-center py-3 text-[10px] font-bold text-primary"
               >
                 View all →
               </a>

@@ -65,7 +65,7 @@ function FilterOption({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-[10px] font-semibold transition ${
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-[10px] font-semibold transition ${
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-background text-foreground/75 hover:border-primary/60"
@@ -392,11 +392,11 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
               <h1 className="mt-2 font-serif text-[42px] font-semibold leading-[.86] tracking-[-.05em] sm:text-[50px] md:text-[62px]">
                 Shop the Story
               </h1>
-              <p className="mt-3 max-w-[510px] text-[10px] leading-5 text-foreground/65 md:text-[11px]">
+              <p className="mt-3 max-w-[510px] text-[12px] leading-6 text-foreground/68 md:text-[13px]">
                 Explore original graphics, grounded colors, and everyday pieces designed to carry a little more meaning.
               </p>
             </div>
-            <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">
               {loading ? "Loading collection" : `${filteredProducts.length} pieces`}
             </p>
           </div>
@@ -412,7 +412,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
                   key={item.value}
                   type="button"
                   onClick={() => updateParam("category", item.value === "All" ? null : item.value)}
-                  className={`min-h-11 shrink-0 border-b-2 px-3 text-[9px] font-bold uppercase tracking-[.08em] transition sm:px-4 ${
+                  className={`min-h-11 shrink-0 border-b-2 px-3 text-[10px] font-bold uppercase tracking-[.08em] transition sm:px-4 ${
                     category === item.value
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -432,7 +432,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
                 value={query}
                 onChange={(event) => updateParam("q", event.target.value || null)}
                 placeholder="Search the collection"
-                className="h-11 w-full rounded-[3px] border border-border bg-background pl-10 pr-4 text-[11px] outline-none transition focus:border-primary"
+                className="h-11 w-full rounded-[3px] border border-border bg-background pl-10 pr-4 text-[12px] outline-none transition focus:border-primary"
               />
             </label>
 
@@ -441,7 +441,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
               onClick={() => setFiltersOpen(true)}
               aria-expanded={filtersOpen}
               aria-controls="threads-filter-dialog"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-[3px] border border-border bg-background px-4 text-[9px] font-bold uppercase tracking-[.08em] transition hover:border-primary"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[3px] border border-border bg-background px-4 text-[10px] font-bold uppercase tracking-[.08em] transition hover:border-primary"
             >
               <Filter className="h-3.5 w-3.5" />
               Filter
@@ -454,7 +454,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
               <select
                 value={sort}
                 onChange={(event) => updateParam("sort", event.target.value === "newest" ? null : event.target.value)}
-                className="h-11 w-full appearance-none rounded-[3px] border border-border bg-background pl-4 pr-10 text-[9px] font-bold uppercase tracking-[.06em] outline-none transition focus:border-primary md:w-[180px]"
+                className="h-11 w-full appearance-none rounded-[3px] border border-border bg-background pl-4 pr-10 text-[10px] font-bold uppercase tracking-[.06em] outline-none transition focus:border-primary md:w-[180px]"
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -465,32 +465,43 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
           </div>
 
           {query || activeFilterCount > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 py-3 text-[9px]">
+            <div className="flex flex-wrap items-center gap-2 py-3 text-[10px]">
               <span className="font-semibold text-muted-foreground">Active:</span>
               {query ? (
-                <button type="button" onClick={() => updateParam("q", null)} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border px-3">
+                <button type="button" onClick={() => updateParam("q", null)} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3">
                   “{query}” <X className="h-3 w-3" />
                 </button>
               ) : null}
               {category !== "All" ? (
-                <button type="button" onClick={() => updateParam("category", null)} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border px-3">
+                <button type="button" onClick={() => updateParam("category", null)} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3">
                   {category} <X className="h-3 w-3" />
                 </button>
               ) : null}
               {activeFilterCount > (category !== "All" ? 1 : 0) ? (
-                <button type="button" onClick={clearFilters} className="min-h-9 px-2 font-semibold text-primary underline underline-offset-4">Clear filters</button>
+                <button type="button" onClick={clearFilters} className="min-h-11 px-2 font-semibold text-primary underline underline-offset-4">Clear filters</button>
               ) : null}
             </div>
           ) : null}
 
           {loading ? (
-            <div className="grid min-h-[360px] place-items-center">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            <div className="py-6" aria-label="Loading collection" aria-live="polite">
+              <div className="mb-6 flex items-center gap-3 border-b border-border pb-4 text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" /> Curating the collection
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 md:grid-cols-4 md:gap-x-4 md:gap-y-9">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="aspect-[4/5] rounded-[2px] bg-secondary" />
+                    <div className="mt-3 h-3 w-3/4 bg-secondary" />
+                    <div className="mt-2 h-2.5 w-1/2 bg-secondary/70" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : displayedProducts.length === 0 ? (
             <div className="my-8 rounded-[6px] border border-dashed border-border bg-secondary/30 px-5 py-16 text-center">
               <p className="font-serif text-[28px] font-semibold">Nothing here yet</p>
-              <p className="mx-auto mt-2 max-w-md text-[10px] leading-5 text-muted-foreground">Try another category, remove a filter, or search for something different.</p>
+              <p className="mx-auto mt-2 max-w-md text-[12px] leading-6 text-muted-foreground">Try another category, remove a filter, or search for something different.</p>
               <button type="button" onClick={resetCollection} className="mt-5 inline-flex min-h-11 items-center rounded-[3px] bg-primary px-5 text-[9px] font-bold uppercase tracking-[.08em] text-primary-foreground">
                 Reset collection
               </button>
@@ -503,7 +514,7 @@ export function ThreadsShopPage({ explicitStoreId }: { explicitStoreId?: string 
                 ))}
               </div>
               <div className="border-t border-border pt-5 text-center">
-                <p className="mb-3 text-[9px] text-muted-foreground">Showing {displayedProducts.length} of {filteredProducts.length}</p>
+                <p className="mb-3 text-[10px] text-muted-foreground">Showing {displayedProducts.length} of {filteredProducts.length}</p>
                 {displayedProducts.length < filteredProducts.length ? (
                   <button
                     type="button"

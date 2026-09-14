@@ -117,7 +117,7 @@ export function ThreadsProductCard({
         <button
           type="button"
           onClick={() => toggleItem(product.id)}
-          className="absolute right-2.5 top-2.5 grid h-10 w-10 place-items-center rounded-full border border-black/5 bg-background/94 text-foreground shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:text-primary md:h-9 md:w-9"
+          className="absolute right-2.5 top-2.5 grid h-11 w-11 place-items-center rounded-full border border-black/5 bg-background/94 text-foreground shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:text-primary"
           aria-label={
             isInWishlist(product.id)
               ? `Remove ${product.name} from wishlist`
@@ -163,32 +163,32 @@ export function ThreadsProductCard({
       <div className={`${framed ? "px-0.5 pb-1 pt-3" : compact ? "px-1 pb-1 pt-2" : "px-0.5 pt-2.5"}`}>
         <Link
           href={href}
-          className={`block truncate font-medium tracking-[-.01em] ${compact ? "text-[10px]" : "text-[11px] md:text-[12px]"}`}
+          className={`block truncate font-medium tracking-[-.01em] ${compact ? "text-[11px]" : "text-[12px] md:text-[13px]"}`}
         >
           {product.name}
         </Link>
         <div className="mt-1 flex items-start justify-between gap-2">
           <span
             className={`min-w-0 truncate text-muted-foreground ${
-              compact ? "text-[8px]" : "text-[9px]"
+              compact ? "text-[9px]" : "text-[10px]"
             }`}
           >
             {product.category || product.type}
           </span>
           <span className="flex shrink-0 items-baseline gap-1.5">
             {onSale ? (
-              <span className={`${compact ? "text-[8px]" : "text-[9px]"} text-muted-foreground line-through`}>
+              <span className={`${compact ? "text-[9px]" : "text-[10px]"} text-muted-foreground line-through`}>
                 ৳{product.originalPrice!.toLocaleString()}
               </span>
             ) : null}
-            <span className={`font-semibold text-primary ${compact ? "text-[10px]" : "text-[11px]"}`}>
+            <span className={`font-semibold text-primary ${compact ? "text-[11px]" : "text-[12px]"}`}>
               ৳{product.price.toLocaleString()}
             </span>
           </span>
         </div>
 
         {unavailable ? (
-          <p className="mt-1 text-[8px] font-semibold uppercase tracking-[.08em] text-destructive">
+          <p className="mt-1 text-[9px] font-semibold uppercase tracking-[.08em] text-destructive">
             Out of stock
           </p>
         ) : null}

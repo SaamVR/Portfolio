@@ -6,7 +6,7 @@ import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import SEOHead from "@/components/SEOHead";
 import AnimatedSection from "@/components/AnimatedSection";
 import PageTransition from "@/components/PageTransition";
-import { Mail, Phone, MapPin, Loader2, MessageCircle, Clock, ArrowRight, Sparkles } from "lucide-react";
+import { Mail, Phone, MapPin, Loader2, MessageCircle, Clock, ArrowRight, Leaf, Sparkles } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -16,6 +16,7 @@ import {
   getStorefrontInquiryHeading,
   parseStorefrontInquiryContext,
 } from "@/lib/cms/storefront-inquiry-context";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 interface ContactSettings {
   badge?: string;
@@ -151,6 +152,231 @@ const Contact = () => {
     ? `https://wa.me/${whatsappDigits.startsWith("0") && whatsappDigits.length === 11 ? `88${whatsappDigits}` : whatsappDigits}?text=${encodeURIComponent(whatsappText)}`
     : "";
   const LayoutWrapper = storeId ? StorefrontLayout : Layout;
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : currentStore?.slug ?? null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isThreads = templateId === "threads";
+
+  if (isThreads) {
+    return (
+      <LayoutWrapper>
+        <SEOHead
+          title={title}
+          description={description}
+          canonical={absoluteStoreUrl(currentStore, "/contact")}
+        />
+        <PageTransition>
+          <section className="border-b border-border/60 bg-secondary/30">
+            <div className="mx-auto max-w-[1280px] px-4 py-10 sm:px-6 md:px-8 md:py-14">
+              {isLoading ? (
+                <div className="grid animate-pulse gap-8 lg:grid-cols-[1.2fr_.8fr]" aria-label="Loading contact details" aria-live="polite">
+                  <div>
+                    <div className="h-3 w-24 bg-secondary" />
+                    <div className="mt-5 h-16 max-w-xl bg-secondary" />
+                    <div className="mt-5 h-4 max-w-lg bg-secondary" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="h-14 bg-secondary" />
+                    <div className="h-14 bg-secondary" />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-9 lg:grid-cols-[1.15fr_.85fr] lg:items-end lg:gap-16">
+                  <AnimatedSection>
+                    <div>
+                      <div className="flex items-center gap-2 text-primary">
+                        <Leaf className="h-4 w-4 stroke-[1.4]" />
+                        <span className="text-[9px] font-bold uppercase tracking-[.22em]">{badge}</span>
+                      </div>
+                      <h1 className="mt-4 max-w-3xl font-serif text-[44px] font-semibold leading-[.88] tracking-[-.05em] sm:text-[56px] md:text-[66px]">
+                        {title}
+                      </h1>
+                      <p className="mt-5 max-w-2xl text-[12px] leading-6 text-foreground/68 sm:text-[13px]">{description}</p>
+                    </div>
+                  </AnimatedSection>
+
+                  <AnimatedSection delay={70}>
+                    <div className="border-t border-border">
+                      {[
+                        phone ? { label: "Phone", value: phone, icon: Phone, href: `tel:${phone}` } : null,
+                        emailAddr ? { label: "Email", value: emailAddr, icon: Mail, href: `mailto:${emailAddr}` } : null,
+                        responseTimeText ? { label: responseTimeLabel, value: responseTimeText, icon: Clock, href: "" } : null,
+                      ].filter(Boolean).map((item) => {
+                        if (!item) return null;
+                        const Icon = item.icon;
+                        const contentNode = (
+                          <>
+                            <span className="grid h-11 w-11 shrink-0 place-items-center border border-primary/25 text-primary"><Icon className="h-4 w-4 stroke-[1.5]" /></span>
+                            <span className="min-w-0">
+                              <span className="block text-[8px] font-bold uppercase tracking-[.16em] text-muted-foreground">{item.label}</span>
+                              <span className="mt-1 block break-words text-[12px] font-medium text-foreground">{item.value}</span>
+                            </span>
+                          </>
+                        );
+                        return item.href ? (
+                          <a key={item.label} href={item.href} className="flex min-h-[72px] items-center gap-4 border-b border-border py-3 transition hover:text-primary">{contentNode}</a>
+                        ) : (
+                          <div key={item.label} className="flex min-h-[72px] items-center gap-4 border-b border-border py-3">{contentNode}</div>
+                        );
+                      })}
+                    </div>
+                  </AnimatedSection>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="bg-background py-10 md:py-14">
+            <div className="mx-auto grid max-w-[1280px] gap-10 px-4 sm:px-6 md:px-8 lg:grid-cols-[.72fr_1.28fr] lg:gap-16">
+              <AnimatedSection delay={60}>
+                <aside>
+                  <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Ways to reach us</p>
+                  <h2 className="mt-3 font-serif text-[32px] font-semibold leading-[.94] tracking-[-.035em] md:text-[40px]">Talk to the people behind {storeName}.</h2>
+                  <p className="mt-4 text-[12px] leading-6 text-muted-foreground">Questions about a product, an order, or a collaboration can start here.</p>
+
+                  <div className="mt-7 border-t border-border">
+                    {address ? (
+                      <div className="flex gap-3 border-b border-border py-5">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-[.12em]">Store address</p>
+                          <p className="mt-2 text-[12px] leading-6 text-muted-foreground">{address}</p>
+                        </div>
+                      </div>
+                    ) : null}
+                    {whatsappHref ? (
+                      <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex min-h-16 items-center gap-3 border-b border-border py-4 transition hover:text-primary">
+                        <MessageCircle className="h-4 w-4 shrink-0 text-primary" />
+                        <span>
+                          <span className="block text-[9px] font-bold uppercase tracking-[.12em]">WhatsApp</span>
+                          <span className="mt-1 block text-[12px] text-muted-foreground">{whatsapp}</span>
+                        </span>
+                      </a>
+                    ) : null}
+                  </div>
+
+                  {contact?.map_enabled && contact?.map_embed_url ? (
+                    <div className="mt-7 overflow-hidden border border-border">
+                      <div className="border-b border-border px-4 py-3 text-[9px] font-bold uppercase tracking-[.12em]">Find the store</div>
+                      <iframe
+                        src={contact.map_embed_url}
+                        width="100%"
+                        height="260"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Store location"
+                      />
+                    </div>
+                  ) : null}
+
+                  {whatsappHref ? (
+                    <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="mt-7 inline-flex min-h-11 items-center gap-2 bg-primary px-5 text-[10px] font-bold uppercase tracking-[.1em] text-primary-foreground">
+                      Chat on WhatsApp <ArrowRight className="h-4 w-4" />
+                    </a>
+                  ) : null}
+                </aside>
+              </AnimatedSection>
+
+              <AnimatedSection delay={90}>
+                <div className="border-t border-border pt-6 lg:pt-8">
+                  <div className="mb-7">
+                    <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">{inquiryContext ? inquiryHeading : "Send a message"}</p>
+                    <h2 className="mt-3 font-serif text-[32px] font-semibold leading-[.94] tracking-[-.035em] md:text-[40px]">
+                      {inquiryContext ? inquiryContext.itemName : "Tell us what you need."}
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-[12px] leading-6 text-muted-foreground">
+                      {inquiryContext
+                        ? "Your selected item and request details are already attached below. Add or edit anything the merchant should know before sending."
+                        : "Share your question, order issue, or sales inquiry and the team will get back to you."}
+                    </p>
+                    {inquiryContext ? (
+                      <div className="mt-5 border-l-2 border-primary bg-secondary/45 p-4">
+                        <p className="text-[8px] font-bold uppercase tracking-[.16em] text-primary">Request context</p>
+                        <p className="mt-2 whitespace-pre-line text-[11px] leading-5 text-foreground">{inquiryMessage}</p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {[
+                        { key: "name", label: "Name", type: "text", placeholder: "Your name" },
+                        { key: "email", label: "Email", type: "email", placeholder: "you@example.com" },
+                      ].map(({ key, label, type, placeholder }) => (
+                        <div key={key}>
+                          <label htmlFor={`threads-${key}`} className="mb-2 block text-[9px] font-bold uppercase tracking-[.12em] text-foreground">{label}</label>
+                          <input
+                            id={`threads-${key}`}
+                            type={type}
+                            value={form[key as keyof typeof form]}
+                            onChange={(e) => update(key, e.target.value)}
+                            placeholder={placeholder}
+                            aria-invalid={Boolean(errors[key])}
+                            aria-describedby={errors[key] ? `threads-${key}-error` : undefined}
+                            className="min-h-12 w-full border border-border bg-background px-4 text-[12px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-ring"
+                          />
+                          {errors[key] ? <p id={`threads-${key}-error`} className="mt-1.5 text-[10px] text-destructive">{errors[key]}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label htmlFor="threads-message" className="mb-2 block text-[9px] font-bold uppercase tracking-[.12em] text-foreground">Message</label>
+                      <textarea
+                        id="threads-message"
+                        rows={7}
+                        value={form.message}
+                        onChange={(e) => update("message", e.target.value)}
+                        placeholder="How can we help?"
+                        maxLength={2000}
+                        aria-invalid={Boolean(errors.message)}
+                        aria-describedby={errors.message ? "threads-message-error" : undefined}
+                        className="w-full border border-border bg-background px-4 py-3 text-[12px] leading-6 text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-ring"
+                      />
+                      <div className="mt-1.5 flex justify-between gap-3">
+                        {errors.message ? <p id="threads-message-error" className="text-[10px] text-destructive">{errors.message}</p> : <span />}
+                        <p className="text-[9px] text-muted-foreground">{form.message.length}/2000</p>
+                      </div>
+                    </div>
+
+                    {submitStatus ? (
+                      <div
+                        role={submitStatus.tone === "error" ? "alert" : "status"}
+                        aria-live="polite"
+                        className={`border px-4 py-3 text-[11px] ${submitStatus.tone === "error" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/25 bg-primary/5 text-foreground"}`}
+                      >
+                        {submitStatus.message}
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-[10px] leading-5 text-muted-foreground">
+                        {responseTimeText ? `${responseTimeLabel}: ${responseTimeText}` : "The store will reply using the contact details you provide."}
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-6 text-[10px] font-bold uppercase tracking-[.12em] text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        {submitting ? "Sending" : formButtonLabel}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </AnimatedSection>
+            </div>
+          </section>
+        </PageTransition>
+      </LayoutWrapper>
+    );
+  }
 
   return (
     <LayoutWrapper>
