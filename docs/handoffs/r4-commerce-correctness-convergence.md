@@ -2,229 +2,190 @@
 
 Snapshot date: 2026-09-15 (Asia/Dhaka)
 
-## Frozen inputs
+## Exact current heads
 
-- R4 storefront integration: `d6c689a469fdc419cefca224c0e5f046644bb2df` (`r4/section-studio`)
+- Frozen R4 storefront: `d6c689a469fdc419cefca224c0e5f046644bb2df` (`r4/section-studio`)
 - Production/P0 baseline: `4caa14c351cf0f7071e5b4ea14fb069a79403215`
-- Existing P0 coordinator seed: `27a61b369b83c6fd40e3e3fcc2d3dcf9f2cd3a7c` (`release/p0-blocker-coordination-2026-09-14`)
-- Commerce hardening validated rollout head: `768e82483a97e82d57392a2b41a3d2d2fabb93a2`
-- Order authority: `5cf4db3ac674b7c8bf91d368b95e8c8c7cf8178a`
-- Payment lifecycle: `23b1d6ee7c9ed839a86ae8bb017518fbea16801c`
-- Billing authority: `e1ee5059958ab0dcb3d68ba5ea427990effde6f7`
-- Invite authority: `a1fedb962a77402d88cb6ed94e3ab07ff7354f26`
-- Dependency security blocker: #367
+- P0 coordinator seed: `27a61b369b83c6fd40e3e3fcc2d3dcf9f2cd3a7c` (`release/p0-blocker-coordination-2026-09-14`)
+- Commerce branch: `b67faa86f01dc0eb08f613c1b8cb41062c3c3cfa`
+- Last production-preflight-validated commerce rollout checkpoint: `768e82483a97e82d57392a2b41a3d2d2fabb93a2`
+- Billing: `e1ee5059958ab0dcb3d68ba5ea427990effde6f7` — PR #364
+- Order: `5cf4db3ac674b7c8bf91d368b95e8c8c7cf8178a` — PR #365
+- Payment: `f2b50c2bc8e892e593cffbf654fad8d7b011d400` — PR #366
+- Invite: `a1fedb962a77402d88cb6ed94e3ab07ff7354f26` — PR #368
+- Dependency-security blocker: #367
 
-## Preferred integration seed
+## Integration seed and authority
 
-Use `release/p0-blocker-coordination-2026-09-14` as the P0 authority convergence seed rather than reconstructing accepted work from the raw production baseline. At `27a61b3...` it already contains the accepted billing-authority integration plus coordinator data-contract gates, including `scripts/verify-p0-release-contract.mjs`.
+Use coordinator `27a61b3...` as the P0 integration seed. It already contains accepted billing-authority integration and `scripts/verify-p0-release-contract.mjs`. Do not rebuild that accepted billing work from the raw production baseline unless coordinator history is intentionally abandoned and fully revalidated.
 
-That coordinator branch is still based on the production/P0 lineage, not frozen R4. Final release convergence must therefore preserve both:
+Final release convergence must preserve all of:
 
-1. the coordinator's accepted production/P0 authority work;
+1. accepted coordinator/P0 production-lineage authority;
 2. exact frozen R4 storefront behavior/content;
-3. later accepted revisions from invite/order/payment lanes;
+3. accepted Invite → Order → Payment follow-up revisions;
 4. commerce hardening;
-5. the eventual isolated #367 dependency patch.
+5. the isolated #367 dependency patch.
 
-Do not merge a P0 lane directly into `r4/section-studio` and call it release-complete. Do not rebuild the already-integrated billing lane from scratch unless coordinator history is intentionally abandoned and revalidated.
-
-Before resolving product-code conflicts, verify the integration branch contains both `d6c689a...` content and the post-common-base production/P0 changes represented by the coordinator seed.
+Do not merge any raw P0 branch directly into frozen R4 and call the release complete.
 
 ## Coordinator executable contract
 
-The coordinator branch already carries `scripts/verify-p0-release-contract.mjs`. Treat it as a required static gate after every convergence step. It verifies, among other things:
+`node scripts/verify-p0-release-contract.mjs` is a mandatory post-composition gate. Do not weaken it to make old branch candidates pass. It verifies:
 
-- authoritative v3 exists;
-- machine-verifiable primary-zone membership exists;
+- authoritative v3 order creation exists;
+- structured machine-verifiable primary delivery-zone membership exists;
 - structured manual-payment evidence exists and survives operational backup/restore;
-- lifecycle wraps v3 and no runtime v2 path remains;
-- first-store delivery defaults non-authoritative (`deliveryEnabled: false`);
-- R4 replay claims consume structured manual-payment references and do not parse live notes;
-- one canonical manual-reference grammar is used across order authority and replay ledger;
+- lifecycle wraps authoritative v3 and no runtime v2 path remains;
+- new-store delivery defaults are non-authoritative (`deliveryEnabled: false`);
+- R4 manual-payment replay claims consume structured references for new orders and do not parse live notes;
+- one canonical manual-reference grammar is used;
 - cancellation has durable release-at-most-once protection;
 - unresolved provider execution/reconciliation blocks resource release;
-- succeeded payment obligations cannot create a new executable attempt;
-- invite claim is atomic/service-role-only and staff `owner` invitations cannot grant owner authority;
-- every P0 migration is classified in migration drift.
+- terminal successful payment prevents a second executable payment obligation;
+- invite claim is atomic/service-role-only and a staff `owner` invite cannot grant owner authority;
+- every P0 migration is correctly classified in migration drift.
 
-The current remote lane heads do **not** satisfy that complete gate yet. Static reinspection of the exact remote files confirms:
+## Current lane acceptance state
 
-- Order head `5cf4db3...`: merchant registration still defaults `deliveryEnabled: true`; the pushed order migration does not yet contain structured primary-zone membership or `manual_payment_provider` / `manual_payment_reference`; current operational restore source contains neither structured manual-payment field.
-- Payment head `23b1d6e...`: `create_store_order_with_payment_lifecycle` still calls `create_store_order_with_stock_v2`; its cancellation trigger still treats transition-to-cancelled as the release guard rather than durable release state.
-- Invite head `a1fedb9...`: claim logic validates pending/revoked/email/atomicity but still inserts `v_claimed_store.role` without rejecting `role='owner'`.
+### Billing — #308 / #314
 
-Therefore the coordinator verifier should remain red against those current remote heads until their reviewed follow-ups are pushed. Do not weaken the verifier to make an old candidate pass.
+Head: `e1ee5059958ab0dcb3d68ba5ea427990effde6f7`.
 
-## Current P0 readiness
+The code package is strong and earlier accepted billing work is already on the coordinator lineage. Production closure is still blocked by one historical normalized manual-bKash identity attached to two paid invoices in different stores. Existing DB review metadata is insufficient to choose a legitimate winner automatically.
 
-Branch existence is not Runtime-7 acceptance.
+Required before #314 rollout: preserve both histories, preserve the original duplicate in audit/reconciliation history, use external finance/provider evidence to identify the canonical owner, tombstone/supersede only the other active identity traceably, rerun preflight, then apply/postverify. Do not auto-delete, auto-refund, or infer the winner.
 
-### Billing authority — #308 / #314
+### Order — #309 / #310 / #318
 
-Current branch head: `e1ee5059958ab0dcb3d68ba5ea427990effde6f7`.
+Head: `5cf4db3ac674b7c8bf91d368b95e8c8c7cf8178a`.
 
-Implementation evidence is strong, and earlier accepted billing work is already present on the coordinator lineage. However, #314 has a real production reconciliation blocker: one normalized manual-bKash transaction identity is currently attached to two paid invoices in different stores. Neither invoice has sufficient review metadata to choose a legitimate winner automatically.
+Not Runtime-7 accepted. Exact source reinspection still shows:
 
-Before the billing uniqueness migration:
+- Merchant registration defaults `deliveryEnabled: true`; first-store delivery must remain disabled/unconfigured until merchant confirmation.
+- Pushed order migration lacks the final structured primary-zone membership contract required by #309.
+- Pushed order migration lacks final structured `manual_payment_provider` / `manual_payment_reference` authority required by #310.
+- Operational backup/restore does not yet preserve those structured manual-payment fields.
+- #318 still needs final rollback-only v3 DB proof including authoritative non-zero option delta, stale/tampered option IDs, delivery/payment rejection and idempotent replay.
 
-- preserve both historical invoice/entitlement records;
-- preserve the original duplicated reference in auditable reconciliation history;
-- use external/operator evidence to choose one canonical provider-identity owner;
-- tombstone/supersede only the other active provider identity traceably;
-- rerun the duplicate preflight, then apply the migration and postdeploy checks.
+Order monetary semantics remain canonical when this follow-up lands: stable option identity, DB-derived price deltas, payment eligibility, delivery authority and v3 order creation.
 
-Do not auto-delete, auto-refund or infer which paid invoice is legitimate.
+### Payment — #317 / #327
 
-### Order authority — #309 / #310 / #318
+Head: `f2b50c2bc8e892e593cffbf654fad8d7b011d400`.
 
-Current branch head: `5cf4db3ac674b7c8bf91d368b95e8c8c7cf8178a`.
+This head is one commit ahead of the original `23b1d6e...` candidate, but that new commit changes only the handoff, contract test and SQL smoke. The core `20260914203000_payment_reservation_lifecycle_317_327.sql` blob is unchanged and still calls legacy `create_store_order_with_stock_v2`.
 
-This head is not Runtime-7 accepted yet, and current source still fails multiple coordinator static contracts.
+Therefore the source-level Runtime-7 blocker remains despite stronger 45/45 focused tests and PostgreSQL smoke reported in PR #366.
 
-- #309: server-derived delivery authority needs structured primary-city membership; new merchant registration must default delivery to disabled/unconfigured until deliberately configured. Client/server city normalization must remain identical, onboarding must not wipe saved aliases, and existing enabled stores with empty aliases need explicit rollout handling rather than heuristic rewrites.
-- #310: add structured `manual_payment_provider` / `manual_payment_reference` to the authoritative contract and use one canonical grammar everywhere. Final R4 integration must make the replay ledger consume the structured reference for new orders; notes parsing is historical-backfill compatibility only. Operational backup/restore must preserve evidence without manufacturing a second global settlement claim.
-- #318: final Runtime-7 proof still requires rollback-only database smoke against `create_store_order_authoritative_v3`, including authoritative option price deltas, stale/tampered selections, payment/delivery checks and idempotent replay. The latest coordinator evidence also recorded one focused fixture failure involving Next `after()` outside request scope that must be repaired before freeze.
+Required revision:
 
-### Payment lifecycle — #317 / #327
-
-Current branch head: `23b1d6ee7c9ed839a86ae8bb017518fbea16801c`.
-
-This pushed head is not Runtime-7 accepted. Current source still wraps legacy v2. The accepted revision target is narrow:
-
-- lifecycle order creation must wrap/extend accepted authoritative v3, never legacy v2;
-- cancellation resource release must be guarded by durable release state so stock/coupon inverse happens at most once;
-- `executing` / `reconciliation_required` payment attempts must block manual cancellation/resource release while provider outcome is unresolved;
+- lifecycle wrapper must call accepted `create_store_order_authoritative_v3`, never v2;
+- resource release must use durable already-released state, not merely status-transition history;
+- `executing` / `reconciliation_required` attempts must block cancellation/release while provider truth is unresolved;
 - safe pre-execute attempts may be terminalized consistently before release;
-- a previously `succeeded` payment attempt must prevent a new executable payment obligation even if mutable order state is later tampered/reset;
-- regressions must cover cancel → reopen/state mutation → cancel, cancellation racing execute/reconciliation, and succeeded-attempt replay/tamper.
+- a prior `succeeded` attempt must prevent a new executable payment obligation even after order-state tampering/reset;
+- regressions must cover cancel → state mutation/reopen → cancel, cancellation racing execute/reconciliation, and succeeded-attempt replay/tamper.
 
-A stronger scratch composition has already been proven in coordinator evidence, but those invariants are not on the remote branch head above. Scratch code is evidence only; do not merge it instead of an owned-lane revision.
+### Invite — #323
 
-### Invite authority — #323
+Head: `a1fedb962a77402d88cb6ed94e3ab07ff7354f26`; Draft PR #368.
 
-Current branch head: `a1fedb962a77402d88cb6ed94e3ab07ff7354f26`.
-
-Concurrency/rollback behavior is strong, but one authority blocker remains: DB/claim authority must prevent a merchant-authored `store_staff_invites.role='owner'` row from granting owner membership. Add claim/constraint authority and source + DB smoke regression; keep existing legitimate owner membership semantics untouched.
+Atomicity/concurrency/rollback behavior is strong, but DB/claim authority still inserts `v_claimed_store.role` into membership without rejecting `role='owner'`. Add a constraint and/or explicit claim guard plus source + real-DB negative regression. Existing legitimate owner membership semantics must remain untouched.
 
 ### Dependency security — #367
 
-Keep this isolated from commerce and apply after shared `package.json` script changes converge.
+Keep this patch isolated and apply after shared package/script conflicts converge. Upgrade Next/Sharp to patched versions, remove/update the nested Sharp override, regenerate `package-lock.json` using Node 24/npm 11.17, prove `npm ci` recreates the secure graph, clear Next/Sharp high/critical audit findings, then pass typecheck/full suite/build and local+allowed-remote image-optimizer smoke.
 
-Current release graph has vulnerable Next/Sharp image-optimization dependencies. Remediation must be reproducible with Node 24 / npm 11.17, remove/update the nested Sharp override, prove `npm ci` recreates the secure graph, clear current Next/Sharp high/critical audit findings, and pass typecheck/full tests/build/image-optimizer smoke.
+## Semantic integration order
 
-## Merge / semantic precedence order
+Starting from coordinator `27a61b3...`:
 
-Starting point: coordinator seed `27a61b3...`.
+1. Invite follow-up after owner-role guard is accepted.
+2. Order follow-up after delivery/manual-evidence/backup/v3-smoke contracts are accepted.
+3. Payment follow-up after lifecycle→v3 and durable release/provider-state guards are accepted.
+4. Reconcile frozen R4 + commerce by hand on shared storefront/order/cart files; do not wholesale choose one side.
+5. Preserve all non-conflicting commerce hardening from validated checkpoint `768e824...` plus later docs/smoke-only commits.
+6. Apply #367 last and regenerate the final lockfile exactly once.
 
-1. **Invite authority follow-up** — after owner-role escalation guard is pushed and reverified.
-2. **Order authority follow-up** — after the coordinator contract's delivery/manual-evidence/backup/v3 smoke requirements are pushed and accepted.
-3. **Payment lifecycle follow-up** — after it is revised to compose around accepted v3 and the exactly-once/provider-state guards are present.
-4. **Frozen R4 + commerce reconciliation** — preserve exact R4 storefront content while hand-composing monetary/order/payment ownership; do not wholesale take R4 or P0 versions of shared checkout/cart files.
-5. **Commerce hardening** (`768e824...` validated rollout state, plus later docs/smoke-only commits) — preserve non-conflicting request bounds, publication/guest/auth-email checks, cart resilience, manual-payment replay claims, coupon scoping/privacy, tenant constraints, refund truth, recovery truth/idempotency, function search-path pinning, DB smoke and rollout preflight.
-6. **#367 dependency-security patch** — apply last so `package.json` and `package-lock.json` are generated once after all script/package conflicts converge.
+Billing is already integrated into the coordinator seed, but #314 cannot be production-closed until historical finance reconciliation is complete.
 
-Billing authority is already integrated into the coordinator seed, but production #314 remains blocked on historical reconciliation.
+## Conflict ownership
 
-This order is semantic. It is not permission to accept one side wholesale in conflicts.
+### Order / checkout / product selection
 
-## Conflict ownership rules
+Order-authority semantics win for monetary truth: stable commercial option IDs, authoritative deltas, payment availability, delivery authority and v3 creation. Reapply commerce hardening around that core: bounded/malformed request handling, publication gate, guest policy, authenticated-email derivation, cart normalization, stale/unavailable product fail-closed behavior.
 
-### Order creation / checkout / cart / product selection
+Do not retain the old commerce free-form option-label validator where it competes with #318 stable IDs.
 
-For `src/app/api/orders/create/*`, `src/lib/cms/order-input.*`, checkout/cart/product-card/product-detail commercial selection, `Checkout.tsx`, `Products.tsx`, and generated types:
+### Manual storefront payment
 
-- **Order-authority semantics win** for paid option identity, price deltas, payment availability, delivery-zone authority and v3 authoritative order creation.
-- Reapply commerce hardening around that authoritative core: body bounds, malformed JSON mapping, publication gate, guest policy, authenticated email authority, quantity/cart normalization and stale-product fail-closed behavior.
-- Do not retain the commerce branch's older free-form option validation where it competes with #318 stable commercial option IDs.
-
-### Manual storefront payments
-
-- Order authority owns the structured `manual_payment_provider` / `manual_payment_reference` order contract.
-- Commerce owns durable provider+reference replay claims.
-- Final integration must choose one bounded opaque reference grammar and use it in HTTP input, v3 constraints, stored order fields, replay ledger and tests.
-- For new orders, the replay trigger must consume the structured field; free-form `notes` regex is historical backfill only.
-- Store backup/restore must not discard structured evidence or clone a second settlement claim.
+Order authority owns structured `manual_payment_provider` / `manual_payment_reference`; commerce owns durable provider+reference replay claims. Final integration uses one bounded opaque reference grammar in HTTP input, v3 constraints, stored order fields, replay ledger and tests. Live replay trigger consumes the structured field. Notes parsing is historical backfill only. Backup/restore must preserve evidence without cloning a second settlement claim.
 
 ### Payment lifecycle
 
-For order-create reservation hooks, bKash provider/functions, callback handling and reservation state:
-
-- **Payment-lifecycle semantics win** for #317/#327 reservation release and provider execution claims after it is revised around v3.
-- Preserve commerce manual-payment replay claims only for manual bKash/Nagad external references; do not use them as a substitute for automated bKash provider execution authority.
+Payment lane owns reservation lease/release, attempt/execution claim, provider-result reconciliation and terminal-state semantics after it composes around v3. Commerce manual bKash/Nagad claim ledger is for manual payment references only and must never replace automated bKash execution authority.
 
 ### Billing
 
-For billing routes, billing migrations/tests and reviewer roles:
-
-- **Coordinator-integrated billing authority semantics win**.
-- Preserve shared smoke-runner registrations from every lane.
-- Do not apply the manual-bKash uniqueness migration until the known paid-history duplicate is explicitly reconciled.
+Coordinator-integrated billing route/migration/reviewer semantics win. Preserve smoke/drift registrations from all lanes. Never apply #314 uniqueness before historical duplicate reconciliation.
 
 ### Invite
 
-For `claim-invite-code`, invite migrations and invite smoke:
-
-- **Invite-authority semantics win**, after the owner-role guard is added.
-- Generated Supabase types must be regenerated/reconciled after all migrations rather than choosing one branch's generated file.
+Invite lane owns atomic claim/grant after owner-role guard lands. Reconcile/regenerate final Supabase types after the complete migration set.
 
 ### Shared files
 
-- `supabase/migration-drift-policy.json`: **union every valid exception**, never choose one side.
-- `scripts/run-rls-smoke.mjs`: **union smoke registrations**, including coordinator/billing, invite, order, payment and commerce smokes.
-- `package.json`: preserve coordinator/billing/invite scripts; then apply #367 dependency versions/override fix.
-- `package-lock.json`: regenerate once from the final package graph with the pinned toolchain; do not resolve by choosing a lane's lock wholesale.
-- `src/integrations/supabase/types.ts`: regenerate/reconcile from the final migration set rather than choosing one lane's generated file.
-- `src/lib/storefront-commercial-truth.test.ts`: combine assertions; do not delete truth checks to resolve an add/add conflict.
+- `supabase/migration-drift-policy.json`: union every valid pending-production exception.
+- `scripts/run-rls-smoke.mjs`: union every registered billing/invite/order/payment/commerce smoke.
+- `package.json`: preserve all coordinator/billing/invite scripts, then apply #367 dependency changes.
+- `package-lock.json`: regenerate once from final package graph; never resolve by taking one branch wholesale.
+- `src/integrations/supabase/types.ts`: regenerate/reconcile from final schema.
+- `src/lib/storefront-commercial-truth.test.ts`: combine truth assertions rather than deleting one side.
 
 ## Migration order
 
-The 2026-09-14 migration versions have been checked across all lanes and currently have zero numeric-prefix collisions. Preserve this ordering:
+Preserve the current non-colliding sequence:
 
-`14140000` billing lock → `14140500` billing replay → `14161500` R4 options → `14200500` invite → `14201500` order authority → `14203000` payment lifecycle → `14205500` storefront manual-payment replay → `14211000` coupon scope → `14212000` cart quantity → `14213000` product tenant consistency → `14213500` order mutation lock → `14214000` owned-reference consistency → `14215000` numeric bounds → `14215900` commerce tenant graph → `14221000` refund truth → `14223000` recovery message authority → `14224000` recovery touch dedupe → `14225000` coupon privacy → `14225500` function search paths.
+`14140000` billing lock → `14140500` billing replay → `14161500` R4 options → `14200500` invite → `14201500` order authority → `14203000` payment lifecycle → `14205500` storefront manual-payment replay → `14211000` coupon scope → `14212000` cart quantity → `14213000` product tenant consistency → `14213500` direct-order mutation lock → `14214000` owned-reference consistency → `14215000` numeric bounds → `14215900` commerce tenant graph → `14221000` refund truth → `14223000` recovery-message authority → `14224000` recovery-touch dedupe → `14225000` coupon privacy → `14225500` function search paths.
 
 Do not renumber an already-pushed migration unless a real collision appears before production rollout.
 
-## Required post-merge gates
+## Required final gates
 
-Before any production migration/deploy:
+Before production migration/deploy:
 
-- clean tree and exact integration SHA recorded;
-- `node scripts/verify-p0-release-contract.mjs` from the coordinator lineage: PASS;
-- `npm ci` using Node 24.x / npm 11.17.0;
-- typecheck;
-- complete test suite;
-- scoped/full ESLint and `git diff --check`;
-- production build;
+- exact integration SHA + clean tree recorded;
+- coordinator `verify-p0-release-contract.mjs`: PASS;
+- Node 24/npm 11.17 `npm ci`;
+- typecheck, complete test suite, ESLint, `git diff --check`, production build;
 - migration drift guard;
-- commerce reconciliation preflight (`supabase/tests/commerce_hardening_preflight.sql`);
-- all registered DB preflight/smoke gates, including coordinator/billing, invite, order, payment and commerce function-security smoke;
-- authoritative v3 order negative + positive-path DB tests, including non-zero option price delta;
-- delivery-city tamper tests and first-store safe delivery defaults;
-- structured manual-payment reference + replay-ledger compatibility and backup/restore proof;
-- payment reservation abandonment/retry/cancel + bKash concurrency proof;
-- durable exactly-once resource release and unresolved-provider cancellation rejection;
-- billing preflight/postdeploy gates after historical provider-reference reconciliation;
-- invite atomicity concurrency smoke + owner-role negative proof;
-- direct order mutation negative proof;
-- manual payment duplicate-reference negative proof;
-- coupon same-code/two-store positive proof plus public enumeration negative proof;
-- recovery queue duplicate-touch and direct-mutation negative proof;
-- #367 `npm audit` + image optimizer smoke.
+- version-controlled commerce preflight `supabase/tests/commerce_hardening_preflight.sql`;
+- every registered DB preflight/smoke;
+- v3 authoritative order adversarial matrix including non-zero option delta;
+- first-store delivery default + city tamper proof;
+- structured manual-payment + replay-ledger + backup/restore proof;
+- payment abandonment/retry/cancel + bKash concurrency + durable release proof;
+- billing preflight/postdeploy after historical reconciliation;
+- invite atomicity + owner-role rejection proof;
+- direct-order mutation negative proof;
+- manual-payment duplicate-reference negative proof;
+- two-store/same-coupon positive proof + public coupon enumeration negative proof;
+- recovery duplicate-touch/direct-mutation negative proof;
+- #367 `npm audit` and image-optimizer smoke.
 
-After migrations deploy, refresh the production migration ledger and remove `pending-production` drift exceptions only for migrations actually present in production.
+Production currently exposes legacy `create_store_order_with_stock` / `_v2` only to `service_role`; anon/authenticated are denied. During cutover, apply the accepted migrations and deploy the matching app/Edge code, prove every app instance uses lifecycle-wrapper → v3, then revoke/retire service-role execution of superseded v1/v2 before reopening checkout.
 
-After every app instance is confirmed on the canonical lifecycle-wrapper → v3 path, revoke/retire service-role execution of superseded legacy order-creation RPCs before reopening checkout, as required by the coordinator rollout gate.
+After deployment, refresh `supabase/production-migration-ledger.json` and remove `pending-production` drift exceptions only for migrations actually observed in production.
 
-## Current known commerce validation state
+## Commerce validation state
 
-Commerce pre-convergence head `e5c3547...` completed 1,030 tests with 1,028 pass / 2 inherited failures; both failures reproduce on frozen R4. Commerce-focused suites, typecheck, lint, diff-check and drift guard were clean before the later migration/docs/smoke/preflight-only commits.
+Commerce head `e5c3547...` completed 1,030 tests with 1,028 pass / 2 inherited frozen-R4 failures. Commerce-focused suites, typecheck, lint, diff-check and drift were green before later migration/docs/smoke/preflight-only commits.
 
-The version-controlled read-only commerce reconciliation preflight at `768e824...` has been executed against production and completes without raising a blocker. No production mutation was performed.
+The version-controlled read-only commerce preflight at `768e824...` has executed successfully against production with no reconciliation blocker and no production mutation. Function search-path metadata assumptions were also checked against production PostgreSQL `proconfig` representation; the search-path migration remains pending production.
 
-The search-path metadata assumption used by the new function-security smoke matches production PostgreSQL's existing `proconfig` representation (`search_path=...`). The search-path migration itself remains pending production.
-
-GitHub Actions on current commerce head remain infrastructure-blocked before runner allocation (`runner_id=0`, empty runner, zero steps), so a red workflow without executed steps is not release evidence either way.
+Hosted GitHub Actions remain account/runner-blocked before allocation (`runner_id=0`, no runner name, zero steps). Red zero-step workflow checks are infrastructure evidence, not code-test evidence.
 
 ## Release decision
 
-**NO-GO** until the outstanding P0 follow-ups above are pushed and accepted, #314 historical reconciliation is completed, #367 is fixed, frozen R4 and the accepted coordinator/P0 lineage converge on one exact release SHA, migrations are applied in a controlled rollout, database/postdeploy smokes pass, and Runtime 7 regression verification is completed against that exact integrated SHA.
+**NO-GO.** Do not mark Runtime 7 complete until the exact outstanding P0 follow-ups above are pushed and accepted, #314 historical reconciliation is completed, #367 is fixed, frozen R4 and coordinator/P0/commerce lineages converge on one exact SHA, governed migrations/postdeploy smokes pass, and the full Runtime-7 cross-domain regression is rerun against that exact integrated SHA.
