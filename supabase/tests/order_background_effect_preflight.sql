@@ -19,7 +19,7 @@ BEGIN
     WHERE order_id IS NOT NULL
       AND product_id IS NOT NULL
       AND event_name = 'order_created_item'
-    GROUP BY store_id, order_id, event_name, product_id
+    GROUP BY store_id, order_id, event_name, product_id, md5(metadata::text)
     HAVING count(*) > 1
   ) THEN
     RAISE EXCEPTION 'order background preflight failed: duplicate order_created_item analytics';
