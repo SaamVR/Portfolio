@@ -48,3 +48,19 @@ test("send-email remains service-only and template-defined", () => {
   assert.doesNotMatch(source, /interface Payload[\s\S]{0,500}\bsubject\??:/);
   assert.doesNotMatch(source, /interface Payload[\s\S]{0,500}\bhtml\??:/);
 });
+
+test("cart recovery route never treats browser contact fields as delivery authority", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "src/app/api/cart-recovery/lead/route.ts"),
+    "utf8",
+  );
+
+  assert.match(source, /resolveRecoveryContactAuthority\([\s\S]{0,160}authUser/);
+  assert.match(source, /contactEmail\s*=\s*contactAuthority\.contactEmail/);
+  assert.doesNotMatch(source, /readText\(contact\.email/);
+  assert.match(source, /contactPhone\s*=\s*null/);
+  assert.match(source, /cart_recovery_contact:\$\{storeId\}:\$\{authUser\.id\}/);
+  assert.match(source, /limit:\s*6[\s\S]{0,80}windowMs:\s*60\s*\*\s*60_000/);
+  assert.match(source, /next_contact_at:\s*nextContactAt/);
+  assert.match(source, /recovery_contact_authority:\s*contactAuthority\.authority/);
+});
