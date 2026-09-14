@@ -60,8 +60,8 @@ export async function POST(req: Request) {
 
     const dueLeads = (leads ?? []).filter((lead: any) => {
       const touches = touchCounts.get(lead.id) ?? 0;
-      const hasContactPath = Boolean(lead.contact_email || lead.contact_phone);
-      return hasContactPath && touches < normalized.maxTouchesPerLead;
+      const hasDeliverableEmail = Boolean(lead.contact_email);
+      return hasDeliverableEmail && touches < normalized.maxTouchesPerLead;
     });
 
     if (dueLeads.length === 0) {
@@ -101,14 +101,10 @@ export async function POST(req: Request) {
     });
 
     const inserts = queuedLeads.map(({ lead, couponCode }) => {
-      const preferredChannel = normalized.preferredChannel === "smart"
-        ? (lead.contact_phone ? "whatsapp" : "email")
-        : normalized.preferredChannel;
-
       return {
         store_id: storeId,
         lead_id: lead.id,
-        channel: preferredChannel,
+        channel: "email",
         template_key: "recovery-sequence",
         status: "queued",
         retry_count: 0,

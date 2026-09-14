@@ -33,3 +33,18 @@ test("send-email supports cart recovery without inventing a discount", () => {
   assert.match(email, /const couponLine = couponCode/);
   assert.match(email, /Eligibility is rechecked when you order\./);
 });
+
+
+test("automated recovery queues only deliverable email outreach", () => {
+  const settings = source("src/lib/admin/merchant-growth-settings.ts");
+  const queue = source("src/app/api/cart-recovery/queue/route.ts");
+  const admin = source("src/views/admin/CartRecovery.tsx");
+
+  assert.match(settings, /preferredChannel: "email"/);
+  assert.doesNotMatch(settings, /"smart" \| "email" \| "whatsapp"/);
+  assert.match(queue, /const hasDeliverableEmail = Boolean\(lead\.contact_email\)/);
+  assert.match(queue, /channel: "email"/);
+  assert.doesNotMatch(queue, /lead\.contact_phone \? "whatsapp"/);
+  assert.doesNotMatch(admin, /<SelectItem value="whatsapp">/);
+  assert.match(admin, /Automated WhatsApp recovery is unavailable/);
+});

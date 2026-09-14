@@ -5,7 +5,7 @@ export type CartRecoverySettings = {
   abandonmentWindowMinutes: number;
   cooldownHours: number;
   maxTouchesPerLead: number;
-  preferredChannel: "smart" | "email" | "whatsapp";
+  preferredChannel: "email";
   dailyQueueLimit: number;
 };
 
@@ -24,7 +24,7 @@ export function normalizeCartRecoverySettings(value: unknown): CartRecoverySetti
     abandonmentWindowMinutes: Math.min(24 * 60, Math.max(15, Number(record.abandonmentWindowMinutes) || 60)),
     cooldownHours: Math.min(168, Math.max(1, Number(record.cooldownHours) || 24)),
     maxTouchesPerLead: Math.min(6, Math.max(1, Number(record.maxTouchesPerLead) || 3)),
-    preferredChannel: record.preferredChannel === "email" || record.preferredChannel === "whatsapp" ? record.preferredChannel : "smart",
+    preferredChannel: "email",
     dailyQueueLimit: Math.min(500, Math.max(5, Number(record.dailyQueueLimit) || 50)),
   };
 }
