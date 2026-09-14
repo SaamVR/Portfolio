@@ -32,9 +32,13 @@ test("order creation analytics are not persisted as purchase truth", () => {
   });
 });
 
-test("order-created background jobs fail closed for revenue and refunds", () => {
+test("order-created queue and background jobs fail closed for revenue and refunds", () => {
   const jobsSource = readFileSync(
     path.join(process.cwd(), "src/lib/orders/order-background-jobs.ts"),
+    "utf8",
+  );
+  const queueSource = readFileSync(
+    path.join(process.cwd(), "src/lib/orders/order-background-queue.ts"),
     "utf8",
   );
   const createRouteSource = readFileSync(
@@ -49,6 +53,10 @@ test("order-created background jobs fail closed for revenue and refunds", () => 
   assert.doesNotMatch(jobsSource, /from\(["']store_revenue_events["']\)/);
   assert.match(jobsSource, /recovered_revenue:\s*0/);
   assert.match(jobsSource, /order_created_unsettled/);
+
+  assert.match(queueSource, /normalizeOrderCreatedAnalyticsRows\(args\.purchaseEventRows\)/);
+  assert.match(queueSource, /recoveredRevenue:\s*0/);
+  assert.match(queueSource, /lifecycle_truth:\s*["']order_created_unsettled["']/);
 
   assert.match(createRouteSource, /dispatchOrderCreatedBackgroundJobs/);
   assert.doesNotMatch(createRouteSource, /from\(["']store_revenue_events["']\)/);
