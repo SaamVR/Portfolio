@@ -112,5 +112,44 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'product numeric integrity constraints are missing';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public' AND t.relname = 'cart_items'
+      AND c.conname = 'cart_items_product_store_fkey'
+      AND pg_get_constraintdef(c.oid) ILIKE '%FOREIGN KEY (product_id, store_id)%'
+      AND pg_get_constraintdef(c.oid) ILIKE '%REFERENCES products(id, store_id)%'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public' AND t.relname = 'stock_notifications'
+      AND c.conname = 'stock_notifications_product_store_fkey'
+      AND pg_get_constraintdef(c.oid) ILIKE '%FOREIGN KEY (product_id, store_id)%'
+      AND pg_get_constraintdef(c.oid) ILIKE '%REFERENCES products(id, store_id)%'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public' AND t.relname = 'product_qa'
+      AND c.conname = 'product_qa_product_store_fkey'
+      AND pg_get_constraintdef(c.oid) ILIKE '%FOREIGN KEY (product_id, store_id)%'
+      AND pg_get_constraintdef(c.oid) ILIKE '%REFERENCES products(id, store_id)%'
+  ) THEN
+    RAISE EXCEPTION 'product-linked rows are missing store/product composite foreign keys';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN ('cart_items', 'stock_notifications', 'product_qa')
+      AND column_name = 'store_id'
+      AND is_nullable = 'YES'
+  ) THEN
+    RAISE EXCEPTION 'product-linked store_id columns remain nullable';
+  END IF;
 END;
 $$;
