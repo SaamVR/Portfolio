@@ -154,7 +154,7 @@ export async function POST(req: Request) {
       : null;
     const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
 
-    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock_v2", {
+    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_payment_lifecycle", {
       _store_id: storeId,
       _client_request_id: idempotencyKey,
       _user_id: user?.id ?? null,
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
 
     const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, subtotal, delivery_fee, total, items, status, payment_method, client_request_id")
+      .select("id, order_number, subtotal, delivery_fee, total, items, status, payment_method, client_request_id, reservation_state, reservation_expires_at")
       .eq("id", rpcOrder.id)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -201,6 +201,13 @@ export async function POST(req: Request) {
     if (persistedPaymentMethod !== paymentMethod) {
       return jsonNoStore(
         { error: "checkout recovery conflict: payment method does not match the existing order" },
+        { status: 409 },
+      );
+    }
+
+    if (order.status === "cancelled" || order.reservation_state === "released") {
+      return jsonNoStore(
+        { error: "checkout recovery conflict: this checkout reservation was released; start a new checkout" },
         { status: 409 },
       );
     }

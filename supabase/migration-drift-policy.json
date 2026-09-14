@@ -4,6 +4,11 @@
       "name": "seed_demo_blog_posts",
       "classification": "non-production",
       "reason": "Legacy seed targets the retired fixed demo-store UUID. That tenant does not exist in production, so applying this seed would violate its store foreign key."
+    },
+    {
+      "name": "payment_reservation_lifecycle_317_327",
+      "classification": "pending-production",
+      "reason": "P0 release-blocker migration for #317/#327. Must be applied and smoke-tested before deploying the matching bkash-payment Edge Function; remove this exception after the production ledger is refreshed."
     }
   ]
 }

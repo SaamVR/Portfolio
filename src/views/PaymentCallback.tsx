@@ -135,7 +135,21 @@ const PaymentCallback = () => {
 
         const restored = restoreCheckout(resolvedStoreId, resolvedOrderNumber);
         setStatus(result.status);
-        if (result.retryable === true) {
+        if (result.paymentProcessing === true) {
+          setMessage(`${result.message} Do not submit another payment while this attempt is processing.`);
+        } else if (result.reservationReleased === true) {
+          setMessage(
+            restored
+              ? `${result.message} Your checkout is restored. Start a fresh checkout when you are ready to try again.`
+              : `${result.message} Return to checkout to start a fresh order.`,
+          );
+        } else if (result.reconciliationRequired === true) {
+          setMessage(
+            restored
+              ? `${result.message} ${ambiguousSettlementGuidance}`
+              : `${result.message} Do not submit another payment; contact the store with your order number if this does not resolve.`,
+          );
+        } else if (result.retryable === true) {
           setMessage(
             restored
               ? `${result.message} ${retrySamePaymentGuidance}`
