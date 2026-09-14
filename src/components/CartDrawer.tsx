@@ -17,15 +17,6 @@ import { useAuth } from "@/hooks/auth-context";
 import { buildCustomerAuthPath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
 import type { Product } from "@/data/products";
 
-function getConfiguredEarnRate(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  }
-  return null;
-}
-
 const CartDrawer = () => {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id;
@@ -52,11 +43,6 @@ const CartDrawer = () => {
   const { data: storefrontProfileData } = useSiteSettings<Record<string, unknown>>("storefront_profile", isCartOpen ? cartStoreId : null);
   const deliverySettings = getNormalizedDeliverySettings(deliverySettingsData);
   const allowGuestCheckout = resolveAllowGuestCheckout(storefrontProfileData ?? preloadedStorefrontProfile);
-  const { data: loyaltySettings } = useSiteSettings<any>("loyalty_settings", isCartOpen ? cartStoreId : null);
-  const loyaltyEarnRate = getConfiguredEarnRate(loyaltySettings?.earn_rate);
-  const loyaltyProgramName = typeof loyaltySettings?.name === "string" && loyaltySettings.name.trim()
-    ? loyaltySettings.name.trim()
-    : "points";
   const prepaymentDiscountType = paymentSettings?.prepayment_discount_type;
   const prepaymentDiscountValue = paymentSettings?.prepayment_discount_value;
   const freeThreshold = deliverySettings.free_threshold;
@@ -248,14 +234,6 @@ const CartDrawer = () => {
                   <span className="font-heading text-lg font-bold text-foreground">BDT {drawerTotal}</span>
                 </div>
 
-                {loyaltySettings?.enabled && loyaltyEarnRate !== null ? (
-                  <div className="mb-4 flex items-center justify-between rounded-md bg-primary/5 px-3 py-2 border border-primary/20">
-                    <span className="text-xs font-medium text-primary flex items-center gap-1.5">
-                      Earn {Math.floor(drawerTotal * loyaltyEarnRate)} {loyaltyProgramName}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">With this order</span>
-                  </div>
-                ) : null}
 
                 <p className="mb-4 text-xs text-muted-foreground">
                   {digitalOnlyCart ? "Digital delivery details will be confirmed at checkout." : "Shipping and taxes calculated at checkout."}
