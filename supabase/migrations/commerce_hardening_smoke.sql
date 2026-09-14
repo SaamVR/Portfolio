@@ -250,3 +250,33 @@ BEGIN
   END IF;
 END;
 $$;
+
+DO $$
+BEGIN
+  IF has_table_privilege('anon', 'public.coupon_codes', 'SELECT') THEN
+    RAISE EXCEPTION 'anonymous storefront role can still enumerate coupon rows';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'coupon_codes'
+      AND cmd = 'SELECT'
+      AND ('public' = ANY(roles) OR 'anon' = ANY(roles))
+  ) THEN
+    RAISE EXCEPTION 'coupon_codes still has a public/anon SELECT policy';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'coupon_codes'
+      AND policyname = 'Store managers can view store coupons'
+      AND cmd = 'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'merchant coupon SELECT policy is missing';
+  END IF;
+END;
+$$;

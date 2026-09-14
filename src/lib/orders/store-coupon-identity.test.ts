@@ -32,3 +32,17 @@ test("coupon codes are canonicalized after the obsolete global constraint is rem
   assert.match(migration, /duplicate normalized coupon code/i);
   assert.match(migration, /coupon store is required/i);
 });
+
+
+test("storefront shoppers cannot enumerate active coupon rows", () => {
+  const privacyMigration = readFileSync(
+    path.join(process.cwd(), "supabase/migrations/20260914225000_hide_store_coupon_codes.sql"),
+    "utf8",
+  );
+
+  assert.match(privacyMigration, /CREATE POLICY "Store managers can view store coupons"/);
+  assert.match(privacyMigration, /TO authenticated[\s\S]*can_manage_store\(store_id/);
+  assert.match(privacyMigration, /REVOKE SELECT ON TABLE public\.coupon_codes FROM anon/);
+  assert.match(privacyMigration, /GRANT EXECUTE ON FUNCTION public\.validate_coupon\(text, integer, uuid\)[\s\S]*TO anon, authenticated/);
+  assert.doesNotMatch(privacyMigration, /CREATE POLICY "Public and store managers can view active store coupons"/);
+});

@@ -64,6 +64,11 @@
       "name": "dedupe_cart_recovery_scheduled_touches",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: gives each scheduled recovery touch a durable store/lead/time identity so concurrent authorized queue requests cannot enqueue duplicate outreach."
+    },
+    {
+      "name": "hide_store_coupon_codes",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: prevents storefront clients from enumerating active promo codes while preserving the scoped validate_coupon RPC."
     }
   ]
 }
