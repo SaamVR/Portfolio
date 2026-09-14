@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const migration = readFileSync(
-  path.join(process.cwd(), "supabase/migrations/20260914215000_commerce_tenant_graph_consistency.sql"),
+  path.join(process.cwd(), "supabase/migrations/20260914215900_commerce_tenant_graph_consistency.sql"),
   "utf8",
 );
 
