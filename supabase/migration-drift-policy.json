@@ -74,6 +74,11 @@
       "name": "pin_commerce_function_search_paths",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: pins name resolution for storefront search and subscription renewal trigger functions to pg_catalog/public."
+    },
+    {
+      "name": "order_background_effect_idempotency",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: gives order-created analytics and merchant-notification claims durable sink identities so retry-required recovery work can be retried without duplicate side effects."
     }
   ]
 }
