@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
 import { triggerWhatsAppOrderStatusNotify, type WhatsAppOrderStatusPayload } from "@/lib/cms/whatsapp-order-status-notify";
 import { recordCaughtIncident } from "@/lib/platform/incident-logger";
 import {
+  normalizeOrderCreatedAnalyticsRows,
   runOrderCancelledBackgroundJobs,
   runOrderCreatedBackgroundJobs,
   type RunOrderCancelledBackgroundJobsArgs,
@@ -55,8 +56,24 @@ async function enqueueOrderBackgroundMessage(message: OrderBackgroundQueueMessag
   });
 }
 
+function makeTruthfulOrderCreatedArgs(args: RunOrderCreatedBackgroundJobsArgs): RunOrderCreatedBackgroundJobsArgs {
+  return {
+    ...args,
+    purchaseEventRows: normalizeOrderCreatedAnalyticsRows(args.purchaseEventRows),
+    // Order creation is not settlement authority. Keep the legacy payload field
+    // structurally compatible without carrying a fabricated sale/refund claim.
+    revenueEventRow: {
+      store_id: args.storeId,
+      order_id: args.recoveryOrderId,
+      lifecycle_truth: "order_created_unsettled",
+    },
+    recoveredRevenue: 0,
+  };
+}
+
 export async function dispatchOrderCreatedBackgroundJobs(args: RunOrderCreatedBackgroundJobsArgs) {
-  const { supabaseAdmin, ...payload } = args;
+  const truthfulArgs = makeTruthfulOrderCreatedArgs(args);
+  const { supabaseAdmin, ...payload } = truthfulArgs;
 
   if (shouldUseOrderBackgroundQueue()) {
     try {
