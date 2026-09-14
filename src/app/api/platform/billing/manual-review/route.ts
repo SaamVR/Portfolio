@@ -42,7 +42,7 @@ async function isPlatformAdmin(userId: string) {
     .eq("user_id", userId);
 
   const roleLookup = typeof (roleQuery as any)?.in === "function"
-    ? await (roleQuery as any).in("role", ["admin", "co_admin"]).order("created_at", { ascending: true })
+    ? await (roleQuery as any).in("role", [...MANUAL_BILLING_PLATFORM_ROLE_PRIORITY]).order("created_at", { ascending: true })
     : await roleQuery;
 
   if (roleLookup.error) throw roleLookup.error;

@@ -408,10 +408,12 @@ function createManualReviewAdminMock(invoice: {
               return {
                 eq(_column: string, _value: string) {
                   return {
-                    in(_column2: string, _value2: string[]) {
+                    in(_column2: string, allowedRoles: string[]) {
                       return {
                         order: async () => ({
-                          data: (invoice.platformRoles ?? ["admin"]).map((role) => ({ role })),
+                          data: (invoice.platformRoles ?? ["admin"])
+                            .filter((role) => allowedRoles.includes(role))
+                            .map((role) => ({ role })),
                           error: null,
                         }),
                       };
@@ -2363,6 +2365,65 @@ describe("manual billing review side effects", () => {
       },
     ]);
     assert.equal(upsertMock.mock.callCount(), 0);
+  });
+
+  for (const platformRole of ["billing_admin", "super_admin"] as const) {
+    test(`accepts ${platformRole}-only operators for manual billing review`, async () => {
+      const admin = createManualReviewAdminMock({
+        id: `invoice_${platformRole}`,
+        store_id: "store_role_test",
+        plan_id: "advanced",
+        status: "pending",
+        billing_interval: "monthly",
+        provider_invoice_id: `trx${platformRole.replace("_", "")}`,
+        platformRoles: [platformRole],
+      });
+
+      mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: `${platformRole}_1` }) as never);
+      mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+      mock.method(manualBillingReviewRouteDeps, "now", () => FIXED_NOW);
+      mock.method(manualBillingReviewRouteDeps, "upsertStoreSubscription", async () => ({ error: null }) as never);
+
+      const response = await manualBillingReviewPost(
+        jsonRequest(
+          "https://example.com/api/platform/billing/manual-review",
+          "POST",
+          { invoiceId: `invoice_${platformRole}`, action: "approve" },
+          { Authorization: "Bearer token_role_test" },
+        ),
+      );
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { success: true, status: "paid" });
+      assert.equal(admin.invoiceUpdates.length, 1);
+    });
+  }
+
+  test("rejects support-agent-only operators from manual billing review", async () => {
+    const admin = createManualReviewAdminMock({
+      id: "invoice_support_agent",
+      store_id: "store_role_test",
+      plan_id: "advanced",
+      status: "pending",
+      provider_invoice_id: "trxsupportagent",
+      platformRoles: ["support_agent"],
+    });
+
+    mock.method(manualBillingReviewRouteDeps, "getAuthenticatedUser", async () => ({ id: "support_agent_1" }) as never);
+    mock.method(manualBillingReviewRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+
+    const response = await manualBillingReviewPost(
+      jsonRequest(
+        "https://example.com/api/platform/billing/manual-review",
+        "POST",
+        { invoiceId: "invoice_support_agent", action: "approve" },
+        { Authorization: "Bearer token_support" },
+      ),
+    );
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "Forbidden" });
+    assert.equal(admin.invoiceUpdates.length, 0);
   });
 
   test("accepts admins that have multiple allowed platform role rows", async () => {
