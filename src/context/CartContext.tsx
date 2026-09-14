@@ -6,7 +6,12 @@ import { useAuth } from "@/hooks/auth-context";
 import { useStorefrontAnalytics } from "@/components/storefront/StorefrontAnalyticsProvider";
 import { CartContext, type CartItem } from "@/context/cart-context";
 
-import { MAX_CART_LINES, clampCartQuantity, normalizePersistedCartItems } from "@/lib/cart-state";
+import {
+  MAX_CART_LINES,
+  MAX_CART_QUANTITY,
+  clampCartQuantity,
+  normalizePersistedCartItems,
+} from "@/lib/cart-state";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 
 const GLOBAL_CART_KEY = "global";
@@ -241,29 +246,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
           return;
         }
 
-        // 2. Fetch product details for those items
+        // 2. Fetch current, orderable product details for those items.
         const productIds = dbCart.map(item => item.product_id);
         const { data: dbProducts } = await supabase
           .from("products")
           .select("id, name, price, image_url")
           .eq("store_id", storeId)
+          .eq("is_available", true)
           .in("id", productIds);
 
         const productsMap = new Map((dbProducts as ProductLookupRow[] | null | undefined)?.map((p) => [p.id, p]));
 
-        // Convert dbCart to CartItem format
-        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).map(item => {
+        const dbCartItems: CartItem[] = (dbCart as CartItemRow[]).flatMap(item => {
           const prod = productsMap.get(item.product_id);
-          return {
+          if (!prod) return [];
+          return [{
             productId: item.product_id,
             storeId: item.store_id ?? undefined,
-            name: prod?.name || "Product",
-            price: prod?.price || 0,
-            image: prod?.image_url || "",
+            name: prod.name || "Product",
+            price: Number(prod.price ?? 0),
+            image: prod.image_url || "",
             size: item.size,
-            quantity: clampCartQuantity(item.quantity)
-          };
-        }).filter(item => item.price > 0);
+            quantity: clampCartQuantity(item.quantity),
+          }];
+        });
 
         // 3. Merge local cart items and db cart items
         setItems(prev => {
@@ -277,7 +283,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
               merged.push(dbItem);
             }
           });
-          return normalizePersistedCartItems(merged, storeId);
+          return normalizePersistedCartItems(merged, storeId)
+            .filter((item) => productsMap.has(item.productId));
         });
 
         hasMerged.current = true;
@@ -311,6 +318,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
             .from("products")
             .select("id")
             .eq("store_id", storeId)
+            .eq("is_available", true)
             .in("id", scopedProductIds);
 
           if (productsError) throw productsError;
@@ -368,9 +376,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       return;
     }
 
-    if (existing && existing.quantity >= 99) {
+    if (existing && existing.quantity >= MAX_CART_QUANTITY) {
       setIsCartOpen(true);
-      toast("Maximum quantity reached", { description: "You can order up to 99 of one cart item at a time." });
+      toast("Maximum quantity reached", { description: `You can order up to ${MAX_CART_QUANTITY} of one cart item at a time.` });
       return;
     }
 
@@ -427,8 +435,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode; storeId?: strin
       return;
     }
     const nextQuantity = clampCartQuantity(quantity);
-    if (quantity > 99) {
-      toast("Maximum quantity reached", { description: "You can order up to 99 of one cart item at a time." });
+    if (quantity > MAX_CART_QUANTITY) {
+      toast("Maximum quantity reached", { description: `You can order up to ${MAX_CART_QUANTITY} of one cart item at a time.` });
     }
     setItems((prev) =>
       prev.map((i) =>
