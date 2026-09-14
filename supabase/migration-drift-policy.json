@@ -69,6 +69,11 @@
       "name": "hide_store_coupon_codes",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: prevents storefront clients from enumerating active promo codes while preserving the scoped validate_coupon RPC."
+    },
+    {
+      "name": "pin_commerce_function_search_paths",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: pins name resolution for storefront search and subscription renewal trigger functions to pg_catalog/public."
     }
   ]
 }
