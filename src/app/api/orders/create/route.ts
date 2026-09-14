@@ -56,19 +56,15 @@ type StoreOrderAccessState = {
 };
 
 export function canStoreAcceptOrders(access: StoreOrderAccessState | null | undefined) {
-  if (!access) return false;
-
-  // Match storefront access semantics exactly: a live trial/active plan may make
-  // the storefront public before the legacy is_published flag is flipped.
-  if (!access.isPublished) {
-    return access.planLive === true;
-  }
+  if (!access?.isPublished) return false;
 
   // Published legacy stores with no subscription record remain accessible.
   if (!access.hasSubscription) {
     return true;
   }
 
+  // Subscription eligibility does not publish a merchant's draft storefront.
+  // Once published, subscribed stores must still have a live plan.
   return access.planLive === true;
 }
 
@@ -206,10 +202,8 @@ export async function POST(req: Request) {
       planLive: storePlanState?.resolved.live ?? false,
     };
 
-    // Private preview links may reveal a non-public draft to an authorized
-    // merchant, but must never make that draft transactional. Live trial/active
-    // stores remain orderable because they are already publicly accessible by
-    // the canonical storefront resolver.
+    // Preview/private draft visibility never grants transactional authority.
+    // Publication and plan eligibility are independent requirements.
     if (!canStoreAcceptOrders(orderAccess)) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
