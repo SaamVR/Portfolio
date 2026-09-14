@@ -1,17 +1,14 @@
-import { Link } from "@/lib/react-router-dom-shim";
 import { FolderTree, Grid2x2, Layers3, Package, Sparkles, Store, Tags } from "lucide-react";
-import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
-import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { CategoryVisualStyles } from "@/components/storefront/section-styles/CategoryVisualStyles";
 
 const fallbackCategories = [
   { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
@@ -182,114 +179,16 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   if (isFashion && categoriesToRender.length === 0) return null;
 
   return (
-    <section className={isFashion ? "py-16 md:py-28" : "py-14 md:py-20"}>
-      <div className={`mx-auto px-4 ${containerClass}`}>
-        <AnimatedSection animation="blur">
-          <div className={isFashion ? "mb-8 max-w-3xl text-left md:mb-14" : "mb-8 text-center md:mb-12"}>
-            <p className={isFashion ? "mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-primary md:text-sm" : "mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary"}>{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
-            <h2 className={isFashion ? "font-heading text-4xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl" : "font-heading text-3xl font-bold text-foreground md:text-4xl"}>{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
-          </div>
-        </AnimatedSection>
-
-        <div
-          className={
-            layoutVariant === "carousel"
-              ? "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : layoutVariant === "masonry"
-                ? "columns-2 gap-4 sm:columns-3 lg:columns-4"
-                : layoutVariant === "compact-list"
-                  ? "mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
-                  : isFashion
-                    ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
-                    : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
-          }
-        >
-          {categoriesToRender.map((cat, i) => {
-            const Icon = cat.icon;
-            if (isFashion && layoutVariant !== "compact-list") {
-              const mediaAspect = layoutVariant === "masonry" && i % 3 === 1 ? "aspect-square" : "aspect-[4/5]";
-              return (
-                <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
-                  <Link
-                    to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
-                    className={[
-                      "group relative block overflow-hidden bg-muted",
-                      layoutVariant === "carousel" ? "min-w-[72vw] snap-center sm:min-w-[300px]" : "",
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <div className={`relative ${mediaAspect} overflow-hidden`}>
-                      {cat.image_url ? (
-                        <SafeStorefrontImage
-                          src={cat.image_url}
-                          fallbackSrc={settings?.fallback_image_url ?? null}
-                          fill
-                          alt={cat.label}
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]"
-                          style={{ objectPosition: imageObjectPosition }}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-background">
-                          <Icon className="h-8 w-8 text-primary/70" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-4 text-left sm:p-5">
-                        <p className="font-heading text-xl font-semibold leading-tight text-white sm:text-2xl">{cat.label}</p>
-                        <p className="mt-1 line-clamp-1 text-xs text-white/75 sm:text-sm">{cat.tagline}</p>
-                      </div>
-                    </div>
-                  </Link>
-                </AnimatedSection>
-              );
-            }
-            return (
-              <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
-                <Link
-                  to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
-                  className={[
-                    "group border border-border bg-card smooth-hover hover:border-primary/40 hover:premium-shadow",
-                    layoutVariant === "compact-list"
-                      ? "flex items-center gap-4 rounded-lg p-4 text-left hover:-translate-y-0"
-                      : layoutVariant === "carousel"
-                        ? "flex min-w-[72vw] snap-center flex-col items-center gap-3 rounded-xl p-6 text-center hover:-translate-y-1 sm:min-w-[240px]"
-                        : layoutVariant === "masonry"
-                          ? "flex min-h-[190px] flex-col items-start justify-end gap-3 rounded-lg p-5 text-left hover:-translate-y-1"
-                          : "flex flex-col items-center gap-3 rounded-xl p-4 text-center hover:-translate-y-1 sm:p-6",
-                  ].filter(Boolean).join(" ")}
-                >
-                  {cat.image_url ? (
-                    <div className={[
-                      "relative overflow-hidden border-2 border-border group-hover:border-primary smooth-hover group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-28 w-full rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
-                      <SafeStorefrontImage
-                        src={cat.image_url}
-                        fallbackSrc={settings?.fallback_image_url ?? null}
-                        fill
-                        alt={cat.label}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        style={{ objectPosition: imageObjectPosition }}
-                      />
-                    </div>
-                  ) : (
-                    <div className={[
-                      "flex shrink-0 items-center justify-center bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-12 w-12 rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-heading text-sm font-semibold text-foreground">{cat.label}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{cat.tagline}</p>
-                  </div>
-                </Link>
-              </AnimatedSection>
-            );
-          })}
-        </div>
-      </div>
-    </section>
+    <CategoryVisualStyles
+      layoutVariant={layoutVariant}
+      tagline={overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}
+      title={overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}
+      items={categoriesToRender}
+      storeSlug={currentStore?.slug}
+      fallbackImageUrl={settings?.fallback_image_url ?? null}
+      imageObjectPosition={imageObjectPosition}
+      containerClass={containerClass}
+    />
   );
 };
 

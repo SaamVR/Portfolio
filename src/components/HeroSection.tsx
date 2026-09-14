@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
@@ -9,6 +8,7 @@ import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
+import { HeroVisualStyles } from "@/components/storefront/section-styles/HeroVisualStyles";
 
 interface HeroSettings {
   tagline?: string;
@@ -98,12 +98,6 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
   const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
   const layoutVariant = overrides?.layoutVariant ?? "full-bleed";
-  const isSplit = layoutVariant === "split";
-  const isCentered = layoutVariant === "centered";
-  const isEditorial = layoutVariant === "editorial";
-  const isPoster = layoutVariant === "poster";
-  const isCollectionSpotlight = layoutVariant === "collection-spotlight";
-  const usesForegroundLayout = isSplit || isEditorial || isCollectionSpotlight;
   const useContainedMedia = mediaFit === "contain";
   const trustHighlights = [
     paymentSettings?.cod_enabled !== false
@@ -122,9 +116,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     const handleScroll = () => {
       if (sectionRef.current) {
         const rect = sectionRef.current.getBoundingClientRect();
-        if (rect.bottom > 0) {
-          setScrollY(window.scrollY * 0.3);
-        }
+        if (rect.bottom > 0) setScrollY(window.scrollY * 0.3);
       }
     };
 
@@ -173,160 +165,24 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
 
   return (
     <>
-    <section
-      id={overrides?.anchorId}
-      ref={sectionRef}
-      className={[
-        "relative flex min-h-[74svh] items-center justify-center overflow-hidden md:min-h-[88vh]",
-        usesForegroundLayout ? "bg-background text-foreground" : "",
-        isCentered ? "min-h-[68svh] md:min-h-[76vh]" : "",
-        isPoster ? "min-h-[82svh] md:min-h-[92vh]" : "",
-        isCollectionSpotlight ? "min-h-0 md:min-h-[78vh]" : "",
-      ].filter(Boolean).join(" ")}
-    >
-      {!isSplit && !isEditorial && !isCollectionSpotlight ? (
-        <div className="absolute inset-0">
-          {renderMedia(`h-full w-full ${useContainedMedia ? "bg-background/90 p-4 md:p-8" : ""}`)}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundColor: overlayColor || "hsl(var(--background))",
-              opacity: overlayOpacity / 100,
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10 md:from-black/55 md:via-transparent md:to-transparent" />
-          <div className="absolute inset-0 grain-texture opacity-[0.03]" />
-          {!mediaUrl && !isPoster ? (
-            <div className="absolute inset-x-4 bottom-4 hidden rounded-lg border border-white/12 bg-black/25 p-4 text-white/90 backdrop-blur-md md:left-auto md:right-8 md:block md:max-w-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Ready to launch</p>
-              <p className="mt-2 text-sm font-medium">Clear message, direct action, and room for product proof.</p>
-              <p className="mt-2 text-sm leading-6 text-white/75">
-                Add real imagery later without losing the structure shoppers need on day one.
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div
-        className={[
-          "relative z-10 container mx-auto",
-          isCollectionSpotlight ? "grid gap-0 px-4 py-10 text-left sm:px-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)] lg:items-stretch lg:px-0 lg:py-0" : "px-4 py-14 sm:py-18 md:py-24",
-          isSplit ? "grid gap-8 text-left lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:gap-12" : "",
-          isEditorial ? "grid gap-8 text-left lg:grid-cols-[minmax(360px,0.72fr)_minmax(0,1fr)] lg:items-center lg:gap-12" : "",
-          isPoster ? "flex min-h-[74svh] items-end text-left md:min-h-[88vh] md:pb-20" : "",
-          !isSplit && !isEditorial && !isCollectionSpotlight && !isPoster ? "text-center" : "",
-        ].filter(Boolean).join(" ")}
-      >
-        <div className={[
-          isEditorial ? "order-2 lg:order-1" : "",
-          isCollectionSpotlight ? "order-2 flex flex-col justify-center py-8 sm:px-4 lg:px-10 lg:py-16 xl:px-14" : "",
-          isPoster ? "max-w-5xl pb-2 sm:pb-4" : "",
-        ].filter(Boolean).join(" ")}>
-          <div className={`${usesForegroundLayout || isPoster ? "mb-4" : "mx-auto mb-4"} h-px w-12 bg-primary opacity-0 animate-blur-in sm:mb-6`} />
-          <p className={[
-            "mb-3 text-[11px] font-medium uppercase tracking-[0.24em] drop-shadow-md opacity-0 animate-blur-in sm:mb-4 sm:text-sm sm:tracking-[0.3em]",
-            isPoster ? "text-white/85" : "text-primary",
-          ].join(" ")}>
-            {tagline}
-          </p>
-          <h1
-            className={[
-              "mb-4 max-w-[12ch] font-heading text-[2.35rem] font-black leading-[0.98] opacity-0 animate-blur-in sm:mb-6 sm:max-w-[11ch] sm:text-6xl",
-              isEditorial ? "text-foreground md:text-7xl lg:text-8xl" : "",
-              isSplit ? "text-foreground md:max-w-[10ch] md:text-7xl" : "",
-              isCollectionSpotlight ? "text-foreground md:max-w-[10ch] md:text-6xl lg:text-7xl" : "",
-              isPoster ? "max-w-[9ch] text-white drop-shadow-[0_8px_28px_rgba(0,0,0,0.45)] sm:max-w-[10ch] md:text-8xl lg:text-[7.5rem]" : "",
-              !isSplit && !isEditorial && !isCollectionSpotlight && !isPoster ? "mx-auto text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] md:max-w-none md:text-8xl" : "",
-              isCentered ? "md:max-w-[12ch] md:text-7xl" : "",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.15s" }}
-          >
-            {title}{" "}<span className={isPoster || isCollectionSpotlight ? "text-primary" : "text-transparent bg-clip-text bg-gradient-to-r from-primary via-emerald-400 to-accent"}>{highlight}</span>
-          </h1>
-          <p
-            className={[
-              "mb-7 max-w-[34ch] text-sm leading-6 opacity-0 animate-blur-in sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl",
-              usesForegroundLayout ? "text-muted-foreground" : "",
-              isPoster ? "text-white/85 drop-shadow-md" : "",
-              !usesForegroundLayout && !isPoster ? "mx-auto text-gray-100 drop-shadow-md" : "",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.3s" }}
-          >
-            {subtitle}
-          </p>
-          <div
-            className={[
-              "flex flex-col gap-3 opacity-0 animate-blur-in sm:flex-row sm:gap-4",
-              usesForegroundLayout || isPoster ? "items-start justify-start" : "items-center justify-center",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.45s" }}
-          >
-            <Link
-              href={ctaLink}
-              className={[
-                "button-premium w-full px-7 py-3.5 sm:w-auto sm:px-9 sm:py-4 font-heading text-[15px] font-bold tracking-wide text-center shadow-lg",
-                isPoster ? "rounded-none bg-white text-black" : isCollectionSpotlight ? "rounded-md bg-primary text-primary-foreground" : "rounded-full bg-primary text-primary-foreground",
-              ].join(" ")}
-            >
-              {ctaText}
-            </Link>
-            <Link
-              href={secondaryCtaLink}
-              className={[
-                "w-full sm:w-auto border px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-semibold text-center transition-all duration-500",
-                isPoster
-                  ? "rounded-none border-white/55 bg-black/20 text-white hover:bg-black/35"
-                  : usesForegroundLayout
-                    ? `${isCollectionSpotlight ? "rounded-md" : "rounded-full"} border-border bg-card text-foreground hover:border-primary/40 hover:bg-primary/5`
-                    : "rounded-full border-white/20 glass-panel text-white hover:bg-white/10 hover:border-white/40",
-              ].filter(Boolean).join(" ")}
-            >
-              {secondaryCtaText}
-            </Link>
-          </div>
-          {!isCentered && !isPoster && !isCollectionSpotlight ? (
-            <div
-              className={[
-                "mt-7 flex max-w-4xl flex-wrap items-center gap-2 opacity-0 animate-blur-in sm:mt-10",
-                usesForegroundLayout ? "justify-start" : "mx-auto justify-center",
-              ].filter(Boolean).join(" ")}
-              style={{ animationDelay: "0.6s" }}
-            >
-              {trustHighlights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.label}
-                    className={[
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium leading-5 backdrop-blur-md sm:px-4",
-                      usesForegroundLayout ? "border-border bg-card text-foreground" : "border-white/15 bg-black/25 text-white/95",
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <Icon className="h-3.5 w-3.5 text-primary" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-        {usesForegroundLayout ? (
-          <div
-            className={[
-              "relative overflow-hidden bg-card",
-              isSplit ? "min-h-[420px] rounded-lg border border-border shadow-2xl lg:min-h-[620px]" : "",
-              isEditorial ? "order-1 aspect-[4/5] rounded-lg border border-border shadow-2xl lg:order-2" : "",
-              isCollectionSpotlight ? "order-1 min-h-[420px] rounded-md shadow-xl sm:min-h-[520px] lg:min-h-[720px] lg:rounded-none lg:shadow-none" : "",
-            ].filter(Boolean).join(" ")}
-          >
-            {renderMedia(`absolute inset-0 h-full w-full ${useContainedMedia ? "bg-muted/20 p-4 md:p-6" : ""}`)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-          </div>
-        ) : null}
-      </div>
-    </section>
-    {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
+      <HeroVisualStyles
+        anchorId={overrides?.anchorId}
+        sectionRef={sectionRef}
+        layoutVariant={layoutVariant}
+        tagline={tagline}
+        title={title}
+        highlight={highlight}
+        subtitle={subtitle}
+        ctaText={ctaText}
+        ctaLink={ctaLink}
+        secondaryCtaText={secondaryCtaText}
+        secondaryCtaLink={secondaryCtaLink}
+        overlayColor={overlayColor}
+        overlayOpacity={overlayOpacity}
+        trustHighlights={trustHighlights}
+        renderMedia={renderMedia}
+      />
+      {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
     </>
   );
 };
