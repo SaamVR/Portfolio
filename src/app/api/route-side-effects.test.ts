@@ -2988,6 +2988,10 @@ describe("public payment settings secret isolation", () => {
     };
 
     mock.method(storePaymentSettingsRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
+    mock.method(storePaymentSettingsRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } },
+      error: null,
+    }) as never);
 
     const response = await publicPaymentSettingsGet(
       new Request("https://example.com/api/store-payment-settings?storeId=10000000-0000-4000-8000-000000000001"),

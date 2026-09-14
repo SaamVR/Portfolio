@@ -10,12 +10,12 @@ test("published legacy stores without subscriptions may accept orders", () => {
   }), true);
 });
 
-test("live trial stores may accept orders before the publish flag is flipped", () => {
+test("live trial stores remain non-transactional until explicitly published", () => {
   assert.equal(canStoreAcceptOrders({
     isPublished: false,
     hasSubscription: true,
     planLive: true,
-  }), true);
+  }), false);
 });
 
 test("private unpublished previews cannot create real orders", () => {

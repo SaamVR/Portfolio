@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getAuthenticatedUser, getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
+import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 18_000;
@@ -10,6 +11,7 @@ const maxMetadataBytes = 6_000;
 type RecoveryStatus = "accepted" | "declined" | "unknown";
 
 export const cartRecoveryLeadRouteDeps = {
+  loadStorePlanState,
   getSupabaseAdminClient,
   getAuthenticatedUser,
   rateLimit,
@@ -89,17 +91,17 @@ export async function POST(req: Request) {
     const supabaseAdmin = cartRecoveryLeadRouteDeps.getSupabaseAdminClient();
     const authUser = await cartRecoveryLeadRouteDeps.getAuthenticatedUser(req);
 
-    const { data: store, error: storeError } = await supabaseAdmin
-      .from("stores")
-      .select("id, is_published")
-      .eq("id", storeId)
-      .maybeSingle();
-
-    if (storeError) {
-      throw storeError;
-    }
-
-    if (!store?.is_published) {
+    const { data: storePlanState, error: storePlanError } = await cartRecoveryLeadRouteDeps.loadStorePlanState(
+      supabaseAdmin as never,
+      storeId,
+      { includePublished: true },
+    );
+    if (storePlanError) throw storePlanError;
+    if (!canExposePublicStorefront({
+      isPublished: storePlanState?.isPublished ?? false,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    })) {
       return NextResponse.json({ error: "Storefront is not available" }, { status: 404 });
     }
 

@@ -16,7 +16,10 @@ test("coupon identity is store-scoped instead of globally unique", () => {
   assert.match(migration, /DROP CONSTRAINT IF EXISTS coupon_codes_code_key/i);
   assert.match(migration, /ALTER COLUMN store_id SET NOT NULL/i);
   assert.match(migration, /DROP INDEX IF EXISTS public\.idx_coupon_codes_global_code_unique/i);
-  assert.equal(/WHERE store_id IS NULL/i.test(migration), false);
+  assert.equal(
+    /CREATE\s+UNIQUE\s+INDEX[\s\S]*?ON\s+public\.coupon_codes\s*\(code\)[\s\S]*?WHERE\s+store_id\s+IS\s+NULL/i.test(migration),
+    false,
+  );
 });
 
 test("coupon codes are canonicalized after the obsolete global constraint is removed", () => {

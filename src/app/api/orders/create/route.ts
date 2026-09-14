@@ -10,6 +10,7 @@ import { validateAuthoritativeCheckoutSelections } from "@/lib/orders/authoritat
 import { getPaymentProviderByPaymentMethod, isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
 import { isStorefrontPaymentMethodConfigured } from "@/lib/payments/storefront-payment-availability";
 import { resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
+import { canExposePublicStorefront, type PublicStorefrontAccessState } from "@/lib/storefront-public-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxOrderBodyBytes = 64 * 1024;
@@ -49,23 +50,10 @@ function mapOrderError(message: string) {
   return { message: "Failed to create order", status: 500 };
 }
 
-type StoreOrderAccessState = {
-  isPublished?: boolean | null;
-  hasSubscription?: boolean;
-  planLive?: boolean;
-};
+type StoreOrderAccessState = PublicStorefrontAccessState;
 
 export function canStoreAcceptOrders(access: StoreOrderAccessState | null | undefined) {
-  if (!access?.isPublished) return false;
-
-  // Published legacy stores with no subscription record remain accessible.
-  if (!access.hasSubscription) {
-    return true;
-  }
-
-  // Subscription eligibility does not publish a merchant's draft storefront.
-  // Once published, subscribed stores must still have a live plan.
-  return access.planLive === true;
+  return canExposePublicStorefront(access);
 }
 
 export const orderCreateRouteDeps = {

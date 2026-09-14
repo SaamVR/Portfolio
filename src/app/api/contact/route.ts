@@ -1,8 +1,9 @@
 import { createHash, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
+import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +66,7 @@ function rateLimitResponse(result: LimitResult) {
 }
 
 export const contactRouteDeps = {
+  loadStorePlanState,
   getSupabaseAdminClient,
   rateLimit,
 };
@@ -82,13 +84,17 @@ export async function POST(req: Request) {
     }
 
     const supabaseAdmin = contactRouteDeps.getSupabaseAdminClient();
-    const { data: store, error: storeError } = await supabaseAdmin
-      .from("stores")
-      .select("id,is_published")
-      .eq("id", storeId)
-      .maybeSingle();
-    if (storeError) throw storeError;
-    if (!store?.id || store.is_published !== true) {
+    const { data: storePlanState, error: storePlanError } = await contactRouteDeps.loadStorePlanState(
+      supabaseAdmin as never,
+      storeId,
+      { includePublished: true },
+    );
+    if (storePlanError) throw storePlanError;
+    if (!canExposePublicStorefront({
+      isPublished: storePlanState?.isPublished ?? false,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    })) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 
