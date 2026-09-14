@@ -84,3 +84,16 @@ test("scheduled recovery touches are idempotent under concurrent queue requests"
   assert.match(migration, /ALTER COLUMN scheduled_for SET NOT NULL/);
   assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS idx_cart_recovery_messages_scheduled_touch_unique[\s\S]*store_id, lead_id, scheduled_for/);
 });
+
+
+test("recovery analytics use authoritative product truth instead of browser totals", () => {
+  const lead = source("src/app/api/cart-recovery/lead/route.ts");
+
+  assert.match(lead, /normalizeRecoveryCartInput\(body\?\.cartSnapshot\)/);
+  assert.match(lead, /\.select\("id, name, price, is_available"\)[\s\S]*?\.eq\("store_id", storeId\)/);
+  assert.match(lead, /buildAuthoritativeRecoveryCart\(cartInput, products\)/);
+  assert.match(lead, /const subtotal = authoritativeCart\.cartValue/);
+  assert.match(lead, /const itemCount = authoritativeCart\.itemCount/);
+  assert.doesNotMatch(lead, /body\?\.cartValue/);
+  assert.doesNotMatch(lead, /body\?\.itemCount/);
+});

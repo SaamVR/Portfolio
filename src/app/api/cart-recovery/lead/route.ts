@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser, getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
 import { canExposePublicStorefront } from "@/lib/storefront-public-access";
+import { buildAuthoritativeRecoveryCart, normalizeRecoveryCartInput } from "@/lib/cart-recovery/recovery-cart-authority";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 18_000;
@@ -22,17 +23,6 @@ function readText(value: unknown, maxLength: number) {
   return value.trim().slice(0, maxLength);
 }
 
-function readMoney(value: unknown) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
-}
-
-function readInteger(value: unknown) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
-}
 
 function getClientIp(req: Request) {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -86,14 +76,17 @@ export async function POST(req: Request) {
     const consentStatus = (["accepted", "declined", "unknown"].includes(requestedConsentStatus)
       ? requestedConsentStatus
       : "unknown") as RecoveryStatus;
-    const cartSnapshot = Array.isArray(body?.cartSnapshot) ? body.cartSnapshot.slice(0, 30) : [];
+    const cartInput = normalizeRecoveryCartInput(body?.cartSnapshot);
+    if (!cartInput) {
+      return NextResponse.json({ error: "Cart snapshot contains invalid items" }, { status: 400 });
+    }
     const metadata = body?.metadata && typeof body.metadata === "object" ? body.metadata : {};
 
     if (!visitorIdRaw && !sessionIdRaw) {
       return NextResponse.json({ error: "Missing recovery identifiers" }, { status: 400 });
     }
 
-    if (jsonSize(metadata) > maxMetadataBytes || jsonSize(cartSnapshot) > maxMetadataBytes) {
+    if (jsonSize(metadata) > maxMetadataBytes || jsonSize(cartInput) > maxMetadataBytes) {
       return NextResponse.json({ error: "Recovery payload is too large" }, { status: 413 });
     }
 
@@ -114,23 +107,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Storefront is not available" }, { status: 404 });
     }
 
-    const productIds = cartSnapshot
-      .map((item) => readText((item as Record<string, unknown>)?.productId, 80))
-      .filter((id) => uuidPattern.test(id));
-
+    const productIds = Array.from(new Set(cartInput.map((item) => item.productId)));
+    let products: Array<{ id: string; name: string; price: number; is_available: boolean }> = [];
     if (productIds.length > 0) {
-      const { data: products, error: productsError } = await supabaseAdmin
+      const { data, error: productsError } = await supabaseAdmin
         .from("products")
-        .select("id")
+        .select("id, name, price, is_available")
         .eq("store_id", storeId)
         .in("id", productIds);
 
       if (productsError) throw productsError;
+      products = (data ?? []) as typeof products;
+    }
 
-      const validProductIds = new Set((products ?? []).map((product) => product.id));
-      if (productIds.some((id) => !validProductIds.has(id))) {
-        return NextResponse.json({ error: "Cart snapshot contains products outside this store" }, { status: 400 });
-      }
+    const authoritativeCart = buildAuthoritativeRecoveryCart(cartInput, products);
+    if (!authoritativeCart) {
+      return NextResponse.json({ error: "Cart snapshot contains unavailable or outside-store products" }, { status: 400 });
     }
 
     const visitorId = visitorIdRaw ? hashRecoveryIdentifier(storeId, visitorIdRaw) : null;
@@ -163,11 +155,9 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
-    const subtotal = readMoney(body?.cartValue);
-    const itemCount = readInteger(body?.itemCount) || cartSnapshot.reduce((sum, item) => {
-      const quantity = Number((item as Record<string, unknown>)?.quantity ?? 0);
-      return sum + (Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0);
-    }, 0);
+    const subtotal = authoritativeCart.cartValue;
+    const itemCount = authoritativeCart.itemCount;
+    const cartSnapshot = authoritativeCart.snapshot;
 
     const nextContactAt = consentStatus === "accepted"
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
