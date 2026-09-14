@@ -5,6 +5,7 @@ import {
   createBuiltInBundle,
   createBuiltInCardBundle,
   getCommunityPreviewAsset,
+  personalizePreviewPages,
 } from "@/lib/cms/template-gallery-preview";
 
 describe("template gallery preview helpers", () => {
@@ -20,6 +21,26 @@ describe("template gallery preview helpers", () => {
     assert.equal(bundle.theme, defaultStore.theme);
     assert.equal(heroBlock?.props.title, "Thread BD");
     assert.equal(heroBlock?.props.subtitle, "Launch-ready merchant storefront");
+  });
+
+
+  it("preserves Section Studio options while personalizing preview content", () => {
+    const pages = structuredClone(defaultStore.pages);
+    const hero = pages[0]?.blocks.find((block) => block.type === "hero");
+    assert.ok(hero);
+    hero.layoutVariant = "split";
+    hero.variantOptions = { mediaFit: "contain", contentWidth: "wide" };
+
+    const personalized = personalizePreviewPages(pages, {
+      ...defaultStore,
+      name: "Preview Merchant",
+      description: "Preview description",
+    });
+    const previewHero = personalized[0]?.blocks.find((block) => block.type === "hero");
+
+    assert.equal(previewHero?.layoutVariant, "split");
+    assert.deepEqual(previewHero?.variantOptions, { mediaFit: "contain", contentWidth: "wide" });
+    assert.equal(previewHero?.props.title, "Preview Merchant");
   });
 
   it("uses the neutral default-store theme for static card previews", () => {

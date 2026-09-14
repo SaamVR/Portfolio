@@ -70,6 +70,7 @@ export type CmsEditorBlockRecord = {
   hover_effect?: StorePageBlock["hoverEffect"] | null;
   effect_override?: boolean | null;
   layout_variant?: string | null;
+  variant_options?: StorePageBlock["variantOptions"] | null;
   custom_html?: string | null;
   custom_css?: string | null;
 };
@@ -236,7 +237,7 @@ export function useCmsEditorDataController({
           .order("slug"),
         client
           .from("store_page_blocks")
-          .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css")
+          .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css")
           .eq("store_id", storeRecord.id)
           .order("sort_order"),
         client

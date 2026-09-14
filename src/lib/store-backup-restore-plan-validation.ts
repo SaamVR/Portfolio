@@ -1,3 +1,5 @@
+import { normalizeCanonicalVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+
 const ANALYTICS_EVENT_NAMES = new Set([
   "page_view", "view_item", "quick_view_open", "search", "tag_click", "search_result_click",
   "filter_used", "sort_changed", "add_to_cart", "remove_from_cart", "cart_quantity_changed",
@@ -62,6 +64,15 @@ export function assertNormalizedRestorePlanConstraints(plan: Record<string, unkn
   for (const [index, row] of rows(plan, "store_page_blocks").entries()) {
     if (jsonKind(row.responsive_config) !== "object") {
       throw new Error(`store_page_blocks[${index}].responsive_config must be an object.`);
+    }
+    if (row.variant_options !== null && row.variant_options !== undefined) {
+      if (jsonKind(row.variant_options) !== "object") {
+        throw new Error(`store_page_blocks[${index}].variant_options must be an object or null.`);
+      }
+      const normalized = normalizeCanonicalVariantOptions(row.variant_options);
+      if (JSON.stringify(normalized ?? {}) !== JSON.stringify(row.variant_options)) {
+        throw new Error(`store_page_blocks[${index}].variant_options must contain only canonical R4 options.`);
+      }
     }
   }
 

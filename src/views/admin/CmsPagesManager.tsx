@@ -82,7 +82,8 @@ import { sanitizeStoreBlocks, sanitizeStorePage, sanitizeStoreThemeCustomCss } f
 import { getFeatureEnabled } from "@/lib/platform/control-plane";
 import { fallbackStorefrontTemplateSeeds, resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
 import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
-import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
+import { buildStorefrontTemplateSiteSettingsEntries, resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
+import { applyVariantAwareBlockPatch } from "@/lib/cms/storefront-platform/variants/variant-options";
 import { isThemePackageReferenceMissing, resolveThemePackageById, fallbackThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { CmsEditorPreviewSheet } from "@/components/admin/CmsEditorPreviewSheet";
@@ -125,7 +126,6 @@ import { TiptapRichTextEditor } from "@/components/admin/TiptapRichTextEditor";
 import type { RichTextDoc } from "@/lib/cms/schema";
 import type { ThemeExportBundle } from "@/lib/cms/theme-export-import";
 import { getBasicLayoutVariantOptions, getBasicStarterLayouts, resolveBasicEditorPageType, resolveBasicFlowSections } from "@/lib/cms/storefront-editor-registry";
-import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 
 const PROMO_THEME_DEFAULT_VALUE = "__theme-default";
 
@@ -206,6 +206,7 @@ type BlockRecord = {
   hover_effect?: StorePageBlock["hoverEffect"] | null;
   effect_override?: boolean | null;
   layout_variant?: string | null;
+  variant_options?: StorePageBlock["variantOptions"] | null;
   custom_html?: string | null;
   custom_css?: string | null;
 };
@@ -297,6 +298,7 @@ function mapRecordsToStore(
             hoverEffect: block.hover_effect ?? undefined,
             effectOverride: block.effect_override ?? undefined,
             layoutVariant: block.layout_variant ?? undefined,
+            variantOptions: block.variant_options ?? undefined,
             customHtml: block.custom_html ?? undefined,
             customCss: block.custom_css ?? undefined,
             props: block.props ?? {},
@@ -840,6 +842,7 @@ export default function CmsPagesManager() {
             hover_effect: block.hoverEffect ?? null,
             effect_override: block.effectOverride ?? null,
             layout_variant: block.layoutVariant ?? null,
+            variant_options: block.variantOptions ?? null,
             custom_html: block.customHtml ?? null,
             custom_css: block.customCss ?? null,
           })),
@@ -1130,10 +1133,14 @@ export default function CmsPagesManager() {
 
   const updateBlockMeta = (blockId: string, patch: Partial<StorePageBlock>) => {
     const normalizedPatch = normalizeBlockMetaPatch(patch);
-    updateBlock(blockId, (current) => ({
-      ...current,
-      ...normalizedPatch,
-    } as StorePageBlock));
+    const templateId = resolveStorefrontTemplateId(
+      store?.siteSettings?.storefront_profile && typeof store.siteSettings.storefront_profile === "object"
+        ? (store.siteSettings.storefront_profile as Record<string, unknown>).template_id
+        : undefined,
+      { templateSeedId: storeTemplateSeedId },
+    );
+    updateBlock(blockId, (current) =>
+      applyVariantAwareBlockPatch(templateId, current, normalizedPatch));
   };
 
   const replaceSelectedPageBlocks = (blocks: StorePageBlock[]) => {

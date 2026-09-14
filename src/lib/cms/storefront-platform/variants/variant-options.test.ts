@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import { storePageBlockSchema } from "@/lib/cms/schema";
 import { getStorefrontVariantDefinition, getStorefrontVariantDefinitions } from "./registry";
-import { applySectionStyleToBlock } from "./section-style-library";
+import { applySectionStyleToBlock, buildSectionStylePersistencePatch } from "./section-style-library";
 import {
+  applyVariantAwareBlockPatch,
   getEffectiveVariantOptions,
   getExplicitVariantOptions,
   normalizeVariantOptionsForDefinition,
@@ -47,6 +48,26 @@ describe("R4 Section Studio variant option contract", () => {
       hero({ variantOptions: { mediaFit: "contain", contentWidth: "standard" } }),
       "centered",
       "threads",
+    );
+    assert.equal(changed.layoutVariant, "centered");
+    assert.deepEqual(changed.variantOptions, { contentWidth: "standard" });
+  });
+
+
+
+  it("persists a style change with only options supported by the destination style", () => {
+    const block = hero({ variantOptions: { mediaFit: "contain", contentWidth: "standard" } });
+    assert.deepEqual(
+      buildSectionStylePersistencePatch("centered", block, "threads"),
+      { layout_variant: "centered", variant_options: { contentWidth: "standard" } },
+    );
+  });
+
+  it("strips stale options in central block draft patches when layout style changes", () => {
+    const changed = applyVariantAwareBlockPatch(
+      "threads",
+      hero({ variantOptions: { mediaFit: "contain", contentWidth: "standard" } }),
+      { layoutVariant: "centered" },
     );
     assert.equal(changed.layoutVariant, "centered");
     assert.deepEqual(changed.variantOptions, { contentWidth: "standard" });

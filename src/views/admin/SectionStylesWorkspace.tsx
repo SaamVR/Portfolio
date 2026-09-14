@@ -48,6 +48,7 @@ function normalizeBlock(row: Record<string, unknown>): StorePageBlock {
     isVisible: row.is_visible !== false,
     visible: row.is_visible !== false,
     layoutVariant: typeof row.layout_variant === "string" ? row.layout_variant : undefined,
+    variantOptions: row.variant_options && typeof row.variant_options === "object" ? row.variant_options as StorePageBlock["variantOptions"] : undefined,
     props: row.props && typeof row.props === "object" ? row.props as Record<string, unknown> : {},
   } as StorePageBlock;
 }
@@ -95,7 +96,7 @@ export default function SectionStylesWorkspace() {
 
         const blockResult = await (supabase as any)
           .from("store_page_blocks")
-          .select("id,block_type,props,sort_order,is_visible,layout_variant")
+          .select("id,block_type,props,sort_order,is_visible,layout_variant,variant_options")
           .eq("store_id", activeStoreId)
           .eq("page_id", pageResult.data.id)
           .order("sort_order");
@@ -146,18 +147,18 @@ export default function SectionStylesWorkspace() {
     if (!activeStoreId || !workspace) throw new Error("Section Styles workspace is not ready.");
     const { data, error: updateError } = await (supabase as any)
       .from("store_page_blocks")
-      .update(buildSectionStylePersistencePatch(variantId))
+      .update(buildSectionStylePersistencePatch(variantId, block, workspace.templateId))
       .eq("store_id", activeStoreId)
       .eq("page_id", workspace.page.id)
       .eq("id", block.id)
-      .select("id,layout_variant")
+      .select("id,layout_variant,variant_options")
       .maybeSingle();
     if (updateError) throw updateError;
     if (!data) throw new Error("The section could not be updated. Reload the editor and try again.");
 
     setWorkspace((current) => current ? {
       ...current,
-      blocks: current.blocks.map((item) => item.id === block.id ? applySectionStyleToBlock(item, variantId) : item),
+      blocks: current.blocks.map((item) => item.id === block.id ? applySectionStyleToBlock(item, variantId, workspace.templateId) : item),
     } : current);
 
     try {
