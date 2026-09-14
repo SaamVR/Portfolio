@@ -49,3 +49,20 @@ test("recovery cart truth fails closed for missing or unavailable products", () 
     is_available: false,
   }]), null);
 });
+
+
+test("recovery cart normalization aggregates duplicate commercial lines and enforces the checkout 99-unit aggregate", () => {
+  assert.deepEqual(normalizeRecoveryCartInput([
+    { productId: productId, quantity: 40, variant: "M" },
+    { productId: productId, quantity: 59, variant: "M" },
+    { productId: productId, quantity: 1, variant: "L" },
+  ]), [
+    { productId: productId, quantity: 99, variant: "M" },
+    { productId: productId, quantity: 1, variant: "L" },
+  ]);
+
+  assert.equal(normalizeRecoveryCartInput([
+    { productId: productId, quantity: 60, variant: "M" },
+    { productId: productId, quantity: 40, variant: "M" },
+  ]), null);
+});

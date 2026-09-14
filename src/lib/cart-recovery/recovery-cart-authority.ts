@@ -28,21 +28,26 @@ function readVariant(value: unknown) {
 export function normalizeRecoveryCartInput(value: unknown): RecoveryCartInputItem[] | null {
   if (!Array.isArray(value)) return [];
   if (value.length > 30) return null;
-  const rawItems = value;
-  const normalized: RecoveryCartInputItem[] = [];
+  const normalizedByLine = new Map<string, RecoveryCartInputItem>();
 
-  for (const raw of rawItems) {
+  for (const raw of value) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
     const record = raw as Record<string, unknown>;
     const productId = typeof record.productId === "string" ? record.productId.trim() : "";
     const quantity = Number(record.quantity);
+    const variant = readVariant(record.variant);
     if (!productIdPattern.test(productId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
       return null;
     }
-    normalized.push({ productId, quantity, variant: readVariant(record.variant) });
+
+    const key = `${productId}\u0000${variant}`;
+    const existing = normalizedByLine.get(key);
+    const aggregateQuantity = (existing?.quantity ?? 0) + quantity;
+    if (aggregateQuantity > 99) return null;
+    normalizedByLine.set(key, { productId, quantity: aggregateQuantity, variant });
   }
 
-  return normalized;
+  return [...normalizedByLine.values()];
 }
 
 export function buildAuthoritativeRecoveryCart(
