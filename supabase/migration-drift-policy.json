@@ -44,6 +44,11 @@
       "name": "commerce_tenant_graph_consistency",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: closes remaining cross-store courier, recovery, and category hierarchy references with composite tenant keys."
+    },
+    {
+      "name": "r4_section_studio_variant_options",
+      "classification": "pending-production",
+      "reason": "Frozen R4 Section Studio migration is present in the frozen storefront baseline but has not yet been applied to production; keep it explicit until coordinated R4 rollout and ledger refresh."
     }
   ]
 }
