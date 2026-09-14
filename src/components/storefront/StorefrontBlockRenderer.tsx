@@ -236,8 +236,8 @@ function SocialFeedBlock({
             {subtitle ? <p className="mt-3 text-muted-foreground">{subtitle}</p> : null}
           </div>
           <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="aspect-[4/3] overflow-hidden">
-              <img src={displayImages[0]} alt={title || "Gallery image"} className="h-full w-full object-cover" loading="lazy" />
+            <div className="relative aspect-[4/3] overflow-hidden">
+              <SafeStorefrontImage src={displayImages[0]} fill alt={title || "Gallery image"} className="object-cover" />
             </div>
           </div>
         </div>
