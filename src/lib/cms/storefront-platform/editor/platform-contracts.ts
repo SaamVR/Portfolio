@@ -59,14 +59,16 @@ export function getPlatformAestheticOptions(theme: Store["theme"]): PlatformAest
 function blockSignals(block?: StorePageBlock): Partial<Pick<StorefrontCompatibilityContext, "itemCount" | "mediaCount" | "hasPrimaryMedia">> {
   if (!block) return {};
   const props = (block.props ?? {}) as Record<string, unknown>;
-  const imageList = Array.isArray(props.images) ? props.images.filter((value) => typeof value === "string" && value.trim()) : [];
-  const itemList = Array.isArray(props.items) ? props.items : [];
+  const hasExplicitImages = Array.isArray(props.images);
+  const hasExplicitItems = Array.isArray(props.items);
+  const imageList = hasExplicitImages ? (props.images as unknown[]).filter((value) => typeof value === "string" && value.trim()) : [];
+  const itemList = hasExplicitItems ? props.items as unknown[] : [];
   const mediaKeys = ["mediaUrl", "imageUrl", "videoUrl"];
   const hasPrimaryMedia = mediaKeys.some((key) => typeof props[key] === "string" && String(props[key]).trim().length > 0);
 
   return {
-    ...(itemList.length ? { itemCount: itemList.length } : {}),
-    ...(imageList.length ? { mediaCount: imageList.length } : hasPrimaryMedia ? { mediaCount: 1 } : {}),
+    ...(hasExplicitItems ? { itemCount: itemList.length } : {}),
+    ...(hasExplicitImages ? { mediaCount: imageList.length } : hasPrimaryMedia ? { mediaCount: 1 } : {}),
     hasPrimaryMedia,
   };
 }

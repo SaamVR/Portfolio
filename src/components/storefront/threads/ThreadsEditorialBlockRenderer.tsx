@@ -24,6 +24,7 @@ import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage
 import { ThreadsProductCard } from "@/components/storefront/threads/ThreadsProductCard";
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { shouldUseSpecializedBlockRenderer } from "@/lib/cms/storefront-platform/variants/specialized-routing";
 import {
   Carousel,
   CarouselContent,
@@ -832,6 +833,10 @@ export function ThreadsEditorialBlockRenderer({
   block: StorePageBlock;
   template: StorefrontTemplateDefinition;
 }) {
+  if (!shouldUseSpecializedBlockRenderer(block, template)) {
+    return <StorefrontBlockRenderer block={block} template={template} />;
+  }
+
   switch (block.type) {
     case "hero":
       return <ThreadsHero block={block} />;

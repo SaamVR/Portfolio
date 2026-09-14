@@ -414,6 +414,7 @@ function ComparisonBlock({
   productType,
   limit,
   ctaText,
+  layoutVariant,
 }: {
   title?: string;
   tagline?: string;
@@ -422,6 +423,7 @@ function ComparisonBlock({
   productType?: string;
   limit?: number;
   ctaText?: string;
+  layoutVariant?: string;
 }) {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id ?? "";
@@ -454,23 +456,25 @@ function ComparisonBlock({
     );
   }
 
+  const isTechSpec = layoutVariant === "tech-spec";
+
   return (
-    <section className="bg-background py-14 md:py-24">
+    <section className={isTechSpec ? "bg-muted/30 py-12 md:py-20" : "bg-background py-14 md:py-24"}>
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-10 max-w-3xl text-center">
+        <div className={isTechSpec ? "mb-8 max-w-3xl" : "mx-auto mb-10 max-w-3xl text-center"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{tagline || "Compare before you buy"}</p>
           <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{title || "Quick product comparison"}</h2>
         </div>
-        <div className="mx-auto grid max-w-6xl gap-4 xl:grid-cols-2">
+        <div className={isTechSpec ? "mx-auto grid max-w-6xl gap-3" : "mx-auto grid max-w-6xl gap-4 xl:grid-cols-2"}>
           {productsToCompare.map((product) => (
-            <article key={product.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-              <div className="grid gap-5 p-5 sm:grid-cols-[220px_1fr]">
+            <article key={product.id} className={isTechSpec ? "overflow-hidden rounded-xl border border-border bg-card" : "overflow-hidden rounded-3xl border border-border bg-card shadow-sm"}>
+              <div className={isTechSpec ? "grid gap-4 p-4 sm:grid-cols-[180px_1fr] sm:items-center" : "grid gap-5 p-5 sm:grid-cols-[220px_1fr]"}>
                 <div className="flex aspect-[4/3] items-center justify-center rounded-[24px] bg-secondary/40 p-5"><img src={product.image} alt={product.name} className="h-full w-full object-contain" /></div>
                 <div>
                   <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">{product.category || product.type || "Product"}</span>
                   <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{product.name}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{product.description}</p>
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">{buildTechnicalSpecs(product).map((spec) => <div key={spec} className="rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-xs text-muted-foreground sm:text-sm">{spec}</div>)}</div>
+                  <div className={isTechSpec ? "mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4" : "mt-4 grid grid-cols-2 gap-2 sm:gap-3"}>{buildTechnicalSpecs(product).map((spec) => <div key={spec} className={isTechSpec ? "rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] text-foreground/75" : "rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-xs text-muted-foreground sm:text-sm"}>{spec}</div>)}</div>
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <p className="text-[1.2rem] font-bold text-primary sm:text-[1.35rem]">৳{product.price.toLocaleString()}</p>
                     <Button asChild variant="outline" className="ml-auto"><Link href={productUrl(product.id, product.name, storeSlug)}>{ctaText || "View details"}</Link></Button>
@@ -545,7 +549,7 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
         return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
       case "recommended-products":
         return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
-      case "comparison": return <ComparisonBlock {...mergedProps} />;
+      case "comparison": return <ComparisonBlock {...mergedProps} layoutVariant={blockLayoutVariant} />;
       case "recently-viewed": return <RecentlyViewed title={typeof mergedProps.title === "string" ? mergedProps.title : undefined} />;
       case "rich-text": return blockLayoutVariant === "blog-posts" ? <BlogHomepageWidget /> : <RichTextBlock {...mergedProps} templateId={template?.id} />;
       case "social-feed": return <SocialFeedBlock {...mergedProps} templateId={template?.id} />;

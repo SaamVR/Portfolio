@@ -400,7 +400,16 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       spacingDensity: "comfortable",
       typographyScale: "display",
       colorTokens: {},
-      blockLayoutVariants: {},
+      blockLayoutVariants: {
+        hero: "poster",
+        "category-showcase": "cards",
+        "featured-products": "4-col",
+        "recommended-products": "4-col",
+        "promo-banner": "standard",
+        "rich-text": "brand-story",
+        "social-feed": "gallery",
+        "trust-badges": "cards",
+      },
     },
   }),
   threads: createTemplateDefinition("threads", {

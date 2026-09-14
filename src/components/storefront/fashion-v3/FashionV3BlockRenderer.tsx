@@ -13,6 +13,7 @@ import { FashionV3ProductCard } from "@/components/storefront/fashion-v3/Fashion
 import { productUrl, storefrontPath } from "@/lib/slug";
 import { getScopedStorefrontStorageKey } from "@/lib/storefront-storage";
 import { StorefrontBlockRenderer } from "@/components/storefront/StorefrontBlockRenderer";
+import { shouldUseSpecializedBlockRenderer } from "@/lib/cms/storefront-platform/variants/specialized-routing";
 
 const asString = (value: unknown) => typeof value === "string" ? value.trim() : "";
 
@@ -283,6 +284,10 @@ function FashionTrust({ block }: { block: StorePageBlock }) {
 }
 
 export function FashionV3BlockRenderer({ block, template }: { block: StorePageBlock; template: StorefrontTemplateDefinition }) {
+  if (!shouldUseSpecializedBlockRenderer(block, template)) {
+    return <StorefrontBlockRenderer block={block} template={template} />;
+  }
+
   switch (block.type) {
     case "hero": return <FashionHero block={block} />;
     case "category-showcase": return <FashionCategories block={block} />;
