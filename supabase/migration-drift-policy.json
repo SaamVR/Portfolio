@@ -84,6 +84,16 @@
       "name": "external_auth_identity_binding_334",
       "classification": "pending-production",
       "reason": "Release hardening branch: replaces mutable Firebase email/phone account discovery with a durable server-only Firebase project+subject binding before password-reset bridge authority is retired."
+    },
+    {
+      "name": "store_role_capability_matrix_324",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: splits editor content/commerce authority from owner/admin tenant administration, integrations, finance, publication, and team authority."
+    },
+    {
+      "name": "store_role_viewer_read_contract_324",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: completes viewer read-only catalog/content access while keeping payment, domain, integration, publication, and preview-token surfaces owner/admin-only."
     }
   ]
 }
