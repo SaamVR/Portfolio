@@ -201,12 +201,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS cart_items_user_product_size_option_ids_idx
   ON public.cart_items(user_id, product_id, size, option_ids);
 
 ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS delivery_zone text;
+  ADD COLUMN IF NOT EXISTS delivery_zone text,
+  ADD COLUMN IF NOT EXISTS manual_payment_provider text,
+  ADD COLUMN IF NOT EXISTS manual_payment_reference text;
 
 ALTER TABLE public.orders
   DROP CONSTRAINT IF EXISTS orders_delivery_zone_check,
+  DROP CONSTRAINT IF EXISTS orders_manual_payment_provider_check,
+  DROP CONSTRAINT IF EXISTS orders_manual_payment_reference_check,
+  DROP CONSTRAINT IF EXISTS orders_manual_payment_pair_check,
   ADD CONSTRAINT orders_delivery_zone_check
-    CHECK (delivery_zone IS NULL OR delivery_zone IN ('primary', 'secondary', 'none'));
+    CHECK (delivery_zone IS NULL OR delivery_zone IN ('primary', 'secondary', 'none')),
+  ADD CONSTRAINT orders_manual_payment_provider_check
+    CHECK (manual_payment_provider IS NULL OR manual_payment_provider IN ('bkash', 'nagad')),
+  ADD CONSTRAINT orders_manual_payment_reference_check
+    CHECK (manual_payment_reference IS NULL OR manual_payment_reference ~ '^[A-Z0-9_-]{4,50}$'),
+  ADD CONSTRAINT orders_manual_payment_pair_check
+    CHECK ((manual_payment_provider IS NULL) = (manual_payment_reference IS NULL));
 
 CREATE OR REPLACE FUNCTION public.create_store_order_authoritative_v3(
   _store_id uuid,
@@ -225,6 +236,8 @@ CREATE OR REPLACE FUNCTION public.create_store_order_authoritative_v3(
   _payment_method_authorized boolean,
   _payment_method_prepaid boolean,
   _payment_provider text,
+  _manual_payment_provider text,
+  _manual_payment_reference text,
   _notes text,
   _coupon_code text
 )
@@ -271,7 +284,18 @@ DECLARE
   _secondary_delivery_fee integer := 150;
   _free_threshold integer := 2000;
   _safe_delivery_fee integer := 0;
-  _normalized_delivery_zone text := lower(trim(coalesce(_delivery_zone, 'primary')));
+  _requested_delivery_zone text := nullif(lower(trim(coalesce(_delivery_zone, ''))), '');
+  _normalized_delivery_zone text := null;
+  _normalized_shipping_city text := lower(regexp_replace(trim(coalesce(_shipping_city, '')), '\s+', ' ', 'g'));
+  _primary_zone_aliases jsonb := '[]'::jsonb;
+  _payment_method_norm text := lower(trim(coalesce(_payment_method, '')));
+  _expected_manual_payment_provider text := CASE
+    WHEN lower(trim(coalesce(_payment_method, ''))) = 'bkash_manual' THEN 'bkash'
+    WHEN lower(trim(coalesce(_payment_method, ''))) = 'nagad' THEN 'nagad'
+    ELSE NULL
+  END;
+  _normalized_manual_payment_provider text := nullif(lower(trim(coalesce(_manual_payment_provider, ''))), '');
+  _normalized_manual_payment_reference text := nullif(upper(trim(coalesce(_manual_payment_reference, ''))), '');
   _coupon_discount integer := 0;
   _prepaid_discount integer := 0;
   _safe_discount integer := 0;
@@ -283,6 +307,18 @@ BEGIN
   END IF;
   IF nullif(trim(coalesce(_client_request_id, '')), '') IS NULL THEN
     RAISE EXCEPTION 'client_request_id is required' USING ERRCODE = '22023';
+  END IF;
+
+  IF _payment_method_norm IN ('bkash_manual', 'nagad') THEN
+    IF _normalized_manual_payment_provider IS DISTINCT FROM _expected_manual_payment_provider THEN
+      RAISE EXCEPTION 'manual payment provider does not match payment method' USING ERRCODE = '22023';
+    END IF;
+    IF _normalized_manual_payment_reference IS NULL
+      OR _normalized_manual_payment_reference !~ '^[A-Z0-9_-]{4,50}$' THEN
+      RAISE EXCEPTION 'manual payment reference is required and invalid' USING ERRCODE = '22023';
+    END IF;
+  ELSIF _normalized_manual_payment_provider IS NOT NULL OR _normalized_manual_payment_reference IS NOT NULL THEN
+    RAISE EXCEPTION 'manual payment evidence is only valid for manual payment methods' USING ERRCODE = '22023';
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(_store_id::text || ':' || trim(_client_request_id), 0));
@@ -297,7 +333,7 @@ BEGIN
     IF _existing.status = 'cancelled' THEN
       RAISE EXCEPTION 'checkout recovery conflict: this checkout attempt was cancelled; start a new checkout' USING ERRCODE = 'P0001';
     END IF;
-    IF lower(trim(coalesce(_existing.payment_method, ''))) IS DISTINCT FROM lower(trim(coalesce(_payment_method, ''))) THEN
+    IF lower(trim(coalesce(_existing.payment_method, ''))) IS DISTINCT FROM _payment_method_norm THEN
       RAISE EXCEPTION 'checkout recovery conflict: payment method does not match the existing order' USING ERRCODE = 'P0001';
     END IF;
     IF _existing.user_id IS DISTINCT FROM _user_id
@@ -307,7 +343,9 @@ BEGIN
       OR trim(coalesce(_existing.shipping_address, '')) IS DISTINCT FROM trim(coalesce(_shipping_address, ''))
       OR trim(coalesce(_existing.shipping_city, '')) IS DISTINCT FROM trim(coalesce(_shipping_city, ''))
       OR coalesce(nullif(trim(coalesce(_existing.notes, '')), ''), '') IS DISTINCT FROM coalesce(nullif(trim(coalesce(_notes, '')), ''), '')
-      OR coalesce(_existing.delivery_zone, 'primary') IS DISTINCT FROM (CASE WHEN _existing.delivery_zone = 'none' THEN 'none' ELSE _normalized_delivery_zone END)
+      OR coalesce(_existing.manual_payment_provider, '') IS DISTINCT FROM coalesce(_normalized_manual_payment_provider, '')
+      OR coalesce(_existing.manual_payment_reference, '') IS DISTINCT FROM coalesce(_normalized_manual_payment_reference, '')
+      OR (_requested_delivery_zone IS NOT NULL AND coalesce(_existing.delivery_zone, 'secondary') IS DISTINCT FROM (CASE WHEN _existing.delivery_zone = 'none' THEN 'none' ELSE _requested_delivery_zone END))
     THEN
       RAISE EXCEPTION 'checkout recovery conflict: checkout payload does not match the existing order' USING ERRCODE = 'P0001';
     END IF;
@@ -365,23 +403,23 @@ BEGIN
   LIMIT 1;
   IF NOT FOUND THEN _payment_settings := '{}'::jsonb; END IF;
 
-  IF lower(trim(coalesce(_payment_method, ''))) = 'cod' THEN
+  IF _payment_method_norm = 'cod' THEN
     IF coalesce((_payment_settings->>'cod_enabled')::boolean, true) IS NOT TRUE THEN
       RAISE EXCEPTION 'payment method is disabled for this store' USING ERRCODE = '22023';
     END IF;
     _effective_prepaid := false;
-  ELSIF lower(trim(coalesce(_payment_method, ''))) = 'bkash_manual' THEN
+  ELSIF _payment_method_norm = 'bkash_manual' THEN
     IF coalesce((_payment_settings->>'bkash_enabled')::boolean, false) IS NOT TRUE
       OR nullif(trim(coalesce(_payment_settings->>'bkash_number', '')), '') IS NULL THEN
       RAISE EXCEPTION 'payment method is disabled or not configured for this store' USING ERRCODE = '22023';
     END IF;
-    _effective_prepaid := true;
-  ELSIF lower(trim(coalesce(_payment_method, ''))) = 'nagad' THEN
+    _effective_prepaid := coalesce(_payment_method_prepaid, false);
+  ELSIF _payment_method_norm = 'nagad' THEN
     IF coalesce((_payment_settings->>'nagad_enabled')::boolean, false) IS NOT TRUE
       OR nullif(trim(coalesce(_payment_settings->>'nagad_number', '')), '') IS NULL THEN
       RAISE EXCEPTION 'payment method is disabled or not configured for this store' USING ERRCODE = '22023';
     END IF;
-    _effective_prepaid := true;
+    _effective_prepaid := coalesce(_payment_method_prepaid, false);
   ELSE
     IF nullif(trim(coalesce(_payment_provider, '')), '') IS NULL
       OR NOT EXISTS (
@@ -560,14 +598,28 @@ BEGIN
     _free_threshold := coalesce((_delivery_settings->>'free_threshold')::integer, 2000);
   EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range THEN _free_threshold := 2000; END;
   IF _free_threshold <= 0 THEN _free_threshold := 2000; END IF;
+  IF jsonb_typeof(_delivery_settings->'primary_zone_aliases') = 'array' THEN
+    _primary_zone_aliases := _delivery_settings->'primary_zone_aliases';
+  END IF;
 
   IF _digital_only THEN
     _safe_delivery_fee := 0;
     _normalized_delivery_zone := 'none';
   ELSE
-    IF _normalized_delivery_zone NOT IN ('primary', 'secondary') THEN
-      RAISE EXCEPTION 'invalid delivery zone' USING ERRCODE = '22023';
+    _normalized_delivery_zone := CASE
+      WHEN _normalized_shipping_city <> '' AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(_primary_zone_aliases) AS configured(alias)
+        WHERE lower(regexp_replace(trim(configured.alias), '\s+', ' ', 'g')) = _normalized_shipping_city
+          AND trim(configured.alias) <> ''
+      ) THEN 'primary'
+      ELSE 'secondary'
+    END;
+
+    IF _requested_delivery_zone IS NOT NULL AND _requested_delivery_zone IS DISTINCT FROM _normalized_delivery_zone THEN
+      RAISE EXCEPTION 'checkout delivery zone changed; refresh checkout and try again' USING ERRCODE = '22023';
     END IF;
+
     IF NOT _delivery_enabled OR _subtotal >= _free_threshold THEN
       _safe_delivery_fee := 0;
     ELSE
@@ -603,13 +655,14 @@ BEGIN
   INSERT INTO public.orders (
     store_id, client_request_id, user_id, items, subtotal, delivery_fee, delivery_zone, total,
     customer_name, customer_phone, customer_email, shipping_address, shipping_city,
-    payment_method, notes
+    payment_method, manual_payment_provider, manual_payment_reference, notes
   ) VALUES (
     _store_id, trim(_client_request_id), _user_id, _normalized_items, _subtotal::integer,
     _safe_delivery_fee, _normalized_delivery_zone,
     greatest(_subtotal::integer + _safe_delivery_fee - _safe_discount, 0),
     trim(_customer_name), trim(_customer_phone), nullif(trim(coalesce(_customer_email, '')), ''),
-    trim(_shipping_address), trim(_shipping_city), lower(trim(_payment_method)), nullif(trim(coalesce(_notes, '')), '')
+    trim(_shipping_address), trim(_shipping_city), _payment_method_norm,
+    _normalized_manual_payment_provider, _normalized_manual_payment_reference, nullif(trim(coalesce(_notes, '')), '')
   )
   RETURNING * INTO _order;
 
@@ -621,14 +674,14 @@ $$;
 
 REVOKE ALL ON FUNCTION public.create_store_order_authoritative_v3(
   uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text,
-  text, boolean, boolean, text, text, text
+  text, boolean, boolean, text, text, text, text, text
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_store_order_authoritative_v3(
   uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text,
-  text, boolean, boolean, text, text, text
+  text, boolean, boolean, text, text, text, text, text
 ) TO service_role;
 
 COMMENT ON FUNCTION public.create_store_order_authoritative_v3(
   uuid, text, uuid, jsonb, text, integer, integer, text, text, text, text, text,
-  text, boolean, boolean, text, text, text
-) IS 'Authoritative storefront checkout: resolves option price identity, derives delivery, validates payment authority before inventory/coupon commitment, and preserves idempotent replay.';
+  text, boolean, boolean, text, text, text, text, text
+) IS 'Authoritative storefront checkout: resolves option price identity, derives delivery zone from merchant city membership, validates structured payment authority before inventory/coupon commitment, and preserves idempotent replay.';

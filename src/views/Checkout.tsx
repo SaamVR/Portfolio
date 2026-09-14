@@ -17,7 +17,7 @@ import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { DownloadAccessPanel } from "@/components/storefront/digital-downloads/DownloadAccessPanel";
 import { getCartVariantDisplayLabel, isDigitalOnlyCart } from "@/lib/digital-cart";
-import { getNormalizedDeliverySettings, getStorefrontPricing, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
+import { getNormalizedDeliverySettings, getStorefrontPricing, resolveStorefrontDeliveryLocation, type StorefrontDeliverySettings } from "@/lib/storefront-pricing";
 import { resolveStorefrontOrderExperience } from "@/lib/cms/storefront-order-experience";
 import { buildRecoveryCartSnapshot, readRecoveryConsentStatus } from "@/lib/cart-recovery/client";
 import { buildCustomerAuthPath, getCurrentRelativePath, resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
@@ -108,7 +108,6 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
   const LayoutWrapper = checkoutStoreId ? StorefrontLayout : Layout;
   const [copied, setCopied] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [deliveryZone, setDeliveryZone] = useState<"primary" | "secondary">("primary");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -316,6 +315,9 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       ? Math.round((checkoutSubtotal * appliedCoupon.discount_value) / 100)
       : appliedCoupon.discount_value
     : 0;
+  const deliveryZone = digitalOnlyCheckout
+    ? "secondary" as const
+    : resolveStorefrontDeliveryLocation(deliverySettings, form.city);
   const pricing = getStorefrontPricing({
     subtotal: checkoutSubtotal,
     couponDiscount,
@@ -459,7 +461,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
       const notesParts: string[] = [];
 
       if (isManualMobilePayment) {
-        notesParts.push(`Payment: ${manualPaymentLabel} | TrxID: ${form.trxId.trim()}`);
+        notesParts.push(`Payment: ${manualPaymentLabel} (manual reference submitted)`);
       } else if (selectedGateway) {
         notesParts.push(`Payment: ${selectedGateway.label} (Automated)`);
       }
@@ -501,6 +503,7 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
         shipping_address: shippingAddress,
         shipping_city: shippingCity,
         payment_method: form.paymentMethod,
+        manual_payment_reference: isManualMobilePayment ? form.trxId.trim() : null,
         notes: notesParts.length ? notesParts.join(" | ") : undefined,
       });
 
@@ -662,34 +665,19 @@ const Checkout = ({ explicitStoreId, explicitStoreSlug }: CheckoutProps = {}) =>
               })}
 
               {!digitalOnlyCheckout && deliverySettings.enabled ? (
-                <fieldset className="grid gap-2">
-                  <legend className="mb-1 text-sm font-medium text-foreground">Delivery zone</legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {[
-                      { value: "primary" as const, label: deliverySettings.primary_zone_label?.trim() || "Primary delivery zone", fee: deliverySettings.delivery_fee },
-                      { value: "secondary" as const, label: deliverySettings.secondary_zone_label?.trim() || "Secondary delivery zone", fee: deliverySettings.delivery_fee_outside },
-                    ].map((zone) => (
-                      <label
-                        key={zone.value}
-                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${deliveryZone === zone.value ? "border-primary bg-primary/5" : "border-border bg-background"}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-3">
-                          <input
-                            type="radio"
-                            name="delivery-zone"
-                            value={zone.value}
-                            checked={deliveryZone === zone.value}
-                            onChange={() => setDeliveryZone(zone.value)}
-                            className="h-4 w-4 shrink-0 accent-primary"
-                          />
-                          <span className="truncate font-medium text-foreground">{zone.label}</span>
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">BDT {zone.fee}</span>
-                      </label>
-                    ))}
+                <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">
+                      {deliveryZone === "primary"
+                        ? (deliverySettings.primary_zone_label?.trim() || "Primary delivery zone")
+                        : (deliverySettings.secondary_zone_label?.trim() || "Extended delivery zone")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      BDT {deliveryZone === "primary" ? deliverySettings.delivery_fee : deliverySettings.delivery_fee_outside}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Final delivery charge is recalculated securely when the order is placed.</p>
-                </fieldset>
+                  <p className="mt-1 text-xs text-muted-foreground">Delivery zone is determined from your city and recalculated securely when the order is placed.</p>
+                </div>
               ) : null}
 
               {digitalOnlyCheckout ? <DownloadAccessPanel compact /> : null}

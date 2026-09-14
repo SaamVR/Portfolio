@@ -157,6 +157,7 @@ interface DraftState {
     enabled: boolean;
     primaryZoneLabel: string;
     secondaryZoneLabel: string;
+    primaryZoneAliases: string[];
     deliveryFee: number;
     deliveryFeeOutside: number;
     freeThreshold: number;
@@ -591,6 +592,7 @@ function getDefaultDeliverySettings(templateSeed: StorefrontTemplateSeedDefiniti
     enabled: Boolean(delivery.enabled),
     primaryZoneLabel: typeof delivery.primary_zone_label === "string" ? delivery.primary_zone_label : "Primary delivery zone",
     secondaryZoneLabel: typeof delivery.secondary_zone_label === "string" ? delivery.secondary_zone_label : "Extended delivery zone",
+    primaryZoneAliases: [],
     deliveryFee: typeof delivery.delivery_fee === "number" ? delivery.delivery_fee : 80,
     deliveryFeeOutside: typeof delivery.delivery_fee_outside === "number" ? delivery.delivery_fee_outside : 150,
     freeThreshold: typeof delivery.free_threshold === "number" ? delivery.free_threshold : 2000,
@@ -1843,6 +1845,9 @@ export default function OnboardingWizard() {
             enabled: Boolean(deliverySetting.enabled),
             primaryZoneLabel: typeof deliverySetting.primary_zone_label === "string" ? deliverySetting.primary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).primaryZoneLabel,
             secondaryZoneLabel: typeof deliverySetting.secondary_zone_label === "string" ? deliverySetting.secondary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).secondaryZoneLabel,
+            primaryZoneAliases: Array.isArray(deliverySetting.primary_zone_aliases)
+              ? deliverySetting.primary_zone_aliases.map((value) => String(value).trim()).filter(Boolean)
+              : [],
             deliveryFee: typeof deliverySetting.delivery_fee === "number" ? deliverySetting.delivery_fee : getDefaultDeliverySettings(safeTemplateSeed).deliveryFee,
             deliveryFeeOutside: typeof deliverySetting.delivery_fee_outside === "number" ? deliverySetting.delivery_fee_outside : getDefaultDeliverySettings(safeTemplateSeed).deliveryFeeOutside,
             freeThreshold: typeof deliverySetting.free_threshold === "number" ? deliverySetting.free_threshold : getDefaultDeliverySettings(safeTemplateSeed).freeThreshold,
@@ -2334,6 +2339,7 @@ export default function OnboardingWizard() {
           enabled: draft.delivery.enabled,
           primary_zone_label: draft.delivery.primaryZoneLabel,
           secondary_zone_label: draft.delivery.secondaryZoneLabel,
+          primary_zone_aliases: draft.delivery.primaryZoneAliases,
           delivery_fee: draft.delivery.deliveryFee,
           delivery_fee_outside: draft.delivery.deliveryFeeOutside,
           free_threshold: draft.delivery.freeThreshold,
@@ -3552,6 +3558,17 @@ export default function OnboardingWizard() {
                           <div className="grid gap-2">
                             <Label>Extended Zone</Label>
                             <Input value={draft.delivery.secondaryZoneLabel} onChange={(event) => updateDelivery({ secondaryZoneLabel: event.target.value })} />
+                          </div>
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label>Primary Zone Cities</Label>
+                            <Input
+                              value={draft.delivery.primaryZoneAliases.join(", ")}
+                              onChange={(event) => updateDelivery({
+                                primaryZoneAliases: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                              })}
+                              placeholder="Dhaka, ঢাকা"
+                            />
+                            <p className="text-xs text-muted-foreground">Only explicitly listed city names receive the primary rate; all others use the extended rate.</p>
                           </div>
                         </div>
                       </div>

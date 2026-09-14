@@ -286,7 +286,8 @@ export default function AdminOrders() {
               </tr>
             </tbody>
           </table>
-          ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${order.notes}</div>` : ""}
+          ${order.manual_payment_provider && order.manual_payment_reference ? `<div class="notes"><strong>Manual Payment Reference:</strong><br>${order.manual_payment_provider === "bkash" ? "bKash" : "Nagad"}: ${order.manual_payment_reference}</div>` : ""}
+          ${order.notes ? `<div class="notes"><strong>Notes:</strong><br>${order.notes}</div>` : ""}
         </body>
       </html>
     `;
@@ -597,9 +598,18 @@ export default function AdminOrders() {
                 </div>
               ) : null}
 
+              {viewOrder.manual_payment_provider && viewOrder.manual_payment_reference ? (
+                <div className="rounded-lg border border-border bg-secondary/50 p-3">
+                  <p className="mb-1 text-xs font-semibold text-foreground">Manual Payment Reference</p>
+                  <p className="text-sm text-foreground">
+                    {viewOrder.manual_payment_provider === "bkash" ? "bKash" : "Nagad"}: {viewOrder.manual_payment_reference}
+                  </p>
+                </div>
+              ) : null}
+
               {viewOrder.notes && (
                 <div className="rounded-lg border border-border bg-secondary/50 p-3">
-                  <p className="mb-1 text-xs font-semibold text-foreground">Customer Notes / TrxID:</p>
+                  <p className="mb-1 text-xs font-semibold text-foreground">Customer Notes:</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{viewOrder.notes}</p>
                 </div>
               )}

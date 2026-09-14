@@ -390,6 +390,7 @@ type StoreFlowSettings = {
     enabled?: boolean;
     primary_zone_label?: string;
     secondary_zone_label?: string;
+    primary_zone_aliases?: string[];
     delivery_fee?: number;
     delivery_fee_outside?: number;
     free_threshold?: number;
@@ -426,6 +427,7 @@ const defaultFlowSettings: StoreFlowSettings = {
     enabled: true,
     primary_zone_label: "Inside city",
     secondary_zone_label: "Outside city",
+    primary_zone_aliases: [],
     delivery_fee: 80,
     delivery_fee_outside: 150,
     free_threshold: 2000,
@@ -617,6 +619,20 @@ function BasicStoreFlowSettingsPanel({ storeId, templateId }: { storeId: string;
                   onChange={(event) => updateFlowSetting("delivery_settings", "secondary_zone_label", event.target.value)}
                   placeholder="Outside city"
                 />
+              </div>
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label>Primary Zone Cities</Label>
+                <Input
+                  data-testid="basic-flow-primary-zone-aliases"
+                  value={(settings.delivery_settings.primary_zone_aliases ?? []).join(", ")}
+                  onChange={(event) => updateFlowSetting(
+                    "delivery_settings",
+                    "primary_zone_aliases",
+                    event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                  )}
+                  placeholder="Dhaka, ঢাকা"
+                />
+                <p className="text-xs text-muted-foreground">Only these exact city names receive the primary delivery rate. Other cities use the extended rate.</p>
               </div>
               <div className="grid gap-1.5">
                 <Label>Primary Fee</Label>

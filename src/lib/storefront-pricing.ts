@@ -5,6 +5,7 @@ export interface StorefrontDeliverySettings {
   enabled?: boolean;
   primary_zone_label?: string;
   secondary_zone_label?: string;
+  primary_zone_aliases?: string[];
   delivery_fee?: number;
   delivery_fee_outside?: number;
   free_threshold?: number;
@@ -64,6 +65,22 @@ function isPrepaidMethod(paymentMethod?: StorefrontPaymentMethod, paymentSetting
   return Boolean(paymentSettings?.gateway_providers?.some((provider) => provider.payment_method === paymentMethod));
 }
 
+export function normalizeDeliveryCity(value: string | null | undefined) {
+  return (value ?? "").normalize("NFKC").trim().toLocaleLowerCase("en").replace(/\s+/g, " ");
+}
+
+export function resolveStorefrontDeliveryLocation(
+  deliverySettings: StorefrontDeliverySettings | null | undefined,
+  shippingCity: string | null | undefined,
+): StorefrontLocation {
+  const city = normalizeDeliveryCity(shippingCity);
+  if (!city) return "secondary";
+  const aliases = Array.isArray(deliverySettings?.primary_zone_aliases)
+    ? deliverySettings.primary_zone_aliases.map(normalizeDeliveryCity).filter(Boolean)
+    : [];
+  return aliases.includes(city) ? "primary" : "secondary";
+}
+
 export function getNormalizedDeliverySettings(
   deliverySettings?: StorefrontDeliverySettings | null,
 ): Required<Pick<StorefrontDeliverySettings, "enabled" | "delivery_fee" | "delivery_fee_outside" | "free_threshold">> & StorefrontDeliverySettings {
@@ -71,6 +88,9 @@ export function getNormalizedDeliverySettings(
     enabled: deliverySettings?.enabled ?? true,
     primary_zone_label: deliverySettings?.primary_zone_label,
     secondary_zone_label: deliverySettings?.secondary_zone_label,
+    primary_zone_aliases: Array.isArray(deliverySettings?.primary_zone_aliases)
+      ? deliverySettings.primary_zone_aliases.map((value) => String(value).trim()).filter(Boolean)
+      : [],
     delivery_fee: sanitizeMoney(deliverySettings?.delivery_fee ?? DEFAULT_PRIMARY_DELIVERY_FEE),
     delivery_fee_outside: sanitizeMoney(deliverySettings?.delivery_fee_outside ?? DEFAULT_SECONDARY_DELIVERY_FEE),
     free_threshold: normalizeFreeDeliveryThreshold(deliverySettings?.free_threshold),

@@ -241,6 +241,8 @@ describe("order creation checkout recovery", () => {
     }]);
     assert.equal(rpcArgs._payment_method_authorized, true);
     assert.equal(rpcArgs._payment_method_prepaid, false);
+    assert.equal(rpcArgs._manual_payment_provider, null);
+    assert.equal(rpcArgs._manual_payment_reference, null);
   });
 
   test("passes denied payment authority into the transactional RPC so a fresh order fails closed", async () => {
@@ -293,6 +295,41 @@ describe("order creation checkout recovery", () => {
     const negativeFee = await POST(buildRequest("cod", { deliveryFee: -1 }));
     assert.equal(negativeFee.status, 400);
     assert.match((await negativeFee.json()).error, /invalid delivery fee pricing assertion/i);
+  });
+
+  test("normalizes manual payment evidence into structured RPC fields", async () => {
+    const capturedRpcArgs: Array<Record<string, unknown>> = [];
+    const admin = createAdminMock({ replayed: true, persistedPaymentMethod: "bkash_manual", onRpc: (_name, args) => { capturedRpcArgs.push(args); } });
+
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    mock.method(orderCreateRouteDeps, "getAuthenticatedUser", async () => null);
+    mock.method(orderCreateRouteDeps, "getSupabaseAdminClient", () => admin as never);
+    mock.method(orderCreateRouteDeps, "loadStorePlanState", async () => ({
+      data: { isPublished: true, subscription: null, resolved: { live: true } }, error: null,
+    }) as never);
+    mock.method(orderCreateRouteDeps, "resolveStorePaymentAuthority", async () => ({
+      allowed: true, paymentMethod: "bkash_manual", providerId: null, prepaidEligible: true, reason: null,
+    }));
+
+    const response = await POST(buildRequest("bkash_manual", { manualPaymentReference: " trx-1234 " }));
+    assert.equal(response.status, 200);
+    assert.equal(capturedRpcArgs[0]?._manual_payment_provider, "bkash");
+    assert.equal(capturedRpcArgs[0]?._manual_payment_reference, "TRX-1234");
+  });
+
+  test("rejects missing or malformed manual payment evidence before order creation", async () => {
+    mock.method(orderCreateRouteDeps, "rateLimit", async () => ({ success: true } as never));
+    const missing = await POST(buildRequest("bkash_manual", { manualPaymentReference: "" }));
+    assert.equal(missing.status, 400);
+    assert.match((await missing.json()).error, /manual payment reference/i);
+
+    const malformed = await POST(buildRequest("nagad", { manualPaymentReference: "bad ref with spaces" }));
+    assert.equal(malformed.status, 400);
+    assert.match((await malformed.json()).error, /manual payment reference/i);
+
+    const unsupportedPunctuation = await POST(buildRequest("bkash_manual", { manualPaymentReference: "TRX.1234" }));
+    assert.equal(unsupportedPunctuation.status, 400);
+    assert.match((await unsupportedPunctuation.json()).error, /manual payment reference/i);
   });
 
 });

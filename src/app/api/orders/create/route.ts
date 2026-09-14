@@ -33,11 +33,27 @@ function readMoneyAssertion(value: unknown, label: string) {
 }
 
 function readDeliveryZone(value: unknown) {
-  const zone = readText(value, 20).toLowerCase() || "primary";
+  const zone = readText(value, 20).toLowerCase();
+  if (!zone) return null;
   if (zone !== "primary" && zone !== "secondary") {
     throw new Error("Invalid delivery zone");
   }
   return zone;
+}
+
+function readManualPaymentEvidence(paymentMethod: string, value: unknown) {
+  const isBkashManual = paymentMethod === "bkash_manual";
+  const isNagadManual = paymentMethod === "nagad";
+  if (!isBkashManual && !isNagadManual) {
+    return { provider: null, reference: null };
+  }
+
+  const reference = readText(value, 80).toUpperCase();
+  if (!/^[A-Z0-9_-]{4,50}$/.test(reference)) {
+    throw new Error("Invalid manual payment reference");
+  }
+
+  return { provider: isBkashManual ? "bkash" : "nagad", reference };
 }
 
 function safeRecord(value: unknown) {
@@ -49,7 +65,7 @@ function mapOrderError(message: string) {
     return { message, status: 409 };
   }
 
-  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider|manual payment/i.test(message)) {
     return { message, status: 400 };
   }
 
@@ -103,6 +119,7 @@ export async function POST(req: Request) {
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
+    const manualPayment = readManualPaymentEvidence(paymentMethod, body?.manualPaymentReference);
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
     const customerEmail = readText(body?.customerEmail, 180);
@@ -193,6 +210,8 @@ export async function POST(req: Request) {
       _payment_method_authorized: paymentAuthority.allowed,
       _payment_method_prepaid: paymentAuthority.prepaidEligible,
       _payment_provider: paymentAuthority.providerId,
+      _manual_payment_provider: manualPayment.provider,
+      _manual_payment_reference: manualPayment.reference,
       _notes: readText(body?.notes, 1000) || null,
       _coupon_code: readText(body?.couponCode, 80) || null,
     });
@@ -209,7 +228,7 @@ export async function POST(req: Request) {
 
     const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, subtotal, delivery_fee, delivery_zone, total, items, status, payment_method, client_request_id")
+      .select("id, order_number, subtotal, delivery_fee, delivery_zone, total, items, status, payment_method, manual_payment_provider, manual_payment_reference, client_request_id")
       .eq("id", rpcOrder.id)
       .eq("store_id", storeId)
       .maybeSingle();

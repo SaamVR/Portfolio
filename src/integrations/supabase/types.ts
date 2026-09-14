@@ -903,6 +903,8 @@ export type Database = {
           notes: string | null
           order_number: string
           payment_method: string
+          manual_payment_provider: string | null
+          manual_payment_reference: string | null
           shipping_address: string
           shipping_city: string
           status: string
@@ -925,6 +927,8 @@ export type Database = {
           notes?: string | null
           order_number: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address: string
           shipping_city: string
           status?: string
@@ -947,6 +951,8 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address?: string
           shipping_city?: string
           status?: string

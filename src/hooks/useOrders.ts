@@ -25,6 +25,8 @@ export interface Order {
   subtotal: number;
   delivery_fee: number;
   delivery_zone?: "primary" | "secondary" | "none" | null;
+  manual_payment_provider?: "bkash" | "nagad" | null;
+  manual_payment_reference?: string | null;
   total: number;
   customer_name: string;
   customer_phone: string;
@@ -203,6 +205,7 @@ export function useCreateOrder() {
       shipping_city: string;
       payment_method: string;
       notes?: string;
+      manual_payment_reference?: string | null;
     }) => {
       if (!order.store_id) {
         throw new Error("No store selected");
@@ -242,6 +245,7 @@ export function useCreateOrder() {
           shippingCity: order.shipping_city,
           paymentMethod: order.payment_method,
           notes: order.notes || null,
+          manualPaymentReference: order.manual_payment_reference || null,
         }),
       });
 

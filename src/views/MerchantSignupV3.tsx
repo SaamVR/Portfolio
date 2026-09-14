@@ -199,8 +199,9 @@ async function applyRegistrationAnswers(storeId: string, answers: MerchantRegist
       key: "delivery_settings",
       value: {
         enabled: answers.deliveryEnabled,
-        primary_zone_label: "Inside Dhaka",
-        secondary_zone_label: "Outside Dhaka",
+        primary_zone_label: "Primary delivery zone",
+        secondary_zone_label: "Extended delivery zone",
+        primary_zone_aliases: [],
         delivery_fee: deliveryFee,
         delivery_fee_outside: deliveryFeeOutside,
         free_threshold: 0,
