@@ -4,12 +4,14 @@ import { getAuthenticatedUser, getSupabaseAdminClient, loadStorePlanState } from
 import { rateLimit } from "@/lib/rate-limit";
 import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 import { buildAuthoritativeRecoveryCart, normalizeRecoveryCartInput } from "@/lib/cart-recovery/recovery-cart-authority";
+import {
+  resolveRecoveryContactAuthority,
+  type RecoveryConsentStatus,
+} from "@/lib/cart-recovery/recovery-contact-authority";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 18_000;
 const maxMetadataBytes = 6_000;
-
-type RecoveryStatus = "accepted" | "declined" | "unknown";
 
 export const cartRecoveryLeadRouteDeps = {
   loadStorePlanState,
@@ -22,7 +24,6 @@ function readText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
 }
-
 
 function getClientIp(req: Request) {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
+
     const storeId = readText(body?.storeId, 80);
     if (!uuidPattern.test(storeId)) {
       return NextResponse.json({ error: "Invalid store" }, { status: 400 });
@@ -72,15 +74,17 @@ export async function POST(req: Request) {
     const visitorIdRaw = readText(body?.visitorId, 160);
     const sessionIdRaw = readText(body?.sessionId, 160);
     const leadStage = readText(body?.recoveryStage, 20) || "cart";
-    const requestedConsentStatus = readText(body?.contactConsentStatus, 16);
-    const consentStatus = (["accepted", "declined", "unknown"].includes(requestedConsentStatus)
-      ? requestedConsentStatus
-      : "unknown") as RecoveryStatus;
+    const requestedConsent = readText(body?.contactConsentStatus, 16);
+    const requestedConsentStatus = (["accepted", "declined", "unknown"].includes(requestedConsent)
+      ? requestedConsent
+      : "unknown") as RecoveryConsentStatus;
     const cartInput = normalizeRecoveryCartInput(body?.cartSnapshot);
     if (!cartInput) {
       return NextResponse.json({ error: "Cart snapshot contains invalid items" }, { status: 400 });
     }
-    const metadata = body?.metadata && typeof body.metadata === "object" ? body.metadata : {};
+    const metadata = body?.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+      ? body.metadata as Record<string, unknown>
+      : {};
 
     if (!visitorIdRaw && !sessionIdRaw) {
       return NextResponse.json({ error: "Missing recovery identifiers" }, { status: 400 });
@@ -92,6 +96,20 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = cartRecoveryLeadRouteDeps.getSupabaseAdminClient();
     const authUser = await cartRecoveryLeadRouteDeps.getAuthenticatedUser(req);
+    const contactAuthority = resolveRecoveryContactAuthority({
+      requestedConsentStatus,
+      authUser,
+    });
+
+    if (contactAuthority.canScheduleEmail && authUser?.id) {
+      const contactLimit = await cartRecoveryLeadRouteDeps.rateLimit(
+        `cart_recovery_contact:${storeId}:${authUser.id}`,
+        { limit: 6, windowMs: 60 * 60_000 },
+      );
+      if (!contactLimit.success) {
+        return NextResponse.json({ error: "Too many recovery contact requests" }, { status: 429 });
+      }
+    }
 
     const { data: storePlanState, error: storePlanError } = await cartRecoveryLeadRouteDeps.loadStorePlanState(
       supabaseAdmin as never,
@@ -127,12 +145,17 @@ export async function POST(req: Request) {
 
     const visitorId = visitorIdRaw ? hashRecoveryIdentifier(storeId, visitorIdRaw) : null;
     const sessionId = sessionIdRaw ? hashRecoveryIdentifier(storeId, sessionIdRaw) : null;
-    const canStoreContact = consentStatus === "accepted";
-    const contact = body?.contact && typeof body.contact === "object" ? body.contact as Record<string, unknown> : {};
-    const contactName = canStoreContact ? readText(contact.name, 100) || null : null;
-    const contactEmail = canStoreContact ? readText(contact.email, 180) || null : null;
-    const contactPhone = canStoreContact ? readText(contact.phone, 30) || null : null;
-    const attribution = body?.attribution && typeof body.attribution === "object" ? body.attribution as Record<string, unknown> : {};
+    const contact = body?.contact && typeof body.contact === "object" && !Array.isArray(body.contact)
+      ? body.contact as Record<string, unknown>
+      : {};
+    const contactName = contactAuthority.canScheduleEmail ? readText(contact.name, 100) || null : null;
+    const contactEmail = contactAuthority.contactEmail;
+    // Automated WhatsApp recovery is disabled. Do not persist a browser-supplied
+    // phone as future delivery authority while there is no verified phone contract.
+    const contactPhone = null;
+    const attribution = body?.attribution && typeof body.attribution === "object" && !Array.isArray(body.attribution)
+      ? body.attribution as Record<string, unknown>
+      : {};
 
     let leadQuery = supabaseAdmin
       .from("store_cart_recovery_leads")
@@ -158,8 +181,7 @@ export async function POST(req: Request) {
     const subtotal = authoritativeCart.cartValue;
     const itemCount = authoritativeCart.itemCount;
     const cartSnapshot = authoritativeCart.snapshot;
-
-    const nextContactAt = consentStatus === "accepted"
+    const nextContactAt = contactAuthority.canScheduleEmail && !existingLead?.marketing_opt_out_at
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
       : null;
 
@@ -168,11 +190,11 @@ export async function POST(req: Request) {
       user_id: authUser?.id ?? null,
       visitor_id: visitorId,
       session_id: sessionId,
-      contact_name: contactName ?? existingLead?.contact_name ?? null,
-      contact_email: contactEmail ?? existingLead?.contact_email ?? null,
-      contact_phone: contactPhone ?? existingLead?.contact_phone ?? null,
+      contact_name: contactAuthority.canScheduleEmail ? (contactName ?? existingLead?.contact_name ?? null) : null,
+      contact_email: contactAuthority.canScheduleEmail ? contactEmail : null,
+      contact_phone: contactPhone,
       contact_capture_source: readText(body?.contactCaptureSource, 20) || leadStage || "cart",
-      contact_consent_status: consentStatus,
+      contact_consent_status: contactAuthority.consentStatus,
       cart_snapshot: cartSnapshot,
       cart_value: subtotal,
       item_count: itemCount,
@@ -181,11 +203,14 @@ export async function POST(req: Request) {
       recovery_stage: leadStage === "checkout" ? "checkout" : "cart",
       abandoned_at: itemCount > 0 ? now : null,
       last_activity_at: now,
-      next_contact_at: existingLead?.marketing_opt_out_at ? null : nextContactAt,
+      next_contact_at: nextContactAt,
       attribution_source: readText(attribution.source, 120) || null,
       attribution_medium: readText(attribution.medium, 120) || null,
       attribution_campaign: readText(attribution.campaign, 160) || null,
-      metadata,
+      metadata: {
+        ...metadata,
+        recovery_contact_authority: contactAuthority.authority,
+      },
     };
 
     const write = existingLead?.id
