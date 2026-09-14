@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCourierConnectionLabel, getCourierProviderLabel, type CourierProvider } from "@/lib/couriers/shared";
+import { escapePrintableHtml, escapePrintableHtmlWithBreaks } from "@/lib/orders/print-invoice";
 import ReturnsOperationsPage from "./ReturnsOperations";
 import CouriersPage from "./Couriers";
 
@@ -203,6 +204,8 @@ export default function AdminOrders() {
 
   const handlePrintInvoice = (order: Order) => {
     const storeName = activeStore?.name?.trim() || "Store";
+    const safeText = escapePrintableHtml;
+    const safeNotes = escapePrintableHtmlWithBreaks;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -210,11 +213,11 @@ export default function AdminOrders() {
       .map(
         (item) => `
                 <tr>
-                  <td>${item.name}</td>
-                  <td>${item.size}</td>
-                  <td>${item.quantity}</td>
-                  <td>${formatCurrency(item.price)}</td>
-                  <td>${formatCurrency(item.price * item.quantity)}</td>
+                  <td>${safeText(item.name)}</td>
+                  <td>${safeText(item.size)}</td>
+                  <td>${safeText(item.quantity)}</td>
+                  <td>${safeText(formatCurrency(item.price))}</td>
+                  <td>${safeText(formatCurrency(item.price * item.quantity))}</td>
                 </tr>
               `,
       )
@@ -223,7 +226,7 @@ export default function AdminOrders() {
     const html = `
       <html>
         <head>
-          <title>Invoice - ${order.order_number}</title>
+          <title>Invoice - ${safeText(order.order_number)}</title>
           <style>
             body { font-family: system-ui, sans-serif; padding: 40px; color: #111; }
             .header { display: flex; justify-content: space-between; margin-bottom: 40px; }
@@ -240,26 +243,26 @@ export default function AdminOrders() {
         </head>
         <body>
           <div class="header">
-            <div class="brand">${storeName}</div>
+            <div class="brand">${safeText(storeName)}</div>
             <div class="invoice-title">INVOICE</div>
           </div>
           <div class="grid">
             <div>
               <strong>Billed To:</strong><br>
-              ${order.customer_name}<br>
-              ${order.customer_phone}<br>
-              ${order.customer_email || ""}
+              ${safeText(order.customer_name)}<br>
+              ${safeText(order.customer_phone)}<br>
+              ${safeText(order.customer_email || "")}
             </div>
             <div>
               <strong>Shipping Address:</strong><br>
-              ${order.shipping_address}<br>
-              ${order.shipping_city}
+              ${safeText(order.shipping_address)}<br>
+              ${safeText(order.shipping_city)}
             </div>
             <div style="text-align: right;">
-              <strong>Order Number:</strong> ${order.order_number}<br>
-              <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString()}<br>
-              <strong>Payment:</strong> ${order.payment_method.toUpperCase()}<br>
-              <strong>Status:</strong> ${order.status.toUpperCase()}
+              <strong>Order Number:</strong> ${safeText(order.order_number)}<br>
+              <strong>Date:</strong> ${safeText(new Date(order.created_at).toLocaleDateString())}<br>
+              <strong>Payment:</strong> ${safeText(order.payment_method.toUpperCase())}<br>
+              <strong>Status:</strong> ${safeText(order.status.toUpperCase())}
             </div>
           </div>
           <table>
@@ -277,16 +280,16 @@ export default function AdminOrders() {
               <tr>
                 <td colspan="3"></td>
                 <td>Delivery Fee</td>
-                <td>${formatCurrency(order.delivery_fee)}</td>
+                <td>${safeText(formatCurrency(order.delivery_fee))}</td>
               </tr>
               <tr class="total-row">
                 <td colspan="3"></td>
                 <td>Grand Total</td>
-                <td>${formatCurrency(order.total)}</td>
+                <td>${safeText(formatCurrency(order.total))}</td>
               </tr>
             </tbody>
           </table>
-          ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${order.notes}</div>` : ""}
+          ${order.notes ? `<div class="notes"><strong>Notes / TrxID:</strong><br>${safeNotes(order.notes)}</div>` : ""}
         </body>
       </html>
     `;
