@@ -79,6 +79,11 @@
       "name": "order_background_effect_idempotency",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: gives order-created analytics and merchant-notification claims durable sink identities so retry-required recovery work can be retried without duplicate side effects."
+    },
+    {
+      "name": "external_auth_identity_binding_334",
+      "classification": "pending-production",
+      "reason": "Release hardening branch: replaces mutable Firebase email/phone account discovery with a durable server-only Firebase project+subject binding before password-reset bridge authority is retired."
     }
   ]
 }
