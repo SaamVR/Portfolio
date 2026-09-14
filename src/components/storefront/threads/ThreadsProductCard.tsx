@@ -34,7 +34,11 @@ export function ThreadsProductCard({
   const href = productUrl(product.id, product.name, store?.slug);
   const sizes = getRenderableSizeOptions(product, specs, "fashion");
   const colors = getRenderableColorOptions(product, specs, "fashion");
-  const metricGroups = getRenderableMetricOptionGroups(product, specs, "fashion");
+  const metricGroups = getRenderableMetricOptionGroups(
+    product,
+    specs,
+    "fashion",
+  );
   const requiresChoice =
     sizes.length > 1 ||
     colors.length > 1 ||
@@ -49,13 +53,19 @@ export function ThreadsProductCard({
     .filter(Boolean)
     .join(" • ");
   const quickAddSelection =
-    deterministicSelection || getPrimaryProductOptionValue(product, specs, "fashion");
+    deterministicSelection ||
+    getPrimaryProductOptionValue(product, specs, "fashion");
   const unavailable =
     product.isAvailable === false ||
     (typeof product.stock === "number" && product.stock <= 0);
-  const onSale = Boolean(product.originalPrice && product.originalPrice > product.price);
+  const onSale = Boolean(
+    product.originalPrice && product.originalPrice > product.price,
+  );
   const discount = onSale
-    ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
+    ? Math.round(
+        ((product.originalPrice! - product.price) / product.originalPrice!) *
+          100,
+      )
     : 0;
   const alternateImage = product.images?.find(
     (image) => image && image !== product.image,
@@ -70,20 +80,24 @@ export function ThreadsProductCard({
     <article
       className={`group min-w-0 ${
         framed
-          ? "rounded-[4px] border border-primary-foreground/15 bg-background p-2.5 text-foreground shadow-[0_18px_46px_rgba(0,0,0,.16)]"
+          ? "rounded-[4px] border border-primary-foreground/10 bg-primary-foreground/10 p-1.5 text-primary-foreground shadow-[0_12px_30px_rgba(0,0,0,.12)]"
           : ""
       }`}
     >
       <div
         className={`relative overflow-hidden bg-secondary ${
           framed
-            ? "aspect-[4/5] rounded-[2px]"
+            ? "aspect-square rounded-[2px]"
             : compact
-              ? "aspect-[1.08/1] rounded-[3px] border border-border/60"
+              ? "aspect-[1.3/1] rounded-[3px] border border-border/60"
               : "aspect-[4/5] rounded-[2px]"
         }`}
       >
-        <Link href={href} aria-label={product.name} className="absolute inset-0">
+        <Link
+          href={href}
+          aria-label={product.name}
+          className="absolute inset-0"
+        >
           <SafeStorefrontImage
             src={product.image}
             alt={product.name}
@@ -117,24 +131,36 @@ export function ThreadsProductCard({
         <button
           type="button"
           onClick={() => toggleItem(product.id)}
-          className="absolute right-2.5 top-2.5 grid h-11 w-11 place-items-center rounded-full border border-black/5 bg-background/94 text-foreground shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:text-primary"
+          className={framed || compact
+            ? "absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center text-foreground transition hover:text-primary"
+            : "absolute right-2.5 top-2.5 grid h-11 w-11 place-items-center rounded-full border border-black/5 bg-background/94 text-foreground shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:text-primary"}
           aria-label={
             isInWishlist(product.id)
               ? `Remove ${product.name} from wishlist`
               : `Add ${product.name} to wishlist`
           }
         >
-          <Heart
-            className={`h-3.5 w-3.5 ${
-              isInWishlist(product.id) ? "fill-current text-primary" : ""
-            }`}
-          />
+          {framed || compact ? (
+            <span className="grid h-8 w-8 place-items-center rounded-full border border-black/5 bg-background/94 shadow-sm backdrop-blur-sm">
+              <Heart
+                className={`h-3.5 w-3.5 ${
+                  isInWishlist(product.id) ? "fill-current text-primary" : ""
+                }`}
+              />
+            </span>
+          ) : (
+            <Heart
+              className={`h-3.5 w-3.5 ${
+                isInWishlist(product.id) ? "fill-current text-primary" : ""
+              }`}
+            />
+          )}
         </button>
 
         {requiresChoice ? (
           <Link
             href={href}
-            className="absolute inset-x-2.5 bottom-2.5 hidden h-10 items-center justify-center rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 md:flex"
+            className={`absolute inset-x-2.5 bottom-2.5 hidden items-center justify-center rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 md:flex ${framed || compact ? "h-11" : "h-10"}`}
           >
             Choose options
           </Link>
@@ -152,7 +178,7 @@ export function ThreadsProductCard({
                 storeId: store?.id,
               })
             }
-            className="absolute inset-x-2.5 bottom-2.5 hidden h-10 items-center justify-center gap-1.5 rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-55 md:flex"
+            className={`absolute inset-x-2.5 bottom-2.5 hidden items-center justify-center gap-1.5 rounded-[2px] bg-foreground/94 px-3 text-[8px] font-bold uppercase tracking-[.14em] text-background opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-55 md:flex ${framed || compact ? "h-11" : "h-10"}`}
           >
             <Plus className="h-3 w-3" />
             {unavailable ? "Out of stock" : "Quick add"}
@@ -160,28 +186,32 @@ export function ThreadsProductCard({
         )}
       </div>
 
-      <div className={`${framed ? "px-0.5 pb-1 pt-3" : compact ? "px-1 pb-1 pt-2" : "px-0.5 pt-2.5"}`}>
+      <div
+        className={`${framed ? "px-0.5 pb-1 pt-3" : compact ? "px-1 pb-1 pt-2" : "px-0.5 pt-2.5"}`}
+      >
         <Link
           href={href}
-          className={`block truncate font-medium tracking-[-.01em] ${compact ? "text-[11px]" : "text-[12px] md:text-[13px]"}`}
+          className={`block truncate font-medium tracking-[-.01em] ${framed ? "text-primary-foreground text-[10px] md:text-[11px]" : compact ? "text-[10px]" : "text-[12px] md:text-[13px]"}`}
         >
           {product.name}
         </Link>
         <div className="mt-1 flex items-start justify-between gap-2">
           <span
-            className={`min-w-0 truncate text-muted-foreground ${
-              compact ? "text-[9px]" : "text-[10px]"
-            }`}
+            className={`min-w-0 truncate ${framed ? "text-primary-foreground/65" : "text-muted-foreground"} ${compact || framed ? "text-[8px]" : "text-[10px]"}`}
           >
             {product.category || product.type}
           </span>
           <span className="flex shrink-0 items-baseline gap-1.5">
             {onSale ? (
-              <span className={`${compact ? "text-[9px]" : "text-[10px]"} text-muted-foreground line-through`}>
+              <span
+                className={`${compact || framed ? "text-[8px]" : "text-[10px]"} text-muted-foreground line-through`}
+              >
                 ৳{product.originalPrice!.toLocaleString()}
               </span>
             ) : null}
-            <span className={`font-semibold text-primary ${compact ? "text-[11px]" : "text-[12px]"}`}>
+            <span
+              className={`font-semibold ${framed ? "text-primary-foreground" : "text-primary"} ${compact || framed ? "text-[10px]" : "text-[12px]"}`}
+            >
               ৳{product.price.toLocaleString()}
             </span>
           </span>

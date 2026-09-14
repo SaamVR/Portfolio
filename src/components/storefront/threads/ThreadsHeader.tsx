@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import {
+  ChevronDown,
+  Heart,
+  Menu,
+  Search,
+  ShoppingBag,
+  User,
+  X,
+} from "lucide-react";
 import { Link } from "@/lib/react-router-dom-shim";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
@@ -54,76 +62,123 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
       );
   const wishlist = storefrontPath("/wishlist", store?.slug);
   const isReferencePreview = store?.id === "preview-threads";
-  const brandName = isReferencePreview ? "CHAPCHITRA" : store?.name || "THREADS";
-  const nav = [
+  const brandName = isReferencePreview ? "EZCOMO" : store?.name || "THREADS";
+  const brandSubmark = isReferencePreview
+    ? "PEOPLE · PLACES · A BRIGHTER TOMORROW"
+    : "ART · CULTURE · EVERYDAY";
+  const defaultNav = [
     ["Shop", shop],
     ["Categories", `${home}#categories`],
     ["Our Story", storefrontPath("/about", store?.slug)],
     ["Journal", storefrontPath("/blog", store?.slug)],
   ] as const;
-
-  const brandSubmark = isReferencePreview ? "ছাপচিত্র" : "Art · Culture · Everyday";
+  const referenceNav = [
+    ["Women", `${shop}?category=${encodeURIComponent("Women")}`],
+    ["Men", `${shop}?category=${encodeURIComponent("Men")}`],
+    ["Accessories", `${shop}?category=${encodeURIComponent("Accessories")}`],
+    [
+      "Home & Living",
+      `${shop}?category=${encodeURIComponent("Home & Living")}`,
+    ],
+    ["Sale", `${shop}?sale=1`],
+    ["New", `${shop}?sort=newest`],
+    ["Stories", storefrontPath("/blog", store?.slug)],
+  ] as const;
+  const nav = isReferencePreview ? referenceNav : defaultNav;
 
   return (
     <>
       <header
         className={`${embedded ? "relative" : "sticky top-0"} z-50 border-b border-border/70 bg-background/95 backdrop-blur-md`}
       >
-        <div className="border-b border-primary-foreground/10 bg-primary text-primary-foreground">
-          <div className="mx-auto flex h-7 max-w-[1280px] items-center justify-between gap-4 overflow-hidden px-4 text-[7px] font-semibold uppercase tracking-[.12em] sm:px-5 md:px-8 md:text-[8px]">
-            <span className="truncate">Wear your story · Original art · Everyday pieces</span>
-            <span className="hidden shrink-0 text-primary-foreground/70 sm:inline">Thoughtfully designed</span>
+        <div className="bg-primary text-primary-foreground">
+          <div className="mx-auto grid min-h-7 max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-4 text-[8px] sm:px-5 md:px-8 min-[900px]:min-h-5">
+            <span className="hidden md:block" />
+            <div className="flex items-center justify-center gap-5 whitespace-nowrap text-[8px] font-medium">
+              <span>
+                {isReferencePreview
+                  ? "♧  Free shipping on orders over ৳2000"
+                  : "New season · Everyday essentials"}
+              </span>
+              <span className="hidden sm:inline">
+                {isReferencePreview
+                  ? "◇  Easy returns within 14 days"
+                  : "Thoughtfully designed"}
+              </span>
+            </div>
+            <div className="hidden items-center justify-end gap-3 text-primary-foreground/82 md:flex">
+              <Link
+                to={storefrontPath("/track-order", store?.slug)}
+                className="relative inline-flex h-7 items-center hover:text-primary-foreground before:absolute before:-inset-x-2 before:-inset-y-3 min-[900px]:h-5"
+              >
+                Track Order
+              </Link>
+              <span className="opacity-35">|</span>
+              <Link
+                to={storefrontPath("/faq", store?.slug)}
+                className="relative inline-flex h-7 items-center hover:text-primary-foreground before:absolute before:-inset-x-2 before:-inset-y-3 min-[900px]:h-5"
+              >
+                Help
+              </Link>
+              <span className="opacity-35">|</span>
+              <span className="inline-flex items-center gap-1">
+                EN <ChevronDown className="h-3 w-3" />
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="mx-auto grid h-[58px] max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 md:h-[64px] md:px-8">
+        <div className="mx-auto grid min-h-12 max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 md:px-8 min-[900px]:min-h-11">
           <div className="flex items-center">
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              className="grid h-11 w-11 place-items-center lg:hidden"
+              className="grid h-11 w-11 place-items-center lg:hidden md:hidden"
               aria-label="Open menu"
               aria-expanded={menuOpen}
               aria-controls="threads-mobile-menu"
             >
               <Menu className="h-[18px] w-[18px]" />
             </button>
-            <Link to={home} className="hidden lg:block">
-              <div className="font-serif text-[20px] font-semibold uppercase leading-[.9] tracking-[-.04em]">
+            <Link to={home} className="hidden min-h-11 flex-col justify-center md:flex">
+              <div className="font-serif text-[25px] font-semibold uppercase leading-[.78] tracking-[-.045em]">
                 {brandName}
               </div>
-              <div className="mt-1 text-center text-[6px] uppercase leading-none tracking-[.12em] text-muted-foreground">
+              <div className="mt-1 text-[5px] font-semibold uppercase leading-none tracking-[.16em] text-muted-foreground">
                 {brandSubmark}
               </div>
             </Link>
           </div>
+
           <nav
-            className="hidden items-center gap-7 text-[10px] font-semibold lg:flex"
+            className="hidden items-center gap-3 text-[8px] font-semibold md:flex lg:gap-5 lg:text-[9px] xl:gap-7"
             aria-label="Threads navigation"
           >
             {nav.map(([label, href]) => (
               <Link
                 key={label}
                 to={href}
-                className="whitespace-nowrap transition hover:text-primary"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center whitespace-nowrap px-1 transition hover:text-primary min-[900px]:min-h-11"
               >
                 {label}
               </Link>
             ))}
           </nav>
-          <Link to={home} className="text-center lg:hidden">
-            <div className="font-serif text-[17px] font-semibold uppercase leading-[.9] tracking-[-.035em]">
+
+          <Link to={home} className="flex min-h-11 flex-col items-center justify-center text-center md:hidden">
+            <div className="font-serif text-[20px] font-semibold uppercase leading-[.82] tracking-[-.035em]">
               {brandName}
             </div>
-            <div className="mt-1 text-[5px] uppercase leading-none tracking-[.1em] text-muted-foreground sm:text-[6px]">
+            <div className="mt-1 text-[5px] uppercase leading-none tracking-[.11em] text-muted-foreground">
               {brandSubmark}
             </div>
           </Link>
+
           <div className="flex items-center justify-end gap-0.5">
             <button
               type="button"
               onClick={() => setSearchOpen((v) => !v)}
-              className="grid h-11 w-11 place-items-center"
+              className="grid h-11 w-11 place-items-center min-[900px]:h-11 min-[900px]:w-11"
               aria-label="Search"
               aria-expanded={searchOpen}
             >
@@ -131,14 +186,14 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
             </button>
             <Link
               to={account}
-              className="hidden h-11 w-11 place-items-center sm:grid"
+              className="hidden h-11 w-11 place-items-center sm:grid min-[900px]:h-11 min-[900px]:w-11"
               aria-label="Account"
             >
               <User className="h-[17px] w-[17px]" />
             </Link>
             <Link
               to={wishlist}
-              className="relative hidden h-11 w-11 place-items-center sm:grid"
+              className="relative hidden h-11 w-11 place-items-center sm:grid min-[900px]:h-11 min-[900px]:w-11"
               aria-label="Wishlist"
             >
               <Heart className="h-[17px] w-[17px]" />
@@ -151,7 +206,7 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="relative grid h-11 w-11 place-items-center"
+              className="relative grid h-11 w-11 place-items-center min-[900px]:h-11 min-[900px]:w-11"
               aria-label="Open bag"
             >
               <ShoppingBag className="h-[17px] w-[17px]" />
@@ -163,8 +218,9 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
             </button>
           </div>
         </div>
+
         {searchOpen ? (
-          <div className="border-t border-border/70 bg-background px-4 py-3">
+          <div className="border-t border-border/70 bg-background px-4 py-2.5">
             <form
               action={shop}
               className="mx-auto flex max-w-2xl items-center border-b border-foreground/25"
@@ -181,8 +237,9 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
           </div>
         ) : null}
       </header>
+
       {menuOpen ? (
-        <div className="fixed inset-0 z-[90] lg:hidden">
+        <div className="fixed inset-0 z-[90] md:hidden">
           <button
             className="absolute inset-0 bg-foreground/35"
             onClick={() => setMenuOpen(false)}
@@ -197,10 +254,13 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
           >
             <div className="mb-7 flex items-center justify-between">
               <div>
-                <div id="threads-mobile-menu-title" className="font-serif text-2xl uppercase leading-none">
+                <div
+                  id="threads-mobile-menu-title"
+                  className="font-serif text-2xl uppercase leading-none"
+                >
                   {brandName}
                 </div>
-                <div className="mt-1 text-[8px] uppercase tracking-[.12em] text-muted-foreground">
+                <div className="mt-1 text-[7px] uppercase tracking-[.12em] text-muted-foreground">
                   {brandSubmark}
                 </div>
               </div>
@@ -238,7 +298,8 @@ export function ThreadsHeader({ embedded = false }: { embedded?: boolean }) {
                 onClick={() => setMenuOpen(false)}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[3px] border border-border px-3 text-[9px] font-bold uppercase tracking-[.08em]"
               >
-                <Heart className="h-4 w-4" /> Wishlist{mounted && wishlistCount > 0 ? ` (${wishlistCount})` : ""}
+                <Heart className="h-4 w-4" /> Wishlist
+                {mounted && wishlistCount > 0 ? ` (${wishlistCount})` : ""}
               </Link>
             </div>
           </aside>
