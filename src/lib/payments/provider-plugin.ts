@@ -87,6 +87,9 @@ export type PaymentCallbackResult = {
   orderNumber?: string;
   storeId?: string;
   retryable?: boolean;
+  reservationReleased?: boolean;
+  reconciliationRequired?: boolean;
+  paymentProcessing?: boolean;
 };
 
 export type PaymentCheckoutRuntimeDeps = {

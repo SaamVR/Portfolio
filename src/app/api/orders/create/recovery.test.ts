@@ -41,7 +41,7 @@ function createAdminMock(options?: {
 
   return {
     rpc: async (name: string, args: Record<string, unknown>) => {
-      assert.equal(name, "create_store_order_authoritative_v3");
+      assert.equal(name, "create_store_order_with_payment_lifecycle");
       options?.onRpc?.(name, args);
       if (options?.rpcError) {
         return { data: null, error: options.rpcError };
@@ -115,6 +115,8 @@ function createAdminMock(options?: {
                           status: "pending",
                           payment_method: persistedPaymentMethod,
                           client_request_id: "checkout-attempt-123",
+                          reservation_state: "reserved",
+                          reservation_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
                         },
                         error: null,
                       }),

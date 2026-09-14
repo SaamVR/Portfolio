@@ -91,7 +91,7 @@ test("bKash callback execution is dispatched through the same provider runtime",
   });
 });
 
-test("provider callback cancellation does not execute settlement and is safe to retry", async () => {
+test("provider cancellation without payment identity does not guess which reservation to release", async () => {
   let invokeCount = 0;
   const result = await handleRedirectPaymentCallback(
     {
@@ -113,10 +113,10 @@ test("provider callback cancellation does not execute settlement and is safe to 
   assert.equal(invokeCount, 0);
   assert.equal(result.status, "cancelled");
   assert.equal(result.storeId, "store_1");
-  assert.equal(result.retryable, true);
+  assert.equal(result.retryable, false);
 });
 
-test("an explicit provider failure is safe to retry without executing settlement", async () => {
+test("provider failure without payment identity does not guess which reservation to release", async () => {
   let invokeCount = 0;
   const result = await handleRedirectPaymentCallback(
     {
@@ -137,7 +137,108 @@ test("an explicit provider failure is safe to retry without executing settlement
 
   assert.equal(invokeCount, 0);
   assert.equal(result.status, "error");
-  assert.equal(result.retryable, true);
+  assert.equal(result.retryable, false);
+});
+
+
+test("bound provider cancellation releases the exact reservation and is not retryable", async () => {
+  let invokedBody: Record<string, unknown> | null = null;
+  const result = await handleRedirectPaymentCallback(
+    {
+      invokeFunction: async (_functionName, body) => {
+        invokedBody = body;
+        return {
+          data: { success: true, reservation_released: true, attempt_state: "cancelled", order_status: "cancelled" },
+          error: null,
+        };
+      },
+    },
+    {
+      providerId: "bkash",
+      params: {
+        paymentID: "payment-1",
+        status: "cancel",
+        order_id: "ORD-1001",
+        store_id: "store_1",
+      },
+    },
+  );
+
+  assert.deepEqual(invokedBody, {
+    action: "release",
+    paymentID: "payment-1",
+    order_id: "ORD-1001",
+    store_id: "store_1",
+    reason: "provider_cancelled",
+  });
+  assert.equal(result.status, "cancelled");
+  assert.equal(result.reservationReleased, true);
+  assert.equal(result.retryable, false);
+});
+
+test("bound provider final failure releases the exact reservation and is not retryable", async () => {
+  let invokedBody: Record<string, unknown> | null = null;
+  const result = await handleRedirectPaymentCallback(
+    {
+      invokeFunction: async (_functionName, body) => {
+        invokedBody = body;
+        return {
+          data: { success: true, reservation_released: true, attempt_state: "failed", order_status: "cancelled" },
+          error: null,
+        };
+      },
+    },
+    {
+      providerId: "bkash",
+      params: {
+        paymentID: "payment-1",
+        status: "failure",
+        order_id: "ORD-1001",
+        store_id: "store_1",
+      },
+    },
+  );
+
+  assert.deepEqual(invokedBody, {
+    action: "release",
+    paymentID: "payment-1",
+    order_id: "ORD-1001",
+    store_id: "store_1",
+    reason: "provider_failed",
+  });
+  assert.equal(result.status, "error");
+  assert.equal(result.reservationReleased, true);
+  assert.equal(result.retryable, false);
+});
+
+
+test("concurrent execute loser is processing and never advertised as retry-safe", async () => {
+  const result = await handleRedirectPaymentCallback(
+    {
+      invokeFunction: async () => ({
+        data: {
+          success: false,
+          payment_processing: true,
+          retryable: false,
+          error: "This payment is already being processed. Do not submit another payment.",
+        },
+        error: null,
+      }),
+    },
+    {
+      providerId: "bkash",
+      params: {
+        paymentID: "payment-1",
+        status: "success",
+        order_id: "ORD-1001",
+        store_id: "store_1",
+      },
+    },
+  );
+
+  assert.equal(result.status, "error");
+  assert.equal(result.paymentProcessing, true);
+  assert.equal(result.retryable, false);
 });
 
 test("settlement verification errors are not declared retry-safe", async () => {
