@@ -1,5 +1,6 @@
 import type { StorefrontVariantDefinition } from "@/lib/cms/storefront-platform/variants/contracts";
 import { hasSectionStylePreviewFixture } from "@/lib/cms/storefront-platform/variants/preview-fixtures";
+import { STOREFRONT_VARIANT_OPTION_CATALOG, type StorefrontVariantOptionKey } from "./variant-option-contract";
 
 /**
  * R2 persists only the stable variant ID on a block. Manifest versions are
@@ -18,6 +19,22 @@ export function validateStorefrontVariantManifest(definition: StorefrontVariantD
   if (!hasSectionStylePreviewFixture(definition.previewSpec.fixtureId, definition.blockType)) {
     issues.push(`preview fixture ${definition.previewSpec.fixtureId} is not registered`);
   }
+  for (const [key, capability] of Object.entries(definition.optionCapabilities ?? {}) as Array<[StorefrontVariantOptionKey, NonNullable<StorefrontVariantDefinition["optionCapabilities"]>[StorefrontVariantOptionKey]]>) {
+    if (!capability) continue;
+    const canonicalValues = STOREFRONT_VARIANT_OPTION_CATALOG[key]?.values as readonly unknown[] | undefined;
+    if (!canonicalValues) {
+      issues.push(`unknown option capability ${key}`);
+      continue;
+    }
+    if (capability.allowedValues.length === 0) issues.push(`${key} must allow at least one value`);
+    if (capability.allowedValues.some((value) => !canonicalValues.includes(value))) {
+      issues.push(`${key} contains a non-canonical value`);
+    }
+    if (capability.defaultValue !== undefined && !(capability.allowedValues as readonly unknown[]).includes(capability.defaultValue)) {
+      issues.push(`${key} default must be one of its allowed values`);
+    }
+  }
+
   for (const mode of ["desktop", "mobile"] as const) {
     const target = definition.previewSpec[mode];
     if (target.mode === "asset" && !target.assetUrl?.trim()) {

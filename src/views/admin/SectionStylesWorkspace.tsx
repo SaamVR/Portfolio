@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Monitor, RotateCcw, Smartphone, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,12 @@ import { buildPageBuilderPath } from "@/lib/admin-paths";
 import type { StorePageBlock } from "@/lib/cms/schema";
 import { resolveStorefrontTemplateId, type StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { getStorefrontVariantDefinitions } from "@/lib/cms/storefront-platform/variants/registry";
+import { normalizeCanonicalVariantOptions, type StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { buildVariantOptionsPersistencePatch } from "@/lib/cms/storefront-platform/variants/variant-options";
 import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "@/lib/cms/storefront-platform/variants/section-style-library";
 import { SectionStylePreview, type SectionStylePreviewMode } from "@/components/storefront/editor/SectionStylePreview";
+import { SectionStudioPreviewModeSwitch, SectionStudioPreviewStage, SectionStudioSaveStatus } from "@/components/storefront/editor/section-studio/SectionStudioShells";
+import { SectionStudioOptionControls } from "@/components/storefront/editor/section-studio/SectionStudioOptionControls";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +52,7 @@ function normalizeBlock(row: Record<string, unknown>): StorePageBlock {
     isVisible: row.is_visible !== false,
     visible: row.is_visible !== false,
     layoutVariant: typeof row.layout_variant === "string" ? row.layout_variant : undefined,
+    variantOptions: normalizeCanonicalVariantOptions(row.variant_options),
     props: row.props && typeof row.props === "object" ? row.props as Record<string, unknown> : {},
   } as StorePageBlock;
 }
@@ -63,7 +68,15 @@ export default function SectionStylesWorkspace() {
   const [previewMode, setPreviewMode] = useState<SectionStylePreviewMode>("desktop");
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
-  const [lastChange, setLastChange] = useState<{ blockId: string; previousVariantId: string | null; nextVariantId: string | null } | null>(null);
+  const [savingOptions, setSavingOptions] = useState(false);
+  const [optionDrafts, setOptionDrafts] = useState<Record<string, StorefrontVariantOptions | null>>({});
+  const [optionSaveError, setOptionSaveError] = useState<string | null>(null);
+  const [lastChange, setLastChange] = useState<{
+    blockId: string;
+    previousVariantId: string | null;
+    previousVariantOptions?: StorefrontVariantOptions;
+    nextVariantId: string | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +89,8 @@ export default function SectionStylesWorkspace() {
       setLoading(true);
       setError(null);
       setLastChange(null);
+      setOptionDrafts({});
+      setOptionSaveError(null);
       setSelectedStyleId("");
       try {
         const [storeResult, profileResult, settingResult] = await Promise.all([
@@ -95,7 +110,7 @@ export default function SectionStylesWorkspace() {
 
         const blockResult = await (supabase as any)
           .from("store_page_blocks")
-          .select("id,block_type,props,sort_order,is_visible,layout_variant")
+          .select("id,block_type,props,sort_order,is_visible,layout_variant,variant_options")
           .eq("store_id", activeStoreId)
           .eq("page_id", pageResult.data.id)
           .order("sort_order");
@@ -137,28 +152,58 @@ export default function SectionStylesWorkspace() {
     ?? entries.find((entry) => entry.current);
   const resetEntry = workspace && selectedBlock ? getSectionStyleResetTarget(workspace.templateId, selectedBlock) : undefined;
   const hasUnregisteredCurrentStyle = Boolean(selectedBlock?.layoutVariant && !entries.some((entry) => entry.definition.id === selectedBlock.layoutVariant));
+  const hasOptionDraft = Boolean(selectedBlock && Object.prototype.hasOwnProperty.call(optionDrafts, selectedBlock.id));
+  const selectedBlockWithOptionDraft = selectedBlock
+    ? {
+        ...selectedBlock,
+        variantOptions: hasOptionDraft ? optionDrafts[selectedBlock.id] ?? undefined : selectedBlock.variantOptions,
+      }
+    : null;
+  const optionControlBlock = workspace && selectedBlockWithOptionDraft && selectedEntry
+    ? applySectionStyleToBlock(selectedBlockWithOptionDraft, selectedEntry.definition.id, workspace.templateId)
+    : selectedBlockWithOptionDraft;
 
   useEffect(() => {
     if (selectedEntry && selectedStyleId !== selectedEntry.definition.id) setSelectedStyleId(selectedEntry.definition.id);
   }, [selectedBlockId, selectedEntry, selectedStyleId]);
 
-  const persistStyleVariant = async (block: StorePageBlock, variantId: string | null) => {
+  const persistStyleVariant = async (
+    block: StorePageBlock,
+    variantId: string | null,
+    options?: { sourceVariantOptions: StorefrontVariantOptions | undefined },
+  ) => {
     if (!activeStoreId || !workspace) throw new Error("Section Styles workspace is not ready.");
+    const hasDraft = Object.prototype.hasOwnProperty.call(optionDrafts, block.id);
+    const sourceBlock = {
+      ...block,
+      variantOptions: options
+        ? options.sourceVariantOptions
+        : hasDraft
+          ? optionDrafts[block.id] ?? undefined
+          : block.variantOptions,
+    };
+    const nextBlock = applySectionStyleToBlock(sourceBlock, variantId, workspace.templateId);
     const { data, error: updateError } = await (supabase as any)
       .from("store_page_blocks")
-      .update(buildSectionStylePersistencePatch(variantId))
+      .update(buildSectionStylePersistencePatch(variantId, sourceBlock, workspace.templateId))
       .eq("store_id", activeStoreId)
       .eq("page_id", workspace.page.id)
       .eq("id", block.id)
-      .select("id,layout_variant")
+      .select("id,layout_variant,variant_options")
       .maybeSingle();
     if (updateError) throw updateError;
     if (!data) throw new Error("The section could not be updated. Reload the editor and try again.");
 
     setWorkspace((current) => current ? {
       ...current,
-      blocks: current.blocks.map((item) => item.id === block.id ? applySectionStyleToBlock(item, variantId) : item),
+      blocks: current.blocks.map((item) => item.id === block.id ? nextBlock : item),
     } : current);
+    setOptionDrafts((current) => {
+      const next = { ...current };
+      delete next[block.id];
+      return next;
+    });
+    setOptionSaveError(null);
 
     try {
       await refreshStorefrontContentCache(supabase as any, activeStoreId, { pageSlugs: [workspace.page.slug] });
@@ -167,13 +212,55 @@ export default function SectionStylesWorkspace() {
     }
   };
 
+  const saveOptionChanges = async () => {
+    if (!activeStoreId || !workspace || !selectedBlock || !hasOptionDraft) return;
+    setSavingOptions(true);
+    setOptionSaveError(null);
+    try {
+      const nextOptions = optionDrafts[selectedBlock.id] ?? undefined;
+      const { data, error: updateError } = await (supabase as any)
+        .from("store_page_blocks")
+        .update(buildVariantOptionsPersistencePatch(nextOptions))
+        .eq("store_id", activeStoreId)
+        .eq("page_id", workspace.page.id)
+        .eq("id", selectedBlock.id)
+        .select("id,variant_options")
+        .maybeSingle();
+      if (updateError) throw updateError;
+      if (!data) throw new Error("The section adjustments could not be saved. Reload the editor and try again.");
+      setWorkspace((current) => current ? {
+        ...current,
+        blocks: current.blocks.map((item) => item.id === selectedBlock.id ? { ...item, variantOptions: nextOptions } : item),
+      } : current);
+      setOptionDrafts((current) => {
+        const next = { ...current };
+        delete next[selectedBlock.id];
+        return next;
+      });
+      await refreshStorefrontContentCache(supabase as any, activeStoreId, { pageSlugs: [workspace.page.slug] });
+      toast.success("Section adjustments saved.");
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Could not save section adjustments.";
+      setOptionSaveError(message);
+      toast.error(message);
+    } finally {
+      setSavingOptions(false);
+    }
+  };
+
   const applyStyle = async () => {
     if (!selectedBlock || !selectedEntry || !selectedEntry.compatible || selectedEntry.current) return;
     setApplying(true);
     try {
       const previousVariantId = selectedBlock.layoutVariant ?? null;
+      const previousVariantOptions = selectedBlock.variantOptions;
       await persistStyleVariant(selectedBlock, selectedEntry.definition.id);
-      setLastChange({ blockId: selectedBlock.id, previousVariantId, nextVariantId: selectedEntry.definition.id });
+      setLastChange({
+        blockId: selectedBlock.id,
+        previousVariantId,
+        previousVariantOptions,
+        nextVariantId: selectedEntry.definition.id,
+      });
       toast.success(`${selectedEntry.definition.label} applied. Section content was preserved.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Could not apply this section style.");
@@ -187,9 +274,10 @@ export default function SectionStylesWorkspace() {
     setApplying(true);
     try {
       const previousVariantId = selectedBlock.layoutVariant;
+      const previousVariantOptions = selectedBlock.variantOptions;
       await persistStyleVariant(selectedBlock, null);
       setSelectedStyleId(resetEntry?.definition.id ?? "");
-      setLastChange({ blockId: selectedBlock.id, previousVariantId, nextVariantId: null });
+      setLastChange({ blockId: selectedBlock.id, previousVariantId, previousVariantOptions, nextVariantId: null });
       toast.success(resetEntry
         ? `Reset to inherited ${resetEntry.definition.label}. Section content was preserved.`
         : "Reset to the template's inherited/default presentation. Section content was preserved.");
@@ -209,7 +297,9 @@ export default function SectionStylesWorkspace() {
     }
     setApplying(true);
     try {
-      await persistStyleVariant(block, lastChange.previousVariantId);
+      await persistStyleVariant(block, lastChange.previousVariantId, {
+        sourceVariantOptions: lastChange.previousVariantOptions,
+      });
       setSelectedBlockId(block.id);
       setSelectedStyleId(lastChange.previousVariantId ?? "");
       setLastChange(null);
@@ -233,9 +323,9 @@ export default function SectionStylesWorkspace() {
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2 gap-2"><Link to={editorHref}><ArrowLeft className="h-4 w-4" />Back to editor</Link></Button>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Visual Section Library</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Section Styles</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Compare real design previews, check mobile behavior, and change presentation without replacing the section&apos;s copy, products, categories, or media.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Section Studio</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Style and fine-tune sections</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Choose a Section Style, then adjust only the presentation controls that style supports. Copy, products, categories, and media stay untouched.</p>
         </div>
         <Badge variant="outline" className="mt-1">{workspace.templateId}</Badge>
       </div>
@@ -250,12 +340,9 @@ export default function SectionStylesWorkspace() {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
-          <div className="mb-3 flex items-end justify-between gap-3">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div><h2 className="text-lg font-semibold">{blockLabel(selectedBlock.type)} styles</h2><p className="text-xs text-muted-foreground">Recommended styles appear first.</p></div>
-            <div className="flex rounded-xl border border-border bg-muted/30 p-1">
-              <Button type="button" size="sm" variant={previewMode === "desktop" ? "secondary" : "ghost"} className="min-h-11 gap-1.5" aria-pressed={previewMode === "desktop"} onClick={() => setPreviewMode("desktop")}><Monitor className="h-3.5 w-3.5" />Desktop</Button>
-              <Button type="button" size="sm" variant={previewMode === "mobile" ? "secondary" : "ghost"} className="min-h-11 gap-1.5" aria-pressed={previewMode === "mobile"} onClick={() => setPreviewMode("mobile")}><Smartphone className="h-3.5 w-3.5" />Mobile</Button>
-            </div>
+            <SectionStudioPreviewModeSwitch value={previewMode} onChange={setPreviewMode} />
           </div>
           {hasUnregisteredCurrentStyle ? (
             <div className="mb-3 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
@@ -266,7 +353,7 @@ export default function SectionStylesWorkspace() {
             {entries.map((entry) => {
               const active = selectedEntry?.definition.id === entry.definition.id;
               return (
-                <button key={entry.definition.id} type="button" aria-pressed={active} onClick={() => setSelectedStyleId(entry.definition.id)} className={cn("rounded-2xl border p-2 text-left transition hover:-translate-y-0.5 hover:shadow-md", active ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border bg-card", !entry.compatible && "opacity-60")}>
+                <button key={entry.definition.id} type="button" aria-pressed={active} onClick={() => { setSelectedStyleId(entry.definition.id); setOptionSaveError(null); }} className={cn("rounded-2xl border p-2 text-left transition hover:-translate-y-0.5 hover:shadow-md", active ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border bg-card", !entry.compatible && "opacity-60")}>
                   <div className="relative">
                     <SectionStylePreview blockType={selectedBlock.type} definition={entry.definition} mode={previewMode} className={previewMode === "mobile" ? "mx-auto w-[44%]" : "w-full"} />
                     <div className="absolute left-2 top-2 flex gap-1">
@@ -290,18 +377,55 @@ export default function SectionStylesWorkspace() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="bg-muted/20 p-3">
-                  <SectionStylePreview blockType={selectedBlock.type} definition={selectedEntry.definition} mode={previewMode} className={previewMode === "mobile" ? "mx-auto w-[62%]" : "w-full"} />
+                  <SectionStudioPreviewStage mode={previewMode}>
+                    <SectionStylePreview blockType={selectedBlock.type} definition={selectedEntry.definition} mode={previewMode} className="w-full" />
+                  </SectionStudioPreviewStage>
                 </div>
                 <div className="space-y-4 p-4">
-                  <div><div className="flex items-center justify-between gap-2"><h3 className="text-lg font-semibold">{selectedEntry.definition.label}</h3>{selectedEntry.current ? <Badge variant="secondary">Current</Badge> : null}</div><p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedEntry.definition.guidance}</p></div>
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{selectedEntry.current ? "Current Section Style" : "Previewing Section Style"}</p>
+                        <h3 className="mt-1 text-lg font-semibold">{selectedEntry.definition.label}</h3>
+                      </div>
+                      {selectedEntry.current ? <Badge variant="secondary">Current</Badge> : <Badge variant="outline">Preview</Badge>}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedEntry.definition.guidance}</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-xl border border-border p-2.5"><p className="text-muted-foreground">Mobile</p><p className="mt-1 font-medium">{selectedEntry.definition.responsive.mobile.layout.replaceAll("-", " ")}</p></div>
                     <div className="rounded-xl border border-border p-2.5"><p className="text-muted-foreground">Performance</p><p className="mt-1 font-medium capitalize">{selectedEntry.definition.performanceClass.replaceAll("-", " ")}</p></div>
                   </div>
                   {selectedEntry.contentHints.length ? <div className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{selectedEntry.contentHints.map((hint) => <p key={hint}>{hint}</p>)}</div> : null}
                   {!selectedEntry.compatible ? <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs leading-5 text-destructive">{selectedEntry.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div> : null}
-                  <div className="rounded-xl border border-emerald-300/50 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900"><p className="font-semibold">Content-safe style switch</p><p className="mt-1">Only the section style ID changes. Existing section content stays stored.</p></div>
-                  <Button type="button" className="min-h-12 w-full gap-2" disabled={!selectedEntry.compatible || selectedEntry.current || applying} onClick={() => void applyStyle()}>{selectedEntry.current ? <><Check className="h-4 w-4" />Already applied</> : applying ? "Applying…" : `Apply ${selectedEntry.definition.label}`}</Button>
+                  <div className="rounded-xl border border-emerald-300/50 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900"><p className="font-semibold">Content-safe style switch</p><p className="mt-1">Changing style normalizes presentation overrides against that style. Unsupported overrides disappear; section content stays stored.</p></div>
+                  {optionControlBlock ? (
+                    <SectionStudioOptionControls
+                      templateId={workspace.templateId}
+                      block={optionControlBlock}
+                      compact
+                      disabled={!selectedEntry.current || applying || savingOptions}
+                      onChange={(nextBlock) => {
+                        setOptionDrafts((current) => ({ ...current, [selectedBlock.id]: nextBlock.variantOptions ?? null }));
+                        setOptionSaveError(null);
+                      }}
+                    />
+                  ) : null}
+                  {!selectedEntry.current ? (
+                    <p className="rounded-xl border border-border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">Apply this Section Style before changing its supported adjustments.</p>
+                  ) : (
+                    <>
+                      <SectionStudioSaveStatus
+                        state={optionSaveError ? "error" : savingOptions ? "saving" : hasOptionDraft ? "unsaved" : "saved"}
+                        label={optionSaveError ? "Adjustments not saved" : savingOptions ? "Saving adjustments" : hasOptionDraft ? "Unsaved adjustments" : "Adjustments saved"}
+                        detail={optionSaveError ?? (hasOptionDraft ? "Review the section preview, then save these overrides." : "The storefront is using the saved adjustment state.")}
+                      />
+                      <Button type="button" className="min-h-12 w-full gap-2" disabled={!hasOptionDraft || savingOptions || applying} onClick={() => void saveOptionChanges()}>
+                        {savingOptions ? "Saving…" : "Save section adjustments"}
+                      </Button>
+                    </>
+                  )}
+                  <Button type="button" className="min-h-12 w-full gap-2" disabled={!selectedEntry.compatible || selectedEntry.current || applying || savingOptions} onClick={() => void applyStyle()}>{selectedEntry.current ? <><Check className="h-4 w-4" />Already applied</> : applying ? "Applying…" : `Apply ${selectedEntry.definition.label}`}</Button>
                   {selectedBlock.layoutVariant != null ? (
                     <Button type="button" variant="outline" className="min-h-11 w-full gap-2" disabled={applying} onClick={() => void resetToTemplateStyle()}>
                       <RotateCcw className="h-4 w-4" />{resetEntry ? `Reset to ${resetEntry.definition.label}` : "Reset to inherited/default"}

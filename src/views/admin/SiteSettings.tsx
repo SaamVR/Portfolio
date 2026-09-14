@@ -164,6 +164,7 @@ type SnapshotBlockRow = {
   hover_effect: StorePageBlock["hoverEffect"] | null;
   effect_override: boolean | null;
   layout_variant: string | null;
+  variant_options: StorePageBlock["variantOptions"] | null;
   custom_html: string | null;
   custom_css: string | null;
 };
@@ -178,7 +179,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
     supabase
       .from("store_page_blocks")
       .select(
-        "id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css",
+        "id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css",
       )
       .eq("store_id", storeId)
       .order("sort_order", { ascending: true }),
@@ -202,6 +203,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
       hoverEffect: blockRow.hover_effect ?? "none",
       effectOverride: blockRow.effect_override ?? false,
       layoutVariant: blockRow.layout_variant ?? undefined,
+      variantOptions: blockRow.variant_options ?? undefined,
       customHtml: blockRow.custom_html ?? undefined,
       customCss: blockRow.custom_css ?? undefined,
     } as any);

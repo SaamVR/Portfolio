@@ -2379,6 +2379,7 @@ export type Database = {
           id: string
           is_visible: boolean
           layout_variant: string | null
+          variant_options: Json | null
           page_id: string
           props: Json
           sort_order: number
@@ -2396,6 +2397,7 @@ export type Database = {
           id?: string
           is_visible?: boolean
           layout_variant?: string | null
+          variant_options?: Json | null
           page_id: string
           props?: Json
           sort_order?: number
@@ -2413,6 +2415,7 @@ export type Database = {
           id?: string
           is_visible?: boolean
           layout_variant?: string | null
+          variant_options?: Json | null
           page_id?: string
           props?: Json
           sort_order?: number

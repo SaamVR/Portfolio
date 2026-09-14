@@ -80,6 +80,28 @@ describe("storefront layout preset application", () => {
     expect(result.blocks.at(-1)?.props).toEqual({ title: "Founder note", body: "Merchant copy", align: "left" });
   });
 
+
+  it("strips options unsupported by a preset-driven destination style", () => {
+    const preset = getStorefrontLayoutPreset("fashion-drop-streetwear")!;
+    const current = [
+      block({
+        id: "hero",
+        type: "hero",
+        sortOrder: 0,
+        layoutVariant: "split",
+        variantOptions: { mediaFit: "contain", contentWidth: "standard" },
+        props: { title: "Keep me" },
+      }),
+    ];
+
+    const result = applyStorefrontLayoutPreset(current, preset);
+    const hero = result.blocks.find((item) => item.id === "hero")!;
+
+    expect(hero.layoutVariant).toBe("full-bleed");
+    expect(hero.variantOptions).toBe(undefined);
+    expect(hero.props).toEqual({ title: "Keep me" });
+  });
+
   it("does not mutate the source blocks", () => {
     const preset = getStorefrontLayoutPreset("fashion-drop-streetwear")!;
     const current = [block({ id: "hero", type: "hero", sortOrder: 4, layoutVariant: "centered", props: { title: "Keep me" } })];

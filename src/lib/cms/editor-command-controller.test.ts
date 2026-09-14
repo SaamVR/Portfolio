@@ -97,6 +97,34 @@ test("layout import and revision restore produce immutable prepared editor comma
   assert.notDeepEqual(revision.blocks.map((block) => block.type), selectedPage.blocks.slice(0, 2).map((block) => block.type));
 });
 
+
+test("editor persistence and layout import preserve canonical Section Studio options", () => {
+  const fullStore = createDefaultStore();
+  const store = { ...fullStore, pages: [structuredClone(fullStore.pages[0]!)] };
+  const hero = store.pages[0]?.blocks.find((block) => block.type === "hero");
+  assert.ok(hero);
+  hero.layoutVariant = "split";
+  hero.variantOptions = { mediaFit: "contain", contentWidth: "wide" };
+
+  const preparedSave = prepareCmsEditorPersistence(store, "save");
+  assert.equal(preparedSave.ok, true);
+  assert.ok(preparedSave.ok);
+  const savedHero = preparedSave.store.pages[0]?.blocks.find((block) => block.type === "hero");
+  assert.deepEqual(savedHero?.variantOptions, { mediaFit: "contain", contentWidth: "wide" });
+
+  let idCounter = 100;
+  const createId = () => `00000000-0000-4000-8000-${String(idCounter++).padStart(12, "0")}`;
+  const payload: StoreLayoutPackage = {
+    schema: STORE_LAYOUT_PACKAGE_SCHEMA,
+    exportedAt: "2026-09-14T10:00:00.000Z",
+    source: { storeName: store.name, storeSlug: store.slug, templateSeedId: "threads" },
+    layout: { description: store.description, theme: store.theme, pages: [store.pages[0]!] },
+  };
+  const imported = prepareStoreLayoutImport({ raw: JSON.stringify(payload), store, allowAdvanced: true, createId });
+  const importedHero = imported.store.pages[0]?.blocks.find((block) => block.type === "hero");
+  assert.deepEqual(importedHero?.variantOptions, { mediaFit: "contain", contentWidth: "wide" });
+});
+
 test("CmsPagesManager delegates command ownership instead of retaining duplicate persistence paths", () => {
   const manager = readFileSync(path.resolve(root, "src/views/admin/CmsPagesManager.tsx"), "utf8");
   const commands = readFileSync(path.resolve(root, "src/lib/cms/editor-command-controller.ts"), "utf8");

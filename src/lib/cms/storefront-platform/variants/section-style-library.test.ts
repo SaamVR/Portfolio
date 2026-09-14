@@ -112,6 +112,13 @@ describe("section style library", () => {
     assert.equal(getEffectiveSectionStyleVariantId("general-catalog", { ...products, layoutVariant: undefined }), undefined);
     assert.equal(getSectionStyleResetTarget("general-catalog", products), undefined);
     assert.equal(getSectionStyleLibraryEntries("general-catalog", { ...products, layoutVariant: undefined }).some((entry) => entry.current), false);
+
+    const withOptions = { ...products, variantOptions: { spacing: "compact" as const } };
+    assert.equal(applySectionStyleToBlock(withOptions, null, "general-catalog").variantOptions, undefined);
+    assert.deepEqual(
+      buildSectionStylePersistencePatch(null, withOptions, "general-catalog"),
+      { layout_variant: null, variant_options: null },
+    );
   });
 
   it("keeps manifest versions internal until blocks can persist a pinned version", () => {

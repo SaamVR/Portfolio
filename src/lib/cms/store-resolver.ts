@@ -115,6 +115,13 @@ interface StoreBlockRow {
   props: Record<string, unknown> | null;
   sort_order: number | null;
   is_visible: boolean | null;
+  entrance_animation?: StorePageBlock["entranceAnimation"] | null;
+  hover_effect?: StorePageBlock["hoverEffect"] | null;
+  effect_override?: boolean | null;
+  layout_variant?: string | null;
+  variant_options?: unknown;
+  custom_html?: string | null;
+  custom_css?: string | null;
 }
 
 interface StorefrontTaxonomyRow {
@@ -291,6 +298,13 @@ export function buildResolvedStoreFromRecords(
                 props: block.props ?? {},
                 sortOrder: block.sort_order ?? 0,
                 isVisible: block.is_visible ?? true,
+                entranceAnimation: block.entrance_animation ?? undefined,
+                hoverEffect: block.hover_effect ?? undefined,
+                effectOverride: block.effect_override ?? undefined,
+                layoutVariant: block.layout_variant ?? undefined,
+                variantOptions: block.variant_options ?? undefined,
+                customHtml: block.custom_html ?? undefined,
+                customCss: block.custom_css ?? undefined,
               }));
 
             if (persistedBlocks.length > 0) {
@@ -626,7 +640,7 @@ async function getStoreByIdUncached(storeId: string, options?: StoreResolverOpti
     loadStoreResolverCoreRecords(storeId),
     supabase
       .from("store_page_blocks")
-      .select("id, page_id, block_type, props, sort_order, is_visible")
+      .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css")
       .eq("store_id", storeId)
       .in("page_id", pageIdsToLoad.length > 0 ? pageIdsToLoad : ["00000000-0000-0000-0000-000000000000"]),
   ]);
