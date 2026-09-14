@@ -24,7 +24,7 @@ BEGIN
     WHERE order_id IS NOT NULL
       AND product_id IS NOT NULL
       AND event_name = 'order_created_item'
-    GROUP BY store_id, order_id, event_name, product_id
+    GROUP BY store_id, order_id, event_name, product_id, md5(metadata::text)
     HAVING count(*) > 1
   ) THEN
     RAISE EXCEPTION 'order_background_reconciliation_required: duplicate order_created_item analytics rows';
@@ -50,8 +50,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_store_analytics_order_created_once
   WHERE order_id IS NOT NULL
     AND event_name = 'order_created';
 
+-- Same product may legitimately appear more than once under different options.
+-- The normalized event metadata contains the line/variant identity, so include a
+-- stable digest of that metadata when de-duplicating queue redelivery.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_store_analytics_order_created_item_once
-  ON public.store_analytics_events (store_id, order_id, event_name, product_id)
+  ON public.store_analytics_events (store_id, order_id, event_name, product_id, md5(metadata::text))
   WHERE order_id IS NOT NULL
     AND product_id IS NOT NULL
     AND event_name = 'order_created_item';
