@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildTemplatePreviewStore } from "@/lib/cms/storefront-preview";
+import { buildTemplateCatalogSeedRows } from "@/lib/cms/template-demo-seeds";
+import { readStorefrontTaxonomySnapshot } from "@/lib/storefront-taxonomy-snapshot";
 import { storefrontTemplateIds } from "@/lib/cms/storefront-templates";
 import { resolveExplicitTemplatePreviewStore } from "@/lib/cms/store-resolver";
 
@@ -64,6 +66,46 @@ test("threads preview content is populated from its dedicated demo seed", () => 
   assert.ok(faq && faq.type === "faq-accordion");
   assert.ok(Array.isArray(faq.props.faqs));
   assert.ok(faq.props.faqs.length > 0);
+});
+
+
+test("threads preview exposes the same seeded catalog taxonomy used by product fallback data", () => {
+  const store = buildTemplatePreviewStore("threads");
+  const seeded = buildTemplateCatalogSeedRows(store.id, "threads");
+  const taxonomy = readStorefrontTaxonomySnapshot(store.siteSettings);
+  const homepage = store.pages.find((page) => page.isHomepage);
+  const categories = homepage?.blocks.find((block) => block.type === "category-showcase");
+  const featured = homepage?.blocks.find((block) => block.type === "featured-products");
+  const recommended = homepage?.blocks.find((block) => block.type === "recommended-products");
+
+  assert.ok(seeded.categoryRows.length > 0);
+  assert.ok(seeded.productRows.length > 0);
+  assert.deepEqual(
+    taxonomy.categories.map((entry) => entry.name),
+    seeded.categoryRows.map((row) => row.name),
+  );
+  assert.deepEqual(
+    taxonomy.types.map((entry) => entry.name),
+    seeded.productTypeRows.map((row) => row.name),
+  );
+
+  assert.ok(categories && categories.type === "category-showcase");
+  const categoryItems = categories.props.items ?? [];
+  assert.deepEqual(
+    categoryItems.map((item) => item.label),
+    seeded.categoryRows.map((row) => row.name),
+  );
+
+  assert.ok(featured && featured.type === "featured-products");
+  assert.equal(featured.props.source, "featured-or-all");
+  assert.equal("items" in featured.props, false);
+  assert.ok(recommended && recommended.type === "recommended-products");
+  assert.equal(recommended.props.source, "newest");
+  assert.equal("items" in recommended.props, false);
+
+  for (const product of seeded.productRows) {
+    assert.match(product.image_url ?? "", /^\/demo-assets\//);
+  }
 });
 
 test("every non-blank built-in preview exposes canonical category demo hero media", () => {
