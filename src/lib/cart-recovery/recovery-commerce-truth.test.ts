@@ -71,3 +71,16 @@ test("cart recovery delivery rows are server-governed rather than merchant-autho
   assert.match(migration, /cmd IN \('ALL', 'INSERT', 'UPDATE', 'DELETE'\)/);
   assert.match(smoke, /client roles still have direct cart-recovery message mutation privileges/);
 });
+
+
+test("scheduled recovery touches are idempotent under concurrent queue requests", () => {
+  const queue = source("src/app/api/cart-recovery/queue/route.ts");
+  const migration = source("supabase/migrations/20260914224000_dedupe_cart_recovery_scheduled_touches.sql");
+
+  assert.match(queue, /scheduled_for: lead\.next_contact_at/);
+  assert.match(queue, /\.upsert\(inserts, \{/);
+  assert.match(queue, /onConflict: "store_id,lead_id,scheduled_for"/);
+  assert.match(queue, /ignoreDuplicates: true/);
+  assert.match(migration, /ALTER COLUMN scheduled_for SET NOT NULL/);
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS idx_cart_recovery_messages_scheduled_touch_unique[\s\S]*store_id, lead_id, scheduled_for/);
+});

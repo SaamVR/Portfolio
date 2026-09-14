@@ -132,6 +132,7 @@ export async function POST(req: Request) {
         template_key: "recovery-sequence",
         status: "queued",
         retry_count: 0,
+        scheduled_for: lead.next_contact_at,
         next_retry_at: null,
         coupon_code: couponCode,
         metadata: {
@@ -143,7 +144,10 @@ export async function POST(req: Request) {
 
     const { error: insertError } = await (supabaseAdmin as any)
       .from("store_cart_recovery_messages")
-      .insert(inserts);
+      .upsert(inserts, {
+        onConflict: "store_id,lead_id,scheduled_for",
+        ignoreDuplicates: true,
+      });
     if (insertError) throw insertError;
 
     for (const { lead, couponCode } of queuedLeads) {

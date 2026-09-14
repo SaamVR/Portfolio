@@ -224,3 +224,29 @@ BEGIN
   END IF;
 END;
 $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'store_cart_recovery_messages'
+      AND column_name = 'scheduled_for'
+      AND is_nullable = 'NO'
+  ) THEN
+    RAISE EXCEPTION 'cart-recovery scheduled touch identity is missing or nullable';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'store_cart_recovery_messages'
+      AND indexname = 'idx_cart_recovery_messages_scheduled_touch_unique'
+      AND indexdef ILIKE '%UNIQUE%'
+      AND indexdef ILIKE '%(store_id, lead_id, scheduled_for)%'
+  ) THEN
+    RAISE EXCEPTION 'cart-recovery scheduled touch uniqueness is missing';
+  END IF;
+END;
+$$;

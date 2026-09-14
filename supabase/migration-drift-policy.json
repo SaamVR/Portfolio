@@ -59,6 +59,11 @@
       "name": "lock_cart_recovery_message_mutations",
       "classification": "pending-production",
       "reason": "Commerce hardening branch: removes direct client mutation authority from the cart-recovery delivery ledger so only governed server queue/processor paths can author outreach truth."
+    },
+    {
+      "name": "dedupe_cart_recovery_scheduled_touches",
+      "classification": "pending-production",
+      "reason": "Commerce hardening branch: gives each scheduled recovery touch a durable store/lead/time identity so concurrent authorized queue requests cannot enqueue duplicate outreach."
     }
   ]
 }
