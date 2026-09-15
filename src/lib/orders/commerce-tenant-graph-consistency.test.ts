@@ -36,4 +36,6 @@ test("commerce tenant graph migration fails closed on historical drift", () => {
   assert.match(migration, /o\.store_id IS DISTINCT FROM l\.store_id/i);
   assert.match(migration, /l\.store_id IS DISTINCT FROM m\.store_id/i);
   assert.match(migration, /p\.store_id IS DISTINCT FROM c\.store_id/i);
+  assert.match(migration, /store_courier_credentials_secure\.connection_id["'", ]+sc\.connection_id/i);
+  assert.equal(/store_courier_credentials_secure\.connection_id["'", ]+sc\.id/i.test(migration), false);
 });
