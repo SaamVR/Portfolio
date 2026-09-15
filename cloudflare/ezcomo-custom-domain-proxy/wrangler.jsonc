@@ -13,8 +13,13 @@
       "id": "b2bdc55bbd434044b044cf1532a3e357"
     }
   ],
+  "services": [
+    {
+      "binding": "ORIGIN_ROUTER",
+      "service": "ezcomo-origin-failover"
+    }
+  ],
   "vars": {
-    "ORIGIN_HOSTNAME": "origin.ezcomo.shop",
     "PLATFORM_DOMAIN": "ezcomo.shop"
   }
 }
