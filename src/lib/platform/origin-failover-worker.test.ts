@@ -190,6 +190,49 @@ test("origin failover Worker enforces release-aware routing without mutation rep
       });
     });
 
+    await t.test("routes Cloudflare for SaaS vanity hostnames through the trusted origin path", async () => {
+      const calls: FetchCall[] = [];
+      await run(async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        const url = new URL(req.url);
+        calls.push({ hostname: url.hostname, pathname: url.pathname, method: req.method, headers: req.headers });
+        if (url.pathname === "/api/health") {
+          return Response.json({ status: "ok", release: EXPECTED });
+        }
+        assert.equal(url.hostname, "primary.test");
+        return new Response("merchant-ok", { status: 200 });
+      }, async () => {
+        const state = context();
+        const response = await worker.fetch(request("GET", "shop.merchant-example.com"), env(), state.ctx);
+        await state.flush();
+        assert.equal(response.status, 200);
+        const shopperCalls = calls.filter((call) => call.pathname !== "/api/health");
+        assert.deepEqual(shopperCalls.map((call) => call.hostname), ["primary.test"]);
+        assert.equal(shopperCalls[0]?.headers.get("x-ezcomo-hostname"), "shop.merchant-example.com");
+        assert.equal(shopperCalls[0]?.headers.get("x-forwarded-host"), "shop.merchant-example.com");
+        assert.equal(shopperCalls[0]?.headers.get("x-ezcomo-lb-secret"), "test-lb-secret");
+      });
+    });
+
+    await t.test("routes the SaaS CNAME target through the application origin", async () => {
+      const shopperHosts: string[] = [];
+      await run(async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        const url = new URL(req.url);
+        if (url.pathname === "/api/health") {
+          return Response.json({ status: "ok", release: EXPECTED });
+        }
+        shopperHosts.push(url.hostname);
+        return new Response("customers-ok", { status: 200 });
+      }, async () => {
+        const state = context();
+        const response = await worker.fetch(request("GET", "customers.ezcomo.shop"), env(), state.ctx);
+        await state.flush();
+        assert.equal(response.status, 200);
+        assert.deepEqual(shopperHosts, ["primary.test"]);
+      });
+    });
+
     await t.test("reserved platform hosts bypass release routing exactly as before", async () => {
       const calls: string[] = [];
       await run(async (input) => {

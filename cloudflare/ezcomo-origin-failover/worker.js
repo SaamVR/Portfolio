@@ -8,7 +8,7 @@ const PRIMARY_DOWN_CACHE_KEY = "https://ezcomo-failover-state.invalid/render-pri
 const RELEASE_PROBE_CACHE_PREFIX = "https://ezcomo-release-probe.invalid/";
 const SAFE_RETRY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const FAILOVER_HTTP_STATUSES = new Set([502, 503, 504, 521, 522, 523, 524, 525, 526, 530]);
-const RESERVED_PLATFORM_LABELS = new Set(["origin", "customers", "mcp"]);
+const RESERVED_PLATFORM_LABELS = new Set(["origin", "mcp"]);
 
 function normalizeHostname(hostname) {
   return String(hostname || "").trim().toLowerCase().replace(/\.$/, "");
@@ -30,7 +30,12 @@ function getPlatformLabel(hostname, platformDomain) {
 function shouldBypassFailover(hostname, platformDomain) {
   if (hostname === platformDomain) return false;
   const label = getPlatformLabel(hostname, platformDomain);
-  if (!label) return true;
+
+  // Cloudflare for SaaS vanity domains do not end in the platform domain.
+  // A wildcard Worker route (`*/*`) intentionally delivers those hostnames
+  // here, so they must continue through the trusted Worker -> origin path.
+  if (!label) return false;
+
   return RESERVED_PLATFORM_LABELS.has(label);
 }
 
