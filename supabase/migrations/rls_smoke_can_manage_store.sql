@@ -465,8 +465,8 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
-  1
+  0,
+  0
 );
 
 select pg_temp.assert_actor_access(
