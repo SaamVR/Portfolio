@@ -241,6 +241,9 @@ const SearchBar = ({ className, onClose, expanded = true }: SearchBarProps) => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
+      // Prevent the native <input type="search"> Escape behavior from clearing
+      // the value and firing onChange, which would immediately reopen the popup.
+      e.preventDefault();
       setOpen(false);
       setSelectedIndex(-1);
       return;

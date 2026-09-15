@@ -29,6 +29,10 @@ test("cart drawer uses the shared modal sheet primitive", () => {
   assert.match(cartDrawer, /<SheetDescription/);
   assert.doesNotMatch(cartDrawer, /className="fixed inset-0 z-\[100\]/);
   assert.match(sheet, /h-11 w-11/);
+  assert.match(sheet, /onOpenAutoFocus/);
+  assert.match(sheet, /restoreFocusRef/);
+  assert.match(sheet, /onCloseAutoFocus/);
+  assert.match(sheet, /restoreTarget\.focus\(\)/);
 });
 
 test("product image lightbox uses an accessible dialog contract", () => {
@@ -52,6 +56,7 @@ test("search suggestions implement combobox/listbox active-descendant semantics"
   assert.match(searchBar, /role="option"/);
   assert.match(searchBar, /aria-selected=\{index === selectedIndex\}/);
   assert.match(searchBar, /role="status" aria-live="polite"/);
+  assert.match(searchBar, /if \(e\.key === "Escape"\)[\s\S]*?e\.preventDefault\(\)[\s\S]*?setOpen\(false\)/);
 });
 
 test("recent-search removal is not nested interactive content", () => {
