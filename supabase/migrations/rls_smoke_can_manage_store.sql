@@ -344,7 +344,7 @@ insert into public.site_settings (id, store_id, key, value)
 values (
   '30000000-0000-4000-8000-000000000002',
   '20000000-0000-4000-8000-000000000001',
-  'rls_smoke_setting',
+  'hero_section',
   '{"enabled": true}'::jsonb
 );
 
