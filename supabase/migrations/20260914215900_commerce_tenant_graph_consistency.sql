@@ -16,7 +16,7 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
-    SELECT 'store_courier_credentials_secure.connection_id', sc.id
+    SELECT 'store_courier_credentials_secure.connection_id', sc.connection_id
     INTO _bad
     FROM public.store_courier_credentials_secure sc
     LEFT JOIN public.store_courier_connections c ON c.id = sc.connection_id
