@@ -124,14 +124,24 @@ begin
 
   select count(*) into actual_count from public.orders where id = foreign_order;
   perform pg_temp.assert_true(actual_count = 0, format('%s can read foreign order', label));
-  update public.orders set notes = 'cross-tenant-write' where id = foreign_order;
-  get diagnostics affected = row_count;
+  affected := 0;
+  begin
+    update public.orders set notes = 'cross-tenant-write' where id = foreign_order;
+    get diagnostics affected = row_count;
+  exception
+    when insufficient_privilege then affected := 0;
+  end;
   perform pg_temp.assert_true(affected = 0, format('%s can update foreign order', label));
 
   select count(*) into actual_count from public.store_invoices where id = foreign_invoice;
   perform pg_temp.assert_true(actual_count = 0, format('%s can read foreign invoice', label));
-  update public.store_invoices set status = 'paid' where id = foreign_invoice;
-  get diagnostics affected = row_count;
+  affected := 0;
+  begin
+    update public.store_invoices set status = 'paid' where id = foreign_invoice;
+    get diagnostics affected = row_count;
+  exception
+    when insufficient_privilege then affected := 0;
+  end;
   perform pg_temp.assert_true(affected = 0, format('%s can mutate foreign invoice', label));
 
   select count(*) into actual_count from public.store_subscriptions where store_id = foreign_store;

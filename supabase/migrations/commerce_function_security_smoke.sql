@@ -28,10 +28,11 @@ BEGIN
   _legacy_coupon_oid := to_regprocedure('public.validate_coupon(text,integer)');
   _scoped_coupon_oid := to_regprocedure('public.validate_coupon(text,integer,uuid)');
 
-  IF _legacy_coupon_oid IS NULL
-     OR has_function_privilege('anon', _legacy_coupon_oid, 'EXECUTE')
-     OR has_function_privilege('authenticated', _legacy_coupon_oid, 'EXECUTE')
-     OR NOT has_function_privilege('service_role', _legacy_coupon_oid, 'EXECUTE') THEN
+  IF _legacy_coupon_oid IS NOT NULL AND (
+       has_function_privilege('anon', _legacy_coupon_oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', _legacy_coupon_oid, 'EXECUTE')
+       OR NOT has_function_privilege('service_role', _legacy_coupon_oid, 'EXECUTE')
+     ) THEN
     RAISE EXCEPTION 'legacy two-argument validate_coupon ACL is not service-role-only';
   END IF;
 

@@ -101,6 +101,11 @@ values (
   '11000000-0000-4000-8000-000000000001'
 );
 
+set local role service_role;
+insert into public.store_preview_tokens (store_id, created_by, expires_at)
+values ('21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001', now() + interval '1 hour');
+reset role;
+
 set local role authenticated;
 
 -- Owner: full tenant administration.
@@ -112,8 +117,17 @@ select pg_temp.assert_count('select id from public.store_domains where store_id 
 select pg_temp.assert_count('select id from public.store_courier_connections where store_id = ''21000000-0000-4000-8000-000000000001''', 1, 'owner courier read');
 select pg_temp.assert_count('select id from public.site_settings where store_id = ''21000000-0000-4000-8000-000000000001'' and key = ''payment_settings''', 1, 'owner payment settings read');
 select pg_temp.assert_count('select id from public.storefront_releases where store_id = ''21000000-0000-4000-8000-000000000001''', 1, 'owner release read');
-insert into public.store_preview_tokens (store_id, created_by, expires_at)
-values ('21000000-0000-4000-8000-000000000001', auth.uid(), now() + interval '1 hour');
+do $$
+begin
+  begin
+    insert into public.store_preview_tokens (store_id, created_by, expires_at)
+    values ('21000000-0000-4000-8000-000000000001', auth.uid(), now() + interval '1 hour');
+    raise exception 'owner unexpectedly bypassed server-only preview-token authority';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$$;
 
 -- Store admin: same administrative capability.
 select pg_temp.set_authenticated_user('11000000-0000-4000-8000-000000000002');

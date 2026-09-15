@@ -90,9 +90,14 @@ begin
 
   select count(*) into actual_count from public.orders where id = order_id;
   perform pg_temp.assert_true(actual_count = expected_order_rows, format('%s orders select mismatch', label));
-  update public.orders set notes = label where id = order_id;
-  get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_order_updates, format('%s orders update mismatch', label));
+  affected := 0;
+  begin
+    update public.orders set notes = label where id = order_id;
+    get diagnostics affected = row_count;
+  exception
+    when insufficient_privilege then affected := 0;
+  end;
+  perform pg_temp.assert_true(affected = expected_order_updates, format('%s direct orders update authority mismatch', label));
 
   select count(*) into actual_count from public.product_categories where id = category_id;
   perform pg_temp.assert_true(actual_count = expected_category_rows, format('%s product_categories select mismatch', label));
@@ -426,7 +431,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -441,7 +446,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -456,7 +461,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -501,7 +506,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
