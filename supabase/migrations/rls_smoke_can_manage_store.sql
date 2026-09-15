@@ -80,13 +80,13 @@ begin
   perform pg_temp.assert_true(actual_count = expected_product_rows, format('%s product select mismatch', label));
   update public.products set price = price + 1 where id = product_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_product_rows, format('%s product update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_product_rows ELSE 0 END, format('%s product update mismatch', label));
 
   select count(*) into actual_count from public.site_settings where id = setting_id;
   perform pg_temp.assert_true(actual_count = expected_setting_rows, format('%s site_settings select mismatch', label));
   update public.site_settings set value = jsonb_build_object('last_actor', label) where id = setting_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_setting_rows, format('%s site_settings update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_setting_rows ELSE 0 END, format('%s site_settings update mismatch', label));
 
   select count(*) into actual_count from public.orders where id = order_id;
   perform pg_temp.assert_true(actual_count = expected_order_rows, format('%s orders select mismatch', label));
@@ -103,19 +103,19 @@ begin
   perform pg_temp.assert_true(actual_count = expected_category_rows, format('%s product_categories select mismatch', label));
   update public.product_categories set sort_order = sort_order + 1 where id = category_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_category_rows, format('%s product_categories update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_category_rows ELSE 0 END, format('%s product_categories update mismatch', label));
 
   select count(*) into actual_count from public.product_types where id = type_id;
   perform pg_temp.assert_true(actual_count = expected_type_rows, format('%s product_types select mismatch', label));
   update public.product_types set sort_order = sort_order + 1 where id = type_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_type_rows, format('%s product_types update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_type_rows ELSE 0 END, format('%s product_types update mismatch', label));
 
   select count(*) into actual_count from public.store_themes where id = theme_id;
   perform pg_temp.assert_true(actual_count = expected_theme_rows, format('%s store_themes select mismatch', label));
   update public.store_themes set preset_id = label where id = theme_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_theme_rows, format('%s store_themes update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_theme_rows ELSE 0 END, format('%s store_themes update mismatch', label));
 
   select count(*) into actual_count from public.store_invoices where id = invoice_id;
   perform pg_temp.assert_true(actual_count = expected_invoice_rows, format('%s store_invoices select mismatch', label));
@@ -473,15 +473,15 @@ select pg_temp.assert_actor_access(
   '10000000-0000-4000-8000-000000000004',
   'viewer',
   false,
-  0,
-  0,
+  1,
+  1,
   1,
   0,
+  1,
+  1,
+  1,
   0,
-  0,
-  0,
-  0,
-  1
+  0
 );
 
 select pg_temp.assert_actor_access(
