@@ -119,6 +119,11 @@
       "name": "atomic_invite_claim_authority_323",
       "classification": "pending-production",
       "reason": "#323 release-blocker migration is intentionally pending production deployment; deploy transactionally with the claim-invite-code Edge Function after lane validation."
+    },
+    {
+      "name": "runtime7_authority_and_storefront_acl_regression_fix",
+      "classification": "pending-production",
+      "reason": "Runtime 7 full-chain smoke follow-up: fixes NULL server-authority classification and restores least-privilege published/store-team stores SELECT composition before governed production rollout."
     }
   ]
 }

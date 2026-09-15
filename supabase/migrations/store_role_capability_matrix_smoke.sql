@@ -61,6 +61,11 @@ values
   ('21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001', 'RBAC Store', 'rbac-smoke-store', false),
   ('21000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000005', 'Other RBAC Store', 'rbac-smoke-other-store', false);
 
+insert into public.store_subscriptions (store_id, plan_id, status)
+values
+  ('21000000-0000-4000-8000-000000000001', 'pro', 'active'),
+  ('21000000-0000-4000-8000-000000000002', 'pro', 'active');
+
 insert into public.store_memberships (store_id, user_id, role, invited_by)
 values
   ('21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001', 'owner', '11000000-0000-4000-8000-000000000001'),

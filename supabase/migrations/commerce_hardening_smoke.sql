@@ -286,10 +286,12 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'coupon_codes'
-      AND policyname = 'Store managers can view store coupons'
+      AND policyname = 'Store team can view store coupons'
       AND cmd = 'SELECT'
+      AND 'authenticated' = ANY(roles)
+      AND qual ILIKE '%can_view_store%'
   ) THEN
-    RAISE EXCEPTION 'merchant coupon SELECT policy is missing';
+    RAISE EXCEPTION 'store-team coupon SELECT policy is missing or not viewer-aware';
   END IF;
 END;
 $$;

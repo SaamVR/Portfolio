@@ -266,10 +266,12 @@ values
 insert into public.user_roles (user_id, role)
 values ('10000000-0000-4000-8000-000000000006', 'admin');
 
-insert into public.cms_plans (id, name, description, monthly_price, currency_code, is_active, sort_order)
+insert into public.cms_plans (
+  id, name, description, monthly_price, currency_code, is_active, sort_order, feature_flags
+)
 values
-  ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999),
-  ('rls-smoke-upgrade-plan', 'RLS Smoke Upgrade Plan', 'Unauthorized upgrade target.', 1000, 'BDT', true, 1000)
+  ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999, '{"staff":5}'::jsonb),
+  ('rls-smoke-upgrade-plan', 'RLS Smoke Upgrade Plan', 'Unauthorized upgrade target.', 1000, 'BDT', true, 1000, '{"staff":5}'::jsonb)
 on conflict (id) do nothing;
 
 insert into public.stores (
@@ -292,10 +294,14 @@ values (
   'Unpublished store used for tenant RLS checks.',
   'BDT',
   'en-BD',
-  'basic',
+  'rls-smoke-plan',
   'general',
   false
 );
+
+insert into public.store_subscriptions (store_id, plan_id, status)
+values ('20000000-0000-4000-8000-000000000001', 'rls-smoke-plan', 'trialing')
+on conflict (store_id) do update set plan_id = excluded.plan_id;
 
 insert into public.store_memberships (store_id, user_id, role, invited_by)
 values
@@ -303,10 +309,6 @@ values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'admin', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'editor', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004', 'viewer', '10000000-0000-4000-8000-000000000001');
-
-insert into public.store_subscriptions (store_id, plan_id, status)
-values ('20000000-0000-4000-8000-000000000001', 'rls-smoke-plan', 'trialing')
-on conflict (store_id) do update set plan_id = excluded.plan_id;
 
 insert into public.products (
   id,
