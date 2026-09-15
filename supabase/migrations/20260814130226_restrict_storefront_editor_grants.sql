@@ -21,8 +21,15 @@ GRANT SELECT, INSERT ON public.storefront_releases TO authenticated;
 
 GRANT ALL ON public.storefront_releases TO service_role;
 
-REVOKE ALL ON public.store_preview_tokens FROM PUBLIC, anon, authenticated;
-
-GRANT SELECT, INSERT, DELETE ON public.store_preview_tokens TO authenticated;
-
-GRANT ALL ON public.store_preview_tokens TO service_role;
+-- Production already had this relation when the historical migration ran, while
+-- the reconstructed repository creates it later in 20260820084000. Preserve the
+-- historical grants when the relation exists without breaking a clean bootstrap.
+DO $$
+BEGIN
+  IF to_regclass('public.store_preview_tokens') IS NOT NULL THEN
+    REVOKE ALL ON public.store_preview_tokens FROM PUBLIC, anon, authenticated;
+    GRANT SELECT, INSERT, DELETE ON public.store_preview_tokens TO authenticated;
+    GRANT ALL ON public.store_preview_tokens TO service_role;
+  END IF;
+END
+$$;
