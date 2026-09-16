@@ -157,6 +157,7 @@ interface DraftState {
     enabled: boolean;
     primaryZoneLabel: string;
     secondaryZoneLabel: string;
+    primaryZoneAliases: string[];
     deliveryFee: number;
     deliveryFeeOutside: number;
     freeThreshold: number;
@@ -383,6 +384,38 @@ function BlankBuilderBlockPreview({
       );
     }
 
+    if (variantId === "poster") {
+      return (
+        <BlankBuilderPreviewShell tone="primary">
+          <div className="relative min-h-28 overflow-hidden rounded-md bg-primary/15 p-3">
+            <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 via-transparent to-transparent" />
+            <div className="relative flex min-h-24 flex-col justify-end">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+              <p className="mt-1 line-clamp-2 max-w-[80%] text-[12px] font-black leading-4 text-foreground">{heroTitle}</p>
+              <div className="mt-2 inline-flex h-5 w-fit items-center bg-foreground px-2 text-[9px] font-medium text-background">Shop the drop</div>
+            </div>
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
+    if (variantId === "collection-spotlight") {
+      return (
+        <BlankBuilderPreviewShell tone="primary">
+          <div className="grid grid-cols-[1.25fr_0.75fr] gap-2">
+            <div className="flex min-h-28 items-end justify-end rounded-md border border-dashed border-primary/20 bg-primary/15 p-2 text-[9px] text-primary/70">
+              {hasHeroMedia ? "Collection media" : "Add image"}
+            </div>
+            <div className="flex flex-col justify-center rounded-md bg-background p-2">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-primary/80">{heroTagline}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-foreground">{heroTitle}</p>
+              <p className="mt-1 line-clamp-2 text-[9px] leading-3 text-muted-foreground">{heroSubtitle}</p>
+            </div>
+          </div>
+        </BlankBuilderPreviewShell>
+      );
+    }
+
     return (
       <BlankBuilderPreviewShell tone="primary">
         <div className="rounded-md bg-background p-3">
@@ -591,6 +624,7 @@ function getDefaultDeliverySettings(templateSeed: StorefrontTemplateSeedDefiniti
     enabled: Boolean(delivery.enabled),
     primaryZoneLabel: typeof delivery.primary_zone_label === "string" ? delivery.primary_zone_label : "Primary delivery zone",
     secondaryZoneLabel: typeof delivery.secondary_zone_label === "string" ? delivery.secondary_zone_label : "Extended delivery zone",
+    primaryZoneAliases: [],
     deliveryFee: typeof delivery.delivery_fee === "number" ? delivery.delivery_fee : 80,
     deliveryFeeOutside: typeof delivery.delivery_fee_outside === "number" ? delivery.delivery_fee_outside : 150,
     freeThreshold: typeof delivery.free_threshold === "number" ? delivery.free_threshold : 2000,
@@ -1575,6 +1609,7 @@ export default function OnboardingWizard() {
 
   const filteredTemplateOptions = useMemo(() => {
     return storefrontTemplateOptions.filter((option) => {
+      if (option.adminOnly) return false;
       const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
       if (templateCategoryFilter !== "all") {
         if (templateCategoryFilter === "commerce" && seedDefinition.businessFamily !== "commerce") return false;
@@ -1635,7 +1670,7 @@ export default function OnboardingWizard() {
 
   const templateOptionGroups = useMemo(() => {
     const grouped = new Map<string, typeof storefrontTemplateOptions>();
-    for (const option of storefrontTemplateOptions) {
+    for (const option of storefrontTemplateOptions.filter((item) => !item.adminOnly)) {
       const seedDefinition = getStorefrontTemplateSeedDefinition(option.value);
       const existing = grouped.get(seedDefinition.group) ?? [];
       existing.push(option);
@@ -1843,6 +1878,9 @@ export default function OnboardingWizard() {
             enabled: Boolean(deliverySetting.enabled),
             primaryZoneLabel: typeof deliverySetting.primary_zone_label === "string" ? deliverySetting.primary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).primaryZoneLabel,
             secondaryZoneLabel: typeof deliverySetting.secondary_zone_label === "string" ? deliverySetting.secondary_zone_label : getDefaultDeliverySettings(safeTemplateSeed).secondaryZoneLabel,
+            primaryZoneAliases: Array.isArray(deliverySetting.primary_zone_aliases)
+              ? deliverySetting.primary_zone_aliases.map((value) => String(value).trim()).filter(Boolean)
+              : [],
             deliveryFee: typeof deliverySetting.delivery_fee === "number" ? deliverySetting.delivery_fee : getDefaultDeliverySettings(safeTemplateSeed).deliveryFee,
             deliveryFeeOutside: typeof deliverySetting.delivery_fee_outside === "number" ? deliverySetting.delivery_fee_outside : getDefaultDeliverySettings(safeTemplateSeed).deliveryFeeOutside,
             freeThreshold: typeof deliverySetting.free_threshold === "number" ? deliverySetting.free_threshold : getDefaultDeliverySettings(safeTemplateSeed).freeThreshold,
@@ -2334,6 +2372,7 @@ export default function OnboardingWizard() {
           enabled: draft.delivery.enabled,
           primary_zone_label: draft.delivery.primaryZoneLabel,
           secondary_zone_label: draft.delivery.secondaryZoneLabel,
+          primary_zone_aliases: draft.delivery.primaryZoneAliases,
           delivery_fee: draft.delivery.deliveryFee,
           delivery_fee_outside: draft.delivery.deliveryFeeOutside,
           free_threshold: draft.delivery.freeThreshold,
@@ -2975,7 +3014,7 @@ export default function OnboardingWizard() {
                       <LayoutTemplate className="h-5 w-5 text-primary" /> Store Templates
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Browse {storefrontTemplateOptions.length} specialized store templates designed for high merchant conversion.
+                      Browse {storefrontTemplateOptions.filter((option) => !option.adminOnly).length} specialized store templates designed for high merchant conversion.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -3552,6 +3591,17 @@ export default function OnboardingWizard() {
                           <div className="grid gap-2">
                             <Label>Extended Zone</Label>
                             <Input value={draft.delivery.secondaryZoneLabel} onChange={(event) => updateDelivery({ secondaryZoneLabel: event.target.value })} />
+                          </div>
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label>Primary Zone Cities</Label>
+                            <Input
+                              value={draft.delivery.primaryZoneAliases.join(", ")}
+                              onChange={(event) => updateDelivery({
+                                primaryZoneAliases: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                              })}
+                              placeholder="Dhaka, ঢাকা"
+                            />
+                            <p className="text-xs text-muted-foreground">Only explicitly listed city names receive the primary rate; all others use the extended rate.</p>
                           </div>
                         </div>
                       </div>

@@ -10,13 +10,15 @@ import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-r
 import { getCmsSupabaseServerClient } from "@/lib/cms/server-client";
 import { getCmsRootDomain, getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { unstable_cache } from "next/cache";
-import { resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
+import { isStorefrontTemplateId, resolveStorefrontTemplateId, resolveStorefrontTemplateProfile } from "@/lib/cms/storefront-templates";
 import { ensureRequiredStoreFlowPagesForTemplate, instantiateStorePagesFromTemplate } from "@/lib/cms/template-pages";
 import { sanitizeStorePage } from "@/lib/cms/validation";
 import { resolveStorefrontTemplateSeed, type StorefrontTemplateSeedDefinition } from "@/lib/cms/storefront-template-seeds";
+import { buildTemplatePreviewStore } from "@/lib/cms/storefront-preview";
 import { fallbackThemePackages, resolveThemePackageById, loadThemePackages, type ThemePackageDefinition } from "@/lib/theme-packages";
 import { resolveStorePlanState } from "@/lib/billing/plans";
 import { STOREFRONT_TAXONOMY_SETTING_KEY } from "@/lib/storefront-taxonomy-snapshot";
+import { DEFAULT_STORE_THEME_DENSITY_SCALE, DEFAULT_STORE_THEME_RADIUS_SCALE, parseStoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 
 const STORE_SETTING_KEYS_TO_PRELOAD = [
   "announcement_bar",
@@ -69,12 +71,22 @@ interface StoreThemeRow {
   typography: Record<string, unknown> | null;
   components: Record<string, unknown> | null;
   colors: Record<string, string> | null;
+  aesthetic?: string | null;
+  radius_scale?: number | null;
+  density_scale?: number | null;
+  effects?: Record<string, unknown> | null;
+  palette_source?: string | null;
+  palette_seed?: string | null;
+  schema_version?: number | null;
+  overrides?: Record<string, unknown> | null;
   custom_css?: string | null;
   resolved_tokens?: {
     light?: Record<string, string>;
     dark?: Record<string, string>;
   } | null;
 }
+
+
 
 interface StoreBusinessProfileRow {
   template_id: string | null;
@@ -103,6 +115,13 @@ interface StoreBlockRow {
   props: Record<string, unknown> | null;
   sort_order: number | null;
   is_visible: boolean | null;
+  entrance_animation?: StorePageBlock["entranceAnimation"] | null;
+  hover_effect?: StorePageBlock["hoverEffect"] | null;
+  effect_override?: boolean | null;
+  layout_variant?: string | null;
+  variant_options?: unknown;
+  custom_html?: string | null;
+  custom_css?: string | null;
 }
 
 interface StorefrontTaxonomyRow {
@@ -143,6 +162,17 @@ function buildStorefrontContentTags(storeId: string, requestedPageSlug?: string 
 
 export async function getDefaultStore(): Promise<Store> {
   return createDefaultStore();
+}
+
+export function resolveExplicitTemplatePreviewStore(
+  slug: string,
+  enabled = process.env.STOREFRONT_TEMPLATE_PREVIEW_MODE === "1",
+): Store | null {
+  if (!enabled || !isStorefrontTemplateId(slug)) {
+    return null;
+  }
+
+  return buildTemplatePreviewStore(slug);
 }
 
 export function isLocalStorefrontHostname(hostname?: string | null) {
@@ -268,6 +298,13 @@ export function buildResolvedStoreFromRecords(
                 props: block.props ?? {},
                 sortOrder: block.sort_order ?? 0,
                 isVisible: block.is_visible ?? true,
+                entranceAnimation: block.entrance_animation ?? undefined,
+                hoverEffect: block.hover_effect ?? undefined,
+                effectOverride: block.effect_override ?? undefined,
+                layoutVariant: block.layout_variant ?? undefined,
+                variantOptions: block.variant_options ?? undefined,
+                customHtml: block.custom_html ?? undefined,
+                customCss: block.custom_css ?? undefined,
               }));
 
             if (persistedBlocks.length > 0) {
@@ -315,6 +352,14 @@ export function buildResolvedStoreFromRecords(
       headingFont: typeof theme?.typography?.headingFont === "string" ? theme.typography.headingFont : (fallbackTheme.tokens.typography.headingFont ?? seedDefinition.defaultTheme.headingFont),
       bodyFont: typeof theme?.typography?.bodyFont === "string" ? theme.typography.bodyFont : (fallbackTheme.tokens.typography.bodyFont ?? seedDefinition.defaultTheme.bodyFont),
       borderRadius: typeof theme?.components?.borderRadius === "string" ? theme.components.borderRadius : (fallbackTheme.tokens.components.borderRadius ?? seedDefinition.defaultTheme.borderRadius),
+      radiusScale: typeof theme?.radius_scale === "number" ? theme.radius_scale : (seedDefinition.defaultTheme.radiusScale ?? DEFAULT_STORE_THEME_RADIUS_SCALE),
+      densityScale: typeof theme?.density_scale === "number" ? theme.density_scale : (seedDefinition.defaultTheme.densityScale ?? DEFAULT_STORE_THEME_DENSITY_SCALE),
+      sectionSpacing: parseStoreSectionSpacing(theme?.overrides?.sectionSpacing ?? theme?.components?.sectionSpacing) ?? seedDefinition.defaultTheme.sectionSpacing,
+      aesthetic: typeof theme?.aesthetic === "string" ? theme.aesthetic as Store["theme"]["aesthetic"] : (typeof theme?.components?.aesthetic === "string" ? theme.components.aesthetic as Store["theme"]["aesthetic"] : seedDefinition.defaultTheme.aesthetic),
+      effects: theme?.effects && typeof theme.effects === "object" ? theme.effects as Store["theme"]["effects"] : (theme?.components?.effects && typeof theme.components.effects === "object" ? theme.components.effects as Store["theme"]["effects"] : seedDefinition.defaultTheme.effects),
+      paletteSource: theme?.palette_source === "manual" || theme?.palette_source === "generated" ? theme.palette_source : seedDefinition.defaultTheme.paletteSource,
+      paletteSeed: theme?.palette_seed ?? seedDefinition.defaultTheme.paletteSeed,
+      schemaVersion: theme?.schema_version ?? seedDefinition.defaultTheme.schemaVersion ?? 1,
       customCssVars: theme?.colors ?? theme?.resolved_tokens?.[theme?.mode ?? seedDefinition.defaultTheme.mode] ?? fallbackTheme.tokens[theme?.mode ?? seedDefinition.defaultTheme.mode],
       customCss: theme?.custom_css ?? fallbackTheme.customCss,
     },
@@ -440,6 +485,11 @@ export async function validatePreviewToken(storeId: string, previewToken?: strin
 }
 
 export async function getStoreBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const explicitTemplatePreview = resolveExplicitTemplatePreviewStore(slug);
+  if (explicitTemplatePreview) {
+    return explicitTemplatePreview;
+  }
+
   const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
   if (!previewToken) {
     return getStoreBySlugCached(slug, requestedPageSlug);
@@ -512,7 +562,7 @@ async function loadStoreResolverCoreRecords(storeId: string) {
       .maybeSingle(),
     supabase
       .from("store_themes")
-      .select("preset_id, theme_package_id, mode, typography, components, colors, custom_css, resolved_tokens")
+      .select("preset_id, theme_package_id, mode, typography, components, colors, aesthetic, radius_scale, density_scale, effects, palette_source, palette_seed, schema_version, overrides, custom_css, resolved_tokens")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
@@ -590,7 +640,7 @@ async function getStoreByIdUncached(storeId: string, options?: StoreResolverOpti
     loadStoreResolverCoreRecords(storeId),
     supabase
       .from("store_page_blocks")
-      .select("id, page_id, block_type, props, sort_order, is_visible")
+      .select("id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css")
       .eq("store_id", storeId)
       .in("page_id", pageIdsToLoad.length > 0 ? pageIdsToLoad : ["00000000-0000-0000-0000-000000000000"]),
   ]);
@@ -642,6 +692,11 @@ async function getStoreShellByIdUncached(storeId: string): Promise<Store | null>
 }
 
 export async function getStoreShellBySlug(slug: string, previewToken?: string | null, options?: StoreResolverOptions): Promise<Store | null> {
+  const explicitTemplatePreview = resolveExplicitTemplatePreviewStore(slug);
+  if (explicitTemplatePreview) {
+    return explicitTemplatePreview;
+  }
+
   const requestedPageSlug = normalizeRequestedPageSlug(options?.requestedPageSlug);
   if (!previewToken) {
     return getStoreShellBySlugCached(slug, requestedPageSlug);

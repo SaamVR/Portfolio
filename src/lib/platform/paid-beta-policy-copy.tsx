@@ -77,7 +77,7 @@ export function buildBindingPrivacySections({ siteName }: Identity): PolicySecti
     },
     {
       title: "Authentication",
-      body: <><p>{siteName} uses Supabase authentication and may use Google/Firebase authentication flows where enabled.</p><p>Authentication providers process the information required to perform their respective authentication services under their own applicable terms and privacy practices.</p></>,
+      body: <><p>{siteName} uses Supabase authentication and may use Google authentication flows where enabled.</p><p>Authentication providers process the information required to perform their respective authentication services under their own applicable terms and privacy practices.</p></>,
     },
     {
       title: "How information is used",
@@ -89,7 +89,7 @@ export function buildBindingPrivacySections({ siteName }: Identity): PolicySecti
     },
     {
       title: "Service providers and infrastructure",
-      body: <><p>{siteName} currently uses infrastructure or services that can include:</p><ul className="list-disc space-y-2 pl-6"><li><strong>Supabase</strong> for database, authentication, and backend functions;</li><li><strong>Vercel</strong> for application hosting and delivery;</li><li><strong>Cloudinary</strong> for media workflows where used;</li><li><strong>Google/Firebase</strong> for authentication functionality where enabled;</li><li>email-delivery services where configured;</li><li>bKash or other payment services when the relevant payment workflow is used; and</li><li>courier, messaging, domain, analytics, or other providers where the relevant feature is configured.</li></ul><p>A provider named or supported by the platform should not be assumed to receive information from every merchant. Provider involvement depends on the features actually configured or used.</p></>,
+      body: <><p>{siteName} currently uses infrastructure or services that can include:</p><ul className="list-disc space-y-2 pl-6"><li><strong>Supabase</strong> for database, authentication, and backend functions;</li><li><strong>Vercel</strong> for application hosting and delivery;</li><li><strong>Cloudinary</strong> for media workflows where used;</li><li><strong>Google</strong> for authentication functionality where enabled;</li><li>email-delivery services where configured;</li><li>bKash or other payment services when the relevant payment workflow is used; and</li><li>courier, messaging, domain, analytics, or other providers where the relevant feature is configured.</li></ul><p>A provider named or supported by the platform should not be assumed to receive information from every merchant. Provider involvement depends on the features actually configured or used.</p></>,
     },
     {
       title: "Browser storage, cookies, and analytics",

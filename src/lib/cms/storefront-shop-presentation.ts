@@ -58,6 +58,7 @@ export function resolveShopPageVariant({
   }
 
   switch (templateId) {
+    case "threads":
     case "fashion":
       return "fashion";
     case "beauty":

@@ -4,6 +4,8 @@ export interface BkashOrderPaymentContext {
   status: string;
   payment_method: string;
   notes?: string | null;
+  reservation_state?: string | null;
+  reservation_expires_at?: string | null;
 }
 
 export interface BkashProviderPaymentResult {
@@ -22,7 +24,7 @@ function readRequiredString(value: unknown, field: string) {
   return value.trim();
 }
 
-export function assertBkashOrderAwaitingPayment(
+export function assertBkashOrderPaymentMethod(
   order: BkashOrderPaymentContext | null | undefined,
 ) {
   if (!order) {
@@ -32,9 +34,23 @@ export function assertBkashOrderAwaitingPayment(
   if (order.payment_method !== "bkash") {
     throw new Error("Order is not configured for bKash payment");
   }
+}
 
-  if (order.status !== "pending") {
+export function assertBkashOrderAwaitingPayment(
+  order: BkashOrderPaymentContext | null | undefined,
+) {
+  assertBkashOrderPaymentMethod(order);
+
+  if (order!.status !== "pending") {
     throw new Error("Order is no longer awaiting bKash payment");
+  }
+
+  if (order!.reservation_state !== "reserved") {
+    throw new Error("Order does not have an active bKash reservation");
+  }
+
+  if (!order!.reservation_expires_at || Date.parse(order!.reservation_expires_at) <= Date.now()) {
+    throw new Error("Order bKash reservation has expired");
   }
 }
 

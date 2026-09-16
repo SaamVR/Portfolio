@@ -61,6 +61,9 @@ interface Payload {
   storeName?: string;
   storeSlug?: string;
   metadata?: Record<string, unknown>;
+  couponCode?: string | null;
+  cartValue?: number;
+  itemCount?: number;
 
   order_id?: string;
   store_id?: string;
@@ -81,6 +84,15 @@ interface DispatchResult {
   deliveryStatus?: "accepted" | "delivered" | "bounced" | "deferred" | "unknown";
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const templates: Record<string, (data: Payload) => { subject: string; html: string }> = {
   welcome: (data) => ({
     subject: `Welcome to ${data.storeName}`,
@@ -98,6 +110,26 @@ const templates: Record<string, (data: Payload) => { subject: string; html: stri
     subject: `We miss you at ${data.storeName}`,
     html: `<p>Hi there,</p><p>We noticed you haven't updated <strong>${data.storeName}</strong> recently.</p>`,
   }),
+  "cart-recovery": (data) => {
+    const storeName = escapeHtml(data.storeName || "this store");
+    const customerName = escapeHtml(data.customer_name || "Customer");
+    const couponCode = typeof data.couponCode === "string" && data.couponCode.trim()
+      ? escapeHtml(data.couponCode.trim())
+      : null;
+    const itemCount = Number.isFinite(Number(data.itemCount)) ? Math.max(0, Math.round(Number(data.itemCount))) : 0;
+    const cartValue = Number.isFinite(Number(data.cartValue)) ? Math.max(0, Math.round(Number(data.cartValue))) : 0;
+    const cartSummary = itemCount > 0
+      ? `<p>Your cart has ${itemCount} item${itemCount === 1 ? "" : "s"}${cartValue > 0 ? ` worth BDT ${cartValue.toLocaleString("en-BD")}` : ""}.</p>`
+      : "<p>Your cart is still waiting for you.</p>";
+    const couponLine = couponCode
+      ? `<p>If you still want these items, use coupon <strong>${couponCode}</strong> at checkout. Eligibility is rechecked when you order.</p>`
+      : "";
+
+    return {
+      subject: "Your cart is still waiting",
+      html: `<p>Hi ${customerName},</p><p>You left items at <strong>${storeName}</strong>.</p>${cartSummary}${couponLine}`,
+    };
+  },
   "deletion-notice": (data) => ({
     subject: `Deletion notice for ${data.storeName}`,
     html: `<p>Hi there,</p><p>Your store <strong>${data.storeName}</strong> is scheduled for deletion soon due to inactivity.</p>`,

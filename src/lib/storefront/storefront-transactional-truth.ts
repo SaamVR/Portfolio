@@ -1,4 +1,5 @@
 import type { Product } from "@/data/products";
+import { getActiveCommercialOptions } from "@/lib/commerce/product-commercial-options";
 import type { ProductDetailVariant } from "@/lib/cms/storefront-product-presentation";
 import { isPreviewCatalogStore } from "@/lib/storefront/storefront-product-truth";
 
@@ -10,6 +11,12 @@ function metricStrings(product: Product, keys: string[]) {
     if (values?.length) return values;
   }
   return [];
+}
+
+export function hasAuthoritativeSubscriptionDetailData(product: Product) {
+  const options = getActiveCommercialOptions(product.commercialOptions);
+  return options.some((option) => option.kind === "plan")
+    && options.some((option) => option.kind === "duration");
 }
 
 export function hasAuthoritativeDigitalDetailData(product: Product) {
@@ -41,9 +48,5 @@ export function shouldUseTransactionalDetailVariant({
     return hasAuthoritativeDigitalDetailData(product);
   }
 
-  // Subscription detail currently reads plan/duration variants from template seed
-  // metadata. Until authoritative merchant subscription variants are modeled on the
-  // product itself, real stores fall back to the generic detail renderer so the
-  // frontend cannot invent plans, durations, or prices.
-  return false;
+  return hasAuthoritativeSubscriptionDetailData(product);
 }

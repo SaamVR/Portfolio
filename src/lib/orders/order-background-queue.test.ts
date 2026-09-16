@@ -22,11 +22,29 @@ function buildCreatedArgs() {
       total: 1200,
       items: [],
     },
-    purchaseEventRows: [],
+    purchaseEventRows: [
+      {
+        store_id: "store-1",
+        order_id: "order-1",
+        event_name: "purchase",
+        value: 1200,
+        metadata: { payment_method: "bkash" },
+      },
+      {
+        store_id: "store-1",
+        order_id: "order-1",
+        product_id: "product-1",
+        event_name: "purchase_item",
+        value: 1200,
+        metadata: { productName: "Example" },
+      },
+    ],
     recoveryOrderId: "order-1",
     revenueEventRow: {
       order_id: "order-1",
       store_id: "store-1",
+      event_type: "sale",
+      net_amount: 1200,
     },
     recoveredRevenue: 1200,
     storeId: "store-1",
@@ -45,7 +63,7 @@ function buildCancelledArgs() {
 }
 
 describe("order background queue dispatcher", () => {
-  it("falls back to inline execution when queue transport is disabled", async () => {
+  it("falls back to inline execution with truthful order-created semantics", async () => {
     const createdRuns: unknown[] = [];
     const originalMode = orderBackgroundQueueDeps.getTransportMode;
     const originalSend = orderBackgroundQueueDeps.send;
@@ -65,6 +83,17 @@ describe("order background queue dispatcher", () => {
 
       expect(result.mode).toBe("inline");
       expect(createdRuns).toHaveLength(1);
+      const run = createdRuns[0] as ReturnType<typeof buildCreatedArgs>;
+      expect(run.purchaseEventRows.map((row) => row.event_name)).toEqual([
+        "order_created",
+        "order_created_item",
+      ]);
+      expect(run.recoveredRevenue).toBe(0);
+      expect(run.revenueEventRow).toEqual({
+        store_id: "store-1",
+        order_id: "order-1",
+        lifecycle_truth: "order_created_unsettled",
+      });
     } finally {
       orderBackgroundQueueDeps.getTransportMode = originalMode;
       orderBackgroundQueueDeps.send = originalSend;
@@ -72,7 +101,45 @@ describe("order background queue dispatcher", () => {
     }
   });
 
-  it("publishes a queue message when queue transport is enabled", async () => {
+  it("publishes truthful order-created payloads when queue transport is enabled", async () => {
+    const sentMessages: Array<{ topic: string; message: OrderBackgroundQueueMessage }> = [];
+    const originalMode = orderBackgroundQueueDeps.getTransportMode;
+    const originalSend = orderBackgroundQueueDeps.send;
+
+    orderBackgroundQueueDeps.getTransportMode = () => "queue";
+    orderBackgroundQueueDeps.send = (async (topic, message, options) => {
+      void options;
+      sentMessages.push({ topic, message: message as OrderBackgroundQueueMessage });
+      return { messageId: "msg_1" };
+    }) as typeof orderBackgroundQueueDeps.send;
+
+    try {
+      const result = await dispatchOrderCreatedBackgroundJobs(buildCreatedArgs());
+
+      expect(result.mode).toBe("queue");
+      expect(sentMessages).toHaveLength(1);
+      expect(sentMessages[0]?.topic).toBe("order-background-events");
+      expect(sentMessages[0]?.message.type).toBe("order_created");
+      if (sentMessages[0]?.message.type !== "order_created") {
+        throw new Error("Expected order_created queue message");
+      }
+      expect(sentMessages[0].message.payload.purchaseEventRows.map((row) => (row as { event_name?: string }).event_name)).toEqual([
+        "order_created",
+        "order_created_item",
+      ]);
+      expect(sentMessages[0].message.payload.recoveredRevenue).toBe(0);
+      expect(sentMessages[0].message.payload.revenueEventRow).toEqual({
+        store_id: "store-1",
+        order_id: "order-1",
+        lifecycle_truth: "order_created_unsettled",
+      });
+    } finally {
+      orderBackgroundQueueDeps.getTransportMode = originalMode;
+      orderBackgroundQueueDeps.send = originalSend;
+    }
+  });
+
+  it("publishes a cancellation queue message when queue transport is enabled", async () => {
     const sentMessages: Array<{ topic: string; message: OrderBackgroundQueueMessage }> = [];
     const originalMode = orderBackgroundQueueDeps.getTransportMode;
     const originalSend = orderBackgroundQueueDeps.send;
@@ -105,7 +172,7 @@ describe("order background queue dispatcher", () => {
     orderBackgroundQueueDeps.getSupabaseAdminClient = () => ({ kind: "queue-admin" }) as never;
     orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs = (async (args) => {
       processed.push(args);
-      return Promise.allSettled([Promise.resolve()]);
+      return Promise.allSettled([]);
     }) as typeof orderBackgroundQueueDeps.runOrderCancelledBackgroundJobs;
 
     try {

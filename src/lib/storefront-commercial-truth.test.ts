@@ -33,7 +33,36 @@ test("storefront cards do not synthesize ratings, badges, MOQ, rewards, or cart 
   }
 
   assert.match(subscription, /Subscription pricing is not configured for this item yet\./);
-  assert.match(cart, /loyaltyEarnRate !== null/);
+  assert.equal(cart.includes("loyalty_settings"), false, "cart must not promise loyalty rewards before a ledger exists");
+  assert.equal(cart.includes("With this order"), false, "cart must not claim rewards will be earned");
+});
+
+
+
+test("loyalty stays fail-closed until earning and redemption are ledger-backed", () => {
+  const loyalty = source("src/views/admin/settings/LoyaltyTab.tsx");
+  const cart = source("src/components/CartDrawer.tsx");
+
+  assert.match(loyalty, /currently inactive/i);
+  assert.match(loyalty, /ledger-backed/i);
+  assert.equal(loyalty.includes("onCheckedChange"), false);
+  assert.equal(loyalty.includes("SaveButton settingKey"), false);
+  assert.equal(cart.includes("loyalty_settings"), false);
+});
+
+test("product reviews and related products require authoritative evidence", () => {
+  const reviews = source("src/components/ProductReviews.tsx");
+  const related = source("src/components/RelatedProducts.tsx");
+
+  for (const forbidden of ["generateSeededReviews", "-seeded-", "Seeded pseudo-random reviews"]) {
+    assert.equal(reviews.includes(forbidden), false, `product reviews must not synthesize social proof: ${forbidden}`);
+  }
+  assert.match(reviews, /const allReviews = realReviews/);
+
+  for (const forbidden of ["BUNDLE & SAVE 10%", "Frequently Bought Together"]) {
+    assert.equal(related.includes(forbidden), false, `related products must not synthesize promotions: ${forbidden}`);
+  }
+  assert.match(related, /You may also like/);
 });
 
 test("PDP summary rating omits unsupported social proof", () => {
@@ -69,4 +98,13 @@ test("testimonials and trust blocks never manufacture social proof", () => {
   assert.match(blocks, /if \(displayBadges.length === 0\) return null/);
   assert.match(blocks, /rawRating >= 1 && rawRating <= 5/);
   assert.match(blocks, /review\.name \? <p/);
+});
+
+
+test("before/after evidence requires two distinct configured images", () => {
+  const blocks = source("src/components/storefront/StorefrontBlockRenderer.tsx");
+
+  assert.equal(blocks.includes("displayImages[1] ?? displayImages[0]"), false);
+  assert.match(blocks, /layoutVariant === "before-after" && displayImages\.length >= 2 && displayImages\[0\] !== displayImages\[1\]/);
+  assert.match(blocks, /title \|\| "Gallery"/);
 });

@@ -1,22 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateCloudinarySrcSet } from "@/lib/cms/cloudinary-responsive";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 interface ProductImageGalleryProps {
   images: string[];
   alt: string;
   aspectRatio?: "square" | "portrait" | "landscape";
+  presentation?: "default" | "fashion";
 }
 
 const ProductImageGallery = ({
   images,
   alt,
+  presentation = "default",
 }: ProductImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const expandButtonRef = useRef<HTMLButtonElement>(null);
 
   const safeImages = Array.isArray(images) && images.length > 0 ? images : ["/placeholder.svg"];
 
@@ -29,17 +33,23 @@ const ProductImageGallery = ({
   };
 
   const activeImage = safeImages[activeIndex];
+  const isFashion = presentation === "fashion";
 
   return (
     <div className="space-y-4">
-      {/* Main Image Container */}
-      <div className="group relative w-full overflow-hidden rounded-3xl border border-border/80 bg-slate-50 dark:bg-card/40 p-4 sm:p-6 flex items-center justify-center min-h-[320px] max-h-[460px] sm:max-h-[500px] aspect-square shadow-sm">
+      <div className={cn(
+        "group relative flex w-full items-center justify-center overflow-hidden border border-border/80",
+        isFashion
+          ? "aspect-[4/5] rounded-none bg-muted p-0 shadow-none"
+          : "aspect-square min-h-[320px] max-h-[460px] rounded-3xl bg-slate-50 p-4 shadow-sm dark:bg-card/40 sm:max-h-[500px] sm:p-6",
+      )}>
         {safeImages.map((src, i) => (
           <div
             key={`${src}-${i}`}
             className={cn(
-              "absolute inset-0 flex items-center justify-center p-4 sm:p-6 transition-opacity duration-300",
-              i === activeIndex ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+              "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+              isFashion ? "p-0" : "p-4 sm:p-6",
+              i === activeIndex ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0",
             )}
           >
             <img
@@ -48,19 +58,21 @@ const ProductImageGallery = ({
               sizes="(max-width: 768px) 100vw, 50vw"
               alt={`${alt} - image ${i + 1}`}
               loading={i === 0 ? "eager" : "lazy"}
-              className="max-h-full max-w-full h-auto w-auto object-contain rounded-2xl drop-shadow-sm transition-transform duration-300 group-hover:scale-[1.02]"
+              className={cn(
+                "transition-transform duration-300 group-hover:scale-[1.02]",
+                isFashion ? "h-full w-full object-cover" : "h-auto max-h-full w-auto max-w-full rounded-2xl object-contain drop-shadow-sm",
+              )}
             />
           </div>
         ))}
 
-        {/* Carousel Controls */}
         {safeImages.length > 1 && (
           <>
             <button
               type="button"
               onClick={handlePrev}
               aria-label="Previous image"
-              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border/80 bg-background/90 p-2.5 text-foreground shadow-md backdrop-blur-sm transition-all hover:scale-110 active:scale-95"
+              className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -68,7 +80,7 @@ const ProductImageGallery = ({
               type="button"
               onClick={handleNext}
               aria-label="Next image"
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border/80 bg-background/90 p-2.5 text-foreground shadow-md backdrop-blur-sm transition-all hover:scale-110 active:scale-95"
+              className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -78,86 +90,100 @@ const ProductImageGallery = ({
           </>
         )}
 
-        {/* Lightbox trigger */}
         <button
+          ref={expandButtonRef}
           type="button"
           onClick={() => setIsFullscreen(true)}
           aria-label="Expand image"
-          className="absolute right-3 top-3 z-20 rounded-full border border-border/80 bg-background/90 p-2 text-foreground opacity-0 shadow-md backdrop-blur-sm transition-all group-hover:opacity-100 hover:scale-105"
+          className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground opacity-100 shadow-md backdrop-blur-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
         >
           <Maximize2 className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Thumbnails list */}
       {safeImages.length > 1 && (
-        <div className="flex gap-3 overflow-x-auto py-1.5 px-0.5 hide-scrollbar">
+        <div className="hide-scrollbar flex gap-3 overflow-x-auto px-0.5 py-1.5">
           {safeImages.map((src, i) => (
             <button
               key={`thumb-${src}-${i}`}
               type="button"
               onClick={() => setActiveIndex(i)}
+              aria-label={`Show image ${i + 1} of ${safeImages.length}`}
+              aria-current={i === activeIndex ? "true" : undefined}
               className={cn(
-                "relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-2xl border-2 p-1 transition-all bg-secondary/20",
+                "relative h-16 w-16 flex-shrink-0 overflow-hidden border-2 bg-secondary/20 transition-all sm:h-20 sm:w-20",
+                isFashion ? "rounded-none p-0" : "rounded-2xl p-1",
                 i === activeIndex
-                  ? "border-primary ring-2 ring-primary/20 scale-105 shadow-sm"
-                  : "border-border/60 opacity-70 hover:opacity-100 hover:border-primary/50"
+                  ? "scale-105 border-primary shadow-sm ring-2 ring-primary/20"
+                  : "border-border/60 opacity-70 hover:border-primary/50 hover:opacity-100",
               )}
             >
               <img
                 src={src}
                 srcSet={src.startsWith("http") ? generateCloudinarySrcSet(src, [160, 240, 320]) : undefined}
                 sizes="80px"
-                alt={`${alt} thumbnail ${i + 1}`}
+                alt=""
                 loading="lazy"
-                className="h-full w-full object-contain rounded-xl"
+                className={cn("h-full w-full", isFashion ? "object-cover" : "rounded-xl object-contain")}
               />
             </button>
           ))}
         </div>
       )}
 
-      {/* Lightbox Modal */}
-      {isFullscreen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
-          onClick={() => setIsFullscreen(false)}
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent
+          className="left-0 top-0 z-[120] flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-0 bg-black/90 p-4 text-white shadow-none sm:rounded-none"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            expandButtonRef.current?.focus();
+          }}
+          onKeyDown={(event) => {
+            if (safeImages.length <= 1) return;
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              handlePrev();
+            } else if (event.key === "ArrowRight") {
+              event.preventDefault();
+              handleNext();
+            }
+          }}
         >
-          <button
-            type="button"
-            onClick={() => setIsFullscreen(false)}
-            className="absolute right-6 top-6 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
-          >
-            <X className="h-4 w-4" /> Close
-          </button>
+          <DialogTitle className="sr-only">{alt} image viewer</DialogTitle>
+          <DialogDescription className="sr-only">
+            Expanded product image {activeIndex + 1} of {safeImages.length}. Use Left and Right Arrow keys to move between images and Escape to close.
+          </DialogDescription>
+
           {safeImages.length > 1 && (
             <>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                className="absolute left-6 top-1/2 z-50 -translate-y-1/2 rounded-full border border-white/20 bg-black/60 p-3 text-white transition hover:bg-white/20"
+                onClick={handlePrev}
+                aria-label="Previous fullscreen image"
+                className="absolute left-4 top-1/2 z-50 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-6"
               >
                 <ChevronLeft className="h-6 w-6" />
               </button>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                className="absolute right-6 top-1/2 z-50 -translate-y-1/2 rounded-full border border-white/20 bg-black/60 p-3 text-white transition hover:bg-white/20"
+                onClick={handleNext}
+                aria-label="Next fullscreen image"
+                className="absolute right-4 top-1/2 z-50 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6"
               >
                 <ChevronRight className="h-6 w-6" />
               </button>
             </>
           )}
+
           <img
             src={activeImage}
             srcSet={activeImage.startsWith("http") ? generateCloudinarySrcSet(activeImage, [800, 1200, 1600]) : undefined}
             sizes="90vw"
-            alt={alt}
-            onClick={(e) => e.stopPropagation()}
+            alt={`${alt} - expanded image ${activeIndex + 1}`}
             className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
           />
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

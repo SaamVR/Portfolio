@@ -10,6 +10,9 @@ import RecentlyViewed from "@/components/RecentlyViewed";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { BlogHomepageWidget } from "@/components/storefront/blog/BlogHomepageWidget";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
+import { RichTextVisualStyles } from "@/components/storefront/section-styles/RichTextVisualStyles";
+import { resolveStorySectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
+import { StorefrontCompositionRenderer } from "@/components/storefront/platform/StorefrontCompositionRenderer";
 import { StorefrontSectionEmpty, StorefrontSectionError, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
 import { buildTechnicalSpecs } from "@/components/storefront/electronics/ElectronicsProductCard";
 import type { RichTextDoc, RichTextNode, StorePageBlock } from "@/lib/cms/schema";
@@ -27,6 +30,10 @@ import { sanitizeStoreBlockCustomCss, sanitizeStoreBlockCustomHtml } from "@/lib
 import { getSharedBlockPresetProps } from "@/lib/cms/storefront-shared-block-presets";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { extractIdFromSlug, productUrl, storefrontPath } from "@/lib/slug";
+import { getExplicitVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-options";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
+import { cn } from "@/lib/utils";
 
 function renderRichTextNodes(nodes?: RichTextNode[]): React.ReactNode {
   if (!nodes || !Array.isArray(nodes)) return null;
@@ -84,6 +91,8 @@ function RichTextBlock({
   imagePosition,
   focalX,
   focalY,
+  templateId,
+  variantOptions,
 }: {
   eyebrow?: string;
   title?: string;
@@ -95,26 +104,48 @@ function RichTextBlock({
   imagePosition?: string;
   focalX?: number;
   focalY?: number;
+  templateId?: string;
+  variantOptions?: StorefrontVariantOptions;
 }) {
-  const textAlignClass = align === "left" ? "text-left" : "text-center";
-  const contentAlignClass = align === "left" ? "mr-auto" : "mx-auto";
+  const isFashion = templateId === "fashion";
+  const resolvedAlign = variantOptions?.alignment ?? align;
+  const textAlignClass = resolvedAlign === "left" ? "text-left" : resolvedAlign === "right" ? "text-right" : "text-center";
+  const contentAlignClass = resolvedAlign === "left" ? "mr-auto" : resolvedAlign === "right" ? "ml-auto" : "mx-auto";
+  const optionClasses = resolveSectionOptionClasses(variantOptions);
   const doc = typeof body === "string" ? parseLegacyStringToDoc(body) : (body || { type: "doc", content: [] });
   const isBrandStory = layoutVariant === "brand-story";
   const objectPosition = resolveStorefrontImageObjectPosition({ position: imagePosition, focalX, focalY });
+  const requestedVisualStyle = resolveStorySectionStyle(layoutVariant);
+  const visualStyle = requestedVisualStyle === "split-brand-story" && !imageUrl ? "minimal-story" : requestedVisualStyle;
+
+  if (visualStyle) {
+    return (
+      <RichTextVisualStyles
+        variant={visualStyle}
+        eyebrow={eyebrow}
+        title={title}
+        body={renderRichTextNodes(doc.content)}
+        imageUrl={imageUrl}
+        imageAlt={imageAlt}
+        objectPosition={objectPosition}
+        variantOptions={variantOptions}
+      />
+    );
+  }
 
   const storyCopy = (
-    <div className={`max-w-3xl ${isBrandStory ? "" : contentAlignClass} ${isBrandStory ? "text-left" : textAlignClass}`}>
+    <div className={cn(isFashion && isBrandStory ? "max-w-2xl" : "max-w-3xl", !isBrandStory && contentAlignClass, isBrandStory ? "text-left" : textAlignClass, variantOptions?.alignment && textAlignClass)}>
       {eyebrow ? <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-primary">{eyebrow}</p> : null}
-      <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl">{title}</h2>
+      <h2 className={cn(isFashion && isBrandStory ? "font-heading text-4xl font-semibold leading-[1.02] tracking-tight text-foreground md:text-6xl" : "font-heading text-3xl font-bold tracking-tight text-foreground md:text-5xl", optionClasses.emphasis.titleClassName)}>{title}</h2>
       <div className="mt-5 space-y-4">{renderRichTextNodes(doc.content)}</div>
     </div>
   );
 
   if (isBrandStory) {
     return (
-      <section className="py-14 md:py-24">
-        <div className="container mx-auto grid gap-8 px-4 lg:grid-cols-2 lg:items-center lg:gap-12">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-muted">
+      <section className={cn(isFashion ? "border-y border-border py-12 md:py-20" : "py-14 md:py-24", optionClasses.spacingClassName)}>
+        <div className={cn(isFashion ? "container mx-auto grid gap-8 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16" : "container mx-auto grid gap-8 px-4 lg:grid-cols-2 lg:items-center lg:gap-12", optionClasses.contentWidthClassName, optionClasses.mobile.isCompact && "gap-5 lg:gap-8")}>
+          <div className={cn(isFashion ? "relative aspect-[4/5] overflow-hidden bg-muted" : "relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-muted", optionClasses.mobile.isCompact && "aspect-[16/10] lg:aspect-[4/3]")}>
             {imageUrl ? (
               <SafeStorefrontImage src={imageUrl} fill alt={imageAlt || title} className="object-cover" style={{ objectPosition }} />
             ) : (
@@ -128,9 +159,9 @@ function RichTextBlock({
   }
 
   return (
-    <section className="py-14 md:py-24">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-4xl">{storyCopy}</div>
+    <section className={cn("py-14 md:py-24", optionClasses.spacingClassName)}>
+      <div className={cn("container mx-auto px-4", optionClasses.contentWidthClassName)}>
+        <div className={cn("mx-auto max-w-4xl", optionClasses.alignment.marginClassName)}>{storyCopy}</div>
       </div>
     </section>
   );
@@ -141,12 +172,15 @@ function SocialFeedBlock({
   subtitle,
   images,
   layoutVariant,
+  templateId,
 }: {
   title?: string;
   subtitle?: string;
   images?: string[];
   layoutVariant?: string;
+  templateId?: string;
 }) {
+  const isFashion = templateId === "fashion";
   const displayImages = (images ?? []).filter((image) => typeof image === "string" && image.trim());
 
   if (displayImages.length === 0) {
@@ -170,9 +204,9 @@ function SocialFeedBlock({
     );
   }
 
-  if (layoutVariant === "before-after") {
+  if (layoutVariant === "before-after" && displayImages.length >= 2 && displayImages[0] !== displayImages[1]) {
     const before = displayImages[0];
-    const after = displayImages[1] ?? displayImages[0];
+    const after = displayImages[1];
     return (
       <section className="bg-background py-14 md:py-20">
         <div className="container mx-auto px-4">
@@ -193,17 +227,37 @@ function SocialFeedBlock({
     );
   }
 
-  return (
-    <section className="bg-background py-14 md:py-20">
-      <div className="container mx-auto px-4">
-        <div className="mb-8 text-center md:mb-10">
-          <Instagram className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
-          <h2 className="font-heading text-2xl font-bold">{title || "Follow Us"}</h2>
-          {subtitle ? <p className="mt-2 text-muted-foreground">{subtitle}</p> : null}
+  if (layoutVariant === "before-after") {
+    return (
+      <section className="bg-background py-14 md:py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-8 max-w-2xl text-center">
+            <h2 className="font-heading text-3xl font-bold text-foreground">{title || "Gallery"}</h2>
+            {subtitle ? <p className="mt-3 text-muted-foreground">{subtitle}</p> : null}
+          </div>
+          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="relative aspect-[4/3] overflow-hidden">
+              <SafeStorefrontImage src={displayImages[0]} fill alt={title || "Gallery image"} className="object-cover" />
+            </div>
+          </div>
         </div>
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
+      </section>
+    );
+  }
+
+  return (
+    <section className={isFashion ? "bg-background py-12 md:py-20" : "bg-background py-14 md:py-20"}>
+      <div className="container mx-auto px-4">
+        <div className={isFashion ? "mb-7 flex items-end justify-between gap-6 border-b border-border pb-4 md:mb-9" : "mb-8 text-center md:mb-10"}>
+          <div>
+            {!isFashion ? <Instagram className="mx-auto mb-3 h-6 w-6 text-muted-foreground" /> : <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary md:text-xs">Lookbook</p>}
+            <h2 className={isFashion ? "font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl" : "font-heading text-2xl font-bold"}>{title || (isFashion ? "On the street" : "Follow Us")}</h2>
+            {subtitle ? <p className={isFashion ? "mt-2 max-w-2xl text-sm leading-6 text-muted-foreground" : "mt-2 text-muted-foreground"}>{subtitle}</p> : null}
+          </div>
+        </div>
+        <div className={isFashion ? "grid grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4" : "mx-auto grid max-w-5xl grid-cols-2 gap-2 md:grid-cols-4 md:gap-4"}>
           {displayImages.map((src, i) => (
-            <div key={`${src}-${i}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted md:rounded-2xl">
+            <div key={`${src}-${i}`} className={isFashion ? "group relative aspect-[4/5] overflow-hidden bg-muted" : "group relative aspect-square overflow-hidden rounded-xl bg-muted md:rounded-2xl"}>
               <img src={src} alt={`Gallery item ${i + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
             </div>
           ))}
@@ -236,7 +290,8 @@ function VideoReelBlock({ title, videoUrl, ctaText, ctaLink }: { title?: string;
 
 type TrustBadge = { label: string; description?: string; icon?: "truck" | "payment" | "returns" | "support" | "shield" };
 
-function TrustBadgesBlock({ title, badges, layoutVariant }: { title?: string; badges?: TrustBadge[]; layoutVariant?: string }) {
+function TrustBadgesBlock({ title, badges, layoutVariant, templateId }: { title?: string; badges?: TrustBadge[]; layoutVariant?: string; templateId?: string }) {
+  const isFashion = templateId === "fashion";
   const displayBadges = (badges ?? []).filter((badge) => typeof badge?.label === "string" && badge.label.trim());
   if (displayBadges.length === 0) return null;
 
@@ -261,15 +316,15 @@ function TrustBadgesBlock({ title, badges, layoutVariant }: { title?: string; ba
   }
 
   return (
-    <section className="border-y border-border bg-secondary/35 py-10 md:py-14">
+    <section className={isFashion ? "border-y border-border bg-background py-8 md:py-10" : "border-y border-border bg-secondary/35 py-10 md:py-14"}>
       <div className="container mx-auto px-4">
-        {title ? <h2 className="mb-7 text-center font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">{title}</h2> : null}
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 lg:grid-cols-3">
+        {title ? <h2 className={isFashion ? "mb-7 font-heading text-2xl font-semibold tracking-tight text-foreground md:text-3xl" : "mb-7 text-center font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl"}>{title}</h2> : null}
+        <div className={isFashion ? "mx-auto grid max-w-7xl grid-cols-2 gap-0 border-l border-t border-border lg:grid-cols-4" : "mx-auto grid max-w-6xl grid-cols-2 gap-3 lg:grid-cols-3"}>
           {displayBadges.map((badge) => {
             const Icon = iconMap[badge.icon ?? "shield"];
             return (
-              <div key={badge.label} className="flex min-h-[116px] flex-col gap-3 rounded-lg border border-border bg-card px-4 py-5 shadow-sm sm:flex-row sm:px-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+              <div key={badge.label} className={isFashion ? "flex min-h-[116px] flex-col gap-3 border-b border-r border-border bg-background px-4 py-5 sm:px-5" : "flex min-h-[116px] flex-col gap-3 rounded-lg border border-border bg-card px-4 py-5 shadow-sm sm:flex-row sm:px-5"}>
+                <div className={isFashion ? "flex h-9 w-9 shrink-0 items-center justify-center text-primary" : "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"}><Icon className="h-5 w-5" /></div>
                 <div><p className="font-heading text-sm font-bold text-foreground sm:text-base">{badge.label}</p>{badge.description ? <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{badge.description}</p> : null}</div>
               </div>
             );
@@ -288,13 +343,16 @@ function TestimonialsBlock({
   reviews,
   source = "manual",
   limit = 6,
+  templateId,
 }: {
   title?: string;
   subtitle?: string;
   reviews?: Testimonial[];
   source?: "manual" | "live" | string;
   limit?: number;
+  templateId?: string;
 }) {
+  const isFashion = templateId === "fashion";
   const currentStore = useOptionalStore();
   const { data: products = [] } = useProducts(currentStore?.id);
   const productIds = useMemo(() => products.map((product) => product.id).filter(Boolean).slice(0, 100), [products]);
@@ -342,14 +400,14 @@ function TestimonialsBlock({
   return (
     <section className="overflow-hidden bg-background py-12 md:py-24">
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-8 max-w-2xl text-center md:mb-10">
+        <div className={isFashion ? "mb-8 max-w-3xl md:mb-10" : "mx-auto mb-8 max-w-2xl text-center md:mb-10"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Social proof</p>
-          <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{title || "Customers are talking"}</h2>
+          <h2 className={isFashion ? "mt-3 font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl" : "mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl"}>{title || "Customers are talking"}</h2>
           {subtitle ? <p className="mt-4 text-sm leading-7 text-muted-foreground md:text-base">{subtitle}</p> : null}
         </div>
         <div className="mx-auto flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 md:grid md:max-w-6xl md:grid-cols-3 md:overflow-visible md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {displayReviews.slice(0, limit).map((review, index) => (
-            <article key={`${review.name ?? "review"}-${index}`} className="flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm sm:min-w-[340px] md:min-w-0">
+            <article key={`${review.name ?? "review"}-${index}`} className={isFashion ? "flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between border-y border-border bg-background p-6 sm:min-w-[340px] md:min-w-0" : "flex min-h-[220px] min-w-[82vw] snap-center flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-sm sm:min-w-[340px] md:min-w-0"}>
               <div>
                 {typeof review.rating === "number" && Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5 ? (
                   <div className="mb-5 flex items-center gap-1 text-accent" aria-label={`${review.rating.toFixed(1)} out of 5`}>
@@ -367,14 +425,15 @@ function TestimonialsBlock({
   );
 }
 
-function FaqAccordionBlock({ title, subtitle, faqs }: { title?: string; subtitle?: string; faqs?: { q: string; a: string }[] }) {
+function FaqAccordionBlock({ title, subtitle, faqs, templateId }: { title?: string; subtitle?: string; faqs?: { q: string; a: string }[]; templateId?: string }) {
+  const isFashion = templateId === "fashion";
   const displayFaqs = faqs?.length ? faqs : [];
   if (displayFaqs.length === 0) return <StorefrontSectionEmpty eyebrow="FAQ" title={title || "Questions and answers are coming soon"} description="Add the questions customers ask most often so they can decide without leaving the page." />;
 
   return (
     <section className="bg-background py-12 md:py-24">
       <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-[0.9fr_minmax(0,1.1fr)] lg:items-start lg:gap-10">
-        <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+        <div className={isFashion ? "border-t border-border pt-6" : "rounded-3xl border border-border bg-card p-6 md:p-8"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Customer confidence</p>
           <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{title || "Frequently Asked Questions"}</h2>
           <p className="mt-4 text-sm leading-7 text-muted-foreground md:text-base">{subtitle || "Answer the practical questions customers ask right before they decide to act."}</p>
@@ -400,6 +459,7 @@ function ComparisonBlock({
   productType,
   limit,
   ctaText,
+  layoutVariant,
 }: {
   title?: string;
   tagline?: string;
@@ -408,6 +468,7 @@ function ComparisonBlock({
   productType?: string;
   limit?: number;
   ctaText?: string;
+  layoutVariant?: string;
 }) {
   const currentStore = useOptionalStore();
   const storeId = currentStore?.id ?? "";
@@ -440,23 +501,25 @@ function ComparisonBlock({
     );
   }
 
+  const isTechSpec = layoutVariant === "tech-spec";
+
   return (
-    <section className="bg-background py-14 md:py-24">
+    <section className={isTechSpec ? "bg-muted/30 py-12 md:py-20" : "bg-background py-14 md:py-24"}>
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-10 max-w-3xl text-center">
+        <div className={isTechSpec ? "mb-8 max-w-3xl" : "mx-auto mb-10 max-w-3xl text-center"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{tagline || "Compare before you buy"}</p>
           <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">{title || "Quick product comparison"}</h2>
         </div>
-        <div className="mx-auto grid max-w-6xl gap-4 xl:grid-cols-2">
+        <div className={isTechSpec ? "mx-auto grid max-w-6xl gap-3" : "mx-auto grid max-w-6xl gap-4 xl:grid-cols-2"}>
           {productsToCompare.map((product) => (
-            <article key={product.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-              <div className="grid gap-5 p-5 sm:grid-cols-[220px_1fr]">
+            <article key={product.id} className={isTechSpec ? "overflow-hidden rounded-xl border border-border bg-card" : "overflow-hidden rounded-3xl border border-border bg-card shadow-sm"}>
+              <div className={isTechSpec ? "grid gap-4 p-4 sm:grid-cols-[180px_1fr] sm:items-center" : "grid gap-5 p-5 sm:grid-cols-[220px_1fr]"}>
                 <div className="flex aspect-[4/3] items-center justify-center rounded-[24px] bg-secondary/40 p-5"><img src={product.image} alt={product.name} className="h-full w-full object-contain" /></div>
                 <div>
                   <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">{product.category || product.type || "Product"}</span>
                   <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{product.name}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{product.description}</p>
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">{buildTechnicalSpecs(product).map((spec) => <div key={spec} className="rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-xs text-muted-foreground sm:text-sm">{spec}</div>)}</div>
+                  <div className={isTechSpec ? "mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4" : "mt-4 grid grid-cols-2 gap-2 sm:gap-3"}>{buildTechnicalSpecs(product).map((spec) => <div key={spec} className={isTechSpec ? "rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] text-foreground/75" : "rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-xs text-muted-foreground sm:text-sm"}>{spec}</div>)}</div>
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <p className="text-[1.2rem] font-bold text-primary sm:text-[1.35rem]">৳{product.price.toLocaleString()}</p>
                     <Button asChild variant="outline" className="ml-auto"><Link href={productUrl(product.id, product.name, storeSlug)}>{ctaText || "View details"}</Link></Button>
@@ -518,26 +581,28 @@ export function StorefrontBlockRenderer({ block, template }: { block: StorePageB
   const resolvedProps = resolveTags(block.props);
   const blockLayoutVariant = block.layoutVariant ?? template?.presentation.blockLayoutVariants?.[block.type];
   const presetProps = template ? getSharedBlockPresetProps(template.id, block.type) : {};
-  const mergedProps = { ...presetProps, ...resolvedProps, layoutVariant: blockLayoutVariant };
+  const variantOptions = template ? getExplicitVariantOptions(template.id, block) : undefined;
+  const mergedProps = { ...presetProps, ...resolvedProps, layoutVariant: blockLayoutVariant, variantOptions };
 
   const renderBlock = () => {
     switch (block.type) {
+      case "composition": return <StorefrontCompositionRenderer block={block} />;
       case "countdown": return <CountdownTimer overrides={mergedProps} />;
       case "hero": return <HeroSection overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "promo-banner": return <PromoBanner overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "category-showcase": return <CategoryShowcase overrides={{ ...mergedProps, disableLegacyFallback: true }} />;
       case "featured-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title} tagline={mergedProps.tagline} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
       case "recommended-products":
-        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} disableLegacyFallback />;
-      case "comparison": return <ComparisonBlock {...mergedProps} />;
+        return <FeaturedProducts limit={mergedProps.limit} title={mergedProps.title ?? "Products you may like"} tagline={mergedProps.tagline ?? "More to explore"} source={mergedProps.source} category={mergedProps.category} productType={mergedProps.productType} layoutVariant={blockLayoutVariant} imagePosition={mergedProps.imagePosition} focalX={mergedProps.focalX} focalY={mergedProps.focalY} variantOptions={variantOptions} disableLegacyFallback />;
+      case "comparison": return <ComparisonBlock {...mergedProps} layoutVariant={blockLayoutVariant} />;
       case "recently-viewed": return <RecentlyViewed title={typeof mergedProps.title === "string" ? mergedProps.title : undefined} />;
-      case "rich-text": return blockLayoutVariant === "blog-posts" ? <BlogHomepageWidget /> : <RichTextBlock {...mergedProps} />;
-      case "social-feed": return <SocialFeedBlock {...mergedProps} />;
+      case "rich-text": return blockLayoutVariant === "blog-posts" ? <BlogHomepageWidget /> : <RichTextBlock {...mergedProps} templateId={template?.id} />;
+      case "social-feed": return <SocialFeedBlock {...mergedProps} templateId={template?.id} />;
       case "video-reel": return <VideoReelBlock {...mergedProps} />;
-      case "faq-accordion": return <FaqAccordionBlock {...mergedProps} />;
-      case "trust-badges": return <TrustBadgesBlock {...mergedProps} />;
-      case "testimonials": return <TestimonialsBlock {...mergedProps} />;
+      case "faq-accordion": return <FaqAccordionBlock {...mergedProps} templateId={template?.id} />;
+      case "trust-badges": return <TrustBadgesBlock {...mergedProps} templateId={template?.id} />;
+      case "testimonials": return <TestimonialsBlock {...mergedProps} templateId={template?.id} />;
       default: return null;
     }
   };

@@ -13,8 +13,7 @@ test("admin login exposes persistent accessible auth feedback", () => {
   assert.match(source, /dashboard-email-error/);
   assert.match(source, /dashboard-password-error/);
   assert.match(source, /dashboard-email-form-error/);
-  assert.match(source, /dashboard-phone-error/);
-  assert.match(source, /dashboard-phone-code-error/);
+  assert.match(source, /google-login-error/);
   assert.match(source, /invite-code-error/);
   assert.match(source, /setup-password-error/);
   assert.match(source, /role="alert"/);
@@ -23,32 +22,27 @@ test("admin login exposes persistent accessible auth feedback", () => {
 test("required auth fields focus the first invalid control without clearing values", () => {
   assert.match(source, /emailRef\.current\?\.focus\(\)/);
   assert.match(source, /passwordRef\.current\?\.focus\(\)/);
-  assert.match(source, /phoneRef\.current\?\.focus\(\)/);
-  assert.match(source, /otpRef\.current\?\.focus\(\)/);
   assert.match(source, /inviteRef\.current\?\.focus\(\)/);
   assert.match(source, /setupPasswordRef\.current\?\.focus\(\)/);
   assert.match(source, /value=\{email\}/);
   assert.match(source, /value=\{password\}/);
-  assert.match(source, /value=\{phone\}/);
-  assert.match(source, /value=\{otpCode\}/);
   assert.match(source, /value=\{inviteCode\}/);
   assert.match(source, /value=\{setupPassword\}/);
+  assert.doesNotMatch(source, /phoneRef|otpRef|otpCode/);
 });
 
 test("provider failures are normalized before persistent display", () => {
   assert.match(source, /safeEmailAuthError/);
-  assert.match(source, /safePhoneAuthError/);
   assert.match(source, /safeGoogleAuthError/);
   assert.match(source, /safeAccessError/);
+  assert.doesNotMatch(source, /safePhoneAuthError/);
   assert.doesNotMatch(source, /toast\.error\(error\.message/);
   assert.doesNotMatch(source, /setEmailErrors\(\{ form: error\.message/);
-  assert.doesNotMatch(source, /setPhoneErrors\(\{ form: error\.message/);
 });
 
-test("phone and invite flows retain explicit recovery/status affordances", () => {
-  assert.match(source, /Verification code sent\. Enter it below to continue\./);
-  assert.match(source, /Change phone number/);
-  assert.match(source, /Send verification code/);
+test("Google and invite flows retain explicit recovery/status affordances", () => {
+  assert.match(source, /Opening Google sign-in/);
   assert.match(source, /Verifying invite code/);
   assert.match(source, /Claiming admin access/);
+  assert.doesNotMatch(source, /Send verification code|Verify Phone|Change phone number/);
 });

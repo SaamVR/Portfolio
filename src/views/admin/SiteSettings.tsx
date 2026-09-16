@@ -17,6 +17,8 @@ import { AnnouncementTab } from "./settings/AnnouncementTab";
 import { ThemesTab } from "./settings/ThemesTab";
 import { CustomDomainTab } from "./settings/CustomDomainTab";
 import { PaymentSettingsTab } from "./settings/PaymentSettingsTab";
+import { DeliverySettingsTab } from "./settings/DeliverySettingsTab";
+import { CourierSettingsTab } from "./settings/CourierSettingsTab";
 import { WhatsAppSupportTab } from "./settings/WhatsAppSupportTab";
 import { AboutPageTab } from "./settings/AboutPageTab";
 import { ContactPageTab } from "./settings/ContactPageTab";
@@ -37,7 +39,6 @@ import { cn } from "@/lib/utils";
 import AdminRecoveryPanel from "@/components/admin/AdminRecoveryPanel";
 import { DeleteStoreDialog } from "@/components/admin/DeleteStoreDialog";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
-import { applyLegacyHomepageSettingToBlock, type LegacyHomepageSettingKey } from "@/lib/cms/homepage-settings-adapter";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { applyTemplateDemoContentToPages } from "@/lib/cms/template-demo-seeds";
@@ -163,6 +164,7 @@ type SnapshotBlockRow = {
   hover_effect: StorePageBlock["hoverEffect"] | null;
   effect_override: boolean | null;
   layout_variant: string | null;
+  variant_options: StorePageBlock["variantOptions"] | null;
   custom_html: string | null;
   custom_css: string | null;
 };
@@ -177,7 +179,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
     supabase
       .from("store_page_blocks")
       .select(
-        "id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, custom_html, custom_css",
+        "id, page_id, block_type, props, sort_order, is_visible, entrance_animation, hover_effect, effect_override, layout_variant, variant_options, custom_html, custom_css",
       )
       .eq("store_id", storeId)
       .order("sort_order", { ascending: true }),
@@ -201,6 +203,7 @@ async function loadStorePagesSnapshot(storeId: string): Promise<StorePage[]> {
       hoverEffect: blockRow.hover_effect ?? "none",
       effectOverride: blockRow.effect_override ?? false,
       layoutVariant: blockRow.layout_variant ?? undefined,
+      variantOptions: blockRow.variant_options ?? undefined,
       customHtml: blockRow.custom_html ?? undefined,
       customCss: blockRow.custom_css ?? undefined,
     } as any);
@@ -910,14 +913,6 @@ export default function SiteSettings() {
                       : `Update ${activeTabDefinition?.label?.toLowerCase() ?? "this area"} and keep the live storefront aligned across mobile and desktop.`}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={pageBuilderPath}>
-                    <Button variant="outline" className="gap-2">
-                      <PanelsTopLeft className="h-4 w-4" />
-                      Page Builder
-                    </Button>
-                  </Link>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -943,7 +938,9 @@ export default function SiteSettings() {
           SaveButton={SaveButton}
         />
 
-        <CustomDomainTab />
+        <TabsContent value="domain" className="mt-0">
+          <CustomDomainTab />
+        </TabsContent>
 
         <PaymentSettingsTab
           paymentGateway={paymentGateway}
@@ -951,6 +948,14 @@ export default function SiteSettings() {
           update={updateSettingField}
           SaveButton={SaveButton}
         />
+
+        <DeliverySettingsTab
+          settings={settings}
+          update={updateSettingField}
+          SaveButton={SaveButton}
+        />
+
+        <CourierSettingsTab />
 
         <WhatsAppSupportTab
           settings={settings}

@@ -22,6 +22,10 @@ SELECT pg_temp.assert_true(
   'anon must execute caller-bound has_role enum overload for public RLS'
 );
 SELECT pg_temp.assert_true(
+  NOT has_function_privilege('anon', 'public.can_view_store(uuid,uuid)', 'EXECUTE'),
+  'anon must not execute authenticated store-team helper directly'
+);
+SELECT pg_temp.assert_true(
   has_function_privilege('anon', 'public.validate_coupon(text,integer,uuid)', 'EXECUTE')
   AND has_function_privilege('authenticated', 'public.validate_coupon(text,integer,uuid)', 'EXECUTE'),
   'store-scoped coupon helper must remain available to storefront callers'

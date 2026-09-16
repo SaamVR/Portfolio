@@ -1,16 +1,15 @@
-import { Link } from "@/lib/react-router-dom-shim";
 import { FolderTree, Grid2x2, Layers3, Package, Sparkles, Store, Tags } from "lucide-react";
-import AnimatedSection from "@/components/AnimatedSection";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductCategories } from "@/hooks/useProductCategories";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import { useOptionalStore } from "@/components/storefront/store-context";
-import { storefrontPath } from "@/lib/slug";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
 import { getStorefrontContainerClass } from "@/lib/storefront-theme-customization";
-import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { CategoryVisualStyles } from "@/components/storefront/section-styles/CategoryVisualStyles";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 const fallbackCategories = [
   { label: "Featured", type: "featured", tagline: "Highlighted items, offers, or experiences", icon: Sparkles, filterKey: "category" as const },
@@ -29,9 +28,17 @@ interface CategoryShowcaseProps {
     layoutVariant?: "cards" | "carousel" | "masonry" | "compact-list" | string;
     source?: "auto" | "categories" | "types" | string;
     limit?: number;
+    items?: Array<{
+      label: string;
+      value: string;
+      tagline?: string;
+      imageUrl?: string;
+      filterKey?: "category" | "type";
+    }>;
     imagePosition?: string;
     focalX?: number;
     focalY?: number;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -67,6 +74,8 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string; fallback_image_url?: string }>("home_categories", storeId);
   const { data: themeCustomization } = useStorefrontThemeCustomization(storeId);
   const { data: customData } = useSiteSettings<any>("categories_custom_data", storeId);
+  const preloadedCustomData = currentStore?.siteSettings?.categories_custom_data;
+  const resolvedCustomData = customData ?? preloadedCustomData;
   const legacySettings = overrides?.disableLegacyFallback ? null : settings;
   const layoutVariant = overrides?.layoutVariant ?? "cards";
   const source = overrides?.source ?? "auto";
@@ -79,13 +88,30 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     focalX: overrides?.focalX,
     focalY: overrides?.focalY,
   });
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
+  const customCategoryRows = Array.isArray(resolvedCustomData)
+    ? resolvedCustomData.filter((entry): entry is Record<string, any> => Boolean(entry) && typeof entry === "object")
+    : [];
+  const customTypeData = !Array.isArray(resolvedCustomData) && resolvedCustomData?.types && typeof resolvedCustomData.types === "object"
+    ? resolvedCustomData.types as Record<string, Record<string, any>>
+    : {};
+  const getCustomData = (key: string) => customTypeData[key]
+    ?? customCategoryRows.find((entry) => entry.name === key || entry.slug === key)
+    ?? {};
 
   if (categoriesLoading || typesLoading) {
     return <StorefrontSectionSkeleton title={overrides?.title ?? legacySettings?.title ?? "Loading categories"} cards={4} />;
   }
 
   const categoryItems = dbCategories.map((category) => {
-    const custom = customData?.types?.[category.name] ?? {};
+    const custom = getCustomData(category.name);
     return {
       label: category.name,
       type: category.name,
@@ -96,7 +122,7 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     };
   });
   const typeItems = dbTypes.map((t) => {
-    const custom = customData?.types?.[t.name] ?? {};
+    const custom = getCustomData(t.name);
     return {
       label: t.name,
       type: t.name,
@@ -106,8 +132,27 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
       filterKey: "type" as const,
     };
   });
+  const seededCategoryItems = customCategoryRows
+    .filter((category) => category.is_active !== false && typeof category.name === "string" && category.name.trim())
+    .sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0))
+    .map((category) => ({
+      label: String(category.name),
+      type: String(category.name),
+      tagline: typeof category.description === "string" && category.description.trim() ? category.description.trim() : "Explore this collection",
+      image_url: typeof category.image_url === "string" && category.image_url.trim() ? category.image_url : null,
+      icon: FolderTree,
+      filterKey: "category" as const,
+    }));
+  const explicitItems = (overrides?.items ?? []).map((item) => ({
+    label: item.label,
+    type: item.value,
+    tagline: item.tagline?.trim() || "Explore this collection",
+    image_url: item.imageUrl?.trim() || null,
+    icon: FolderTree,
+    filterKey: item.filterKey ?? "category" as const,
+  }));
   const fallbackItems = fallbackCategories.map((cat) => {
-    const custom = customData?.types?.[cat.type] ?? {};
+    const custom = getCustomData(cat.type);
     return {
       label: cat.label,
       type: cat.type,
@@ -118,88 +163,35 @@ const CategoryShowcase = ({ overrides }: CategoryShowcaseProps) => {
     };
   });
   const categoriesToRender = (
-    source === "categories"
-      ? categoryItems.length > 0 ? categoryItems : fallbackItems
+    explicitItems.length > 0
+      ? explicitItems
+      : source === "categories"
+      ? categoryItems.length > 0 ? categoryItems : isFashion ? seededCategoryItems : fallbackItems
       : source === "types"
-      ? typeItems.length > 0 ? typeItems : fallbackItems
+      ? typeItems.length > 0 ? typeItems : isFashion ? seededCategoryItems : fallbackItems
       : categoryItems.length > 0
       ? categoryItems
       : typeItems.length > 0
       ? typeItems
+      : isFashion
+      ? seededCategoryItems
       : fallbackItems
   ).slice(0, limit || undefined);
 
-  return (
-    <section className="py-14 md:py-20">
-      <div className={`mx-auto px-4 ${containerClass}`}>
-        <AnimatedSection animation="blur">
-          <div className="mb-8 text-center md:mb-12">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-primary">{overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}</p>
-            <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">{overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}</h2>
-          </div>
-        </AnimatedSection>
+  if (isFashion && categoriesToRender.length === 0) return null;
 
-        <div
-          className={
-            layoutVariant === "carousel"
-              ? "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : layoutVariant === "masonry"
-                ? "columns-2 gap-4 sm:columns-3 lg:columns-4"
-                : layoutVariant === "compact-list"
-                  ? "mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
-                  : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
-          }
-        >
-          {categoriesToRender.map((cat, i) => {
-            const Icon = cat.icon;
-            return (
-              <AnimatedSection key={cat.type} delay={i * 60} animation="blur" className={layoutVariant === "masonry" ? "mb-4 break-inside-avoid" : ""}>
-                <Link
-                  to={storefrontPath(`/shop?${cat.filterKey}=${encodeURIComponent(cat.type)}`, currentStore?.slug)}
-                  className={[
-                    "group border border-border bg-card smooth-hover hover:border-primary/40 hover:premium-shadow",
-                    layoutVariant === "compact-list"
-                      ? "flex items-center gap-4 rounded-lg p-4 text-left hover:-translate-y-0"
-                      : layoutVariant === "carousel"
-                        ? "flex min-w-[72vw] snap-center flex-col items-center gap-3 rounded-xl p-6 text-center hover:-translate-y-1 sm:min-w-[240px]"
-                        : layoutVariant === "masonry"
-                          ? "flex min-h-[190px] flex-col items-start justify-end gap-3 rounded-lg p-5 text-left hover:-translate-y-1"
-                          : "flex flex-col items-center gap-3 rounded-xl p-4 text-center hover:-translate-y-1 sm:p-6",
-                  ].filter(Boolean).join(" ")}
-                >
-                  {cat.image_url ? (
-                    <div className={[
-                      "relative overflow-hidden border-2 border-border group-hover:border-primary smooth-hover group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-28 w-full rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
-                      <SafeStorefrontImage
-                        src={cat.image_url}
-                        fallbackSrc={settings?.fallback_image_url ?? null}
-                        fill
-                        alt={cat.label}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        style={{ objectPosition: imageObjectPosition }}
-                      />
-                    </div>
-                  ) : (
-                    <div className={[
-                      "flex shrink-0 items-center justify-center bg-primary/10 text-primary smooth-hover group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_0_20px_hsla(145,63%,42%,0.25)]",
-                      layoutVariant === "masonry" ? "h-12 w-12 rounded-lg" : "h-14 w-14 rounded-full",
-                    ].filter(Boolean).join(" ")}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-heading text-sm font-semibold text-foreground">{cat.label}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{cat.tagline}</p>
-                  </div>
-                </Link>
-              </AnimatedSection>
-            );
-          })}
-        </div>
-      </div>
-    </section>
+  return (
+    <CategoryVisualStyles
+      layoutVariant={layoutVariant}
+      tagline={overrides?.tagline ?? legacySettings?.tagline ?? "Explore"}
+      title={overrides?.title ?? legacySettings?.title ?? "Browse What This Store Offers"}
+      items={categoriesToRender}
+      storeSlug={currentStore?.slug}
+      fallbackImageUrl={settings?.fallback_image_url ?? null}
+      imageObjectPosition={imageObjectPosition}
+      containerClass={containerClass}
+      variantOptions={overrides?.variantOptions}
+    />
   );
 };
 

@@ -80,45 +80,54 @@ begin
   perform pg_temp.assert_true(actual_count = expected_product_rows, format('%s product select mismatch', label));
   update public.products set price = price + 1 where id = product_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_product_rows, format('%s product update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_product_rows ELSE 0 END, format('%s product update mismatch', label));
 
   select count(*) into actual_count from public.site_settings where id = setting_id;
   perform pg_temp.assert_true(actual_count = expected_setting_rows, format('%s site_settings select mismatch', label));
   update public.site_settings set value = jsonb_build_object('last_actor', label) where id = setting_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_setting_rows, format('%s site_settings update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_setting_rows ELSE 0 END, format('%s site_settings update mismatch', label));
 
   select count(*) into actual_count from public.orders where id = order_id;
   perform pg_temp.assert_true(actual_count = expected_order_rows, format('%s orders select mismatch', label));
-  update public.orders set notes = label where id = order_id;
-  get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_order_updates, format('%s orders update mismatch', label));
+  affected := 0;
+  begin
+    update public.orders set notes = label where id = order_id;
+    get diagnostics affected = row_count;
+  exception
+    when insufficient_privilege then affected := 0;
+  end;
+  perform pg_temp.assert_true(affected = expected_order_updates, format('%s direct orders update authority mismatch', label));
 
   select count(*) into actual_count from public.product_categories where id = category_id;
   perform pg_temp.assert_true(actual_count = expected_category_rows, format('%s product_categories select mismatch', label));
   update public.product_categories set sort_order = sort_order + 1 where id = category_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_category_rows, format('%s product_categories update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_category_rows ELSE 0 END, format('%s product_categories update mismatch', label));
 
   select count(*) into actual_count from public.product_types where id = type_id;
   perform pg_temp.assert_true(actual_count = expected_type_rows, format('%s product_types select mismatch', label));
   update public.product_types set sort_order = sort_order + 1 where id = type_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_type_rows, format('%s product_types update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_type_rows ELSE 0 END, format('%s product_types update mismatch', label));
 
   select count(*) into actual_count from public.store_themes where id = theme_id;
   perform pg_temp.assert_true(actual_count = expected_theme_rows, format('%s store_themes select mismatch', label));
   update public.store_themes set preset_id = label where id = theme_id;
   get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_theme_rows, format('%s store_themes update mismatch', label));
+  perform pg_temp.assert_true(affected = CASE WHEN expected_manage THEN expected_theme_rows ELSE 0 END, format('%s store_themes update mismatch', label));
 
   select count(*) into actual_count from public.store_invoices where id = invoice_id;
   perform pg_temp.assert_true(actual_count = expected_invoice_rows, format('%s store_invoices select mismatch', label));
-  update public.store_invoices
-  set status = case when status = 'pending' then 'paid' else 'pending' end
-  where id = invoice_id;
-  get diagnostics affected = row_count;
-  perform pg_temp.assert_true(affected = expected_invoice_rows, format('%s store_invoices update mismatch', label));
+
+  begin
+    update public.store_invoices
+    set status = case when status = 'pending' then 'paid' else 'pending' end
+    where id = invoice_id;
+    raise exception '% store_invoices update unexpectedly succeeded', label;
+  exception
+    when insufficient_privilege then null;
+  end;
 
   select count(*) into actual_count
   from public.store_subscriptions
@@ -179,6 +188,66 @@ begin
 end;
 $$;
 
+create or replace function pg_temp.assert_billing_authority_mutations_denied(
+  test_user uuid,
+  label text
+)
+returns void
+language plpgsql
+as $$
+declare
+  target_store_id constant uuid := '20000000-0000-4000-8000-000000000001';
+  target_invoice_id constant uuid := '30000000-0000-4000-8000-000000000007';
+  affected integer;
+begin
+  perform pg_temp.set_authenticated_user(test_user);
+
+  begin
+    update public.store_invoices set status = 'paid' where id = target_invoice_id;
+    raise exception '% unexpectedly transitioned an invoice to paid', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set amount = 1 where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice amount', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set plan_id = 'rls-smoke-upgrade-plan' where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice plan', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.store_invoices set provider = 'attacker' where id = target_invoice_id;
+    raise exception '% unexpectedly changed invoice provider', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.store_invoices (
+      store_id, plan_id, amount, currency, status, provider, provider_invoice_id
+    ) values (
+      target_store_id, 'rls-smoke-upgrade-plan', 1, 'BDT', 'paid', 'attacker', 'ATTACK-PAID'
+    );
+    raise exception '% unexpectedly inserted a paid invoice', label;
+  exception when insufficient_privilege then null;
+  end;
+
+  affected := 0;
+  begin
+    update public.stores set plan = 'rls-smoke-upgrade-plan' where id = target_store_id;
+    get diagnostics affected = row_count;
+    if affected > 0 then
+      raise exception '% unexpectedly changed legacy stores.plan', label;
+    end if;
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
 insert into auth.users (
   id,
   aud,
@@ -202,10 +271,12 @@ values
 insert into public.user_roles (user_id, role)
 values ('10000000-0000-4000-8000-000000000006', 'admin');
 
-insert into public.cms_plans (id, name, description, monthly_price, currency_code, is_active, sort_order)
+insert into public.cms_plans (
+  id, name, description, monthly_price, currency_code, is_active, sort_order, feature_flags
+)
 values
-  ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999),
-  ('rls-smoke-upgrade-plan', 'RLS Smoke Upgrade Plan', 'Unauthorized upgrade target.', 1000, 'BDT', true, 1000)
+  ('rls-smoke-plan', 'RLS Smoke Plan', 'Temporary plan for RLS smoke tests.', 0, 'BDT', true, 999, '{"staff":5}'::jsonb),
+  ('rls-smoke-upgrade-plan', 'RLS Smoke Upgrade Plan', 'Unauthorized upgrade target.', 1000, 'BDT', true, 1000, '{"staff":5}'::jsonb)
 on conflict (id) do nothing;
 
 insert into public.stores (
@@ -228,10 +299,14 @@ values (
   'Unpublished store used for tenant RLS checks.',
   'BDT',
   'en-BD',
-  'basic',
+  'rls-smoke-plan',
   'general',
   false
 );
+
+insert into public.store_subscriptions (store_id, plan_id, status)
+values ('20000000-0000-4000-8000-000000000001', 'rls-smoke-plan', 'trialing')
+on conflict (store_id) do update set plan_id = excluded.plan_id;
 
 insert into public.store_memberships (store_id, user_id, role, invited_by)
 values
@@ -239,10 +314,6 @@ values
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'admin', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'editor', '10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004', 'viewer', '10000000-0000-4000-8000-000000000001');
-
-insert into public.store_subscriptions (store_id, plan_id, status)
-values ('20000000-0000-4000-8000-000000000001', 'rls-smoke-plan', 'trialing')
-on conflict (store_id) do update set plan_id = excluded.plan_id;
 
 insert into public.products (
   id,
@@ -273,7 +344,7 @@ insert into public.site_settings (id, store_id, key, value)
 values (
   '30000000-0000-4000-8000-000000000002',
   '20000000-0000-4000-8000-000000000001',
-  'rls_smoke_setting',
+  'hero_section',
   '{"enabled": true}'::jsonb
 );
 
@@ -360,7 +431,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -375,7 +446,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -390,27 +461,27 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
+  0,
   1,
   1,
   1,
-  1,
-  1,
-  1
+  0,
+  0
 );
 
 select pg_temp.assert_actor_access(
   '10000000-0000-4000-8000-000000000004',
   'viewer',
   false,
-  0,
-  0,
+  1,
+  1,
   1,
   0,
+  1,
+  1,
+  1,
   0,
-  0,
-  0,
-  0,
-  1
+  0
 );
 
 select pg_temp.assert_actor_access(
@@ -435,7 +506,7 @@ select pg_temp.assert_actor_access(
   1,
   1,
   1,
-  1,
+  0,
   1,
   1,
   1,
@@ -454,6 +525,26 @@ select pg_temp.assert_subscription_mutations_denied(
 );
 
 select pg_temp.assert_subscription_mutations_denied(
+  '10000000-0000-4000-8000-000000000006',
+  'platform_admin_client'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000001',
+  'owner'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000002',
+  'store_admin'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
+  '10000000-0000-4000-8000-000000000003',
+  'editor'
+);
+
+select pg_temp.assert_billing_authority_mutations_denied(
   '10000000-0000-4000-8000-000000000006',
   'platform_admin_client'
 );

@@ -6,6 +6,7 @@ const __dirname = path.dirname(__filename);
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowLocalPreviewCsp = process.env.EZCOMO_PREVIEW_LOCAL_CSP === '1';
+
 const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
@@ -36,6 +37,7 @@ const connectSrc = [
         ]
       : []),
 ].join(' ');
+const frameSrc = ["'self'"].join(' ');
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -44,6 +46,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   `script-src ${scriptSrc}`,
   `connect-src ${connectSrc}`,
+  `frame-src ${frameSrc}`,
   "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co https://www.facebook.com https://images.unsplash.com https://loremflickr.com https://placehold.co https://api.dicebear.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",

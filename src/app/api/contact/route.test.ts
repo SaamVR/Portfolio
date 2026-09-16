@@ -60,4 +60,13 @@ describe("contact server boundary", () => {
     expect(contactSource).not.toContain("check_contact_rate_limit");
     expect(contactSource).not.toContain('.from("contact_messages")');
   });
+
+  it("maps malformed and oversized JSON at the request boundary", () => {
+    const routeSource = readFileSync(new URL("./route.ts", import.meta.url), "utf8");
+    expect(routeSource).toContain("const MAX_BODY_BYTES = 12000");
+    expect(routeSource).toContain('error: "Invalid JSON payload"');
+    expect(routeSource).toContain('error: "Contact message is too large"');
+    expect(routeSource).toContain('Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES');
+  });
+
 });

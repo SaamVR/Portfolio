@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePublicPaymentSettings } from "@/hooks/usePublicPaymentSettings";
@@ -9,6 +8,8 @@ import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { BadgeCheck, CreditCard, ShieldCheck, Truck } from "lucide-react";
 import { SafeStorefrontImage } from "@/components/storefront/SafeStorefrontImage";
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
+import { HeroVisualStyles } from "@/components/storefront/section-styles/HeroVisualStyles";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 interface HeroSettings {
   tagline?: string;
@@ -56,6 +57,7 @@ interface HeroSectionProps {
     overlayColor?: string;
     overlayOpacity?: number;
     layoutVariant?: "full-bleed" | "split" | "centered" | "editorial" | string;
+    variantOptions?: StorefrontVariantOptions;
   };
 }
 
@@ -89,7 +91,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const secondaryCtaLink = storefrontPath(overrides?.secondaryCtaLink ?? legacyHero?.secondary_cta_link ?? "/contact", currentStore?.slug);
   const mediaUrl = overrides?.mediaUrl ?? legacyHero?.media_url ?? "";
   const mediaType = overrides?.mediaType ?? legacyHero?.media_type ?? "image";
-  const mediaFit = overrides?.mediaFit ?? "cover";
+  const mediaFit = overrides?.variantOptions?.mediaFit ?? overrides?.mediaFit ?? "cover";
   const imageObjectPosition = resolveStorefrontImageObjectPosition({
     position: overrides?.imagePosition ?? legacyHero?.image_position,
     focalX: overrides?.focalX ?? legacyHero?.focal_x,
@@ -98,9 +100,6 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
   const overlayColor = overrides?.overlayColor ?? legacyHero?.overlay_color ?? "";
   const overlayOpacity = overrides?.overlayOpacity ?? legacyHero?.overlay_opacity ?? 50;
   const layoutVariant = overrides?.layoutVariant ?? "full-bleed";
-  const isSplit = layoutVariant === "split";
-  const isCentered = layoutVariant === "centered";
-  const isEditorial = layoutVariant === "editorial";
   const useContainedMedia = mediaFit === "contain";
   const trustHighlights = [
     paymentSettings?.cod_enabled !== false
@@ -119,9 +118,7 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
     const handleScroll = () => {
       if (sectionRef.current) {
         const rect = sectionRef.current.getBoundingClientRect();
-        if (rect.bottom > 0) {
-          setScrollY(window.scrollY * 0.3);
-        }
+        if (rect.bottom > 0) setScrollY(window.scrollY * 0.3);
       }
     };
 
@@ -170,138 +167,25 @@ const HeroSection = ({ overrides }: HeroSectionProps) => {
 
   return (
     <>
-    <section
-      id={overrides?.anchorId}
-      ref={sectionRef}
-      className={[
-        "relative flex min-h-[74svh] items-center justify-center overflow-hidden md:min-h-[88vh]",
-        isSplit || isEditorial ? "bg-background text-foreground" : "",
-        isCentered ? "min-h-[68svh] md:min-h-[76vh]" : "",
-      ].filter(Boolean).join(" ")}
-    >
-      {!isSplit && !isEditorial ? (
-        <div className="absolute inset-0">
-          {renderMedia(`h-full w-full ${useContainedMedia ? "bg-background/90 p-4 md:p-8" : ""}`)}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundColor: overlayColor || "hsl(var(--background))",
-              opacity: overlayOpacity / 100,
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10 md:from-black/55 md:via-transparent md:to-transparent" />
-          <div className="absolute inset-0 grain-texture opacity-[0.03]" />
-          {!mediaUrl ? (
-            <div className="absolute inset-x-4 bottom-4 hidden rounded-lg border border-white/12 bg-black/25 p-4 text-white/90 backdrop-blur-md md:left-auto md:right-8 md:block md:max-w-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Ready to launch</p>
-              <p className="mt-2 text-sm font-medium">Clear message, direct action, and room for product proof.</p>
-              <p className="mt-2 text-sm leading-6 text-white/75">
-                Add real imagery later without losing the structure shoppers need on day one.
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div
-        className={[
-          "relative z-10 container mx-auto px-4 py-14 sm:py-18 md:py-24",
-          isSplit ? "grid gap-8 text-left lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:gap-12" : "",
-          isEditorial ? "grid gap-8 text-left lg:grid-cols-[minmax(360px,0.72fr)_minmax(0,1fr)] lg:items-center lg:gap-12" : "",
-          !isSplit && !isEditorial ? "text-center" : "",
-        ].filter(Boolean).join(" ")}
-      >
-        <div className={isEditorial ? "order-2 lg:order-1" : ""}>
-          <div className={`${isSplit || isEditorial ? "mb-4" : "mx-auto mb-4"} h-px w-12 bg-primary opacity-0 animate-blur-in sm:mb-6`} />
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-primary drop-shadow-md opacity-0 animate-blur-in sm:mb-4 sm:text-sm sm:tracking-[0.3em]">
-            {tagline}
-          </p>
-          <h1
-            className={[
-              "mb-4 max-w-[12ch] font-heading text-[2.35rem] font-black leading-[0.98] opacity-0 animate-blur-in sm:mb-6 sm:max-w-[11ch] sm:text-6xl",
-              isEditorial ? "text-foreground md:text-7xl lg:text-8xl" : "",
-              isSplit ? "text-foreground md:max-w-[10ch] md:text-7xl" : "",
-              !isSplit && !isEditorial ? "mx-auto text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.5)] md:max-w-none md:text-8xl" : "",
-              isCentered ? "md:max-w-[12ch] md:text-7xl" : "",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.15s" }}
-          >
-            {title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-emerald-400 to-accent">{highlight}</span>
-          </h1>
-          <p
-            className={[
-              "mb-7 max-w-[34ch] text-sm leading-6 opacity-0 animate-blur-in sm:mb-10 sm:max-w-2xl sm:text-lg sm:leading-8 md:text-xl",
-              isSplit || isEditorial ? "text-muted-foreground" : "mx-auto text-gray-100 drop-shadow-md",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.3s" }}
-          >
-            {subtitle}
-          </p>
-          <div
-            className={[
-              "flex flex-col gap-3 opacity-0 animate-blur-in sm:flex-row sm:gap-4",
-              isSplit || isEditorial ? "items-start justify-start" : "items-center justify-center",
-            ].filter(Boolean).join(" ")}
-            style={{ animationDelay: "0.45s" }}
-          >
-            <Link
-              href={ctaLink}
-              className="button-premium w-full sm:w-auto rounded-full bg-primary px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-bold tracking-wide text-primary-foreground text-center shadow-lg"
-            >
-              {ctaText}
-            </Link>
-            <Link
-              href={secondaryCtaLink}
-              className={[
-                "w-full sm:w-auto rounded-full border px-7 py-3.5 sm:px-9 sm:py-4 font-heading text-[15px] font-semibold text-center transition-all duration-500",
-                isSplit || isEditorial
-                  ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-primary/5"
-                  : "border-white/20 glass-panel text-white hover:bg-white/10 hover:border-white/40",
-              ].filter(Boolean).join(" ")}
-            >
-              {secondaryCtaText}
-            </Link>
-          </div>
-          {!isCentered ? (
-            <div
-              className={[
-                "mt-7 flex max-w-4xl flex-wrap items-center gap-2 opacity-0 animate-blur-in sm:mt-10",
-                isSplit || isEditorial ? "justify-start" : "mx-auto justify-center",
-              ].filter(Boolean).join(" ")}
-              style={{ animationDelay: "0.6s" }}
-            >
-              {trustHighlights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.label}
-                    className={[
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium leading-5 backdrop-blur-md sm:px-4",
-                      isSplit || isEditorial ? "border-border bg-card text-foreground" : "border-white/15 bg-black/25 text-white/95",
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <Icon className="h-3.5 w-3.5 text-primary" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-        {isSplit || isEditorial ? (
-          <div
-            className={[
-              "relative overflow-hidden border border-border bg-card shadow-2xl",
-              isSplit ? "min-h-[420px] rounded-lg lg:min-h-[620px]" : "order-1 aspect-[4/5] rounded-lg lg:order-2",
-            ].filter(Boolean).join(" ")}
-          >
-            {renderMedia(`absolute inset-0 h-full w-full ${useContainedMedia ? "bg-muted/20 p-4 md:p-6" : ""}`)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-          </div>
-        ) : null}
-      </div>
-    </section>
-    {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
+      <HeroVisualStyles
+        anchorId={overrides?.anchorId}
+        sectionRef={sectionRef}
+        layoutVariant={layoutVariant}
+        variantOptions={overrides?.variantOptions}
+        tagline={tagline}
+        title={title}
+        highlight={highlight}
+        subtitle={subtitle}
+        ctaText={ctaText}
+        ctaLink={ctaLink}
+        secondaryCtaText={secondaryCtaText}
+        secondaryCtaLink={secondaryCtaLink}
+        overlayColor={overlayColor}
+        overlayOpacity={overlayOpacity}
+        trustHighlights={trustHighlights}
+        renderMedia={renderMedia}
+      />
+      {templateId === "real-estate" ? <RealEstatePropertySearchSection /> : null}
     </>
   );
 };

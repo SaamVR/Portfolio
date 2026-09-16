@@ -539,15 +539,9 @@ export default function CartRecoveryPage() {
             {cartNumericErrors.maxTouchesPerLead ? <p id="cart-max-touches-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.maxTouchesPerLead}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cart-preferred-channel">Preferred channel</Label>
-            <Select value={settings.preferredChannel} onValueChange={(value) => setSettings((prev) => ({ ...prev, preferredChannel: value as CartRecoverySettings["preferredChannel"] }))}>
-              <SelectTrigger id="cart-preferred-channel"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="smart">Smart by available contact</SelectItem>
-                <SelectItem value="email">Email first</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp first</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Automated recovery channel</Label>
+            <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">Email</div>
+            <p className="text-xs text-muted-foreground">Automated WhatsApp recovery is unavailable until a verified delivery provider is configured. Phone-only leads remain visible but are not queued as sent outreach.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="cart-daily-queue-limit">Daily queue limit</Label>
@@ -566,10 +560,6 @@ export default function CartRecoveryPage() {
             />
             <p id="cart-daily-queue-limit-help" className="text-xs text-muted-foreground">Use a whole number from 5–500 follow-ups per day.</p>
             {cartNumericErrors.dailyQueueLimit ? <p id="cart-daily-queue-limit-error" role="alert" className="text-xs text-destructive">{cartNumericErrors.dailyQueueLimit}</p> : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cart-coupon-prefix">Recovery coupon prefix</Label>
-            <Input id="cart-coupon-prefix" value={settings.couponPrefix} onChange={(event) => setSettings((prev) => ({ ...prev, couponPrefix: event.target.value }))} />
           </div>
         </CardContent>
       </Card>

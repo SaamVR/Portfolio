@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@/test/test-utils";
-import { getNormalizedDeliverySettings, getStorefrontPricing } from "@/lib/storefront-pricing";
+import { getNormalizedDeliverySettings, getStorefrontPricing, resolveStorefrontDeliveryLocation } from "@/lib/storefront-pricing";
 
 describe("storefront pricing", () => {
   it("applies prepaid percentage discounts to the real checkout total", () => {
@@ -129,4 +129,23 @@ describe("storefront pricing", () => {
     expect(pricing.qualifiesForThresholdFreeDelivery).toBe(false);
     expect(pricing.deliveryFee).toBe(80);
   });
+  it("derives the primary delivery zone only from explicit normalized city aliases", () => {
+    const settings = getNormalizedDeliverySettings({
+      enabled: true,
+      primary_zone_aliases: [" Dhaka ", "ঢাকা"],
+      delivery_fee: 80,
+      delivery_fee_outside: 150,
+    });
+
+    expect(resolveStorefrontDeliveryLocation(settings, "DHAKA")).toBe("primary");
+    expect(resolveStorefrontDeliveryLocation(settings, "  ঢাকা  ")).toBe("primary");
+    expect(resolveStorefrontDeliveryLocation(settings, "Chattogram")).toBe("secondary");
+  });
+
+  it("fails safe to the extended zone when no merchant city membership is configured", () => {
+    const settings = getNormalizedDeliverySettings({ enabled: true, primary_zone_aliases: [] });
+    expect(resolveStorefrontDeliveryLocation(settings, "Dhaka")).toBe("secondary");
+    expect(resolveStorefrontDeliveryLocation(settings, "")).toBe("secondary");
+  });
+
 });

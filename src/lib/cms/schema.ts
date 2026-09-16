@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { parseLegacyStringToDoc } from "./rich-text-adapter";
+import { compositionDocumentSchema } from "@/lib/cms/storefront-platform/composition/schema";
+import { STORE_SECTION_SPACING_VALUES } from "@/lib/cms/store-theme-contract";
+import { storefrontVariantOptionsSchema } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
 
 export const storeThemeSchema = z.object({
   presetId: z.string().default("default"),
@@ -10,6 +13,7 @@ export const storeThemeSchema = z.object({
   borderRadius: z.string().optional(),
   radiusScale: z.number().min(0).max(1).optional(),
   densityScale: z.number().min(0).max(1).optional(),
+  sectionSpacing: z.enum(STORE_SECTION_SPACING_VALUES).optional(),
   aesthetic: z.enum(["minimal", "glassmorphism", "fluid", "brutalist", "neumorphism", "editorial", "retro", "artisan", "dark-luxury", "playful-pop"]).optional(),
   effects: z.object({
     scrollReveals: z.boolean().default(false),
@@ -35,8 +39,10 @@ const baseBlockFields = {
   hoverEffect: z.enum(["none", "lift", "zoom", "glow"]).optional(),
   effectOverride: z.boolean().optional(),
   layoutVariant: z.string().optional(),
+  variantOptions: storefrontVariantOptionsSchema,
   customHtml: z.string().optional(),
   customCss: z.string().optional(),
+  decoration: z.enum(["none", "subtle", "full"]).optional(),
 };
 
 const focalCoordinateSchema = z.union([z.number(), z.string()]).optional();
@@ -105,6 +111,14 @@ const promoBannerBlockSchema = z.object({
     enableParticles: z.boolean().optional(),
     enableOrbs: z.boolean().optional(),
     cardOpacity: z.number().int().min(0).max(100).optional(),
+    imageUrl: z.string().optional(),
+    imageAlt: z.string().optional(),
+    secondaryImageUrl: z.string().optional(),
+    secondaryImageAlt: z.string().optional(),
+    secondaryTitle: z.string().optional(),
+    secondarySubtitle: z.string().optional(),
+    secondaryCtaText: z.string().optional(),
+    secondaryCtaLink: z.string().optional(),
   }).default({}),
 });
 
@@ -116,9 +130,19 @@ const categoryShowcaseBlockSchema = z.object({
     title: z.string().optional(),
     source: z.enum(["auto", "categories", "types"]).optional(),
     limit: z.number().int().positive().max(24).optional(),
+    items: z.array(z.object({
+      label: z.string().min(1),
+      value: z.string().min(1),
+      tagline: z.string().optional(),
+      imageUrl: z.string().optional(),
+      filterKey: z.enum(["category", "type"]).optional(),
+    })).max(24).optional(),
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
+    autoplay: z.boolean().optional(),
+    autoplayIntervalMs: z.number().int().min(2500).max(15000).optional(),
+    showArrows: z.boolean().optional(),
   }).default({}),
 });
 
@@ -135,6 +159,9 @@ const featuredProductsBlockSchema = z.object({
     imagePosition: imagePositionSchema,
     focalX: focalCoordinateSchema,
     focalY: focalCoordinateSchema,
+    autoplay: z.boolean().optional(),
+    autoplayIntervalMs: z.number().int().min(2500).max(15000).optional(),
+    showArrows: z.boolean().optional(),
   }).default({}),
 });
 
@@ -175,6 +202,24 @@ const recentlyViewedBlockSchema = z.object({
   props: z.object({
     title: z.string().optional(),
   }).default({}),
+});
+
+const compositionBlockPropsSchema = z.record(z.string(), z.unknown()).superRefine((props, ctx) => {
+  const result = compositionDocumentSchema.safeParse(props);
+  if (result.success) return;
+
+  for (const issue of result.error.issues) {
+    ctx.addIssue({
+      ...issue,
+      path: issue.path,
+    });
+  }
+});
+
+const compositionBlockSchema = z.object({
+  ...baseBlockFields,
+  type: z.literal("composition"),
+  props: compositionBlockPropsSchema,
 });
 
 export const richTextNodeSchema: z.ZodType<any> = z.lazy(() =>
@@ -295,6 +340,7 @@ export const storePageBlockSchema = z.discriminatedUnion("type", [
   comparisonBlockSchema,
   recommendedProductsBlockSchema,
   recentlyViewedBlockSchema,
+  compositionBlockSchema,
   richTextBlockSchema,
   socialFeedBlockSchema,
   videoReelBlockSchema,

@@ -7,6 +7,8 @@ import {
   getProductPresentationSpecs,
   getRenderableMetricOptionGroups,
   getRenderableSizeOptions,
+  resolveProductCardVariant,
+  resolveProductDetailVariant,
 } from "@/lib/cms/storefront-product-presentation";
 
 const baseProduct: Product = {
@@ -73,6 +75,12 @@ describe("storefront product presentation metrics", () => {
     assert.deepEqual(getRenderableMetricOptionGroups(productWithExplicitMetrics, specs, "fashion"), [
       { key: "fabric", label: "Fabric", options: ["Cotton"] },
     ]);
+  });
+
+  it("uses apparel presentation contracts for Threads without changing Fashion routing", () => {
+    assert.equal(resolveProductCardVariant({ templateId: "threads", productType: "Accessories" }), "fashion");
+    assert.equal(resolveProductDetailVariant({ templateId: "threads", productType: "Accessories" }), "fashion");
+    assert.equal(resolveProductCardVariant({ templateId: "fashion" }), "fashion");
   });
 
   it("keeps legacy size options when the type schema explicitly includes size", () => {

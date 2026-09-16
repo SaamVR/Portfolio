@@ -8,6 +8,8 @@ describe("order input normalization", () => {
       {
         productId: "123e4567-e89b-12d3-a456-426614174000",
         size: "L",
+        optionIds: ["opt-size-l"],
+        expectedUnitPrice: 1200,
         quantity: 2,
       },
     ]);
@@ -16,6 +18,8 @@ describe("order input normalization", () => {
       {
         productId: "123e4567-e89b-12d3-a456-426614174000",
         size: "L",
+        optionIds: ["opt-size-l"],
+        expectedUnitPrice: 1200,
         quantity: 2,
       },
     ]);
@@ -31,7 +35,9 @@ describe("order input normalization", () => {
     ]);
 
     expect(items[0]?.productId).toBe("123e4567-e89b-12d3-a456-426614174000");
-    expect(items[0]?.size).toBe("Free Size");
+    expect(items[0]?.size).toBe("Default option");
+    expect(items[0]?.optionIds).toEqual([]);
+    expect(items[0]?.expectedUnitPrice).toBeNull();
   });
 
   it("rejects non-UUID launch-style ids that cannot be fulfilled by the commerce tables", () => {
@@ -42,4 +48,19 @@ describe("order input normalization", () => {
       },
     ]), /invalid product/i);
   });
+
+  it("rejects null and primitive cart entries as malformed input", () => {
+    assert.throws(() => normalizeOrderItems([null]), /invalid items/i);
+    assert.throws(() => normalizeOrderItems([undefined]), /invalid items/i);
+    assert.throws(() => normalizeOrderItems(["not-an-item"]), /invalid items/i);
+  });
+});
+
+
+it("rejects duplicate or malformed commercial option identity", () => {
+  assert.throws(() => normalizeOrderItems([{
+    productId: "123e4567-e89b-12d3-a456-426614174000",
+    optionIds: ["same", "same"],
+    quantity: 1,
+  }]), /invalid option identity/i);
 });

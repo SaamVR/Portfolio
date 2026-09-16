@@ -1,5 +1,6 @@
 import type { Store, StorePageBlock, StoreTheme } from "./schema";
 import type { ThemeExportBundle } from "./theme-export-import";
+import { normalizeCanonicalVariantOptions } from "./storefront-platform/variants/variant-option-contract";
 
 export type TemplateSafetySeverity = "warning" | "blocker";
 
@@ -221,6 +222,7 @@ function sanitizeBlock(block: StorePageBlock, blockIndex: number, findings: Temp
     hoverEffect: block.hoverEffect,
     effectOverride: block.effectOverride,
     layoutVariant: block.layoutVariant,
+    variantOptions: normalizeCanonicalVariantOptions(block.variantOptions),
     props: sanitizedProps,
   } as StorePageBlock;
 }

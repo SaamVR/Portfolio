@@ -7,6 +7,7 @@ export const storefrontTemplateIds = [
   "landing",
   "beauty",
   "fashion",
+  "threads",
   "electronics",
   "food",
   "crafts",
@@ -87,7 +88,8 @@ export interface StorefrontTemplateDefinition {
   id: StorefrontTemplateId;
   label: string;
   description: string;
-  rendererKind: "fashion" | "generic";
+  rendererKind: "fashion" | "threads" | "generic";
+  adminOnly?: boolean;
   onboardingMode: StorefrontOnboardingMode;
   compatibleBlockSet: readonly StorefrontBlockType[];
   recommendedBlockSet: readonly StorefrontBlockType[];
@@ -137,6 +139,7 @@ type StorefrontTemplateDefinitionOverride = {
   label?: string;
   description?: string;
   rendererKind?: StorefrontTemplateDefinition["rendererKind"];
+  adminOnly?: boolean;
   onboardingMode?: StorefrontOnboardingMode;
   compatibleBlockSet?: readonly StorefrontBlockType[];
   recommendedBlockSet?: readonly StorefrontBlockType[];
@@ -220,8 +223,9 @@ function createTemplateDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateDefinitionOverride,
 ): StorefrontTemplateDefinition {
-  const compatibleBlockSet = overrides.compatibleBlockSet ?? allBlockTypes;
-  const recommendedBlockSet = overrides.recommendedBlockSet ?? compatibleBlockSet;
+  const legacyCompatibleBlockSet = overrides.compatibleBlockSet ?? allBlockTypes;
+  const compatibleBlockSet = Array.from(new Set<StorefrontBlockType>([...legacyCompatibleBlockSet, "composition"]));
+  const recommendedBlockSet = overrides.recommendedBlockSet ?? legacyCompatibleBlockSet;
   const defaultBlockSet = overrides.defaultBlockSet ?? recommendedBlockSet;
 
   return {
@@ -229,6 +233,7 @@ function createTemplateDefinition(
     label: overrides.label ?? id,
     description: overrides.description ?? "",
     rendererKind: overrides.rendererKind ?? "generic",
+    adminOnly: overrides.adminOnly ?? false,
     onboardingMode: overrides.onboardingMode ?? "template",
     compatibleBlockSet,
     recommendedBlockSet,
@@ -263,7 +268,8 @@ function createTemplateSeedDefinition(
   id: StorefrontTemplateId,
   overrides: StorefrontTemplateSeedOverride,
 ): StorefrontTemplateSeedDefinition {
-  const compatibleBlockSet = overrides.compatibleBlockSet ?? overrides.recommendedBlockSet;
+  const legacyCompatibleBlockSet = overrides.compatibleBlockSet ?? overrides.recommendedBlockSet;
+  const compatibleBlockSet = Array.from(new Set([...legacyCompatibleBlockSet, "composition"]));
   const defaultBlockSet = overrides.defaultBlockSet ?? overrides.recommendedBlockSet;
 
   return {
@@ -361,7 +367,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "centered",
-        "rich-text": "centered",
+        "rich-text": "standard",
       },
     },
   }),
@@ -394,7 +400,45 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       spacingDensity: "comfortable",
       typographyScale: "display",
       colorTokens: {},
-      blockLayoutVariants: {},
+      blockLayoutVariants: {
+        hero: "poster",
+        "category-showcase": "cards",
+        "featured-products": "4-col",
+        "recommended-products": "4-col",
+        "promo-banner": "standard",
+        "rich-text": "brand-story",
+        "social-feed": "gallery",
+        "trust-badges": "cards",
+      },
+    },
+  }),
+  threads: createTemplateDefinition("threads", {
+    label: "Threads",
+    description: "Admin-only editorial commerce template with compact storytelling, category-led discovery, and a dark featured-product rail.",
+    rendererKind: "threads",
+    adminOnly: true,
+    recommendedBlockSet: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text"],
+    defaultBlockSet: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text"],
+    presentation: {
+      sectionOrder: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text", "social-feed", "faq-accordion", "testimonials", "comparison", "recently-viewed", "countdown", "video-reel"],
+      visibleSections: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text"],
+      cardStyle: "fashion-editorial",
+      imageRatio: "4:5",
+      borderRadius: "0.5rem",
+      spacingDensity: "compact",
+      typographyScale: "display",
+      colorTokens: { "--threads-clay": "17 48% 48%" },
+      navigationLabels: { home: "Home", shop: "Shop", account: "Account", wishlist: "Saved", cart: "Cart" },
+      ctaLabels: { primary: "Explore New Arrivals", secondary: "Our Story", addToCart: "Add to cart" },
+      blockLayoutVariants: {
+        hero: "split",
+        "category-showcase": "carousel",
+        "promo-banner": "dual-editorial",
+        "recommended-products": "grid",
+        "featured-products": "carousel",
+        "trust-badges": "brand-values",
+        "rich-text": "brand-story",
+      },
     },
   }),
   electronics: createTemplateDefinition("electronics", {
@@ -458,7 +502,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "split",
-        "featured-products": "grid",
+        "featured-products": "3-col",
       },
     },
   }),
@@ -478,7 +522,7 @@ export const storefrontTemplateRegistry: Record<StorefrontTemplateId, Storefront
       },
       blockLayoutVariants: {
         hero: "split",
-        "featured-products": "grid",
+        "featured-products": "3-col",
       },
     },
   }),
@@ -648,7 +692,29 @@ export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, Storef
     group: "Clothing",
     recommendedPageSet: ["home", "policy"],
     recommendedBlockSet: ["hero", "promo-banner", "category-showcase", "featured-products", "testimonials", "social-feed", "trust-badges", "faq-accordion", "recently-viewed"],
-    defaultTheme: themeFromLaunchTemplate("clothing"),
+    defaultTheme: {
+      ...themeFromLaunchTemplate("clothing"),
+      mode: "light",
+      customCssVars: {
+        "--background": "43 39% 93%",
+        "--foreground": "155 14% 16%",
+        "--card": "43 42% 96%",
+        "--card-foreground": "155 14% 16%",
+        "--popover": "43 42% 96%",
+        "--popover-foreground": "155 14% 16%",
+        "--primary": "162 75% 24%",
+        "--primary-foreground": "43 42% 96%",
+        "--secondary": "40 30% 88%",
+        "--secondary-foreground": "155 14% 16%",
+        "--muted": "40 30% 88%",
+        "--muted-foreground": "150 8% 42%",
+        "--accent": "155 14% 16%",
+        "--accent-foreground": "43 42% 96%",
+        "--border": "38 23% 79%",
+        "--input": "38 23% 79%",
+        "--ring": "162 75% 24%",
+      },
+    },
     storeDescription: "Premium clothing, curated drops, outfit storytelling, and everyday essentials with strong trust cues and flexible fulfillment options.",
     hero: {
       tagline: "New Season",
@@ -662,6 +728,56 @@ export const storefrontTemplateSeedRegistry: Record<StorefrontTemplateId, Storef
       product_visibility: "catalog",
       checkout_mode: "standard",
     },
+  }),
+  threads: createTemplateSeedDefinition("threads", {
+    legacyBlueprintIds: ["threads-admin"],
+    legacyTemplateId: "clothing",
+    name: "Threads Editorial",
+    shortName: "Threads",
+    description: "Admin-only compact editorial storefront built around story-led merchandising and mobile-first product discovery.",
+    businessFamily: "commerce",
+    catalogMode: "multi_product",
+    group: "Clothing",
+    recommendedPageSet: ["home", "about", "policy"],
+    recommendedBlockSet: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text"],
+    defaultBlockSet: ["hero", "category-showcase", "promo-banner", "recommended-products", "featured-products", "trust-badges", "rich-text"],
+    defaultTheme: {
+      ...themeFromLaunchTemplate("clothing"),
+      mode: "light",
+      aesthetic: "editorial",
+      borderRadius: "0.5rem",
+      sectionSpacing: "compact",
+      customCssVars: {
+        "--background": "42 38% 97%",
+        "--foreground": "165 26% 12%",
+        "--card": "42 42% 99%",
+        "--card-foreground": "165 26% 12%",
+        "--popover": "42 42% 99%",
+        "--popover-foreground": "165 26% 12%",
+        "--primary": "160 58% 18%",
+        "--primary-foreground": "42 42% 99%",
+        "--secondary": "38 31% 91%",
+        "--secondary-foreground": "165 26% 12%",
+        "--muted": "36 23% 84%",
+        "--muted-foreground": "158 10% 36%",
+        "--accent": "17 48% 48%",
+        "--accent-foreground": "42 42% 99%",
+        "--border": "35 20% 82%",
+        "--input": "35 20% 82%",
+        "--ring": "160 58% 18%",
+        "--threads-clay": "17 48% 48%"
+      }
+    },
+    storeDescription: "An editorial apparel and lifestyle storefront with compact category discovery, product storytelling, and a deep-green featured rail.",
+    hero: {
+      tagline: "Wear Your Story",
+      title: "Wear Your Story",
+      highlight: "",
+      subtitle: "Art, culture and everyday pieces made to carry a story."
+    },
+    capabilities: ["catalog", "cart", "checkout", "promotions"],
+    onboarding: { steps: defaultOnboardingSteps },
+    storefrontProfile: { product_visibility: "catalog", checkout_mode: "standard" }
   }),
   beauty: createTemplateSeedDefinition("beauty", {
     legacyBlueprintIds: ["beauty"],
@@ -1161,6 +1277,7 @@ export const storefrontTemplateOptions = storefrontTemplateIds.map((id) => ({
   label: storefrontTemplateRegistry[id].label,
   description: storefrontTemplateRegistry[id].description,
   onboardingMode: storefrontTemplateRegistry[id].onboardingMode,
+  adminOnly: storefrontTemplateRegistry[id].adminOnly === true,
 }));
 
 export function isStorefrontTemplateId(value: unknown): value is StorefrontTemplateId {

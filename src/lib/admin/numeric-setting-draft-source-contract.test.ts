@@ -49,6 +49,7 @@ test("cart recovery validates all bounded numeric settings before save and queue
   assert.match(cartRecovery, /max=\{500\}/);
   assert.match(cartRecovery, /saveSettingsMutation\.mutate\(validated\)/);
   assert.match(cartRecovery, /queueRecoveryMutation\.mutate\(validated\)/);
-  assert.match(cartRecovery, /htmlFor="cart-preferred-channel"/);
-  assert.match(cartRecovery, /htmlFor="cart-coupon-prefix"/);
+  assert.doesNotMatch(cartRecovery, /htmlFor="cart-preferred-channel"/);
+  assert.doesNotMatch(cartRecovery, /htmlFor="cart-coupon-prefix"/);
+  assert.match(cartRecovery, /Automated WhatsApp recovery is unavailable/);
 });

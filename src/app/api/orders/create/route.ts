@@ -6,8 +6,12 @@ import { resolveStorefrontOrderExperienceFromProfile } from "@/lib/cms/storefron
 import { jsonNoStore } from "@/lib/http/cache-control";
 import { dispatchOrderCreatedBackgroundJobs } from "@/lib/orders/order-background-queue";
 import { isAllowedStorefrontPaymentMethod } from "@/lib/payments/provider-registry";
+import { resolveStorePaymentAuthority } from "@/lib/payments/store-payment-authority";
+import { resolveAllowGuestCheckout } from "@/lib/storefront-customer-access";
+import { canExposePublicStorefront, type PublicStorefrontAccessState } from "@/lib/storefront-public-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const maxOrderBodyBytes = 64 * 1024;
 
 function getClientIp(req: Request) {
   return (
@@ -22,10 +26,37 @@ function readText(value: unknown, maxLength: number) {
   return value.trim().slice(0, maxLength);
 }
 
-function readMoney(value: unknown) {
+function readMoneyAssertion(value: unknown, label: string) {
+  if (value === undefined || value === null || value === "") return null;
   const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
+  if (!Number.isFinite(amount) || amount < 0 || amount > 2_000_000_000) {
+    throw new Error(`Invalid ${label} pricing assertion`);
+  }
+  return Math.round(amount);
+}
+
+function readDeliveryZone(value: unknown) {
+  const zone = readText(value, 20).toLowerCase();
+  if (!zone) return null;
+  if (zone !== "primary" && zone !== "secondary") {
+    throw new Error("Invalid delivery zone");
+  }
+  return zone;
+}
+
+function readManualPaymentEvidence(paymentMethod: string, value: unknown) {
+  const isBkashManual = paymentMethod === "bkash_manual";
+  const isNagadManual = paymentMethod === "nagad";
+  if (!isBkashManual && !isNagadManual) {
+    return { provider: null, reference: null };
+  }
+
+  const reference = readText(value, 80).toUpperCase();
+  if (!/^[A-Z0-9_-]{4,50}$/.test(reference)) {
+    throw new Error("Invalid manual payment reference");
+  }
+
+  return { provider: isBkashManual ? "bkash" : "nagad", reference };
 }
 
 function safeRecord(value: unknown) {
@@ -37,34 +68,17 @@ function mapOrderError(message: string) {
     return { message, status: 409 };
   }
 
-  if (/cart|client_request_id|coupon|invalid|items|product|quantity|stock|required|pricing changed/i.test(message)) {
+  if (/cart|client_request_id|coupon|invalid|items|product|option|quantity|stock|required|pricing changed|delivery|payment method|payment provider|manual payment|unavailable/i.test(message)) {
     return { message, status: 400 };
   }
 
   return { message: "Failed to create order", status: 500 };
 }
 
-type StoreOrderAccessState = {
-  isPublished?: boolean | null;
-  hasSubscription?: boolean;
-  planLive?: boolean;
-};
+type StoreOrderAccessState = PublicStorefrontAccessState;
 
 export function canStoreAcceptOrders(access: StoreOrderAccessState | null | undefined) {
-  if (!access) return false;
-
-  // Match storefront access semantics exactly: a live trial/active plan may make
-  // the storefront public before the legacy is_published flag is flipped.
-  if (!access.isPublished) {
-    return access.planLive === true;
-  }
-
-  // Published legacy stores with no subscription record remain accessible.
-  if (!access.hasSubscription) {
-    return true;
-  }
-
-  return access.planLive === true;
+  return canExposePublicStorefront(access);
 }
 
 export const orderCreateRouteDeps = {
@@ -73,6 +87,7 @@ export const orderCreateRouteDeps = {
   getSupabaseAdminClient,
   loadStorePlanState,
   dispatchOrderCreatedBackgroundJobs,
+  resolveStorePaymentAuthority,
 };
 
 export async function POST(req: Request) {
@@ -86,15 +101,34 @@ export async function POST(req: Request) {
       return jsonNoStore({ error: "Too many order attempts. Please wait a minute." }, { status: 429 });
     }
 
-    const body = await req.json();
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, "utf8") > maxOrderBodyBytes) {
+      return jsonNoStore({ error: "Order payload is too large" }, { status: 413 });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(rawBody || "{}");
+    } catch {
+      return jsonNoStore({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
     const storeId = readText(body?.storeId, 80);
     const idempotencyKey = readText(body?.idempotencyKey, 120);
     const paymentMethod = readText(body?.paymentMethod, 30).toLowerCase();
+    const manualPayment = readManualPaymentEvidence(paymentMethod, body?.manualPaymentReference);
     const customerName = readText(body?.customerName, 100);
     const customerPhone = readText(body?.customerPhone, 30);
-    const customerEmail = readText(body?.customerEmail, 180);
     const shippingAddress = readText(body?.shippingAddress, 500);
     const shippingCity = readText(body?.shippingCity, 100);
+    const deliveryZone = readDeliveryZone(body?.deliveryZone);
+    const expectedDeliveryFee = readMoneyAssertion(body?.deliveryFee, "delivery fee");
+    const expectedDiscountAmount = readMoneyAssertion(body?.discountAmount, "discount");
 
     if (!uuidPattern.test(storeId)) {
       return jsonNoStore({ error: "Invalid store" }, { status: 400 });
@@ -114,6 +148,7 @@ export async function POST(req: Request) {
 
     const items = normalizeOrderItems(body?.items);
     const user = await orderCreateRouteDeps.getAuthenticatedUser(req);
+    const customerEmail = user?.email ? readText(user.email, 180) : "";
     const supabaseAdmin = orderCreateRouteDeps.getSupabaseAdminClient();
     const [{ data: store }, { data: storefrontSetting }, storePlanResult] = await Promise.all([
       supabaseAdmin
@@ -141,10 +176,8 @@ export async function POST(req: Request) {
       planLive: storePlanState?.resolved.live ?? false,
     };
 
-    // Private preview links may reveal a non-public draft to an authorized
-    // merchant, but must never make that draft transactional. Live trial/active
-    // stores remain orderable because they are already publicly accessible by
-    // the canonical storefront resolver.
+    // Preview/private draft visibility never grants transactional authority.
+    // Publication and plan eligibility are independent requirements.
     if (!canStoreAcceptOrders(orderAccess)) {
       return jsonNoStore({ error: "This store is not currently accepting orders." }, { status: 403 });
     }
@@ -152,21 +185,37 @@ export async function POST(req: Request) {
     const storefrontProfile = typeof storefrontSetting?.value === "object" && storefrontSetting?.value
       ? storefrontSetting.value as Record<string, unknown>
       : null;
-    const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
+    if (!user && !resolveAllowGuestCheckout(storefrontProfile)) {
+      return jsonNoStore({ error: "Sign in is required to checkout at this store." }, { status: 401 });
+    }
 
-    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_stock_v2", {
+    const orderExperience = resolveStorefrontOrderExperienceFromProfile(storefrontProfile, items);
+    const paymentAuthority = await orderCreateRouteDeps.resolveStorePaymentAuthority(
+      supabaseAdmin,
+      storeId,
+      paymentMethod,
+    );
+
+
+    const { data, error } = await (supabaseAdmin as any).rpc("create_store_order_with_payment_lifecycle", {
       _store_id: storeId,
       _client_request_id: idempotencyKey,
       _user_id: user?.id ?? null,
       _items: items,
-      _delivery_fee: readMoney(body?.deliveryFee),
-      _discount_amount: readMoney(body?.discountAmount),
+      _delivery_zone: deliveryZone,
+      _expected_delivery_fee: expectedDeliveryFee,
+      _expected_discount_amount: expectedDiscountAmount,
       _customer_name: customerName,
       _customer_phone: customerPhone,
       _customer_email: customerEmail || null,
       _shipping_address: shippingAddress,
       _shipping_city: shippingCity,
-      _payment_method: paymentMethod,
+      _payment_method: paymentAuthority.paymentMethod,
+      _payment_method_authorized: paymentAuthority.allowed,
+      _payment_method_prepaid: paymentAuthority.prepaidEligible,
+      _payment_provider: paymentAuthority.providerId,
+      _manual_payment_provider: manualPayment.provider,
+      _manual_payment_reference: manualPayment.reference,
       _notes: readText(body?.notes, 1000) || null,
       _coupon_code: readText(body?.couponCode, 80) || null,
     });
@@ -183,7 +232,7 @@ export async function POST(req: Request) {
 
     const { data: persistedOrder, error: persistedOrderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, subtotal, delivery_fee, total, items, status, payment_method, client_request_id")
+      .select("id, order_number, subtotal, delivery_fee, delivery_zone, total, items, status, payment_method, manual_payment_provider, manual_payment_reference, client_request_id, reservation_state, reservation_expires_at")
       .eq("id", rpcOrder.id)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -195,12 +244,19 @@ export async function POST(req: Request) {
     const order = persistedOrder ?? rpcOrder;
     const persistedPaymentMethod = readText(order.payment_method, 30).toLowerCase() || paymentMethod;
 
-    // Defense in depth: the v2 RPC already rejects this mismatch while holding
+    // Defense in depth: the authoritative RPC already rejects this mismatch while holding
     // the checkout-attempt lock. Do not let a drifted database function turn a
     // changed-method retry into a false success at the HTTP boundary.
     if (persistedPaymentMethod !== paymentMethod) {
       return jsonNoStore(
         { error: "checkout recovery conflict: payment method does not match the existing order" },
+        { status: 409 },
+      );
+    }
+
+    if (order.status === "cancelled" || order.reservation_state === "released") {
+      return jsonNoStore(
+        { error: "checkout recovery conflict: this checkout reservation was released; start a new checkout" },
         { status: 409 },
       );
     }

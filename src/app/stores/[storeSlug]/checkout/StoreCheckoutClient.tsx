@@ -3,6 +3,7 @@
 import Checkout from "@/views/Checkout";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { StoreThemeScope } from "@/components/storefront/StoreThemeScope";
+import { StorefrontLayout } from "@/components/storefront/StorefrontLayout";
 import { useCart } from "@/context/useCart";
 import type { Store } from "@/lib/cms/schema";
 
@@ -11,9 +12,11 @@ function HydratedStoreCheckout({ store }: { store: Store }) {
 
   if (!isCartReady) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center px-4" role="status" aria-live="polite">
-        <p className="text-sm text-muted-foreground">Loading checkout...</p>
-      </div>
+      <StorefrontLayout>
+        <div className="flex min-h-[70vh] items-center justify-center px-4" role="status" aria-live="polite">
+          <p className="text-sm text-muted-foreground">Loading checkout...</p>
+        </div>
+      </StorefrontLayout>
     );
   }
 

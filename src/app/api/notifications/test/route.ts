@@ -110,7 +110,7 @@ async function resolveAuthorizedStore(req: Request, storeId: string) {
     supabaseAdmin,
     storeId,
     user.id,
-    ["owner", "admin", "editor"],
+    ["owner", "admin"],
   );
 
   if (!authorized) {

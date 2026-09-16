@@ -15,12 +15,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import { useMerchantConfirm } from "@/components/admin/MerchantConfirmDialog";
 import type { Store, StorePage, StorePageBlock } from "@/lib/cms/schema";
-import { createDefaultBlock } from "@/lib/cms/block-library";
 import { persistStorefrontState } from "@/lib/cms/store-persistence";
 import { refreshStorefrontContentCache } from "@/lib/storefront-cache-client";
 import { GUIDED_THEME_TOKENS, hexToHslChannels, hslChannelsToHex, resolveStoreThemeVars } from "@/lib/cms/store-theme-utils";
+import { STORE_SECTION_SPACING_PRESETS, STORE_SECTION_SPACING_VALUES, type StoreSectionSpacing } from "@/lib/cms/store-theme-contract";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveStorefrontTemplateSeed } from "@/lib/cms/storefront-template-seeds";
+import { getStorefrontTemplateDefinition, resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
 import { loadThemePackages } from "@/lib/theme-packages";
 import { Link, useLocation, useSearchParams } from "@/lib/react-router-dom-shim";
 import { buildPageBuilderPath } from "@/lib/admin-paths";
@@ -29,9 +30,17 @@ import { DomTreeNavigator } from "./DomTreeNavigator";
 import { StoreProvider } from "./StoreProvider";
 import { StoreThemeScope } from "./StoreThemeScope";
 import { StorefrontBlockRenderer } from "./StorefrontBlockRenderer";
+import { FashionV3BlockRenderer } from "./fashion-v3/FashionV3BlockRenderer";
+import { FashionV3Shell } from "./fashion-v3/FashionV3Shell";
+import { ThreadsBlockRenderer } from "./threads/ThreadsBlockRenderer";
+import { ThreadsShell } from "./threads/ThreadsShell";
 import { VisualCssInspector } from "./VisualCssInspector";
+import { MobileMerchantEditorSheet } from "./editor/MobileMerchantEditorSheet";
 import { generateExportBundle, downloadExportBundle, parseImportBundle, ThemeExportBundle } from "@/lib/cms/theme-export-import";
-import { fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { createRegistryDefaultBlock, fallbackBlockRegistry, filterBlockRegistryForTemplateSeed, loadBlockRegistry, type CmsBlockRegistryItem } from "@/lib/cms/block-registry";
+import { buildStorefrontEditorDraftEnvelope, getStorefrontEditorDraftKey, parseStorefrontEditorDraft, serializeStorefrontEditorDraft } from "@/lib/cms/storefront-platform/editor/draft-storage";
+import { getStorefrontEditorQualityIssues } from "@/lib/cms/storefront-platform/editor/quality-assist";
+import { applyCompositionRecipe, createCompositionBlockFromRecipe, getCompatibleCompositionRecipes, getCompositionEditorFields, getPlatformAestheticOptions, updateCompositionAction as updateCompositionActionContract, updateCompositionField as updateCompositionFieldContract } from "@/lib/cms/storefront-platform/editor/platform-contracts";
 
 const BASIC_TEXT_FIELDS = [
   "eyebrow",
@@ -42,6 +51,8 @@ const BASIC_TEXT_FIELDS = [
   "body",
   "ctaText",
   "ctaLink",
+  "secondaryTitle",
+  "secondarySubtitle",
   "secondaryCtaText",
   "secondaryCtaLink",
   "badgeText",
@@ -174,6 +185,9 @@ export function StorefrontLiveEditor({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [persistedSnapshot, setPersistedSnapshot] = useState(() => serializeStoreDraft(store));
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
+  const [localDraftProtected, setLocalDraftProtected] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { confirm: confirmMerchantAction, confirmationDialog } = useMerchantConfirm();
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -185,6 +199,7 @@ export function StorefrontLiveEditor({
   const storeIdRef = useRef(store.id);
   const pageIdRef = useRef(page.id);
   const draftSnapshotRef = useRef(serializeStoreDraft(store));
+  const storeDraftRef = useRef(store);
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
   const basicEditorHref = buildPageBuilderPath("basic", { pageId: page.id, returnTo });
@@ -193,6 +208,7 @@ export function StorefrontLiveEditor({
   storeIdRef.current = store.id;
   pageIdRef.current = page.id;
   draftSnapshotRef.current = currentSnapshot;
+  storeDraftRef.current = store;
   const hasUnsavedChanges = currentSnapshot !== persistedSnapshot;
   const selectedBlock = useMemo(
     () => page.blocks.find((block) => block.id === selectedBlockId) ?? null,
@@ -202,6 +218,11 @@ export function StorefrontLiveEditor({
     () => (importPreview ? buildImportChangeSummary(store, importPreview) : null),
     [importPreview, store],
   );
+  const selectedBlockQualityIssues = useMemo(
+    () => selectedBlock ? getStorefrontEditorQualityIssues(selectedBlock) : [],
+    [selectedBlock],
+  );
+  const selectedCompositionEditor = useMemo(() => getCompositionEditorFields(selectedBlock), [selectedBlock]);
   const activeTemplateSeed = useMemo(() => {
     const profile = store.siteSettings?.storefront_profile;
     const inferredTemplateSeedId = typeof profile === "object" && profile && "template_id" in profile && typeof profile.template_id === "string"
@@ -215,6 +236,8 @@ export function StorefrontLiveEditor({
     () => filterBlockRegistryForTemplateSeed(blockRegistry, activeTemplateSeed),
     [activeTemplateSeed, blockRegistry],
   );
+  const compositionEnabled = availableBlockRegistry.some((block) => block.value === "composition");
+  const platformAestheticOptions = useMemo(() => getPlatformAestheticOptions(store.theme), [store.theme]);
 
   useEffect(() => {
     if (!adminMode) {
@@ -240,36 +263,84 @@ export function StorefrontLiveEditor({
   }, []);
 
   useEffect(() => {
-    lastLoadedStoreRef.current = store;
-    setPersistedSnapshot(serializeStoreDraft(store));
+    const loadedStore = storeDraftRef.current;
+    const baseline = serializeStoreDraft(loadedStore);
+    lastLoadedStoreRef.current = loadedStore;
+    setPersistedSnapshot(baseline);
     setHistory([]);
     setRedoHistory([]);
     setLastSavedAt(null);
+    setSaveError(null);
+    setLocalDraftProtected(false);
+
+    if (typeof window !== "undefined") {
+      const key = getStorefrontEditorDraftKey(loadedStore.id, page.id);
+      const result = parseStorefrontEditorDraft(window.localStorage.getItem(key), {
+        storeId: loadedStore.id,
+        pageId: page.id,
+        baseSnapshot: baseline,
+      });
+      if (result.status === "available" && serializeStoreDraft(result.envelope.draft) !== baseline) {
+        setStore(result.envelope.draft);
+        setHistory([loadedStore]);
+        setLocalDraftProtected(true);
+        toast.info("Recovered your protected storefront draft from this device.");
+      } else if (result.status === "stale" || result.status === "invalid" || result.status === "base-mismatch") {
+        window.localStorage.removeItem(key);
+      }
+    }
   // Reset the persisted baseline only when the loaded storefront identity changes.
   // Ordinary local edits must remain dirty until persistence succeeds.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.id, store.id]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const syncOnlineState = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", syncOnlineState);
+    window.addEventListener("offline", syncOnlineState);
+    return () => {
+      window.removeEventListener("online", syncOnlineState);
+      window.removeEventListener("offline", syncOnlineState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasUnsavedChanges) return undefined;
+    const key = getStorefrontEditorDraftKey(store.id, page.id);
+    const persistLocalDraft = () => {
+      try {
+        const envelope = buildStorefrontEditorDraftEnvelope({
+          store: storeDraftRef.current,
+          pageId: page.id,
+          baseSnapshot: persistedSnapshot,
+        });
+        window.localStorage.setItem(key, serializeStorefrontEditorDraft(envelope));
+        setLocalDraftProtected(true);
+      } catch (error) {
+        console.warn("Unable to protect storefront editor draft locally:", error);
+        setLocalDraftProtected(false);
+      }
+    };
+    const timer = window.setTimeout(persistLocalDraft, 350);
+    const flushDraft = () => persistLocalDraft();
+    const flushOnVisibility = () => {
+      if (document.visibilityState === "hidden") persistLocalDraft();
+    };
+    window.addEventListener("pagehide", flushDraft);
+    document.addEventListener("visibilitychange", flushOnVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pagehide", flushDraft);
+      document.removeEventListener("visibilitychange", flushOnVisibility);
+    };
+  }, [currentSnapshot, hasUnsavedChanges, page.id, persistedSnapshot, store.id]);
+
+  useEffect(() => {
     if (!availableBlockRegistry.some((block) => block.value === nextBlockType)) {
       setNextBlockType(availableBlockRegistry[0]?.value ?? "rich-text");
     }
   }, [availableBlockRegistry, nextBlockType]);
-
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      if (viewport === "mobile") {
-        document.body.style.width = "420px";
-        document.body.style.margin = "0 auto";
-      } else if (viewport === "tablet") {
-        document.body.style.width = "768px";
-        document.body.style.margin = "0 auto";
-      } else {
-        document.body.style.width = "100%";
-        document.body.style.margin = "0";
-      }
-    }
-  }, [viewport]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hasUnsavedChanges) {
@@ -333,6 +404,11 @@ export function StorefrontLiveEditor({
       setStore(lastLoadedStoreRef.current);
       setHistory([]);
       onSelectedBlockChange(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+      }
+      setLocalDraftProtected(false);
+      setSaveError(null);
       toast.success("Live editor reset to the last loaded storefront state.");
       return;
     }
@@ -367,6 +443,11 @@ export function StorefrontLiveEditor({
     setStore(lastLoadedStoreRef.current);
     setHistory([]);
     onSelectedBlockChange(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+    }
+    setLocalDraftProtected(false);
+    setSaveError(null);
     toast.success("Live editor reset to the last loaded storefront state.");
   };
 
@@ -390,8 +471,8 @@ export function StorefrontLiveEditor({
       entityValue: page.title,
       storeName: store.name,
       impacts: [
-        "The current unsaved edits stay in local page memory so reopening the live editor on this page keeps them available.",
-        "The edits are not persisted yet. Browser or tab navigation remains protected by the existing unsaved-change warning.",
+        "The current unsaved edits stay available and are protected in a page-scoped draft on this device.",
+        "The edits are not published or server-saved yet. Reopen this page to continue, then save when ready.",
       ],
       recoveryText: "Cancel to keep the live editor open with the current draft unchanged.",
       confirmLabel: "Close and keep draft",
@@ -463,6 +544,20 @@ export function StorefrontLiveEditor({
           [token]: value,
         },
       },
+    }));
+  };
+
+  const updateStoreThemeAesthetic = (aesthetic: NonNullable<Store["theme"]["aesthetic"]>) => {
+    applyStoreChange((current) => ({
+      ...current,
+      theme: { ...current.theme, aesthetic },
+    }));
+  };
+
+  const updateStoreThemeSectionSpacing = (sectionSpacing: StoreSectionSpacing) => {
+    applyStoreChange((current) => ({
+      ...current,
+      theme: { ...current.theme, sectionSpacing },
     }));
   };
 
@@ -623,7 +718,7 @@ export function StorefrontLiveEditor({
     if (!selectedBlock || selectedBlock.type === nextType) return;
 
     applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => {
-      const replacement = createDefaultBlock(nextType, block.sortOrder);
+      const replacement = createRegistryDefaultBlock(nextType, block.sortOrder);
       return {
         ...replacement,
         id: block.id,
@@ -644,7 +739,7 @@ export function StorefrontLiveEditor({
       }
 
       const insertionIndex = insertPosition === "before" ? sourceIndex : sourceIndex + 1;
-      const nextBlock = createDefaultBlock(nextBlockType, insertionIndex);
+      const nextBlock = createRegistryDefaultBlock(nextBlockType, insertionIndex);
       const blocks = [...currentPage.blocks];
       blocks.splice(insertionIndex, 0, nextBlock);
       onSelectedBlockChange(nextBlock.id);
@@ -656,7 +751,43 @@ export function StorefrontLiveEditor({
     }));
   };
 
+  const insertCompositionRecipe = (recipeId: string) => {
+    if (!compositionEnabled) return;
+    applyStoreChange((current) => updatePage(current, page.id, (currentPage) => {
+      const sourceIndex = selectedBlock
+        ? currentPage.blocks.findIndex((block) => block.id === selectedBlock.id)
+        : currentPage.blocks.length - 1;
+      const insertionIndex = Math.max(0, sourceIndex + 1);
+      const nextBlock = createCompositionBlockFromRecipe(recipeId, insertionIndex);
+      const blocks = [...currentPage.blocks];
+      blocks.splice(insertionIndex, 0, nextBlock);
+      onSelectedBlockChange(nextBlock.id);
+      return { ...currentPage, blocks: blocks.map((block, index) => ({ ...block, sortOrder: index })) };
+    }));
+  };
+
+  const applySelectedCompositionRecipe = (recipeId: string) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => applyCompositionRecipe(block, recipeId)));
+  };
+
+  const updateSelectedCompositionField = (nodeId: string, key: "text" | "src" | "alt", value: string) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => updateCompositionFieldContract(block, nodeId, key, value)));
+  };
+
+  const updateSelectedCompositionAction = (nodeId: string, index: number, patch: { label?: string; href?: string }) => {
+    if (!selectedBlock || selectedBlock.type !== "composition") return;
+    applyStoreChange((current) => updateBlock(current, page.id, selectedBlock.id, (block) => updateCompositionActionContract(block, nodeId, index, patch)));
+  };
+
   const saveLiveEdits = async (intent: "save" | "publish" | "unpublish" = "save") => {
+    if (!isOnline) {
+      setSaveError("Offline. Your draft is protected on this device and can be retried when the connection returns.");
+      toast.warning("You are offline. The storefront draft is protected locally.");
+      return;
+    }
+    setSaveError(null);
     const targetPublicationState = intent === "publish"
       ? true
       : intent === "unpublish"
@@ -684,7 +815,9 @@ export function StorefrontLiveEditor({
       });
 
       if (result.error) {
-        toast.error(`Failed to save live edits: ${result.error.message || "Unknown error"}`);
+        const message = result.error.message || "Unknown error";
+        setSaveError(`Save failed: ${message}`);
+        toast.error(`Failed to save live edits: ${message}`);
         return;
       }
 
@@ -698,6 +831,11 @@ export function StorefrontLiveEditor({
       lastLoadedStoreRef.current = persistedStore;
       setHistory([]);
       setLastSavedAt(new Date());
+      setSaveError(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(getStorefrontEditorDraftKey(store.id, page.id));
+      }
+      setLocalDraftProtected(false);
       toast.success(
         intent === "publish"
           ? "Storefront published."
@@ -705,6 +843,10 @@ export function StorefrontLiveEditor({
             ? "Storefront unpublished. Draft preview remains available to you."
             : "Storefront edits saved.",
       );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown network error";
+      setSaveError(`Save failed: ${message}`);
+      toast.error("Could not save storefront changes. Your local draft is still protected.");
     } finally {
       setSaving(false);
     }
@@ -723,15 +865,34 @@ export function StorefrontLiveEditor({
       ];
   const saveStatusLabel = saving
     ? "Saving storefront changes..."
-    : hasUnsavedChanges
-      ? lastSavedAt
-        ? `Unsaved edits. Last saved ${formatSavedTime(lastSavedAt)}.`
-        : "Unsaved edits. Save before changing storefront visibility."
-      : lastSavedAt
-        ? `Saved at ${formatSavedTime(lastSavedAt)}. Storefront is ${store.isPublished ? "published" : "draft"}.`
-        : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
-  const saveStatusTone = saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
+    : saveError
+      ? saveError
+      : !isOnline && hasUnsavedChanges
+        ? localDraftProtected
+          ? "Offline. Draft protected on this device; retry when connection returns."
+          : "Offline. Keep this page open until local draft protection completes."
+        : hasUnsavedChanges
+          ? localDraftProtected
+            ? lastSavedAt
+              ? `Unsaved edits protected locally. Last server save ${formatSavedTime(lastSavedAt)}.`
+              : "Unsaved edits protected locally on this device."
+            : lastSavedAt
+              ? `Unsaved edits. Last saved ${formatSavedTime(lastSavedAt)}.`
+              : "Unsaved edits. Save before changing storefront visibility."
+          : lastSavedAt
+            ? `Saved at ${formatSavedTime(lastSavedAt)}. Storefront is ${store.isPublished ? "published" : "draft"}.`
+            : `All changes saved. Storefront is ${store.isPublished ? "published" : "draft"}.`;
+  const saveStatusTone = saveError || !isOnline ? "secondary" : saving ? "secondary" : hasUnsavedChanges ? "secondary" : "outline";
   const previewBlocks = [...page.blocks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const previewStorefrontProfile = typeof store.siteSettings?.storefront_profile === "object" && store.siteSettings.storefront_profile
+    ? store.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const previewTemplateId = resolveStorefrontTemplateId(previewStorefrontProfile?.template_id, {
+    templateSeedId: typeof previewStorefrontProfile?.template_id === "string" ? previewStorefrontProfile.template_id : null,
+    productVisibility: typeof previewStorefrontProfile?.product_visibility === "string" ? previewStorefrontProfile.product_visibility : null,
+  });
+  const previewTemplate = getStorefrontTemplateDefinition(previewTemplateId);
+  const compatibleCompositionRecipes = getCompatibleCompositionRecipes(previewTemplateId);
 
   const renderAdvancedControls = () => {
     if (!selectedBlock || editorMode !== "advanced") {
@@ -883,6 +1044,32 @@ export function StorefrontLiveEditor({
                 </div>
               ) : null}
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Primary promo image</Label>
+                <CloudinaryUpload
+                  value={(selectedBlock.props.imageUrl as string | undefined) ?? ""}
+                  onChange={(url) => updateSelectedBlockProps({ imageUrl: url })}
+                  folder="promo-banner"
+                  accept="image/*"
+                  label="Upload primary promo image"
+                  resourceType="image"
+                  storeId={store.id}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Secondary promo image</Label>
+                <CloudinaryUpload
+                  value={(selectedBlock.props.secondaryImageUrl as string | undefined) ?? ""}
+                  onChange={(url) => updateSelectedBlockProps({ secondaryImageUrl: url })}
+                  folder="promo-banner"
+                  accept="image/*"
+                  label="Upload secondary promo image"
+                  resourceType="image"
+                  storeId={store.id}
+                />
+              </div>
+            </div>
             {usesCustomPromoTheme ? (
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
@@ -906,17 +1093,79 @@ export function StorefrontLiveEditor({
           </div>
         );
       }
+      case "category-showcase":
+        return (
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Autoplay carousel</Label>
+                <Switch checked={(selectedBlock.props.autoplay as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ autoplay: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Show arrows</Label>
+                <Switch checked={(selectedBlock.props.showArrows as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ showArrows: checked })} />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Category limit</Label>
+                <Input type="number" min="1" max="24" value={selectedBlock.props.limit?.toString() ?? "10"} onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Autoplay interval (ms)</Label>
+                <Input type="number" min="2500" max="15000" step="500" value={selectedBlock.props.autoplayIntervalMs?.toString() ?? "3400"} onChange={(event) => updateSelectedBlockNumber("autoplayIntervalMs", event.target.value)} />
+              </div>
+            </div>
+          </div>
+        );
       case "featured-products":
         return (
-          <div className="grid gap-2">
-            <Label>Product Limit</Label>
-            <Input
-              type="number"
-              min="1"
-              max="24"
-              value={selectedBlock.props.limit?.toString() ?? "6"}
-              onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)}
-            />
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Product Limit</Label>
+              <Input
+                type="number"
+                min="1"
+                max="24"
+                value={selectedBlock.props.limit?.toString() ?? "6"}
+                onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Autoplay carousel</Label>
+                <Switch checked={(selectedBlock.props.autoplay as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ autoplay: checked })} />
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-3">
+                <Label>Show arrows</Label>
+                <Switch checked={(selectedBlock.props.showArrows as boolean | undefined) ?? true} onCheckedChange={(checked) => updateSelectedBlockProps({ showArrows: checked })} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Autoplay interval (ms)</Label>
+              <Input type="number" min="2500" max="15000" step="500" value={selectedBlock.props.autoplayIntervalMs?.toString() ?? "4300"} onChange={(event) => updateSelectedBlockNumber("autoplayIntervalMs", event.target.value)} />
+            </div>
+          </div>
+        );
+      case "recommended-products":
+        return (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Product source</Label>
+              <Select value={(selectedBlock.props.source as string | undefined) ?? "newest"} onValueChange={(value) => updateSelectedBlockProps({ source: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="featured-or-all">Featured or all</SelectItem>
+                  <SelectItem value="featured">Featured</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Product limit</Label>
+              <Input type="number" min="1" max="24" value={selectedBlock.props.limit?.toString() ?? "8"} onChange={(event) => updateSelectedBlockNumber("limit", event.target.value)} />
+            </div>
           </div>
         );
       case "countdown":
@@ -934,7 +1183,20 @@ export function StorefrontLiveEditor({
         );
       case "rich-text":
         return (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Story image</Label>
+              <CloudinaryUpload
+                value={(selectedBlock.props.imageUrl as string | undefined) ?? ""}
+                onChange={(url) => updateSelectedBlockProps({ imageUrl: url })}
+                folder="rich-text"
+                accept="image/*"
+                label="Upload story image"
+                resourceType="image"
+                storeId={store.id}
+              />
+            </div>
+            <div className="grid gap-2">
             <Label>Alignment</Label>
             <Select value={(selectedBlock.props.align as "left" | "center" | undefined) ?? "center"} onValueChange={(value) => updateSelectedBlockProps({ align: value })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -943,6 +1205,7 @@ export function StorefrontLiveEditor({
                 <SelectItem value="center">center</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
         );
       case "social-feed":
@@ -1093,9 +1356,57 @@ export function StorefrontLiveEditor({
   };
 
   return (
-    <div className="pointer-events-none fixed right-2 top-1/2 z-50 flex -translate-y-1/2 justify-end sm:right-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-1/2 sm:-translate-y-1/2">
       {confirmationDialog}
-      <div className="flex w-full max-w-[min(440px,100%)] flex-col items-end gap-3">
+      <div className="w-full sm:hidden">
+        {adminMode ? (
+          <MobileMerchantEditorSheet
+            store={store}
+            selectedBlock={selectedBlock}
+            pageId={page.id}
+            templateId={previewTemplateId}
+            saving={saving}
+            hasUnsavedChanges={hasUnsavedChanges}
+            saveStatusLabel={saveStatusLabel}
+            saveError={saveError}
+            isOnline={isOnline}
+            localDraftProtected={localDraftProtected}
+            qualityIssues={selectedBlockQualityIssues}
+            compositionEnabled={compositionEnabled}
+            canUndo={history.length > 0}
+            canRedo={redoHistory.length > 0}
+            onClose={() => void toggleAdminMode()}
+            onSave={() => void saveLiveEdits()}
+            onPreview={() => setIsPreviewOpen(true)}
+            onUndo={undoLastChange}
+            onRedo={redoLastChange}
+            onUpdateBlockMeta={updateSelectedBlock}
+            onUpdateBlockProps={updateSelectedBlockProps}
+            onMoveBlock={moveSelectedBlock}
+            onDuplicateBlock={duplicateSelectedBlock}
+            onRemoveBlock={removeSelectedBlock}
+            onUpdateThemeToken={updateStoreThemeToken}
+            onUpdateThemeAesthetic={updateStoreThemeAesthetic}
+            onUpdateThemeSectionSpacing={updateStoreThemeSectionSpacing}
+            onInsertCompositionRecipe={insertCompositionRecipe}
+            onApplyCompositionRecipe={applySelectedCompositionRecipe}
+            onUpdateCompositionField={updateSelectedCompositionField}
+            onUpdateCompositionAction={updateSelectedCompositionAction}
+          />
+        ) : (
+          <div className="pointer-events-auto mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur">
+            <Button type="button" className="min-h-11 flex-1 rounded-xl" onClick={() => void toggleAdminMode()}>
+              <Settings2 className="h-4 w-4" />
+              Edit store
+            </Button>
+            <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={() => setIsPreviewOpen(true)}>
+              <Smartphone className="h-4 w-4" />
+              Preview
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="hidden w-full max-w-[min(440px,100%)] flex-col items-end gap-3 sm:flex">
         <div className="pointer-events-auto flex justify-end">
           {isDockMinimized ? (
             <div className="flex flex-col items-end gap-2">
@@ -1250,7 +1561,7 @@ export function StorefrontLiveEditor({
               <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-950 dark:text-amber-100">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>Your edits are not persisted yet. Save them before leaving or changing storefront visibility.</p>
+                  <p>{localDraftProtected ? "Your edits are protected on this device but not saved to the server yet." : "Your edits are not persisted yet. Save them before leaving or changing storefront visibility."}</p>
                 </div>
               </div>
             ) : (
@@ -1285,7 +1596,51 @@ export function StorefrontLiveEditor({
                   <div id="live-editor-theme" className="rounded-2xl border border-border p-3 scroll-mt-28">
                     <div className="mb-3 flex items-center gap-2">
                       <Paintbrush2 className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-medium text-foreground">Theme tokens</p>
+                      <p className="text-sm font-medium text-foreground">Theme and aesthetic</p>
+                    </div>
+                    <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                      {platformAestheticOptions.map((option) => {
+                        const selected = store.theme.aesthetic === option.storedValue || (!store.theme.aesthetic && option.engineId === "flat");
+                        return (
+                          <button
+                            key={option.storedValue}
+                            type="button"
+                            className={`rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                            onClick={() => updateStoreThemeAesthetic(option.storedValue)}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold">{option.label}</span>
+                              {selected ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{option.detail}</p>
+                            <p className="mt-2 text-[11px] text-muted-foreground">Presentation only — colors, logo, content, products, navigation, and fonts stay unchanged.</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mb-4">
+                      <div className="mb-2">
+                        <p className="text-sm font-medium text-foreground">Section spacing</p>
+                        <p className="text-xs text-muted-foreground">Controls the gap between top-level sections only.</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {STORE_SECTION_SPACING_VALUES.map((value) => {
+                          const preset = STORE_SECTION_SPACING_PRESETS[value];
+                          const selected = store.theme.sectionSpacing === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              className={`min-h-14 rounded-xl border p-2.5 text-left ${selected ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                              onClick={() => updateStoreThemeSectionSpacing(value)}
+                            >
+                              <span className="block text-xs font-semibold">{preset.label}</span>
+                              <span className="mt-1 block text-[10px] leading-4 text-muted-foreground">{preset.mobile} · {preset.desktop}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!store.theme.sectionSpacing ? <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Existing spacing stays unchanged until a preset is selected.</p> : null}
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {GUIDED_THEME_TOKENS.map((token) => {
@@ -1402,7 +1757,48 @@ export function StorefrontLiveEditor({
                             </Button>
                           </div>
                         </div>
-                        {BASIC_TEXT_FIELDS.filter((field) => typeof selectedBlock.props[field] === "string").map((field) => (
+                        {selectedBlock.type === "composition" ? (
+                          <div className="grid gap-3 rounded-xl border border-border p-3">
+                            <div>
+                              <p className="text-sm font-medium">Composition recipe</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Recipe changes stay inside this section. Store colors, logo, products, navigation, and other sections are preserved.</p>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {compatibleCompositionRecipes.map((recipe) => (
+                                <button
+                                  key={recipe.id}
+                                  type="button"
+                                  className={`rounded-xl border p-3 text-left ${selectedCompositionEditor.recipeId === recipe.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                                  onClick={() => applySelectedCompositionRecipe(recipe.id)}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold">{recipe.label}</span>
+                                    {recipe.recommended ? <Badge variant="secondary">Recommended</Badge> : null}
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">{recipe.guidance}</p>
+                                </button>
+                              ))}
+                            </div>
+                            {selectedCompositionEditor.fields.filter((field) => field.key !== "src").map((field) => (
+                              <div key={`${field.nodeId}-${field.key}`} className="grid gap-2">
+                                <Label>{field.label}</Label>
+                                {field.multiline ? (
+                                  <Textarea value={field.value} onChange={(event) => updateSelectedCompositionField(field.nodeId, field.key, event.target.value)} />
+                                ) : (
+                                  <Input value={field.value} onChange={(event) => updateSelectedCompositionField(field.nodeId, field.key, event.target.value)} />
+                                )}
+                              </div>
+                            ))}
+                            {selectedCompositionEditor.actions.map((action) => (
+                              <div key={`${action.nodeId}-${action.index}`} className="grid gap-2 rounded-xl border border-border p-3">
+                                <Label>Action {action.index + 1}</Label>
+                                <Input value={action.label} placeholder="Button label" onChange={(event) => updateSelectedCompositionAction(action.nodeId, action.index, { label: event.target.value })} />
+                                <Input value={action.href} placeholder="/shop" onChange={(event) => updateSelectedCompositionAction(action.nodeId, action.index, { href: event.target.value })} />
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {BASIC_TEXT_FIELDS.filter((field) => selectedBlock.type !== "composition" && typeof selectedBlock.props[field] === "string").map((field) => (
                           <div key={field} className="grid gap-2">
                             <div className="flex items-center justify-between">
                               <Label>{field}</Label>
@@ -1437,6 +1833,19 @@ export function StorefrontLiveEditor({
                           </div>
                         ))}
                         {renderAdvancedControls()}
+                        {previewTemplateId === "threads" && ["hero", "category-showcase", "featured-products", "promo-banner", "rich-text", "testimonials", "faq-accordion"].includes(selectedBlock.type) ? (
+                          <div className="grid gap-2 rounded-xl border border-border p-3">
+                            <Label>Threads botanical decoration</Label>
+                            <Select value={selectedBlock.decoration ?? "subtle"} onValueChange={(value) => updateSelectedBlock({ decoration: value as StorePageBlock["decoration"] })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Off</SelectItem>
+                                <SelectItem value="subtle">Subtle</SelectItem>
+                                <SelectItem value="full">Full</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : null}
                         <div className="mt-4 pt-4 border-t border-border">
                           <div className="mb-3 flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-primary" />
@@ -1460,7 +1869,8 @@ export function StorefrontLiveEditor({
         ) : null}
       </div>
       {editorMode === "advanced" && (
-        <DomTreeNavigator
+        <div className="hidden sm:block">
+          <DomTreeNavigator
           page={page}
           selectedBlockId={selectedBlockId}
           onSelectBlock={onSelectedBlockChange}
@@ -1486,7 +1896,8 @@ export function StorefrontLiveEditor({
               blocks: p.blocks.filter((b) => b.id !== id).map((b, i) => ({ ...b, sortOrder: i })),
             })));
           }}
-        />
+          />
+        </div>
       )}
       {isPreviewOpen ? (
         <div className="pointer-events-auto fixed inset-0 z-[90] bg-background/95 backdrop-blur">
@@ -1535,7 +1946,7 @@ export function StorefrontLiveEditor({
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="mx-auto max-w-6xl">
+              <div className={`mx-auto w-full ${viewport === "mobile" ? "max-w-[430px]" : viewport === "tablet" ? "max-w-[768px]" : "max-w-6xl"}`}>
                 <StoreProvider store={store}>
                   <StoreThemeScope theme={store.theme}>
                     <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
@@ -1544,9 +1955,23 @@ export function StorefrontLiveEditor({
                       </div>
                       <div className="overflow-y-auto">
                         {previewBlocks.length > 0 ? (
-                          previewBlocks.map((block) => (
-                            <StorefrontBlockRenderer key={block.id} block={block} />
-                          ))
+                          previewTemplateId === "fashion" ? (
+                            <FashionV3Shell embedded>
+                              {previewBlocks.map((block) => (
+                                <FashionV3BlockRenderer key={block.id} block={block} template={previewTemplate} />
+                              ))}
+                            </FashionV3Shell>
+                          ) : previewTemplateId === "threads" ? (
+                            <ThreadsShell embedded>
+                              {previewBlocks.map((block) => (
+                                <ThreadsBlockRenderer key={block.id} block={block} template={previewTemplate} />
+                              ))}
+                            </ThreadsShell>
+                          ) : (
+                            previewBlocks.map((block) => (
+                              <StorefrontBlockRenderer key={block.id} block={block} template={previewTemplate} />
+                            ))
+                          )
                         ) : (
                           <div className="p-8 text-sm text-muted-foreground">This page has no visible sections yet.</div>
                         )}

@@ -82,7 +82,8 @@ test("subscription card contains no generated fallback plans or 10x yearly price
   assert.doesNotMatch(source, /product\.price\s*\*\s*10/);
   assert.doesNotMatch(source, /Instant delivery|Within 30 minutes|Web & mobile supported/);
   assert.match(source, /isPreviewCatalogStore/);
-  assert.match(source, /variantLabel \|\| "Subscription"/);
+  assert.doesNotMatch(source, /variantLabel \|\| "Subscription"/);
+  assert.match(source, /Subscription pricing is not configured for this item yet\./);
 });
 
 test("digital card contains no implicit Personal license fallback and gates seed metadata to preview", () => {

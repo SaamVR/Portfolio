@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@/lib/react-router-dom-shim";
-import { ShoppingBag, Heart, MapPin, Sparkles, User } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, User } from "lucide-react";
 import { useCart } from "@/context/useCart";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/hooks/auth-context";
@@ -71,11 +71,6 @@ const MobileMenu = () => {
   const homePath = storefrontPath("/", currentStore?.slug);
   const shopPath = storefrontPath("/shop", currentStore?.slug);
   const catalogLabel = navigation?.shop_label?.trim() || experience.catalogLabel;
-  const fallbackShopLinks = [
-    { label: `Browse ${catalogLabel}`, to: shopPath },
-    { label: "Latest Additions", to: shopPath },
-    { label: "Popular Picks", to: shopPath },
-  ];
   const authPath = storefrontPath(
     `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`,
     currentStore?.slug,
@@ -90,7 +85,7 @@ const MobileMenu = () => {
           label: type.name,
           to: storefrontPath(`/shop?type=${encodeURIComponent(type.name)}`, currentStore?.slug),
         }))
-      : fallbackShopLinks;
+      : [];
   const defaultNavLinks: MobileNavLink[] = [
     { label: experience.homeLabel, to: homePath },
     ...(experience.showCatalog ? [{ label: catalogLabel, to: shopPath }] : []),
@@ -134,12 +129,29 @@ const MobileMenu = () => {
   const showWishlist = navigation?.show_wishlist ?? experience.showWishlistByDefault;
   const showCart = navigation?.show_cart ?? experience.showCartByDefault;
   const locationLabel = deliverySettings?.primary_zone_label?.trim() || contactSettings?.address?.trim() || "";
+  const isFashion = experience.templateId === "fashion";
+  const primaryLinkClass = (active = false) => cn(
+    "flex min-h-11 w-full items-center px-4 py-3.5 text-[15px] font-semibold transition-colors",
+    isFashion
+      ? "rounded-none border-b border-border/70 uppercase tracking-[0.08em]"
+      : "rounded-xl",
+    active
+      ? (isFashion ? "text-primary" : "bg-primary text-primary-foreground shadow-md")
+      : (isFashion ? "text-foreground hover:text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"),
+  );
+  const utilityLinkClass = cn(
+    "flex min-h-11 items-center gap-3 px-4 py-3.5 text-[15px] font-medium transition-colors",
+    isFashion ? "rounded-none border-b border-border/70 text-foreground hover:text-primary" : "rounded-xl text-muted-foreground hover:bg-white/5 hover:text-foreground",
+  );
 
   return (
     <Sheet>
       <SheetTrigger asChild>
         <button
-          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-full hover:bg-secondary transition-colors md:hidden"
+          className={cn(
+            "flex h-11 w-11 flex-col items-center justify-center gap-1.5 transition-colors md:hidden",
+            isFashion ? "rounded-none hover:bg-secondary/60" : "rounded-full hover:bg-secondary",
+          )}
           aria-label="Open navigation menu"
         >
           <span className="block h-0.5 w-5 bg-foreground transition-all duration-300" />
@@ -147,15 +159,30 @@ const MobileMenu = () => {
           <span className="block h-0.5 w-3.5 self-end bg-foreground mr-2.5 transition-all duration-300" />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className={cn("w-[85vw] glass-panel border-r border-white/10 p-6 flex flex-col h-full bg-background/80", navLayout === "compact" ? "max-w-[320px]" : "max-w-[340px]")}>
+      <SheetContent
+        side="left"
+        className={cn(
+          "flex h-full w-[88vw] flex-col border-r p-6",
+          isFashion ? "border-foreground/10 bg-background/98 backdrop-blur-md" : "glass-panel border-white/10 bg-background/80",
+          navLayout === "compact" ? "max-w-[320px]" : isFashion ? "max-w-[380px]" : "max-w-[340px]",
+        )}
+      >
         <SheetHeader className="mb-4 text-left">
-          <SheetTitle className={cn("font-heading font-bold tracking-tight text-foreground drop-shadow-sm", navLayout === "compact" ? "text-xl" : "text-2xl", navLayout === "centered" ? "text-center" : "")}>
+          <SheetTitle className={cn(
+            "font-heading tracking-tight text-foreground",
+            isFashion ? "font-semibold leading-none" : "font-bold drop-shadow-sm",
+            navLayout === "compact" ? "text-xl" : isFashion ? "text-3xl" : "text-2xl",
+            navLayout === "centered" ? "text-center" : "",
+          )}>
             {currentStore?.name || "Store"}
           </SheetTitle>
         </SheetHeader>
 
         {(currentStore?.description || locationLabel) ? (
-          <div className="mb-4 rounded-lg border border-border/70 bg-card/70 p-4">
+          <div className={cn(
+            "mb-4 border border-border/70 p-4",
+            isFashion ? "rounded-none bg-transparent" : "rounded-lg bg-card/70",
+          )}>
             {locationLabel ? (
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 text-primary" />
@@ -179,11 +206,7 @@ const MobileMenu = () => {
         <nav className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-2 pb-6" aria-label="Mobile navigation">
           <Link
             to={homeLink.to}
-            className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
-              location.pathname === homePath
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-            }`}
+            className={primaryLinkClass(location.pathname === homePath)}
           >
             {homeLink.label}
           </Link>
@@ -191,14 +214,17 @@ const MobileMenu = () => {
           {shopLink ? (
             experience.useCatalogDropdown ? (
               <Collapsible open={shopOpen} onOpenChange={setShopOpen}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all">
+                <CollapsibleTrigger className={cn(primaryLinkClass(location.pathname.startsWith(shopLink.to)), "justify-between")}>
                   {shopLabel}
                   <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${shopOpen ? "rotate-180 text-primary" : ""}`} />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
+                <CollapsibleContent className={cn(
+                  "mt-1 flex flex-col gap-1 border-l pl-4",
+                  isFashion ? "ml-2 border-border" : "ml-4 border-white/5",
+                )}>
                   <Link
                     to={shopLink.to}
-                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                    className={cn("min-h-11 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary", isFashion ? "rounded-none" : "rounded-lg")}
                   >
                     All {shopLabel}
                   </Link>
@@ -206,28 +232,17 @@ const MobileMenu = () => {
                     <Link
                       key={link.label}
                       to={link.to}
-                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                      className={cn("min-h-11 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary", isFashion ? "rounded-none" : "rounded-lg")}
                     >
                       {link.label}
                     </Link>
                   ))}
-                  <div className="mt-2 rounded-lg border border-border/60 bg-card/60 px-3 py-3 text-xs leading-5 text-muted-foreground">
-                    <span className="flex items-center gap-2 font-semibold text-foreground">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      Start with what matters most
-                    </span>
-                    <p className="mt-1">Lead with the clearest categories first so shoppers are not forced to guess where to begin.</p>
-                  </div>
                 </CollapsibleContent>
               </Collapsible>
             ) : (
               <Link
                 to={shopLink.to}
-                className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
-                  location.pathname.startsWith(shopLink.to)
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                }`}
+                className={primaryLinkClass(location.pathname.startsWith(shopLink.to))}
               >
                 {shopLabel}
               </Link>
@@ -237,16 +252,19 @@ const MobileMenu = () => {
           {secondaryLinks.map((link) => (
             link.children?.length ? (
               <Collapsible key={link.to} open={pageMenuOpen === link.to} onOpenChange={(open) => setPageMenuOpen(open ? link.to : null)}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all">
+                <CollapsibleTrigger className={cn(primaryLinkClass(location.pathname === link.to || Boolean(link.children?.some((child) => location.pathname === child.to))), "justify-between")}>
                   {link.label}
                   <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${pageMenuOpen === link.to ? "rotate-180 text-primary" : ""}`} />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1 ml-4 flex flex-col gap-1 border-l-2 border-white/5 pl-4">
+                <CollapsibleContent className={cn(
+                  "mt-1 flex flex-col gap-1 border-l pl-4",
+                  isFashion ? "ml-2 border-border" : "ml-4 border-white/5",
+                )}>
                   {link.children.map((child) => (
                     <Link
                       key={child.to}
                       to={child.to}
-                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                      className={cn("min-h-11 px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary", isFashion ? "rounded-none" : "rounded-lg")}
                     >
                       {child.label}
                     </Link>
@@ -257,11 +275,7 @@ const MobileMenu = () => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all ${
-                  location.pathname === link.to
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                }`}
+                className={primaryLinkClass(location.pathname === link.to)}
               >
                 {link.label}
               </Link>
@@ -269,11 +283,11 @@ const MobileMenu = () => {
           ))}
         </nav>
 
-        <div className="mt-auto border-t border-white/10 pt-6 flex flex-col gap-2">
+        <div className={cn("mt-auto flex flex-col gap-1 border-t pt-6", isFashion ? "border-border" : "border-white/10")}>
           {showAccount ? (
             <Link
               to={user ? storefrontPath("/account", currentStore?.slug) : authPath}
-              className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+              className={utilityLinkClass}
             >
               <User className="h-5 w-5 text-primary/80" />
               {user ? `My ${experience.accountLabel}` : "Sign In"}
@@ -282,7 +296,7 @@ const MobileMenu = () => {
           {showWishlist ? (
             <Link
               to={storefrontPath("/wishlist", currentStore?.slug)}
-              className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+              className={cn(utilityLinkClass, "justify-between")}
             >
               <div className="flex items-center gap-3">
                 <Heart className="h-5 w-5 text-primary/80" />
@@ -298,7 +312,7 @@ const MobileMenu = () => {
           {showCart ? (
             <Link
               to={storefrontPath("/cart", currentStore?.slug)}
-              className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[15px] font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
+              className={cn(utilityLinkClass, "justify-between")}
             >
               <div className="flex items-center gap-3">
                 <ShoppingBag className="h-5 w-5 text-primary/80" />

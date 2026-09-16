@@ -2,9 +2,8 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import AnimatedSection from "@/components/AnimatedSection";
-import { Button } from "@/components/ui/button";
 import { useFeaturedProducts, useProducts } from "@/hooks/useProducts";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useOptionalStore } from "@/components/storefront/store-context";
 import { useStorefrontThemeCustomization } from "@/hooks/useStorefrontThemeCustomization";
@@ -12,6 +11,12 @@ import { getStorefrontContainerClass, getStorefrontProductGridClass } from "@/li
 import { resolveStorefrontImageObjectPosition } from "@/lib/cms/storefront-media";
 import { storefrontPath } from "@/lib/slug";
 import { StorefrontSectionEmpty, StorefrontSectionSkeleton } from "@/components/storefront/StorefrontSectionState";
+import { FeaturedProductsVisualStyles } from "@/components/storefront/section-styles/FeaturedProductsVisualStyles";
+import { resolveFeaturedProductSectionStyle } from "@/components/storefront/section-styles/lane-c-style-keys";
+import { resolveStorefrontTemplateId } from "@/lib/cms/storefront-templates";
+import { cn } from "@/lib/utils";
+import type { StorefrontVariantOptions } from "@/lib/cms/storefront-platform/variants/variant-option-contract";
+import { resolveSectionOptionClasses } from "@/components/storefront/section-styles/section-option-primitives";
 
 const FeaturedProducts = ({
   limit = 6,
@@ -24,6 +29,7 @@ const FeaturedProducts = ({
   imagePosition,
   focalX,
   focalY,
+  variantOptions,
   disableLegacyFallback = false,
 }: {
   limit?: number;
@@ -36,6 +42,7 @@ const FeaturedProducts = ({
   imagePosition?: string;
   focalX?: number;
   focalY?: number;
+  variantOptions?: StorefrontVariantOptions;
   disableLegacyFallback?: boolean;
 }) => {
   const currentStore = useOptionalStore();
@@ -44,6 +51,14 @@ const FeaturedProducts = ({
   const { data: settings } = useSiteSettings<{ tagline?: string; title?: string }>("home_featured", currentStore?.id);
   const { data: themeCustomization } = useStorefrontThemeCustomization(currentStore?.id);
   const legacySettings = disableLegacyFallback ? null : settings;
+  const storefrontProfile = typeof currentStore?.siteSettings?.storefront_profile === "object" && currentStore.siteSettings.storefront_profile
+    ? currentStore.siteSettings.storefront_profile as Record<string, unknown>
+    : null;
+  const templateId = resolveStorefrontTemplateId(storefrontProfile?.template_id, {
+    templateSeedId: typeof storefrontProfile?.template_id === "string" ? storefrontProfile.template_id : null,
+    productVisibility: typeof storefrontProfile?.product_visibility === "string" ? storefrontProfile.product_visibility : null,
+  });
+  const isFashion = templateId === "fashion";
   const availableProducts = allProducts.filter((product) => product.isAvailable !== false);
   const productsToRender = (() => {
     switch (source) {
@@ -63,7 +78,14 @@ const FeaturedProducts = ({
     }
   })();
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
-  const variantGridClass =
+  const optionClasses = resolveSectionOptionClasses(variantOptions);
+  const variantGridClass = optionClasses.mobile.isStack
+    ? layoutVariant === "4-col"
+      ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+      : layoutVariant === "3-col" || layoutVariant === "grid"
+        ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+        : "grid-cols-1 md:grid-cols-2"
+    :
     layoutVariant === "2-col"
       ? "grid-cols-2"
       : layoutVariant === "3-col" || layoutVariant === "grid" || layoutVariant === "3-col-sidebar-left" || layoutVariant === "3-col-sidebar-right"
@@ -111,21 +133,54 @@ const FeaturedProducts = ({
     );
   }
 
+  const visualStyle = resolveFeaturedProductSectionStyle(layoutVariant);
+  if (visualStyle) {
+    return (
+      <FeaturedProductsVisualStyles
+        variant={visualStyle}
+        products={productsToRender.slice(0, limit)}
+        title={title ?? legacySettings?.title ?? "Explore What’s Available"}
+        tagline={tagline ?? legacySettings?.tagline ?? "Featured"}
+        viewAllHref={storefrontPath("/shop", currentStore?.slug)}
+        containerClass={containerClass}
+        sectionStyle={sectionStyle}
+        variantOptions={variantOptions}
+      />
+    );
+  }
+
   return (
-    <section className="py-14 md:py-20" style={sectionStyle}>
-      <div className={`mx-auto px-4 ${containerClass}`}>
+    <section className={cn(isFashion ? "py-16 md:py-28" : "py-14 md:py-20", optionClasses.spacingClassName)} style={sectionStyle}>
+      <div className={cn("mx-auto px-4", containerClass, optionClasses.contentWidthClassName)}>
         <AnimatedSection animation="blur">
-          <div className="mb-8 text-left md:mb-12 md:text-center">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary md:text-sm">
-              {tagline ?? legacySettings?.tagline ?? "Featured"}
-            </p>
-            <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              {title ?? legacySettings?.title ?? "Explore What’s Available"}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:mx-auto md:text-base">
-              Start with the strongest items first so shoppers immediately understand what this storefront is actually selling.
-            </p>
-          </div>
+          {isFashion ? (
+            <div className="mb-8 flex items-end justify-between gap-6 border-b border-border/70 pb-5 md:mb-12 md:pb-7">
+              <div className="max-w-3xl text-left">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-primary md:text-sm">
+                  {tagline ?? legacySettings?.tagline ?? "Featured"}
+                </p>
+                <h2 className={cn("font-heading text-4xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl", optionClasses.emphasis.titleClassName)}>
+                  {title ?? legacySettings?.title ?? "Explore What’s Available"}
+                </h2>
+              </div>
+              <Link href={storefrontPath("/shop", currentStore?.slug)} className="hidden shrink-0 items-center gap-2 pb-1 text-sm font-semibold text-foreground transition-colors hover:text-primary sm:inline-flex">
+                View all
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="mb-8 text-left md:mb-12 md:text-center">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary md:text-sm">
+                {tagline ?? legacySettings?.tagline ?? "Featured"}
+              </p>
+              <h2 className={cn("font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl", optionClasses.emphasis.titleClassName)}>
+                {title ?? legacySettings?.title ?? "Explore What’s Available"}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:mx-auto md:text-base">
+                Start with the strongest items first so shoppers immediately understand what this storefront is actually selling.
+              </p>
+            </div>
+          )}
         </AnimatedSection>
         <div
           className={
@@ -135,7 +190,7 @@ const FeaturedProducts = ({
           }
         >
           {hasSidebar && layoutVariant !== "3-col-sidebar-right" ? sidebar : null}
-          <div className={`grid gap-3 sm:gap-4 md:gap-6 ${variantGridClass}`}>
+          <div className={`grid ${isFashion ? "gap-2 sm:gap-3 md:gap-5" : "gap-3 sm:gap-4 md:gap-6"} ${variantGridClass}`}>
             {productsToRender.slice(0, limit).map((product, i) => (
               <AnimatedSection key={product.id} delay={Math.min(i, 4) * 80} animation="blur">
                 <ProductCard product={product} />
@@ -144,6 +199,14 @@ const FeaturedProducts = ({
           </div>
           {hasSidebar && layoutVariant === "3-col-sidebar-right" ? sidebar : null}
         </div>
+        {isFashion ? (
+          <div className="mt-7 sm:hidden">
+            <Link href={storefrontPath("/shop", currentStore?.slug)} className="inline-flex min-h-11 items-center gap-2 border-b border-foreground pb-1 text-sm font-semibold text-foreground">
+              View all
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );

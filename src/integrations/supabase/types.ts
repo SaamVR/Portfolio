@@ -127,6 +127,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          option_ids: string[]
           product_id: string
           quantity: number
           size: string
@@ -136,6 +137,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          option_ids?: string[]
           product_id: string
           quantity?: number
           size: string
@@ -145,6 +147,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          option_ids?: string[]
           product_id?: string
           quantity?: number
           size?: string
@@ -728,6 +731,7 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          email: string | null
           expires_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -738,6 +742,7 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -748,6 +753,7 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -894,11 +900,14 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          delivery_zone: string | null
           id: string
           items: Json
           notes: string | null
           order_number: string
           payment_method: string
+          manual_payment_provider: string | null
+          manual_payment_reference: string | null
           shipping_address: string
           shipping_city: string
           status: string
@@ -915,11 +924,14 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address: string
           shipping_city: string
           status?: string
@@ -936,11 +948,14 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          delivery_zone?: string | null
           id?: string
           items?: Json
           notes?: string | null
           order_number?: string
           payment_method?: string
+          manual_payment_provider?: string | null
+          manual_payment_reference?: string | null
           shipping_address?: string
           shipping_city?: string
           status?: string
@@ -1199,9 +1214,11 @@ export type Database = {
           badge: string | null
           category: string
           colors: string[]
+          commercial_options: Json
           created_at: string
           description: string
           featured: boolean
+          fulfillment_type: string
           id: string
           image_url: string
           images: string[]
@@ -1219,9 +1236,11 @@ export type Database = {
           badge?: string | null
           category?: string
           colors?: string[]
+          commercial_options?: Json
           created_at?: string
           description?: string
           featured?: boolean
+          fulfillment_type?: string
           id?: string
           image_url: string
           images?: string[]
@@ -1239,9 +1258,11 @@ export type Database = {
           badge?: string | null
           category?: string
           colors?: string[]
+          commercial_options?: Json
           created_at?: string
           description?: string
           featured?: boolean
+          fulfillment_type?: string
           id?: string
           image_url?: string
           images?: string[]
@@ -2379,6 +2400,7 @@ export type Database = {
           id: string
           is_visible: boolean
           layout_variant: string | null
+          variant_options: Json | null
           page_id: string
           props: Json
           sort_order: number
@@ -2396,6 +2418,7 @@ export type Database = {
           id?: string
           is_visible?: boolean
           layout_variant?: string | null
+          variant_options?: Json | null
           page_id: string
           props?: Json
           sort_order?: number
@@ -2413,6 +2436,7 @@ export type Database = {
           id?: string
           is_visible?: boolean
           layout_variant?: string | null
+          variant_options?: Json | null
           page_id?: string
           props?: Json
           sort_order?: number
@@ -3188,6 +3212,10 @@ export type Database = {
       }
       check_contact_rate_limit: { Args: { _email: string }; Returns: boolean }
       check_store_lifecycles: { Args: never; Returns: undefined }
+      claim_invite_code_atomic: {
+        Args: { p_code: string; p_user_email?: string | null; p_user_id: string }
+        Returns: Json
+      }
       claim_coupon:
         | { Args: { _code: string; _order_total: number }; Returns: Json }
         | {

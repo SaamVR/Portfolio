@@ -102,6 +102,22 @@ describe("marketplace template publisher", () => {
     assert.equal(publishedStory.props.focalY, "82");
   });
 
+
+  it("preserves canonical Section Studio options in published template bundles", () => {
+    const store = cloneStore();
+    const hero = store.pages[0]?.blocks.find((block) => block.type === "hero");
+    assert.ok(hero);
+    hero.layoutVariant = "split";
+    hero.variantOptions = { mediaFit: "contain", contentWidth: "wide" };
+
+    const review = buildMarketplaceTemplateReview(store);
+    const publishedHero = review.bundle.pages?.[0]?.blocks.find((block) => block.type === "hero");
+
+    assert.equal(review.safetyStatus, "passed");
+    assert.deepEqual(publishedHero?.variantOptions, { mediaFit: "contain", contentWidth: "wide" });
+    assert.equal(publishedHero?.layoutVariant, "split");
+  });
+
   it("still strips merchant-private brand-story image URLs", () => {
     const store = cloneStore();
     store.pages[0].blocks.push(makeBrandStory("https://tenant.supabase.co/storage/v1/object/sign/private/story.jpg"));

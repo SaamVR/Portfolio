@@ -54,7 +54,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const { theme, resolvedTheme, setTheme } = useTheme();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
   const currentStore = useOptionalStore();
   const { data: brand } = useSiteSettings("brand_settings", currentStore?.id);
   const { data: navigation } = useSiteSettings<NavigationSettings>("navigation", currentStore?.id);
@@ -70,6 +70,10 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setOpenDropdownKey(null);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (themeCustomization?.nav_style !== "hidden") {
@@ -100,11 +104,6 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const brandHighlight = brand?.highlight || "";
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const catalogLabel = navigation?.shop_label?.trim() || experience.catalogLabel;
-  const fallbackCategoryLinks = [
-    { label: `Browse ${catalogLabel}`, to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Latest Additions", to: storefrontPath("/shop", currentStore?.slug) },
-    { label: "Popular Picks", to: storefrontPath("/shop", currentStore?.slug) },
-  ];
   const authPath = storefrontPath(
     `/auth?next=${encodeURIComponent(storefrontPath("/account", currentStore?.slug))}`,
     currentStore?.slug,
@@ -163,6 +162,13 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
   const showCart = navigation?.show_cart ?? experience.showCartByDefault;
   const foodLocationLabel = deliverySettings?.primary_zone_label?.trim() || contactSettings?.address?.trim() || "";
   const showFoodLocation = templateId === "food" && foodLocationLabel.length > 0;
+  const isFashion = templateId === "fashion";
+  const shopFeatureImage = navigation?.shop_feature_image?.trim() || brand?.mega_menu_image?.trim() || "";
+  const shopFeatureTitle = navigation?.shop_feature_title?.trim() || brand?.mega_menu_title?.trim() || "";
+  const shopFeatureSubtitle = navigation?.shop_feature_subtitle?.trim() || brand?.mega_menu_subtitle?.trim() || "";
+  const hasShopFeature = Boolean(shopFeatureImage);
+  const megaMenuColumnCount = 1 + (dynamicProductCategories.length > 0 ? 1 : 0) + (hasShopFeature ? 1 : 0);
+  const megaMenuGridClass = megaMenuColumnCount >= 3 ? "grid-cols-3" : megaMenuColumnCount === 2 ? "grid-cols-2" : "grid-cols-1";
 
   const topClass = themeCustomization?.nav_style === "static"
     ? "sticky top-0"
@@ -181,17 +187,28 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
         Skip to content
       </a>
       <nav
-        className={`${navModeClass} ${topClass} z-50 border-b border-border glass-panel transition-all duration-500 ${hiddenOnScroll ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
+        className={cn(
+          navModeClass,
+          topClass,
+          "z-50 border-b transition-all duration-500",
+          isFashion ? "border-foreground/10 bg-background/95 backdrop-blur-md" : "border-border glass-panel",
+          hiddenOnScroll ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100",
+        )}
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className={cn(`mx-auto flex items-center justify-between gap-3 px-4 ${containerClass}`, isCompactNav ? "h-14" : "h-16", isCenteredNav ? "md:relative" : "")}>
+        <div className={cn(
+          `mx-auto flex items-center justify-between gap-3 px-4 ${containerClass}`,
+          isFashion ? (isCompactNav ? "h-14" : "h-[68px]") : (isCompactNav ? "h-14" : "h-16"),
+          isCenteredNav ? "md:relative" : "",
+        )}>
           <div className={cn("flex min-w-0 items-center gap-3", isCenteredNav ? "md:flex-1" : "")}>
             <MobileMenu />
             <Link
               to={storefrontPath("/", currentStore?.slug)}
               className={cn(
-                "min-w-0 font-heading font-bold tracking-tight text-foreground drop-shadow-sm transition-transform duration-300 hover:scale-[1.01]",
+                "min-w-0 font-heading tracking-tight text-foreground transition-opacity duration-300 hover:opacity-75",
+                isFashion ? "font-semibold" : "font-bold drop-shadow-sm",
                 isCenteredNav ? "md:absolute md:left-1/2 md:-translate-x-1/2" : "",
                 isCompactNav ? "text-xl" : "text-2xl",
               )}
@@ -201,7 +218,7 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
                   <img
                     src={currentStore.logoUrl}
                     alt={`${brandName} logo`}
-                    className="h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9"
+                    className={cn("h-8 w-8 object-cover sm:h-9 sm:w-9", isFashion ? "rounded-none" : "rounded-lg")}
                   />
                 ) : null}
                 <span className={cn("min-w-0 truncate", isCompactNav ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}>
@@ -211,119 +228,152 @@ const Navbar = ({ announcementVisible = false }: { announcementVisible?: boolean
             </Link>
           </div>
 
-          <div className={cn("hidden items-center md:flex", isCompactNav ? "gap-4 lg:gap-5" : "gap-6 lg:gap-8", isCenteredNav ? "md:flex-1 md:justify-center" : "")}>
-            {navLinks.map((link) => (
-              <div
-                key={link.to}
-                className="relative group"
-                onMouseEnter={() => link.hasDropdown && setShopDropdownOpen(true)}
-                onMouseLeave={() => link.hasDropdown && setShopDropdownOpen(false)}
-              >
-                <Link
-                  to={link.to}
-                  className={`nav-link-anim relative flex items-center gap-1.5 py-2 ${isCompactNav ? "text-sm" : "text-[15px]"} font-semibold tracking-wide transition-colors ${
-                    location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {link.to.endsWith("/shop") ? shopLabel : link.label}
-                  {link.hasDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />}
-                </Link>
+          <div className={cn(
+            "hidden items-center md:flex",
+            isFashion ? (isCompactNav ? "gap-4 lg:gap-5" : "gap-5 lg:gap-7") : (isCompactNav ? "gap-4 lg:gap-5" : "gap-6 lg:gap-8"),
+            isCenteredNav ? "md:flex-1 md:justify-center" : "",
+          )}>
+            {navLinks.map((link, index) => {
+              const isDropdownOpen = link.hasDropdown && openDropdownKey === link.to;
+              const dropdownId = `storefront-nav-dropdown-${index}`;
 
-                {link.hasDropdown && link.to.endsWith("/shop") && shopDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-1 w-[640px] pt-1">
-                    <div className="grid grid-cols-3 gap-6 rounded-2xl border border-white/15 bg-background/90 backdrop-blur-2xl p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in fade-in slide-in-from-top-2 duration-200 ring-1 ring-black/5 dark:ring-white/10">
-                      <div>
-                        <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Types</h4>
-                        <div className="flex flex-col gap-1.5">
-                          <Link
-                            key="all"
-                            to={storefrontPath("/shop", currentStore?.slug)}
-                            className="rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
-                          >
-                            All {shopLabel}
-                          </Link>
-                          {dynamicProductTypes.map((t: any) => (
+              return (
+                <div
+                  key={link.to}
+                  className="relative group"
+                  onMouseEnter={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                  onMouseLeave={() => link.hasDropdown && setOpenDropdownKey(null)}
+                  onFocus={() => link.hasDropdown && setOpenDropdownKey(link.to)}
+                  onBlur={(event) => {
+                    if (link.hasDropdown && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setOpenDropdownKey(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (link.hasDropdown && event.key === "Escape" && isDropdownOpen) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setOpenDropdownKey(null);
+                      event.currentTarget
+                        .querySelector<HTMLElement>("[data-nav-dropdown-trigger='true']")
+                        ?.focus();
+                    }
+                  }}
+                >
+                  <Link
+                    to={link.to}
+                    data-nav-dropdown-trigger={link.hasDropdown ? "true" : undefined}
+                    aria-expanded={link.hasDropdown ? isDropdownOpen : undefined}
+                    aria-controls={link.hasDropdown ? dropdownId : undefined}
+                    aria-haspopup={link.hasDropdown ? "true" : undefined}
+                    className={cn(
+                      "nav-link-anim relative flex items-center gap-1.5 py-2 transition-colors",
+                      isFashion
+                        ? `${isCompactNav ? "text-[11px]" : "text-xs"} font-semibold uppercase tracking-[0.13em]`
+                        : `${isCompactNav ? "text-sm" : "text-[15px]"} font-semibold tracking-wide`,
+                      location.pathname === link.to || (link.to.endsWith("/shop") && location.pathname.startsWith(link.to))
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {link.to.endsWith("/shop") ? shopLabel : link.label}
+                    {link.hasDropdown && (
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 opacity-70 transition-transform duration-150 group-hover:opacity-100",
+                          isDropdownOpen ? "rotate-180" : "",
+                        )}
+                      />
+                    )}
+                  </Link>
+
+                  {link.hasDropdown && link.to.endsWith("/shop") && isDropdownOpen && (
+                    <div id={dropdownId} className={cn("absolute left-0 top-full pt-1", isFashion ? "w-[720px]" : "w-[640px]")}>
+                      <div
+                        className={cn(
+                          "grid gap-6 border bg-background/95 p-5 text-foreground shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-200",
+                          isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15 ring-1 ring-black/5 dark:ring-white/10",
+                          megaMenuGridClass,
+                        )}
+                      >
+                        <div>
+                          <h4 className={cn("mb-3 font-bold uppercase text-primary", isFashion ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.18em]")}>
+                            {isFashion ? "Shop by type" : "Types"}
+                          </h4>
+                          <div className="flex flex-col gap-1.5">
                             <Link
-                              key={t.id}
-                              to={storefrontPath(`/shop?type=${encodeURIComponent(t.name)}`, currentStore?.slug)}
-                              className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
+                              to={storefrontPath("/shop", currentStore?.slug)}
+                              className={cn("px-2 py-1 text-xs font-semibold text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
                             >
-                              {t.name}
+                              All {shopLabel}
+                            </Link>
+                            {dynamicProductTypes.map((t: any) => (
+                              <Link
+                                key={t.id}
+                                to={storefrontPath(`/shop?type=${encodeURIComponent(t.name)}`, currentStore?.slug)}
+                                className={cn("px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
+                              >
+                                {t.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                        {dynamicProductCategories.length > 0 ? (
+                          <div>
+                            <h4 className={cn("mb-3 font-bold uppercase text-primary", isFashion ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.18em]")}>
+                              {isFashion ? "Collections" : "Categories"}
+                            </h4>
+                            <div className="flex flex-col gap-1.5">
+                              {dynamicProductCategories.map((c: any) => (
+                                <Link
+                                  key={c.id}
+                                  to={storefrontPath(`/shop?category=${encodeURIComponent(c.name)}`, currentStore?.slug)}
+                                  className={cn("px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-primary", !isFashion && "rounded-md hover:bg-primary/10")}
+                                >
+                                  {c.name}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                        {hasShopFeature ? (
+                          <div className={cn("relative min-h-[180px] overflow-hidden bg-muted/50 shadow-inner group/card", isFashion ? "rounded-none" : "rounded-xl border border-white/10")}>
+                            <img
+                              src={shopFeatureImage}
+                              alt={shopFeatureTitle || `${shopLabel} feature`}
+                              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover/card:scale-[1.035]"
+                            />
+                            {(shopFeatureTitle || shopFeatureSubtitle) ? (
+                              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/20 to-transparent p-4">
+                                {shopFeatureTitle ? <h4 className="line-clamp-1 text-sm font-bold text-white">{shopFeatureTitle}</h4> : null}
+                                {shopFeatureSubtitle ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/75">{shopFeatureSubtitle}</p> : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+                  {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length && isDropdownOpen ? (
+                    <div id={dropdownId} className="absolute left-0 top-full mt-1 w-64 pt-1">
+                      <div className={cn("border bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl", isFashion ? "rounded-none border-foreground/10" : "rounded-2xl border-white/15")}>
+                        <div className="flex flex-col gap-1">
+                          {link.children.map((child) => (
+                            <Link
+                              key={child.to}
+                              to={child.to}
+                              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                            >
+                              {child.label}
                             </Link>
                           ))}
                         </div>
                       </div>
-                      <div>
-                        <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Categories</h4>
-                        <div className="flex flex-col gap-1.5">
-                          {dynamicProductCategories.length > 0 ? (
-                            dynamicProductCategories.map((c: any) => (
-                              <Link
-                                key={c.id}
-                                to={storefrontPath(`/shop?category=${encodeURIComponent(c.name)}`, currentStore?.slug)}
-                                className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
-                              >
-                                {c.name}
-                              </Link>
-                            ))
-                          ) : (
-                            <>
-                              {fallbackCategoryLinks.map((link) => (
-                                <Link
-                                  key={link.label}
-                                  to={link.to}
-                                  className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
-                                >
-                                  {link.label}
-                                </Link>
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="relative min-h-[160px] overflow-hidden rounded-xl bg-muted/50 border border-white/10 shadow-inner group/card">
-                        <img
-                          src={
-                            navigation?.shop_feature_image ||
-                            brand?.mega_menu_image ||
-                            "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=600"
-                          }
-                          alt="Store highlight"
-                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-4">
-                          <h4 className="text-sm font-bold text-white line-clamp-1">
-                            {navigation?.shop_feature_title || brand?.mega_menu_title || "Store Highlights"}
-                          </h4>
-                          <p className="mt-0.5 text-[11px] leading-4 text-gray-200 line-clamp-2">
-                            {navigation?.shop_feature_subtitle || brand?.mega_menu_subtitle || "Explore our top collections and featured items."}
-                          </p>
-                        </div>
-                      </div>
                     </div>
-                  </div>
-                )}
-                {link.hasDropdown && !link.to.endsWith("/shop") && link.children?.length ? (
-                  <div className="absolute left-0 top-full mt-1 w-64 pt-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
-                    <div className="rounded-2xl border border-white/15 bg-background/95 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-                      <div className="flex flex-col gap-1">
-                        {link.children.map((child) => (
-                          <Link
-                            key={child.to}
-                            to={child.to}
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
-                          >
-                            {child.label}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           <div className={cn("flex shrink-0 items-center", isCompactNav ? "gap-0.5 sm:gap-1.5" : "gap-0.5 sm:gap-2", isCenteredNav ? "md:flex-1 md:justify-end" : "")}>

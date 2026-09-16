@@ -1,0 +1,140 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+import { buildSectionStylesPath } from "@/lib/admin-paths";
+import type { StorePageBlock } from "@/lib/cms/schema";
+import { getSectionStylePreviewFixture, getSectionStylePreviewFixtureById } from "./preview-fixtures";
+import { applySectionStyleToBlock, buildSectionStylePersistencePatch, getEffectiveSectionStyleVariantId, getSectionStyleLibraryEntries, getSectionStyleResetTarget } from "./section-style-library";
+import { canonicalStorefrontVariantRegistry } from "./registry";
+import { SECTION_STYLE_VERSIONING_POLICY } from "./validation";
+
+describe("section style library", () => {
+  it("gives every registered style lifecycle, preview, visibility, and version metadata", () => {
+    for (const definition of canonicalStorefrontVariantRegistry) {
+      assert.ok(definition.version >= 1, `${definition.blockType}:${definition.id} needs a version`);
+      assert.ok(definition.lifecycle, `${definition.blockType}:${definition.id} needs a lifecycle`);
+      assert.ok(definition.visibility, `${definition.blockType}:${definition.id} needs visibility`);
+      assert.ok(definition.previewSpec.fixtureId, `${definition.blockType}:${definition.id} needs a preview fixture`);
+      assert.ok(definition.previewSpec.desktop.mode);
+      assert.ok(definition.previewSpec.mobile.mode);
+    }
+  });
+
+  it("keeps the current style marked and preserves compatibility ordering", () => {
+    const block = {
+      id: "hero-1",
+      type: "hero",
+      sortOrder: 0,
+      isVisible: true,
+      visible: true,
+      layoutVariant: "editorial",
+      props: { title: "Story", mediaUrl: "/demo.jpg" },
+    } as StorePageBlock;
+
+    const entries = getSectionStyleLibraryEntries("threads", block);
+    assert.ok(entries.length > 0);
+    assert.equal(entries.find((entry) => entry.current)?.definition.id, "editorial");
+    assert.ok(entries.every((entry) => entry.definition.lifecycle === "published" || entry.current));
+    assert.ok(entries.some((entry) => entry.recommended));
+  });
+
+  it("marks inherited template defaults as the current style", () => {
+    const fashionHero = {
+      id: "hero-fashion", type: "hero", sortOrder: 0, isVisible: true, visible: true, props: { mediaUrl: "/fashion.jpg" },
+    } as StorePageBlock;
+    const threadsHero = {
+      id: "hero-threads", type: "hero", sortOrder: 0, isVisible: true, visible: true, props: { mediaUrl: "/threads.jpg" },
+    } as StorePageBlock;
+
+    assert.equal(getEffectiveSectionStyleVariantId("fashion", fashionHero), "poster");
+    assert.equal(getSectionStyleLibraryEntries("fashion", fashionHero).find((entry) => entry.current)?.definition.id, "poster");
+    assert.equal(getEffectiveSectionStyleVariantId("threads", threadsHero), "split");
+    assert.equal(getSectionStyleLibraryEntries("threads", threadsHero).find((entry) => entry.current)?.definition.id, "split");
+  });
+
+  it("changes only presentation when a section style is applied or reset", () => {
+    const block = {
+      id: "hero-1",
+      type: "hero",
+      sortOrder: 0,
+      isVisible: true,
+      visible: true,
+      layoutVariant: "split",
+      props: { title: "Keep this", mediaUrl: "/keep.jpg", ctaText: "Shop" },
+    } as StorePageBlock;
+    const props = block.props;
+
+    const styled = applySectionStyleToBlock(block, "editorial");
+    assert.equal(styled.layoutVariant, "editorial");
+    assert.equal(styled.props, props);
+    assert.deepEqual(styled.props, block.props);
+    assert.deepEqual(buildSectionStylePersistencePatch("editorial"), { layout_variant: "editorial" });
+
+    const reset = applySectionStyleToBlock(styled, null);
+    assert.equal(reset.layoutVariant, undefined);
+    assert.equal(reset.props, props);
+    assert.deepEqual(buildSectionStylePersistencePatch(null), { layout_variant: null });
+  });
+
+
+  it("uses template presentation defaults when resetting a section style", () => {
+    const hero = {
+      id: "hero-1", type: "hero", sortOrder: 0, isVisible: true, visible: true,
+      layoutVariant: "editorial", props: { title: "Keep this", mediaUrl: "/keep.jpg" },
+    } as StorePageBlock;
+    const promo = {
+      id: "promo-1", type: "promo-banner", sortOrder: 1, isVisible: true, visible: true,
+      layoutVariant: "contact-cta", props: { title: "Keep promo" },
+    } as StorePageBlock;
+
+    const heroTarget = getSectionStyleResetTarget("threads", hero);
+    assert.equal(heroTarget?.definition.id, "split");
+    assert.equal(heroTarget?.templateDefault, true);
+
+    const promoTarget = getSectionStyleResetTarget("threads", promo);
+    assert.equal(promoTarget?.definition.id, "dual-editorial");
+    assert.equal(promoTarget?.templateDefault, true);
+    assert.deepEqual(buildSectionStylePersistencePatch(null), { layout_variant: null });
+
+    const workspaceSource = readFileSync("src/views/admin/SectionStylesWorkspace.tsx", "utf8");
+    assert.ok(workspaceSource.includes("persistStyleVariant(selectedBlock, null)"));
+    assert.ok(workspaceSource.includes('resetEntry?.definition.id ?? ""'));
+    assert.ok(workspaceSource.includes("Reset to inherited/default"));
+    assert.equal(workspaceSource.includes("?? entries[0]"), false);
+  });
+
+  it("does not invent a reset target when the template has no section default", () => {
+    const products = {
+      id: "products-1", type: "featured-products", sortOrder: 0, isVisible: true, visible: true,
+      layoutVariant: "4-col", props: { limit: 6 },
+    } as StorePageBlock;
+
+    assert.equal(getEffectiveSectionStyleVariantId("general-catalog", { ...products, layoutVariant: undefined }), undefined);
+    assert.equal(getSectionStyleResetTarget("general-catalog", products), undefined);
+    assert.equal(getSectionStyleLibraryEntries("general-catalog", { ...products, layoutVariant: undefined }).some((entry) => entry.current), false);
+
+    const withOptions = { ...products, variantOptions: { spacing: "compact" as const } };
+    assert.equal(applySectionStyleToBlock(withOptions, null, "general-catalog").variantOptions, undefined);
+    assert.deepEqual(
+      buildSectionStylePersistencePatch(null, withOptions, "general-catalog"),
+      { layout_variant: null, variant_options: null },
+    );
+  });
+
+  it("keeps manifest versions internal until blocks can persist a pinned version", () => {
+    assert.equal(SECTION_STYLE_VERSIONING_POLICY, "new-id-for-breaking-change");
+    assert.deepEqual(buildSectionStylePersistencePatch("editorial"), { layout_variant: "editorial" });
+    const workspaceSource = readFileSync("src/views/admin/SectionStylesWorkspace.tsx", "utf8");
+    assert.equal(workspaceSource.includes("entry.definition.version"), false);
+  });
+
+  it("uses canonical preview fixtures and stable Section Styles routing", () => {
+    assert.equal(getSectionStylePreviewFixture("hero").id, "hero-standard");
+    assert.equal(getSectionStylePreviewFixtureById("hero-standard", "hero").title, "Made to carry your story");
+    assert.equal(getSectionStylePreviewFixture("featured-products").items?.length, 4);
+    assert.equal(
+      buildSectionStylesPath({ storeId: "store-1", pageId: "page-1", blockId: "hero-1" }),
+      "/admin/page-builder/styles?page=page-1&block=hero-1&storeId=store-1",
+    );
+  });
+});

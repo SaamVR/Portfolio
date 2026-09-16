@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { listPaymentProviderManifests } from "@/lib/payments/provider-registry";
 import { getPaymentProviderServerAdapter, type PaymentConnectionRow } from "@/lib/payments/provider-server";
+import { canExposePublicStorefront } from "@/lib/storefront-public-access";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function asNumber(value: unknown, fallback = 0) {
 }
 
 export const storePaymentSettingsRouteDeps = {
+  loadStorePlanState,
   getSupabaseAdminClient,
 };
 
@@ -31,14 +33,17 @@ export async function GET(req: Request) {
 
   try {
     const supabaseAdmin = storePaymentSettingsRouteDeps.getSupabaseAdminClient();
-    const { data: store, error: storeError } = await supabaseAdmin
-      .from("stores")
-      .select("id, is_published")
-      .eq("id", storeId)
-      .maybeSingle();
-
-    if (storeError) throw storeError;
-    if (!store?.is_published) {
+    const { data: storePlanState, error: storePlanError } = await storePaymentSettingsRouteDeps.loadStorePlanState(
+      supabaseAdmin as never,
+      storeId,
+      { includePublished: true },
+    );
+    if (storePlanError) throw storePlanError;
+    if (!canExposePublicStorefront({
+      isPublished: storePlanState?.isPublished ?? false,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    })) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
 

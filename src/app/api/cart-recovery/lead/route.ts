@@ -1,15 +1,20 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getSupabaseAdminClient } from "@/lib/api/supabase-route";
+import { getAuthenticatedUser, getSupabaseAdminClient, loadStorePlanState } from "@/lib/api/supabase-route";
 import { rateLimit } from "@/lib/rate-limit";
+import { canExposePublicStorefront } from "@/lib/storefront-public-access";
+import { buildAuthoritativeRecoveryCart, normalizeRecoveryCartInput } from "@/lib/cart-recovery/recovery-cart-authority";
+import {
+  resolveRecoveryContactAuthority,
+  type RecoveryConsentStatus,
+} from "@/lib/cart-recovery/recovery-contact-authority";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 18_000;
 const maxMetadataBytes = 6_000;
 
-type RecoveryStatus = "accepted" | "declined" | "unknown";
-
 export const cartRecoveryLeadRouteDeps = {
+  loadStorePlanState,
   getSupabaseAdminClient,
   getAuthenticatedUser,
   rateLimit,
@@ -18,18 +23,6 @@ export const cartRecoveryLeadRouteDeps = {
 function readText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
-}
-
-function readMoney(value: unknown) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
-}
-
-function readInteger(value: unknown) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.max(0, Math.round(amount));
 }
 
 function getClientIp(req: Request) {
@@ -63,7 +56,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Recovery payload is too large" }, { status: 413 });
     }
 
-    const body = JSON.parse(rawBody || "{}");
+    let body: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      body = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
     const storeId = readText(body?.storeId, 80);
     if (!uuidPattern.test(storeId)) {
       return NextResponse.json({ error: "Invalid store" }, { status: 400 });
@@ -72,65 +74,88 @@ export async function POST(req: Request) {
     const visitorIdRaw = readText(body?.visitorId, 160);
     const sessionIdRaw = readText(body?.sessionId, 160);
     const leadStage = readText(body?.recoveryStage, 20) || "cart";
-    const consentStatus = (["accepted", "declined", "unknown"].includes(body?.contactConsentStatus)
-      ? body.contactConsentStatus
-      : "unknown") as RecoveryStatus;
-    const cartSnapshot = Array.isArray(body?.cartSnapshot) ? body.cartSnapshot.slice(0, 30) : [];
-    const metadata = body?.metadata && typeof body.metadata === "object" ? body.metadata : {};
+    const requestedConsent = readText(body?.contactConsentStatus, 16);
+    const requestedConsentStatus = (["accepted", "declined", "unknown"].includes(requestedConsent)
+      ? requestedConsent
+      : "unknown") as RecoveryConsentStatus;
+    const cartInput = normalizeRecoveryCartInput(body?.cartSnapshot);
+    if (!cartInput) {
+      return NextResponse.json({ error: "Cart snapshot contains invalid items" }, { status: 400 });
+    }
+    const metadata = body?.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+      ? body.metadata as Record<string, unknown>
+      : {};
 
     if (!visitorIdRaw && !sessionIdRaw) {
       return NextResponse.json({ error: "Missing recovery identifiers" }, { status: 400 });
     }
 
-    if (jsonSize(metadata) > maxMetadataBytes || jsonSize(cartSnapshot) > maxMetadataBytes) {
+    if (jsonSize(metadata) > maxMetadataBytes || jsonSize(cartInput) > maxMetadataBytes) {
       return NextResponse.json({ error: "Recovery payload is too large" }, { status: 413 });
     }
 
     const supabaseAdmin = cartRecoveryLeadRouteDeps.getSupabaseAdminClient();
     const authUser = await cartRecoveryLeadRouteDeps.getAuthenticatedUser(req);
+    const contactAuthority = resolveRecoveryContactAuthority({
+      requestedConsentStatus,
+      authUser,
+    });
 
-    const { data: store, error: storeError } = await supabaseAdmin
-      .from("stores")
-      .select("id, is_published")
-      .eq("id", storeId)
-      .maybeSingle();
-
-    if (storeError) {
-      throw storeError;
+    if (contactAuthority.canScheduleEmail && authUser?.id) {
+      const contactLimit = await cartRecoveryLeadRouteDeps.rateLimit(
+        `cart_recovery_contact:${storeId}:${authUser.id}`,
+        { limit: 6, windowMs: 60 * 60_000 },
+      );
+      if (!contactLimit.success) {
+        return NextResponse.json({ error: "Too many recovery contact requests" }, { status: 429 });
+      }
     }
 
-    if (!store?.is_published) {
+    const { data: storePlanState, error: storePlanError } = await cartRecoveryLeadRouteDeps.loadStorePlanState(
+      supabaseAdmin as never,
+      storeId,
+      { includePublished: true },
+    );
+    if (storePlanError) throw storePlanError;
+    if (!canExposePublicStorefront({
+      isPublished: storePlanState?.isPublished ?? false,
+      hasSubscription: Boolean(storePlanState?.subscription),
+      planLive: storePlanState?.resolved.live ?? false,
+    })) {
       return NextResponse.json({ error: "Storefront is not available" }, { status: 404 });
     }
 
-    const productIds = cartSnapshot
-      .map((item) => readText((item as Record<string, unknown>)?.productId, 80))
-      .filter((id) => uuidPattern.test(id));
-
+    const productIds = Array.from(new Set(cartInput.map((item) => item.productId)));
+    let products: Array<{ id: string; name: string; price: number; is_available: boolean }> = [];
     if (productIds.length > 0) {
-      const { data: products, error: productsError } = await supabaseAdmin
+      const { data, error: productsError } = await supabaseAdmin
         .from("products")
-        .select("id")
+        .select("id, name, price, is_available")
         .eq("store_id", storeId)
         .in("id", productIds);
 
       if (productsError) throw productsError;
+      products = (data ?? []) as typeof products;
+    }
 
-      const validProductIds = new Set((products ?? []).map((product) => product.id));
-      if (productIds.some((id) => !validProductIds.has(id))) {
-        return NextResponse.json({ error: "Cart snapshot contains products outside this store" }, { status: 400 });
-      }
+    const authoritativeCart = buildAuthoritativeRecoveryCart(cartInput, products);
+    if (!authoritativeCart) {
+      return NextResponse.json({ error: "Cart snapshot contains unavailable or outside-store products" }, { status: 400 });
     }
 
     const visitorId = visitorIdRaw ? hashRecoveryIdentifier(storeId, visitorIdRaw) : null;
     const sessionId = sessionIdRaw ? hashRecoveryIdentifier(storeId, sessionIdRaw) : null;
-    const canStoreContact = consentStatus === "accepted";
-    const contact = body?.contact && typeof body.contact === "object" ? body.contact as Record<string, unknown> : {};
-    const contactName = canStoreContact ? readText(contact.name, 100) || null : null;
-    const contactEmail = canStoreContact ? readText(contact.email, 180) || null : null;
-    const contactPhone = canStoreContact ? readText(contact.phone, 30) || null : null;
-    const recoveryCouponCode = canStoreContact ? readText(body?.recoveryCouponCode, 80) || null : null;
-    const attribution = body?.attribution && typeof body.attribution === "object" ? body.attribution as Record<string, unknown> : {};
+    const contact = body?.contact && typeof body.contact === "object" && !Array.isArray(body.contact)
+      ? body.contact as Record<string, unknown>
+      : {};
+    const contactName = contactAuthority.canScheduleEmail ? readText(contact.name, 100) || null : null;
+    const contactEmail = contactAuthority.contactEmail;
+    // Automated WhatsApp recovery is disabled. Do not persist a browser-supplied
+    // phone as future delivery authority while there is no verified phone contract.
+    const contactPhone = null;
+    const attribution = body?.attribution && typeof body.attribution === "object" && !Array.isArray(body.attribution)
+      ? body.attribution as Record<string, unknown>
+      : {};
 
     let leadQuery = supabaseAdmin
       .from("store_cart_recovery_leads")
@@ -153,13 +178,10 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
-    const subtotal = readMoney(body?.cartValue);
-    const itemCount = readInteger(body?.itemCount) || cartSnapshot.reduce((sum, item) => {
-      const quantity = Number((item as Record<string, unknown>)?.quantity ?? 0);
-      return sum + (Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0);
-    }, 0);
-
-    const nextContactAt = consentStatus === "accepted"
+    const subtotal = authoritativeCart.cartValue;
+    const itemCount = authoritativeCart.itemCount;
+    const cartSnapshot = authoritativeCart.snapshot;
+    const nextContactAt = contactAuthority.canScheduleEmail && !existingLead?.marketing_opt_out_at
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
       : null;
 
@@ -168,11 +190,11 @@ export async function POST(req: Request) {
       user_id: authUser?.id ?? null,
       visitor_id: visitorId,
       session_id: sessionId,
-      contact_name: contactName ?? existingLead?.contact_name ?? null,
-      contact_email: contactEmail ?? existingLead?.contact_email ?? null,
-      contact_phone: contactPhone ?? existingLead?.contact_phone ?? null,
+      contact_name: contactAuthority.canScheduleEmail ? (contactName ?? existingLead?.contact_name ?? null) : null,
+      contact_email: contactAuthority.canScheduleEmail ? contactEmail : null,
+      contact_phone: contactPhone,
       contact_capture_source: readText(body?.contactCaptureSource, 20) || leadStage || "cart",
-      contact_consent_status: consentStatus,
+      contact_consent_status: contactAuthority.consentStatus,
       cart_snapshot: cartSnapshot,
       cart_value: subtotal,
       item_count: itemCount,
@@ -181,12 +203,14 @@ export async function POST(req: Request) {
       recovery_stage: leadStage === "checkout" ? "checkout" : "cart",
       abandoned_at: itemCount > 0 ? now : null,
       last_activity_at: now,
-      next_contact_at: existingLead?.marketing_opt_out_at ? null : nextContactAt,
-      recovery_coupon_code: recoveryCouponCode,
+      next_contact_at: nextContactAt,
       attribution_source: readText(attribution.source, 120) || null,
       attribution_medium: readText(attribution.medium, 120) || null,
       attribution_campaign: readText(attribution.campaign, 160) || null,
-      metadata,
+      metadata: {
+        ...metadata,
+        recovery_contact_authority: contactAuthority.authority,
+      },
     };
 
     const write = existingLead?.id

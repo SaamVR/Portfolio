@@ -194,7 +194,7 @@ function adaptBlockFromLegacySettings(
   }
 }
 
-function forceApplyLegacyHomepageSettingToBlock(
+function backfillLegacyHomepageSettingToBlock(
   block: StorePageBlock,
   key: LegacyHomepageSettingKey,
   value: unknown,
@@ -207,7 +207,7 @@ function forceApplyLegacyHomepageSettingToBlock(
       return adaptBlockFromLegacySettings(
         block,
         { hero_section: value as LegacyHomepageSettings["hero_section"] },
-        "force",
+        "backfill",
       );
     case "promo_banner":
       if (block.type !== "promo-banner" || typeof value !== "object" || !value) {
@@ -216,7 +216,7 @@ function forceApplyLegacyHomepageSettingToBlock(
       return adaptBlockFromLegacySettings(
         block,
         { promo_banner: value as LegacyHomepageSettings["promo_banner"] },
-        "force",
+        "backfill",
       );
     case "home_featured":
       if (block.type !== "featured-products" || typeof value !== "object" || !value) {
@@ -225,7 +225,7 @@ function forceApplyLegacyHomepageSettingToBlock(
       return adaptBlockFromLegacySettings(
         block,
         { home_featured: value as LegacyHomepageSettings["home_featured"] },
-        "force",
+        "backfill",
       );
     case "home_categories":
       if (block.type !== "category-showcase" || typeof value !== "object" || !value) {
@@ -234,7 +234,7 @@ function forceApplyLegacyHomepageSettingToBlock(
       return adaptBlockFromLegacySettings(
         block,
         { home_categories: value as LegacyHomepageSettings["home_categories"] },
-        "force",
+        "backfill",
       );
     default:
       return block;
@@ -246,7 +246,7 @@ export function applyLegacyHomepageSettingToBlock(
   key: LegacyHomepageSettingKey,
   value: unknown,
 ): StorePageBlock {
-  return forceApplyLegacyHomepageSettingToBlock(block, key, value);
+  return backfillLegacyHomepageSettingToBlock(block, key, value);
 }
 
 export function mapLegacyHomepageSettings(siteSettings: SiteSettingRecord[]): LegacyHomepageSettings {

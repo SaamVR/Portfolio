@@ -567,7 +567,7 @@ function ActiveFilterChips({ chips, onClear }: { chips: Array<{ key: string; lab
   );
 }
 
-function CategoryTabs({ items, active, onChange, style = "tabs", mobileScrollable = false }: { items: Array<{ label: string; value: string; count: number }>; active: string; onChange: (value: string) => void; style?: ShopPageSettings["category_navigation_style"]; mobileScrollable?: boolean }) {
+function CategoryTabs({ items, active, onChange, style = "tabs", mobileScrollable = false, fashion = false }: { items: Array<{ label: string; value: string; count: number }>; active: string; onChange: (value: string) => void; style?: ShopPageSettings["category_navigation_style"]; mobileScrollable?: boolean; fashion?: boolean }) {
   const chipClass = style === "chips"
     ? "rounded-full"
     : style === "strip"
@@ -581,10 +581,14 @@ function CategoryTabs({ items, active, onChange, style = "tabs", mobileScrollabl
           type="button"
           onClick={() => onChange(item.value)}
           className={cn(
-            "whitespace-nowrap border px-4 py-2 text-sm font-medium transition-colors",
+            fashion
+              ? "min-h-11 whitespace-nowrap border-0 border-b-2 px-0 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors"
+              : "whitespace-nowrap border px-4 py-2 text-sm font-medium transition-colors",
             mobileScrollable && "min-h-11 shrink-0",
-            chipClass,
-            active === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground",
+            !fashion && chipClass,
+            fashion
+              ? (active === item.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")
+              : (active === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"),
           )}
         >
           {item.label}
@@ -659,14 +663,16 @@ function DesktopFilterSidebar({
   filterDefinitions,
   params,
   onChange,
+  fashion = false,
 }: {
   filterDefinitions: FilterDefinition[];
   params: URLSearchParams;
   onChange: (key: string, value: string | null) => void;
+  fashion?: boolean;
 }) {
   if (filterDefinitions.length === 0) return null;
   return (
-    <aside className="hidden w-full max-w-[280px] flex-shrink-0 space-y-4 rounded-3xl border border-border bg-card/50 p-5 lg:block">
+    <aside className={cn("hidden w-full max-w-[280px] flex-shrink-0 space-y-5 lg:block", fashion ? "border-r border-border pr-6" : "rounded-3xl border border-border bg-card/50 p-5")}>
       <div className="flex items-center gap-2">
         <SlidersHorizontal className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Filters</h3>
@@ -805,13 +811,32 @@ function ShopHero({
   isLoading?: boolean;
 }) {
   const badge = settings.hero_badge?.trim()
-    || (variant === "food" ? "Menu" : variant === "real_estate" ? "Listings" : variant === "subscription" ? "Plans" : "Catalog");
+    || (variant === "fashion" ? "Collection" : variant === "food" ? "Menu" : variant === "real_estate" ? "Listings" : variant === "subscription" ? "Plans" : "Catalog");
   const title = settings.hero_title?.trim()
     || settings.title?.trim()
-    || (variant === "fashion" ? `Browse ${storeName} collections` : variant === "beauty" ? `Find your ${storeName} routine` : variant === "electronics" ? `Compare ${storeName} devices` : variant === "food" ? `Order from ${storeName}` : variant === "service" ? `Book ${storeName} services` : variant === "hotel" ? `Explore ${storeName} rooms` : variant === "real_estate" ? `Find property with ${storeName}` : `Browse ${storeName}`);
+    || (variant === "fashion" ? `The ${storeName} collection` : variant === "beauty" ? `Find your ${storeName} routine` : variant === "electronics" ? `Compare ${storeName} devices` : variant === "food" ? `Order from ${storeName}` : variant === "service" ? `Book ${storeName} services` : variant === "hotel" ? `Explore ${storeName} rooms` : variant === "real_estate" ? `Find property with ${storeName}` : `Browse ${storeName}`);
   const description = settings.hero_description?.trim()
     || settings.description?.trim()
-    || `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`;
+    || (variant === "fashion"
+      ? `Everyday essentials, relaxed silhouettes, and current drops from ${storeName}.`
+      : `Discover ${count} merchant-managed items with filters, search, and storefront-aware browsing.`);
+
+  if (variant === "fashion") {
+    return (
+      <section className="border-y border-border py-8 md:py-12">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary md:text-xs">{badge}</p>
+            <h1 className="mt-3 max-w-[14ch] font-heading text-4xl font-semibold leading-[0.98] tracking-tight text-foreground sm:text-5xl md:text-6xl">{title}</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
+          </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {isLoading ? "Loading collection" : `${count} ${count === 1 ? "piece" : "pieces"}`}
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={cn("overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-background via-card to-secondary/50 px-5 py-6 md:px-10 md:py-14", variant === "beauty" && "rounded-[1.75rem] py-5 sm:rounded-[2rem] md:py-14")}>
@@ -856,6 +881,7 @@ function ShopToolbar({
   showMap,
   activeFilterCount,
   compactMobile = false,
+  fashion = false,
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -872,9 +898,14 @@ function ShopToolbar({
   showMap: boolean;
   activeFilterCount: number;
   compactMobile?: boolean;
+  fashion?: boolean;
 }) {
   return (
-    <div className={cn("space-y-3 rounded-3xl border border-border bg-card/40 p-3 md:space-y-4 md:p-4", compactMobile && "space-y-2 rounded-2xl md:space-y-4 md:rounded-3xl")}>
+    <div className={cn(
+      "space-y-3 border border-border md:space-y-4",
+      fashion ? "rounded-none border-x-0 border-t-0 bg-transparent px-0 pb-4" : "rounded-3xl bg-card/40 p-3 md:p-4",
+      compactMobile && !fashion && "space-y-2 rounded-2xl md:space-y-4 md:rounded-3xl",
+    )}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex-1">
           <SearchInput value={query} onChange={setQuery} placeholder="Search products, services, or listings..." />
@@ -907,6 +938,15 @@ function CatalogNoteSection({
   count: number;
 }) {
   if (settings.catalog_note_visible === false) {
+    return null;
+  }
+  const hasMerchantCatalogNote = Boolean(
+    settings.catalog_note_title?.trim()
+      || settings.catalog_note_description?.trim()
+      || settings.promo_title?.trim()
+      || settings.promo_description?.trim(),
+  );
+  if (variant === "fashion" && !hasMerchantCatalogNote) {
     return null;
   }
 
@@ -1283,6 +1323,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   const containerClass = getStorefrontContainerClass(themeCustomization?.container_width);
   const productGridClass = getStorefrontProductGridClass(themeCustomization?.product_grid);
   const isBeautyShop = shopVariant === "beauty";
+  const isFashionShop = shopVariant === "fashion";
   const resolvedProductGridClass = isBeautyShop ? productGridClass.replace("grid-cols-1", "grid-cols-2") : productGridClass;
   const configuredSortOptions: ShopSortOption[] = shopPage?.sort_options?.length
     ? shopPage.sort_options
@@ -1290,7 +1331,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       ? ["rating", "newest", "price-asc", "price-desc"]
       : ["newest", "price-asc", "price-desc"]);
   const sortOptions = configuredSortOptions.filter((option) => option !== "rating" || hasAuthoritativeRatings);
-  const categoryStyle = shopPage?.category_navigation_style ?? (shopVariant === "food" ? "strip" : "tabs");
+  const categoryStyle = shopPage?.category_navigation_style ?? (shopVariant === "food" || shopVariant === "fashion" ? "strip" : "tabs");
   const filterVisibility = shopPage?.filter_visibility ?? (shopVariant === "food" || shopVariant === "booking" ? "toolbar" : "sidebar");
   const showMap = shopVariant === "real_estate" || shopVariant === "electronics";
   const displayedProducts = filteredProducts.slice(0, displayCount);
@@ -1301,7 +1342,8 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       active={shopVariant === "beauty" || shopVariant === "service" || shopVariant === "booking" || shopVariant === "subscription" ? activeType : activeCategory}
       onChange={(value) => setSingleParam(shopVariant === "beauty" || shopVariant === "service" || shopVariant === "booking" || shopVariant === "subscription" ? "type" : "category", value === "All" ? null : value)}
       style={categoryStyle}
-      mobileScrollable={isBeautyShop}
+      mobileScrollable={isBeautyShop || isFashionShop}
+      fashion={isFashionShop}
     />
   );
 
@@ -1322,11 +1364,12 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
       showMap={showMap}
       activeFilterCount={activeChips.filter((chip) => chip.key !== "q").length}
       compactMobile={isBeautyShop}
+      fashion={isFashionShop}
     />
   );
 
   const filterSidebar = filterVisibility === "sidebar"
-    ? <DesktopFilterSidebar filterDefinitions={filterDefinitions} params={searchParams} onChange={setSingleParam} />
+    ? <DesktopFilterSidebar filterDefinitions={filterDefinitions} params={searchParams} onChange={setSingleParam} fashion={isFashionShop} />
     : null;
 
   const resultsNode = isLoading ? (
@@ -1341,7 +1384,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
     <div className="space-y-8">
       {view === "list" || shopVariant === "food" || shopVariant === "service" || shopVariant === "booking"
         ? <ProductResultsList products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} />
-        : <ProductResultsGrid products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} className={cn("grid gap-6", isBeautyShop && "gap-3 sm:gap-6", resolvedProductGridClass)} />}
+        : <ProductResultsGrid products={displayedProducts} onQuickView={(product) => { setQuickViewProduct(product); setQuickViewOpen(true); }} className={cn("grid gap-6", isBeautyShop && "gap-3 sm:gap-6", isFashionShop && "gap-x-4 gap-y-9 sm:gap-x-5 sm:gap-y-10", resolvedProductGridClass)} />}
       <LoadMore hasMore={displayedProducts.length < filteredProducts.length} onClick={() => setDisplayCount((current) => current + perPage)} />
       {displayedProducts.length >= filteredProducts.length && filteredProducts.length > 0 ? (
         <p className="text-center text-sm text-muted-foreground">{shopPage?.end_message?.trim() || `You have reached the end of the ${storeName} results.`}</p>
@@ -1350,7 +1393,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   );
 
   const shell = (
-    <div className={cn("space-y-8", isBeautyShop && "space-y-5 md:space-y-8")}>
+    <div className={cn("space-y-8", isBeautyShop && "space-y-5 md:space-y-8", isFashionShop && "space-y-6 md:space-y-8")}>
       <AnimatedSection animation="blur" className={cn(isBeautyShop && "hidden sm:block")}>
         <nav className="text-sm text-muted-foreground">
           <span>Home</span> <span className="mx-2">/</span> <span className="text-foreground">Shop</span>
@@ -1365,14 +1408,20 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
   );
 
   const results = (
-    <div className={cn("flex flex-col gap-8 lg:flex-row", isBeautyShop && "gap-5 md:gap-8")}>
+    <div className={cn("flex flex-col gap-8 lg:flex-row", isBeautyShop && "gap-5 md:gap-8", isFashionShop && "gap-7 lg:gap-10")}>
       {filterSidebar}
       <div className="min-w-0 flex-1 space-y-8">{resultsNode}</div>
     </div>
   );
 
-  const newsletter = (shopPage?.newsletter_visible ?? true)
-    ? <NewsletterSection title={`Stay in touch with ${storeName}`} description="Use this section for launches, offers, or merchant updates without changing the core commerce flow." />
+  const newsletterVisible = shopVariant === "fashion"
+    ? shopPage?.newsletter_visible === true
+    : (shopPage?.newsletter_visible ?? true);
+  const newsletter = newsletterVisible
+    ? <NewsletterSection
+        title={shopVariant === "fashion" ? "Get first access" : `Stay in touch with ${storeName}`}
+        description={shopVariant === "fashion" ? `New drops, restocks, and occasional offers from ${storeName}.` : "Use this section for launches, offers, or merchant updates without changing the core commerce flow."}
+      />
     : null;
   const support = <CatalogNoteSection variant={shopVariant} settings={shopPage ?? {}} count={filteredProducts.length || availableProducts.length} />;
   const recent = <RecentlyViewed title={shopVariant === "real_estate" ? "Recently Viewed Properties" : "Recently Viewed"} />;
@@ -1391,7 +1440,7 @@ export default function ContextAwareShopPage({ explicitStoreId }: { explicitStor
         />
       ) : null}
       <PageTransition>
-        <section className={cn("py-14 md:py-16", isBeautyShop && "py-8 md:py-16")}>
+        <section className={cn("py-14 md:py-16", isBeautyShop && "py-8 md:py-16", isFashionShop && "py-8 md:py-12")}>
           <div className={`mx-auto px-4 ${containerClass}`}>
             <Renderer
               shell={shell}

@@ -444,6 +444,8 @@ const Account = () => {
         price: item.price,
         image: item.image,
         size: item.size,
+        optionIds: Array.isArray(item.optionIds) ? item.optionIds : [],
+        fulfillmentType: item.fulfillmentType === "digital" ? "digital" : "physical",
         storeId,
       });
     });

@@ -18,6 +18,7 @@ import type { StorefrontTemplateId } from "@/lib/cms/storefront-templates";
 const storefrontTemplateReferenceImages: Record<StorefrontTemplateId, string> = {
   blank: generalReference.src,
   fashion: fashionReference.src,
+  threads: fashionReference.src,
   beauty: beautyReference.src,
   electronics: electronicsReference.src,
   food: foodReference.src,

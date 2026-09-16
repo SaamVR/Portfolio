@@ -5,14 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, KeyRound, Mail, Phone, Shield } from "lucide-react";
-import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
+import { Loader2, ShieldCheck, KeyRound, Mail, Shield } from "lucide-react";
 import { signInWithGoogle } from "@/lib/google-auth";
-import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
-import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { isPlatformRole } from "@/lib/platform/rbac";
 
 type EmailErrors = {
@@ -21,11 +17,6 @@ type EmailErrors = {
   form?: string;
 };
 
-type PhoneErrors = {
-  phone?: string;
-  otp?: string;
-  form?: string;
-};
 
 function messageFromUnknown(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -48,23 +39,6 @@ function safeEmailAuthError(error: unknown) {
     return "Could not reach the sign-in service. Check your connection and try again.";
   }
   return "We could not sign you in. Check your details and try again.";
-}
-
-function safePhoneAuthError(error: unknown) {
-  const message = messageFromUnknown(error).toLowerCase();
-  if (message.includes("invalid-phone") || message.includes("phone number")) {
-    return "Enter a valid phone number and try again.";
-  }
-  if (message.includes("invalid-verification") || message.includes("invalid code") || message.includes("code-expired")) {
-    return "The verification code is invalid or expired. Request a new code and try again.";
-  }
-  if (message.includes("too many") || message.includes("quota") || message.includes("rate")) {
-    return "Too many verification attempts. Wait a moment and try again.";
-  }
-  if (message.includes("network") || message.includes("fetch") || message.includes("connection")) {
-    return "Could not reach the verification service. Check your connection and try again.";
-  }
-  return "Phone verification could not be completed. Try again or change the phone number.";
 }
 
 function safeGoogleAuthError(error: unknown) {
@@ -106,27 +80,19 @@ const AdminLogin = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [setupPassword, setSetupPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
-  const [phoneSigningIn, setPhoneSigningIn] = useState(false);
   const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [claimingInvite, setClaimingInvite] = useState(false);
   const [claimingSetup, setClaimingSetup] = useState(false);
   const [emailErrors, setEmailErrors] = useState<EmailErrors>({});
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [phoneErrors, setPhoneErrors] = useState<PhoneErrors>({});
-  const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const phoneRef = useRef<HTMLInputElement>(null);
-  const otpRef = useRef<HTMLInputElement>(null);
   const inviteRef = useRef<HTMLInputElement>(null);
   const setupPasswordRef = useRef<HTMLInputElement>(null);
 
@@ -241,93 +207,13 @@ const AdminLogin = () => {
     }
   };
 
-  const handleSendPhoneCode = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!phone.trim()) {
-      setPhoneErrors({ phone: "Enter your phone number." });
-      setPhoneStatus(null);
-      phoneRef.current?.focus();
-      return;
-    }
-
-    setPhoneErrors({});
-    setPhoneStatus(null);
-    setPhoneSigningIn(true);
-    try {
-      const nextConfirmation = await sendPhoneVerificationCode(phone);
-      setConfirmation(nextConfirmation);
-      setPhoneStatus("Verification code sent. Enter it below to continue.");
-      toast.success("Verification code sent.");
-    } catch (error: unknown) {
-      const message = safePhoneAuthError(error);
-      setPhoneErrors({ form: message });
-      toast.error(message);
-    } finally {
-      setPhoneSigningIn(false);
-    }
-  };
-
-  const handleVerifyPhone = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!confirmation) {
-      setPhoneErrors({ form: "Request a verification code before trying to verify." });
-      setPhoneStatus(null);
-      phoneRef.current?.focus();
-      return;
-    }
-    if (!otpCode.trim()) {
-      setPhoneErrors({ otp: "Enter the verification code." });
-      setPhoneStatus(null);
-      otpRef.current?.focus();
-      return;
-    }
-
-    setPhoneErrors({});
-    setPhoneStatus(null);
-    setPhoneSigningIn(true);
-    try {
-      const credential = await confirmation.confirm(otpCode.trim());
-      const idToken = await credential.user.getIdToken();
-      const data = await exchangeFirebaseTokenForSupabaseSession({
-        id_token: idToken,
-        display_name: phone,
-      });
-      if (data?.error) throw new Error(String(data.error));
-      if (!data?.access_token || !data?.refresh_token) {
-        throw new Error("Phone verification did not return a valid session.");
-      }
-
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-      if (sessionError) throw sessionError;
-
-      toast.success("Phone verified successfully.");
-    } catch (error: unknown) {
-      const message = safePhoneAuthError(error);
-      setPhoneErrors({ form: message });
-      toast.error(message);
-    } finally {
-      setPhoneSigningIn(false);
-    }
-  };
-
-  const resetPhoneStep = () => {
-    setConfirmation(null);
-    setOtpCode("");
-    setPhoneErrors({});
-    setPhoneStatus(null);
-    requestAnimationFrame(() => phoneRef.current?.focus());
-  };
-
   const GoogleButton = () => (
     <div className="space-y-2">
       <Button
         type="button"
         variant="outline"
         onClick={handleGoogleAuth}
-        disabled={signingIn || phoneSigningIn || googleSigningIn}
+        disabled={signingIn || googleSigningIn}
         className="h-11 w-full"
       >
         {googleSigningIn ? (
@@ -463,147 +349,33 @@ const AdminLogin = () => {
                 </div>
               ) : null}
 
-              <Tabs defaultValue="email" className="space-y-5">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="email">Email</TabsTrigger>
-                  <TabsTrigger value="phone">Phone</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="email" className="space-y-4">
-                  <form onSubmit={handleEmailLogin} className="space-y-4" noValidate>
-                    <div>
-                      <Label htmlFor="dashboard-email">Email</Label>
-                      <div className="relative mt-1">
-                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          ref={emailRef}
-                          id="dashboard-email"
-                          data-testid="admin-login-email"
-                          type="email"
-                          autoComplete="email"
-                          placeholder="merchant@example.com"
-                          value={email}
-                          onChange={(event) => {
-                            setEmail(event.target.value);
-                            setEmailErrors((current) => ({ ...current, email: undefined, form: undefined }));
-                          }}
-                          aria-invalid={Boolean(emailErrors.email)}
-                          aria-describedby={emailDescriptionIds}
-                          className="pl-10"
-                        />
-                      </div>
-                      {emailErrors.email ? (
-                        <p id="dashboard-email-error" role="alert" className="mt-1 text-sm text-destructive">
-                          {emailErrors.email}
-                        </p>
-                      ) : null}
+              <div className="space-y-4">
+                <form onSubmit={handleEmailLogin} className="space-y-4" noValidate>
+                  <div>
+                    <Label htmlFor="dashboard-email">Email</Label>
+                    <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input ref={emailRef} id="dashboard-email" data-testid="admin-login-email" type="email" autoComplete="email" placeholder="merchant@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setEmailErrors((current) => ({ ...current, email: undefined, form: undefined })); }} aria-invalid={Boolean(emailErrors.email)} aria-describedby={emailDescriptionIds} className="pl-10" />
                     </div>
-                    <div>
-                      <Label htmlFor="dashboard-password">Password</Label>
-                      <div className="relative mt-1">
-                        <Shield className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          ref={passwordRef}
-                          id="dashboard-password"
-                          data-testid="admin-login-password"
-                          type="password"
-                          autoComplete="current-password"
-                          placeholder="Password"
-                          value={password}
-                          onChange={(event) => {
-                            setPassword(event.target.value);
-                            setEmailErrors((current) => ({ ...current, password: undefined, form: undefined }));
-                          }}
-                          aria-invalid={Boolean(emailErrors.password)}
-                          aria-describedby={passwordDescriptionIds}
-                          className="pl-10"
-                        />
-                      </div>
-                      {emailErrors.password ? (
-                        <p id="dashboard-password-error" role="alert" className="mt-1 text-sm text-destructive">
-                          {emailErrors.password}
-                        </p>
-                      ) : null}
+                    {emailErrors.email ? <p id="dashboard-email-error" role="alert" className="mt-1 text-sm text-destructive">{emailErrors.email}</p> : null}
+                  </div>
+                  <div>
+                    <Label htmlFor="dashboard-password">Password</Label>
+                    <div className="relative mt-1">
+                      <Shield className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input ref={passwordRef} id="dashboard-password" data-testid="admin-login-password" type="password" autoComplete="current-password" placeholder="Password" value={password} onChange={(event) => { setPassword(event.target.value); setEmailErrors((current) => ({ ...current, password: undefined, form: undefined })); }} aria-invalid={Boolean(emailErrors.password)} aria-describedby={passwordDescriptionIds} className="pl-10" />
                     </div>
-                    {emailErrors.form ? (
-                      <p id="dashboard-email-form-error" role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                        {emailErrors.form}
-                      </p>
-                    ) : null}
-                    <Button type="submit" data-testid="admin-login-submit" disabled={signingIn} className="h-11 w-full">
-                      {signingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-                      {signingIn ? "Signing you in…" : "Login"}
-                    </Button>
-                    {signingIn ? <p role="status" aria-live="polite" className="text-center text-sm text-muted-foreground">Signing you in…</p> : null}
-                  </form>
-                  <GoogleButton />
-                </TabsContent>
-
-                <TabsContent value="phone" className="space-y-4">
-                  <form onSubmit={confirmation ? handleVerifyPhone : handleSendPhoneCode} className="space-y-4" noValidate>
-                    {!confirmation ? (
-                      <div>
-                        <Label htmlFor="dashboard-phone">Phone</Label>
-                        <div className="relative mt-1">
-                          <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            ref={phoneRef}
-                            id="dashboard-phone"
-                            type="tel"
-                            autoComplete="tel"
-                            placeholder="01XXXXXXXXX"
-                            value={phone}
-                            onChange={(event) => {
-                              setPhone(event.target.value);
-                              setPhoneErrors((current) => ({ ...current, phone: undefined, form: undefined }));
-                              setPhoneStatus(null);
-                            }}
-                            aria-invalid={Boolean(phoneErrors.phone)}
-                            aria-describedby={phoneErrors.phone ? "dashboard-phone-error" : phoneErrors.form ? "dashboard-phone-form-error" : undefined}
-                            className="pl-10"
-                          />
-                        </div>
-                        {phoneErrors.phone ? <p id="dashboard-phone-error" role="alert" className="mt-1 text-sm text-destructive">{phoneErrors.phone}</p> : null}
-                      </div>
-                    ) : (
-                      <div>
-                        <Label htmlFor="dashboard-phone-code">Verification Code</Label>
-                        <Input
-                          ref={otpRef}
-                          id="dashboard-phone-code"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          placeholder="Enter code"
-                          value={otpCode}
-                          onChange={(event) => {
-                            setOtpCode(event.target.value);
-                            setPhoneErrors((current) => ({ ...current, otp: undefined, form: undefined }));
-                            setPhoneStatus(null);
-                          }}
-                          aria-invalid={Boolean(phoneErrors.otp)}
-                          aria-describedby={phoneErrors.otp ? "dashboard-phone-code-error" : phoneErrors.form ? "dashboard-phone-form-error" : undefined}
-                          className="mt-1"
-                        />
-                        {phoneErrors.otp ? <p id="dashboard-phone-code-error" role="alert" className="mt-1 text-sm text-destructive">{phoneErrors.otp}</p> : null}
-                      </div>
-                    )}
-                    {phoneErrors.form ? <p id="dashboard-phone-form-error" role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{phoneErrors.form}</p> : null}
-                    {phoneStatus ? <p role="status" aria-live="polite" className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">{phoneStatus}</p> : null}
-                    <Button type="submit" disabled={phoneSigningIn} className="h-11 w-full">
-                      {phoneSigningIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-                      {phoneSigningIn ? (confirmation ? "Verifying…" : "Sending code…") : confirmation ? "Verify Phone" : "Send verification code"}
-                    </Button>
-                    {confirmation ? (
-                      <Button type="button" variant="ghost" onClick={resetPhoneStep} className="w-full">
-                        Change phone number
-                      </Button>
-                    ) : null}
-                  </form>
-                  <GoogleButton />
-                </TabsContent>
-
-                <div id="phone-recaptcha-container" />
-              </Tabs>
+                    {emailErrors.password ? <p id="dashboard-password-error" role="alert" className="mt-1 text-sm text-destructive">{emailErrors.password}</p> : null}
+                  </div>
+                  {emailErrors.form ? <p id="dashboard-email-form-error" role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{emailErrors.form}</p> : null}
+                  <Button type="submit" data-testid="admin-login-submit" disabled={signingIn} className="h-11 w-full">
+                    {signingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                    {signingIn ? "Signing you in…" : "Login"}
+                  </Button>
+                  {signingIn ? <p role="status" aria-live="polite" className="text-center text-sm text-muted-foreground">Signing you in…</p> : null}
+                </form>
+                <GoogleButton />
+              </div>
 
               {showingPlatformSetup ? (
                 <Button asChild type="button" variant="ghost" className="w-full">

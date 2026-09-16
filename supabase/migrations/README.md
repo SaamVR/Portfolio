@@ -24,5 +24,7 @@ Use this folder for:
 - `supabase/migrations/` remains the deployable history.
 - This folder is the organized reference layer.
 - The legacy single-store tables were kept and upgraded with `store_id` so the CMS can evolve without a destructive rewrite.
-- `rls_smoke_can_manage_store.sql` is a rollback-only live-policy smoke test for owner/admin/editor/viewer/outsider/platform-admin access across the main tenant-managed tables. Run it with `npm run test:db:rls` against a local or dev Postgres URL.
-- `npm run test:db` is the combined local DB preflight. It runs the tenant RLS smoke first and then the billing route smoke so release checks cover both isolation and paid-plan activation flow.
+- `store_role_capability_matrix_smoke.sql` is the rollback-only live-policy smoke for the launch merchant role contract: owner/admin administration, editor content/fulfillment authority, viewer non-sensitive read-only access, unrelated-store denial, and platform-admin access.
+- `rls_smoke_cross_tenant.sql` remains the separate tenant-isolation smoke. The older `rls_smoke_can_manage_store.sql` is retained as historical coverage but is no longer run because it encoded the obsolete assumption that editors were full store managers.
+- `npm run test:db:rls` runs the registered RLS/security/commerce smokes from `scripts/run-rls-smoke.mjs` against a local or dev Postgres URL.
+- `npm run test:db` is the combined local DB preflight so release checks cover tenant isolation, capability boundaries, commerce authority, and billing activation flow.

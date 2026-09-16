@@ -187,23 +187,35 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
       const orderNumber = readCallbackParam(request.params, "order_id");
       const storeId = readCallbackParam(request.params, "store_id");
 
-      if (callbackStatus === "cancel") {
-        return {
-          providerId: request.providerId,
-          status: "cancelled",
-          message: "Payment was cancelled.",
-          storeId: storeId || undefined,
-          retryable: true,
-        };
-      }
+      if (callbackStatus === "cancel" || callbackStatus === "failure" || callbackStatus === "error") {
+        const cancelled = callbackStatus === "cancel";
+        let reservationReleased = false;
+        let reconciliationRequired = false;
+        const hasReleaseIdentity = Boolean(paymentId && orderNumber && storeId);
 
-      if (callbackStatus === "failure" || callbackStatus === "error") {
+        if (paymentId && orderNumber && storeId) {
+          const { data } = await deps.invokeFunction("bkash-payment", {
+            action: "release",
+            paymentID: paymentId,
+            order_id: orderNumber,
+            store_id: storeId,
+            reason: cancelled ? "provider_cancelled" : "provider_failed",
+          });
+          reservationReleased = data?.reservation_released === true;
+          reconciliationRequired = data?.reconciliation_required === true;
+        }
+
         return {
           providerId: request.providerId,
-          status: "error",
-          message: "bKash reported that the payment failed.",
+          status: cancelled ? "cancelled" : "error",
+          message: reservationReleased
+            ? (cancelled ? "Payment was cancelled and the order reservation was released." : "bKash reported a payment failure and the order reservation was released.")
+            : (cancelled ? "Payment was cancelled." : "bKash reported that the payment failed."),
+          orderNumber: orderNumber || undefined,
           storeId: storeId || undefined,
-          retryable: true,
+          retryable: hasReleaseIdentity && !reservationReleased && !reconciliationRequired,
+          reservationReleased,
+          reconciliationRequired,
         };
       }
 
@@ -226,12 +238,19 @@ export const bkashPaymentPlugin: PaymentProviderPlugin = {
 
       if (error || data?.success !== true) {
         const providerMessage = typeof data?.error === "string" ? data.error : "";
+        const reservationReleased = data?.reservation_released === true;
+        const reconciliationRequired = data?.reconciliation_required === true;
+        const paymentProcessing = data?.payment_processing === true;
         return {
           providerId: request.providerId,
           status: "error",
           message: providerMessage || error?.message || "Failed to verify payment with bKash.",
+          orderNumber,
           storeId,
-          retryable: false,
+          retryable: data?.retryable === true && !reservationReleased && !reconciliationRequired,
+          reservationReleased,
+          reconciliationRequired,
+          paymentProcessing,
         };
       }
 

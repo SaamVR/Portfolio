@@ -13,6 +13,8 @@ const pendingBkashOrder: BkashOrderPaymentContext = {
   status: "pending",
   payment_method: "bkash",
   notes: "Coupon: EID10",
+  reservation_state: "reserved",
+  reservation_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
 };
 
 describe("bKash payment order authority", () => {
