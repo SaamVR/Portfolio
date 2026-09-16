@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateCloudinarySrcSet } from "@/lib/cms/cloudinary-responsive";
@@ -20,6 +20,7 @@ const ProductImageGallery = ({
 }: ProductImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const expandButtonRef = useRef<HTMLButtonElement>(null);
 
   const safeImages = Array.isArray(images) && images.length > 0 ? images : ["/placeholder.svg"];
 
@@ -90,6 +91,7 @@ const ProductImageGallery = ({
         )}
 
         <button
+          ref={expandButtonRef}
           type="button"
           onClick={() => setIsFullscreen(true)}
           aria-label="Expand image"
@@ -132,6 +134,10 @@ const ProductImageGallery = ({
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent
           className="left-0 top-0 z-[120] flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-0 bg-black/90 p-4 text-white shadow-none sm:rounded-none"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            expandButtonRef.current?.focus();
+          }}
           onKeyDown={(event) => {
             if (safeImages.length <= 1) return;
             if (event.key === "ArrowLeft") {

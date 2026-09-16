@@ -44,6 +44,9 @@ test("product image lightbox uses an accessible dialog contract", () => {
   assert.match(gallery, /event\.key === "ArrowLeft"/);
   assert.match(gallery, /event\.key === "ArrowRight"/);
   assert.match(gallery, /md:focus-visible:opacity-100/);
+  assert.match(gallery, /const expandButtonRef = useRef<HTMLButtonElement>\(null\)/);
+  assert.match(gallery, /ref=\{expandButtonRef\}/);
+  assert.match(gallery, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?event\.preventDefault\(\)[\s\S]*?expandButtonRef\.current\?\.focus\(\)/);
   assert.match(dialog, /h-11 w-11/);
 });
 
