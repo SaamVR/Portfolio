@@ -135,6 +135,16 @@ export function normalizeDomainInput(input: string): NormalizedDomainInput {
   };
 }
 
+export function getRoutingDnsRecordName(input: string | NormalizedDomainInput) {
+  const normalized = typeof input === "string" ? normalizeDomainInput(input) : input;
+  if (normalized.isApexDomain) return "@";
+
+  const apexSuffix = `.${normalized.apexDomain}`;
+  if (!normalized.hostname.endsWith(apexSuffix)) return normalized.subdomainLabel ?? "@";
+
+  return normalized.hostname.slice(0, -apexSuffix.length);
+}
+
 export function getDomainPair(input: string | NormalizedDomainInput) {
   const normalized = typeof input === "string" ? normalizeDomainInput(input) : input;
   const apexHostname = normalized.apexDomain;
@@ -143,8 +153,10 @@ export function getDomainPair(input: string | NormalizedDomainInput) {
   return {
     apexHostname,
     wwwHostname,
-    defaultPrimaryHostname: wwwHostname,
-    redirectHostname: apexHostname === wwwHostname ? null : apexHostname,
+    // EZComo provisions exactly one hostname by default. The hostname the merchant
+    // entered is canonical; www is a compatibility fallback, not an automatic pair.
+    defaultPrimaryHostname: normalized.hostname,
+    redirectHostname: null,
   };
 }
 
