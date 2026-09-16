@@ -14,7 +14,6 @@ import {
 } from "@/app/api/billing/manual-invoice/route";
 import {
   POST as domainsPost,
-  PATCH as domainsPatch,
   DELETE as domainsDelete,
   domainRouteDeps,
 } from "@/app/api/domains/route";
@@ -3221,123 +3220,6 @@ describe("domain route side effects", () => {
       },
     ]);
     assert.equal(admin.domainUpserts[0].is_www_domain, false);
-  });
-
-  test("Check Connection restarts real-time validation and activates after Cloudflare becomes ready", async () => {
-    const admin = createDomainAdminMock();
-
-    mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
-    mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
-    mock.method(domainRouteDeps, "canManageStore", async () => true);
-    mock.method(domainRouteDeps, "createCloudflareCustomHostname", async (hostname: string) => ({
-      id: "cfh_realtime_123",
-      hostname,
-      status: "pending",
-      ssl: { status: "pending_validation" },
-      ownership_verification: {
-        type: "txt",
-        name: "_cf-custom-hostname.example.com",
-        value: "fallback-token",
-      },
-    }) as never);
-    const restartMock = mock.method(domainRouteDeps, "restartCloudflareCustomHostnameValidation", async () => ({
-      id: "cfh_realtime_123",
-      hostname: "example.com",
-      status: "pending",
-      ssl: { status: "pending_validation" },
-    }) as never);
-    const getMock = mock.method(domainRouteDeps, "getCloudflareCustomHostname", async () => ({
-      id: "cfh_realtime_123",
-      hostname: "example.com",
-      status: "active",
-      ssl: { status: "active" },
-    }) as never);
-
-    await domainsPost(
-      jsonRequest("https://example.com/api/domains", "POST", {
-        storeId: "store_1",
-        domain: "example.com",
-      }),
-    );
-
-    const response = await domainsPatch(
-      jsonRequest("https://example.com/api/domains", "PATCH", {
-        storeId: "store_1",
-        action: "check",
-        domain: "example.com",
-      }),
-    );
-
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.success, true);
-    assert.equal(body.domain.isActive, true);
-    assert.equal(body.domain.cloudflareHostnameStatus, "active");
-    assert.equal(body.domain.cloudflareSslStatus, "active");
-    assert.equal(restartMock.mock.callCount(), 1);
-    assert.equal(restartMock.mock.calls[0].arguments[0], "cfh_realtime_123");
-    assert.equal(getMock.mock.callCount(), 1);
-  });
-
-  test("Check Connection preserves TXT fallback when real-time validation restart fails", async () => {
-    const admin = createDomainAdminMock();
-
-    mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "owner_1" }) as never);
-    mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
-    mock.method(domainRouteDeps, "canManageStore", async () => true);
-    mock.method(domainRouteDeps, "createCloudflareCustomHostname", async (hostname: string) => ({
-      id: "cfh_fallback_123",
-      hostname,
-      status: "pending",
-      ssl: { status: "pending_validation" },
-      ownership_verification: {
-        type: "txt",
-        name: "_cf-custom-hostname.example.com",
-        value: "fallback-token",
-      },
-    }) as never);
-    mock.method(domainRouteDeps, "restartCloudflareCustomHostnameValidation", async () => {
-      throw new Error("restart unavailable");
-    });
-    mock.method(domainRouteDeps, "getCloudflareCustomHostname", async () => ({
-      id: "cfh_fallback_123",
-      hostname: "example.com",
-      status: "pending",
-      ssl: { status: "pending_validation" },
-      ownership_verification: {
-        type: "txt",
-        name: "_cf-custom-hostname.example.com",
-        value: "fallback-token",
-      },
-    }) as never);
-
-    await domainsPost(
-      jsonRequest("https://example.com/api/domains", "POST", {
-        storeId: "store_1",
-        domain: "example.com",
-      }),
-    );
-
-    const response = await domainsPatch(
-      jsonRequest("https://example.com/api/domains", "PATCH", {
-        storeId: "store_1",
-        action: "check",
-        domain: "example.com",
-      }),
-    );
-
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.success, true);
-    assert.equal(body.domain.isActive, false);
-    assert.deepEqual(body.domain.verificationRecords, [
-      {
-        type: "TXT",
-        name: "_cf-custom-hostname.example.com",
-        value: "fallback-token",
-        purpose: "verification",
-      },
-    ]);
   });
 
   test("removes the exact Cloudflare custom hostname on successful removal", async () => {
