@@ -437,10 +437,9 @@ export const CustomDomainTab = () => {
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
               <li>Keep your current platform subdomain live during setup.</li>
               <li>Enter the exact address you want shoppers to use. The root domain, such as `example.com`, is recommended when your DNS provider supports apex CNAME/ALIAS/ANAME or CNAME flattening.</li>
-              <li>Add the routing record shown below in your registrar or DNS provider.</li>
-              <li>Come back here and press `Check Connection`. EZComo will ask Cloudflare to retry real-time ownership validation.</li>
-              <li>If real-time validation stays pending, use the TXT verification record shown under the fallback section.</li>
+              <li>Add the exact DNS records shown below in your registrar or DNS provider.</li>
               <li>If your DNS provider refuses a CNAME at `@`, connect `www.example.com` instead. EZComo provisions only the hostname you enter.</li>
+              <li>Come back here and press `Check Connection` until the domain becomes active.</li>
             </ol>
           </div>
 
@@ -452,7 +451,7 @@ export const CustomDomainTab = () => {
                 <li>Use a domain you control at your registrar or DNS provider.</li>
                 <li>Use the exact hostname you want as your storefront address. `example.com` is preferred when your DNS provider supports an apex alias/CNAME.</li>
                 <li>EZComo creates one Cloudflare custom hostname per connection; it does not automatically add both root and `www`.</li>
-                <li>Start with the routing record shown below. TXT ownership verification is kept as a fallback if real-time validation does not complete.</li>
+                <li>After that, copy the records shown below and create them in your DNS dashboard.</li>
                 <li>If your DNS provider cannot point the root (`@`) to a CNAME/ALIAS/ANAME target, use `www.example.com` as the compatibility fallback.</li>
               </ul>
             </div>
@@ -512,8 +511,7 @@ export const CustomDomainTab = () => {
       ) : null}
 
       {domains.map((domain) => {
-        const routingRecords = domain.dnsRecords;
-        const verificationFallbackRecords = domain.verificationRecords;
+        const records = [...domain.verificationRecords, ...domain.dnsRecords];
         const domainExplanation = explainDomainState(domain);
         return (
           <Card key={domain.id} className="border-border bg-card">
@@ -604,16 +602,16 @@ export const CustomDomainTab = () => {
                     <Badge variant="secondary">Configured by {domain.configuredBy}</Badge>
                   ) : null}
                 </div>
-                {routingRecords.length === 0 ? (
+                {records.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    We have not received the routing instruction yet. Run Check Connection again in a moment.
+                    We have not received DNS instructions yet. Run Check Connection again in a moment.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
-                      Start with this routing record. Set it to DNS only. Then press Check Connection; EZComo will retry Cloudflare real-time validation automatically.
+                      Add these records exactly as shown at your domain provider. Set the record to DNS only. If the same host already has an old A or CNAME record pointing elsewhere, remove or replace that conflicting record.
                     </div>
-                    {routingRecords.map((record, index) => (
+                    {records.map((record, index) => (
                       <div key={`${record.type}-${record.name}-${index}`} className="rounded-xl border border-border p-4">
                         <div className="mb-3 flex items-center justify-between">
                           <Badge variant="outline">{record.purpose === "verification" ? "Verification" : record.purpose === "redirect" ? "Redirect" : "Routing"}</Badge>
@@ -646,32 +644,6 @@ export const CustomDomainTab = () => {
                     ))}
                   </div>
                 )}
-
-                {!domain.isActive && verificationFallbackRecords.length > 0 ? (
-                  <details className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    <summary className="cursor-pointer font-medium text-foreground">TXT verification fallback</summary>
-                    <p className="mt-2">
-                      Use this only if the routing record is correct but Cloudflare still shows the hostname as pending after Check Connection.
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {verificationFallbackRecords.map((record, index) => (
-                        <div key={`${record.type}-${record.name}-${index}`} className="rounded-lg border border-border bg-secondary/10 p-3">
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div><p className="text-xs uppercase tracking-wide">Type</p><p className="mt-1 font-mono text-sm text-foreground">{record.type}</p></div>
-                            <div><p className="text-xs uppercase tracking-wide">Name</p><p className="mt-1 break-all font-mono text-sm text-foreground">{record.name}</p></div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wide">Value</p>
-                              <div className="mt-1 flex items-start justify-between gap-2">
-                                <p className="break-all font-mono text-sm text-foreground">{record.value}</p>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => void copyValue(record.value, `${record.type} value`)}>Copy</Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                ) : null}
               </div>
 
               <Separator />
@@ -689,14 +661,14 @@ export const CustomDomainTab = () => {
                   <p className="text-xs font-medium uppercase tracking-wide">Apex redirect strategy</p>
                   <p className="mt-2">
                     {domain.isWwwDomain
-                      ? "This www hostname is the selected storefront address. You may redirect the apex to it separately if you want both forms to resolve."
-                      : "This apex/root hostname is the selected storefront address. No www hostname is required."}
+                      ? "Keep the apex domain redirected to this www host with a permanent redirect at your registrar or DNS provider."
+                      : "Use a www-style hostname for activation whenever possible, then redirect the apex root to that primary host permanently."}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <span>Real-time validation is attempted first; TXT ownership verification remains available as a fallback.</span>
+                <span>Use a CNAME host such as `www`; apex redirects should be configured at your DNS provider.</span>
                 <span>Last checked: {domain.lastCheckedAt ? new Date(domain.lastCheckedAt).toLocaleString() : "Not checked yet"}</span>
               </div>
             </CardContent>
