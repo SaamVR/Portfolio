@@ -23,11 +23,11 @@ function baseEnv(overrides: Record<string, unknown> = {}) {
 }
 
 test("custom-domain proxy forwards active merchant domains through the origin-router service binding", async () => {
-  let routedRequest: Request | null = null;
+  const routedRequests: Request[] = [];
   const env = baseEnv({
     ORIGIN_ROUTER: {
       async fetch(request: Request) {
-        routedRequest = request;
+        routedRequests.push(request);
         return new Response("router-ok", {
           status: 200,
           headers: { "x-router": "origin-failover" },
@@ -44,6 +44,7 @@ test("custom-domain proxy forwards active merchant domains through the origin-ro
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "router-ok");
   assert.equal(response.headers.get("x-router"), "origin-failover");
+  const routedRequest = routedRequests[0];
   assert.ok(routedRequest);
   assert.equal(new URL(routedRequest.url).hostname, "www.samvr.store");
   assert.equal(new URL(routedRequest.url).pathname, "/products/widget");
@@ -51,6 +52,36 @@ test("custom-domain proxy forwards active merchant domains through the origin-ro
   assert.equal(routedRequest.headers.get("x-ezcomo-store-slug"), "sam");
   assert.equal(routedRequest.headers.get("x-forwarded-host"), "www.samvr.store");
   assert.equal(routedRequest.headers.get("x-ezcomo-proxy-secret"), "proxy-secret");
+});
+
+
+test("custom-domain proxy routes an active apex vanity hostname without www", async () => {
+  const routedRequests: Request[] = [];
+  const env = baseEnv({
+    DOMAIN_ROUTING_KV: {
+      async get(key: string, type: string) {
+        assert.equal(key, "domain:samvr.store");
+        assert.equal(type, "json");
+        return { storeSlug: "sam" };
+      },
+    },
+    ORIGIN_ROUTER: {
+      async fetch(request: Request) {
+        routedRequests.push(request);
+        return new Response("apex-ok", { status: 200 });
+      },
+    },
+  });
+
+  const response = await worker.fetch(new Request("https://samvr.store/products/widget"), env);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "apex-ok");
+
+  const routedRequest = routedRequests[0];
+  assert.ok(routedRequest);
+  assert.equal(new URL(routedRequest.url).hostname, "samvr.store");
+  assert.equal(routedRequest.headers.get("x-ezcomo-hostname"), "samvr.store");
+  assert.equal(routedRequest.headers.get("x-forwarded-host"), "samvr.store");
 });
 
 test("custom-domain proxy rejects inactive domains before invoking the origin router", async () => {

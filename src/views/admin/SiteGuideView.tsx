@@ -106,7 +106,7 @@ export default function SiteGuideView() {
       ],
 
       proTip:
-        "If you plan to connect a custom domain (e.g. `www.yourbrand.com`), your store slug will remain as your internal platform fallback address.",
+        "If you plan to connect a custom domain (e.g. `yourbrand.com`), your store slug will remain as your internal platform fallback address.",
     },
     {
       step: 3,

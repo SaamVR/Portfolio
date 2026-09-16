@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Copy, Globe, Loader2, RefreshCcw, Star, Tras
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/auth-context";
 import { absoluteStoreUrl } from "@/lib/siteUrl";
+import { getRoutingDnsRecordName, normalizeDomainInput } from "@/lib/domains";
 import { getStoreSubdomainBaseDomain } from "@/lib/platform/site-config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,14 +136,12 @@ export const CustomDomainTab = () => {
   const previewRecords = useMemo(() => {
     if (!domainInput.trim()) return [];
     try {
-      const host = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
-      if (!host || !host.includes(".")) return [];
-
-      const parts = host.split(".");
-      const records: { type: string, name: string, value: string }[] = [];
-      const name = parts.length >= 3 ? parts.slice(0, -2).join(".") : "www";
-      records.push({ type: "CNAME", name, value: "customers.ezcomo.shop" });
-      return records;
+      const normalized = normalizeDomainInput(domainInput);
+      return [{
+        type: "CNAME",
+        name: getRoutingDnsRecordName(normalized),
+        value: "customers.ezcomo.shop",
+      }];
     } catch {
       return [];
     }
@@ -251,8 +250,8 @@ export const CustomDomainTab = () => {
         setPlatformDomainFromServer(store.platformDomain);
       }
       setDomains(body.domains ?? []);
-      if (body.warning) {
-        toast.success("Custom domain added. Review the DNS details below.");
+      if (body.warning?.message) {
+        toast.warning(body.warning.message);
       } else {
         toast.success("Custom domain added. Add the DNS records below and check the connection to finish setup.");
       }
@@ -298,7 +297,11 @@ export const CustomDomainTab = () => {
       setDomains((current) =>
         current.map((domain) => (domain.hostname === hostname ? body.domain : domain)),
       );
-      toast.success("Domain status refreshed.");
+      if (body.warning?.message) {
+        toast.warning(body.warning.message);
+      } else {
+        toast.success("Domain status refreshed.");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to check connection");
     } finally {
@@ -334,7 +337,11 @@ export const CustomDomainTab = () => {
           isPrimary: domain.hostname === hostname,
         })),
       );
-      toast.success("Primary storefront domain updated.");
+      if (body.warning?.message) {
+        toast.warning(body.warning.message);
+      } else {
+        toast.success("Primary storefront domain updated.");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to set primary domain");
     } finally {
@@ -429,8 +436,9 @@ export const CustomDomainTab = () => {
             <p className="text-sm font-semibold text-foreground">What you need to do</p>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
               <li>Keep your current platform subdomain live during setup.</li>
-              <li>Enter the CNAME host you want to connect, such as `www.example.com`.</li>
+              <li>Enter the exact address you want shoppers to use. The root domain, such as `example.com`, is recommended when your DNS provider supports apex CNAME/ALIAS/ANAME or CNAME flattening.</li>
               <li>Add the exact DNS records shown below in your registrar or DNS provider.</li>
+              <li>If your DNS provider refuses a CNAME at `@`, connect `www.example.com` instead. EZComo provisions only the hostname you enter.</li>
               <li>Come back here and press `Check Connection` until the domain becomes active.</li>
             </ol>
           </div>
@@ -441,9 +449,10 @@ export const CustomDomainTab = () => {
               Before adding the domain:
               <ul className="mt-2 list-disc pl-5">
                 <li>Use a domain you control at your registrar or DNS provider.</li>
-                <li>Add the `www` host here first so we can provision the Cloudflare custom hostname.</li>
+                <li>Use the exact hostname you want as your storefront address. `example.com` is preferred when your DNS provider supports an apex alias/CNAME.</li>
+                <li>EZComo creates one Cloudflare custom hostname per connection; it does not automatically add both root and `www`.</li>
                 <li>After that, copy the records shown below and create them in your DNS dashboard.</li>
-                <li>Redirect the apex domain to `www` at your registrar or DNS provider if you need `example.com` traffic.</li>
+                <li>If your DNS provider cannot point the root (`@`) to a CNAME/ALIAS/ANAME target, use `www.example.com` as the compatibility fallback.</li>
               </ul>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -451,7 +460,7 @@ export const CustomDomainTab = () => {
                 id="custom-domain-input"
                 value={domainInput}
                 onChange={(event) => setDomainInput(event.target.value)}
-                placeholder="www.example.com"
+                placeholder="example.com"
               />
               <Button type="button" onClick={() => void addDomain()} disabled={saving || !domainInput.trim()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -459,7 +468,7 @@ export const CustomDomainTab = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              You can paste a full URL. We normalize it on the server, reject platform, localhost, apex, and IP domains, then provision the exact Cloudflare hostname.
+              You can paste a full URL. We normalize it on the server, reject platform, localhost, wildcard, and IP domains, and provision exactly one Cloudflare hostname. Root/apex domains are supported.
             </p>
             {previewRecords.length > 0 && (
               <div className="mt-4 space-y-3">

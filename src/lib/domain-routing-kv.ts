@@ -25,27 +25,42 @@ function buildRoutingKey(hostname: string) {
   return `domain:${normalizeHostname(hostname)}`;
 }
 
-function getCloudflareKvConfig() {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const namespaceId = process.env.CLOUDFLARE_DOMAIN_ROUTING_KV_NAMESPACE_ID;
-  const token = process.env.CLOUDFLARE_API_TOKEN;
+function getCloudflareKvConfigState() {
+  const values = {
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID?.trim() || null,
+    namespaceId: process.env.CLOUDFLARE_DOMAIN_ROUTING_KV_NAMESPACE_ID?.trim() || null,
+    token: process.env.CLOUDFLARE_API_TOKEN?.trim() || null,
+  };
 
-  if (!accountId || !namespaceId || !token) {
-    return null;
+  const missing = [
+    !values.accountId ? "CLOUDFLARE_ACCOUNT_ID" : null,
+    !values.namespaceId ? "CLOUDFLARE_DOMAIN_ROUTING_KV_NAMESPACE_ID" : null,
+    !values.token ? "CLOUDFLARE_API_TOKEN" : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (missing.length === 3) {
+    return { state: "disabled" as const };
   }
 
-  return { accountId, namespaceId, token };
+  if (missing.length > 0) {
+    return { state: "misconfigured" as const, missing };
+  }
+
+  return {
+    state: "configured" as const,
+    config: {
+      accountId: values.accountId as string,
+      namespaceId: values.namespaceId as string,
+      token: values.token as string,
+    },
+  };
 }
 
 async function cloudflareKvRequest(
+  config: { accountId: string; namespaceId: string; token: string },
   key: string,
   init?: RequestInit,
 ) {
-  const config = getCloudflareKvConfig();
-  if (!config) {
-    return null;
-  }
-
   const url = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/storage/kv/namespaces/${config.namespaceId}/values/${encodeURIComponent(key)}`;
   return fetch(url, {
     ...init,
@@ -58,8 +73,10 @@ async function cloudflareKvRequest(
 }
 
 class CloudflareDomainRoutingKvAdapter implements DomainRoutingKvAdapter {
+  constructor(private readonly config: { accountId: string; namespaceId: string; token: string }) {}
+
   async get(hostname: string) {
-    const response = await cloudflareKvRequest(buildRoutingKey(hostname), {
+    const response = await cloudflareKvRequest(this.config, buildRoutingKey(hostname), {
       method: "GET",
     });
 
@@ -89,7 +106,7 @@ class CloudflareDomainRoutingKvAdapter implements DomainRoutingKvAdapter {
   }
 
   async set(payload: DomainRoutingKvSyncPayload) {
-    const response = await cloudflareKvRequest(buildRoutingKey(payload.hostname), {
+    const response = await cloudflareKvRequest(this.config, buildRoutingKey(payload.hostname), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -109,7 +126,7 @@ class CloudflareDomainRoutingKvAdapter implements DomainRoutingKvAdapter {
   }
 
   async delete(hostname: string) {
-    const response = await cloudflareKvRequest(buildRoutingKey(hostname), {
+    const response = await cloudflareKvRequest(this.config, buildRoutingKey(hostname), {
       method: "DELETE",
     });
 
@@ -129,17 +146,46 @@ class NoopDomainRoutingKvAdapter implements DomainRoutingKvAdapter {
   }
 
   async set(_payload: DomainRoutingKvSyncPayload) {
-    // Intentionally empty until a real KV provider is wired in.
+    // Local/test deployments may intentionally run without Cloudflare KV.
   }
 
   async delete(_hostname: string) {
-    // Intentionally empty until a real KV provider is wired in.
+    // Local/test deployments may intentionally run without Cloudflare KV.
   }
 }
 
-let adapter: DomainRoutingKvAdapter = getCloudflareKvConfig()
-  ? new CloudflareDomainRoutingKvAdapter()
-  : new NoopDomainRoutingKvAdapter();
+class MisconfiguredDomainRoutingKvAdapter implements DomainRoutingKvAdapter {
+  constructor(private readonly missing: string[]) {}
+
+  private configurationError() {
+    return new Error(`Cloudflare domain routing KV is misconfigured. Missing: ${this.missing.join(", ")}.`);
+  }
+
+  async get(_hostname: string): Promise<DomainRoutingRecord | null> {
+    throw this.configurationError();
+  }
+
+  async set(_payload: DomainRoutingKvSyncPayload) {
+    throw this.configurationError();
+  }
+
+  async delete(_hostname: string) {
+    throw this.configurationError();
+  }
+}
+
+function createDefaultDomainRoutingKvAdapter(): DomainRoutingKvAdapter {
+  const state = getCloudflareKvConfigState();
+  if (state.state === "configured") {
+    return new CloudflareDomainRoutingKvAdapter(state.config);
+  }
+  if (state.state === "misconfigured") {
+    return new MisconfiguredDomainRoutingKvAdapter(state.missing);
+  }
+  return new NoopDomainRoutingKvAdapter();
+}
+
+let adapter: DomainRoutingKvAdapter = createDefaultDomainRoutingKvAdapter();
 
 export function getDomainRoutingKvAdapter() {
   return adapter;
