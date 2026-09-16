@@ -103,7 +103,7 @@
     {
       "name": "manual_bkash_transaction_replay_guard_314",
       "classification": "pending-production",
-      "reason": "P0 #314 replay-guard migration must wait for explicit reconciliation of the read-only production preflight duplicate paid manual bKash transaction identity before trusted rollout. Remove after reconciliation, production apply, and ledger refresh."
+      "reason": "P0 #314 replay-guard migration is implementation-complete; production preflight is duplicate-clean after governed test-data cleanup. Keep pending until governed production rollout, postdeploy settlement verification, and ledger refresh."
     },
     {
       "name": "p0_authoritative_order_boundary",
@@ -129,6 +129,11 @@
       "name": "retire_firebase_phone_auth",
       "classification": "pending-production",
       "reason": "Forward-only Firebase retirement cleanup: removes the obsolete service-only email lookup helper and any transient external-auth binding table if present. Apply during governed Runtime-7 cutover, then refresh the production ledger."
+    },
+    {
+      "name": "fix_cart_recovery_claim_runtime",
+      "classification": "pending-production",
+      "reason": "Runtime-7 acceptance repair: fixes the cart-recovery claim RPC runtime join defect exposed by real disposable-DB execution; deploy with the frozen candidate and verify the queue processor post-cutover."
     }
   ]
 }

@@ -16,6 +16,7 @@ const sqlFiles = [
   path.join(repoRoot, "supabase", "migrations", "order_authority_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "provider_plugin_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "order_checkout_recovery_smoke.sql"),
+  path.join(repoRoot, "supabase", "migrations", "cart_recovery_delivery_claim_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "commerce_hardening_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "commerce_function_security_smoke.sql"),
   path.join(repoRoot, "supabase", "migrations", "store_coupon_scope_smoke.sql"),
