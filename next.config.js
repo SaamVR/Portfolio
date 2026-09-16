@@ -7,32 +7,12 @@ const __dirname = path.dirname(__filename);
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowLocalPreviewCsp = process.env.EZCOMO_PREVIEW_LOCAL_CSP === '1';
 
-function readFirebaseAuthOrigin(value) {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  if (!raw) return null;
-
-  const host = raw
-    .replace(/^https?:\/\//i, '')
-    .split('/')[0]
-    ?.trim();
-
-  if (!host || !/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) return null;
-  return `https://${host}`;
-}
-
-const firebaseAuthOrigin = readFirebaseAuthOrigin(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
-
-// Firebase phone auth uses RecaptchaVerifier/signInWithPhoneNumber in the web
-// client. Keep this allowlist narrow: official reCAPTCHA origins plus the two
-// Firebase Auth API services and the configured Firebase auth-domain iframe.
 const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
   ...(isDevelopment ? ["'unsafe-eval'"] : []),
   'https://www.googletagmanager.com',
   'https://connect.facebook.net',
-  'https://www.google.com/recaptcha/',
-  'https://www.gstatic.com/recaptcha/',
 ].join(' ');
 const connectSrc = [
   "'self'",
@@ -43,10 +23,6 @@ const connectSrc = [
   'https://www.google-analytics.com',
   'https://analytics.google.com',
   'https://stats.g.doubleclick.com',
-  'https://www.google.com/recaptcha/',
-  'https://identitytoolkit.googleapis.com',
-  'https://securetoken.googleapis.com',
-  ...(firebaseAuthOrigin ? [firebaseAuthOrigin] : []),
   ...(isDevelopment
     ? [
         'http://127.0.0.1:*',
@@ -61,12 +37,7 @@ const connectSrc = [
         ]
       : []),
 ].join(' ');
-const frameSrc = [
-  "'self'",
-  'https://www.google.com/recaptcha/',
-  'https://recaptcha.google.com/recaptcha/',
-  ...(firebaseAuthOrigin ? [firebaseAuthOrigin] : []),
-].join(' ');
+const frameSrc = ["'self'"].join(' ');
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",

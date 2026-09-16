@@ -11,7 +11,6 @@ import {
   LayoutTemplate,
   Loader2,
   LockKeyhole,
-  Phone,
   ShieldCheck,
   Sparkles,
   Store,
@@ -37,20 +36,17 @@ import { absoluteStoreUrl } from "@/lib/siteUrl";
 import { PLATFORM_BRAND_NAME } from "@/lib/platform/site-config";
 import { formatPlanBillingLabel, isContactOnlyPlan, resolveSignupPlanId } from "@/lib/billing/plans";
 import { usePublicPlanCatalog } from "@/lib/billing/use-public-plan-catalog";
-import { sendPhoneVerificationCode } from "@/lib/firebase-phone-auth";
 import { signInWithGoogle } from "@/lib/google-auth";
-import { exchangeFirebaseTokenForSupabaseSession } from "@/lib/auth-bridge-client";
 import {
   getStorefrontTemplateDefinition,
   resolveStorefrontTemplateId,
   type StorefrontTemplateId,
 } from "@/lib/cms/storefront-templates";
 import { getStorefrontTemplateReferenceImage } from "@/lib/cms/storefront-template-reference-images";
-import type { ConfirmationResult } from "@/lib/firebase-phone-auth";
 import { cn } from "@/lib/utils";
 
 
-type SignupStep = "methods" | "verify" | "details" | "design" | "wizard" | "success";
+type SignupStep = "methods" | "details" | "design" | "wizard" | "success";
 type SlugAvailabilityState = "idle" | "checking" | "available" | "taken" | "invalid";
 type CreatedStore = { storeId: string; dashboardPath: string; onboardingPath: string };
 
@@ -225,9 +221,7 @@ export default function MerchantSignupV3() {
   const requiresOwnerName = !isAdditionalStoreFlow && !isDashboardCreateFlow;
 
   const [step, setStep] = useState<SignupStep>("methods");
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [phoneLoading, setPhoneLoading] = useState(false);
   const [submittingDetails, setSubmittingDetails] = useState(false);
   const [createdStore, setCreatedStore] = useState<CreatedStore | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -235,7 +229,7 @@ export default function MerchantSignupV3() {
   const [slugState, setSlugState] = useState<SlugAvailabilityState>("idle");
   const plans = usePublicPlanCatalog();
   const [accountRestriction, setAccountRestriction] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", storeName: "", storeSlug: "", storefrontTemplateId: requestedTemplateId, planId: searchParams.get("planId") || "free", otpCode: "" });
+  const [form, setForm] = useState({ name: "", storeName: "", storeSlug: "", storefrontTemplateId: requestedTemplateId, planId: searchParams.get("planId") || "free" });
   const [wizardAnswers, setWizardAnswers] = useState<MerchantRegistrationAnswers>(() => createDefaultRegistrationAnswers(getStorefrontTemplateDefinition(requestedTemplateId)));
   const slugCheckSequence = useRef(0);
 
@@ -258,7 +252,7 @@ export default function MerchantSignupV3() {
   const canContinueToDesign = Boolean(form.storeName.trim()) && (!requiresOwnerName || Boolean(form.name.trim())) && normalizedSlug.length > 0 && slugState !== "checking" && slugState !== "taken" && slugState !== "invalid" && !accountRestriction;
 
   const progress = [
-    { id: "account", label: "Account", active: step === "methods" || step === "verify", done: Boolean(user) || ["details", "design", "wizard", "success"].includes(step), description: "Secure merchant identity" },
+    { id: "account", label: "Account", active: step === "methods", done: Boolean(user) || ["details", "design", "wizard", "success"].includes(step), description: "Secure merchant identity" },
     { id: "store", label: "Store", active: step === "details", done: ["design", "wizard", "success"].includes(step), description: "Name, URL and package" },
     { id: "design", label: "Design", active: step === "design", done: ["wizard", "success"].includes(step), description: "Choose a storefront" },
     { id: "wizard", label: "Onboarding Wizard", active: step === "wizard", done: step === "success", description: "Quick sections and starter inputs" },
@@ -283,9 +277,8 @@ export default function MerchantSignupV3() {
   useEffect(() => {
     if (!user || loading) return;
     const metadataName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "";
-    const metadataPhone = typeof user.user_metadata?.phone_number === "string" ? user.user_metadata.phone_number : user.phone || "";
-    setForm((current) => ({ ...current, name: current.name || metadataName, phone: current.phone || metadataPhone }));
-    setStep((current) => current === "methods" || current === "verify" ? "details" : current);
+    setForm((current) => ({ ...current, name: current.name || metadataName }));
+    setStep((current) => current === "methods" ? "details" : current);
   }, [loading, user]);
 
   useEffect(() => {
@@ -324,30 +317,6 @@ export default function MerchantSignupV3() {
     setGoogleLoading(true);
     try { await signInWithGoogle({ redirectPath: "/signup" }); }
     catch (error: any) { toast.error(error.message || "Google authentication failed"); setGoogleLoading(false); }
-  };
-
-  const handleSendPhoneCode = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!form.phone.trim()) { toast.error("Please enter your phone number"); return; }
-    setPhoneLoading(true);
-    try { setConfirmation(await sendPhoneVerificationCode(form.phone)); toast.success("Verification code sent."); }
-    catch (error: any) { toast.error(error.message || "Failed to send verification code"); }
-    finally { setPhoneLoading(false); }
-  };
-
-  const handleVerifyPhone = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!confirmation || !form.otpCode.trim()) { toast.error("Please enter the verification code"); return; }
-    setPhoneLoading(true);
-    try {
-      const credential = await confirmation.confirm(form.otpCode.trim());
-      const data = await exchangeFirebaseTokenForSupabaseSession({ id_token: await credential.user.getIdToken(), display_name: form.name || form.phone });
-      if (data?.error || !data?.access_token || !data?.refresh_token) throw new Error(String(data?.error || "Phone verification did not return a valid session."));
-      const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
-      if (error) throw error;
-      setStep("details");
-    } catch (error: any) { toast.error(error.message || "Phone verification failed"); }
-    finally { setPhoneLoading(false); }
   };
 
   const handleContinueToDesign = (event: React.FormEvent) => {
@@ -402,8 +371,8 @@ export default function MerchantSignupV3() {
 
   if (loading) return <main className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></main>;
 
-  const stepTitle = step === "methods" ? "Create your merchant account" : step === "verify" ? "Verify your phone" : step === "details" ? "Tell us about the store" : step === "design" ? "Choose your storefront design" : step === "wizard" ? "Quick Onboarding Wizard" : "Your store is ready";
-  const stepDescription = step === "methods" ? "This secure account becomes the owner of the CMS workspace." : step === "verify" ? "Confirm your phone before creating the merchant workspace." : step === "details" ? "Set the customer-facing store identity, URL, and package." : step === "design" ? "Choose the closest visual starting point. You can customize it later." : step === "wizard" ? "Answer a few simple questions about sections, design feel, and starter content." : "The registration flow is complete. Full Onboarding remains available separately in the CMS.";
+  const stepTitle = step === "methods" ? "Create your merchant account" : step === "details" ? "Tell us about the store" : step === "design" ? "Choose your storefront design" : step === "wizard" ? "Quick Onboarding Wizard" : "Your store is ready";
+  const stepDescription = step === "methods" ? "This secure account becomes the owner of the CMS workspace." : step === "details" ? "Set the customer-facing store identity, URL, and package." : step === "design" ? "Choose the closest visual starting point. You can customize it later." : step === "wizard" ? "Answer a few simple questions about sections, design feel, and starter content." : "The registration flow is complete. Full Onboarding remains available separately in the CMS.";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -433,9 +402,7 @@ export default function MerchantSignupV3() {
             <div className="rounded-[2rem] border border-border bg-card/95 p-5 shadow-xl shadow-black/5 backdrop-blur sm:p-7 lg:p-8">
               <div className="mb-7 border-b border-border pb-6"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{isAdditionalStoreFlow ? "Add another storefront" : "Create your storefront"}</p><h2 className="mt-2 font-heading text-2xl font-bold sm:text-3xl">{stepTitle}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{stepDescription}</p></div>
 
-              {step === "methods" ? <div className="mx-auto max-w-xl space-y-4"><Button type="button" onClick={handleGoogleAuth} disabled={googleLoading || phoneLoading} className="h-12 w-full rounded-2xl text-base">{googleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Continue with Google</Button><Button type="button" variant="outline" onClick={() => setStep("verify")} className="h-12 w-full rounded-2xl text-base"><Phone className="mr-2 h-4 w-4" /> Continue with Phone</Button><Button asChild variant="ghost" className="w-full"><Link href="/admin/login">Already have merchant access?</Link></Button></div> : null}
-
-              {step === "verify" ? <form onSubmit={confirmation ? handleVerifyPhone : handleSendPhoneCode} className="mx-auto max-w-xl space-y-5">{!confirmation ? <div><Label htmlFor="merchant-phone">Phone number</Label><Input id="merchant-phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="01XXXXXXXXX" className="mt-2 h-12" /></div> : <div><Label htmlFor="merchant-phone-code">Verification code</Label><Input id="merchant-phone-code" value={form.otpCode} onChange={(e) => update("otpCode", e.target.value)} className="mt-2 h-12 text-center tracking-[0.25em]" /></div>}<Button type="submit" disabled={phoneLoading} className="h-12 w-full">{phoneLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}{confirmation ? "Verify and continue" : "Send verification code"}</Button><Button type="button" variant="ghost" onClick={() => setStep("methods")} className="w-full">Back</Button></form> : null}
+              {step === "methods" ? <div className="mx-auto max-w-xl space-y-4"><Button type="button" onClick={handleGoogleAuth} disabled={googleLoading} className="h-12 w-full rounded-2xl text-base">{googleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Continue with Google</Button><p className="text-center text-sm text-muted-foreground">Merchant accounts are created through Google sign-in.</p><Button asChild variant="ghost" className="w-full"><Link href="/admin/login">Already have merchant access?</Link></Button></div> : null}
 
               {step === "details" ? <form onSubmit={handleContinueToDesign} className="space-y-7"><div className="grid gap-5 md:grid-cols-2">{requiresOwnerName ? <div className="md:col-span-2"><Label htmlFor="owner-name">Your name</Label><div className="relative mt-2"><User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-name" data-testid="merchant-signup-owner-name" value={form.name} onChange={(e) => update("name", e.target.value)} className="h-12 pl-10" /></div></div> : null}<div><Label htmlFor="store-name">Store name</Label><div className="relative mt-2"><Store className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="store-name" data-testid="merchant-signup-store-name" value={form.storeName} onChange={(e) => update("storeName", e.target.value)} placeholder="My Store" className="h-12 pl-10" /></div></div><div><Label htmlFor="store-slug">Store URL</Label><Input id="store-slug" data-testid="merchant-signup-store-slug" value={form.storeSlug} onChange={(e) => update("storeSlug", slugify(e.target.value))} className="mt-2 h-12" /><p className={cn("mt-2 text-xs", slugState === "available" ? "text-emerald-600" : slugState === "taken" || slugState === "invalid" ? "text-destructive" : "text-muted-foreground")}>{slugStatusCopy}</p></div></div>
                 {!isAdditionalStoreFlow ? <div><p className="text-sm font-semibold">Choose a starting package</p><div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => { const contactOnly = isContactOnlyPlan(plan); const active = form.planId === plan.id; return <button key={plan.id} type="button" disabled={contactOnly} onClick={() => update("planId", plan.id)} className={cn("rounded-2xl border p-4 text-left", active ? "border-primary bg-primary/5" : "border-border", contactOnly && "opacity-50")}><p className="font-semibold">{plan.name}</p><p className="mt-1 font-heading text-lg font-bold">{formatPlanBillingLabel(plan)}</p><p className="mt-2 text-xs text-muted-foreground">{contactOnly ? "Contact support" : Number(plan.trial_days || 0) > 0 ? `${plan.trial_days}-day trial` : "Start free"}</p></button>; })}</div></div> : <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm">This store inherits your current package limits.</div>}
@@ -449,7 +416,6 @@ export default function MerchantSignupV3() {
 
               {step === "success" && createdStore ? <div className="space-y-6"><div className="rounded-3xl border border-emerald-500/25 bg-emerald-500/5 p-6 sm:p-8"><CheckCircle2 className="h-8 w-8 text-emerald-600" /><h3 className="mt-4 font-heading text-2xl font-bold">Launch successful</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{form.storeName} is ready with {selectedTemplate.label}. Your registration questionnaire has been applied without marking the separate full Onboarding flow as complete.</p></div>{setupWarning ? <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-700">{setupWarning}</div> : null}<div className="grid gap-4 md:grid-cols-2"><div className="rounded-2xl border border-border p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Store URL</p><p className="mt-1 font-medium">{siteUrl.replace(/^https?:\/\//, "")}</p></div><div className="rounded-2xl border border-border p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Next best action</p><p className="mt-1 font-medium">{launchNextAction.label}</p><p className="mt-1 text-xs text-muted-foreground">{launchNextAction.description}</p></div></div><div className="grid gap-3 sm:grid-cols-2"><Button asChild className="h-12"><Link href={createdStore.dashboardPath}><Store className="mr-2 h-4 w-4" /> Go to Dashboard</Link></Button><Button asChild variant="outline" className="h-12"><Link href={createdStore.onboardingPath}><WandSparkles className="mr-2 h-4 w-4" /> Open Onboarding</Link></Button></div></div> : null}
 
-              <div id="phone-recaptcha-container" />
             </div>
           </section>
         </div>

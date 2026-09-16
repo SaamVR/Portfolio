@@ -299,7 +299,7 @@ export function PlatformIdentityMessagingSettingsCard() {
             <label className="flex items-center justify-between gap-3 text-sm"><span>Login / OTP</span><Switch checked={config.messaging.otpEnabled} disabled={!providerReady || !config.messaging.smsEnabled || working !== null} onCheckedChange={(checked) => void mutate("set_messaging", { provider: "greenweb", smsEnabled: true, otpEnabled: checked, transactionalEnabled: config.messaging.transactionalEnabled })} /></label>
             <label className="flex items-center justify-between gap-3 text-sm"><span>Platform notifications</span><Switch checked={config.messaging.transactionalEnabled} disabled={!providerReady || !config.messaging.smsEnabled || working !== null} onCheckedChange={(checked) => void mutate("set_messaging", { provider: "greenweb", smsEnabled: true, otpEnabled: config.messaging.otpEnabled, transactionalEnabled: checked })} /></label>
           </div>
-          <p className="text-xs text-muted-foreground">Enabling Login / OTP here only marks provider readiness. Firebase phone login remains active until the Supabase Send SMS Auth Hook is separately configured and passes an end-to-end OTP test.</p>
+          <p className="text-xs text-muted-foreground">Enabling Login / OTP here only marks provider readiness. Firebase phone login is retired; phone OTP must not be advertised as active unless a separately governed Supabase SMS authentication flow is configured and passes end-to-end verification.</p>
         </section>
       </CardContent>
     </Card>

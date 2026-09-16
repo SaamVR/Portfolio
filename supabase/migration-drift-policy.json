@@ -82,8 +82,8 @@
     },
     {
       "name": "external_auth_identity_binding_334",
-      "classification": "pending-production",
-      "reason": "Release hardening branch: replaces mutable Firebase email/phone account discovery with a durable server-only Firebase project+subject binding before password-reset bridge authority is retired."
+      "classification": "non-production",
+      "reason": "Historical Runtime-7 migration retained unchanged for canonical history only. Firebase phone auth is retired and this abandoned external identity-binding design must not be deployed to production."
     },
     {
       "name": "store_role_capability_matrix_324",
@@ -124,6 +124,11 @@
       "name": "runtime7_authority_and_storefront_acl_regression_fix",
       "classification": "pending-production",
       "reason": "Runtime 7 full-chain smoke follow-up: fixes NULL server-authority classification and restores least-privilege published/store-team stores SELECT composition before governed production rollout."
+    },
+    {
+      "name": "retire_firebase_phone_auth",
+      "classification": "pending-production",
+      "reason": "Forward-only Firebase retirement cleanup: removes the obsolete service-only email lookup helper and any transient external-auth binding table if present. Apply during governed Runtime-7 cutover, then refresh the production ledger."
     }
   ]
 }
