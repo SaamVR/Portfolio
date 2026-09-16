@@ -209,7 +209,7 @@ const FAQS = [
     a: "During checkout, customers select bKash, Nagad, or Rocket. They are presented with your personal or merchant account number and simple instructions. They submit their Transaction ID (TrxID) directly on the order page. Your dashboard automatically flags the order for instant verification.",
   },
   {
-    q: "Can I connect my own custom domain (e.g. www.mystore.com)?",
+    q: "Can I connect my own custom domain (e.g. mystore.com)?",
     a: "Absolutely! You can use your custom domain (e.g., .com, .com.bd, .store) or start instantly with a free sub-domain (yourstore.ezcome.app). Custom domain setup takes under 2 minutes with automated SSL security included.",
   },
   {

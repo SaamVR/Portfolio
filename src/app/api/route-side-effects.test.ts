@@ -3477,27 +3477,49 @@ describe("domain route side effects", () => {
     ]);
   });
 
-  test("rejects apex custom domains before Cloudflare provisioning", async () => {
+  test("allows apex custom domains and provisions only the exact hostname entered", async () => {
     const admin = createDomainAdminMock();
+
+    process.env.CLOUDFLARE_ZONE_ID = "zone_123";
+    process.env.CLOUDFLARE_API_TOKEN = "cloudflare-token";
+    process.env.CUSTOM_DOMAIN_CNAME_TARGET = "customers.ezcomo.shop";
 
     mock.method(domainRouteDeps, "getAuthenticatedUser", async () => ({ id: "admin_1" }) as never);
     mock.method(domainRouteDeps, "getSupabaseAdminClient", () => admin.client as never);
     mock.method(domainRouteDeps, "canManageStore", async () => true);
-    const cloudflareMock = mock.method(domainRouteDeps, "createCloudflareCustomHostname", async () => {
-      throw new Error("should not call cloudflare");
-    });
+    const cloudflareMock = mock.method(domainRouteDeps, "createCloudflareCustomHostname", async (hostname: string) => ({
+      id: "cfh_apex_123",
+      hostname,
+      status: "pending",
+      ssl: { status: "pending" },
+    }) as never);
 
     const response = await domainsPost(
       jsonRequest("https://example.com/api/domains", "POST", {
         storeId: "store_1",
-        domain: "example.com",
+        domain: "https://Example.com/shop",
       }),
     );
 
-    assert.equal(response.status, 500);
+    assert.equal(response.status, 200);
     const body = await response.json();
-    assert.match(body.error, /Apex domains/);
-    assert.equal(cloudflareMock.mock.callCount(), 0);
+    assert.equal(body.success, true);
+    assert.equal(body.primaryHostname, "example.com");
+    assert.equal(cloudflareMock.mock.callCount(), 1);
+    assert.equal(cloudflareMock.mock.calls[0].arguments[0], "example.com");
+    assert.deepEqual(
+      admin.domainUpserts.map((entry) => entry.hostname),
+      ["example.com"],
+    );
+    assert.deepEqual(admin.domainUpserts[0].dns_records, [
+      {
+        type: "CNAME",
+        name: "@",
+        value: "customers.ezcomo.shop",
+        purpose: "routing",
+      },
+    ]);
+    assert.equal(admin.domainUpserts[0].is_www_domain, false);
   });
 
   test("removes the exact Cloudflare custom hostname on successful removal", async () => {

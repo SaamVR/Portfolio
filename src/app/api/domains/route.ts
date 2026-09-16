@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  getRoutingDnsRecordName,
   normalizeDomainInput,
   type DomainRecordInstruction,
 } from "@/lib/domains";
@@ -77,11 +78,6 @@ function asJson(value: unknown) {
   return (value ?? null) as Record<string, unknown> | null;
 }
 
-function getDnsRecordName(hostname: string, apexDomain: string) {
-  if (hostname === apexDomain) return "@";
-  return hostname.slice(0, -(apexDomain.length + 1));
-}
-
 function getCloudflareStatus(hostname: CloudflareCustomHostname) {
   const hostnameStatus = hostname.status ?? "pending";
   const sslStatus = hostname.ssl?.status ?? "pending";
@@ -103,7 +99,6 @@ function getCloudflareStatus(hostname: CloudflareCustomHostname) {
 
 function buildCloudflareDnsInstructions(
   hostname: string,
-  apexDomain: string,
   cloudflareHostname: CloudflareCustomHostname,
 ): DomainRecordInstruction[] {
   const records: DomainRecordInstruction[] = [];
@@ -120,7 +115,7 @@ function buildCloudflareDnsInstructions(
 
   records.push({
     type: "CNAME",
-    name: getDnsRecordName(hostname, apexDomain),
+    name: getRoutingDnsRecordName(hostname),
     value: domainRouteDeps.getCustomDomainCnameTarget(),
     purpose: "routing",
   });
@@ -374,12 +369,9 @@ function serializeDomain(row: StoreDomainRow) {
 }
 
 function requireSupportedCustomHostname(rawDomain: string) {
-  const normalized = domainRouteDeps.normalizeDomainInput(rawDomain);
-  if (normalized.isApexDomain) {
-    throw new Error("Use a CNAME-compatible host such as www.example.com. Apex domains like example.com are not supported yet; redirect the apex to www at your DNS provider.");
-  }
-
-  return normalized;
+  // Provision exactly the hostname the merchant entered. Apex vanity domains are
+  // first-class custom hostnames; www remains an opt-in compatibility fallback.
+  return domainRouteDeps.normalizeDomainInput(rawDomain);
 }
 
 async function syncHostnameStatus(
@@ -415,7 +407,7 @@ async function syncHostnameStatus(
   const status = getCloudflareStatus(cloudflareHostname);
   const hostnameStatus = cloudflareHostname.status ?? "pending";
   const sslStatus = cloudflareHostname.ssl?.status ?? "pending";
-  const records = buildCloudflareDnsInstructions(domain.hostname, normalized.apexDomain, cloudflareHostname);
+  const records = buildCloudflareDnsInstructions(domain.hostname, cloudflareHostname);
   const errorMessages = [
     ...(cloudflareHostname.verification_errors ?? []),
     ...(cloudflareHostname.ssl?.validation_errors ?? []).map((error) => error.message).filter((message): message is string => Boolean(message)),
@@ -512,7 +504,7 @@ export async function POST(req: Request) {
     const status = getCloudflareStatus(cloudflareHostname);
     const hostnameStatus = cloudflareHostname.status ?? "pending";
     const sslStatus = cloudflareHostname.ssl?.status ?? "pending";
-    const records = buildCloudflareDnsInstructions(normalized.hostname, normalized.apexDomain, cloudflareHostname);
+    const records = buildCloudflareDnsInstructions(normalized.hostname, cloudflareHostname);
     const now = domainRouteDeps.now();
 
     await clearOtherPrimaryFlags(access.supabaseAdmin, storeId, normalized.hostname);
