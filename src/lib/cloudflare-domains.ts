@@ -109,6 +109,28 @@ export async function getCloudflareCustomHostname(cloudflareHostnameId: string) 
   );
 }
 
+export async function restartCloudflareCustomHostnameValidation(cloudflareHostnameId: string) {
+  return cloudflareRequest<CloudflareCustomHostname>(
+    `/custom_hostnames/${encodeURIComponent(cloudflareHostnameId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        ssl: {
+          method: "http",
+          type: "dv",
+          bundle_method: "ubiquitous",
+          wildcard: false,
+          settings: {
+            http2: "on",
+            min_tls_version: "1.2",
+            tls_1_3: "on",
+          },
+        },
+      }),
+    },
+  );
+}
+
 export async function deleteCloudflareCustomHostname(cloudflareHostnameId: string) {
   return cloudflareRequest(`/custom_hostnames/${encodeURIComponent(cloudflareHostnameId)}`, {
     method: "DELETE",

@@ -10,6 +10,7 @@ import {
   deleteCloudflareCustomHostname,
   getCloudflareConfigDebug,
   getCloudflareCustomHostname,
+  restartCloudflareCustomHostnameValidation,
   getCustomDomainCnameTarget,
   type CloudflareCustomHostname,
 } from "@/lib/cloudflare-domains";
@@ -54,6 +55,7 @@ export const domainRouteDeps = {
   normalizeDomainInput,
   createCloudflareCustomHostname,
   getCloudflareCustomHostname,
+  restartCloudflareCustomHostnameValidation,
   deleteCloudflareCustomHostname,
   getCustomDomainCnameTarget,
   now: () => new Date().toISOString(),
@@ -378,6 +380,7 @@ async function syncHostnameStatus(
   supabaseAdmin: SupabaseClient,
   domain: StoreDomainRow,
   now = domainRouteDeps.now(),
+  options: { restartRealtimeValidation?: boolean } = {},
 ) {
   if (!domain.cloudflare_hostname_id) {
     const updated = await updateStoreDomain(supabaseAdmin, domain.hostname, {
@@ -391,6 +394,17 @@ async function syncHostnameStatus(
 
   let cloudflareHostname: CloudflareCustomHostname;
   try {
+    if (
+      options.restartRealtimeValidation
+      && (domain.cloudflare_hostname_status !== "active" || domain.cloudflare_ssl_status !== "active")
+    ) {
+      try {
+        await domainRouteDeps.restartCloudflareCustomHostnameValidation(domain.cloudflare_hostname_id);
+      } catch {
+        // Real-time validation is an optimization only. The existing TXT ownership
+        // verification path remains authoritative if Cloudflare cannot restart DCV.
+      }
+    }
     cloudflareHostname = await domainRouteDeps.getCloudflareCustomHostname(domain.cloudflare_hostname_id);
   } catch (error) {
     const updated = await updateStoreDomain(supabaseAdmin, domain.hostname, {
@@ -579,7 +593,9 @@ export async function PATCH(req: Request) {
     }
 
     if (action === "check") {
-      const domain = await syncHostnameStatus(access.supabaseAdmin, selected);
+      const domain = await syncHostnameStatus(access.supabaseAdmin, selected, domainRouteDeps.now(), {
+        restartRealtimeValidation: true,
+      });
       if (domain.isActive) {
         await clearOtherPrimaryFlags(access.supabaseAdmin, storeId, normalized.hostname);
         await updateStoreDomain(access.supabaseAdmin, normalized.hostname, { is_primary: true });
