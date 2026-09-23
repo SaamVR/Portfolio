@@ -1,0 +1,139 @@
+name: NOVA Public Preview QA
+
+on:
+  push:
+    branches: ["nova/v2-integration"]
+    paths:
+      - ".github/workflows/nova-public-preview-qa.yml"
+      - "nova/public-preview-qa-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NOVA_PREVIEW_URL: https://v2.nova-interactive-portfolio.pages.dev/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install browser QA
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Audit deployed V2 preview
+        run: |
+          cat > /tmp/nova-public-preview.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+
+          const url=process.env.NOVA_PREVIEW_URL;
+          fs.mkdirSync('nova-public-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          const errors=[];
+
+          async function pageReady(context,label){
+            const page=await context.newPage();
+            page.on('pageerror',e=>errors.push(label+': pageerror: '+e.message));
+            page.on('console',m=>{ if(m.type()==='error') errors.push(label+': console: '+m.text()); });
+            page.on('requestfailed',r=>errors.push(label+': requestfailed: '+r.url()+' :: '+(r.failure()?.errorText||'')));
+            await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:25000});
+            const basics=await page.evaluate(()=>({
+              title:document.title,
+              model:document.body.dataset.modelState,
+              hero:document.body.innerText.includes('Hear beyond.'),
+              behind:document.body.innerText.includes('Behind NOVA.'),
+              runtime:document.querySelector('#runtimeState')?.textContent||''
+            }));
+            if(basics.model!=='ready'||!basics.hero||!basics.behind||!basics.runtime.includes('LIVE')){
+              throw new Error(label+' deployed runtime not ready '+JSON.stringify(basics));
+            }
+            return page;
+          }
+
+          async function scrollProgress(page,p){
+            await page.evaluate(progress=>{
+              document.documentElement.style.scrollBehavior='auto';
+              const max=document.documentElement.scrollHeight-innerHeight;
+              scrollTo(0,Math.max(0,max*progress));
+            },p);
+            await page.waitForFunction(target=>{
+              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+              return Math.abs(scrollY/max-target)<0.004;
+            },p,{timeout:4000});
+            await page.waitForTimeout(350);
+          }
+
+          async function assertHotspots(page,prefix){
+            await scrollProgress(page,.20);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const state=await page.evaluate(()=>{
+              const pick=id=>{const r=document.querySelector('[data-hotspot="'+id+'"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};};
+              return {cushion:pick('cushion'),controls:pick('controls'),w:innerWidth,h:innerHeight};
+            });
+            const min=prefix==='mobile'?state.h*.25:state.h*.34;
+            const max=prefix==='mobile'?state.h*.50:state.h*.62;
+            for(const [id,p] of Object.entries({cushion:state.cushion,controls:state.controls})){
+              if(p.y<min||p.y>max) throw new Error(prefix+' deployed '+id+' hotspot detached '+JSON.stringify({p,min,max,state}));
+            }
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await pageReady(context,'desktop');
+            await assertHotspots(page,'desktop');
+            await page.screenshot({path:'nova-public-qa/desktop_design.png'});
+
+            await scrollProgress(page,.36);
+            await page.getByRole('button',{name:/focus/i}).click();
+            await page.waitForTimeout(550);
+            await page.screenshot({path:'nova-public-qa/desktop_focus.png'});
+
+            await scrollProgress(page,.65);
+            await page.getByRole('button',{name:/fold/i}).click();
+            await page.waitForTimeout(800);
+            await page.screenshot({path:'nova-public-qa/desktop_fold.png'});
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/notify me/i}).click();
+            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
+            await page.screenshot({path:'nova-public-qa/desktop_notify.png'});
+            await context.close();
+          }
+
+          {
+            const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+            const page=await pageReady(context,'mobile');
+            await assertHotspots(page,'mobile');
+            await page.screenshot({path:'nova-public-qa/mobile_design.png'});
+
+            await scrollProgress(page,.36);
+            await page.getByRole('button',{name:/ambient/i}).tap();
+            await page.waitForTimeout(450);
+            await page.screenshot({path:'nova-public-qa/mobile_ambient.png'});
+
+            await scrollProgress(page,.90);
+            await page.getByRole('button',{name:/notify me/i}).tap();
+            await page.waitForFunction(()=>document.body.dataset.notifyConcept==='open');
+            await page.screenshot({path:'nova-public-qa/mobile_notify.png'});
+            await context.close();
+          }
+
+          await browser.close();
+          fs.writeFileSync('nova-public-qa/result.json',JSON.stringify({url,errors},null,2));
+          if(errors.length) throw new Error('Public preview browser errors:\n'+errors.join('\n'));
+          JS
+          node /tmp/nova-public-preview.mjs
+
+      - name: Upload public preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-public-preview-qa
+          path: nova-public-qa
+          retention-days: 7
