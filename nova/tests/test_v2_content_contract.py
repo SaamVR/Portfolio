@@ -53,3 +53,13 @@ def test_stage_geometry_matches_global_timeline():
     }
     for name, height in expected.items():
         assert f".stage--{name}{{min-height:{height}" in compact
+
+
+def test_notify_concept_has_visible_accessible_panel():
+    assert 'id="notifyConcept"' in html
+    assert 'id="notifyPanel"' in html
+    assert 'aria-controls="notifyPanel"' in html
+    assert 'role="dialog"' in html
+    assert 'aria-modal="true"' in html
+    assert 'id="notifyClose"' in html
+    assert 'body[data-notify-concept="open"] .interest-panel' in css
