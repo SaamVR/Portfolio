@@ -119,7 +119,7 @@ def test_r11_visual_qa_checks_readability_and_v1_archive():
     assert "readabilityAudit({width:1440,height:1000},'desktop')" in qa
     assert "readabilityAudit({width:390,height:844},'mobile')" in qa
     assert "versionArchiveAudit" in qa
-    assert "'v1_'+prefix+'.png'" in qa
+    assert "nova-qa/v1_'+prefix+'.png'" in qa
     assert "versionArchiveAudit({width:1440,height:1000},'desktop')" in qa
     assert "versionArchiveAudit({width:390,height:844},'mobile')" in qa
 
