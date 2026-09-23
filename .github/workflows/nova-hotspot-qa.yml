@@ -1,0 +1,116 @@
+name: NOVA Hotspot QA
+
+on:
+  push:
+    branches: ["nova/v2-integration"]
+    paths:
+      - ".github/workflows/nova-hotspot-qa.yml"
+      - "nova/site/app.js"
+      - "nova/site/interactions/hotspot-controller.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hotspot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore exact GLTF assets
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-gltf-assets-v1-b7ab75e30bb2b8a665b95e6b2105172892d7ec0c02c7e395fd8ce427add92ecc
+          fail-on-cache-miss: true
+
+      - name: Vendor Three.js GLTF runtime
+        run: |
+          set -euo pipefail
+          mkdir -p nova/site/vendor/addons/loaders nova/site/vendor/addons/utils
+          mkdir -p /tmp/nova-hotspot-vendor && cd /tmp/nova-hotspot-vendor
+          npm init -y >/dev/null 2>&1
+          npm install three@0.180.0 --no-audit --no-fund
+          cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
+
+      - name: Install Playwright
+        run: |
+          npm install playwright@1.57.0 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Create focused hotspot audit
+        run: |
+          cat > nova/hotspot-qa.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          fs.mkdirSync('nova-hotspot-qa',{recursive:true});
+          const browser=await chromium.launch({headless:true});
+
+          async function audit(viewport,prefix){
+            const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push('pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text());});
+            page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()));
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>document.body.dataset.modelState==='ready',{timeout:20000});
+            await page.evaluate(()=>{
+              document.documentElement.style.scrollBehavior='auto';
+              const max=document.documentElement.scrollHeight-innerHeight;
+              scrollTo(0,max*.20);
+            });
+            await page.waitForFunction(()=>{
+              const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+              return Math.abs(scrollY/max-.20)<.003;
+            },null,{timeout:3000});
+            await page.waitForTimeout(500);
+            await page.waitForFunction(()=>[...document.querySelectorAll('[data-hotspot="cushion"],[data-hotspot="controls"]')].every(el=>el.dataset.visible==='true'));
+            const state=await page.evaluate(()=>{
+              const pick=id=>{
+                const el=document.querySelector('[data-hotspot="'+id+'"]');
+                const r=el.getBoundingClientRect();
+                return {x:r.left+r.width/2,y:r.top+r.height/2,visible:el.dataset.visible};
+              };
+              return {cushion:pick('cushion'),controls:pick('controls'),width:innerWidth,height:innerHeight,range:document.body.dataset.range};
+            });
+            const minY=prefix==='mobile'?state.height*.25:state.height*.34;
+            const maxY=prefix==='mobile'?state.height*.50:state.height*.62;
+            for(const [id,point] of Object.entries({cushion:state.cushion,controls:state.controls})){
+              if(point.y<minY||point.y>maxY){
+                throw new Error(prefix+' '+id+' hotspot detached '+JSON.stringify({point,minY,maxY,state}));
+              }
+            }
+            if(errors.length) throw new Error(prefix+' browser errors '+errors.join(' | '));
+            await page.screenshot({path:'nova-hotspot-qa/'+prefix+'.png'});
+            await context.close();
+            return state;
+          }
+
+          const desktop=await audit({width:1440,height:1000},'desktop');
+          const mobile=await audit({width:390,height:844},'mobile');
+          fs.writeFileSync('nova-hotspot-qa/result.json',JSON.stringify({desktop,mobile},null,2));
+          console.log(JSON.stringify({desktop,mobile},null,2));
+          await browser.close();
+          JS
+
+      - name: Run focused audit
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory nova/site >/tmp/nova-hotspot-server.log 2>&1 &
+          SERVER=$!
+          trap 'kill $SERVER || true' EXIT
+          sleep 2
+          node nova/hotspot-qa.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nova-hotspot-qa
+          path: nova-hotspot-qa
+          retention-days: 3
