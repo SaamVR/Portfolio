@@ -122,3 +122,38 @@ Updated: 2026-09-23
 - Mobile production QA: 390px viewport / 390px document width, no horizontal page overflow
 - Production browser QA: no JavaScript errors and no failed resources
 
+
+
+## Portfolio Work #2 — StayPilot Automation OS
+
+Added and production-verified on 2026-09-23.
+
+- StayPilot source: https://github.com/SaamVR/staypilot-hotel-os
+- StayPilot live: https://staypilot-hotel-os.pages.dev/
+- verified StayPilot application release: `12cb4d22`
+- Portfolio Work #2 source merge: `8db4c466cf8061b7f1a54e0b9e43e3e4b4dd3da3`
+- Portfolio Cloudflare preview with Work #2: https://c4b4254e.leadflow-ai-bhy.pages.dev
+- primary Portfolio alias verified: https://leadflow-ai-bhy.pages.dev/
+- Work #2 card verified at 1440px and 390px with no horizontal overflow
+- production browser QA reported zero JavaScript/page errors
+- existing LeadFlow `POST /api/qualify` remained healthy after the Work #2 deployment
+- Sarah / Acme Dental production re-check remained 92/100 → hot
+
+### StayPilot portfolio positioning
+
+The card presents StayPilot as a hotel automation OS rather than another generic PMS dashboard:
+
+```
+Hotel event -> Policy check -> Action -> Audit
+```
+
+It highlights:
+- 12 hotel workflows
+- human-in-the-loop approvals
+- Owner / Manager authority
+- PMS / WhatsApp / accounting adapter strategy
+- built-in webhooks/API as the long-tail integration surface
+- verified source and live-product CTAs
+
+Rollback branch for the original pre-StayPilot Portfolio state remains:
+`backup/pre-staypilot-work2-20260923`

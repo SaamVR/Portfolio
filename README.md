@@ -1,22 +1,51 @@
-# LeadFlow AI
+# Automation Portfolio
 
-Interactive lead qualification, CRM routing, workflow automation and sales handoff portfolio project.
+A two-project portfolio focused on practical business automation, observable workflows, operational dashboards and production-aware integration design.
 
-## Live production
+## Work 01 — LeadFlow AI
 
-https://leadflow-ai-bhy.pages.dev/
+Interactive lead qualification, CRM routing, workflow automation and sales handoff.
+
+**Live:** https://leadflow-ai-bhy.pages.dev/
+
+Highlights:
+- live `POST /api/qualify` Cloudflare Pages Function
+- deterministic qualification + configurable CRM thresholds
+- CRM dashboard, analytics and automation controls
+- realtime operations dashboard
+- workflow builder and reliability lab
+- desktop/mobile browser QA
+
+## Work 02 — StayPilot Automation OS
+
+Policy-aware hotel automation and operations layer for independent hotels.
+
+**Live:** https://staypilot-hotel-os.pages.dev/  
+**Source:** https://github.com/SaamVR/staypilot-hotel-os  
+**Verified application release:** `12cb4d22`
+
+Highlights:
+- 12 hotel automation workflows
+- shared reservation / room / task / approval state
+- Owner / Manager authority and approval thresholds
+- automation execution traces and ROI/time-saved framing
+- Integration Hub with inbound event lab and webhook architecture
+- global Owner automation pause with queue/defer/resume semantics
+- live Cloudflare deployment and headless-browser production QA
+
+## Portfolio presentation
+
+LeadFlow remains the immersive Work #1 experience. Near the end of the live page, a dedicated StayPilot Work #2 handoff presents the second product and links directly to its verified source and Cloudflare demo.
 
 ## Stack
 
-- Vanilla HTML, CSS and JavaScript
-- Browser-local CRM/demo persistence
-- Interactive qualification workflow
-- CRM dashboard, analytics, automation controls and settings
-- Dark/light presentation system
-- Cloudflare Pages deployment
+Across the two projects:
+- HTML / CSS / JavaScript
+- React + Vite
+- Cloudflare Pages + Pages Functions
+- browser-local prototype persistence
+- REST/webhook integration patterns
+- GitHub Actions build verification
+- headless Chrome / Puppeteer production QA
 
-## Development
-
-The production source is maintained in this repository. The working production directory on the deployment machine is /home/ubuntu/leadflow-ai-live.
-
-See PROJECT_STATE.md for the current implementation checkpoint and durable handoff notes.
+See `PROJECT_STATE.md` for durable checkpoints and deployment notes.
