@@ -107,3 +107,5 @@ def test_mobile_hotspot_expanded_label_is_viewport_bounded():
 def test_public_preview_verifies_mobile_hotspot_label_bounds():
     assert "deployed expanded hotspot label outside viewport" in public_qa
     assert "mobile_hotspot_detail.png" in public_qa
+
+# R10 final public-label QA GREEN verification trigger.
