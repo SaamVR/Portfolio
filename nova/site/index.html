@@ -132,30 +132,71 @@
     </section>
 
     <section id="behind" class="stage stage--behind" data-range-anchor="behind">
-      <div class="behind-grid">
-        <div>
-          <p class="eyebrow">The experience / 01</p>
+      <div class="behind-transition">
+        <div class="behind-transition__copy">
+          <p class="eyebrow">Portfolio case study / 01</p>
           <h2>Behind NOVA.</h2>
-          <p class="behind-lede">A fictional product campaign built around a live animated 3D asset—not a pre-rendered product video.</p>
-        </div>
-        <div class="build-copy">
-          <p>The same product you just explored is driven at runtime through a skinned GLTF, authored camera choreography, real-time lighting and bounded direct manipulation.</p>
-          <div class="fact-grid">
-            <div><strong>36</strong><span>skeletal joints</span></div>
-            <div><strong>14</strong><span>skinned meshes</span></div>
-            <div><strong>3</strong><span>source clips</span></div>
-            <div><strong>42</strong><span>principal clip channels</span></div>
-            <div><strong>27.71 SEC</strong><span>principal source clip</span></div>
-          </div>
-          <div class="tech-strip">
-            <span>Three.js</span><span>GLTF runtime</span><span>Scroll choreography</span><span>Responsive 3D</span><span>Real-time lighting</span>
-          </div>
+          <p class="behind-lede">The cinematic product journey ends here. The build story continues below as a conventional case study, with the product stepping out of the way.</p>
+          <a class="button button--outline" href="#case-study">View the build <span>↘</span></a>
         </div>
       </div>
-      <footer class="project-footer">
-        <span>NOVA / INTERACTIVE PRODUCT EXPERIENCE</span>
-        <button type="button" id="replay">Replay experience ↗</button>
-      </footer>
+    </section>
+
+    <section id="case-study" class="case-study" aria-labelledby="caseStudyTitle">
+      <div class="case-study__inner">
+        <header class="case-study__header">
+          <p class="eyebrow">NOVA / Interactive product experience</p>
+          <h2 id="caseStudyTitle">Designed like a launch.<br /><em>Built like a product.</em></h2>
+          <p>A fictional premium headphone campaign built around a live animated 3D asset—not a pre-rendered product video. The interface, camera, product motion and responsive behavior are all authored as one system.</p>
+        </header>
+
+        <div class="case-study__grid">
+          <article>
+            <span class="case-index">01 / Role</span>
+            <h3>Role</h3>
+            <p>Creative direction, interaction design, front-end prototyping and real-time 3D choreography across desktop, tablet and mobile.</p>
+          </article>
+          <article>
+            <span class="case-index">02 / Challenge</span>
+            <h3>Challenge</h3>
+            <p>Make one GLTF feel like a premium product campaign without hiding behind pre-rendered video, while keeping direct interactions legible and responsive.</p>
+          </article>
+          <article>
+            <span class="case-index">03 / Build</span>
+            <h3>What I built</h3>
+            <p>A scroll-driven Three.js experience with authored camera choreography, state-based lighting, skinned-surface hotspots, bounded inspection and responsive composition rules.</p>
+          </article>
+          <article>
+            <span class="case-index">04 / Result</span>
+            <h3>Result</h3>
+            <p>A portfolio piece that behaves like a launch experience first, then reveals the implementation decisions and technical constraints behind the presentation.</p>
+          </article>
+        </div>
+
+        <div class="case-study__technical">
+          <div>
+            <p class="eyebrow">Runtime anatomy</p>
+            <p>The same headphone explored above runs from the live skinned GLTF and its authored source animation. Product framing, lighting and interaction state are composed at runtime.</p>
+          </div>
+          <div>
+            <div class="fact-grid">
+              <div><strong>36</strong><span>skeletal joints</span></div>
+              <div><strong>14</strong><span>skinned meshes</span></div>
+              <div><strong>3</strong><span>source clips</span></div>
+              <div><strong>42</strong><span>principal clip channels</span></div>
+              <div><strong>27.71 SEC</strong><span>principal source clip</span></div>
+            </div>
+            <div class="tech-strip">
+              <span>Three.js</span><span>GLTF runtime</span><span>Scroll choreography</span><span>Responsive 3D</span><span>Real-time lighting</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="project-footer case-study__footer">
+          <span>NOVA / INTERACTIVE PRODUCT EXPERIENCE</span>
+          <button type="button" id="replay">Replay experience ↗</button>
+        </footer>
+      </div>
     </section>
   </main>
 
@@ -169,12 +210,20 @@
       <div class="interest-panel__body">
         <p class="eyebrow">Early access</p>
         <h2 id="notifyTitle">Stay close to<br /><em>what comes next.</em></h2>
-        <p>NOVA is a fictional product created for this interactive portfolio experience. This panel demonstrates a launch-interest flow; it does not collect or submit personal data.</p>
+        <p>NOVA is a fictional product created for this interactive portfolio experience. Use the field below to preview a launch-interest interaction. Nothing is transmitted or stored.</p>
+        <form id="notifyDemoForm" class="interest-form">
+          <label for="notifyEmail">Email preview</label>
+          <div class="interest-form__row">
+            <input id="notifyEmail" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required />
+            <button type="submit" class="button button--solid">Preview notification</button>
+          </div>
+          <p id="notifyDemoStatus" class="interest-form__status" aria-live="polite">Demo only / no data leaves this browser</p>
+        </form>
         <div class="interest-panel__status">
           <i aria-hidden="true"></i>
-          <span>Concept preview / no signup required</span>
+          <span>Concept preview / local interaction only</span>
         </div>
-        <button type="button" class="button button--solid" data-notify-close>Continue exploring</button>
+        <button type="button" class="button button--ghost" data-notify-close>Continue exploring</button>
       </div>
     </aside>
   </div>
