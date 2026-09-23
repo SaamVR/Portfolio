@@ -137,7 +137,12 @@ export function sampleTimeline(progress, viewportClass='desktop'){
     ui:{
       range:rangeState.range,
       dark:rangeState.range === 'spatial' || rangeState.range === 'adaptive',
-      settled:rangeState.progress > .32 && rangeState.progress < .82
+      settled:rangeState.progress > .32 && rangeState.progress < .82,
+      transition:
+        rangeState.range === 'design' && rangeState.progress > .82 ? 'to-dark' :
+        rangeState.range === 'adaptive' && rangeState.progress > .82 ? 'to-light' :
+        rangeState.range === 'resolution' && rangeState.progress > .78 ? 'to-dark' :
+        'none'
     }
   };
   return viewportAdjusted(applyCompositionInfluences(state,p), viewportClass);
