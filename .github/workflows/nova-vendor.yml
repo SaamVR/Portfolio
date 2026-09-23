@@ -21,7 +21,7 @@ jobs:
           cp node_modules/three/build/three.module.js vendor/
           cp node_modules/three/build/three.core.js vendor/
           cp node_modules/three/examples/jsm/loaders/FBXLoader.js vendor/addons/loaders/
-          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js vendor/addons/loaders/
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js vendor/addons/loaders/\n          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js vendor/addons/utils/
           cp node_modules/three/examples/jsm/libs/fflate.module.js vendor/addons/libs/
           cp node_modules/three/examples/jsm/curves/NURBSCurve.js vendor/addons/curves/
           cp node_modules/three/examples/jsm/curves/NURBSUtils.js vendor/addons/curves/
