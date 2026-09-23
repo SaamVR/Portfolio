@@ -64,7 +64,7 @@ def test_v2_integration_wires_product_interactions():
     assert "createModeController(" in js
 
 
-def test_v2_hotspot_earcups_use_skinned_surface_anchors():
-    assert "skinnedSurface('Plane.021_0',307" in js
-    assert "skinnedSurface('Circle.010_0',21" in js
+def test_v2_hotspot_earcups_use_animated_component_bounds():
+    assert "surfaceBounds('Plane.021_0'" in js
+    assert "surfaceBounds('Circle.010_0'" in js
     assert "offset:[-.12,-.12,0]" in js
