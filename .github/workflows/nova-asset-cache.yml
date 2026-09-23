@@ -1,0 +1,38 @@
+name: NOVA Asset Cache Seed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-asset-cache.yml"
+      - "nova/asset-cache-trigger.txt"
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore or prepare asset cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: nova/site/assets
+          key: nova-assets-v1-fed3b7e67aeac3c9a8a626b9431f52bc95326e69ac750040c019294ed3849741
+      - name: Download exact GPT-runtime asset bundle
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p nova/site/assets
+          curl -fsSL --retry 3 'https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-8004-8211-b848-71fff0095652/raw?se=2026-09-23T05%3A18%3A43Z&sp=r&sv=2026-02-06&sr=b&scid=4006debb-ba29-53f5-972e-0e3af48d1147&skoid=5e5afa93-cb2e-42ad-a58a-830b5b446f03&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T02%3A40%3A35Z&ske=2026-09-24T02%3A40%3A35Z&sks=b&skv=2026-02-06&sig=QbK1/GzVM0glXYSSGod/GXPLP5nUrWbGVBZnrzsd/Mw%3D' -o /tmp/nova-assets.zip
+          test "$(stat -c%s /tmp/nova-assets.zip)" -eq 6521259
+          unzip -q /tmp/nova-assets.zip -d nova/site/assets
+          test "$(stat -c%s nova/site/assets/nova-headphones.fbx)" -eq 2433616
+          head -c 18 nova/site/assets/nova-headphones.fbx | grep -a -q "Kaydara FBX Binary"
+          test "$(find nova/site/assets -maxdepth 1 -type f | wc -l)" -eq 13
+      - name: Confirm cache payload
+        run: |
+          du -sh nova/site/assets
+          sha256sum nova/site/assets/nova-headphones.fbx
+          file nova/site/assets/nova-headphones.fbx
