@@ -233,3 +233,62 @@ Deployment policy:
 - samvr is deployment-only
 - deploy this exact artifact to a V2 preview branch first
 - do not replace Cloudflare production until the V2 preview is publicly verified
+
+
+## NOVA V2 verified preview — 2026-09-23
+
+Status: preview verified; production not yet promoted.
+
+Verified V2 source:
+- source commit: `6a47d94d8938c9565536998b11eb108fa7937740`
+- branch: `nova/v2-integration`
+- key late refinements included:
+  - animated skinned-surface/bone hotspot anchoring with obsolete earcup screen offsets removed
+  - desktop Adaptive → Form framing release so the product clears “Made to move.” at chapter entry
+  - visible literal escape artifact removed from Behind NOVA
+  - state-driven chapter backdrop, accessible Notify concept panel, responsive direct interaction, and reduced-motion/fallback behavior
+
+Exact production bundle:
+- workflow run: `35889178780`
+- artifact: `nova-production-site`
+- artifact ID: `10763963322`
+- artifact digest: `sha256:334cee5f9836b2c304f949916f3c9eb4e2df85903530d3b3011fdac84915323a`
+- bundle source SHA: `6a47d94d8938c9565536998b11eb108fa7937740`
+
+Current-head browser QA:
+- visual QA run: `35889178713` — success
+- visual QA artifact ID: `10763599280`
+- visual QA artifact digest: `sha256:e3efd09a9012b96435b31b82c0a0c77ca87d117c2a875c0ffb5a830c187f68ec`
+- desktop/tablet/mobile timeline, direct interactions, reduced motion, model fallback, and Notify panel paths passed
+- manual review confirmed the corrected Form entry and clean Behind NOVA rendering
+
+Focused hotspot QA:
+- run: `35887935405` — success
+- artifact ID: `10763801727`
+- artifact digest: `sha256:ae2b3d7ea8996ca3a09b45c3029848c10212f84d53e58bbdfd29a8fe1f6e42c6`
+- desktop/mobile earcup hotspot anchors track the rendered product without legacy screen-space offsets
+
+Cloudflare V2 preview deployment:
+- samvr was used only for the deployment command
+- Cloudflare project: `nova-interactive-portfolio`
+- branch: `v2`
+- immutable deployment URL: `https://54ccfee1.nova-interactive-portfolio.pages.dev`
+- stable preview alias: `https://v2.nova-interactive-portfolio.pages.dev/`
+- deployed commit metadata: `6a47d94d8938c9565536998b11eb108fa7937740`
+- Cloudflare upload: 29 files total; 2 uploaded, 27 already present; deployment completed successfully
+
+Public preview QA:
+- workflow run: `35889143030`
+- rerun attempt: `2`
+- result: success
+- audited URL: `https://v2.nova-interactive-portfolio.pages.dev/`
+- public QA artifact ID: `10763974588`
+- public QA artifact digest: `sha256:4e477b4966b767b892b1abe4822ee8cbf9645c03561ee0433ca52b0b6e645c0a`
+- browser errors: none
+- public evidence includes desktop Design/Focus/Fold/Notify and mobile Design/Ambient/Notify states
+
+Production safety:
+- primary production alias remains intentionally unpromoted from this V2 checkpoint
+- V1 rollback branch remains `backup/nova-interactive-v1-2026-09-23`
+- rollback commit remains `9c5e084518f35d364fabc1d565ccb31a6e348eba`
+- V2 should be promoted to production only after preview acceptance
