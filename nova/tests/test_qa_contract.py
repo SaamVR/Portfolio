@@ -77,3 +77,5 @@ def test_r10_visual_qa_covers_case_study_handoff():
     assert "case-study product must yield" in qa
     assert "desktop_case_study.png" in qa
     assert "mobile_case_study.png" in qa
+
+# R10 GREEN verification trigger after browser QA implementation.
