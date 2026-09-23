@@ -122,8 +122,10 @@ jobs:
             const context=await browser.newContext({viewport,hasTouch:prefix==='mobile',isMobile:prefix==='mobile'});
             const {page}=await readyPage(context,prefix+'-collision');
             const checks=[
-              {p:.10,label:'hero'},
-              {p:.20,label:'design'},
+              {p:.02,label:'hero-opening'},
+              {p:.10,label:'hero-resolved'},
+              {p:.18,label:'design-close'},
+              {p:.20,label:'design-peak'},
               {p:.65,label:'form'},
               {p:.79,label:'inspect'},
               {p:.92,label:'resolution'}
@@ -166,7 +168,7 @@ jobs:
                   rect:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom}
                 };
               },{label:check.label});
-              if(!result.skipped && result.ratio>.18){
+              if(!result.skipped && result.ratio>.04){
                 throw new Error(prefix+' headline/product collision at '+check.label+' '+JSON.stringify(result));
               }
               await page.screenshot({path:'nova-qa/'+prefix+'_collision_'+check.label+'.png'});
