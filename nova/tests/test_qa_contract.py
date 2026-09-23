@@ -8,7 +8,7 @@ def test_visual_qa_targets_v2_integration_and_progress_boundaries():
     assert "nova/v2-integration" in qa
     for value in [".119", ".121", ".279", ".281", ".959", ".961"]:
         assert value in qa
-    assert "data-range" in qa
+    assert "dataset.range" in qa
 
 def test_visual_qa_exercises_product_interactions():
     for phrase in ["focus", "transparency", "fold", "reset view"]:
