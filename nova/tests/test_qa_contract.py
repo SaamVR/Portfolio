@@ -115,11 +115,13 @@ def test_r11_visual_qa_checks_readability_and_v1_archive():
     assert "readabilityAudit" in qa
     assert "readability body copy too small" in qa
     assert "readability utility copy too small" in qa
-    assert "desktop_readability.png" in qa
-    assert "mobile_readability.png" in qa
+    assert "prefix+'_readability.png'" in qa
+    assert "readabilityAudit({width:1440,height:1000},'desktop')" in qa
+    assert "readabilityAudit({width:390,height:844},'mobile')" in qa
     assert "versionArchiveAudit" in qa
-    assert "v1_desktop.png" in qa
-    assert "v1_mobile.png" in qa
+    assert "'v1_'+prefix+'.png'" in qa
+    assert "versionArchiveAudit({width:1440,height:1000},'desktop')" in qa
+    assert "versionArchiveAudit({width:390,height:844},'mobile')" in qa
 
 def test_build_validates_v1_archive_payload():
     for path in ["nova/site/v1/index.html","nova/site/v1/styles.css","nova/site/v1/app.js"]:
