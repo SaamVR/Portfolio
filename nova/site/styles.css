@@ -196,3 +196,16 @@ body[data-case-study="true"] .model-status{opacity:0;pointer-events:none}
   .interest-form__row{grid-template-columns:1fr}
   .interest-form__row .button{width:100%}
 }
+
+
+/* R10 transition staging: title arrives before supporting copy on the tight mobile handoff. */
+body[data-range="behind"][data-settled="false"] .behind-transition .behind-lede,
+body[data-range="behind"][data-settled="false"] .behind-transition .button--outline{
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+}
+.behind-transition .behind-lede,
+.behind-transition .button--outline{
+  transition:opacity .38s ease,transform .42s cubic-bezier(.22,.61,.36,1);
+}
