@@ -142,6 +142,13 @@ jobs:
               const label=el?.querySelector('span');
               return el?.getAttribute('aria-expanded')==='true' && label && getComputedStyle(label).display!=='none';
             });
+            const deployedExpandedLabel=await mobileCushion.locator('span').evaluate(el=>{
+              const rect=el.getBoundingClientRect();
+              return {left:rect.left,right:rect.right,width:innerWidth,text:el.textContent?.trim()||''};
+            });
+            if(deployedExpandedLabel.left<8||deployedExpandedLabel.right>deployedExpandedLabel.width-8){
+              throw new Error('deployed expanded hotspot label outside viewport '+JSON.stringify(deployedExpandedLabel));
+            }
             await page.screenshot({path:'nova-public-qa/mobile_hotspot_detail.png'});
             await mobileCushion.tap();
             await page.screenshot({path:'nova-public-qa/mobile_design.png'});
