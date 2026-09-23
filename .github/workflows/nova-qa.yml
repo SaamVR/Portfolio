@@ -35,7 +35,8 @@ jobs:
           npm install three@0.180.0 --no-audit --no-fund
           cp node_modules/three/build/three.module.js "$GITHUB_WORKSPACE/nova/site/vendor/"
           cp node_modules/three/build/three.core.js "$GITHUB_WORKSPACE/nova/site/vendor/"
-          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"\n          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
+          cp node_modules/three/examples/jsm/loaders/GLTFLoader.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/loaders/"
+          cp node_modules/three/examples/jsm/utils/BufferGeometryUtils.js "$GITHUB_WORKSPACE/nova/site/vendor/addons/utils/"
 
       - name: Install browser QA
         run: |
